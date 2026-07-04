@@ -1,18 +1,6 @@
-export type Permission =
-  | "ticket:read_own"
-  | "product:read"
-  | "project:read"
-  | "rfa:review"
-  | "collection:review"
-  | "analyst:work"
-  | "qc:review"
-  | "system:configure"
-  | "audit:read";
+import type { AuthUser, Permission } from "../api-client/client";
 
-export type UserProfile = {
-  displayName: string;
-  permissions: readonly Permission[];
-};
+export type UserProfile = AuthUser;
 
 export type NavigationItem = {
   label: string;
@@ -45,29 +33,63 @@ export const navigationItems: readonly NavigationItem[] = [
     requiredPermissions: ["product:read"],
   },
   { label: "Projects", path: "/projects", icon: "projects", requiredPermissions: ["project:read"] },
-  { label: "RFA", path: "/rfa", icon: "rfa", requiredPermissions: ["rfa:review"] },
+  { label: "RFA Queue", path: "/rfa/queue", icon: "rfa", requiredPermissions: ["rfa:review"] },
   {
-    label: "Collection",
-    path: "/collection",
+    label: "RFA Products",
+    path: "/rfa/products",
+    icon: "rfa",
+    requiredPermissions: ["rfa:add_product"],
+  },
+  {
+    label: "Collection Queue",
+    path: "/collection/queue",
     icon: "collection",
     requiredPermissions: ["collection:review"],
   },
-  { label: "Analyst", path: "/analyst", icon: "analyst", requiredPermissions: ["analyst:work"] },
-  { label: "QC", path: "/qc", icon: "qc", requiredPermissions: ["qc:review"] },
-  { label: "Admin", path: "/admin", icon: "admin", requiredPermissions: ["system:configure"] },
+  {
+    label: "Collection Products",
+    path: "/collection/products",
+    icon: "collection",
+    requiredPermissions: ["collection:add_product"],
+  },
+  {
+    label: "Analyst",
+    path: "/analyst/workbench",
+    icon: "analyst",
+    requiredPermissions: ["analyst:work"],
+  },
+  { label: "QC", path: "/qc/queue", icon: "qc", requiredPermissions: ["qc:review"] },
+  {
+    label: "Admin",
+    path: "/admin/overview",
+    icon: "admin",
+    requiredPermissions: ["system:configure"],
+  },
   { label: "Audit", path: "/audit", icon: "audit", requiredPermissions: ["audit:read"] },
 ];
 
 export const previewProfile: UserProfile = {
-  displayName: "Sprint 1 Operator",
+  id: "preview-user",
+  username: "preview@example.test",
+  displayName: "Sprint 2 Operator",
+  roles: ["Administrator"],
+  defaultRoute: "/admin/overview",
   permissions: navigationItems.flatMap((item) => item.requiredPermissions),
 };
 
 export function canAccessRoute(profile: UserProfile, route: NavigationItem) {
+  return hasPermissions(profile, route.requiredPermissions);
+}
+
+export function hasPermissions(profile: UserProfile, permissions: readonly Permission[]) {
   const grantedPermissions = new Set(profile.permissions);
-  return route.requiredPermissions.every((permission) => grantedPermissions.has(permission));
+  return permissions.every((permission) => grantedPermissions.has(permission));
 }
 
 export function visibleNavigationItems(profile: UserProfile) {
   return navigationItems.filter((item) => canAccessRoute(profile, item));
+}
+
+export function routeByPath(path: string) {
+  return navigationItems.find((item) => item.path === path);
 }

@@ -1,5 +1,6 @@
 import { axe } from "jest-axe";
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { AppShell } from "./AppShell";
 import { previewProfile } from "../../lib/permissions/route-access";
@@ -19,4 +20,15 @@ test("has no automated accessibility violations in the shell", async () => {
   const { container } = renderWithProviders(<AppShell profile={previewProfile} />);
 
   expect(await axe(container)).toHaveNoViolations();
+});
+
+test("logs out through the shell command bar", async () => {
+  const user = userEvent.setup();
+  const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+  vi.stubGlobal("fetch", fetchMock);
+  renderWithProviders(<AppShell profile={previewProfile} />);
+
+  await user.click(screen.getByRole("button", { name: "Log out" }));
+
+  await waitFor(() => expect(fetchMock).toHaveBeenCalled());
 });

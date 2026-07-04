@@ -1,14 +1,15 @@
-import { Bell, Moon, Search, Sun, UserCircle } from "lucide-react";
+import { Bell, LogOut, Moon, Search, Sun, UserCircle } from "lucide-react";
 
 import { IconButton } from "../ui/IconButton";
 import { useTheme } from "../../lib/theme/theme-context";
 import type { UserProfile } from "../../lib/permissions/route-access";
 
 type TopCommandBarProps = {
+  onLogout: () => void | Promise<void>;
   profile: UserProfile;
 };
 
-export function TopCommandBar({ profile }: TopCommandBarProps) {
+export function TopCommandBar({ onLogout, profile }: TopCommandBarProps) {
   const { theme, toggleTheme } = useTheme();
   const ThemeIcon = theme === "dark" ? Sun : Moon;
   const themeLabel = theme === "dark" ? "Switch to light theme" : "Switch to dark theme";
@@ -31,6 +32,9 @@ export function TopCommandBar({ profile }: TopCommandBarProps) {
           <UserCircle aria-hidden="true" size={20} strokeWidth={1.8} />
           <span>{profile.displayName}</span>
         </button>
+        <IconButton ariaLabel="Log out" onClick={() => void onLogout()}>
+          <LogOut aria-hidden="true" size={18} strokeWidth={1.8} />
+        </IconButton>
       </div>
     </header>
   );

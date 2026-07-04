@@ -3,11 +3,22 @@ import type { ReactElement } from "react";
 import { MemoryRouter } from "react-router-dom";
 
 import { AppProviders } from "../app/providers";
+import type { AuthSession } from "../lib/api-client/client";
+import { previewProfile } from "../lib/permissions/route-access";
 
-export function renderWithProviders(ui: ReactElement, initialPath = "/app/requests"): RenderResult {
+export const previewSession: AuthSession = {
+  user: previewProfile,
+  csrfToken: "test-csrf-token",
+};
+
+export function renderWithProviders(
+  ui: ReactElement,
+  initialPath = "/app/requests",
+  initialAuthSession: AuthSession | null = previewSession,
+): RenderResult {
   window.history.pushState({}, "Test page", initialPath);
   return render(
-    <AppProviders>
+    <AppProviders initialAuthSession={initialAuthSession}>
       <MemoryRouter initialEntries={[initialPath]}>{ui}</MemoryRouter>
     </AppProviders>,
   );

@@ -1,0 +1,27 @@
+@media (max-width: 860px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .nav-rail {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-rail__links {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .command-bar,
+  .overview-hero,
+  .command-bar__actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .request-metrics,
+  .request-workspace,
+  .status-strip {
+    grid-template-columns: 1fr;
+  }
+}

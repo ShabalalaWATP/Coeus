@@ -26,6 +26,20 @@ pnpm install
 pnpm --filter @coeus/web dev
 ```
 
+## Sprint 2 Seed Users
+
+All Sprint 2 seed accounts use mock usernames under `example.test` and the mock local credential `CoeusLocal1!`. These accounts are for local development only.
+
+- `admin@example.test`
+- `user@example.test`
+- `rfa.manager@example.test`
+- `rfa.team@example.test`
+- `collection.manager@example.test`
+- `collection.team@example.test`
+- `analyst@example.test`
+- `qc.manager@example.test`
+- `disabled@example.test`, blocked from login
+
 ## Backend
 
 ```powershell

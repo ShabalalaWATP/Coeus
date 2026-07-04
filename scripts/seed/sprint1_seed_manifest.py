@@ -8,7 +8,17 @@ import json
 def build_seed_manifest() -> dict[str, object]:
     return {
         "banner": "MOCK DATA ONLY",
-        "users": ["mock-customer", "mock-rfa-manager", "mock-analyst", "mock-qc-manager"],
+        "users": [
+            "admin@example.test",
+            "user@example.test",
+            "rfa.manager@example.test",
+            "rfa.team@example.test",
+            "collection.manager@example.test",
+            "collection.team@example.test",
+            "analyst@example.test",
+            "qc.manager@example.test",
+            "disabled@example.test",
+        ],
         "acgs": ["mock-regional-acg", "mock-product-review-acg"],
         "projects": ["mock-project-workspace"],
         "tickets": ["mock-rfi-ticket"],
@@ -23,4 +33,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

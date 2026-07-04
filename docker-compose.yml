@@ -36,7 +36,7 @@ services:
     environment:
       COEUS_ENVIRONMENT: local
       COEUS_DATABASE_URL: postgresql+asyncpg://coeus:coeus-local@postgres:5432/coeus
-      COEUS_ALLOWED_CORS_ORIGINS: '["http://localhost:5173"]'
+      COEUS_ALLOWED_CORS_ORIGINS: '["http://localhost:5173","http://127.0.0.1:5173"]'
       COEUS_LOG_LEVEL: INFO
     ports:
       - "8000:8000"
@@ -58,4 +58,3 @@ services:
 volumes:
   coeus-postgres:
   coeus-minio:
-

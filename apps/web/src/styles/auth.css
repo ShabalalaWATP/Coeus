@@ -1,0 +1,145 @@
+.login-page,
+.auth-message-page {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 24px;
+  background: linear-gradient(135deg, rgb(56 189 248 / 9%), transparent 30rem), var(--bg);
+}
+
+.login-panel {
+  width: min(100%, 440px);
+}
+
+.login-brand {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.private-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  margin-bottom: 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  border-radius: 8px;
+  padding: 0 12px;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--surface) 74%, transparent);
+}
+
+.login-form,
+.auth-message {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px;
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  box-shadow: var(--shadow);
+}
+
+.form-field {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.form-field input {
+  width: 100%;
+  height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 12px;
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+.form-field small,
+.auth-error {
+  color: var(--critical);
+  font-weight: 650;
+}
+
+.password-field {
+  position: relative;
+}
+
+.password-field input {
+  padding-right: 48px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.password-toggle:hover,
+.password-toggle:focus-visible {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--text);
+  outline: none;
+}
+
+.auth-error {
+  margin: 0 0 14px;
+}
+
+.auth-error--locked {
+  color: var(--warning);
+}
+
+.primary-button {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--accent-strong);
+  color: white;
+  font-weight: 800;
+}
+
+.primary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.auth-message {
+  width: min(100%, 460px);
+  text-align: center;
+}
+
+.auth-message h1 {
+  margin: 0 0 10px;
+  font-size: 2rem;
+}
+
+.auth-message p {
+  color: var(--muted);
+}
+
+.auth-message__code {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.text-link {
+  color: var(--accent);
+  font-weight: 800;
+}
