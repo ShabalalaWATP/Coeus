@@ -19,6 +19,7 @@ These instructions are specific to the Coeus repository and sit below Alex Orr's
 
 - Backend and frontend application code must each maintain at least 95 percent line and branch coverage.
 - Do not lower coverage gates to make checks pass.
+- Hand-written files changed during normal work have a hard maximum of 350 lines. Split by responsibility before exceeding this limit. Generated files, lockfiles, migrations and the root implementation plan are exceptions only when clearly justified.
 - Keep route handlers thin. Put business logic in services, domain modules, repositories, or integrations.
 - Keep React components small and move access logic into `lib/permissions` or equivalent helpers.
 - Security-sensitive changes must update `docs/threat-model/`.
@@ -28,6 +29,7 @@ These instructions are specific to the Coeus repository and sit below Alex Orr's
 ## Common Commands
 
 - Root install: `pnpm install`
+- File line limit: `pnpm line-limit`
 - Backend sync: `uv sync --project apps/api --all-groups`
 - Backend checks: `uv run --directory apps/api pytest`
 - Frontend checks: `pnpm --filter @coeus/web test`
