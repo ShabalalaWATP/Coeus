@@ -21,6 +21,10 @@ updates:
           - "@vitest/*"
     cooldown:
       default-days: 7
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
   - package-ecosystem: "pip"
     directory: "/apps/api"
     schedule:
