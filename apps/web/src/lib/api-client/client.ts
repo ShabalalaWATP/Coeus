@@ -14,14 +14,25 @@ export type Permission =
   | "user:disable"
   | "user:assign_role"
   | "role:manage"
+  | "acg:create"
+  | "acg:update"
+  | "acg:assign_user"
+  | "acg:assign_product"
   | "acg:view"
+  | "project:create"
   | "project:read"
+  | "project:update"
+  | "project:add_member"
+  | "project:remove_member"
   | "ticket:create"
   | "ticket:read_own"
   | "ticket:read_assigned"
   | "ticket:read_all"
   | "chat:use"
   | "rfi:search"
+  | "rfi:offer_product"
+  | "rfi:accept_product"
+  | "rfi:reject_product"
   | "rfa:review"
   | "rfa:assign"
   | "rfa:add_product"
@@ -34,9 +45,16 @@ export type Permission =
   | "qc:approve"
   | "qc:reject"
   | "product:create_existing"
+  | "product:create_from_qc"
   | "product:read"
+  | "product:read_restricted"
+  | "product:update_metadata"
+  | "product:manage_assets"
+  | "product:publish"
+  | "product:archive"
   | "product:search"
   | "product:download"
+  | "product:disseminate"
   | "feedback:create"
   | "feedback:read"
   | "analytics:view_own"
@@ -62,6 +80,79 @@ export type AuthSession = {
 export type LoginRequest = {
   username: string;
   password: string;
+};
+
+export type AccessControlGroup = {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  ownerUserId: string | null;
+  isActive: boolean;
+  memberUserIds: string[];
+};
+
+export type ProductSummary = {
+  id: string;
+  title: string;
+  summary: string;
+  productType: string;
+  status: string;
+  classificationLevel: number;
+  handlingCaveats: string[];
+  acgIds: string[];
+  ownerTeam: string;
+};
+
+export type ProjectMember = {
+  userId: string;
+  role: string;
+};
+
+export type ProjectMilestone = {
+  id: string;
+  title: string;
+  status: string;
+};
+
+export type ProjectPlanItem = {
+  id: string;
+  title: string;
+  ownerRole: string;
+  status: string;
+};
+
+export type ProjectWorkspace = {
+  id: string;
+  reference: string;
+  name: string;
+  summary: string;
+  requesterUserId: string;
+  acgIds: string[];
+  ticketIds: string[];
+  members: ProjectMember[];
+  milestones: ProjectMilestone[];
+  planItems: ProjectPlanItem[];
+  visibleProducts: ProductSummary[];
+};
+
+export type AccessDiagnostics = {
+  allowed: boolean;
+  reason: string;
+  checks: { name: string; passed: boolean; reason: string }[];
+};
+
+export type CreateAccessControlGroupRequest = {
+  code: string;
+  name: string;
+  description: string;
+  ownerUserId?: string;
+};
+
+export type UpdateAccessControlGroupRequest = {
+  name?: string;
+  description?: string;
+  isActive?: boolean;
 };
 
 type ErrorPayload = {
@@ -113,6 +204,72 @@ export class ApiClient {
       headers: { "X-CSRF-Token": csrfToken },
       method: "POST",
     });
+  }
+
+  async listAcgs(): Promise<AccessControlGroup[]> {
+    const response = await this.requestJson<{ acgs: AccessControlGroup[] }>("/api/v1/acgs", {
+      method: "GET",
+    });
+    return response.acgs;
+  }
+
+  async createAcg(
+    payload: CreateAccessControlGroupRequest,
+    csrfToken: string,
+  ): Promise<AccessControlGroup> {
+    return this.requestJson<AccessControlGroup>("/api/v1/acgs", {
+      body: JSON.stringify(payload),
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+      method: "POST",
+    });
+  }
+
+  async updateAcg(
+    acgId: string,
+    payload: UpdateAccessControlGroupRequest,
+    csrfToken: string,
+  ): Promise<AccessControlGroup> {
+    return this.requestJson<AccessControlGroup>(`/api/v1/acgs/${acgId}`, {
+      body: JSON.stringify(payload),
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+      method: "PATCH",
+    });
+  }
+
+  async addAcgMember(
+    acgId: string,
+    userId: string,
+    csrfToken: string,
+  ): Promise<AccessControlGroup> {
+    return this.requestJson<AccessControlGroup>(`/api/v1/acgs/${acgId}/members`, {
+      body: JSON.stringify({ userId }),
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+      method: "POST",
+    });
+  }
+
+  async listProjects(): Promise<ProjectWorkspace[]> {
+    const response = await this.requestJson<{ projects: ProjectWorkspace[] }>("/api/v1/projects", {
+      method: "GET",
+    });
+    return response.projects;
+  }
+
+  async getProject(projectId: string): Promise<ProjectWorkspace> {
+    return this.requestJson<ProjectWorkspace>(`/api/v1/projects/${projectId}`, {
+      method: "GET",
+    });
+  }
+
+  async diagnoseProductAccess(productId: string, userId: string): Promise<AccessDiagnostics> {
+    return this.requestJson<AccessDiagnostics>(
+      `/api/v1/store/products/${productId}/access-diagnostics`,
+      {
+        body: JSON.stringify({ userId }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      },
+    );
   }
 
   private async requestJson<TResponse>(path: string, init: RequestInit): Promise<TResponse> {

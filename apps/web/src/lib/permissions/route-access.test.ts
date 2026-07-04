@@ -26,10 +26,13 @@ test("route access requires all route permissions", () => {
   expect(visibleNavigationItems(profile).map((item) => item.label)).toEqual(["Requests"]);
 });
 
-test("route metadata includes sprint two default paths", () => {
+test("route metadata includes sprint three access paths", () => {
   expect(navigationItems.map((item) => item.path)).toContain("/admin/overview");
+  expect(navigationItems.map((item) => item.path)).toContain("/admin/acgs");
+  expect(navigationItems.map((item) => item.path)).toContain("/projects");
   expect(navigationItems.map((item) => item.path)).toContain("/rfa/queue");
   expect(navigationItems.map((item) => item.path)).toContain("/analyst/workbench");
   expect(routeByPath("/admin/overview")?.label).toBe("Admin");
+  expect(routeByPath("/admin/acgs")?.requiredPermissions).toEqual(["acg:view"]);
   expect(routeByPath("/missing")).toBeUndefined();
 });

@@ -9,6 +9,7 @@ from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
 from coeus.db.session import DatabaseReadinessChecker
 from coeus.domain.auth import AuthenticatedSession
+from coeus.services.access import AccessServices
 from coeus.services.auth import AuthService
 
 
@@ -32,6 +33,13 @@ def get_auth_service(request: Request) -> AuthService:
     if not isinstance(auth_service, AuthService):
         raise AppError(500, "auth_not_configured", "Authentication service is not configured.")
     return auth_service
+
+
+def get_access_services(request: Request) -> AccessServices:
+    access_services = getattr(request.app.state, "access_services", None)
+    if not isinstance(access_services, AccessServices):
+        raise AppError(500, "access_not_configured", "Access services are not configured.")
+    return access_services
 
 
 def get_current_session(

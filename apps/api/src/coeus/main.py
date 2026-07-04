@@ -4,6 +4,7 @@ from uuid import uuid4
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
+from coeus.api.routes.access import router as access_router
 from coeus.api.routes.admin import router as admin_router
 from coeus.api.routes.audit import router as audit_router
 from coeus.api.routes.auth import router as auth_router
@@ -12,7 +13,9 @@ from coeus.core.config import Settings
 from coeus.core.errors import AppError, app_error_handler, unhandled_exception_handler
 from coeus.core.logging import configure_logging, get_logger
 from coeus.core.security import apply_security_headers
+from coeus.repositories.access import SeedAccessRepository
 from coeus.repositories.auth import LoginAttemptRepository, SeedUserRepository, SessionRepository
+from coeus.services.access import build_access_services
 from coeus.services.audit import AuditLog
 from coeus.services.auth import AuthService
 from coeus.services.passwords import PasswordHasher
@@ -31,13 +34,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = resolved_settings
     password_hasher = PasswordHasher(resolved_settings)
+    user_repository = SeedUserRepository(resolved_settings, password_hasher)
+    audit_log = AuditLog()
     app.state.auth_service = AuthService(
         settings=resolved_settings,
-        users=SeedUserRepository(resolved_settings, password_hasher),
+        users=user_repository,
         sessions=SessionRepository(),
         login_attempts=LoginAttemptRepository(),
         password_hasher=password_hasher,
-        audit_log=AuditLog(),
+        audit_log=audit_log,
+    )
+    app.state.access_services = build_access_services(
+        SeedAccessRepository(user_repository),
+        audit_log,
     )
 
     app.add_exception_handler(AppError, app_error_handler)
@@ -66,6 +75,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(auth_router, prefix="/api/v1")
     app.include_router(admin_router, prefix="/api/v1")
     app.include_router(audit_router, prefix="/api/v1")
+    app.include_router(access_router, prefix="/api/v1")
     app.include_router(health_router, prefix="/api/v1")
     return app
 

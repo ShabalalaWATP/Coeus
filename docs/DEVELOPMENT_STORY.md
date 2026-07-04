@@ -19,3 +19,14 @@
 - Added `/login`, `/forbidden` and `/session-expired` frontend routes, protected app routes and backend-driven role navigation.
 - Added branch protection runbook for `ShabalalaWATP/coeus`.
 - Verified Sprint 2 gates: backend Ruff, mypy, pytest coverage, Bandit, pip-audit and Semgrep; frontend formatting, linting, typecheck, Vitest coverage, build, Playwright e2e and production dependency audit; Compose config and live browser auth smoke.
+
+## 2026-07-04 Sprint 3
+
+- Added local-first ACG, product and project workspace domain records plus a seed access repository.
+- Added ACG, product access, project access, project workspace and access diagnostics services.
+- Added backend routes for ACG administration, project workspaces, project slices and administrator product diagnostics.
+- Added ACG audit events for group creation, group update, membership addition and membership removal.
+- Added `/admin/acgs` and `/projects` frontend workspaces with ACG management, project plan, member, product and diagnostic views.
+- Added Sprint 3 access-policy, API, client and UI tests.
+- Added the Sprint 3 spec, ACG/project ADR and threat-model update.
+- Verified local Sprint 3 gates: backend Ruff, mypy, pytest coverage, Bandit, pip-audit and Semgrep; frontend formatting, linting, typecheck, Vitest coverage, build, Playwright e2e and production dependency audit; Compose config.

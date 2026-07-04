@@ -65,6 +65,7 @@ export const navigationItems: readonly NavigationItem[] = [
     icon: "admin",
     requiredPermissions: ["system:configure"],
   },
+  { label: "ACGs", path: "/admin/acgs", icon: "admin", requiredPermissions: ["acg:view"] },
   { label: "Audit", path: "/audit", icon: "audit", requiredPermissions: ["audit:read"] },
 ];
 

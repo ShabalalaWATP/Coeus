@@ -6,7 +6,7 @@ This document tracks delivery state as implementation progresses.
 
 ## Current Stage
 
-Sprint 2: Auth, RBAC and app shell.
+Sprint 3: ACGs and Project Workspaces.
 
 ## Sprint 1 Scope
 
@@ -68,3 +68,33 @@ Sprint 2: Auth, RBAC and app shell.
 - Compose config: `docker compose config` validated.
 - Live browser smoke: local API on `127.0.0.1:8001` and Vite on `127.0.0.1:5173` verified admin login to `/admin/overview`, user denial at `/forbidden`, and no auth token in local storage.
 - Secret review: changed-file secret-pattern scan found only mock development credentials and expected auth implementation references.
+
+## Sprint 3 Scope
+
+- ACG model.
+- ACG admin UI.
+- Product and project access policy.
+- Project Workspace basics.
+- Access diagnostics.
+- ACG tests.
+
+## Sprint 3 Status
+
+- Local-first ACG, product and project seed repository: implemented.
+- ACG service and admin APIs: implemented.
+- Product and project access policies: implemented.
+- Project workspace APIs and frontend routes: implemented.
+- Access diagnostics: implemented for administrator product access review.
+- ACG audit events: implemented for create, update, add member and remove member.
+- Sprint 3 spec, ADR and threat model: implemented.
+- Verification: passed on 2026-07-04.
+
+## Sprint 3 Verification
+
+- Backend coverage: 97.04 percent total coverage.
+- Frontend coverage: 100 percent statement, line and function coverage, with 96.03 percent branch coverage.
+- Backend quality checks: Ruff, mypy and pytest passed.
+- Frontend quality checks: Prettier, ESLint, TypeScript, Vitest coverage, production build and Playwright Chromium e2e passed.
+- Backend security checks: Bandit completed with no issues; pip-audit found no known third-party vulnerabilities; Semgrep scanned tracked source and infrastructure files with no findings.
+- Frontend package audit: no known production dependency vulnerabilities.
+- Compose config: `docker compose config` validated.
