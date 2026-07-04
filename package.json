@@ -5,6 +5,7 @@
   "packageManager": "pnpm@11.7.0",
   "scripts": {
     "dev": "pwsh ./scripts/dev.ps1",
+    "line-limit": "node scripts/check-file-lines.mjs",
     "lint": "pnpm --filter @coeus/web lint",
     "test": "pnpm --filter @coeus/web test && uv run --directory apps/api pytest",
     "typecheck": "pnpm --filter @coeus/web typecheck && uv run --directory apps/api mypy src",

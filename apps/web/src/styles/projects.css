@@ -1,0 +1,65 @@
+.project-page {
+  display: grid;
+  gap: 20px;
+}
+
+.project-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.75fr) minmax(0, 1.5fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-size: 0.74rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.project-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: start;
+}
+
+.project-summary h2 {
+  margin: 5px 0 8px;
+  font-size: 1.42rem;
+}
+
+.project-summary p {
+  max-width: 760px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.stack-list {
+  display: grid;
+  gap: 10px;
+}
+
+.stack-row {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(0, 1.2fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 56px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--surface-muted);
+}
+
+.stack-row span {
+  min-width: 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.stack-row small {
+  color: var(--muted);
+  font-weight: 700;
+}
