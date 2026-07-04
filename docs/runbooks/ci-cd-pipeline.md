@@ -10,7 +10,6 @@ The repository uses GitHub Actions for pull-request and `main` branch checks.
 | `Frontend CI` | pull request, push to `main` | ESLint, TypeScript, Vitest coverage, Vite build and Playwright Chromium smoke. |
 | `CodeQL` | pull request, push to `main`, weekly schedule | GitHub CodeQL analysis for Python and JavaScript/TypeScript. |
 | `Semgrep` | pull request, push to `main`, weekly schedule | Semgrep SAST over application source, Dockerfiles and GitHub config, with SARIF upload. |
-| `Dependency Review` | pull request | Blocks pull requests that introduce high-severity vulnerable dependencies. |
 
 Dependabot runs weekly for GitHub Actions, npm and pip dependencies. Each ecosystem has a 7-day cooldown for version updates.
 
@@ -23,7 +22,6 @@ After the workflows have run on GitHub, configure `main` branch protection to re
 - `CodeQL / analyse (python)`
 - `CodeQL / analyse (javascript-typescript)`
 - `Semgrep / semgrep`
-- `Dependency Review / dependency-review`
 
 GitHub only offers checks that have recently run in the repository, so push the workflow commit first, let the checks complete, then add them to the branch protection rule.
 
@@ -38,6 +36,8 @@ Enable these GitHub repository settings:
 - Secret scanning enabled.
 - Push protection enabled.
 - Branch protection for `main` as described in `docs/runbooks/github-branch-protection.md`.
+
+Dependency Review can be added later if GitHub reports it as supported for the repository. At the time this runbook was written, GitHub reported that Dependency Review was not supported without Dependency Graph and GitHub Advanced Security support for the repository.
 
 ## Deployment
 

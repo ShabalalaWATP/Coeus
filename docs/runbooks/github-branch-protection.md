@@ -25,7 +25,6 @@ Initial Sprint 2 checks:
 - `CodeQL / analyse (python)`
 - `CodeQL / analyse (javascript-typescript)`
 - `Semgrep / semgrep`
-- `Dependency Review / dependency-review`
 
 Enable in repository settings:
 
@@ -35,6 +34,7 @@ Enable in repository settings:
 Future checks from the implementation plan should be added as their workflows land:
 
 - container scan
+- dependency review after Dependency Graph and GitHub Advanced Security support are available for the repository
 - Terraform scan
 - ZAP baseline
 - deployment checks
