@@ -1,0 +1,35 @@
+name: Semgrep
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "41 3 * * 2"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  semgrep:
+    name: semgrep
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+      - name: Install Semgrep
+        run: uv tool install semgrep
+      - name: Run Semgrep
+        id: scan
+        continue-on-error: true
+        run: semgrep scan --config auto --error --sarif --output semgrep.sarif apps/api/src apps/web/src infra/docker .github
+      - name: Upload SARIF
+        if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+        uses: github/codeql-action/upload-sarif@411c4c9a36b3fca4d674f06b6396b2c6d23522c6 # v3
+        with:
+          sarif_file: semgrep.sarif
+      - name: Fail on Semgrep findings
+        if: ${{ steps.scan.outcome == 'failure' }}
+        run: exit 1

@@ -24,11 +24,16 @@ Initial Sprint 2 checks:
 - `Frontend CI / frontend`
 - `CodeQL / analyse (python)`
 - `CodeQL / analyse (javascript-typescript)`
+- `Semgrep / semgrep`
+- `Dependency Review / dependency-review`
+
+Enable in repository settings:
+
+- secret scanning
+- push protection
 
 Future checks from the implementation plan should be added as their workflows land:
 
-- dependency review
-- secret scanning and push protection
 - container scan
 - Terraform scan
 - ZAP baseline

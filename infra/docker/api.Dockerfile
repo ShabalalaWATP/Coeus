@@ -13,6 +13,9 @@ COPY apps/api/src ./apps/api/src
 WORKDIR /app/apps/api
 RUN uv sync --frozen --no-dev
 
+RUN addgroup --system coeus && adduser --system --ingroup coeus coeus && chown -R coeus:coeus /app
+
+USER coeus
+
 EXPOSE 8000
 CMD ["uv", "run", "uvicorn", "coeus.main:app", "--host", "0.0.0.0", "--port", "8000"]
-
