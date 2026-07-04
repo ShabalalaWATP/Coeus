@@ -1,0 +1,61 @@
+name: coeus
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: coeus
+      POSTGRES_USER: coeus
+      POSTGRES_PASSWORD: coeus-local
+    ports:
+      - "5432:5432"
+    volumes:
+      - coeus-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coeus -d coeus"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: coeus-local
+      MINIO_ROOT_PASSWORD: coeus-local-password
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - coeus-minio:/data
+
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/api.Dockerfile
+    environment:
+      COEUS_ENVIRONMENT: local
+      COEUS_DATABASE_URL: postgresql+asyncpg://coeus:coeus-local@postgres:5432/coeus
+      COEUS_ALLOWED_CORS_ORIGINS: '["http://localhost:5173"]'
+      COEUS_LOG_LEVEL: INFO
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: infra/docker/web.Dockerfile
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+
+volumes:
+  coeus-postgres:
+  coeus-minio:
+

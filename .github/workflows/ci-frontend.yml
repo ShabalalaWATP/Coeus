@@ -1,0 +1,37 @@
+name: Frontend CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm --filter @coeus/web lint
+      - name: Typecheck
+        run: pnpm --filter @coeus/web typecheck
+      - name: Unit tests and coverage
+        run: pnpm --filter @coeus/web test
+      - name: Build
+        run: pnpm --filter @coeus/web build
+      - name: Install Playwright browser
+        run: pnpm --filter @coeus/web exec playwright install --with-deps chromium
+      - name: Playwright smoke
+        run: pnpm --filter @coeus/web test:e2e
+
