@@ -7,24 +7,24 @@ Target repository: `ShabalalaWATP/coeus`
 Configure `main` with:
 
 - Require a pull request before merging.
-- Require at least 2 approvals.
-- Require CODEOWNERS review.
-- Dismiss stale approvals.
+- Use `0` required approvals while this is a solo setup, but raise this to at least `1` and enable CODEOWNERS review once another reviewer is available.
+- Dismiss stale approvals once approvals are required.
 - Require all conversations resolved.
 - Require linear history.
 - Block force pushes.
 - Block branch deletion.
 - Require status checks to pass.
+- Require code scanning results from CodeQL and Semgrep OSS for high-or-higher security alerts.
 
 ## Required Checks
 
 Initial Sprint 2 checks:
 
-- `Backend CI / backend`
-- `Frontend CI / frontend`
-- `CodeQL / analyse (python)`
-- `CodeQL / analyse (javascript-typescript)`
-- `Semgrep / semgrep`
+- `backend`
+- `frontend`
+- `analyse (python)`
+- `analyse (javascript-typescript)`
+- `semgrep`
 
 Enable in repository settings:
 

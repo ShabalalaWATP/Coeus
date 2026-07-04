@@ -11,17 +11,17 @@ The repository uses GitHub Actions for pull-request and `main` branch checks.
 | `CodeQL` | pull request, push to `main`, weekly schedule | GitHub CodeQL analysis for Python and JavaScript/TypeScript. |
 | `Semgrep` | pull request, push to `main`, weekly schedule | Semgrep SAST over application source, Dockerfiles and GitHub config, with SARIF upload. |
 
-Dependabot runs weekly for GitHub Actions, npm and pip dependencies. Each ecosystem has a 7-day cooldown for version updates.
+Dependabot runs weekly for GitHub Actions, npm and pip dependencies. Each ecosystem has a 7-day cooldown for version updates. npm semver-major version updates are ignored during this milestone and should be handled as planned upgrade work with migration notes, not automatic dependency PRs.
 
 ## Required Status Checks
 
-After the workflows have run on GitHub, configure `main` branch protection to require:
+After the workflows have run on GitHub, configure the `protect main` ruleset to require these exact check-run contexts:
 
-- `Backend CI / backend`
-- `Frontend CI / frontend`
-- `CodeQL / analyse (python)`
-- `CodeQL / analyse (javascript-typescript)`
-- `Semgrep / semgrep`
+- `backend`
+- `frontend`
+- `analyse (python)`
+- `analyse (javascript-typescript)`
+- `semgrep`
 
 GitHub only offers checks that have recently run in the repository, so push the workflow commit first, let the checks complete, then add them to the branch protection rule.
 
