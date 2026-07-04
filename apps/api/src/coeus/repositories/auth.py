@@ -38,6 +38,9 @@ class SeedUserRepository:
     def get_by_id(self, user_id: UUID) -> UserAccount | None:
         return self._users_by_id.get(user_id)
 
+    def list_users(self) -> tuple[UserAccount, ...]:
+        return tuple(self._users_by_id.values())
+
 
 class SessionRepository:
     def __init__(self) -> None:

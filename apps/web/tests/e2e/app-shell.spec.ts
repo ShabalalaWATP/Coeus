@@ -15,6 +15,7 @@ test("loads the authenticated app shell", async ({ page }) => {
             "ticket:read_own",
             "product:read",
             "project:read",
+            "acg:view",
             "rfa:review",
             "rfa:add_product",
             "collection:review",
@@ -33,5 +34,7 @@ test("loads the authenticated app shell", async ({ page }) => {
 
   await expect(page.getByRole("heading", { name: "Requests" })).toBeVisible();
   await expect(page.getByLabel("Primary navigation")).toContainText("Intelligence Store");
+  await expect(page.getByLabel("Primary navigation")).toContainText("Projects");
+  await expect(page.getByLabel("Primary navigation")).toContainText("ACGs");
   await expect(page.getByRole("button", { name: "Notifications" })).toBeVisible();
 });

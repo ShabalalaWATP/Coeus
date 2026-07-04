@@ -10,8 +10,10 @@ import type { Permission } from "../lib/api-client/client";
 const LoginPage = lazy(() => import("../features/auth/LoginPage"));
 const ForbiddenPage = lazy(() => import("../features/auth/ForbiddenPage"));
 const SessionExpiredPage = lazy(() => import("../features/auth/SessionExpiredPage"));
+const AcgAdminPage = lazy(() => import("../features/access/AcgAdminPage"));
 const OverviewPage = lazy(() => import("../features/overview/OverviewPage"));
 const PlaceholderPage = lazy(() => import("../features/placeholder/PlaceholderPage"));
+const ProjectWorkspacePage = lazy(() => import("../features/projects/ProjectWorkspacePage"));
 
 function withSuspense(element: React.ReactNode) {
   return <Suspense fallback={<RouteFallback />}>{element}</Suspense>;
@@ -58,13 +60,23 @@ export function createAppRouter() {
         },
         {
           path: "projects",
-          element: protectedPage(
-            <PlaceholderPage
-              title="Projects"
-              description="Project workspaces will connect RFIs, teams, ACGs and products."
-            />,
-            ["project:read"],
-          ),
+          element: protectedPage(<ProjectWorkspacePage />, ["project:read"]),
+        },
+        {
+          path: "projects/:projectId",
+          element: protectedPage(<ProjectWorkspacePage />, ["project:read"]),
+        },
+        {
+          path: "projects/:projectId/plan",
+          element: protectedPage(<ProjectWorkspacePage view="plan" />, ["project:read"]),
+        },
+        {
+          path: "projects/:projectId/members",
+          element: protectedPage(<ProjectWorkspacePage view="members" />, ["project:read"]),
+        },
+        {
+          path: "projects/:projectId/products",
+          element: protectedPage(<ProjectWorkspacePage view="products" />, ["project:read"]),
         },
         {
           path: "rfa/queue",
@@ -129,6 +141,14 @@ export function createAppRouter() {
             <PlaceholderPage title="Admin" description="Administrative controls shell." />,
             ["system:configure"],
           ),
+        },
+        {
+          path: "admin/acgs",
+          element: protectedPage(<AcgAdminPage />, ["acg:view"]),
+        },
+        {
+          path: "admin/acgs/:acgId",
+          element: protectedPage(<AcgAdminPage />, ["acg:view"]),
         },
         {
           path: "audit",

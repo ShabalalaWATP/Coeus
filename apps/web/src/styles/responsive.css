@@ -21,7 +21,16 @@
 
   .request-metrics,
   .request-workspace,
-  .status-strip {
+  .status-strip,
+  .access-grid,
+  .project-grid,
+  .create-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .project-summary,
+  .stack-row {
+    align-items: stretch;
     grid-template-columns: 1fr;
   }
 }
