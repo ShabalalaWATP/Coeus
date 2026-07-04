@@ -27,7 +27,7 @@ jobs:
         run: semgrep scan --config auto --error --sarif --output semgrep.sarif apps/api/src apps/web/src infra/docker .github
       - name: Upload SARIF
         if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
-        uses: github/codeql-action/upload-sarif@411c4c9a36b3fca4d674f06b6396b2c6d23522c6 # v3
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
         with:
           sarif_file: semgrep.sarif
       - name: Fail on Semgrep findings
