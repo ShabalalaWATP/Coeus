@@ -13,7 +13,10 @@ const SessionExpiredPage = lazy(() => import("../features/auth/SessionExpiredPag
 const AcgAdminPage = lazy(() => import("../features/access/AcgAdminPage"));
 const RequestsPage = lazy(() => import("../features/requests/RequestsPage"));
 const PlaceholderPage = lazy(() => import("../features/placeholder/PlaceholderPage"));
+const ProductDetailPage = lazy(() => import("../features/store/ProductDetailPage"));
+const ProductUploadPage = lazy(() => import("../features/store/ProductUploadPage"));
 const ProjectWorkspacePage = lazy(() => import("../features/projects/ProjectWorkspacePage"));
+const StorePage = lazy(() => import("../features/store/StorePage"));
 
 function withSuspense(element: React.ReactNode) {
   return <Suspense fallback={<RouteFallback />}>{element}</Suspense>;
@@ -50,13 +53,23 @@ export function createAppRouter() {
         },
         {
           path: "store",
-          element: protectedPage(
-            <PlaceholderPage
-              title="Intelligence Store"
-              description="Controlled search and product retrieval workspace."
-            />,
-            ["product:read"],
-          ),
+          element: protectedPage(<StorePage />, ["product:read", "product:search"]),
+        },
+        {
+          path: "store/my-products",
+          element: protectedPage(<StorePage scope="mine" />, ["product:read", "product:search"]),
+        },
+        {
+          path: "store/upload",
+          element: protectedPage(<ProductUploadPage />, ["product:create_existing"]),
+        },
+        {
+          path: "store/products/:productId",
+          element: protectedPage(<ProductDetailPage />, ["product:read"]),
+        },
+        {
+          path: "store/products/:productId/assets/:assetId",
+          element: protectedPage(<ProductDetailPage />, ["product:read", "product:download"]),
         },
         {
           path: "projects",

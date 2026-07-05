@@ -30,7 +30,7 @@ export const navigationItems: readonly NavigationItem[] = [
     label: "Intelligence Store",
     path: "/store",
     icon: "store",
-    requiredPermissions: ["product:read"],
+    requiredPermissions: ["product:read", "product:search"],
   },
   { label: "Projects", path: "/projects", icon: "projects", requiredPermissions: ["project:read"] },
   { label: "RFA Queue", path: "/rfa/queue", icon: "rfa", requiredPermissions: ["rfa:review"] },
@@ -75,7 +75,11 @@ export const previewProfile: UserProfile = {
   displayName: "Sprint 2 Operator",
   roles: ["Administrator"],
   defaultRoute: "/admin/overview",
-  permissions: navigationItems.flatMap((item) => item.requiredPermissions),
+  permissions: [
+    ...navigationItems.flatMap((item) => item.requiredPermissions),
+    "product:create_existing",
+    "product:download",
+  ],
 };
 
 export function canAccessRoute(profile: UserProfile, route: NavigationItem) {

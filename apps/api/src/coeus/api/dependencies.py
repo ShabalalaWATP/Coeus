@@ -10,6 +10,7 @@ from coeus.db.session import DatabaseReadinessChecker
 from coeus.domain.auth import AuthenticatedSession
 from coeus.services.access import AccessServices
 from coeus.services.auth import AuthService
+from coeus.services.store import StoreServices
 from coeus.services.tickets import TicketServices
 
 
@@ -49,6 +50,13 @@ def get_ticket_services(request: Request) -> TicketServices:
     if not isinstance(ticket_services, TicketServices):
         raise AppError(500, "tickets_not_configured", "Ticket services are not configured.")
     return ticket_services
+
+
+def get_store_services(request: Request) -> StoreServices:
+    store_services = getattr(request.app.state, "store_services", None)
+    if not isinstance(store_services, StoreServices):
+        raise AppError(500, "store_not_configured", "Store services are not configured.")
+    return store_services
 
 
 def get_current_session(
