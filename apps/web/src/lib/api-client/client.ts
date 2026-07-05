@@ -28,6 +28,9 @@ export type Permission =
   | "ticket:read_own"
   | "ticket:read_assigned"
   | "ticket:read_all"
+  | "ticket:add_information"
+  | "ticket:add_comment"
+  | "ticket:transition"
   | "chat:use"
   | "rfi:search"
   | "rfi:offer_product"
@@ -294,7 +297,7 @@ export class ApiClient {
   }
 }
 
-async function toApiError(response: Response): Promise<ApiError> {
+export async function toApiError(response: Response): Promise<ApiError> {
   let payload: ErrorPayload = {};
   try {
     payload = (await response.json()) as ErrorPayload;

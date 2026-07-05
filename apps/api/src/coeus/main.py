@@ -9,6 +9,7 @@ from coeus.api.routes.admin import router as admin_router
 from coeus.api.routes.audit import router as audit_router
 from coeus.api.routes.auth import router as auth_router
 from coeus.api.routes.health import router as health_router
+from coeus.api.routes.tickets import router as tickets_router
 from coeus.core.config import Settings
 from coeus.core.errors import AppError, app_error_handler, unhandled_exception_handler
 from coeus.core.logging import configure_logging, get_logger
@@ -19,6 +20,7 @@ from coeus.services.access import build_access_services
 from coeus.services.audit import AuditLog
 from coeus.services.auth import AuthService
 from coeus.services.passwords import PasswordHasher
+from coeus.services.tickets import build_ticket_services
 
 logger = get_logger(__name__)
 
@@ -51,6 +53,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         SeedAccessRepository(user_repository),
         audit_log,
     )
+    app.state.ticket_services = build_ticket_services(audit_log)
 
     app.add_exception_handler(AppError, app_error_handler)
     app.add_exception_handler(Exception, unhandled_exception_handler)
@@ -79,6 +82,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(admin_router, prefix="/api/v1")
     app.include_router(audit_router, prefix="/api/v1")
     app.include_router(access_router, prefix="/api/v1")
+    app.include_router(tickets_router, prefix="/api/v1")
     app.include_router(health_router, prefix="/api/v1")
     return app
 

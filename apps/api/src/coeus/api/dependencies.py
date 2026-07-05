@@ -10,6 +10,7 @@ from coeus.db.session import DatabaseReadinessChecker
 from coeus.domain.auth import AuthenticatedSession
 from coeus.services.access import AccessServices
 from coeus.services.auth import AuthService
+from coeus.services.tickets import TicketServices
 
 
 def get_settings(request: Request) -> Settings:
@@ -41,6 +42,13 @@ def get_access_services(request: Request) -> AccessServices:
     if not isinstance(access_services, AccessServices):
         raise AppError(500, "access_not_configured", "Access services are not configured.")
     return access_services
+
+
+def get_ticket_services(request: Request) -> TicketServices:
+    ticket_services = getattr(request.app.state, "ticket_services", None)
+    if not isinstance(ticket_services, TicketServices):
+        raise AppError(500, "tickets_not_configured", "Ticket services are not configured.")
+    return ticket_services
 
 
 def get_current_session(

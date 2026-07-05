@@ -30,3 +30,13 @@
 - Added Sprint 3 access-policy, API, client and UI tests.
 - Added the Sprint 3 spec, ACG/project ADR and threat-model update.
 - Verified local Sprint 3 gates: backend Ruff, mypy, pytest coverage, Bandit, pip-audit and Semgrep; frontend formatting, linting, typecheck, Vitest coverage, build, Playwright e2e and production dependency audit; Compose config.
+
+## 2026-07-05 Sprint 4
+
+- Added local-first ticket intake records for tickets, structured intake fields, chat messages, attachment metadata, agent runs and timeline entries.
+- Added deterministic mock LLM and intake extraction services with completeness checks and prompt-injection safety flags.
+- Added ticket and chat APIs for ticket listing, chat create/resume, intake editing, attachment metadata, submission and post-submission information.
+- Added the `/app/requests` customer dashboard with ticket metrics, chat transcript, editable extracted intake, attachment metadata and timeline controls.
+- Added Sprint 4 API, client and UI tests, including prompt-injection regressions.
+- Added the Sprint 4 spec, local-first ticket intake ADR and threat-model document.
+- Verified local Sprint 4 gates: backend Ruff, mypy, pytest coverage, Bandit, pip-audit and Semgrep; frontend Prettier, ESLint, TypeScript, Vitest coverage, build, Playwright e2e and package audit; Compose config.

@@ -2,7 +2,7 @@
 
 Coeus is a secure, role-based intelligence tasking and intelligence product orchestration platform.
 
-This repository is being implemented from `coeus_spec_driven_implementation_plan.md`. The current baseline covers Sprint 1 and Sprint 2 foundations: monorepo skeleton, FastAPI foundation, React/Vite app shell, local development services, CI, authentication, sessions, RBAC, role-driven navigation, initial specs, ADRs, and threat model.
+This repository is being implemented from `coeus_spec_driven_implementation_plan.md`. The current baseline covers Sprint 1 through Sprint 4 foundations: monorepo skeleton, FastAPI foundation, React/Vite app shell, local development services, CI, authentication, sessions, RBAC, ACG and project workspace access controls, ticket intake, mock chatbot extraction, customer request dashboard, specs, ADRs and threat models.
 
 ## Repository Safety
 
@@ -33,7 +33,7 @@ The local stack exposes:
 - PostgreSQL: `localhost:5432`
 - MinIO console: `http://localhost:9001`
 
-Sprint 2 local seed users use mock `example.test` usernames and the mock local credential `CoeusLocal1!`. See `docs/specs/sprint-02-auth-rbac-sessions.md`.
+Local seed users use mock `example.test` usernames and the mock local credential `CoeusLocal1!`. See `docs/specs/sprint-02-auth-rbac-sessions.md`.
 
 ## GitHub
 
