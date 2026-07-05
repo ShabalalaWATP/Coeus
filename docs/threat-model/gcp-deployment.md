@@ -1,0 +1,40 @@
+# GCP Deployment Threat Model
+
+## Scope
+
+Sprint 12 GCP dev deployment scaffolding, Terraform, GitHub Actions deployment,
+Cloud Run API/web services, Cloud SQL, Cloud Storage, Secret Manager, Pub/Sub,
+Artifact Registry and Gemma Vertex configuration.
+
+## Assets
+
+- GitHub OIDC trust boundary and deployer service account.
+- Terraform state and plans.
+- Secret Manager secret values.
+- Cloud SQL data.
+- Product asset buckets.
+- Pub/Sub topics and dead-letter subscriptions.
+- Artifact Registry images.
+- Cloud Run runtime configuration.
+
+## Threats And Controls
+
+| Threat | Control In Sprint 12 |
+|---|---|
+| Long-lived GCP key leaks from GitHub or local machines. | Deployment uses Workload Identity Federation and GitHub OIDC, not service account key JSON. |
+| Secrets enter the public repository or Terraform state. | Terraform creates secret placeholders only; values are added as Secret Manager versions outside Terraform. |
+| GitHub OIDC token is accepted from another repository. | Workload Identity Provider condition restricts `assertion.repository` to the configured repository. |
+| Runtime service account has broad cloud access. | API service account receives scoped Cloud SQL, Secret Manager, bucket, Pub/Sub and Vertex roles needed for dev. |
+| Public Cloud Run API bypasses app authorisation. | Cloud Run is publicly invokable for browser access, but backend RBAC and CSRF checks still protect application actions. |
+| Product assets become public. | Buckets enforce public access prevention and uniform bucket-level access. |
+| Worker failures are lost. | Pub/Sub worker subscriptions use retry policy and dead-letter topics. |
+| Unconfigured deploy workflow fails protected-main pushes. | Dev deploy auto-run is disabled unless `GCP_DEPLOY_DEV_ENABLED=true`; manual dispatch validates required variables. |
+
+## Open Risks
+
+- Cloud SQL still needs persistent repositories and migrations before production
+  use.
+- Terraform remote state and state locking are not configured in Sprint 12.
+- Container scanning, SBOM, ZAP and Terraform security scanning are Sprint 13.
+- Public API ingress is acceptable for dev browser access but must be reviewed
+  again before staging or production.

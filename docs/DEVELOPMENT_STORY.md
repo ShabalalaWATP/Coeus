@@ -123,3 +123,21 @@
 - Added Sprint 11 API, service, client and UI tests for feedback submission, duplicate prevention, dashboard scoping, reuse analytics and trend rendering.
 - Added the Sprint 11 spec, local-first feedback analytics ADR and feedback analytics threat model.
 - Verified local Sprint 11 gates: backend Ruff, mypy, pytest coverage, Bandit, pip-audit and Semgrep; frontend Prettier, ESLint, TypeScript, Vitest coverage, build, Playwright e2e, package audit and pnpm supply-chain policy; file line limit; Compose config.
+
+## 2026-07-05 Sprint 12
+
+- Added a GCP dev deployment baseline with Terraform modules for services, IAM,
+  Workload Identity Federation, Artifact Registry, Cloud Run, Cloud SQL, Cloud
+  Storage, Secret Manager and Pub/Sub.
+- Added a manual-first `Deploy Dev` GitHub Actions workflow that builds API and
+  web images, pushes them to Artifact Registry and deploys to Cloud Run through
+  GitHub OIDC.
+- Added GCP, GCS, Pub/Sub and Gemma Vertex runtime settings without importing
+  cloud SDKs into domain services.
+- Added a production web container image for Cloud Run.
+- Added the Sprint 12 spec, GCP deployment ADR, threat model and deployment
+  runbook.
+- Verified local Sprint 12 gates: backend Ruff, mypy, pytest coverage, Bandit,
+  pip-audit and Semgrep; frontend Prettier, ESLint, TypeScript, Vitest
+  coverage, build, Playwright e2e and package audit; Terraform fmt and
+  validate; file line limit; Compose config.

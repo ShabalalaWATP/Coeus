@@ -1,6 +1,6 @@
 # GitHub Branch Protection Runbook
 
-Target repository: `ShabalalaWATP/coeus`
+Target repository: `ShabalalaWATP/Coeus`
 
 ## Main Branch Rule
 
@@ -18,13 +18,14 @@ Configure `main` with:
 
 ## Required Checks
 
-Initial Sprint 2 checks:
+Current checks:
 
 - `backend`
 - `frontend`
 - `analyse (python)`
 - `analyse (javascript-typescript)`
 - `semgrep`
+- `terraform`
 
 Enable in repository settings:
 
@@ -35,7 +36,7 @@ Future checks from the implementation plan should be added as their workflows la
 
 - container scan
 - dependency review after Dependency Graph and GitHub Advanced Security support are available for the repository
-- Terraform scan
+- Terraform security scan
 - ZAP baseline
 - deployment checks
 

@@ -1,0 +1,12 @@
+project_id     = "coeus-501415"
+project_number = "710037672478"
+region         = "europe-west2"
+environment    = "dev"
+
+github_repository = "ShabalalaWATP/Coeus"
+
+allowed_cors_origins = [
+  "https://coeus-dev-web-example.a.run.app",
+]
+
+cloud_sql_deletion_protection = false
