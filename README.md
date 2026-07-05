@@ -2,7 +2,7 @@
 
 Coeus is a secure, role-based intelligence tasking and intelligence product orchestration platform.
 
-This repository is being implemented from `coeus_spec_driven_implementation_plan.md`. The current baseline covers Sprint 1 through Sprint 5 foundations: monorepo skeleton, FastAPI foundation, React/Vite app shell, local development services, CI, authentication, sessions, RBAC, ACG and project workspace access controls, ticket intake, mock chatbot extraction, customer request dashboard, Intelligence Store metadata search and controlled asset access, specs, ADRs and threat models.
+This repository is being implemented from `coeus_spec_driven_implementation_plan.md`. The current baseline covers Sprint 1 through Sprint 6 foundations: monorepo skeleton, FastAPI foundation, React/Vite app shell, local development services, CI, authentication, sessions, RBAC, ACG and project workspace access controls, ticket intake, mock chatbot extraction, customer request dashboard, Intelligence Store metadata search and controlled asset access, deterministic mock product seeding, specs, ADRs and threat models.
 
 ## Repository Safety
 
@@ -24,6 +24,7 @@ uv sync --project apps/api --all-groups
 pnpm --filter @coeus/web test
 uv run --directory apps/api pytest
 pnpm --filter @coeus/web test:e2e
+python scripts/seed/seed_mock_products.py --small --output-dir .local/mock-products-smoke
 pwsh ./scripts/dev.ps1
 ```
 
@@ -35,6 +36,10 @@ The local stack exposes:
 - MinIO console: `http://localhost:9001`
 
 Local seed users use mock `example.test` usernames and the mock local credential `CoeusLocal1!`. See `docs/specs/sprint-02-auth-rbac-sessions.md`.
+
+Mock product seed data is generated locally and is not committed. The full
+catalogue creates 190 products and 410 assets under `.local/mock-products` by
+default; every product and asset is synthetic and marked `MOCK DATA ONLY`.
 
 ## GitHub
 

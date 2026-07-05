@@ -52,3 +52,14 @@
 - Added Sprint 5 API, service, client and UI tests for ACG enforcement, count leakage, IDOR-style detail denial and asset access denial.
 - Added the Sprint 5 spec, local-first Intelligence Store ADR and threat-model document.
 - Verified local Sprint 5 gates: backend Ruff, mypy, pytest coverage, Bandit, pip-audit and Semgrep; frontend Prettier, ESLint, TypeScript, Vitest coverage, build, Playwright e2e and package audit; Compose config.
+
+## 2026-07-05 Sprint 6
+
+- Added the `packages/mock-product-generators` Python package for deterministic synthetic product generation.
+- Added standard-library writers for mock PDF, DOCX, PNG, JPEG, GeoJSON, KML, CSV and JSON assets.
+- Added a mock catalogue manifest with 190 default products, 410 asset descriptors, five ACG definitions and named access scenarios.
+- Added `scripts/seed/seed_mock_products.py` with full and small smoke modes.
+- Added generator tests for default counts, path-safe asset output, mock markers, deterministic IDs and CLI manifest creation.
+- Added the Sprint 6 spec, standard-library generator ADR and mock product seeding threat model.
+- Verified local Sprint 6 gates: backend Ruff, mypy, pytest coverage, Bandit, pip-audit and Semgrep; frontend Prettier, ESLint, TypeScript, Vitest coverage, build, Playwright e2e and package audit; seed smoke; file line limit; Compose config.
+- Completed a Codex Security diff scan for the staged Sprint 6 change set with 0 findings and 9 of 9 worklist rows closed.

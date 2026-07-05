@@ -6,7 +6,7 @@ This document tracks delivery state as implementation progresses.
 
 ## Current Stage
 
-Sprint 5: Intelligence Store MVP.
+Sprint 6: Mock product seeding.
 
 ## Sprint 1 Scope
 
@@ -159,4 +159,40 @@ Sprint 5: Intelligence Store MVP.
 - Frontend quality checks: Prettier, ESLint, TypeScript, Vitest coverage, production build and Playwright Chromium e2e passed. ESLint still reports existing fast-refresh warnings for lazy route declarations in `router.tsx`.
 - Backend security checks: Bandit completed with no issues; pip-audit found no known third-party vulnerabilities; Semgrep completed with no findings.
 - Frontend package audit: no known vulnerabilities at the configured moderate threshold.
+- Compose config: `docker compose config` validated.
+
+## Sprint 6 Scope
+
+- Synthetic product generators.
+- PDF seed products.
+- DOCX seed products.
+- Image seed products.
+- GeoJSON and KML seed products.
+- CSV and JSON seed products.
+- Product bundles.
+- Seed ACGs.
+- Seed access scenarios.
+
+## Sprint 6 Status
+
+- Standard-library mock product generator package: implemented.
+- Deterministic PDF, DOCX, PNG, JPEG, GeoJSON, KML, CSV and JSON writers: implemented.
+- Product bundle generation: implemented.
+- Seed manifest with 190 default products and 410 asset descriptors: implemented.
+- Five mock ACG definitions and four named access scenarios: implemented.
+- Small seed smoke mode for one product per family: implemented.
+- Sprint 6 spec, ADR and threat model: implemented.
+- Verification: passed locally on 2026-07-05.
+
+## Sprint 6 Verification
+
+- Backend coverage: 95.67 percent total coverage.
+- Frontend coverage: 99.90 percent line coverage and 95.43 percent branch coverage.
+- Line limit: all checked hand-written files are 350 lines or fewer.
+- Backend quality checks: Ruff, mypy and pytest passed.
+- Frontend quality checks: Prettier, ESLint, TypeScript, Vitest coverage, production build and Playwright Chromium e2e passed. ESLint still reports existing fast-refresh warnings for lazy route declarations in `router.tsx`.
+- Seed smoke: `python scripts/seed/seed_mock_products.py --small --output-dir .local/mock-products-smoke` generated 7 products and 16 assets with the `MOCK DATA ONLY` banner.
+- Backend security checks: Bandit completed with no issues; pip-audit found no known third-party vulnerabilities; Semgrep completed with no findings.
+- Frontend package audit: no known vulnerabilities at the configured moderate threshold.
+- Codex Security diff scan: completed with 0 findings and 9 of 9 worklist rows closed.
 - Compose config: `docker compose config` validated.
