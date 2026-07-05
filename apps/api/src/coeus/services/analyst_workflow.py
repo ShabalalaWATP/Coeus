@@ -35,6 +35,8 @@ from coeus.services.tickets import TicketServices
 
 HASH_PATTERN = r"[a-fA-F0-9]{64}"
 ACTIVE_ANALYST_STATES = {TicketState.ANALYST_IN_PROGRESS, TicketState.REWORK_REQUIRED}
+ANALYST_READ_PERMISSIONS = frozenset({Permission.ANALYST_WORK})
+ASSIGNMENT_READ_PERMISSIONS = frozenset({Permission.RFA_ASSIGN, Permission.COLLECTION_ASSIGN})
 
 
 @dataclass(frozen=True)
@@ -83,7 +85,10 @@ class AnalystWorkflowService:
         analyst_user_id: UUID,
         work_package_titles: tuple[str, ...],
     ) -> TicketRecord:
-        ticket = self._tickets.tickets.get_visible_ticket(actor, ticket_id)
+        self._require_any(actor, {Permission.RFA_ASSIGN, Permission.COLLECTION_ASSIGN})
+        ticket = self._tickets.tickets.get_workflow_ticket(
+            actor, ticket_id, ASSIGNMENT_READ_PERMISSIONS
+        )
         if ticket.state != TicketState.ANALYST_ASSIGNMENT:
             raise AppError(409, "invalid_ticket_state", "Ticket is not awaiting assignment.")
         if latest_assignment(ticket) is not None:
@@ -129,14 +134,18 @@ class AnalystWorkflowService:
         self._require(actor, Permission.ANALYST_WORK)
         return tuple(
             ticket
-            for ticket in self._tickets.tickets.list_visible_tickets(actor)
+            for ticket in self._tickets.tickets.list_workflow_tickets(
+                actor, ANALYST_READ_PERMISSIONS
+            )
             if assigned_to(ticket, actor.user_id)
             and ticket.state in {*ACTIVE_ANALYST_STATES, TicketState.QC_REVIEW}
         )
 
     def task_details(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         self._require(actor, Permission.ANALYST_WORK)
-        ticket = self._tickets.tickets.get_visible_ticket(actor, ticket_id)
+        ticket = self._tickets.tickets.get_workflow_ticket(
+            actor, ticket_id, ANALYST_READ_PERMISSIONS
+        )
         if not assigned_to(ticket, actor.user_id):
             raise AppError(404, "task_not_found", "Analyst task was not found.")
         return ticket

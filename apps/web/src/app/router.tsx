@@ -8,11 +8,12 @@ import { RouteFallback } from "../components/layout/RouteFallback";
 import type { Permission } from "../lib/api-client/client";
 import {
   AcgAdminPage,
+  AdminOverviewPage,
   AnalystWorkbenchPage,
   AnalyticsDashboardPage,
+  AuditPage,
   ForbiddenPage,
   LoginPage,
-  PlaceholderPage,
   ProductDetailPage,
   ProductUploadPage,
   ProjectWorkspacePage,
@@ -103,11 +104,12 @@ export function createAppRouter() {
         {
           path: "rfa/products",
           element: protectedPage(
-            <PlaceholderPage
+            <StorePage
+              ownerTeam="RFA"
               title="RFA Products"
               description="Request for Assessment product workspace."
             />,
-            ["rfa:add_product"],
+            ["rfa:add_product", "product:read", "product:search"],
           ),
         },
         {
@@ -124,11 +126,12 @@ export function createAppRouter() {
         {
           path: "collection/products",
           element: protectedPage(
-            <PlaceholderPage
+            <StorePage
+              ownerTeam="Collection"
               title="Collection Products"
               description="Collection product workspace."
             />,
-            ["collection:add_product"],
+            ["collection:add_product", "product:read", "product:search"],
           ),
         },
         {
@@ -156,10 +159,7 @@ export function createAppRouter() {
         },
         {
           path: "admin/overview",
-          element: protectedPage(
-            <PlaceholderPage title="Admin" description="Administrative controls shell." />,
-            ["system:configure"],
-          ),
+          element: protectedPage(<AdminOverviewPage />, ["system:configure"]),
         },
         {
           path: "admin/acgs",
@@ -177,10 +177,7 @@ export function createAppRouter() {
         },
         {
           path: "audit",
-          element: protectedPage(
-            <PlaceholderPage title="Audit" description="Immutable audit event review shell." />,
-            ["audit:read"],
-          ),
+          element: protectedPage(<AuditPage />, ["audit:read"]),
         },
       ],
     },

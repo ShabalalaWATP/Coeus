@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Lightbulb, Upload } from "lucide-react";
+import { ArrowLeft, Lightbulb, Upload } from "lucide-react";
 import { useState, type ChangeEvent, type Dispatch, type SetStateAction } from "react";
 import { Link } from "react-router-dom";
 
@@ -86,6 +86,7 @@ export default function ProductUploadPage() {
           <p>Register existing product metadata and controlled asset hashes.</p>
         </div>
         <Link className="store-action store-action--secondary" to="/store">
+          <ArrowLeft aria-hidden="true" size={18} />
           Back to store
         </Link>
       </section>

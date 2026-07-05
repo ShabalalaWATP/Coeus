@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ClipboardList, FolderKanban, ShieldCheck, UsersRound } from "lucide-react";
-import { useParams } from "react-router-dom";
+import { ArrowLeft, ClipboardList, FolderKanban, ShieldCheck, UsersRound } from "lucide-react";
+import { Link, useParams } from "react-router-dom";
 
 import { apiClient, type ProjectWorkspace } from "../../lib/api-client/client";
 import { useAuth } from "../../lib/auth/auth-context";
@@ -67,6 +67,8 @@ type ProjectWorkspaceContentProps = {
 };
 
 function ProjectWorkspaceContent({ diagnostics, project, view }: ProjectWorkspaceContentProps) {
+  const overviewPath = `/projects/${project.id}`;
+
   return (
     <>
       <section className="surface project-summary" aria-label="Project summary">
@@ -90,6 +92,24 @@ function ProjectWorkspaceContent({ diagnostics, project, view }: ProjectWorkspac
           </div>
         </dl>
       </section>
+
+      <nav className="project-tabs" aria-label="Project sections">
+        {view !== "overview" ? (
+          <Link className="store-action store-action--secondary" to={overviewPath}>
+            <ArrowLeft aria-hidden="true" size={18} />
+            Overview
+          </Link>
+        ) : null}
+        <Link className="store-action store-action--secondary" to={`${overviewPath}/plan`}>
+          Plan
+        </Link>
+        <Link className="store-action store-action--secondary" to={`${overviewPath}/members`}>
+          Members
+        </Link>
+        <Link className="store-action store-action--secondary" to={`${overviewPath}/products`}>
+          Products
+        </Link>
+      </nav>
 
       <section className="project-grid">
         {(view === "overview" || view === "plan") && (
@@ -135,11 +155,11 @@ function ProjectWorkspaceContent({ diagnostics, project, view }: ProjectWorkspac
             </div>
             <div className="stack-list">
               {project.visibleProducts.map((product) => (
-                <div className="stack-row" key={product.id}>
+                <Link className="stack-row" key={product.id} to={`/store/products/${product.id}`}>
                   <strong>{product.title}</strong>
                   <span>{product.productType}</span>
                   <small>{product.status}</small>
-                </div>
+                </Link>
               ))}
             </div>
           </article>

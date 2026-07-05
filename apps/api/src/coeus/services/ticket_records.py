@@ -2,22 +2,7 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from coeus.domain.auth import UserAccount
-from coeus.domain.enums import TicketState
 from coeus.domain.tickets import ChatMessage, MessageAuthor, TicketRecord, TicketTimelineEntry
-
-ASSIGNED_READ_STATES = frozenset(
-    {
-        TicketState.RFI_SEARCHING,
-        TicketState.ROUTE_ASSESSMENT,
-        TicketState.RFA_MANAGER_REVIEW,
-        TicketState.CM_MANAGER_REVIEW,
-        TicketState.ANALYST_ASSIGNMENT,
-        TicketState.ANALYST_IN_PROGRESS,
-        TicketState.QC_REVIEW,
-        TicketState.REWORK_REQUIRED,
-        TicketState.DISSEMINATION_READY,
-    }
-)
 
 
 def message(ticket_id: UUID, author: MessageAuthor, body: str) -> ChatMessage:

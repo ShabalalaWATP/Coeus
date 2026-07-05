@@ -1,7 +1,7 @@
-import { resolveApiBaseUrl, toApiError } from "./client";
+import { apiRequestJson } from "./client";
 import type { TicketState } from "./tickets";
 
-export type QcDraft = {
+type QcDraft = {
   id: string;
   versionNumber: number;
   title: string;
@@ -66,14 +66,12 @@ export type QcApprovalInput = {
   reason: string;
 };
 
-const baseUrl = resolveApiBaseUrl();
-
 export async function listQcQueue(): Promise<QcQueue> {
-  return requestJson<QcQueue>("/api/v1/qc/queue", { method: "GET" });
+  return apiRequestJson<QcQueue>("/api/v1/qc/queue", { method: "GET" });
 }
 
 export async function getQcProduct(ticketId: string): Promise<QcProduct> {
-  return requestJson<QcProduct>(`/api/v1/qc/products/${ticketId}`, { method: "GET" });
+  return apiRequestJson<QcProduct>(`/api/v1/qc/products/${ticketId}`, { method: "GET" });
 }
 
 export async function approveQcProduct(
@@ -81,7 +79,7 @@ export async function approveQcProduct(
   payload: QcApprovalInput,
   csrfToken: string,
 ): Promise<QcProduct> {
-  return requestJson<QcProduct>(`/api/v1/qc/products/${ticketId}/approve`, {
+  return apiRequestJson<QcProduct>(`/api/v1/qc/products/${ticketId}/approve`, {
     body: JSON.stringify(payload),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
@@ -93,17 +91,9 @@ export async function rejectQcProduct(
   reason: string,
   csrfToken: string,
 ): Promise<QcProduct> {
-  return requestJson<QcProduct>(`/api/v1/qc/products/${ticketId}/reject`, {
+  return apiRequestJson<QcProduct>(`/api/v1/qc/products/${ticketId}/reject`, {
     body: JSON.stringify({ reason }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
   });
-}
-
-async function requestJson<TResponse>(path: string, init: RequestInit): Promise<TResponse> {
-  const response = await fetch(`${baseUrl}${path}`, { ...init, credentials: "include" });
-  if (!response.ok) {
-    throw await toApiError(response);
-  }
-  return (await response.json()) as TResponse;
 }

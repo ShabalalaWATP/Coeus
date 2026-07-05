@@ -25,6 +25,7 @@ from coeus.repositories.access import SeedAccessRepository
 from coeus.repositories.store import new_store_product_id
 from coeus.services.analyst_records import approved_route
 from coeus.services.audit import AuditLog
+from coeus.services.qc_acg_policy import validate_qc_acg_assignment
 from coeus.services.qc_records import (
     checklist_items,
     dissemination,
@@ -37,6 +38,8 @@ from coeus.services.qc_records import (
 from coeus.services.store import StoreServices
 from coeus.services.ticket_records import timeline
 from coeus.services.tickets import TicketServices
+
+QC_READ_PERMISSIONS = frozenset({Permission.QC_REVIEW})
 
 
 @dataclass(frozen=True)
@@ -84,6 +87,7 @@ class ProductAutoIngestionService:
         draft = _latest_draft(ticket)
         project = self._project_for_ticket(ticket)
         project_acg_ids: frozenset[UUID] = project.acg_ids if project else frozenset()
+        validate_qc_acg_assignment(self._access, actor, approval.acg_ids, project_acg_ids)
         acg_ids = approval.acg_ids | project_acg_ids
         now = datetime.now(UTC)
         product = StoreProduct(
@@ -193,13 +197,13 @@ class QualityControlService:
         self._require(actor, Permission.QC_REVIEW)
         return tuple(
             ticket
-            for ticket in self._tickets.tickets.list_visible_tickets(actor)
+            for ticket in self._tickets.tickets.list_workflow_tickets(actor, QC_READ_PERMISSIONS)
             if ticket.state == TicketState.QC_REVIEW
         )
 
     def details(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         self._require(actor, Permission.QC_REVIEW)
-        ticket = self._tickets.tickets.get_visible_ticket(actor, ticket_id)
+        ticket = self._tickets.tickets.get_workflow_ticket(actor, ticket_id, QC_READ_PERMISSIONS)
         if ticket.state not in {
             TicketState.QC_REVIEW,
             TicketState.DISSEMINATION_READY,

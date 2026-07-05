@@ -34,6 +34,8 @@ from coeus.services.routing_records import (
 )
 from coeus.services.tickets import TicketServices
 
+ROUTING_READ_PERMISSIONS = frozenset({Permission.RFA_REVIEW, Permission.COLLECTION_REVIEW})
+
 
 @dataclass(frozen=True)
 class RoutingStats:
@@ -71,7 +73,9 @@ class RoutingService:
         return self._queue_for(actor, {TicketState.CM_MANAGER_REVIEW})
 
     def details(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
-        ticket = self._tickets.tickets.get_visible_ticket(actor, ticket_id)
+        ticket = self._tickets.tickets.get_workflow_ticket(
+            actor, ticket_id, ROUTING_READ_PERMISSIONS
+        )
         if not can_review_route(actor, ticket):
             raise AppError(404, "ticket_not_found", "Ticket was not found.")
         return ticket
@@ -82,7 +86,9 @@ class RoutingService:
             and Permission.COLLECTION_REVIEW not in actor.permissions
         ):
             raise AppError(403, "forbidden", "Permission denied.")
-        ticket = self._tickets.tickets.get_visible_ticket(actor, ticket_id)
+        ticket = self._tickets.tickets.get_workflow_ticket(
+            actor, ticket_id, ROUTING_READ_PERMISSIONS
+        )
         if ticket.state != TicketState.ROUTE_ASSESSMENT:
             raise AppError(409, "invalid_ticket_state", "Ticket is not awaiting route assessment.")
         rfa_review = self._rfa_agent.review(ticket)
@@ -241,7 +247,7 @@ class RoutingService:
             and Permission.ANALYTICS_VIEW_GLOBAL not in actor.permissions
         ):
             raise AppError(403, "forbidden", "Permission denied.")
-        tickets = self._tickets.tickets.list_visible_tickets(actor)
+        tickets = self._tickets.tickets.list_workflow_tickets(actor, ROUTING_READ_PERMISSIONS)
         decisions = [decision for ticket in tickets for decision in ticket.manager_decisions]
         recommendations = [rec for ticket in tickets for rec in ticket.route_recommendations]
         approved = [
@@ -262,7 +268,7 @@ class RoutingService:
         )
 
     def _queue_for(self, actor: UserAccount, states: set[TicketState]) -> tuple[TicketRecord, ...]:
-        tickets = self._tickets.tickets.list_visible_tickets(actor)
+        tickets = self._tickets.tickets.list_workflow_tickets(actor, ROUTING_READ_PERMISSIONS)
         return tuple(ticket for ticket in tickets if ticket.state in states)
 
     def _save_decision(

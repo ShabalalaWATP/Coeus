@@ -1,9 +1,9 @@
-import { resolveApiBaseUrl, toApiError } from "./client";
+import { apiRequestJson } from "./client";
 import type { TicketState } from "./tickets";
 
 export type RoutingRoute = "rfa" | "cm";
 
-export type CapabilityReview = {
+type CapabilityReview = {
   id: string;
   canSatisfy: boolean;
   confidence: number;
@@ -25,7 +25,7 @@ export type CmCapabilityReview = CapabilityReview & {
   suggestedCollectionSources: string[];
 };
 
-export type RouteRecommendation = {
+type RouteRecommendation = {
   id: string;
   recommendedRoute: "rfa" | "cm" | "clarification";
   reasoningSummary: string;
@@ -69,7 +69,7 @@ export type RoutingTicket = {
   }[];
 };
 
-export type RoutingStats = {
+type RoutingStats = {
   routeAssessmentCount: number;
   rfaReviewCount: number;
   cmReviewCount: number;
@@ -84,18 +84,16 @@ export type RoutingQueue = {
   stats: RoutingStats;
 };
 
-const baseUrl = resolveApiBaseUrl();
-
 export async function listRoutingQueue(route: RoutingRoute): Promise<RoutingQueue> {
   const path = route === "rfa" ? "/api/v1/routing/rfa/queue" : "/api/v1/routing/cm/queue";
-  return requestJson<RoutingQueue>(path, { method: "GET" });
+  return apiRequestJson<RoutingQueue>(path, { method: "GET" });
 }
 
 export async function runRoutingReviews(
   ticketId: string,
   csrfToken: string,
 ): Promise<RoutingTicket> {
-  return requestJson<RoutingTicket>(`/api/v1/routing/${ticketId}/run`, {
+  return apiRequestJson<RoutingTicket>(`/api/v1/routing/${ticketId}/run`, {
     headers: { "X-CSRF-Token": csrfToken },
     method: "POST",
   });
@@ -107,7 +105,7 @@ export async function approveRoute(
   csrfToken: string,
   overrideReason?: string,
 ): Promise<RoutingTicket> {
-  return requestJson<RoutingTicket>(`/api/v1/routing/${ticketId}/approve`, {
+  return apiRequestJson<RoutingTicket>(`/api/v1/routing/${ticketId}/approve`, {
     body: JSON.stringify({ route, overrideReason }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
@@ -120,7 +118,7 @@ export async function rejectRoute(
   reason: string,
   csrfToken: string,
 ): Promise<RoutingTicket> {
-  return requestJson<RoutingTicket>(`/api/v1/routing/${ticketId}/reject`, {
+  return apiRequestJson<RoutingTicket>(`/api/v1/routing/${ticketId}/reject`, {
     body: JSON.stringify({ route, reason }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
@@ -134,17 +132,9 @@ export async function requestRouteClarification(
   questions: string[],
   csrfToken: string,
 ): Promise<RoutingTicket> {
-  return requestJson<RoutingTicket>(`/api/v1/routing/${ticketId}/clarification`, {
+  return apiRequestJson<RoutingTicket>(`/api/v1/routing/${ticketId}/clarification`, {
     body: JSON.stringify({ route, reason, questions }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
   });
-}
-
-async function requestJson<TResponse>(path: string, init: RequestInit): Promise<TResponse> {
-  const response = await fetch(`${baseUrl}${path}`, { ...init, credentials: "include" });
-  if (!response.ok) {
-    throw await toApiError(response);
-  }
-  return (await response.json()) as TResponse;
 }

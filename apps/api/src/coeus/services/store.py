@@ -22,12 +22,9 @@ from coeus.domain.store import (
 from coeus.repositories.access import SeedAccessRepository
 from coeus.repositories.store import InMemoryStoreRepository, new_store_product_id
 from coeus.services.audit import AuditLog
+from coeus.services.store_owner_policy import normalise_owner_team, require_owner_permission
 
 HASH_PATTERN = r"[a-fA-F0-9]{64}"
-MANAGED_OWNER_PERMISSIONS = {
-    "rfa": Permission.RFA_ADD_PRODUCT,
-    "collection": Permission.COLLECTION_ADD_PRODUCT,
-}
 
 
 @dataclass(frozen=True)
@@ -89,7 +86,8 @@ class StoreIngestionService:
 
     def create_existing_product(self, actor: UserAccount, draft: StoreProductDraft) -> StoreProduct:
         self._require(actor, Permission.PRODUCT_CREATE_EXISTING)
-        self._require_owner_permission(actor, draft.owner_team)
+        owner_team = normalise_owner_team(draft.owner_team)
+        require_owner_permission(actor, owner_team)
         self._validate_acgs(actor, draft.acg_ids)
         self._validate_assets(draft.assets)
         if draft.product_type == "geographic_product" and not (
@@ -108,7 +106,7 @@ class StoreIngestionService:
                 description=draft.description,
                 product_type=draft.product_type,
                 source_type=draft.source_type,
-                owner_team=draft.owner_team,
+                owner_team=owner_team,
                 area_or_region=draft.area_or_region,
                 classification_level=draft.classification_level,
                 releasability=draft.releasability,
@@ -152,12 +150,6 @@ class StoreIngestionService:
     @staticmethod
     def _require(actor: UserAccount, permission: Permission) -> None:
         if permission not in actor.permissions:
-            raise AppError(403, "forbidden", "Permission denied.")
-
-    @staticmethod
-    def _require_owner_permission(actor: UserAccount, owner_team: str) -> None:
-        permission = MANAGED_OWNER_PERMISSIONS.get(owner_team.casefold())
-        if permission is not None and permission not in actor.permissions:
             raise AppError(403, "forbidden", "Permission denied.")
 
     @staticmethod

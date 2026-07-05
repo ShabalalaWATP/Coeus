@@ -36,6 +36,39 @@
   line-height: 1.55;
 }
 
+.project-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.admin-action-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.admin-action {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  min-height: 116px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.admin-action strong,
+.admin-action small {
+  display: block;
+}
+
+.admin-action small {
+  margin-top: 6px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
 .stack-list {
   display: grid;
   gap: 10px;

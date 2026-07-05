@@ -28,6 +28,12 @@ injection regression coverage.
 | Dependency inventory is unavailable during review. | CycloneDX SBOM artifact is generated on each security supply-chain run. |
 | User prompt text escalates authority or exposes hidden instructions. | Prompt-injection tests cover system-prompt leakage, RBAC bypass, admin claims, jailbreak wording, tool abuse and fabricated product matches. |
 | Scanner reports are ignored because they are out of band. | SARIF uploads make CodeQL, Semgrep, Trivy and Checkov visible in GitHub code scanning where event permissions allow. |
+| Generic workflow permissions expose unrelated tickets. | Customer ticket listing is owner/admin scoped; routing, analyst and QC services use workflow-specific reads plus route, assignment or QC-state predicates. |
+| Product metadata bypasses store object policy. | Feedback analytics resolves reuse and feedback product titles through store detail policy before returning metadata. |
+| QC approval assigns arbitrary active ACGs. | Auto-ingestion accepts only active ACGs that are already in the ticket project scope, the QC actor's active ACG memberships or a restricted-read role. |
+| Non-canonical owner-team input bypasses team permissions. | Product creation normalises managed owner teams and rejects unknown owner-team values before permission checks. |
+| Username spraying clears active lockouts. | Bounded login-attempt eviction skips unexpired lockout records and drops only unlocked or expired entries. |
+| Shared browser sessions expose cached protected data. | The app-level auth provider clears the React Query cache on login, logout and session expiry transitions. |
 
 ## Cross-Cutting Review
 

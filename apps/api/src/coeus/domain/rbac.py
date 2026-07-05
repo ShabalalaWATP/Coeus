@@ -32,7 +32,6 @@ CUSTOMER_PERMISSIONS = SELF_SERVICE | frozenset(
 PRODUCT_TEAM_PERMISSIONS = SELF_SERVICE | frozenset(
     {
         Permission.PROJECT_READ,
-        Permission.TICKET_READ_ASSIGNED,
         Permission.TICKET_ADD_COMMENT,
         Permission.ACG_VIEW,
         Permission.PRODUCT_READ,

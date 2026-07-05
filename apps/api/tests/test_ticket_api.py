@@ -113,6 +113,46 @@ async def test_incomplete_intake_cannot_start_search() -> None:
 
 
 @pytest.mark.asyncio
+async def test_product_team_ticket_list_excludes_unrelated_submitted_tickets() -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        session = await login(client)
+        created = await client.post(
+            "/api/v1/chat/messages",
+            headers={"X-CSRF-Token": str(session["csrfToken"])},
+            json={"message": "Need a brief on regional port activity."},
+        )
+        ticket_id = created.json()["id"]
+        await client.patch(
+            f"/api/v1/tickets/{ticket_id}/intake",
+            headers={"X-CSRF-Token": str(session["csrfToken"])},
+            json={
+                "title": "Regional Port Activity",
+                "description": "Assess mock shipping activity and likely disruption.",
+                "operationalQuestion": "What activity needs command attention?",
+                "areaOrRegion": "Baltic ports",
+                "priority": "high",
+                "requiredOutputFormat": "Briefing note",
+                "customerSuccessCriteria": "Identify actions for watch teams.",
+            },
+        )
+        await client.post(
+            f"/api/v1/tickets/{ticket_id}/submit",
+            headers={"X-CSRF-Token": str(session["csrfToken"])},
+        )
+        owner_list = await client.get("/api/v1/tickets")
+        await login(client, "rfa.team@example.test")
+        product_team_list = await client.get("/api/v1/tickets")
+
+    assert [ticket["id"] for ticket in owner_list.json()["tickets"]] == [ticket_id]
+    assert product_team_list.status_code == 200
+    assert product_team_list.json()["tickets"] == []
+
+
+@pytest.mark.asyncio
 async def test_attachment_metadata_and_later_information_update_timeline() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
 

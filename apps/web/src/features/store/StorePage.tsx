@@ -15,10 +15,18 @@ const emptySearch = {
 };
 
 type StorePageProps = {
+  description?: string;
+  ownerTeam?: string;
   scope?: "all" | "mine";
+  title?: string;
 };
 
-export default function StorePage({ scope = "all" }: StorePageProps) {
+export default function StorePage({
+  description = "MOCK DATA ONLY controlled product search, metadata review and asset access.",
+  ownerTeam,
+  scope = "all",
+  title,
+}: StorePageProps) {
   const { session } = useAuth();
   const [draftFilters, setDraftFilters] = useState({
     query: "",
@@ -35,20 +43,25 @@ export default function StorePage({ scope = "all" }: StorePageProps) {
   });
   const visibleProducts = useMemo(() => {
     const products = productsQuery.data?.products ?? [];
+    if (ownerTeam !== undefined) {
+      return products.filter((product) => product.ownerTeam === ownerTeam);
+    }
     if (scope === "all" || session === null) {
       return products;
     }
     const roleText = session.user.roles.join(" ").toLowerCase();
     return products.filter((product) => roleText.includes(product.ownerTeam.toLowerCase()));
-  }, [productsQuery.data?.products, scope, session]);
+  }, [ownerTeam, productsQuery.data?.products, scope, session]);
   const canUpload = session !== null && hasPermissions(session.user, ["product:create_existing"]);
 
   return (
     <div className="store-page">
       <section className="overview-hero" aria-labelledby="store-title">
         <div>
-          <h1 id="store-title">{scope === "mine" ? "My Products" : "Intelligence Store"}</h1>
-          <p>MOCK DATA ONLY controlled product search, metadata review and asset access.</p>
+          <h1 id="store-title">
+            {title ?? (scope === "mine" ? "My Products" : "Intelligence Store")}
+          </h1>
+          <p>{description}</p>
         </div>
         {canUpload ? (
           <Link className="store-action" to="/store/upload">

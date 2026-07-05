@@ -66,6 +66,14 @@ test("renders a visible project workspace with filtered products", async () => {
 
   expect(await screen.findByRole("heading", { name: "Northstar RFI Workspace" })).toBeVisible();
   expect(screen.getByText("Regional Stability Brief")).toBeVisible();
+  expect(screen.getByRole("link", { name: "Plan" })).toHaveAttribute(
+    "href",
+    "/projects/project-northstar/plan",
+  );
+  expect(screen.getByRole("link", { name: /Regional Stability Brief/ })).toHaveAttribute(
+    "href",
+    "/store/products/product-alpha",
+  );
   expect(await screen.findByRole("heading", { name: "Access Diagnostics" })).toBeVisible();
   expect(screen.getByText("Shared ACG")).toBeVisible();
 });
@@ -85,6 +93,10 @@ test("supports focused project plan route rendering", async () => {
   renderWithProviders(<ProjectWorkspacePage view="plan" />, "/projects/project-northstar/plan");
 
   expect(await screen.findByText("Validate requirement and access groups")).toBeVisible();
+  expect(screen.getByRole("link", { name: "Overview" })).toHaveAttribute(
+    "href",
+    "/projects/project-northstar",
+  );
   expect(screen.queryByRole("heading", { name: "Members" })).not.toBeInTheDocument();
   expect(screen.queryByRole("heading", { name: "Products" })).not.toBeInTheDocument();
 });

@@ -1,6 +1,6 @@
-import { resolveApiBaseUrl, toApiError } from "./client";
+import { apiRequestJson } from "./client";
 
-export type StoreAsset = {
+type StoreAsset = {
   id: string;
   name: string;
   assetType: string;
@@ -33,7 +33,7 @@ export type StoreProduct = {
   assets: StoreAsset[];
 };
 
-export type StoreSearchProduct = StoreProduct & {
+type StoreSearchProduct = StoreProduct & {
   matchScore: number;
   matchReasons: string[];
 };
@@ -103,8 +103,6 @@ export type MetadataSuggestion = {
   acgIds: string[];
 };
 
-const baseUrl = resolveApiBaseUrl();
-
 export async function searchStoreProducts(
   filters: StoreSearchFilters = {},
 ): Promise<StoreSearchResponse> {
@@ -115,18 +113,20 @@ export async function searchStoreProducts(
     }
   }
   const suffix = params.size > 0 ? `?${params.toString()}` : "";
-  return requestJson<StoreSearchResponse>(`/api/v1/store/products${suffix}`, { method: "GET" });
+  return apiRequestJson<StoreSearchResponse>(`/api/v1/store/products${suffix}`, {
+    method: "GET",
+  });
 }
 
 export async function getStoreProduct(productId: string): Promise<StoreProduct> {
-  return requestJson<StoreProduct>(`/api/v1/store/products/${productId}`, { method: "GET" });
+  return apiRequestJson<StoreProduct>(`/api/v1/store/products/${productId}`, { method: "GET" });
 }
 
 export async function getAssetAccess(
   productId: string,
   assetId: string,
 ): Promise<AssetAccessGrant> {
-  return requestJson<AssetAccessGrant>(
+  return apiRequestJson<AssetAccessGrant>(
     `/api/v1/store/products/${productId}/assets/${assetId}/access`,
     { method: "GET" },
   );
@@ -136,7 +136,7 @@ export async function createStoreProduct(
   payload: StoreProductCreateInput,
   csrfToken: string,
 ): Promise<StoreProduct> {
-  return requestJson<StoreProduct>("/api/v1/store/products", {
+  return apiRequestJson<StoreProduct>("/api/v1/store/products", {
     body: JSON.stringify(payload),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
@@ -147,17 +147,9 @@ export async function suggestStoreMetadata(
   payload: MetadataSuggestionInput,
   csrfToken: string,
 ): Promise<MetadataSuggestion> {
-  return requestJson<MetadataSuggestion>("/api/v1/store/metadata-suggestions", {
+  return apiRequestJson<MetadataSuggestion>("/api/v1/store/metadata-suggestions", {
     body: JSON.stringify(payload),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
   });
-}
-
-async function requestJson<TResponse>(path: string, init: RequestInit): Promise<TResponse> {
-  const response = await fetch(`${baseUrl}${path}`, { ...init, credentials: "include" });
-  if (!response.ok) {
-    throw await toApiError(response);
-  }
-  return (await response.json()) as TResponse;
 }

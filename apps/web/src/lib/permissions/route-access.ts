@@ -39,7 +39,7 @@ export const navigationItems: readonly NavigationItem[] = [
     label: "RFA Products",
     path: "/rfa/products",
     icon: "rfa",
-    requiredPermissions: ["rfa:add_product"],
+    requiredPermissions: ["rfa:add_product", "product:read", "product:search"],
   },
   {
     label: "RFA Analytics",
@@ -57,7 +57,7 @@ export const navigationItems: readonly NavigationItem[] = [
     label: "Collection Products",
     path: "/collection/products",
     icon: "collection",
-    requiredPermissions: ["collection:add_product"],
+    requiredPermissions: ["collection:add_product", "product:read", "product:search"],
   },
   {
     label: "Collection Analytics",

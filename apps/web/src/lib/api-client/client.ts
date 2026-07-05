@@ -26,7 +26,6 @@ export type Permission =
   | "project:remove_member"
   | "ticket:create"
   | "ticket:read_own"
-  | "ticket:read_assigned"
   | "ticket:read_all"
   | "ticket:add_information"
   | "ticket:add_comment"
@@ -95,7 +94,7 @@ export type AccessControlGroup = {
   memberUserIds: string[];
 };
 
-export type ProductSummary = {
+type ProductSummary = {
   id: string;
   title: string;
   summary: string;
@@ -107,18 +106,18 @@ export type ProductSummary = {
   ownerTeam: string;
 };
 
-export type ProjectMember = {
+type ProjectMember = {
   userId: string;
   role: string;
 };
 
-export type ProjectMilestone = {
+type ProjectMilestone = {
   id: string;
   title: string;
   status: string;
 };
 
-export type ProjectPlanItem = {
+type ProjectPlanItem = {
   id: string;
   title: string;
   ownerRole: string;
@@ -297,7 +296,7 @@ export class ApiClient {
   }
 }
 
-export async function toApiError(response: Response): Promise<ApiError> {
+async function toApiError(response: Response): Promise<ApiError> {
   let payload: ErrorPayload = {};
   try {
     payload = (await response.json()) as ErrorPayload;
@@ -311,7 +310,21 @@ export async function toApiError(response: Response): Promise<ApiError> {
   );
 }
 
-export function resolveApiBaseUrl(): string {
+export async function apiRequestJson<TResponse>(
+  path: string,
+  init: RequestInit,
+): Promise<TResponse> {
+  const response = await fetch(`${resolveApiBaseUrl()}${path}`, {
+    ...init,
+    credentials: "include",
+  });
+  if (!response.ok) {
+    throw await toApiError(response);
+  }
+  return (await response.json()) as TResponse;
+}
+
+function resolveApiBaseUrl(): string {
   const configuredUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
   return configuredUrl ?? "http://127.0.0.1:8001";
 }

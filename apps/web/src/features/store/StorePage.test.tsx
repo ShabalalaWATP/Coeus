@@ -148,3 +148,31 @@ test("filters my products by owner team and hides upload without create permissi
   expect(screen.queryByRole("link", { name: "Upload product" })).not.toBeInTheDocument();
   expect(screen.getByText("MOCK DATA ONLY")).toBeVisible();
 });
+
+test("filters team product workspaces by explicit owner team", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          products: [visibleProduct, collectionProduct],
+          total: 2,
+          facets: { productTypes: [], regions: [], tags: [] },
+        }),
+    }),
+  );
+
+  renderWithProviders(
+    <StorePage
+      description="Request for Assessment product workspace."
+      ownerTeam="RFA"
+      title="RFA Products"
+    />,
+    "/rfa/products",
+  );
+
+  expect(await screen.findByRole("heading", { name: "RFA Products" })).toBeVisible();
+  expect(await screen.findByText("Regional Stability Brief")).toBeVisible();
+  expect(screen.queryByText("Collection Sensor Summary")).not.toBeInTheDocument();
+});
