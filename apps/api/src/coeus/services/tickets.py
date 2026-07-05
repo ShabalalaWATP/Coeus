@@ -181,6 +181,9 @@ class TicketService:
             raise AppError(409, "ticket_not_editable", "Ticket intake is no longer editable.")
         return ticket
 
+    def save_system_update(self, ticket: TicketRecord) -> TicketRecord:
+        return self._save(ticket)
+
     def _save(self, ticket: TicketRecord) -> TicketRecord:
         updated = replace(ticket, updated_at=datetime.now(UTC))
         self._repository.save(updated)
@@ -192,7 +195,7 @@ class TicketService:
             or Permission.TICKET_READ_ALL in actor.permissions
             or (
                 Permission.TICKET_READ_ASSIGNED in actor.permissions
-                and ticket.state == TicketState.RFI_SEARCHING
+                and ticket.state in {TicketState.RFI_SEARCHING, TicketState.ROUTE_ASSESSMENT}
             )
         )
 

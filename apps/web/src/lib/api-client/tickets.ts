@@ -55,7 +55,7 @@ export type Ticket = {
   id: string;
   reference: string;
   requesterUserId: string;
-  state: "DRAFT_INTAKE" | "INFO_REQUIRED" | "RFI_SEARCHING";
+  state: TicketState;
   intake: IntakeDetails;
   isReadyForSubmission: boolean;
   suggestedProjectName: string | null;
@@ -67,6 +67,15 @@ export type Ticket = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type TicketState =
+  | "DRAFT_INTAKE"
+  | "INFO_REQUIRED"
+  | "RFI_SEARCHING"
+  | "RFI_MATCH_OFFERED"
+  | "ROUTE_ASSESSMENT"
+  | "CLOSED_EXISTING_PRODUCT_ACCEPTED"
+  | "CANCELLED";
 
 export type IntakeUpdate = Partial<
   Pick<

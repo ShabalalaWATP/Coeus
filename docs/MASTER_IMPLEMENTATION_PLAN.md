@@ -6,7 +6,7 @@ This document tracks delivery state as implementation progresses.
 
 ## Current Stage
 
-Sprint 6: Mock product seeding.
+Sprint 7: RFI Search Agent.
 
 ## Sprint 1 Scope
 
@@ -195,4 +195,36 @@ Sprint 6: Mock product seeding.
 - Backend security checks: Bandit completed with no issues; pip-audit found no known third-party vulnerabilities; Semgrep completed with no findings.
 - Frontend package audit: no known vulnerabilities at the configured moderate threshold.
 - Codex Security diff scan: completed with 0 findings and 9 of 9 worklist rows closed.
+- Compose config: `docker compose config` validated.
+
+## Sprint 7 Scope
+
+- Full-text search.
+- pgvector-style semantic search adapter.
+- Hybrid ranking.
+- Access-filtered search.
+- Product offers.
+- Accept and reject flow.
+- Search metrics.
+
+## Sprint 7 Status
+
+- Local-first RFI Search Agent service: implemented.
+- Requester-based Intelligence Store access filtering before ranking: implemented.
+- Deterministic full-text, semantic and metadata hybrid ranking: implemented.
+- Product-offer records, search metrics and dissemination records: implemented.
+- RFI search, results, accept and reject APIs: implemented.
+- `/app/requests` product-offer panel with run, accept and reject controls: implemented.
+- Sprint 7 spec, ADR and threat model: implemented.
+- Verification: passed locally on 2026-07-05.
+
+## Sprint 7 Verification
+
+- Backend coverage: 96.16 percent total coverage.
+- Frontend coverage: 99.91 percent line coverage and 95.18 percent branch coverage.
+- Line limit: all checked hand-written files are 350 lines or fewer.
+- Backend quality checks: Ruff, mypy and pytest passed.
+- Frontend quality checks: Prettier, ESLint, TypeScript, Vitest coverage, production build and Playwright Chromium e2e passed. ESLint still reports existing fast-refresh warnings for lazy route declarations in `router.tsx`.
+- Backend security checks: Bandit completed with no issues; pip-audit found no known third-party vulnerabilities; Semgrep completed with no findings.
+- Frontend package audit: no known production dependency vulnerabilities.
 - Compose config: `docker compose config` validated.
