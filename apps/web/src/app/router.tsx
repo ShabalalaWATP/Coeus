@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
 import { createBrowserRouter } from "react-router-dom";
 
 import { DefaultRouteRedirect } from "../components/auth/DefaultRouteRedirect";
@@ -6,21 +6,22 @@ import { ProtectedRoute } from "../components/auth/ProtectedRoute";
 import { AuthenticatedShell } from "../components/layout/AuthenticatedShell";
 import { RouteFallback } from "../components/layout/RouteFallback";
 import type { Permission } from "../lib/api-client/client";
-
-const LoginPage = lazy(() => import("../features/auth/LoginPage"));
-const ForbiddenPage = lazy(() => import("../features/auth/ForbiddenPage"));
-const SessionExpiredPage = lazy(() => import("../features/auth/SessionExpiredPage"));
-const AcgAdminPage = lazy(() => import("../features/access/AcgAdminPage"));
-const AnalyticsDashboardPage = lazy(() => import("../features/analytics/AnalyticsDashboardPage"));
-const AnalystWorkbenchPage = lazy(() => import("../features/analyst/AnalystWorkbenchPage"));
-const QcQueuePage = lazy(() => import("../features/qc/QcQueuePage"));
-const RequestsPage = lazy(() => import("../features/requests/RequestsPage"));
-const RoutingQueuePage = lazy(() => import("../features/routing/RoutingQueuePage"));
-const PlaceholderPage = lazy(() => import("../features/placeholder/PlaceholderPage"));
-const ProductDetailPage = lazy(() => import("../features/store/ProductDetailPage"));
-const ProductUploadPage = lazy(() => import("../features/store/ProductUploadPage"));
-const ProjectWorkspacePage = lazy(() => import("../features/projects/ProjectWorkspacePage"));
-const StorePage = lazy(() => import("../features/store/StorePage"));
+import {
+  AcgAdminPage,
+  AnalystWorkbenchPage,
+  AnalyticsDashboardPage,
+  ForbiddenPage,
+  LoginPage,
+  PlaceholderPage,
+  ProductDetailPage,
+  ProductUploadPage,
+  ProjectWorkspacePage,
+  QcQueuePage,
+  RequestsPage,
+  RoutingQueuePage,
+  SessionExpiredPage,
+  StorePage,
+} from "./route-components";
 
 function withSuspense(element: React.ReactNode) {
   return <Suspense fallback={<RouteFallback />}>{element}</Suspense>;
