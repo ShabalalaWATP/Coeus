@@ -11,6 +11,7 @@ const LoginPage = lazy(() => import("../features/auth/LoginPage"));
 const ForbiddenPage = lazy(() => import("../features/auth/ForbiddenPage"));
 const SessionExpiredPage = lazy(() => import("../features/auth/SessionExpiredPage"));
 const AcgAdminPage = lazy(() => import("../features/access/AcgAdminPage"));
+const AnalystWorkbenchPage = lazy(() => import("../features/analyst/AnalystWorkbenchPage"));
 const RequestsPage = lazy(() => import("../features/requests/RequestsPage"));
 const RoutingQueuePage = lazy(() => import("../features/routing/RoutingQueuePage"));
 const PlaceholderPage = lazy(() => import("../features/placeholder/PlaceholderPage"));
@@ -122,13 +123,11 @@ export function createAppRouter() {
         },
         {
           path: "analyst/workbench",
-          element: protectedPage(
-            <PlaceholderPage
-              title="Analyst"
-              description="Analyst workbench shell for assigned tasks."
-            />,
-            ["analyst:work"],
-          ),
+          element: protectedPage(<AnalystWorkbenchPage />, ["analyst:work"]),
+        },
+        {
+          path: "analyst/tasks/:taskId",
+          element: protectedPage(<AnalystWorkbenchPage />, ["analyst:work"]),
         },
         {
           path: "qc/queue",

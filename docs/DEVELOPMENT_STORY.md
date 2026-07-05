@@ -86,3 +86,14 @@
 - Added Sprint 8 API, service, client and UI tests for capability routing, fallback, clarification, approval and override flows.
 - Added the Sprint 8 spec, local-first routing agents ADR and threat-model document.
 - Verified local Sprint 8 gates: backend Ruff, mypy, pytest coverage, Bandit, pip-audit and Semgrep; frontend Prettier, ESLint, TypeScript, Vitest coverage, build, Playwright e2e and package audit; file line limit; Compose config.
+
+## 2026-07-05 Sprint 9
+
+- Added ticket-level analyst assignments, work packages, notes, linked products and draft product versions.
+- Added `AnalystWorkflowService` for manager assignment, assigned-only task visibility, note creation, product linking, work-package completion, draft versioning and QC submission.
+- Added `/api/v1/analyst` endpoints for candidates, assigned tasks, assignment, notes, product links, work packages, drafts and submit-to-QC.
+- Added `ANALYST_IN_PROGRESS` and `QC_REVIEW` state transitions.
+- Added a real `/analyst/workbench` and `/analyst/tasks/:taskId` frontend with checklist, notes, product search and draft controls.
+- Added Sprint 9 API, service, client and UI tests for assignment, visibility, product-link access, draft versioning and QC submission flows.
+- Added the Sprint 9 spec, local-first analyst workflow ADR and threat-model document.
+- Verified local Sprint 9 gates: backend Ruff, mypy, pytest coverage, Bandit, pip-audit and Semgrep; frontend Prettier, ESLint, TypeScript, Vitest coverage, build, Playwright e2e and package audit; file line limit; Compose config.

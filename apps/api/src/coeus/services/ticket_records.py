@@ -12,6 +12,8 @@ ASSIGNED_READ_STATES = frozenset(
         TicketState.RFA_MANAGER_REVIEW,
         TicketState.CM_MANAGER_REVIEW,
         TicketState.ANALYST_ASSIGNMENT,
+        TicketState.ANALYST_IN_PROGRESS,
+        TicketState.QC_REVIEW,
     }
 )
 
