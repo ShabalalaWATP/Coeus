@@ -11,6 +11,7 @@ from coeus.domain.auth import AuthenticatedSession
 from coeus.services.access import AccessServices
 from coeus.services.analyst_workflow import AnalystWorkflowService
 from coeus.services.auth import AuthService
+from coeus.services.quality_control import QualityControlService
 from coeus.services.rfi_search import RfiSearchService
 from coeus.services.routing import RoutingService
 from coeus.services.store import StoreServices
@@ -81,6 +82,13 @@ def get_analyst_workflow_service(request: Request) -> AnalystWorkflowService:
     if not isinstance(analyst_service, AnalystWorkflowService):
         raise AppError(500, "analyst_not_configured", "Analyst workflow is not configured.")
     return analyst_service
+
+
+def get_quality_control_service(request: Request) -> QualityControlService:
+    qc_service = getattr(request.app.state, "quality_control_service", None)
+    if not isinstance(qc_service, QualityControlService):
+        raise AppError(500, "qc_not_configured", "Quality control is not configured.")
+    return qc_service
 
 
 def get_current_session(

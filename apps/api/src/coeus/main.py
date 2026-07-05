@@ -10,6 +10,7 @@ from coeus.api.routes.analyst import router as analyst_router
 from coeus.api.routes.audit import router as audit_router
 from coeus.api.routes.auth import router as auth_router
 from coeus.api.routes.health import router as health_router
+from coeus.api.routes.qc import router as qc_router
 from coeus.api.routes.rfi_search import router as rfi_search_router
 from coeus.api.routes.routing import router as routing_router
 from coeus.api.routes.store import router as store_router
@@ -25,6 +26,7 @@ from coeus.services.analyst_workflow import build_analyst_workflow_service
 from coeus.services.audit import AuditLog
 from coeus.services.auth import AuthService
 from coeus.services.passwords import PasswordHasher
+from coeus.services.quality_control import build_quality_control_service
 from coeus.services.rfi_search import build_rfi_search_service
 from coeus.services.routing import build_routing_service
 from coeus.services.store import build_store_services
@@ -77,6 +79,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         access_repository,
         audit_log,
     )
+    app.state.quality_control_service = build_quality_control_service(
+        app.state.ticket_services,
+        app.state.store_services,
+        access_repository,
+        audit_log,
+    )
 
     app.add_exception_handler(AppError, app_error_handler)
     app.add_exception_handler(Exception, unhandled_exception_handler)
@@ -110,6 +118,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(rfi_search_router, prefix="/api/v1")
     app.include_router(routing_router, prefix="/api/v1")
     app.include_router(analyst_router, prefix="/api/v1")
+    app.include_router(qc_router, prefix="/api/v1")
     app.include_router(health_router, prefix="/api/v1")
     return app
 
