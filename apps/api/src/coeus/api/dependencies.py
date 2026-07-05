@@ -1,5 +1,4 @@
 from collections.abc import Callable
-from functools import lru_cache
 from typing import Annotated
 
 from fastapi import Depends, Header, Request
@@ -13,9 +12,11 @@ from coeus.services.access import AccessServices
 from coeus.services.auth import AuthService
 
 
-@lru_cache
-def get_settings() -> Settings:
-    return Settings()
+def get_settings(request: Request) -> Settings:
+    settings = getattr(request.app.state, "settings", None)
+    if not isinstance(settings, Settings):
+        raise AppError(500, "settings_not_configured", "Application settings are not configured.")
+    return settings
 
 
 def get_readiness_checker(

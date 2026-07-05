@@ -62,7 +62,10 @@ class SessionRepository:
 
 
 class LoginAttemptRepository:
-    def __init__(self) -> None:
+    def __init__(self, max_entries: int = 10_000) -> None:
+        if max_entries < 1:
+            raise ValueError("Login attempt max_entries must be at least 1.")
+        self._max_entries = max_entries
         self._attempts: dict[str, tuple[int, datetime | None]] = {}
 
     def get_lockout_until(self, username: str) -> datetime | None:
@@ -75,6 +78,8 @@ class LoginAttemptRepository:
         self, username: str, threshold: int, lockout_seconds: int
     ) -> datetime | None:
         key = username.casefold()
+        if key not in self._attempts and len(self._attempts) >= self._max_entries:
+            self._attempts.pop(next(iter(self._attempts)))
         count, _locked_until = self._attempts.get(key, (0, None))
         count += 1
         locked_until = (
@@ -85,6 +90,10 @@ class LoginAttemptRepository:
 
     def reset(self, username: str) -> None:
         self._attempts.pop(username.casefold(), None)
+
+    @property
+    def entry_count(self) -> int:
+        return len(self._attempts)
 
 
 def _seed_user_specs() -> Iterable[tuple[str, str, frozenset[RoleName], bool]]:

@@ -66,6 +66,15 @@ class SeedAccessRepository:
             membership.acg_id for membership in self._memberships if membership.user_id == user_id
         )
 
+    def active_acg_ids_for_user(self, user_id: UUID) -> frozenset[UUID]:
+        return frozenset(
+            membership.acg_id
+            for membership in self._memberships
+            if membership.user_id == user_id
+            and (acg := self._acgs.get(membership.acg_id)) is not None
+            and acg.is_active
+        )
+
     def list_products(self) -> tuple[ProductRecord, ...]:
         return tuple(sorted(self._products.values(), key=lambda product: product.title))
 

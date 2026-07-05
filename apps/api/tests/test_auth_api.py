@@ -11,6 +11,23 @@ def test_login_page_seed_credential_constant_is_mock_only() -> None:
     assert SEED_CREDENTIAL.endswith("!")
 
 
+@pytest.mark.parametrize("environment", ["dev", "staging", "prod"])
+def test_seed_users_are_rejected_outside_local_and_test(environment: str) -> None:
+    with pytest.raises(ValueError, match="Seed users are local/test only"):
+        create_app(
+            Settings(
+                environment=environment,
+                argon2_memory_cost=8_192,
+                local_seed_credential="ChangedForNonLocalOnly1!",
+            )
+        )
+
+
+def test_prod_startup_requires_secure_cookies() -> None:
+    with pytest.raises(ValueError, match="Secure cookies"):
+        create_app(Settings(environment="prod", argon2_memory_cost=8_192))
+
+
 @pytest.fixture
 async def auth_client() -> AsyncClient:
     app = create_app(
@@ -44,6 +61,22 @@ async def test_login_sets_secure_session_cookie_and_returns_current_user() -> No
     assert response.json()["csrfToken"]
     assert me_response.status_code == 200
     assert me_response.json()["user"]["username"] == "admin@example.test"
+
+
+@pytest.mark.asyncio
+async def test_login_uses_app_settings_for_secure_cookie() -> None:
+    app = create_app(Settings(environment="test", secure_cookies=True, argon2_memory_cost=8_192))
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        response = await client.post(
+            "/api/v1/auth/login",
+            json={"username": "admin@example.test", "password": SEED_CREDENTIAL},
+        )
+
+    assert response.status_code == 200
+    assert "secure" in response.headers["set-cookie"].lower()
 
 
 @pytest.mark.asyncio

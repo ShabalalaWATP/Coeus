@@ -25,6 +25,7 @@ logger = get_logger(__name__)
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     resolved_settings = settings or Settings()
+    resolved_settings.require_runtime_security()
     configure_logging(resolved_settings.log_level)
 
     app = FastAPI(
@@ -35,12 +36,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = resolved_settings
     password_hasher = PasswordHasher(resolved_settings)
     user_repository = SeedUserRepository(resolved_settings, password_hasher)
-    audit_log = AuditLog()
+    audit_log = AuditLog(max_events=resolved_settings.audit_log_max_events)
     app.state.auth_service = AuthService(
         settings=resolved_settings,
         users=user_repository,
         sessions=SessionRepository(),
-        login_attempts=LoginAttemptRepository(),
+        login_attempts=LoginAttemptRepository(
+            max_entries=resolved_settings.login_attempt_max_entries
+        ),
         password_hasher=password_hasher,
         audit_log=audit_log,
     )

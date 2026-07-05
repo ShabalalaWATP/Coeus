@@ -11,6 +11,7 @@ from coeus.services.audit import AuditLog
 from coeus.services.passwords import PasswordHasher
 
 AUTHENTICATION_FAILED = "Authentication failed."
+DUMMY_LOGIN_HASH_INPUT = "coeus-unknown-user"
 
 
 @dataclass(frozen=True)
@@ -36,13 +37,16 @@ class AuthService:
         self._login_attempts = login_attempts
         self._password_hasher = password_hasher
         self._audit_log = audit_log
+        self._unknown_user_password_hash = password_hasher.hash(DUMMY_LOGIN_HASH_INPUT)
 
     def login(
         self, username: str, credential: str, replace_session_id: str | None = None
     ) -> LoginResult:
         self._reject_if_locked(username)
         user = self._users.get_by_username(username)
-        if user is None or not self._password_hasher.verify(user.password_hash, credential):
+        password_hash = user.password_hash if user is not None else self._unknown_user_password_hash
+        password_valid = self._password_hasher.verify(password_hash, credential)
+        if user is None or not password_valid:
             self._record_login_failure(username, user)
         if user is None:
             raise self._auth_failed()
