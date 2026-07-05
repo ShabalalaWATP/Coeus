@@ -22,6 +22,11 @@ class ProductOfferStatus(StrEnum):
     REJECTED = "rejected"
 
 
+class WorkPackageStatus(StrEnum):
+    PENDING = "pending"
+    COMPLETE = "complete"
+
+
 class RoutingRoute(StrEnum):
     RFA = "rfa"
     CM = "cm"
@@ -211,6 +216,71 @@ class ProjectPlanUpdate:
 
 
 @dataclass(frozen=True)
+class AnalystAssignment:
+    assignment_id: UUID
+    ticket_id: UUID
+    analyst_user_id: UUID
+    assigned_by_user_id: UUID
+    route: RoutingRoute
+    created_at: datetime
+
+
+@dataclass(frozen=True)
+class AnalystWorkPackage:
+    package_id: UUID
+    ticket_id: UUID
+    title: str
+    status: WorkPackageStatus
+    sort_order: int
+    created_at: datetime
+
+
+@dataclass(frozen=True)
+class AnalystNote:
+    note_id: UUID
+    ticket_id: UUID
+    body: str
+    created_by_user_id: UUID
+    created_at: datetime
+
+
+@dataclass(frozen=True)
+class LinkedAnalystProduct:
+    link_id: UUID
+    ticket_id: UUID
+    product_id: UUID
+    reference: str
+    title: str
+    summary: str
+    linked_by_user_id: UUID
+    created_at: datetime
+
+
+@dataclass(frozen=True)
+class DraftProductAsset:
+    asset_id: UUID
+    name: str
+    asset_type: str
+    mime_type: str
+    size_bytes: int
+    sha256: str
+
+
+@dataclass(frozen=True)
+class DraftProductVersion:
+    version_id: UUID
+    ticket_id: UUID
+    version_number: int
+    title: str
+    summary: str
+    product_type: str
+    content: str
+    assets: tuple[DraftProductAsset, ...]
+    created_by_user_id: UUID
+    created_at: datetime
+
+
+@dataclass(frozen=True)
 class TicketRecord:
     ticket_id: UUID
     reference: str
@@ -232,5 +302,10 @@ class TicketRecord:
     clarification_requests: tuple[ClarificationRequest, ...] = field(default_factory=tuple)
     manager_decisions: tuple[ManagerRoutingDecision, ...] = field(default_factory=tuple)
     project_plan_updates: tuple[ProjectPlanUpdate, ...] = field(default_factory=tuple)
+    analyst_assignments: tuple[AnalystAssignment, ...] = field(default_factory=tuple)
+    work_packages: tuple[AnalystWorkPackage, ...] = field(default_factory=tuple)
+    analyst_notes: tuple[AnalystNote, ...] = field(default_factory=tuple)
+    linked_products: tuple[LinkedAnalystProduct, ...] = field(default_factory=tuple)
+    draft_products: tuple[DraftProductVersion, ...] = field(default_factory=tuple)
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))

@@ -9,6 +9,7 @@ from coeus.core.permissions import Permission
 from coeus.db.session import DatabaseReadinessChecker
 from coeus.domain.auth import AuthenticatedSession
 from coeus.services.access import AccessServices
+from coeus.services.analyst_workflow import AnalystWorkflowService
 from coeus.services.auth import AuthService
 from coeus.services.rfi_search import RfiSearchService
 from coeus.services.routing import RoutingService
@@ -73,6 +74,13 @@ def get_routing_service(request: Request) -> RoutingService:
     if not isinstance(routing_service, RoutingService):
         raise AppError(500, "routing_not_configured", "Routing is not configured.")
     return routing_service
+
+
+def get_analyst_workflow_service(request: Request) -> AnalystWorkflowService:
+    analyst_service = getattr(request.app.state, "analyst_workflow_service", None)
+    if not isinstance(analyst_service, AnalystWorkflowService):
+        raise AppError(500, "analyst_not_configured", "Analyst workflow is not configured.")
+    return analyst_service
 
 
 def get_current_session(

@@ -6,7 +6,7 @@ This document tracks delivery state as implementation progresses.
 
 ## Current Stage
 
-Sprint 9: Analyst workflow.
+Sprint 10: QC, dissemination and automatic product ingestion.
 
 ## Sprint 1 Scope
 
@@ -267,5 +267,46 @@ Sprint 9: Analyst workflow.
 - Frontend production dependency audit: no known vulnerabilities found.
 - Semgrep repository scan: 0 findings on tracked files.
 - Semgrep Sprint 8 targeted scan: 0 findings on new Sprint 8 backend, frontend and documentation files.
+- File line limit: all checked hand-written files are 350 lines or fewer.
+- Compose config: `docker compose config` validated.
+
+## Sprint 9 Scope
+
+- Analyst workbench.
+- Work packages.
+- Notes.
+- Link permitted products.
+- Draft product.
+- Submit to QC.
+
+## Sprint 9 Status
+
+- Manager assignment to active analyst users: implemented.
+- Assigned-only analyst task visibility: implemented.
+- Work package checklist records and completion actions: implemented.
+- Analyst notes: implemented.
+- Permitted Intelligence Store product linking: implemented.
+- Versioned draft products with asset descriptors: implemented.
+- Submit-to-QC transition to `QC_REVIEW`: implemented.
+- `/analyst/workbench` and `/analyst/tasks/:taskId` pages: implemented.
+- Sprint 9 spec, ADR and threat model: implemented.
+- Verification: complete.
+
+## Sprint 9 Verification
+
+- Backend Ruff: passed.
+- Backend mypy: passed.
+- Backend pytest: 95 passed, 95.32 percent total coverage.
+- Backend Bandit: passed.
+- Backend pip-audit: no known vulnerabilities found, local package skipped because it is not published on PyPI.
+- Frontend Prettier: passed.
+- Frontend ESLint: passed with existing router fast-refresh warnings only.
+- Frontend TypeScript: passed.
+- Frontend Vitest: 100 passed, 99.90 percent line coverage and 95.26 percent branch coverage.
+- Frontend production build: passed.
+- Frontend Playwright e2e: 1 passed.
+- Frontend production dependency audit: no known vulnerabilities found.
+- Semgrep repository scan: 0 findings on tracked files.
+- Semgrep Sprint 9 targeted scan: 0 findings on new Sprint 9 backend, frontend and documentation files.
 - File line limit: all checked hand-written files are 350 lines or fewer.
 - Compose config: `docker compose config` validated.
