@@ -6,14 +6,20 @@ import { previewSession } from "./test/test-utils";
 test("renders the app shell at the default route", async () => {
   vi.stubGlobal(
     "fetch",
-    vi.fn().mockResolvedValue({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          ...previewSession,
-          user: { ...previewSession.user, defaultRoute: "/app/requests" },
-        }),
-    }),
+    vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            ...previewSession,
+            user: { ...previewSession.user, defaultRoute: "/app/requests" },
+          }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ tickets: [] }),
+      }),
   );
   window.history.pushState({}, "Home", "/");
 

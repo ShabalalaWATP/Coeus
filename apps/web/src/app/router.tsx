@@ -11,7 +11,7 @@ const LoginPage = lazy(() => import("../features/auth/LoginPage"));
 const ForbiddenPage = lazy(() => import("../features/auth/ForbiddenPage"));
 const SessionExpiredPage = lazy(() => import("../features/auth/SessionExpiredPage"));
 const AcgAdminPage = lazy(() => import("../features/access/AcgAdminPage"));
-const OverviewPage = lazy(() => import("../features/overview/OverviewPage"));
+const RequestsPage = lazy(() => import("../features/requests/RequestsPage"));
 const PlaceholderPage = lazy(() => import("../features/placeholder/PlaceholderPage"));
 const ProjectWorkspacePage = lazy(() => import("../features/projects/ProjectWorkspacePage"));
 
@@ -46,7 +46,7 @@ export function createAppRouter() {
         { index: true, element: <DefaultRouteRedirect /> },
         {
           path: "app/requests",
-          element: protectedPage(<OverviewPage />, ["ticket:read_own"]),
+          element: protectedPage(<RequestsPage />, ["ticket:read_own"]),
         },
         {
           path: "store",
