@@ -24,6 +24,10 @@
   .status-strip,
   .access-grid,
   .project-grid,
+  .store-layout,
+  .store-detail-grid,
+  .store-filter-grid,
+  .upload-grid,
   .create-grid {
     grid-template-columns: 1fr;
   }

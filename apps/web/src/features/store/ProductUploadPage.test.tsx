@@ -1,0 +1,119 @@
+import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+
+import ProductUploadPage from "./ProductUploadPage";
+import { resetQueryClientForTests } from "../../app/query-client";
+import { renderWithProviders } from "../../test/test-utils";
+
+beforeEach(() => {
+  resetQueryClientForTests();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+test("suggests metadata and submits a controlled product registration", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          acgs: [
+            {
+              id: "acg-alpha",
+              code: "ACG-ALPHA-REGIONAL",
+              name: "Alpha Regional",
+              description: "Mock",
+              ownerUserId: null,
+              isActive: true,
+              memberUserIds: [],
+            },
+          ],
+        }),
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          tags: ["baltic", "geographic", "mock"],
+          entities: ["Baltic ports"],
+          sourceType: "synthetic",
+          acgIds: [],
+        }),
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          id: "product-created",
+          reference: "PROD-2001",
+          title: "Mock Harbour Activity Brief",
+        }),
+    });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<ProductUploadPage />, "/store/upload");
+  expect(await screen.findByLabelText("ACG")).toBeVisible();
+  await userEvent.click(screen.getByRole("button", { name: "Suggest metadata" }));
+  expect(await screen.findByDisplayValue("baltic, geographic, mock")).toBeVisible();
+  await userEvent.selectOptions(screen.getByLabelText("ACG"), "acg-alpha");
+  await userEvent.click(screen.getByRole("button", { name: "Register product" }));
+
+  expect(await screen.findByText("Created PROD-2001: Mock Harbour Activity Brief")).toBeVisible();
+  const calls = fetchMock.mock.calls as Array<[string, RequestInit]>;
+  const [url, init] = calls[calls.length - 1];
+  expect(url).toContain("/api/v1/store/products");
+  expect(init.credentials).toBe("include");
+  if (typeof init.body !== "string") {
+    throw new TypeError("Expected JSON request body.");
+  }
+  expect(init.body).toContain('"acgIds":["acg-alpha"]');
+});
+
+test("registers geographic products with the first visible ACG when none is selected", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          acgs: [
+            {
+              id: "acg-alpha",
+              code: "ACG-ALPHA-REGIONAL",
+              name: "Alpha Regional",
+              description: "Mock",
+              ownerUserId: null,
+              isActive: true,
+              memberUserIds: [],
+            },
+          ],
+        }),
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          id: "product-created",
+          reference: "PROD-2002",
+          title: "Mock Harbour Activity Brief",
+        }),
+    });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<ProductUploadPage />, "/store/upload");
+  await screen.findByRole("option", { name: "ACG-ALPHA-REGIONAL" });
+  await userEvent.selectOptions(screen.getByLabelText("Product type"), "geographic_product");
+  await userEvent.click(screen.getByRole("button", { name: "Register product" }));
+
+  expect(await screen.findByText("Created PROD-2002: Mock Harbour Activity Brief")).toBeVisible();
+  const calls = fetchMock.mock.calls as Array<[string, RequestInit]>;
+  const [, init] = calls[calls.length - 1];
+  if (typeof init.body !== "string") {
+    throw new TypeError("Expected JSON request body.");
+  }
+  expect(init.body).toContain('"geojsonRef":"mock://geojson/layer"');
+  expect(init.body).toContain('"acgIds":["acg-alpha"]');
+});

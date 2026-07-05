@@ -6,7 +6,7 @@ This document tracks delivery state as implementation progresses.
 
 ## Current Stage
 
-Sprint 4: Ticket and Chatbot Intake.
+Sprint 5: Intelligence Store MVP.
 
 ## Sprint 1 Scope
 
@@ -124,6 +124,37 @@ Sprint 4: Ticket and Chatbot Intake.
 
 - Backend coverage: 95.08 percent total coverage.
 - Frontend coverage: 100 percent statement, line and function coverage, with 96.43 percent branch coverage.
+- Backend quality checks: Ruff, mypy and pytest passed.
+- Frontend quality checks: Prettier, ESLint, TypeScript, Vitest coverage, production build and Playwright Chromium e2e passed. ESLint still reports existing fast-refresh warnings for lazy route declarations in `router.tsx`.
+- Backend security checks: Bandit completed with no issues; pip-audit found no known third-party vulnerabilities; Semgrep completed with no findings.
+- Frontend package audit: no known vulnerabilities at the configured moderate threshold.
+- Compose config: `docker compose config` validated.
+
+## Sprint 5 Scope
+
+- Product metadata model.
+- Asset metadata model.
+- Store search, detail and controlled asset access APIs.
+- Existing-product registration workflow with ACG assignment.
+- Metadata suggestions.
+- Store search, detail, upload and my-products frontend routes.
+- Regression coverage for unauthorised counts, detail IDOR and asset access.
+
+## Sprint 5 Status
+
+- Local-first Intelligence Store domain, repository and service boundaries: implemented.
+- Product creation with required ACGs, owner-team permissions, metadata and asset validation: implemented.
+- Search filtering after RBAC, clearance and ACG checks: implemented.
+- Product detail and controlled placeholder asset access tokens: implemented.
+- Metadata suggestions that never auto-assign ACGs: implemented.
+- `/store`, `/store/my-products`, `/store/upload`, `/store/products/:productId` and asset routes: implemented.
+- Sprint 5 spec, ADR and threat model: implemented.
+- Verification: passed locally on 2026-07-05.
+
+## Sprint 5 Verification
+
+- Backend coverage: 95.67 percent total coverage.
+- Frontend coverage: 99.90 percent line coverage and 95.43 percent branch coverage.
 - Backend quality checks: Ruff, mypy and pytest passed.
 - Frontend quality checks: Prettier, ESLint, TypeScript, Vitest coverage, production build and Playwright Chromium e2e passed. ESLint still reports existing fast-refresh warnings for lazy route declarations in `router.tsx`.
 - Backend security checks: Bandit completed with no issues; pip-audit found no known third-party vulnerabilities; Semgrep completed with no findings.

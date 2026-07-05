@@ -2,7 +2,7 @@
 
 Coeus is a secure, role-based intelligence tasking and intelligence product orchestration platform.
 
-This repository is being implemented from `coeus_spec_driven_implementation_plan.md`. The current baseline covers Sprint 1 through Sprint 4 foundations: monorepo skeleton, FastAPI foundation, React/Vite app shell, local development services, CI, authentication, sessions, RBAC, ACG and project workspace access controls, ticket intake, mock chatbot extraction, customer request dashboard, specs, ADRs and threat models.
+This repository is being implemented from `coeus_spec_driven_implementation_plan.md`. The current baseline covers Sprint 1 through Sprint 5 foundations: monorepo skeleton, FastAPI foundation, React/Vite app shell, local development services, CI, authentication, sessions, RBAC, ACG and project workspace access controls, ticket intake, mock chatbot extraction, customer request dashboard, Intelligence Store metadata search and controlled asset access, specs, ADRs and threat models.
 
 ## Repository Safety
 
@@ -23,6 +23,7 @@ pnpm install
 uv sync --project apps/api --all-groups
 pnpm --filter @coeus/web test
 uv run --directory apps/api pytest
+pnpm --filter @coeus/web test:e2e
 pwsh ./scripts/dev.ps1
 ```
 
@@ -37,4 +38,4 @@ Local seed users use mock `example.test` usernames and the mock local credential
 
 ## GitHub
 
-The implementation plan targets `ShabalalaWATP/coeus`. This local repository has `origin` configured for that URL, but the first push should be a deliberate step once the Sprint 1 baseline has passed checks.
+The implementation plan targets `ShabalalaWATP/coeus`. Work lands through protected-main pull requests with required CI/security checks.

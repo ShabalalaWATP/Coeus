@@ -40,3 +40,15 @@
 - Added Sprint 4 API, client and UI tests, including prompt-injection regressions.
 - Added the Sprint 4 spec, local-first ticket intake ADR and threat-model document.
 - Verified local Sprint 4 gates: backend Ruff, mypy, pytest coverage, Bandit, pip-audit and Semgrep; frontend Prettier, ESLint, TypeScript, Vitest coverage, build, Playwright e2e and package audit; Compose config.
+
+## 2026-07-05 Sprint 5
+
+- Added local-first Intelligence Store product, asset and metadata domain records.
+- Added an in-memory store repository seeded from the existing ACG/project context.
+- Added store services for product registration, access-filtered search, detail retrieval, controlled asset grants and metadata suggestions.
+- Added `/api/v1/store` routes for search, create, detail, asset access and suggestions.
+- Added frontend Store search, My Products, Product Detail and Upload Product routes.
+- Added metadata-only upload controls with ACG selection, SHA-256 asset validation and synthetic metadata suggestions.
+- Added Sprint 5 API, service, client and UI tests for ACG enforcement, count leakage, IDOR-style detail denial and asset access denial.
+- Added the Sprint 5 spec, local-first Intelligence Store ADR and threat-model document.
+- Verified local Sprint 5 gates: backend Ruff, mypy, pytest coverage, Bandit, pip-audit and Semgrep; frontend Prettier, ESLint, TypeScript, Vitest coverage, build, Playwright e2e and package audit; Compose config.

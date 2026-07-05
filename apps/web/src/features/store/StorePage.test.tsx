@@ -1,0 +1,150 @@
+import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+
+import StorePage from "./StorePage";
+import { resetQueryClientForTests } from "../../app/query-client";
+import type { AuthSession } from "../../lib/api-client/client";
+import { renderWithProviders } from "../../test/test-utils";
+
+const visibleProduct = {
+  id: "product-regional",
+  reference: "PROD-1001",
+  title: "Regional Stability Brief",
+  summary: "MOCK DATA ONLY assessment summary",
+  description: "Synthetic detail",
+  productType: "assessment_report",
+  sourceType: "finished_assessment",
+  ownerTeam: "RFA",
+  areaOrRegion: "Baltic ports",
+  classificationLevel: 2,
+  releasability: ["MOCK"],
+  handlingCaveats: ["MOCK DATA ONLY"],
+  tags: ["regional"],
+  acgIds: ["acg-alpha"],
+  projectId: "project-northstar",
+  status: "published",
+  timePeriodStart: null,
+  timePeriodEnd: null,
+  geojsonRef: null,
+  assets: [],
+  matchScore: 1,
+  matchReasons: ["visible"],
+};
+
+const collectionProduct = {
+  ...visibleProduct,
+  id: "product-collection",
+  title: "Collection Sensor Summary",
+  productType: "sigint_mock",
+  ownerTeam: "Collection",
+  areaOrRegion: "North Sea",
+};
+
+const readOnlyCollectionSession: AuthSession = {
+  csrfToken: "test-csrf-token",
+  user: {
+    id: "collection-user",
+    username: "collection@example.test",
+    displayName: "Collection User",
+    roles: ["Collection Manager"],
+    defaultRoute: "/store",
+    permissions: ["product:read", "product:search"],
+  },
+};
+
+beforeEach(() => {
+  resetQueryClientForTests();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+test("renders visible store products and facets only from authorised results", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          products: [visibleProduct],
+          total: 1,
+          facets: { productTypes: ["assessment_report"], regions: ["Baltic ports"], tags: [] },
+        }),
+    }),
+  );
+
+  renderWithProviders(<StorePage />, "/store");
+
+  expect(await screen.findByRole("heading", { name: "Intelligence Store" })).toBeVisible();
+  expect(await screen.findByText("Regional Stability Brief")).toBeVisible();
+  expect(screen.queryByText("Collection Sensor Summary")).not.toBeInTheDocument();
+  expect(
+    within(screen.getByLabelText("Visible facets")).getByText("Assessment report"),
+  ).toBeVisible();
+});
+
+test("submits product search filters", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          products: [],
+          total: 0,
+          facets: { productTypes: [], regions: [], tags: [] },
+        }),
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          products: [visibleProduct],
+          total: 1,
+          facets: { productTypes: [], regions: [], tags: [] },
+        }),
+    });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<StorePage />, "/store");
+  await screen.findByRole("heading", { name: "Intelligence Store" });
+  await userEvent.selectOptions(screen.getByLabelText("Product type"), "assessment_report");
+  await userEvent.type(screen.getByLabelText("Full text"), "harbour");
+  await userEvent.type(screen.getByLabelText("Region"), "Baltic");
+  await userEvent.type(screen.getByLabelText("Tag"), "regional");
+  await userEvent.type(screen.getByLabelText("Source type"), "finished_assessment");
+  await userEvent.click(screen.getByRole("button", { name: "Search products" }));
+
+  const calls = fetchMock.mock.calls as Array<[string, RequestInit]>;
+  const [url, init] = calls[calls.length - 1];
+  expect(url).toContain("query=harbour");
+  expect(url).toContain("productType=assessment_report");
+  expect(url).toContain("region=Baltic");
+  expect(url).toContain("tag=regional");
+  expect(url).toContain("sourceType=finished_assessment");
+  expect(init.credentials).toBe("include");
+});
+
+test("filters my products by owner team and hides upload without create permission", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          products: [visibleProduct, collectionProduct],
+          total: 2,
+          facets: { productTypes: [], regions: [], tags: [] },
+        }),
+    }),
+  );
+
+  renderWithProviders(<StorePage scope="mine" />, "/store/my-products", readOnlyCollectionSession);
+
+  expect(await screen.findByRole("heading", { name: "My Products" })).toBeVisible();
+  expect(await screen.findByText("Collection Sensor Summary")).toBeVisible();
+  expect(screen.queryByText("Regional Stability Brief")).not.toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: "Upload product" })).not.toBeInTheDocument();
+  expect(screen.getByText("MOCK DATA ONLY")).toBeVisible();
+});

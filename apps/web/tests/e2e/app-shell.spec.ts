@@ -14,6 +14,7 @@ test("loads the authenticated app shell", async ({ page }) => {
           permissions: [
             "ticket:read_own",
             "product:read",
+            "product:search",
             "project:read",
             "acg:view",
             "rfa:review",
