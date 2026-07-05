@@ -22,7 +22,6 @@ class Permission(StrEnum):
     PROJECT_REMOVE_MEMBER = "project:remove_member"
     TICKET_CREATE = "ticket:create"
     TICKET_READ_OWN = "ticket:read_own"
-    TICKET_READ_ASSIGNED = "ticket:read_assigned"
     TICKET_READ_ALL = "ticket:read_all"
     TICKET_ADD_INFORMATION = "ticket:add_information"
     TICKET_ADD_COMMENT = "ticket:add_comment"

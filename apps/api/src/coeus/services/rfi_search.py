@@ -24,6 +24,11 @@ from coeus.services.rfi_ranking import query_text, rank_rfi_hits
 from coeus.services.store import StoreDetailService, StoreSearchService, StoreServices
 from coeus.services.tickets import TicketService, TicketServices
 
+RFI_RESULTS_REVIEW_PERMISSIONS = frozenset({Permission.RFA_REVIEW, Permission.COLLECTION_REVIEW})
+RFI_RESULTS_REVIEW_STATES = frozenset(
+    {TicketState.ROUTE_ASSESSMENT, TicketState.RFA_MANAGER_REVIEW, TicketState.CM_MANAGER_REVIEW}
+)
+
 
 @dataclass(frozen=True)
 class RfiSearchResults:
@@ -94,7 +99,7 @@ class RfiSearchService:
         return self._results_for(actor, updated)
 
     def results(self, actor: UserAccount, ticket_id: UUID) -> RfiSearchResults:
-        return self._results_for(actor, self._tickets.get_visible_ticket(actor, ticket_id))
+        return self._results_for(actor, self._results_ticket(actor, ticket_id))
 
     def accept(self, actor: UserAccount, ticket_id: UUID, product_id: UUID) -> RfiSearchResults:
         self._require(actor, Permission.RFI_ACCEPT_PRODUCT)
@@ -179,6 +184,17 @@ class RfiSearchService:
         if ticket.state != TicketState.RFI_MATCH_OFFERED:
             raise AppError(409, "invalid_ticket_state", "Ticket has no active product offers.")
         return ticket
+
+    def _results_ticket(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
+        try:
+            return self._tickets.get_visible_ticket(actor, ticket_id)
+        except AppError:
+            ticket = self._tickets.get_workflow_ticket(
+                actor, ticket_id, RFI_RESULTS_REVIEW_PERMISSIONS
+            )
+            if ticket.state not in RFI_RESULTS_REVIEW_STATES:
+                raise AppError(404, "ticket_not_found", "Ticket was not found.") from None
+            return ticket
 
     def _results_for(self, actor: UserAccount, ticket: TicketRecord) -> RfiSearchResults:
         visible_offers = tuple(

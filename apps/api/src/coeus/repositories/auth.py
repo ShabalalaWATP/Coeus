@@ -78,13 +78,16 @@ class LoginAttemptRepository:
         self, username: str, threshold: int, lockout_seconds: int
     ) -> datetime | None:
         key = username.casefold()
-        if key not in self._attempts and len(self._attempts) >= self._max_entries:
-            self._attempts.pop(next(iter(self._attempts)))
+        now = datetime.now(UTC)
+        if (
+            key not in self._attempts
+            and len(self._attempts) >= self._max_entries
+            and not self._evict_non_locked_attempt(now)
+        ):
+            return None
         count, _locked_until = self._attempts.get(key, (0, None))
         count += 1
-        locked_until = (
-            datetime.now(UTC) + timedelta(seconds=lockout_seconds) if count >= threshold else None
-        )
+        locked_until = now + timedelta(seconds=lockout_seconds) if count >= threshold else None
         self._attempts[key] = (count, locked_until)
         return locked_until
 
@@ -94,6 +97,13 @@ class LoginAttemptRepository:
     @property
     def entry_count(self) -> int:
         return len(self._attempts)
+
+    def _evict_non_locked_attempt(self, now: datetime) -> bool:
+        for key, (_count, locked_until) in list(self._attempts.items()):
+            if locked_until is None or locked_until <= now:
+                self._attempts.pop(key)
+                return True
+        return False
 
 
 def _seed_user_specs() -> Iterable[tuple[str, str, frozenset[RoleName], bool]]:

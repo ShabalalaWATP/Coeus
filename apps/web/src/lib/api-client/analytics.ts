@@ -1,6 +1,6 @@
-import { resolveApiBaseUrl, toApiError } from "./client";
+import { apiRequestJson } from "./client";
 
-export type FeedbackSubmission = {
+type FeedbackSubmission = {
   id: string;
   requestId: string;
   rating: number;
@@ -59,12 +59,13 @@ export type AnalyticsDashboard = {
   }[];
 };
 
-const baseUrl = resolveApiBaseUrl();
-
 export async function listFeedbackRequests(): Promise<FeedbackRequest[]> {
-  const response = await requestJson<{ requests: FeedbackRequest[] }>("/api/v1/feedback/requests", {
-    method: "GET",
-  });
+  const response = await apiRequestJson<{ requests: FeedbackRequest[] }>(
+    "/api/v1/feedback/requests",
+    {
+      method: "GET",
+    },
+  );
   return response.requests;
 }
 
@@ -73,7 +74,7 @@ export async function submitFeedback(
   payload: FeedbackSubmissionInput,
   csrfToken: string,
 ): Promise<FeedbackRequest> {
-  return requestJson<FeedbackRequest>(`/api/v1/feedback/requests/${requestId}/submit`, {
+  return apiRequestJson<FeedbackRequest>(`/api/v1/feedback/requests/${requestId}/submit`, {
     body: JSON.stringify(payload),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
@@ -83,13 +84,5 @@ export async function submitFeedback(
 export async function getAnalyticsDashboard(
   audience: AnalyticsAudience,
 ): Promise<AnalyticsDashboard> {
-  return requestJson<AnalyticsDashboard>(`/api/v1/analytics/${audience}`, { method: "GET" });
-}
-
-async function requestJson<TResponse>(path: string, init: RequestInit): Promise<TResponse> {
-  const response = await fetch(`${baseUrl}${path}`, { ...init, credentials: "include" });
-  if (!response.ok) {
-    throw await toApiError(response);
-  }
-  return (await response.json()) as TResponse;
+  return apiRequestJson<AnalyticsDashboard>(`/api/v1/analytics/${audience}`, { method: "GET" });
 }

@@ -98,6 +98,16 @@ async def test_product_creation_requires_active_authorised_acg() -> None:
             headers={"X-CSRF-Token": str(session["csrfToken"])},
             json=product_payload(str(rfa_acg.acg_id), owner_team="Collection"),
         )
+        padded_wrong_owner_team = await client.post(
+            "/api/v1/store/products",
+            headers={"X-CSRF-Token": str(session["csrfToken"])},
+            json=product_payload(str(rfa_acg.acg_id), owner_team="Collection "),
+        )
+        unknown_owner_team = await client.post(
+            "/api/v1/store/products",
+            headers={"X-CSRF-Token": str(session["csrfToken"])},
+            json=product_payload(str(rfa_acg.acg_id), owner_team="Unrecognised"),
+        )
         missing_acg = await client.post(
             "/api/v1/store/products",
             headers={"X-CSRF-Token": str(session["csrfToken"])},
@@ -109,6 +119,10 @@ async def test_product_creation_requires_active_authorised_acg() -> None:
     assert allowed.status_code == 201
     assert wrong_owner_team.status_code == 403
     assert wrong_owner_team.json()["error"]["code"] == "forbidden"
+    assert padded_wrong_owner_team.status_code == 403
+    assert padded_wrong_owner_team.json()["error"]["code"] == "forbidden"
+    assert unknown_owner_team.status_code == 422
+    assert unknown_owner_team.json()["error"]["code"] == "owner_team_invalid"
     assert missing_acg.status_code == 409
     assert missing_acg.json()["error"]["code"] == "product_acg_required"
 

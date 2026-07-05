@@ -8,7 +8,7 @@ class FakeConnection:
     async def __aenter__(self) -> "FakeConnection":
         return self
 
-    async def __aexit__(self, exc_type, exc, traceback) -> None:
+    async def __aexit__(self, _exc_type, _exc, _traceback) -> None:
         return None
 
     async def execute(self, statement) -> None:

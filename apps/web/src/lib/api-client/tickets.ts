@@ -1,6 +1,6 @@
-import { resolveApiBaseUrl, toApiError } from "./client";
+import { apiRequestJson } from "./client";
 
-export type IntakeDetails = {
+type IntakeDetails = {
   title: string | null;
   description: string | null;
   operationalQuestion: string | null;
@@ -19,14 +19,14 @@ export type IntakeDetails = {
   confidence: number;
 };
 
-export type ChatMessage = {
+type ChatMessage = {
   id: string;
   author: "user" | "assistant";
   body: string;
   createdAt: string;
 };
 
-export type AttachmentMetadata = {
+type AttachmentMetadata = {
   id: string;
   name: string;
   description: string;
@@ -34,7 +34,7 @@ export type AttachmentMetadata = {
   createdAt: string;
 };
 
-export type AgentRun = {
+type AgentRun = {
   id: string;
   agentName: string;
   status: string;
@@ -43,7 +43,7 @@ export type AgentRun = {
   createdAt: string;
 };
 
-export type TimelineEntry = {
+type TimelineEntry = {
   id: string;
   eventType: string;
   body: string;
@@ -109,10 +109,10 @@ export type AttachmentMetadataInput = {
   sourceType: string;
 };
 
-const baseUrl = resolveApiBaseUrl();
-
 export async function listTickets(): Promise<Ticket[]> {
-  const response = await requestJson<{ tickets: Ticket[] }>("/api/v1/tickets", { method: "GET" });
+  const response = await apiRequestJson<{ tickets: Ticket[] }>("/api/v1/tickets", {
+    method: "GET",
+  });
   return response.tickets;
 }
 
@@ -120,7 +120,7 @@ export async function sendChatMessage(
   payload: { ticketId?: string; message: string },
   csrfToken: string,
 ): Promise<Ticket> {
-  return requestJson<Ticket>("/api/v1/chat/messages", {
+  return apiRequestJson<Ticket>("/api/v1/chat/messages", {
     body: JSON.stringify(payload),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
@@ -132,7 +132,7 @@ export async function updateTicketIntake(
   payload: IntakeUpdate,
   csrfToken: string,
 ): Promise<Ticket> {
-  return requestJson<Ticket>(`/api/v1/tickets/${ticketId}/intake`, {
+  return apiRequestJson<Ticket>(`/api/v1/tickets/${ticketId}/intake`, {
     body: JSON.stringify(payload),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "PATCH",
@@ -144,7 +144,7 @@ export async function addTicketAttachment(
   payload: AttachmentMetadataInput,
   csrfToken: string,
 ): Promise<Ticket> {
-  return requestJson<Ticket>(`/api/v1/tickets/${ticketId}/attachments`, {
+  return apiRequestJson<Ticket>(`/api/v1/tickets/${ticketId}/attachments`, {
     body: JSON.stringify(payload),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
@@ -152,7 +152,7 @@ export async function addTicketAttachment(
 }
 
 export async function submitTicket(ticketId: string, csrfToken: string): Promise<Ticket> {
-  return requestJson<Ticket>(`/api/v1/tickets/${ticketId}/submit`, {
+  return apiRequestJson<Ticket>(`/api/v1/tickets/${ticketId}/submit`, {
     headers: { "X-CSRF-Token": csrfToken },
     method: "POST",
   });
@@ -163,17 +163,9 @@ export async function addTicketInformation(
   body: string,
   csrfToken: string,
 ): Promise<Ticket> {
-  return requestJson<Ticket>(`/api/v1/tickets/${ticketId}/timeline`, {
+  return apiRequestJson<Ticket>(`/api/v1/tickets/${ticketId}/timeline`, {
     body: JSON.stringify({ body }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
   });
-}
-
-async function requestJson<TResponse>(path: string, init: RequestInit): Promise<TResponse> {
-  const response = await fetch(`${baseUrl}${path}`, { ...init, credentials: "include" });
-  if (!response.ok) {
-    throw await toApiError(response);
-  }
-  return (await response.json()) as TResponse;
 }

@@ -1,4 +1,4 @@
-import { resolveApiBaseUrl, toApiError } from "./client";
+import { apiRequestJson } from "./client";
 import type { TicketState } from "./tickets";
 
 export type RfiProductOffer = {
@@ -36,16 +36,14 @@ export type RfiSearchResults = {
   metrics: RfiSearchMetrics | null;
 };
 
-const baseUrl = resolveApiBaseUrl();
-
 export async function getRfiSearchResults(ticketId: string): Promise<RfiSearchResults> {
-  return requestJson<RfiSearchResults>(`/api/v1/rfi-search/${ticketId}/results`, {
+  return apiRequestJson<RfiSearchResults>(`/api/v1/rfi-search/${ticketId}/results`, {
     method: "GET",
   });
 }
 
 export async function runRfiSearch(ticketId: string, csrfToken: string): Promise<RfiSearchResults> {
-  return requestJson<RfiSearchResults>(`/api/v1/rfi-search/${ticketId}/run`, {
+  return apiRequestJson<RfiSearchResults>(`/api/v1/rfi-search/${ticketId}/run`, {
     headers: { "X-CSRF-Token": csrfToken },
     method: "POST",
   });
@@ -56,7 +54,7 @@ export async function acceptProductOffer(
   productId: string,
   csrfToken: string,
 ): Promise<RfiSearchResults> {
-  return requestJson<RfiSearchResults>(
+  return apiRequestJson<RfiSearchResults>(
     `/api/v1/rfi-search/${ticketId}/offers/${productId}/accept`,
     {
       headers: { "X-CSRF-Token": csrfToken },
@@ -71,7 +69,7 @@ export async function rejectProductOffer(
   reason: string,
   csrfToken: string,
 ): Promise<RfiSearchResults> {
-  return requestJson<RfiSearchResults>(
+  return apiRequestJson<RfiSearchResults>(
     `/api/v1/rfi-search/${ticketId}/offers/${productId}/reject`,
     {
       body: JSON.stringify({ reason }),
@@ -79,12 +77,4 @@ export async function rejectProductOffer(
       method: "POST",
     },
   );
-}
-
-async function requestJson<TResponse>(path: string, init: RequestInit): Promise<TResponse> {
-  const response = await fetch(`${baseUrl}${path}`, { ...init, credentials: "include" });
-  if (!response.ok) {
-    throw await toApiError(response);
-  }
-  return (await response.json()) as TResponse;
 }

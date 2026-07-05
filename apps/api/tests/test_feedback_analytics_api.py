@@ -1,7 +1,12 @@
+from dataclasses import replace
+from datetime import UTC, datetime
+from uuid import UUID, uuid4
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from coeus.core.config import Settings
+from coeus.domain.tickets import ProductDissemination
 from coeus.main import create_app
 from rfi_search_helpers import login, submitted_ticket
 
@@ -89,6 +94,46 @@ async def test_team_dashboards_are_route_scoped_and_protected() -> None:
     assert collection_dashboard.json()["metrics"]["collectionRoutes"] == 1
     assert forbidden_admin.status_code == 403
     assert rfa_manager["user"]["username"] == "rfa.manager@example.test"
+
+
+@pytest.mark.asyncio
+async def test_team_dashboard_excludes_product_reuse_rows_without_store_access() -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    collection_product = next(
+        product
+        for product in app.state.store_services.repository.list_products()
+        if product.metadata.owner_team == "Collection"
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        user = await login(client, "user@example.test")
+        ticket_id = await _approved_route_ticket(client, str(user["csrfToken"]), "rfa")
+        repository = app.state.ticket_services.tickets._repository
+        ticket = repository.get(UUID(ticket_id))
+        assert ticket is not None
+        repository.save(
+            replace(
+                ticket,
+                disseminations=(
+                    ProductDissemination(
+                        uuid4(),
+                        ticket.ticket_id,
+                        collection_product.product_id,
+                        ticket.requester_user_id,
+                        datetime.now(UTC),
+                    ),
+                ),
+            )
+        )
+        await login(client, "rfa.manager@example.test")
+        dashboard = await client.get("/api/v1/analytics/rfa")
+
+    assert dashboard.status_code == 200
+    assert collection_product.metadata.title not in {
+        item["title"] for item in dashboard.json()["productReuse"]
+    }
 
 
 async def _approved_feedback_request(client: AsyncClient, app: object, acg_id: str) -> str:

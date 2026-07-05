@@ -24,7 +24,6 @@ from coeus.services.intake import (
     merge_intake,
 )
 from coeus.services.ticket_records import (
-    ASSIGNED_READ_STATES,
     is_owner,
     suggest_project_name,
     timeline,
@@ -54,12 +53,6 @@ class TicketService:
     def list_visible_tickets(self, actor: UserAccount) -> tuple[TicketRecord, ...]:
         if Permission.TICKET_READ_ALL in actor.permissions:
             return self._repository.list_tickets()
-        if Permission.TICKET_READ_ASSIGNED in actor.permissions:
-            return tuple(
-                ticket
-                for ticket in self._repository.list_tickets()
-                if ticket.state in ASSIGNED_READ_STATES
-            )
         if Permission.TICKET_READ_OWN in actor.permissions:
             return self._repository.list_for_requester(actor.user_id)
         return ()
@@ -67,6 +60,26 @@ class TicketService:
     def get_visible_ticket(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         ticket = self._repository.get(ticket_id)
         if ticket is None or not self._can_read(actor, ticket):
+            raise AppError(404, "ticket_not_found", "Ticket was not found.")
+        return ticket
+
+    def list_workflow_tickets(
+        self, actor: UserAccount, permissions: frozenset[Permission]
+    ) -> tuple[TicketRecord, ...]:
+        if Permission.TICKET_READ_ALL in actor.permissions or permissions.intersection(
+            actor.permissions
+        ):
+            return self._repository.list_tickets()
+        return ()
+
+    def get_workflow_ticket(
+        self, actor: UserAccount, ticket_id: UUID, permissions: frozenset[Permission]
+    ) -> TicketRecord:
+        ticket = self._repository.get(ticket_id)
+        if ticket is None or (
+            Permission.TICKET_READ_ALL not in actor.permissions
+            and not permissions.intersection(actor.permissions)
+        ):
             raise AppError(404, "ticket_not_found", "Ticket was not found.")
         return ticket
 
@@ -214,14 +227,7 @@ class TicketService:
         return updated
 
     def _can_read(self, actor: UserAccount, ticket: TicketRecord) -> bool:
-        return (
-            is_owner(actor, ticket)
-            or Permission.TICKET_READ_ALL in actor.permissions
-            or (
-                Permission.TICKET_READ_ASSIGNED in actor.permissions
-                and ticket.state in ASSIGNED_READ_STATES
-            )
-        )
+        return is_owner(actor, ticket) or Permission.TICKET_READ_ALL in actor.permissions
 
     def _state_for_intake(self, current: TicketState, intake: IntakeDetails) -> TicketState:
         target = (

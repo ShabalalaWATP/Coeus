@@ -91,6 +91,29 @@ def test_login_failure_state_is_bounded() -> None:
     assert len(audit_log.list_events()) == 4
 
 
+def test_username_spraying_does_not_evict_active_lockout() -> None:
+    settings = Settings(
+        environment="test",
+        argon2_memory_cost=8_192,
+        login_lockout_threshold=2,
+        login_attempt_max_entries=3,
+    )
+    service, attempts, _audit_log = build_auth_service_with_repositories(settings)
+
+    for _index in range(settings.login_lockout_threshold):
+        with pytest.raises(AppError):
+            service.login("admin@example.test", "wrong")
+    for index in range(8):
+        with pytest.raises(AppError):
+            service.login(f"missing-{index}@example.test", "wrong")
+
+    with pytest.raises(AppError) as exc_info:
+        service.login("admin@example.test", SEED_CREDENTIAL)
+
+    assert exc_info.value.code == "account_locked"
+    assert attempts.entry_count == settings.login_attempt_max_entries
+
+
 def test_expired_session_is_rejected_and_removed() -> None:
     service = build_auth_service(
         Settings(environment="test", session_ttl_seconds=-1, argon2_memory_cost=8_192)

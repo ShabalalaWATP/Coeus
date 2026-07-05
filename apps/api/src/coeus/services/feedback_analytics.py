@@ -73,7 +73,7 @@ class FeedbackAnalyticsService:
     def list_feedback_requests(self, actor: UserAccount) -> tuple[FeedbackRequestView, ...]:
         self._require(actor, Permission.FEEDBACK_CREATE)
         views = [
-            self._feedback_view(ticket, request)
+            self._feedback_view(actor, ticket, request)
             for ticket in self._tickets.tickets.list_visible_tickets(actor)
             for request in ticket.feedback_requests
             if request.requester_user_id == actor.user_id
@@ -124,11 +124,11 @@ class FeedbackAnalyticsService:
             str(actor.user_id),
             {"ticket_id": str(ticket.ticket_id), "request_id": str(request_id)},
         )
-        return self._feedback_view(updated, updated_request)
+        return self._feedback_view(actor, updated, updated_request)
 
     def dashboard(self, actor: UserAccount, audience: AnalyticsAudience) -> AnalyticsDashboard:
         tickets = self._tickets_for_audience(actor, audience)
-        reuse = self._product_reuse(tickets)
+        reuse = self._product_reuse(actor, tickets)
         metrics = self._metrics(tickets)
         return AnalyticsDashboard(
             audience=audience,
@@ -140,16 +140,16 @@ class FeedbackAnalyticsService:
     def _tickets_for_audience(
         self, actor: UserAccount, audience: AnalyticsAudience
     ) -> tuple[TicketRecord, ...]:
-        tickets = self._tickets.tickets.list_visible_tickets(actor)
         if audience == AnalyticsAudience.ADMIN:
             self._require(actor, Permission.ANALYTICS_VIEW_GLOBAL)
-            return tickets
+            return self._tickets.tickets.list_visible_tickets(actor)
         self._require(actor, Permission.ANALYTICS_VIEW_TEAM)
         route = RoutingRoute.RFA if audience == AnalyticsAudience.RFA else RoutingRoute.CM
         review_permission = (
             Permission.RFA_REVIEW if route == RoutingRoute.RFA else Permission.COLLECTION_REVIEW
         )
         self._require(actor, review_permission)
+        tickets = self._tickets.tickets.list_workflow_tickets(actor, frozenset({review_permission}))
         return tuple(ticket for ticket in tickets if _route_scoped(ticket, route))
 
     def _find_request(
@@ -161,11 +161,13 @@ class FeedbackAnalyticsService:
                     return ticket, request
         raise AppError(404, "feedback_request_not_found", "Feedback request was not found.")
 
-    def _feedback_view(self, ticket: TicketRecord, request: FeedbackRequest) -> FeedbackRequestView:
+    def _feedback_view(
+        self, actor: UserAccount, ticket: TicketRecord, request: FeedbackRequest
+    ) -> FeedbackRequestView:
         return FeedbackRequestView(
             request=request,
             ticket=ticket,
-            product_title=_product_title(self._store, request.product_id),
+            product_title=_product_title(self._store, actor, request.product_id),
             submission=_submission_for(ticket, request.request_id),
         )
 
@@ -188,7 +190,9 @@ class FeedbackAnalyticsService:
             ),
         )
 
-    def _product_reuse(self, tickets: tuple[TicketRecord, ...]) -> tuple[ProductReuseMetric, ...]:
+    def _product_reuse(
+        self, actor: UserAccount, tickets: tuple[TicketRecord, ...]
+    ) -> tuple[ProductReuseMetric, ...]:
         dissemination_product_ids = {
             item.product_id for ticket in tickets for item in ticket.disseminations
         }
@@ -202,7 +206,11 @@ class FeedbackAnalyticsService:
             if offer.status.value == "accepted"
         }
         product_ids = dissemination_product_ids | feedback_product_ids | accepted_product_ids
-        metrics = tuple(self._reuse_metric(product_id, tickets) for product_id in product_ids)
+        metrics = tuple(
+            metric
+            for product_id in product_ids
+            if (metric := self._reuse_metric(actor, product_id, tickets)) is not None
+        )
         return tuple(
             sorted(
                 metrics,
@@ -214,9 +222,12 @@ class FeedbackAnalyticsService:
         )
 
     def _reuse_metric(
-        self, product_id: UUID, tickets: tuple[TicketRecord, ...]
-    ) -> ProductReuseMetric:
-        product = self._store.repository.get_product(product_id)
+        self, actor: UserAccount, product_id: UUID, tickets: tuple[TicketRecord, ...]
+    ) -> ProductReuseMetric | None:
+        try:
+            product = self._store.details.get_visible_product(actor, product_id)
+        except AppError:
+            return None
         submissions = [
             item
             for ticket in tickets
@@ -225,9 +236,9 @@ class FeedbackAnalyticsService:
         ]
         return ProductReuseMetric(
             product_id=product_id,
-            reference=product.reference if product else "UNKNOWN",
-            title=product.metadata.title if product else "Unknown product",
-            owner_team=product.metadata.owner_team if product else "Unknown",
+            reference=product.reference,
+            title=product.metadata.title,
+            owner_team=product.metadata.owner_team,
             dissemination_count=sum(
                 1
                 for ticket in tickets
@@ -281,9 +292,11 @@ def _submission_for(ticket: TicketRecord, request_id: UUID) -> FeedbackSubmissio
     return None
 
 
-def _product_title(store: StoreServices, product_id: UUID) -> str:
-    product = store.repository.get_product(product_id)
-    return product.metadata.title if product is not None else "Unknown product"
+def _product_title(store: StoreServices, actor: UserAccount, product_id: UUID) -> str:
+    try:
+        return store.details.get_visible_product(actor, product_id).metadata.title
+    except AppError:
+        return "Unknown product"
 
 
 def _average(values: list[int]) -> float | None:

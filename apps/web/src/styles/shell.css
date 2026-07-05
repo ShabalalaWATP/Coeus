@@ -92,11 +92,16 @@
   background: color-mix(in srgb, var(--surface-muted) 86%, transparent);
 }
 
+.command-search-wrap {
+  position: relative;
+  width: min(520px, 100%);
+}
+
 .command-search {
   display: flex;
   align-items: center;
   gap: 10px;
-  width: min(520px, 100%);
+  width: 100%;
   height: 42px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -114,10 +119,65 @@
   font-size: 0.92rem;
 }
 
+.command-menu,
+.command-popover {
+  position: absolute;
+  z-index: 20;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.command-menu {
+  top: calc(100% + 8px);
+  left: 0;
+  display: grid;
+  gap: 4px;
+  width: min(360px, 100%);
+  padding: 8px;
+}
+
+.command-menu button {
+  min-height: 36px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.command-menu button:hover,
+.command-menu button:focus-visible {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  outline: none;
+}
+
+.command-menu p {
+  margin: 0;
+  padding: 8px;
+  color: var(--muted);
+}
+
 .command-bar__actions {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.command-popover {
+  top: calc(100% + 10px);
+  right: 0;
+  width: min(280px, calc(100vw - 32px));
+  padding: 14px;
+}
+
+.command-popover p,
+.command-popover small {
+  display: block;
+  margin: 6px 0 0;
+  color: var(--muted);
 }
 
 .icon-button,

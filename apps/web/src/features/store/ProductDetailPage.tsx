@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Download, FileText, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Download, FileText, ShieldAlert } from "lucide-react";
 import { Link, useLocation, useParams } from "react-router-dom";
 
 import { productTypeLabel } from "./store-options";
@@ -41,6 +41,7 @@ export default function ProductDetailPage() {
           <p>{product.summary}</p>
         </div>
         <Link className="store-action store-action--secondary" to="/store">
+          <ArrowLeft aria-hidden="true" size={18} />
           Back to store
         </Link>
       </section>
@@ -127,6 +128,10 @@ function StoreDenied() {
       <div>
         <h1 id="store-denied-title">Product not available</h1>
         <p>The product either does not exist or is outside your active ACGs.</p>
+        <Link className="store-action store-action--secondary" to="/store">
+          <ArrowLeft aria-hidden="true" size={18} />
+          Back to store
+        </Link>
       </div>
     </section>
   );

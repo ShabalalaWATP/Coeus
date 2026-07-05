@@ -24,6 +24,28 @@ test("sends request id headers and returns typed JSON", async () => {
   });
 });
 
+test("omits request id headers when none are provided", async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    json: () =>
+      Promise.resolve({
+        status: "ok",
+        service: "coeus-api",
+        environment: "test",
+        request_id: "req-web",
+      }),
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  await new ApiClient("http://api.test").getLiveness();
+
+  expect(fetchMock).toHaveBeenCalledWith("http://api.test/api/v1/health/live", {
+    credentials: "include",
+    headers: undefined,
+    method: "GET",
+  });
+});
+
 test("posts login payloads with credentials included", async () => {
   const fetchMock = vi.fn().mockResolvedValue({
     ok: true,

@@ -1,7 +1,7 @@
-import { resolveApiBaseUrl, toApiError } from "./client";
+import { apiRequestJson } from "./client";
 import type { TicketState } from "./tickets";
 
-export type AnalystAssignment = {
+type AnalystAssignment = {
   id: string;
   analystUserId: string;
   assignedByUserId: string;
@@ -76,10 +76,8 @@ export type DraftProductInput = {
   }[];
 };
 
-const baseUrl = resolveApiBaseUrl();
-
 export async function listAnalystTasks(): Promise<AnalystTaskList> {
-  return requestJson<AnalystTaskList>("/api/v1/analyst/tasks", { method: "GET" });
+  return apiRequestJson<AnalystTaskList>("/api/v1/analyst/tasks", { method: "GET" });
 }
 
 export async function addAnalystNote(
@@ -87,7 +85,7 @@ export async function addAnalystNote(
   body: string,
   csrfToken: string,
 ): Promise<AnalystTask> {
-  return requestJson<AnalystTask>(`/api/v1/analyst/tasks/${ticketId}/notes`, {
+  return apiRequestJson<AnalystTask>(`/api/v1/analyst/tasks/${ticketId}/notes`, {
     body: JSON.stringify({ body }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
@@ -99,7 +97,7 @@ export async function linkAnalystProduct(
   productId: string,
   csrfToken: string,
 ): Promise<AnalystTask> {
-  return requestJson<AnalystTask>(`/api/v1/analyst/tasks/${ticketId}/products`, {
+  return apiRequestJson<AnalystTask>(`/api/v1/analyst/tasks/${ticketId}/products`, {
     body: JSON.stringify({ productId }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
@@ -112,11 +110,14 @@ export async function updateWorkPackage(
   status: WorkPackage["status"],
   csrfToken: string,
 ): Promise<AnalystTask> {
-  return requestJson<AnalystTask>(`/api/v1/analyst/tasks/${ticketId}/work-packages/${packageId}`, {
-    body: JSON.stringify({ status }),
-    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
-    method: "PATCH",
-  });
+  return apiRequestJson<AnalystTask>(
+    `/api/v1/analyst/tasks/${ticketId}/work-packages/${packageId}`,
+    {
+      body: JSON.stringify({ status }),
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+      method: "PATCH",
+    },
+  );
 }
 
 export async function saveDraftProduct(
@@ -124,7 +125,7 @@ export async function saveDraftProduct(
   payload: DraftProductInput,
   csrfToken: string,
 ): Promise<AnalystTask> {
-  return requestJson<AnalystTask>(`/api/v1/analyst/tasks/${ticketId}/drafts`, {
+  return apiRequestJson<AnalystTask>(`/api/v1/analyst/tasks/${ticketId}/drafts`, {
     body: JSON.stringify(payload),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
@@ -132,16 +133,8 @@ export async function saveDraftProduct(
 }
 
 export async function submitTaskToQc(ticketId: string, csrfToken: string): Promise<AnalystTask> {
-  return requestJson<AnalystTask>(`/api/v1/analyst/tasks/${ticketId}/submit-qc`, {
+  return apiRequestJson<AnalystTask>(`/api/v1/analyst/tasks/${ticketId}/submit-qc`, {
     headers: { "X-CSRF-Token": csrfToken },
     method: "POST",
   });
-}
-
-async function requestJson<TResponse>(path: string, init: RequestInit): Promise<TResponse> {
-  const response = await fetch(`${baseUrl}${path}`, { ...init, credentials: "include" });
-  if (!response.ok) {
-    throw await toApiError(response);
-  }
-  return (await response.json()) as TResponse;
 }

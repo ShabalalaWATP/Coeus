@@ -28,12 +28,18 @@ type AuthContextValue = {
 
 type AuthProviderProps = PropsWithChildren<{
   client?: ApiClient;
+  clearSensitiveCache?: () => void;
   initialSession?: AuthSession | null;
 }>;
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-export function AuthProvider({ children, client = apiClient, initialSession }: AuthProviderProps) {
+export function AuthProvider({
+  children,
+  clearSensitiveCache = () => undefined,
+  client = apiClient,
+  initialSession,
+}: AuthProviderProps) {
   const [session, setSession] = useState<AuthSession | null>(initialSession ?? null);
   const [status, setStatus] = useState<AuthStatus>(() =>
     initialSession === undefined
@@ -61,6 +67,7 @@ export function AuthProvider({ children, client = apiClient, initialSession }: A
           setStatus(
             error instanceof ApiError && error.code === "session_expired" ? "expired" : "anonymous",
           );
+          clearSensitiveCache();
         }
       }
     }
@@ -68,26 +75,31 @@ export function AuthProvider({ children, client = apiClient, initialSession }: A
     return () => {
       active = false;
     };
-  }, [client, initialSession]);
+  }, [clearSensitiveCache, client, initialSession]);
 
   const login = useCallback(
     async (request: LoginRequest) => {
       const nextSession = await client.login(request);
+      clearSensitiveCache();
       setSession(nextSession);
       setStatus("authenticated");
       return nextSession;
     },
-    [client],
+    [clearSensitiveCache, client],
   );
 
   const logout = useCallback(async () => {
     const csrfToken = session?.csrfToken;
-    if (csrfToken !== undefined) {
-      await client.logout(csrfToken);
+    try {
+      if (csrfToken !== undefined) {
+        await client.logout(csrfToken);
+      }
+    } finally {
+      clearSensitiveCache();
+      setSession(null);
+      setStatus("anonymous");
     }
-    setSession(null);
-    setStatus("anonymous");
-  }, [client, session?.csrfToken]);
+  }, [clearSensitiveCache, client, session?.csrfToken]);
 
   const value = useMemo(
     () => ({
