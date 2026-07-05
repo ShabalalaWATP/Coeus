@@ -36,6 +36,14 @@ apps/web/coverage/
 apps/web/playwright-report/
 apps/web/test-results/
 
+# Security scan artifacts
+*.sarif
+*.spdx.json
+*-sbom.cdx.json
+zap-api.log
+zap-web.log
+zap-baseline/
+
 # Local runtime data
 .local/
 tmp/

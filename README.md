@@ -2,7 +2,7 @@
 
 Coeus is a secure, role-based intelligence tasking and intelligence product orchestration platform.
 
-This repository is being implemented from `coeus_spec_driven_implementation_plan.md`. The current baseline covers Sprint 1 through Sprint 12 foundations: monorepo skeleton, FastAPI foundation, React/Vite app shell, local development services, CI, authentication, sessions, RBAC, ACG and project workspace access controls, ticket intake, mock chatbot extraction, customer request dashboard, Intelligence Store metadata search and controlled asset access, deterministic mock product seeding, RFI Search Agent product offers, RFA and CM routing, analyst workflow, QC review, automatic product ingestion, dissemination, feedback submission, analytics dashboards, product reuse analytics, GCP dev deployment scaffolding, specs, ADRs and threat models.
+This repository is being implemented from `coeus_spec_driven_implementation_plan.md`. The current baseline covers Sprint 1 through Sprint 13 foundations: monorepo skeleton, FastAPI foundation, React/Vite app shell, local development services, CI, authentication, sessions, RBAC, ACG and project workspace access controls, ticket intake, mock chatbot extraction, customer request dashboard, Intelligence Store metadata search and controlled asset access, deterministic mock product seeding, RFI Search Agent product offers, RFA and CM routing, analyst workflow, QC review, automatic product ingestion, dissemination, feedback submission, analytics dashboards, product reuse analytics, GCP dev deployment scaffolding, security hardening gates, specs, ADRs and threat models.
 
 ## Repository Safety
 
@@ -44,6 +44,10 @@ default; every product and asset is synthetic and marked `MOCK DATA ONLY`.
 ## GitHub
 
 The implementation plan targets `ShabalalaWATP/coeus`. Work lands through protected-main pull requests with required CI/security checks.
+
+Security checks include backend and frontend quality gates, CodeQL, Semgrep,
+Gitleaks, Checkov, Trivy image scanning, CycloneDX SBOM generation and ZAP
+baseline scanning. See `docs/runbooks/ci-cd-pipeline.md`.
 
 ## GCP Dev Deployment
 

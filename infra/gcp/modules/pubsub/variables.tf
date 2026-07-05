@@ -18,3 +18,8 @@ variable "labels" {
   type        = map(string)
   default     = {}
 }
+
+variable "kms_key_name" {
+  description = "Customer-managed KMS key used to encrypt topics."
+  type        = string
+}
