@@ -13,13 +13,24 @@ REQUIRED_INTAKE_FIELDS = (
 )
 
 PROMPT_INJECTION_MARKERS = (
-    "ignore previous instructions",
-    "make me admin",
-    "reveal hidden prompt",
-    "hidden prompt",
+    "act as admin",
     "bypass rbac",
+    "developer mode",
+    "disable safety",
+    "exfiltrate",
     "fabricate existing product",
     "fabricate product",
+    "hidden prompt",
+    "ignore previous instructions",
+    "ignore safety",
+    "jailbreak",
+    "make me admin",
+    "override access controls",
+    "reveal hidden prompt",
+    "show internal instructions",
+    "system prompt",
+    "tool call",
+    "use admin tool",
 )
 
 

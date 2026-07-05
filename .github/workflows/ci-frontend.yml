@@ -28,6 +28,8 @@ jobs:
         run: pnpm --filter @coeus/web typecheck
       - name: Unit tests and coverage
         run: pnpm --filter @coeus/web test
+      - name: Production dependency audit
+        run: pnpm --filter @coeus/web audit --prod --audit-level moderate
       - name: Build
         run: pnpm --filter @coeus/web build
       - name: Install Playwright browser

@@ -24,6 +24,7 @@ Sprint 13: Security hardening.
 | 10 | QC queue, checklist, rejection, auto-ingestion, indexing, dissemination and feedback requests. | Complete | Local and GitHub backend, frontend, Semgrep and CodeQL gates passed on 2026-07-05. |
 | 11 | Feedback submission, admin/RFA/CM dashboards, product reuse analytics and Trends Analysis Agent. | Complete | Local backend, frontend, Semgrep and security gates passed on 2026-07-05. |
 | 12 | GCP dev deployment, Terraform baseline, Cloud Run, Cloud SQL, Cloud Storage, Secret Manager, Pub/Sub, Artifact Registry and Gemma config. | Complete | Local backend, frontend, Terraform, Semgrep and security gates passed on 2026-07-05. |
+| 13 | Security hardening, container scans, SBOM, DAST, Terraform scanning, prompt-injection suite and air-gapped notes. | Complete | Local backend, frontend, Semgrep, Checkov and Gitleaks gates passed on 2026-07-05; Docker-backed checks run in GitHub Actions. |
 
 ## Sprint 11 Delivered Scope
 
@@ -76,14 +77,32 @@ Sprint 13: Security hardening.
 - Semgrep full-repository scan: 0 findings.
 - File line limit and Compose config: passed.
 
-## Sprint 13 Next Scope
+## Sprint 13 Delivered Scope
 
-- CodeQL and Semgrep hardening review.
-- Secret scanning and push protection confirmation.
-- Trivy or Grype container scans.
-- SBOM generation.
-- ZAP baseline.
-- Terraform scanning.
-- Prompt injection suite.
-- Full threat model pass.
-- Air-gapped deployment notes.
+- CodeQL extended and security-and-quality queries.
+- Semgrep `auto` plus OWASP Top 10 scanning.
+- Gitleaks committed-history scan and documented GitHub push protection.
+- Trivy API and web container image scanning with SARIF upload.
+- CycloneDX SBOM generation.
+- ZAP baseline against a local CI-hosted web target.
+- Checkov Terraform scan with SARIF upload.
+- Terraform hardening for KMS, Cloud SQL logging, OIDC trust and bucket logs.
+- Prompt-injection regression suite.
+- Sprint 13 spec, ADR, threat model and air-gapped deployment runbook.
+
+## Sprint 13 Verification
+
+- Backend Ruff, mypy and pytest: 113 passed, 95.59 percent total coverage.
+- Backend Bandit and pip-audit: passed; local package skipped by pip-audit.
+- Frontend Prettier, ESLint and TypeScript: passed. ESLint has existing router
+  fast-refresh warnings only.
+- Frontend Vitest: 118 passed, 99.92 percent line coverage and 95.06 percent
+  branch coverage.
+- Frontend production build, Playwright e2e and production dependency audit:
+  passed.
+- Terraform fmt, init and validate: passed with Terraform 1.10.5 and Google
+  provider 7.39.0.
+- Checkov Terraform scan: 118 passed, 0 failed, 2 documented skips.
+- Semgrep hardened scan: 0 findings.
+- Gitleaks committed-history scan: no leaks found.
+- File line limit and Compose config: passed.

@@ -26,19 +26,28 @@ Current checks:
 - `analyse (javascript-typescript)`
 - `semgrep`
 - `terraform`
+- `checkov`
+- `trivy`
+- `gitleaks`
+- `sbom`
+- `zap-baseline`
 
 Enable in repository settings:
 
 - secret scanning
 - push protection
 
-Future checks from the implementation plan should be added as their workflows land:
+Code scanning tools to require where GitHub offers them in the ruleset UI:
 
-- container scan
+- CodeQL, high or higher security alerts, errors
+- Semgrep OSS, high or higher security alerts, errors
+- Trivy, high or higher security alerts, errors
+- Checkov, high or higher security alerts, errors
+
+Optional future checks:
+
 - dependency review after Dependency Graph and GitHub Advanced Security support are available for the repository
-- Terraform security scan
-- ZAP baseline
-- deployment checks
+- deployment checks once GCP hosting is activated
 
 ## Notes
 

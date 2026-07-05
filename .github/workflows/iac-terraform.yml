@@ -2,14 +2,8 @@ name: Terraform IaC
 
 on:
   pull_request:
-    paths:
-      - "infra/gcp/**"
-      - ".github/workflows/iac-terraform.yml"
   push:
     branches: [main]
-    paths:
-      - "infra/gcp/**"
-      - ".github/workflows/iac-terraform.yml"
 
 permissions:
   contents: read

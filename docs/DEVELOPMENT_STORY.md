@@ -141,3 +141,25 @@
   pip-audit and Semgrep; frontend Prettier, ESLint, TypeScript, Vitest
   coverage, build, Playwright e2e and package audit; Terraform fmt and
   validate; file line limit; Compose config.
+
+## 2026-07-05 Sprint 13
+
+- Hardened CodeQL with extended and security-and-quality query suites.
+- Hardened Semgrep with `auto` and OWASP Top 10 rules across app source,
+  Dockerfiles, Terraform and GitHub workflows.
+- Added Gitleaks committed-history scanning and CycloneDX SBOM generation.
+- Added Trivy scanning for API and web container images.
+- Added Checkov Terraform scanning with SARIF upload.
+- Added a ZAP baseline workflow against a local CI-hosted web target.
+- Extended Dependabot coverage to Docker and Terraform.
+- Hardened Terraform with a KMS module, customer-managed encryption for
+  Artifact Registry and Pub/Sub, Cloud SQL audit logging, disabled public SQL
+  IPv4, narrower GitHub OIDC trust and GCS access logging.
+- Added a prompt-injection regression suite for jailbreak, system prompt,
+  RBAC bypass, admin escalation, tool abuse and fabricated product attempts.
+- Added the Sprint 13 spec, security gates ADR, security-hardening threat model
+  and air-gapped deployment runbook.
+- Verified local Sprint 13 gates: backend Ruff, mypy, pytest coverage, Bandit
+  and pip-audit; frontend Prettier, ESLint, TypeScript, Vitest coverage, build,
+  Playwright e2e and production dependency audit; Terraform fmt, init and
+  validate; Checkov, Semgrep, Gitleaks, file line limit and Compose config.

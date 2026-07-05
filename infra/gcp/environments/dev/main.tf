@@ -12,6 +12,7 @@ locals {
     "compute.googleapis.com",
     "iam.googleapis.com",
     "iamcredentials.googleapis.com",
+    "cloudkms.googleapis.com",
     "run.googleapis.com",
     "secretmanager.googleapis.com",
     "serviceusage.googleapis.com",
@@ -33,6 +34,7 @@ locals {
     "${local.name_prefix}-product-assets",
     "${local.name_prefix}-generated-previews",
     "${local.name_prefix}-audit-exports",
+    "${local.name_prefix}-storage-access-logs",
   ])
 
   topic_names = toset([
@@ -48,6 +50,9 @@ locals {
     "${local.name_prefix}.feedback.received",
     "${local.name_prefix}.analytics.rebuild_requested",
   ])
+
+  artifact_registry_service_agent = "service-${var.project_number}@gcp-sa-artifactregistry.iam.gserviceaccount.com"
+  pubsub_service_agent            = "service-${var.project_number}@gcp-sa-pubsub.iam.gserviceaccount.com"
 }
 
 module "project_services" {
@@ -73,6 +78,22 @@ module "artifact_registry" {
   repository_id = "coeus"
   region        = var.region
   labels        = local.labels
+  kms_key_name  = module.kms.crypto_key_id
+
+  depends_on = [module.kms]
+}
+
+module "kms" {
+  source = "../../modules/kms"
+
+  key_ring_name   = "${local.name_prefix}-security"
+  crypto_key_name = "${local.name_prefix}-application"
+  region          = var.region
+  labels          = local.labels
+  crypto_key_users = toset([
+    "serviceAccount:${local.artifact_registry_service_agent}",
+    "serviceAccount:${local.pubsub_service_agent}",
+  ])
 
   depends_on = [module.project_services]
 }
@@ -89,9 +110,10 @@ module "secrets" {
 module "storage" {
   source = "../../modules/cloud_storage"
 
-  buckets = local.bucket_names
-  region  = var.region
-  labels  = local.labels
+  buckets                = local.bucket_names
+  region                 = var.region
+  labels                 = local.labels
+  access_log_bucket_name = "${local.name_prefix}-storage-access-logs"
 
   depends_on = [module.project_services]
 }
@@ -103,8 +125,9 @@ module "pubsub" {
   project_number = var.project_number
   topic_names    = local.topic_names
   labels         = local.labels
+  kms_key_name   = module.kms.crypto_key_id
 
-  depends_on = [module.project_services]
+  depends_on = [module.kms]
 }
 
 module "database" {

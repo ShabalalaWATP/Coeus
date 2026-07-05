@@ -10,10 +10,18 @@ The repository uses GitHub Actions for pull-request and `main` branch checks.
 | `Frontend CI` | pull request, push to `main` | ESLint, TypeScript, Vitest coverage, Vite build and Playwright Chromium smoke. |
 | `CodeQL` | pull request, push to `main`, weekly schedule | GitHub CodeQL analysis for Python and JavaScript/TypeScript. |
 | `Semgrep` | pull request, push to `main`, weekly schedule | Semgrep SAST over application source, Dockerfiles and GitHub config, with SARIF upload. |
-| `Terraform IaC` | pull request, push to `main` when GCP files change | Terraform fmt, init without backend and validate for the dev environment. |
+| `Terraform IaC` | pull request, push to `main` | Terraform fmt, init without backend and validate for the dev environment. |
+| `IaC Security` | pull request, push to `main`, weekly schedule | Checkov Terraform scan with SARIF upload. |
+| `Container Security` | pull request, push to `main`, weekly schedule | Docker image build and Trivy vulnerability scanning for API and web images. |
+| `Supply Chain Security` | pull request, push to `main`, weekly schedule | Gitleaks committed-history scan and CycloneDX SBOM artifact generation. |
+| `DAST Security` | pull request, push to `main`, weekly schedule | ZAP baseline scan against a local CI-hosted web target. |
 | `Deploy Dev` | manual dispatch, optional push to `main` | Keyless build, push and Cloud Run deploy for the GCP dev environment. |
 
-Dependabot runs weekly for GitHub Actions, npm and pip dependencies. Each ecosystem has a 7-day cooldown for version updates. npm semver-major version updates are ignored during this milestone and should be handled as planned upgrade work with migration notes, not automatic dependency PRs.
+Dependabot runs weekly for GitHub Actions, npm, pip, Docker and Terraform
+dependencies. Each ecosystem has a 7-day cooldown for version updates. npm
+semver-major version updates are ignored during this milestone and should be
+handled as planned upgrade work with migration notes, not automatic dependency
+PRs.
 
 ## Required Status Checks
 
@@ -25,6 +33,11 @@ After the workflows have run on GitHub, configure the `protect main` ruleset to 
 - `analyse (javascript-typescript)`
 - `semgrep`
 - `terraform`
+- `checkov`
+- `trivy`
+- `gitleaks`
+- `sbom`
+- `zap-baseline`
 
 GitHub only offers checks that have recently run in the repository, so push the workflow commit first, let the checks complete, then add them to the branch protection rule.
 
@@ -38,6 +51,8 @@ Enable these GitHub repository settings:
 - Dependabot security updates enabled.
 - Secret scanning enabled.
 - Push protection enabled.
+- Code scanning required for CodeQL, Semgrep, Trivy and Checkov high-or-higher
+  security results where GitHub exposes those tools in the ruleset UI.
 - Branch protection for `main` as described in `docs/runbooks/github-branch-protection.md`.
 
 Dependency Review can be added later if GitHub reports it as supported for the repository. At the time this runbook was written, GitHub reported that Dependency Review was not supported without Dependency Graph and GitHub Advanced Security support for the repository.

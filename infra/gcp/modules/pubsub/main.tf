@@ -5,15 +5,17 @@ locals {
 resource "google_pubsub_topic" "topic" {
   for_each = var.topic_names
 
-  name   = each.value
-  labels = var.labels
+  name         = each.value
+  kms_key_name = var.kms_key_name
+  labels       = var.labels
 }
 
 resource "google_pubsub_topic" "dead_letter" {
   for_each = var.topic_names
 
-  name   = "${each.value}.dead-letter"
-  labels = var.labels
+  name         = "${each.value}.dead-letter"
+  kms_key_name = var.kms_key_name
+  labels       = var.labels
 }
 
 resource "google_pubsub_subscription" "worker" {

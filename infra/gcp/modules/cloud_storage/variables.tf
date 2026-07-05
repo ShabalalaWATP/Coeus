@@ -13,3 +13,8 @@ variable "labels" {
   type        = map(string)
   default     = {}
 }
+
+variable "access_log_bucket_name" {
+  description = "Bucket that receives Cloud Storage access logs."
+  type        = string
+}

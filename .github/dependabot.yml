@@ -31,3 +31,15 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 7
+  - package-ecosystem: "docker"
+    directory: "/infra/docker"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "terraform"
+    directory: "/infra/gcp/environments/dev"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
