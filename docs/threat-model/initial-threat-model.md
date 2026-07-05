@@ -29,11 +29,10 @@ Sprint 1 covers repository structure, API skeleton, web shell, CI and local deve
 | Unsafe browser defaults | Security headers on API responses. |
 | Unavailable database hidden by shallow health checks | Readiness endpoint performs a database check. |
 | Low-quality baseline accepted too early | Backend and frontend coverage gates set to 95 percent line and branch coverage. |
-| Supply-chain drift | Dependabot configuration and CI lockfile usage. |
+| Supply-chain drift | Dependabot configuration, CI lockfile usage, pnpm release-age cooldown and pnpm trust policy. |
 
 ## Open Risks
 
 - Authentication, session security, RBAC and ACG enforcement start in later sprints.
 - MinIO image is currently used for local development only and should be pinned before release hardening.
 - Full seed insertion waits for database schema implementation.
-

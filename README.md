@@ -2,7 +2,7 @@
 
 Coeus is a secure, role-based intelligence tasking and intelligence product orchestration platform.
 
-This repository is being implemented from `coeus_spec_driven_implementation_plan.md`. The current baseline covers Sprint 1 through Sprint 10 foundations: monorepo skeleton, FastAPI foundation, React/Vite app shell, local development services, CI, authentication, sessions, RBAC, ACG and project workspace access controls, ticket intake, mock chatbot extraction, customer request dashboard, Intelligence Store metadata search and controlled asset access, deterministic mock product seeding, RFI Search Agent product offers, RFA and CM routing, analyst workflow, QC review, automatic product ingestion, dissemination, feedback request creation, specs, ADRs and threat models.
+This repository is being implemented from `coeus_spec_driven_implementation_plan.md`. The current baseline covers Sprint 1 through Sprint 11 foundations: monorepo skeleton, FastAPI foundation, React/Vite app shell, local development services, CI, authentication, sessions, RBAC, ACG and project workspace access controls, ticket intake, mock chatbot extraction, customer request dashboard, Intelligence Store metadata search and controlled asset access, deterministic mock product seeding, RFI Search Agent product offers, RFA and CM routing, analyst workflow, QC review, automatic product ingestion, dissemination, feedback submission, analytics dashboards, product reuse analytics, specs, ADRs and threat models.
 
 ## Repository Safety
 

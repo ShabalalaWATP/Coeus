@@ -5,3 +5,20 @@ allowBuilds:
   esbuild: true
   msw: true
 blockExoticSubdeps: true
+minimumReleaseAge: 10080
+minimumReleaseAgeExclude:
+  - "@typescript-eslint/*"
+  - baseline-browser-mapping@2.10.41
+  - brace-expansion@5.0.7
+  - caniuse-lite@1.0.30001800
+  - electron-to-chromium@1.5.385
+  - picomatch@4.0.5
+  - prettier@3.9.4
+  - react-router-dom@7.18.1
+  - react-router@7.18.1
+  - tldts-core@7.4.6
+  - tldts@7.4.6
+  - typescript-eslint@8.62.1
+trustPolicy: no-downgrade
+trustPolicyExclude:
+  - semver@6.3.1

@@ -4,7 +4,7 @@ from enum import StrEnum
 from uuid import UUID
 
 from coeus.domain.enums import TicketState
-from coeus.domain.qc import FeedbackRequest, ProductIndexRecord, QcDecision
+from coeus.domain.qc import FeedbackRequest, FeedbackSubmission, ProductIndexRecord, QcDecision
 
 
 class MessageAuthor(StrEnum):
@@ -311,5 +311,6 @@ class TicketRecord:
     qc_decisions: tuple[QcDecision, ...] = field(default_factory=tuple)
     product_index_records: tuple[ProductIndexRecord, ...] = field(default_factory=tuple)
     feedback_requests: tuple[FeedbackRequest, ...] = field(default_factory=tuple)
+    feedback_submissions: tuple[FeedbackSubmission, ...] = field(default_factory=tuple)
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
