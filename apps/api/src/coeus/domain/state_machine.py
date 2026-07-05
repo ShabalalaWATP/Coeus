@@ -2,14 +2,33 @@ from coeus.domain.enums import TicketState
 
 ALLOWED_TRANSITIONS: dict[TicketState, frozenset[TicketState]] = {
     TicketState.DRAFT_INTAKE: frozenset({TicketState.INFO_REQUIRED, TicketState.RFI_SEARCHING}),
-    TicketState.INFO_REQUIRED: frozenset({TicketState.DRAFT_INTAKE}),
+    TicketState.INFO_REQUIRED: frozenset({TicketState.DRAFT_INTAKE, TicketState.ROUTE_ASSESSMENT}),
     TicketState.RFI_SEARCHING: frozenset(
         {TicketState.RFI_MATCH_OFFERED, TicketState.ROUTE_ASSESSMENT}
     ),
     TicketState.RFI_MATCH_OFFERED: frozenset(
         {TicketState.CLOSED_EXISTING_PRODUCT_ACCEPTED, TicketState.ROUTE_ASSESSMENT}
     ),
-    TicketState.ROUTE_ASSESSMENT: frozenset({TicketState.CANCELLED}),
+    TicketState.ROUTE_ASSESSMENT: frozenset(
+        {
+            TicketState.INFO_REQUIRED,
+            TicketState.RFA_MANAGER_REVIEW,
+            TicketState.CM_MANAGER_REVIEW,
+            TicketState.CANCELLED,
+        }
+    ),
+    TicketState.RFA_MANAGER_REVIEW: frozenset(
+        {
+            TicketState.INFO_REQUIRED,
+            TicketState.CM_MANAGER_REVIEW,
+            TicketState.ANALYST_ASSIGNMENT,
+            TicketState.CANCELLED,
+        }
+    ),
+    TicketState.CM_MANAGER_REVIEW: frozenset(
+        {TicketState.INFO_REQUIRED, TicketState.ANALYST_ASSIGNMENT, TicketState.CANCELLED}
+    ),
+    TicketState.ANALYST_ASSIGNMENT: frozenset({TicketState.CANCELLED}),
     TicketState.CLOSED_EXISTING_PRODUCT_ACCEPTED: frozenset(),
     TicketState.CANCELLED: frozenset(),
 }

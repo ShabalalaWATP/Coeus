@@ -11,6 +11,7 @@ from coeus.domain.auth import AuthenticatedSession
 from coeus.services.access import AccessServices
 from coeus.services.auth import AuthService
 from coeus.services.rfi_search import RfiSearchService
+from coeus.services.routing import RoutingService
 from coeus.services.store import StoreServices
 from coeus.services.tickets import TicketServices
 
@@ -65,6 +66,13 @@ def get_rfi_search_service(request: Request) -> RfiSearchService:
     if not isinstance(rfi_search_service, RfiSearchService):
         raise AppError(500, "rfi_search_not_configured", "RFI search is not configured.")
     return rfi_search_service
+
+
+def get_routing_service(request: Request) -> RoutingService:
+    routing_service = getattr(request.app.state, "routing_service", None)
+    if not isinstance(routing_service, RoutingService):
+        raise AppError(500, "routing_not_configured", "Routing is not configured.")
+    return routing_service
 
 
 def get_current_session(
