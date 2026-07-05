@@ -1,0 +1,104 @@
+name: Deploy Dev
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "apps/api/**"
+      - "apps/web/**"
+      - "infra/docker/**"
+      - ".github/workflows/deploy-dev.yml"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.GCP_DEPLOY_DEV_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    environment: dev
+    env:
+      PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      REGION: ${{ vars.GCP_REGION }}
+      REPOSITORY: ${{ vars.GCP_ARTIFACT_REPOSITORY }}
+      API_SERVICE: ${{ vars.GCP_API_SERVICE }}
+      WEB_SERVICE: ${{ vars.GCP_WEB_SERVICE }}
+      WIF_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      WIF_SERVICE_ACCOUNT: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Validate deployment variables
+        run: |
+          required=(
+            PROJECT_ID
+            REGION
+            REPOSITORY
+            API_SERVICE
+            WEB_SERVICE
+            WIF_PROVIDER
+            WIF_SERVICE_ACCOUNT
+          )
+          for name in "${required[@]}"; do
+            if [ -z "${!name}" ]; then
+              echo "Missing GitHub variable: ${name}" >&2
+              exit 1
+            fi
+          done
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+      - name: Configure Artifact Registry Docker auth
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+      - name: Build and push API image
+        id: api
+        run: |
+          image="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/coeus-api:${GITHUB_SHA}"
+          docker build -f infra/docker/api.Dockerfile -t "${image}" .
+          docker push "${image}"
+          echo "image=${image}" >> "${GITHUB_OUTPUT}"
+      - name: Deploy API
+        id: deploy_api
+        run: |
+          gcloud run deploy "${API_SERVICE}" \
+            --image "${{ steps.api.outputs.image }}" \
+            --region "${REGION}" \
+            --project "${PROJECT_ID}" \
+            --quiet
+          url="$(gcloud run services describe "${API_SERVICE}" \
+            --region "${REGION}" \
+            --project "${PROJECT_ID}" \
+            --format='value(status.url)')"
+          echo "url=${url}" >> "${GITHUB_OUTPUT}"
+      - name: Build and push web image
+        id: web
+        run: |
+          image="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/coeus-web:${GITHUB_SHA}"
+          docker build \
+            --build-arg "VITE_API_BASE_URL=${{ steps.deploy_api.outputs.url }}" \
+            -f infra/docker/web-prod.Dockerfile \
+            -t "${image}" .
+          docker push "${image}"
+          echo "image=${image}" >> "${GITHUB_OUTPUT}"
+      - name: Deploy web
+        id: deploy_web
+        run: |
+          gcloud run deploy "${WEB_SERVICE}" \
+            --image "${{ steps.web.outputs.image }}" \
+            --region "${REGION}" \
+            --project "${PROJECT_ID}" \
+            --quiet
+          url="$(gcloud run services describe "${WEB_SERVICE}" \
+            --region "${REGION}" \
+            --project "${PROJECT_ID}" \
+            --format='value(status.url)')"
+          echo "url=${url}" >> "${GITHUB_OUTPUT}"
+      - name: Deployment summary
+        run: |
+          echo "API: ${{ steps.deploy_api.outputs.url }}" >> "${GITHUB_STEP_SUMMARY}"
+          echo "Web: ${{ steps.deploy_web.outputs.url }}" >> "${GITHUB_STEP_SUMMARY}"
