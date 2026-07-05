@@ -28,6 +28,7 @@ Sprint 3 ACG membership, project workspace visibility, product access filtering,
 | Product leakage through project workspace | Project product lists are filtered through `ProductAccessPolicy` for the current user. |
 | RBAC bypass through frontend navigation | Backend permission checks and service policies are authoritative. Frontend route guards only shape navigation. |
 | Disabled user access | Product and project policies require an active user. |
+| Inactive ACG revocation bypass | Product and project policies use only active ACG memberships when evaluating visibility. |
 | Draft product leakage | Draft products require product management permission in addition to ACG membership. |
 | ACG membership manipulation | Create, update and membership endpoints require CSRF-validated authenticated sessions and ACG permissions. |
 | Missing accountability for ACG changes | ACG creation, update, membership addition and membership removal create audit events. |

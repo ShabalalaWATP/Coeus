@@ -32,7 +32,7 @@ class AccessControlGroupService:
             raise AppError(403, "forbidden", "Permission denied.")
         if Permission.SYSTEM_CONFIGURE in user.permissions:
             return self._repository.list_acgs()
-        user_acg_ids = self._repository.acg_ids_for_user(user.user_id)
+        user_acg_ids = self._repository.active_acg_ids_for_user(user.user_id)
         return tuple(acg for acg in self._repository.list_acgs() if acg.acg_id in user_acg_ids)
 
     def get_visible_acg(self, user: UserAccount, acg_id: UUID) -> AccessControlGroup:
@@ -164,7 +164,7 @@ class ProductAccessPolicy:
                 )
             )
         has_admin_override = Permission.PRODUCT_READ_RESTRICTED in user.permissions
-        user_acg_ids = self._repository.acg_ids_for_user(user.user_id)
+        user_acg_ids = self._repository.active_acg_ids_for_user(user.user_id)
         has_shared_acg = bool(user_acg_ids.intersection(product.acg_ids))
         checks.append(
             AccessCheck(
@@ -188,7 +188,7 @@ class ProjectAccessPolicy:
     def evaluate(self, user: UserAccount, project: ProjectWorkspace) -> AccessDecision:
         has_admin_override = Permission.SYSTEM_CONFIGURE in user.permissions
         member_ids = {member.user_id for member in project.members}
-        user_acg_ids = self._repository.acg_ids_for_user(user.user_id)
+        user_acg_ids = self._repository.active_acg_ids_for_user(user.user_id)
         checks = (
             AccessCheck("active_user", user.is_active, "User account is active."),
             AccessCheck(

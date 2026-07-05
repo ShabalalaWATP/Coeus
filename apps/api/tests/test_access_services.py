@@ -68,6 +68,38 @@ def test_project_workspace_filters_visible_products() -> None:
     assert [product.title for product in project.visible_products] == ["Regional Stability Brief"]
 
 
+def test_inactive_acg_no_longer_grants_project_or_product_access() -> None:
+    services = build_seed_access_services()
+    admin = services.repository.get_user_by_username("admin@example.test")
+    rfa_team = services.repository.get_user_by_username("rfa.team@example.test")
+    assert admin is not None
+    assert rfa_team is not None
+    assessment_acg = next(
+        acg for acg in services.repository.list_acgs() if acg.code == "ACG-CHARLIE-ASSESSMENT"
+    )
+    assessment_product = next(
+        product for product in services.repository.list_products() if "Draft Pack" in product.title
+    )
+    project = services.repository.list_projects()[0]
+
+    assert services.product_policy.evaluate(rfa_team, assessment_product).allowed is True
+    assert services.project_policy.evaluate(rfa_team, project).allowed is True
+
+    services.acgs.update_acg(admin, assessment_acg.acg_id, is_active=False)
+
+    product_decision = services.product_policy.evaluate(rfa_team, assessment_product)
+    project_decision = services.project_policy.evaluate(rfa_team, project)
+
+    assert product_decision.allowed is False
+    assert project_decision.allowed is False
+    assert any(
+        check.name == "acg_membership" and not check.passed for check in product_decision.checks
+    )
+    assert any(
+        check.name == "project_membership" and not check.passed for check in project_decision.checks
+    )
+
+
 def test_administrator_gets_access_diagnostic_override() -> None:
     services = build_seed_access_services()
     admin = services.repository.list_users()[0]

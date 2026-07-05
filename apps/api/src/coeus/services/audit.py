@@ -14,7 +14,10 @@ class AuditEvent:
 
 
 class AuditLog:
-    def __init__(self) -> None:
+    def __init__(self, max_events: int = 10_000) -> None:
+        if max_events < 1:
+            raise ValueError("Audit log max_events must be at least 1.")
+        self._max_events = max_events
         self._events: list[AuditEvent] = []
 
     def record(
@@ -31,6 +34,9 @@ class AuditLog:
             metadata=MappingProxyType(metadata or {}),
         )
         self._events.append(event)
+        overflow = len(self._events) - self._max_events
+        if overflow > 0:
+            del self._events[:overflow]
         return event
 
     def list_events(self) -> tuple[AuditEvent, ...]:
