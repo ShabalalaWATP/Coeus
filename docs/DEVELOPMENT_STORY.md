@@ -110,3 +110,16 @@
 - Added Sprint 10 API, service, client and UI tests for approval, rejection, separation of duties, auto-ingestion, dissemination, feedback requests and search visibility.
 - Added the Sprint 10 spec, local-first QC ingestion ADR and QC dissemination threat model.
 - Verified local Sprint 10 gates: backend Ruff, mypy, pytest coverage, Bandit, pip-audit and Semgrep; frontend Prettier, ESLint, TypeScript, Vitest coverage, build, Playwright e2e and package audit; file line limit; Compose config.
+
+## 2026-07-05 Sprint 11
+
+- Added ticket-level feedback submissions and submitted feedback-request state.
+- Added `FeedbackAnalyticsService` for one-time requester feedback submission, dashboard scoping, product reuse aggregation and metrics.
+- Added deterministic `TrendsAnalysisAgent` insights for request region, product reuse and requester satisfaction.
+- Added `/api/v1/feedback` endpoints for request listing and submission.
+- Added `/api/v1/analytics/admin`, `/api/v1/analytics/rfa` and `/api/v1/analytics/collection` dashboards.
+- Added a customer feedback panel on `/app/requests`.
+- Added admin, RFA and collection analytics dashboard routes.
+- Added Sprint 11 API, service, client and UI tests for feedback submission, duplicate prevention, dashboard scoping, reuse analytics and trend rendering.
+- Added the Sprint 11 spec, local-first feedback analytics ADR and feedback analytics threat model.
+- Verified local Sprint 11 gates: backend Ruff, mypy, pytest coverage, Bandit, pip-audit and Semgrep; frontend Prettier, ESLint, TypeScript, Vitest coverage, build, Playwright e2e, package audit and pnpm supply-chain policy; file line limit; Compose config.

@@ -11,6 +11,7 @@ const LoginPage = lazy(() => import("../features/auth/LoginPage"));
 const ForbiddenPage = lazy(() => import("../features/auth/ForbiddenPage"));
 const SessionExpiredPage = lazy(() => import("../features/auth/SessionExpiredPage"));
 const AcgAdminPage = lazy(() => import("../features/access/AcgAdminPage"));
+const AnalyticsDashboardPage = lazy(() => import("../features/analytics/AnalyticsDashboardPage"));
 const AnalystWorkbenchPage = lazy(() => import("../features/analyst/AnalystWorkbenchPage"));
 const QcQueuePage = lazy(() => import("../features/qc/QcQueuePage"));
 const RequestsPage = lazy(() => import("../features/requests/RequestsPage"));
@@ -109,6 +110,13 @@ export function createAppRouter() {
           ),
         },
         {
+          path: "rfa/analytics",
+          element: protectedPage(<AnalyticsDashboardPage audience="rfa" />, [
+            "analytics:view_team",
+            "rfa:review",
+          ]),
+        },
+        {
           path: "collection/queue",
           element: protectedPage(<RoutingQueuePage route="cm" />, ["collection:review"]),
         },
@@ -121,6 +129,13 @@ export function createAppRouter() {
             />,
             ["collection:add_product"],
           ),
+        },
+        {
+          path: "collection/analytics",
+          element: protectedPage(<AnalyticsDashboardPage audience="collection" />, [
+            "analytics:view_team",
+            "collection:review",
+          ]),
         },
         {
           path: "analyst/workbench",
@@ -148,6 +163,12 @@ export function createAppRouter() {
         {
           path: "admin/acgs",
           element: protectedPage(<AcgAdminPage />, ["acg:view"]),
+        },
+        {
+          path: "admin/analytics",
+          element: protectedPage(<AnalyticsDashboardPage audience="admin" />, [
+            "analytics:view_global",
+          ]),
         },
         {
           path: "admin/acgs/:acgId",

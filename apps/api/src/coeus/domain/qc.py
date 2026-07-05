@@ -16,6 +16,7 @@ class ProductIndexStatus(StrEnum):
 
 class FeedbackRequestStatus(StrEnum):
     REQUESTED = "requested"
+    SUBMITTED = "submitted"
 
 
 @dataclass(frozen=True)
@@ -52,4 +53,17 @@ class FeedbackRequest:
     product_id: UUID
     requester_user_id: UUID
     status: FeedbackRequestStatus
+    created_at: datetime
+
+
+@dataclass(frozen=True)
+class FeedbackSubmission:
+    submission_id: UUID
+    request_id: UUID
+    ticket_id: UUID
+    product_id: UUID
+    requester_user_id: UUID
+    rating: int
+    comment: str
+    follow_up_requested: bool
     created_at: datetime

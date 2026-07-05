@@ -11,6 +11,7 @@ from coeus.domain.auth import AuthenticatedSession
 from coeus.services.access import AccessServices
 from coeus.services.analyst_workflow import AnalystWorkflowService
 from coeus.services.auth import AuthService
+from coeus.services.feedback_analytics import FeedbackAnalyticsService
 from coeus.services.quality_control import QualityControlService
 from coeus.services.rfi_search import RfiSearchService
 from coeus.services.routing import RoutingService
@@ -89,6 +90,13 @@ def get_quality_control_service(request: Request) -> QualityControlService:
     if not isinstance(qc_service, QualityControlService):
         raise AppError(500, "qc_not_configured", "Quality control is not configured.")
     return qc_service
+
+
+def get_feedback_analytics_service(request: Request) -> FeedbackAnalyticsService:
+    service = getattr(request.app.state, "feedback_analytics_service", None)
+    if not isinstance(service, FeedbackAnalyticsService):
+        raise AppError(500, "feedback_analytics_not_configured", "Analytics is not configured.")
+    return service
 
 
 def get_current_session(

@@ -1,5 +1,6 @@
 import {
   Archive,
+  BarChart3,
   ClipboardList,
   Database,
   FileCheck2,
@@ -22,6 +23,7 @@ const icons = {
   collection: RadioTower,
   analyst: LayoutDashboard,
   qc: FileCheck2,
+  analytics: BarChart3,
   admin: ShieldCheck,
   audit: ScrollText,
   archive: Archive,

@@ -13,6 +13,7 @@ export type NavigationItem = {
     | "collection"
     | "analyst"
     | "qc"
+    | "analytics"
     | "admin"
     | "audit"
     | "archive";
@@ -41,6 +42,12 @@ export const navigationItems: readonly NavigationItem[] = [
     requiredPermissions: ["rfa:add_product"],
   },
   {
+    label: "RFA Analytics",
+    path: "/rfa/analytics",
+    icon: "analytics",
+    requiredPermissions: ["analytics:view_team", "rfa:review"],
+  },
+  {
     label: "Collection Queue",
     path: "/collection/queue",
     icon: "collection",
@@ -51,6 +58,12 @@ export const navigationItems: readonly NavigationItem[] = [
     path: "/collection/products",
     icon: "collection",
     requiredPermissions: ["collection:add_product"],
+  },
+  {
+    label: "Collection Analytics",
+    path: "/collection/analytics",
+    icon: "analytics",
+    requiredPermissions: ["analytics:view_team", "collection:review"],
   },
   {
     label: "Analyst",
@@ -64,6 +77,12 @@ export const navigationItems: readonly NavigationItem[] = [
     path: "/admin/overview",
     icon: "admin",
     requiredPermissions: ["system:configure"],
+  },
+  {
+    label: "Admin Analytics",
+    path: "/admin/analytics",
+    icon: "analytics",
+    requiredPermissions: ["analytics:view_global"],
   },
   { label: "ACGs", path: "/admin/acgs", icon: "admin", requiredPermissions: ["acg:view"] },
   { label: "Audit", path: "/audit", icon: "audit", requiredPermissions: ["audit:read"] },

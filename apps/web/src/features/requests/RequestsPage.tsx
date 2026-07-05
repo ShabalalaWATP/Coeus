@@ -7,6 +7,7 @@ import { ProductOffersPanel } from "./ProductOffersPanel";
 import { RequestDashboard } from "./RequestDashboard";
 import { TimelinePanel } from "./TimelinePanel";
 import { upsertTicket } from "./ticket-collection";
+import { FeedbackPanel } from "../feedback/FeedbackPanel";
 import {
   acceptProductOffer,
   getRfiSearchResults,
@@ -157,6 +158,7 @@ export default function RequestsPage() {
             results={rfiResultsQuery.data}
             ticket={selectedTicket}
           />
+          <FeedbackPanel csrfToken={csrfToken} />
         </div>
       </section>
       <TimelinePanel
