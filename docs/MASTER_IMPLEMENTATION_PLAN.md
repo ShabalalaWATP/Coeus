@@ -6,7 +6,7 @@ This document tracks delivery state as implementation progresses.
 
 ## Current Stage
 
-Sprint 7: RFI Search Agent.
+Sprint 9: Analyst workflow.
 
 ## Sprint 1 Scope
 
@@ -227,4 +227,45 @@ Sprint 7: RFI Search Agent.
 - Frontend quality checks: Prettier, ESLint, TypeScript, Vitest coverage, production build and Playwright Chromium e2e passed. ESLint still reports existing fast-refresh warnings for lazy route declarations in `router.tsx`.
 - Backend security checks: Bandit completed with no issues; pip-audit found no known third-party vulnerabilities; Semgrep completed with no findings.
 - Frontend package audit: no known production dependency vulnerabilities.
+- Compose config: `docker compose config` validated.
+
+## Sprint 8 Scope
+
+- RFA capability agent.
+- CM capability agent.
+- Manager queues.
+- Human approval.
+- Clarification flow.
+- Project plan update.
+- RFA-first and CM-fallback routing.
+
+## Sprint 8 Status
+
+- Local-first RFA and CM capability agents: implemented.
+- Structured capability reviews on ticket records: implemented.
+- RFA-first routing, CM fallback and clarification route selection: implemented.
+- RFA and collection manager queue APIs: implemented.
+- Manager approval, rejection, clarification and override actions: implemented.
+- Ticket-level project-plan update records and manager decision audit events: implemented.
+- `/rfa/queue` and `/collection/queue` manager pages: implemented.
+- Sprint 8 spec, ADR and threat model: implemented.
+- Verification: complete.
+
+## Sprint 8 Verification
+
+- Backend Ruff: passed.
+- Backend mypy: passed.
+- Backend pytest: 90 passed, 95.38 percent total coverage.
+- Backend Bandit: passed.
+- Backend pip-audit: no known vulnerabilities found, local package skipped because it is not published on PyPI.
+- Frontend Prettier: passed.
+- Frontend ESLint: passed with existing router fast-refresh warnings only.
+- Frontend TypeScript: passed.
+- Frontend Vitest: 96 passed, 99.92 percent line coverage and 95.77 percent branch coverage.
+- Frontend production build: passed.
+- Frontend Playwright e2e: 1 passed.
+- Frontend production dependency audit: no known vulnerabilities found.
+- Semgrep repository scan: 0 findings on tracked files.
+- Semgrep Sprint 8 targeted scan: 0 findings on new Sprint 8 backend, frontend and documentation files.
+- File line limit: all checked hand-written files are 350 lines or fewer.
 - Compose config: `docker compose config` validated.

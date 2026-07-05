@@ -12,6 +12,7 @@ const ForbiddenPage = lazy(() => import("../features/auth/ForbiddenPage"));
 const SessionExpiredPage = lazy(() => import("../features/auth/SessionExpiredPage"));
 const AcgAdminPage = lazy(() => import("../features/access/AcgAdminPage"));
 const RequestsPage = lazy(() => import("../features/requests/RequestsPage"));
+const RoutingQueuePage = lazy(() => import("../features/routing/RoutingQueuePage"));
 const PlaceholderPage = lazy(() => import("../features/placeholder/PlaceholderPage"));
 const ProductDetailPage = lazy(() => import("../features/store/ProductDetailPage"));
 const ProductUploadPage = lazy(() => import("../features/store/ProductUploadPage"));
@@ -93,10 +94,7 @@ export function createAppRouter() {
         },
         {
           path: "rfa/queue",
-          element: protectedPage(
-            <PlaceholderPage title="RFA Queue" description="Request for Assessment queue shell." />,
-            ["rfa:review"],
-          ),
+          element: protectedPage(<RoutingQueuePage route="rfa" />, ["rfa:review"]),
         },
         {
           path: "rfa/products",
@@ -110,13 +108,7 @@ export function createAppRouter() {
         },
         {
           path: "collection/queue",
-          element: protectedPage(
-            <PlaceholderPage
-              title="Collection Queue"
-              description="Collection management queue shell."
-            />,
-            ["collection:review"],
-          ),
+          element: protectedPage(<RoutingQueuePage route="cm" />, ["collection:review"]),
         },
         {
           path: "collection/products",

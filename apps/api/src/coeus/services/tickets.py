@@ -11,11 +11,9 @@ from coeus.domain.tickets import (
     AgentRun,
     AgentRunStatus,
     AttachmentMetadata,
-    ChatMessage,
     IntakeDetails,
     MessageAuthor,
     TicketRecord,
-    TicketTimelineEntry,
 )
 from coeus.repositories.tickets import InMemoryTicketRepository
 from coeus.services.audit import AuditLog
@@ -24,6 +22,15 @@ from coeus.services.intake import (
     MockLlmProvider,
     RequirementCompletenessService,
     merge_intake,
+)
+from coeus.services.ticket_records import (
+    ASSIGNED_READ_STATES,
+    is_owner,
+    suggest_project_name,
+    timeline,
+)
+from coeus.services.ticket_records import (
+    message as message_record,
 )
 
 
@@ -51,7 +58,7 @@ class TicketService:
             return tuple(
                 ticket
                 for ticket in self._repository.list_tickets()
-                if ticket.state == TicketState.RFI_SEARCHING
+                if ticket.state in ASSIGNED_READ_STATES
             )
         if Permission.TICKET_READ_OWN in actor.permissions:
             return self._repository.list_for_requester(actor.user_id)
@@ -77,7 +84,7 @@ class TicketService:
                 state=state,
                 timeline=(
                     *ticket.timeline,
-                    _timeline(ticket.ticket_id, actor.user_id, "intake_updated", "Intake updated."),
+                    timeline(ticket.ticket_id, actor.user_id, "intake_updated", "Intake updated."),
                 ),
             )
         )
@@ -111,7 +118,7 @@ class TicketService:
                 attachments=(*ticket.attachments, attachment),
                 timeline=(
                     *ticket.timeline,
-                    _timeline(ticket.ticket_id, actor.user_id, "attachment_added", name),
+                    timeline(ticket.ticket_id, actor.user_id, "attachment_added", name),
                 ),
             )
         )
@@ -124,7 +131,7 @@ class TicketService:
             raise AppError(
                 409, "invalid_ticket_state", "Ticket cannot be submitted from this state."
             )
-        project_name = _suggest_project_name(ticket.intake)
+        project_name = suggest_project_name(ticket)
         search_run = AgentRun(
             run_id=uuid4(),
             ticket_id=ticket.ticket_id,
@@ -142,10 +149,10 @@ class TicketService:
                 agent_runs=(*ticket.agent_runs, search_run),
                 timeline=(
                     *ticket.timeline,
-                    _timeline(
+                    timeline(
                         ticket.ticket_id, actor.user_id, "ticket_submitted", "Ticket submitted."
                     ),
-                    _timeline(ticket.ticket_id, actor.user_id, "search_started", "Search queued."),
+                    timeline(ticket.ticket_id, actor.user_id, "search_started", "Search queued."),
                 ),
             )
         )
@@ -159,23 +166,40 @@ class TicketService:
     def add_information(self, actor: UserAccount, ticket_id: UUID, body: str) -> TicketRecord:
         ticket = self.get_visible_ticket(actor, ticket_id)
         if (
-            not _is_owner(actor, ticket)
+            not is_owner(actor, ticket)
             or Permission.TICKET_ADD_INFORMATION not in actor.permissions
         ):
             raise AppError(404, "ticket_not_found", "Ticket was not found.")
+        state = (
+            TicketState.ROUTE_ASSESSMENT
+            if ticket.state == TicketState.INFO_REQUIRED and ticket.route_recommendations
+            else ticket.state
+        )
+        entries = (
+            *ticket.timeline,
+            timeline(ticket.ticket_id, actor.user_id, "information_added", body),
+        )
+        if state == TicketState.ROUTE_ASSESSMENT:
+            entries = (
+                *entries,
+                timeline(
+                    ticket.ticket_id,
+                    actor.user_id,
+                    "route_assessment_resumed",
+                    "Requester clarification received.",
+                ),
+            )
         return self._save(
             replace(
                 ticket,
-                timeline=(
-                    *ticket.timeline,
-                    _timeline(ticket.ticket_id, actor.user_id, "information_added", body),
-                ),
+                state=state,
+                timeline=entries,
             )
         )
 
     def get_editable_ticket(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         ticket = self.get_visible_ticket(actor, ticket_id)
-        if not _is_owner(actor, ticket) and Permission.TICKET_READ_ALL not in actor.permissions:
+        if not is_owner(actor, ticket) and Permission.TICKET_READ_ALL not in actor.permissions:
             raise AppError(404, "ticket_not_found", "Ticket was not found.")
         if ticket.state not in {TicketState.DRAFT_INTAKE, TicketState.INFO_REQUIRED}:
             raise AppError(409, "ticket_not_editable", "Ticket intake is no longer editable.")
@@ -191,11 +215,11 @@ class TicketService:
 
     def _can_read(self, actor: UserAccount, ticket: TicketRecord) -> bool:
         return (
-            _is_owner(actor, ticket)
+            is_owner(actor, ticket)
             or Permission.TICKET_READ_ALL in actor.permissions
             or (
                 Permission.TICKET_READ_ASSIGNED in actor.permissions
-                and ticket.state in {TicketState.RFI_SEARCHING, TicketState.ROUTE_ASSESSMENT}
+                and ticket.state in ASSIGNED_READ_STATES
             )
         )
 
@@ -235,10 +259,10 @@ class ConversationService:
             if ticket_id
             else self._create(actor)
         )
-        user_message = _message(ticket.ticket_id, MessageAuthor.USER, message)
+        user_message = message_record(ticket.ticket_id, MessageAuthor.USER, message)
         safety_flags = self._extractor.safety_flags_for(message)
         intake = self._extractor.extract(message, ticket.intake)
-        assistant_message = _message(
+        assistant_message = message_record(
             ticket.ticket_id,
             MessageAuthor.ASSISTANT,
             self._llm_provider.build_assistant_message(intake, safety_flags),
@@ -262,7 +286,7 @@ class ConversationService:
                 agent_runs=(*ticket.agent_runs, agent_run),
                 timeline=(
                     *ticket.timeline,
-                    _timeline(
+                    timeline(
                         ticket.ticket_id, actor.user_id, "chat_message", "User chat received."
                     ),
                 ),
@@ -284,7 +308,7 @@ class ConversationService:
             state=TicketState.DRAFT_INTAKE,
             intake=IntakeDetails(),
             timeline=(
-                _timeline(ticket_id, actor.user_id, "ticket_created", "Draft intake started."),
+                timeline(ticket_id, actor.user_id, "ticket_created", "Draft intake started."),
             ),
         )
         self._repository.save(ticket)
@@ -303,34 +327,3 @@ def build_ticket_services(audit_log: AuditLog) -> TicketServices:
         audit_log,
     )
     return TicketServices(tickets=tickets, conversations=conversations)
-
-
-def _message(ticket_id: UUID, author: MessageAuthor, body: str) -> ChatMessage:
-    return ChatMessage(
-        message_id=uuid4(),
-        ticket_id=ticket_id,
-        author=author,
-        body=body,
-        created_at=datetime.now(UTC),
-    )
-
-
-def _timeline(
-    ticket_id: UUID, actor_user_id: UUID, event_type: str, body: str
-) -> TicketTimelineEntry:
-    return TicketTimelineEntry(
-        entry_id=uuid4(),
-        ticket_id=ticket_id,
-        event_type=event_type,
-        body=body,
-        actor_user_id=actor_user_id,
-        created_at=datetime.now(UTC),
-    )
-
-
-def _suggest_project_name(intake: IntakeDetails) -> str:
-    return f"{intake.title or 'Draft Requirement'} Workspace"
-
-
-def _is_owner(actor: UserAccount, ticket: TicketRecord) -> bool:
-    return ticket.requester_user_id == actor.user_id

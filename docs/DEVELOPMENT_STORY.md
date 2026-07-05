@@ -74,3 +74,15 @@
 - Added Sprint 7 API, service, client and UI tests for hybrid ranking, ACG and clearance filtering, count leakage, no-match routing, and offer accept or reject flows.
 - Added the Sprint 7 spec, local-first RFI Search Agent ADR and threat-model document.
 - Verified local Sprint 7 gates: backend Ruff, mypy, pytest coverage, Bandit, pip-audit and Semgrep; frontend Prettier, ESLint, TypeScript, Vitest coverage, build, Playwright e2e and package audit; file line limit; Compose config.
+
+## 2026-07-05 Sprint 8
+
+- Added local-first RFA and CM capability agents for deterministic route assessment.
+- Added ticket-level RFA reviews, CM reviews, route recommendations, clarification requests, manager decisions and project-plan updates.
+- Added `/api/v1/routing` endpoints for RFA queue, CM queue, route checks, approval, rejection, clarification and statistics.
+- Added RFA-first routing, CM fallback and neither-capable clarification behaviour.
+- Added human approval and manager override audit coverage before analyst assignment.
+- Added real `/rfa/queue` and `/collection/queue` frontend pages with manager actions and route statistics.
+- Added Sprint 8 API, service, client and UI tests for capability routing, fallback, clarification, approval and override flows.
+- Added the Sprint 8 spec, local-first routing agents ADR and threat-model document.
+- Verified local Sprint 8 gates: backend Ruff, mypy, pytest coverage, Bandit, pip-audit and Semgrep; frontend Prettier, ESLint, TypeScript, Vitest coverage, build, Playwright e2e and package audit; file line limit; Compose config.

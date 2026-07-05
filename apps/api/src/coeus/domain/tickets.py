@@ -22,6 +22,18 @@ class ProductOfferStatus(StrEnum):
     REJECTED = "rejected"
 
 
+class RoutingRoute(StrEnum):
+    RFA = "rfa"
+    CM = "cm"
+    CLARIFICATION = "clarification"
+
+
+class ManagerRoutingDecisionStatus(StrEnum):
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    CLARIFICATION_REQUESTED = "clarification_requested"
+
+
 @dataclass(frozen=True)
 class IntakeDetails:
     title: str | None = None
@@ -122,6 +134,83 @@ class RfiSearchMetrics:
 
 
 @dataclass(frozen=True)
+class RfaCapabilityReview:
+    review_id: UUID
+    ticket_id: UUID
+    can_satisfy: bool
+    confidence: float
+    required_clarifications: tuple[str, ...]
+    suggested_work_packages: tuple[str, ...]
+    suggested_team_id: str | None
+    estimated_effort: str
+    risks: tuple[str, ...]
+    manager_review_required: bool
+    reasoning_summary: str
+    created_at: datetime
+
+
+@dataclass(frozen=True)
+class CmCapabilityReview:
+    review_id: UUID
+    ticket_id: UUID
+    can_satisfy: bool
+    confidence: float
+    required_clarifications: tuple[str, ...]
+    suggested_collection_route: str | None
+    suggested_collection_sources: tuple[str, ...]
+    estimated_effort: str
+    risks: tuple[str, ...]
+    manager_review_required: bool
+    reasoning_summary: str
+    created_at: datetime
+
+
+@dataclass(frozen=True)
+class RouteRecommendation:
+    recommendation_id: UUID
+    ticket_id: UUID
+    recommended_route: RoutingRoute
+    reasoning_summary: str
+    rfa_review_id: UUID
+    cm_review_id: UUID
+    created_at: datetime
+
+
+@dataclass(frozen=True)
+class ClarificationRequest:
+    clarification_id: UUID
+    ticket_id: UUID
+    route: RoutingRoute
+    reason: str
+    questions: tuple[str, ...]
+    requested_by_user_id: UUID
+    created_at: datetime
+
+
+@dataclass(frozen=True)
+class ManagerRoutingDecision:
+    decision_id: UUID
+    ticket_id: UUID
+    route: RoutingRoute
+    status: ManagerRoutingDecisionStatus
+    reason: str
+    override_reason: str | None
+    actor_user_id: UUID
+    created_at: datetime
+
+
+@dataclass(frozen=True)
+class ProjectPlanUpdate:
+    update_id: UUID
+    ticket_id: UUID
+    title: str
+    owner_role: str
+    status: str
+    note: str
+    created_at: datetime
+
+
+@dataclass(frozen=True)
 class TicketRecord:
     ticket_id: UUID
     reference: str
@@ -137,5 +226,11 @@ class TicketRecord:
     product_offers: tuple[ProductOffer, ...] = field(default_factory=tuple)
     disseminations: tuple[ProductDissemination, ...] = field(default_factory=tuple)
     search_metrics: tuple[RfiSearchMetrics, ...] = field(default_factory=tuple)
+    rfa_reviews: tuple[RfaCapabilityReview, ...] = field(default_factory=tuple)
+    cm_reviews: tuple[CmCapabilityReview, ...] = field(default_factory=tuple)
+    route_recommendations: tuple[RouteRecommendation, ...] = field(default_factory=tuple)
+    clarification_requests: tuple[ClarificationRequest, ...] = field(default_factory=tuple)
+    manager_decisions: tuple[ManagerRoutingDecision, ...] = field(default_factory=tuple)
+    project_plan_updates: tuple[ProjectPlanUpdate, ...] = field(default_factory=tuple)
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
