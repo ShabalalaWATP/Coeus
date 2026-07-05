@@ -22,6 +22,7 @@ const EMPTY_SEARCH = {
   total: 0,
   facets: { productTypes: [], regions: [], tags: [] },
 };
+const ACTIVE_ANALYST_STATES = new Set(["ANALYST_IN_PROGRESS", "REWORK_REQUIRED"]);
 
 export default function AnalystTaskDetail({ onTaskChange, task }: AnalystTaskDetailProps) {
   const { session } = useAuth();
@@ -102,7 +103,7 @@ export default function AnalystTaskDetail({ onTaskChange, task }: AnalystTaskDet
   }
 
   const canSubmit =
-    task.state === "ANALYST_IN_PROGRESS" &&
+    ACTIVE_ANALYST_STATES.has(task.state) &&
     task.drafts.length > 0 &&
     task.workPackages.every((item) => item.status === "complete");
 
@@ -119,7 +120,7 @@ export default function AnalystTaskDetail({ onTaskChange, task }: AnalystTaskDet
           <label className="analyst-check" key={item.id}>
             <input
               checked={item.status === "complete"}
-              disabled={item.status === "complete" || task.state !== "ANALYST_IN_PROGRESS"}
+              disabled={item.status === "complete" || !ACTIVE_ANALYST_STATES.has(task.state)}
               onChange={() =>
                 packageMutation.mutate({ packageId: item.id, ticketId: task.ticketId })
               }

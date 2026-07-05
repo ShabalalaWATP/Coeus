@@ -97,3 +97,16 @@
 - Added Sprint 9 API, service, client and UI tests for assignment, visibility, product-link access, draft versioning and QC submission flows.
 - Added the Sprint 9 spec, local-first analyst workflow ADR and threat-model document.
 - Verified local Sprint 9 gates: backend Ruff, mypy, pytest coverage, Bandit, pip-audit and Semgrep; frontend Prettier, ESLint, TypeScript, Vitest coverage, build, Playwright e2e and package audit; file line limit; Compose config.
+
+## 2026-07-05 Sprint 10
+
+- Added ticket-level QC decisions, checklist records, product index records and feedback request records.
+- Added `QualityControlService` plus release-check, auto-ingestion, indexing, dissemination and feedback-request services.
+- Added `REWORK_REQUIRED` and `DISSEMINATION_READY` states for QC rejection, analyst rework and approved dissemination.
+- Added `/api/v1/qc` endpoints for queue, product detail, approval and rejection.
+- Added automatic published Store product creation from approved analyst drafts with project and QC-confirmed ACG assignment.
+- Added requester dissemination only after Store visibility validation, plus local queued and indexed records.
+- Added a real `/qc/queue` and `/qc/products/:productId` frontend with product preview, checklist, metadata checks, approve and return-to-analyst actions.
+- Added Sprint 10 API, service, client and UI tests for approval, rejection, separation of duties, auto-ingestion, dissemination, feedback requests and search visibility.
+- Added the Sprint 10 spec, local-first QC ingestion ADR and QC dissemination threat model.
+- Verified local Sprint 10 gates: backend Ruff, mypy, pytest coverage, Bandit, pip-audit and Semgrep; frontend Prettier, ESLint, TypeScript, Vitest coverage, build, Playwright e2e and package audit; file line limit; Compose config.

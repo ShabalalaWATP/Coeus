@@ -34,6 +34,7 @@ from coeus.services.ticket_records import timeline
 from coeus.services.tickets import TicketServices
 
 HASH_PATTERN = r"[a-fA-F0-9]{64}"
+ACTIVE_ANALYST_STATES = {TicketState.ANALYST_IN_PROGRESS, TicketState.REWORK_REQUIRED}
 
 
 @dataclass(frozen=True)
@@ -130,7 +131,7 @@ class AnalystWorkflowService:
             ticket
             for ticket in self._tickets.tickets.list_visible_tickets(actor)
             if assigned_to(ticket, actor.user_id)
-            and ticket.state in {TicketState.ANALYST_IN_PROGRESS, TicketState.QC_REVIEW}
+            and ticket.state in {*ACTIVE_ANALYST_STATES, TicketState.QC_REVIEW}
         )
 
     def task_details(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
@@ -277,7 +278,7 @@ class AnalystWorkflowService:
 
     def _active_task(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         ticket = self.task_details(actor, ticket_id)
-        if ticket.state != TicketState.ANALYST_IN_PROGRESS:
+        if ticket.state not in ACTIVE_ANALYST_STATES:
             raise AppError(409, "invalid_ticket_state", "Analyst task is not in progress.")
         return ticket
 

@@ -6,7 +6,7 @@ This document tracks delivery state as implementation progresses.
 
 ## Current Stage
 
-Sprint 10: QC, dissemination and automatic product ingestion.
+Sprint 11: Feedback and analytics.
 
 ## Sprint 1 Scope
 
@@ -258,9 +258,7 @@ Sprint 10: QC, dissemination and automatic product ingestion.
 - Backend pytest: 90 passed, 95.38 percent total coverage.
 - Backend Bandit: passed.
 - Backend pip-audit: no known vulnerabilities found, local package skipped because it is not published on PyPI.
-- Frontend Prettier: passed.
-- Frontend ESLint: passed with existing router fast-refresh warnings only.
-- Frontend TypeScript: passed.
+- Frontend Prettier, ESLint and TypeScript: passed. ESLint has existing router fast-refresh warnings only.
 - Frontend Vitest: 96 passed, 99.92 percent line coverage and 95.77 percent branch coverage.
 - Frontend production build: passed.
 - Frontend Playwright e2e: 1 passed.
@@ -308,5 +306,44 @@ Sprint 10: QC, dissemination and automatic product ingestion.
 - Frontend production dependency audit: no known vulnerabilities found.
 - Semgrep repository scan: 0 findings on tracked files.
 - Semgrep Sprint 9 targeted scan: 0 findings on new Sprint 9 backend, frontend and documentation files.
+- File line limit: all checked hand-written files are 350 lines or fewer.
+- Compose config: `docker compose config` validated.
+
+## Sprint 10 Scope
+
+- QC queue.
+- QC checklist.
+- Approve and reject.
+- Automatic new product ingestion.
+- Product indexing.
+- Dissemination.
+- Feedback request.
+
+## Sprint 10 Status
+
+- QC queue, product detail, release metadata API and required checklist: implemented.
+- Separation of duties, QC rejection, `REWORK_REQUIRED` and analyst resubmission: implemented.
+- Automatic Store product creation with project and QC-confirmed ACG assignment: implemented.
+- Local queued and indexed product index records: implemented.
+- Controlled requester dissemination and feedback request creation: implemented.
+- `/qc/queue` and `/qc/products/:productId` pages: implemented.
+- Sprint 10 spec, ADR and threat model: implemented.
+- Verification: complete.
+
+## Sprint 10 Verification
+
+- Backend Ruff: passed.
+- Backend mypy: passed.
+- Backend pytest: 99 passed, 95.23 percent total coverage.
+- Backend Bandit: passed.
+- Backend pip-audit: no known vulnerabilities found, local package skipped because it is not published on PyPI.
+- Frontend Prettier: passed.
+- Frontend ESLint: passed with existing router fast-refresh warnings only.
+- Frontend TypeScript: passed.
+- Frontend Vitest: 108 passed, 99.91 percent line coverage and 95.44 percent branch coverage.
+- Frontend production build: passed.
+- Frontend Playwright e2e: 1 passed.
+- Frontend production dependency audit: no known vulnerabilities found.
+- Semgrep repository and Sprint 10 targeted scans: 0 findings.
 - File line limit: all checked hand-written files are 350 lines or fewer.
 - Compose config: `docker compose config` validated.

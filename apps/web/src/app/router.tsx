@@ -12,6 +12,7 @@ const ForbiddenPage = lazy(() => import("../features/auth/ForbiddenPage"));
 const SessionExpiredPage = lazy(() => import("../features/auth/SessionExpiredPage"));
 const AcgAdminPage = lazy(() => import("../features/access/AcgAdminPage"));
 const AnalystWorkbenchPage = lazy(() => import("../features/analyst/AnalystWorkbenchPage"));
+const QcQueuePage = lazy(() => import("../features/qc/QcQueuePage"));
 const RequestsPage = lazy(() => import("../features/requests/RequestsPage"));
 const RoutingQueuePage = lazy(() => import("../features/routing/RoutingQueuePage"));
 const PlaceholderPage = lazy(() => import("../features/placeholder/PlaceholderPage"));
@@ -131,13 +132,11 @@ export function createAppRouter() {
         },
         {
           path: "qc/queue",
-          element: protectedPage(
-            <PlaceholderPage
-              title="QC"
-              description="Quality Control queue shell for product review."
-            />,
-            ["qc:review"],
-          ),
+          element: protectedPage(<QcQueuePage />, ["qc:review"]),
+        },
+        {
+          path: "qc/products/:productId",
+          element: protectedPage(<QcQueuePage />, ["qc:review"]),
         },
         {
           path: "admin/overview",
