@@ -10,6 +10,7 @@ from coeus.db.session import DatabaseReadinessChecker
 from coeus.domain.auth import AuthenticatedSession
 from coeus.services.access import AccessServices
 from coeus.services.auth import AuthService
+from coeus.services.rfi_search import RfiSearchService
 from coeus.services.store import StoreServices
 from coeus.services.tickets import TicketServices
 
@@ -57,6 +58,13 @@ def get_store_services(request: Request) -> StoreServices:
     if not isinstance(store_services, StoreServices):
         raise AppError(500, "store_not_configured", "Store services are not configured.")
     return store_services
+
+
+def get_rfi_search_service(request: Request) -> RfiSearchService:
+    rfi_search_service = getattr(request.app.state, "rfi_search_service", None)
+    if not isinstance(rfi_search_service, RfiSearchService):
+        raise AppError(500, "rfi_search_not_configured", "RFI search is not configured.")
+    return rfi_search_service
 
 
 def get_current_session(

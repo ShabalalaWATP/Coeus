@@ -63,3 +63,14 @@
 - Added the Sprint 6 spec, standard-library generator ADR and mock product seeding threat model.
 - Verified local Sprint 6 gates: backend Ruff, mypy, pytest coverage, Bandit, pip-audit and Semgrep; frontend Prettier, ESLint, TypeScript, Vitest coverage, build, Playwright e2e and package audit; seed smoke; file line limit; Compose config.
 - Completed a Codex Security diff scan for the staged Sprint 6 change set with 0 findings and 9 of 9 worklist rows closed.
+
+## 2026-07-05 Sprint 7
+
+- Added the local-first RFI Search Agent service with requester-based access filtering before ranking.
+- Added deterministic full-text, semantic and metadata ranking adapters behind the future PostgreSQL and pgvector boundary.
+- Added product offers, search metrics, existing-product dissemination records, and accept or reject transitions.
+- Added `/api/v1/rfi-search` endpoints for run, results, accept and reject.
+- Added the request-dashboard Product Offers panel with run search, accept and rejection-reason controls.
+- Added Sprint 7 API, service, client and UI tests for hybrid ranking, ACG and clearance filtering, count leakage, no-match routing, and offer accept or reject flows.
+- Added the Sprint 7 spec, local-first RFI Search Agent ADR and threat-model document.
+- Verified local Sprint 7 gates: backend Ruff, mypy, pytest coverage, Bandit, pip-audit and Semgrep; frontend Prettier, ESLint, TypeScript, Vitest coverage, build, Playwright e2e and package audit; file line limit; Compose config.

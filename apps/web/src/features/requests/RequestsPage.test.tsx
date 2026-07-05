@@ -61,6 +61,39 @@ const baseTicket: Ticket = {
   updatedAt: "2026-07-05T00:00:01Z",
 };
 
+const rfiSearchResults = {
+  ticketId: "ticket-1",
+  ticketState: "RFI_MATCH_OFFERED",
+  metrics: {
+    runId: "run-1",
+    query: "Regional Stability Brief Baltic ports",
+    candidateCount: 1,
+    offeredCount: 1,
+    rejectedCount: 0,
+    acceptedProductId: null,
+    createdAt: "2026-07-05T00:02:00Z",
+  },
+  offers: [
+    {
+      productId: "product-1",
+      title: "Existing Baltic Port Assessment",
+      summary: "MOCK DATA ONLY reusable assessment.",
+      productType: "assessment_report",
+      matchScore: 0.82,
+      matchReasons: ["full-text:baltic", "metadata:region"],
+      classificationLevel: 2,
+      releasability: ["MOCK"],
+      region: "Baltic ports",
+      timePeriodStart: null,
+      timePeriodEnd: null,
+      assetTypes: ["pdf"],
+      offerableToUser: true,
+      status: "offered",
+      rejectionReason: null,
+    },
+  ],
+};
+
 beforeEach(() => {
   resetQueryClientForTests();
 });
@@ -189,4 +222,91 @@ test("adds attachment metadata and later timeline information", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Add information" }));
 
   expect(await screen.findByText("Deadline moved earlier.")).toBeVisible();
+});
+
+test("runs RFI search and accepts an offered product", async () => {
+  const searchingTicket: Ticket = { ...baseTicket, state: "RFI_SEARCHING" };
+  const otherTicket: Ticket = {
+    ...baseTicket,
+    id: "ticket-2",
+    reference: "TCK-0002",
+    state: "INFO_REQUIRED",
+  };
+  const acceptedResults = {
+    ...rfiSearchResults,
+    ticketState: "CLOSED_EXISTING_PRODUCT_ACCEPTED",
+    metrics: { ...rfiSearchResults.metrics, acceptedProductId: "product-1" },
+    offers: [{ ...rfiSearchResults.offers[0], status: "accepted" }],
+  };
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ tickets: [searchingTicket, otherTicket] }),
+    })
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(rfiSearchResults) })
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(acceptedResults) });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<RequestsPage />);
+
+  await userEvent.click(await screen.findByRole("button", { name: "Run search" }));
+  expect(await screen.findByText("Existing Baltic Port Assessment")).toBeVisible();
+  await userEvent.click(screen.getByRole("button", { name: "Accept" }));
+
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+  expect(await screen.findAllByText("CLOSED EXISTING PRODUCT ACCEPTED")).toHaveLength(2);
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    2,
+    "http://127.0.0.1:8001/api/v1/rfi-search/ticket-1/run",
+    {
+      credentials: "include",
+      headers: { "X-CSRF-Token": "test-csrf-token" },
+      method: "POST",
+    },
+  );
+});
+
+test("runs RFI search and rejects an offered product", async () => {
+  const searchingTicket: Ticket = { ...baseTicket, state: "RFI_SEARCHING" };
+  const rejectedResults = {
+    ...rfiSearchResults,
+    ticketState: "ROUTE_ASSESSMENT",
+    metrics: { ...rfiSearchResults.metrics, rejectedCount: 1 },
+    offers: [
+      {
+        ...rfiSearchResults.offers[0],
+        status: "rejected",
+        rejectionReason: "Need a fresher product.",
+      },
+    ],
+  };
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ tickets: [searchingTicket] }),
+    })
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(rfiSearchResults) })
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(rejectedResults) });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<RequestsPage />);
+
+  await userEvent.click(await screen.findByRole("button", { name: "Run search" }));
+  await userEvent.type(await screen.findByLabelText("Rejection reason"), "Need a fresher product.");
+  await userEvent.click(screen.getByRole("button", { name: "Reject" }));
+
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+  expect(await screen.findAllByText("ROUTE ASSESSMENT")).toHaveLength(2);
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    3,
+    "http://127.0.0.1:8001/api/v1/rfi-search/ticket-1/offers/product-1/reject",
+    {
+      body: JSON.stringify({ reason: "Need a fresher product." }),
+      credentials: "include",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": "test-csrf-token" },
+      method: "POST",
+    },
+  );
 });

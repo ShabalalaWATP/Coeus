@@ -9,10 +9,12 @@ export function upsertTicket(tickets: Ticket[] | undefined, nextTicket: Ticket):
 }
 
 export function ticketMetrics(tickets: Ticket[]) {
+  const searchingStates = new Set(["RFI_SEARCHING", "RFI_MATCH_OFFERED"]);
+  const draftStates = new Set(["DRAFT_INTAKE", "INFO_REQUIRED"]);
   return {
     total: tickets.length,
-    draft: tickets.filter((ticket) => ticket.state !== "RFI_SEARCHING").length,
-    searching: tickets.filter((ticket) => ticket.state === "RFI_SEARCHING").length,
+    draft: tickets.filter((ticket) => draftStates.has(ticket.state)).length,
+    searching: tickets.filter((ticket) => searchingStates.has(ticket.state)).length,
     ready: tickets.filter((ticket) => ticket.isReadyForSubmission).length,
   };
 }

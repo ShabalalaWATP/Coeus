@@ -3,9 +3,11 @@ import userEvent from "@testing-library/user-event";
 
 import { ChatPanel } from "./ChatPanel";
 import { IntakePanel } from "./IntakePanel";
+import { ProductOffersPanel } from "./ProductOffersPanel";
 import { RequestDashboard } from "./RequestDashboard";
 import { TimelinePanel } from "./TimelinePanel";
 import { ticketMetrics, upsertTicket } from "./ticket-collection";
+import type { RfiSearchResults } from "../../lib/api-client/rfi-search";
 import type { Ticket } from "../../lib/api-client/tickets";
 
 const ticket: Ticket = {
@@ -42,6 +44,39 @@ const ticket: Ticket = {
   updatedAt: "2026-07-05T00:00:00Z",
 };
 
+const rfiResults: RfiSearchResults = {
+  ticketId: "ticket-1",
+  ticketState: "RFI_MATCH_OFFERED",
+  metrics: {
+    runId: "run-1",
+    query: "Regional Stability Brief Baltic ports assessment report",
+    candidateCount: 1,
+    offeredCount: 1,
+    rejectedCount: 0,
+    acceptedProductId: null,
+    createdAt: "2026-07-05T00:01:00Z",
+  },
+  offers: [
+    {
+      productId: "product-1",
+      title: "Regional Stability Brief",
+      summary: "MOCK DATA ONLY assessment summary.",
+      productType: "assessment_report",
+      matchScore: 0.86,
+      matchReasons: ["full-text:regional", "metadata:region"],
+      classificationLevel: 2,
+      releasability: ["MOCK"],
+      region: "Baltic ports",
+      timePeriodStart: null,
+      timePeriodEnd: null,
+      assetTypes: ["pdf"],
+      offerableToUser: true,
+      status: "offered",
+      rejectionReason: null,
+    },
+  ],
+};
+
 test("upserts existing and new tickets", () => {
   const updated = { ...ticket, reference: "TCK-0002" };
   const secondTicket = { ...ticket, id: "ticket-2", reference: "TCK-0003" };
@@ -61,8 +96,9 @@ test("calculates ticket metrics for every visible state", () => {
       ticket,
       { ...ticket, id: "ticket-2", state: "INFO_REQUIRED", isReadyForSubmission: false },
       { ...ticket, id: "ticket-3", state: "RFI_SEARCHING" },
+      { ...ticket, id: "ticket-4", state: "RFI_MATCH_OFFERED" },
     ]),
-  ).toEqual({ total: 3, draft: 2, searching: 1, ready: 2 });
+  ).toEqual({ total: 4, draft: 2, searching: 2, ready: 3 });
 });
 
 test("ignores short chat messages", async () => {
@@ -157,4 +193,69 @@ test("does not add blank timeline information", async () => {
 
   expect(onAddInformation).not.toHaveBeenCalled();
   expect(screen.getByText("No timeline events")).toBeVisible();
+});
+
+test("runs RFI search from the product offer panel", async () => {
+  const onRun = vi.fn();
+  render(
+    <ProductOffersPanel
+      isAccepting={false}
+      isLoading={false}
+      isRejecting={false}
+      isRunning={false}
+      onAccept={vi.fn()}
+      onReject={vi.fn()}
+      onRun={onRun}
+      ticket={{ ...ticket, state: "RFI_SEARCHING" }}
+    />,
+  );
+
+  await userEvent.click(screen.getByRole("button", { name: "Run search" }));
+
+  expect(onRun).toHaveBeenCalledTimes(1);
+  expect(screen.getByText("No product offers")).toBeVisible();
+});
+
+test("accepts and rejects RFI product offers", async () => {
+  const onAccept = vi.fn();
+  const onReject = vi.fn();
+  render(
+    <ProductOffersPanel
+      isAccepting={false}
+      isLoading={false}
+      isRejecting={false}
+      isRunning={false}
+      onAccept={onAccept}
+      onReject={onReject}
+      onRun={vi.fn()}
+      results={rfiResults}
+      ticket={{ ...ticket, state: "RFI_MATCH_OFFERED" }}
+    />,
+  );
+
+  await userEvent.click(screen.getByRole("button", { name: "Accept" }));
+  await userEvent.type(screen.getByLabelText("Rejection reason"), "Too old.");
+  await userEvent.click(screen.getByRole("button", { name: "Reject" }));
+
+  expect(screen.getByText("86%")).toBeVisible();
+  expect(onAccept).toHaveBeenCalledWith("product-1");
+  expect(onReject).toHaveBeenCalledWith("product-1", "Too old.");
+});
+
+test("does not render RFI metrics when metrics are unavailable", () => {
+  render(
+    <ProductOffersPanel
+      isAccepting={false}
+      isLoading={false}
+      isRejecting={false}
+      isRunning={false}
+      onAccept={vi.fn()}
+      onReject={vi.fn()}
+      onRun={vi.fn()}
+      results={{ ...rfiResults, metrics: null, offers: [] }}
+      ticket={{ ...ticket, state: "ROUTE_ASSESSMENT" }}
+    />,
+  );
+
+  expect(screen.queryByLabelText("RFI search metrics")).not.toBeInTheDocument();
 });
