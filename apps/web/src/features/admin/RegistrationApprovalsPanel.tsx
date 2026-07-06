@@ -39,7 +39,11 @@ export function RegistrationApprovalsPanel({ csrfToken }: RegistrationApprovalsP
   const rejectMutation = useMutation({
     mutationFn: (registrationId: string) =>
       rejectRegistration(registrationId, rejectReason, csrfToken),
-    onSuccess: removeRegistration,
+    onSuccess: (registration) => {
+      removeRegistration(registration);
+      // Clear the shared reason so it cannot be reused against the next request.
+      setRejectReason("");
+    },
     onError: failAction,
   });
 

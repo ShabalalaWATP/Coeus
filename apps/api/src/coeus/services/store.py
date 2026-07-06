@@ -18,6 +18,7 @@ from coeus.domain.store import (
     StoreSearchFilters,
     StoreSearchHit,
     StoreSearchResult,
+    object_key_segment,
 )
 from coeus.repositories.access import SeedAccessRepository
 from coeus.repositories.store import InMemoryStoreRepository, new_store_product_id
@@ -173,7 +174,7 @@ class StoreIngestionService:
                 mime_type=asset.mime_type,
                 size_bytes=asset.size_bytes,
                 sha256=asset.sha256,
-                object_key=f"store/uploads/{asset.asset_id}/{asset.name}",
+                object_key=f"store/uploads/{asset.asset_id}/{object_key_segment(asset.name)}",
                 preview_kind=asset.preview_kind,
             )
             for asset in assets

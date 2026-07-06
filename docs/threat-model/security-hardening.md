@@ -41,8 +41,29 @@ Existing sprint threat models were reviewed against the Sprint 13 gates. The
 new controls reinforce repository, CI, deployment-scaffold, intake and cloud
 configuration risks without changing the local-first application trust model.
 
+## Review Hardening (2026-07-06)
+
+Following code-quality and defensive-security reviews, the following controls
+were added and are covered by tests.
+
+| Threat | Mitigation |
+| --- | --- |
+| A public deployment boots with the source-committed default seed password and grants free administrator access. | Start-up now fails closed when dev seed users are enabled and `COEUS_LOCAL_SEED_CREDENTIAL` is left at its default, alongside the existing session/CSRF/secure-cookie checks (`core/config.py`). |
+| On-path downgrade or clickjacking against browser clients. | The API sets a narrow `Content-Security-Policy` (`frame-ancestors 'none'; base-uri 'none'`) always and `Strict-Transport-Security` when serving over TLS; the browser-facing nginx config sets a full resource CSP plus HSTS (`core/security.py`, `infra/docker/nginx-web.conf`). |
+| A client-supplied asset name escapes its object-key prefix once real storage is wired in. | Asset object keys reduce the name to a single safe path segment via `object_key_segment`, stripping directory components and parent references (`domain/store.py`, used by store and QC ingestion). |
+| A client declares an implausible asset size to bypass future quota logic. | `StoreAssetRequest.size_bytes` now has an upper bound at the schema boundary in addition to the service-layer positive-size check. |
+| Cross-task data association in the analyst workbench, or a stale routing selection after a ticket leaves the queue. | Frontend state is reset on selection change (analyst detail keyed by task; routing selection cleared when a ticket is routed away), preventing one task's draft being submitted against another. |
+
 ## Open Risks
 
+- Login lockout is username-scoped and process-local. IP-based and distributed
+  rate limiting (for example a Cloud Armor rule or an application limiter) are
+  still required before a public deployment; tracked for when GCP hosting is
+  un-parked.
+- The store asset "download token" is currently a deterministic identifier for
+  scaffolding only. Before a real download endpoint consumes it, it must become a
+  random, server-stored, expiring capability that re-checks authorisation at
+  redemption.
 - Native GitHub secret scanning and push protection are repository settings and
   must be confirmed in GitHub, not by local files alone.
 - ZAP is unauthenticated. It does not prove role-protected flows are free from

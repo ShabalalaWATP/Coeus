@@ -12,6 +12,7 @@ type RequestJourneyProps = {
 export function RequestJourney({ onClose, state }: RequestJourneyProps) {
   const currentIndex = stageIndexForState(state);
   const reused = state === "CLOSED_EXISTING_PRODUCT_ACCEPTED";
+  const cancelled = state === "CANCELLED";
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -36,9 +37,11 @@ export function RequestJourney({ onClose, state }: RequestJourneyProps) {
           <div>
             <h2>Where your request goes</h2>
             <p>
-              {reused
-                ? "An existing product satisfied this request, so it skipped straight to delivery."
-                : "Each stage is handled by a person supported by Istari agents."}
+              {cancelled
+                ? "This request was cancelled, so it did not continue through the stages below."
+                : reused
+                  ? "An existing product satisfied this request, so it skipped straight to delivery."
+                  : "Each stage is handled by a person supported by Istari agents."}
             </p>
           </div>
           <button aria-label="Close journey" onClick={onClose} type="button">
@@ -48,8 +51,13 @@ export function RequestJourney({ onClose, state }: RequestJourneyProps) {
         <ol className="journey-steps">
           {JOURNEY_STAGES.map((stage, index) => {
             const Icon = stage.icon;
-            const status =
-              index < currentIndex ? "done" : index === currentIndex ? "current" : "next";
+            const status = cancelled
+              ? "next"
+              : index < currentIndex
+                ? "done"
+                : index === currentIndex
+                  ? "current"
+                  : "next";
             return (
               <li className={`journey-step journey-step--${status}`} key={stage.label}>
                 <span aria-hidden="true" className="journey-step__icon">

@@ -141,7 +141,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         request.state.request_id = request_id
         response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
-        apply_security_headers(response)
+        apply_security_headers(response, secure_transport=resolved_settings.secure_cookies)
         logger.info("request_completed", extra={"request_id": request_id})
         return response
 

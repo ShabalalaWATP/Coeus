@@ -53,6 +53,18 @@ const readOnlyCollectionSession: AuthSession = {
   },
 };
 
+const rfaManagerSession: AuthSession = {
+  csrfToken: "test-csrf-token",
+  user: {
+    id: "rfa-user",
+    username: "rfa.manager@example.test",
+    displayName: "RFA Manager",
+    roles: ["Request for Assessment Manager"],
+    defaultRoute: "/rfa/queue",
+    permissions: ["product:read", "product:search"],
+  },
+};
+
 beforeEach(() => {
   resetQueryClientForTests();
 });
@@ -153,6 +165,26 @@ test("filters my products by owner team and hides upload without create permissi
   expect(screen.queryByText("Regional Stability Brief")).not.toBeInTheDocument();
   expect(screen.queryByRole("link", { name: "Upload product" })).not.toBeInTheDocument();
   expect(screen.getByText("MOCK DATA ONLY")).toBeVisible();
+});
+
+test("scopes my products to the RFA team for an assessment manager", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          products: [visibleProduct, collectionProduct],
+          total: 2,
+          facets: { productTypes: [], regions: [], tags: [] },
+        }),
+    }),
+  );
+
+  renderWithProviders(<StorePage scope="mine" />, "/store/my-products", rfaManagerSession);
+
+  expect(await screen.findByText("Regional Stability Brief")).toBeVisible();
+  expect(screen.queryByText("Collection Sensor Summary")).not.toBeInTheDocument();
 });
 
 test("renders a store search error state", async () => {

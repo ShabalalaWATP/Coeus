@@ -63,7 +63,11 @@ export default function AnalystWorkbenchPage() {
             </>
           )}
         </aside>
-        <AnalystTaskDetail onTaskChange={updateTask} task={selectedTask} />
+        <AnalystTaskDetail
+          key={selectedTask?.ticketId ?? "none"}
+          onTaskChange={updateTask}
+          task={selectedTask}
+        />
       </section>
     </div>
   );

@@ -33,6 +33,22 @@ const sorters: Record<StoreSort, (a: SortableProduct, b: SortableProduct) => num
 
 type SortableProduct = { title: string; timePeriodStart: string | null };
 
+// Owner-team labels stored on products map to the role families that own them.
+// Matching on a distinctive substring of the role display name keeps "My Products"
+// correct for every owning role (for example "Request for Assessment Manager").
+const OWNER_TEAM_ROLE_HINT: Record<string, string> = {
+  rfa: "assessment",
+  collection: "collection",
+};
+
+function ownsTeamProduct(roleNames: readonly string[], ownerTeam: string): boolean {
+  const hint = OWNER_TEAM_ROLE_HINT[ownerTeam.toLowerCase()];
+  if (hint === undefined) {
+    return false;
+  }
+  return roleNames.some((role) => role.toLowerCase().includes(hint));
+}
+
 export default function StorePage({
   description = "MOCK DATA ONLY controlled product search, metadata review and asset access.",
   ownerTeam,
@@ -64,9 +80,7 @@ export default function StorePage({
         ? products.filter((product) => product.ownerTeam === ownerTeam)
         : scope === "all" || session === null
           ? products
-          : products.filter((product) =>
-              session.user.roles.join(" ").toLowerCase().includes(product.ownerTeam.toLowerCase()),
-            );
+          : products.filter((product) => ownsTeamProduct(session.user.roles, product.ownerTeam));
     return [...scoped].sort(sorters[sort]);
   }, [ownerTeam, productsQuery.data?.products, scope, session, sort]);
   const canUpload = session !== null && hasPermissions(session.user, ["product:create_existing"]);

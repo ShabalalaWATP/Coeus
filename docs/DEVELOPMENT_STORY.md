@@ -305,3 +305,26 @@
 - Checks: line limit, Prettier, ESLint, tsc, Vitest coverage (99.8% lines,
   95.9% branches), pytest coverage (95.61%, 139 tests), mypy and ruff all
   pass.
+
+## 2026-07-06 Quality, security and documentation pass
+
+- Ran code-quality and defensive-security reviews and acted on the findings.
+- Fixed real frontend bugs: the analyst workbench now remounts per task so an
+  unsent note or draft cannot carry across to a different task; the store "My
+  Products" scope maps owner team to role by an explicit matcher (RFA managers
+  previously saw an empty list); the routing queue clears its selection when a
+  ticket is routed away instead of silently showing an unrelated one; the request
+  journey handles cancelled requests; and the admin rejection reason clears after
+  use. Each fix has a regression test.
+- Hardened the backend, secure by design: start-up now fails closed if dev seed
+  users are enabled without overriding the default seed credential (closing a
+  public-deploy admin-access risk); the API sets a narrow CSP always and HSTS
+  over TLS, and the nginx SPA config sets a full CSP plus HSTS; asset object keys
+  are reduced to a safe path segment; and asset size has an upper bound at the
+  schema boundary.
+- Overhauled the documentation: a rewritten README, a docs index, and new Setup,
+  User, Roles and User Stories, and AI Agents guides, with twelve annotated
+  screenshots of every role workspace (all synthetic, MOCK DATA ONLY). Recorded
+  the security changes and remaining deferred risks in the threat model.
+- Checks: line limit, Prettier, ESLint, tsc, Vitest coverage (99.8% lines,
+  95.9% branches), pytest (145 tests, 95.62%), mypy and ruff all pass.

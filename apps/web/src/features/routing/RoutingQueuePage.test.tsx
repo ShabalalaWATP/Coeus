@@ -216,6 +216,9 @@ test("rejects an RFA route with a manager reason", async () => {
       method: "POST",
     },
   );
+  // Once the rejected ticket leaves the queue the detail panel must clear rather
+  // than silently fall back to an unrelated ticket.
+  expect(await screen.findByText("No ticket selected")).toBeVisible();
 });
 
 test("approves collection manager fallback routes", async () => {

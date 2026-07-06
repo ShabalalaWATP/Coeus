@@ -44,6 +44,14 @@ test("explains when an existing product satisfied the request", () => {
   expect(screen.getByText("Delivered").closest("li")).toHaveClass("journey-step--current");
 });
 
+test("explains a cancelled request without marking a current stage", () => {
+  render(<RequestJourney onClose={vi.fn()} state="CANCELLED" />);
+
+  expect(screen.getByText(/this request was cancelled/i)).toBeVisible();
+  expect(screen.queryByText("You are here")).not.toBeInTheDocument();
+  expect(screen.getByText("Describe the need").closest("li")).toHaveClass("journey-step--next");
+});
+
 test("closes from the header close button", async () => {
   const onClose = vi.fn();
   render(<RequestJourney onClose={onClose} state="ANALYST_IN_PROGRESS" />);

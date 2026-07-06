@@ -8,6 +8,7 @@ LlmProviderName = Literal["mock", "gemma_vertex", "gemma_vllm"]
 ObjectStorageProviderName = Literal["local", "gcs"]
 SEED_USER_ENVIRONMENTS = frozenset({"local", "test"})
 SECURE_COOKIE_ENVIRONMENTS = frozenset({"staging", "prod"})
+DEFAULT_SEED_CREDENTIAL = "CoeusLocal1!"
 
 
 class Settings(BaseSettings):
@@ -38,7 +39,7 @@ class Settings(BaseSettings):
     argon2_time_cost: int = 2
     argon2_memory_cost: int = 19_456
     argon2_parallelism: int = 1
-    local_seed_credential: str = "CoeusLocal1!"
+    local_seed_credential: str = DEFAULT_SEED_CREDENTIAL
     allow_dev_seed_users: bool = False
     gcp_project_id: str | None = None
     gcp_region: str = "europe-west2"
@@ -68,6 +69,12 @@ class Settings(BaseSettings):
             errors.append(
                 "Seed users are local/test only. Configure persistent user storage "
                 f"before running environment={self.environment!r}."
+            )
+        if dev_seed_users_allowed and self.local_seed_credential == DEFAULT_SEED_CREDENTIAL:
+            errors.append(
+                "COEUS_LOCAL_SEED_CREDENTIAL must be overridden with a non-default value "
+                "when dev seed users are enabled, otherwise the published default password "
+                "grants administrator access."
             )
         if self.environment in {"dev", "staging", "prod"}:
             if not self.session_secret or len(self.session_secret) < 32:

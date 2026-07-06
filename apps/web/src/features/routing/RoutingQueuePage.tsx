@@ -63,11 +63,16 @@ export default function RoutingQueuePage({ route }: RoutingQueuePageProps) {
     [queue.tickets, selectedTicketId],
   );
   const updateQueue = (ticket: RoutingTicket) => {
+    const nextTickets = upsertRoutingTicket(queue.tickets, ticket, route);
     queryClient.setQueryData<RoutingQueue>(["routing-queue", route], {
       ...queue,
-      tickets: upsertRoutingTicket(queue.tickets, ticket, route),
+      tickets: nextTickets,
     });
-    setSelectedTicketId(ticket.ticketId);
+    // Keep the ticket selected only while it stays in this queue. Once it is
+    // routed away (reject, clarification or approval) clear the selection so the
+    // detail panel does not silently fall back to an unrelated ticket.
+    const stillVisible = nextTickets.some((item) => item.ticketId === ticket.ticketId);
+    setSelectedTicketId(stillVisible ? ticket.ticketId : undefined);
   };
   const removeTicket = (ticketId: string) => {
     queryClient.setQueryData<RoutingQueue>(["routing-queue", route], {

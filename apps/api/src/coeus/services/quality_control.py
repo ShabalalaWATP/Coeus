@@ -9,7 +9,12 @@ from coeus.domain.auth import UserAccount
 from coeus.domain.enums import TicketState
 from coeus.domain.qc import ProductIndexRecord, QcChecklistItem, QcDecisionStatus
 from coeus.domain.state_machine import can_transition
-from coeus.domain.store import StoreAsset, StoreProduct, StoreProductMetadata
+from coeus.domain.store import (
+    StoreAsset,
+    StoreProduct,
+    StoreProductMetadata,
+    object_key_segment,
+)
 from coeus.domain.tickets import DraftProductAsset, DraftProductVersion, TicketRecord
 from coeus.repositories.access import SeedAccessRepository
 from coeus.repositories.store import new_store_product_id
@@ -289,7 +294,7 @@ def _store_asset(ticket_id: UUID, asset: DraftProductAsset) -> StoreAsset:
         mime_type=asset.mime_type,
         size_bytes=asset.size_bytes,
         sha256=asset.sha256,
-        object_key=f"store/qc/{ticket_id}/{asset.asset_id}/{asset.name}",
+        object_key=f"store/qc/{ticket_id}/{asset.asset_id}/{object_key_segment(asset.name)}",
         preview_kind=preview_kind(asset.mime_type, asset.asset_type),
     )
 
