@@ -182,7 +182,7 @@ async def test_registration_review_requires_permission_and_csrf() -> None:
 async def test_registration_decisions_require_reviewer_permission() -> None:
     async with _client() as client:
         await client.post("/api/v1/auth/register", json=SUBMIT_PAYLOAD)
-        admin_csrf = await _login(client, "admin@example.test")
+        await _login(client, "admin@example.test")
         pending = await client.get("/api/v1/admin/registrations")
         registration_id = pending.json()["registrations"][0]["id"]
 

@@ -174,7 +174,7 @@ async def _approved_feedback_request(client: AsyncClient, app: object, acg_id: s
         headers={"X-CSRF-Token": str(manager["csrfToken"])},
         json={"route": "rfa"},
     )
-    qc = await login(client, "qc.manager@example.test")
+    await login(client, "qc.manager@example.test")
     details = await client.get(f"/api/v1/qc/products/{ticket_id}")
     assert assigned.status_code == 200
     assert submitted.status_code == 200
