@@ -1,0 +1,149 @@
+/* Ambient UI effects. Every animation here is neutralised by the global
+   prefers-reduced-motion rule in base.css. */
+
+/* Spotlight card: a soft radial highlight that follows the pointer. */
+.spotlight-card {
+  --spot-x: 50%;
+  --spot-y: 50%;
+
+  position: relative;
+  overflow: hidden;
+}
+
+.spotlight-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    240px circle at var(--spot-x) var(--spot-y),
+    color-mix(in srgb, var(--accent) 9%, transparent),
+    transparent 65%
+  );
+  opacity: 0;
+  transition: opacity var(--speed-fast) ease;
+  pointer-events: none;
+}
+
+.spotlight-card:hover::before {
+  opacity: 1;
+}
+
+.spotlight-card > * {
+  position: relative;
+}
+
+/* Particle field: ambient canvas behind the splash hero. */
+.particle-field {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+/* Shiny text: a slow highlight sweep across the splash tagline. */
+.shiny-text {
+  background: linear-gradient(
+    110deg,
+    var(--accent) 42%,
+    color-mix(in srgb, white 80%, var(--accent)) 50%,
+    var(--accent) 58%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  background-size: 240% 100%;
+  color: transparent;
+  animation: shiny-sweep 5s linear infinite;
+}
+
+@keyframes shiny-sweep {
+  from {
+    background-position: 120% 0;
+  }
+
+  to {
+    background-position: -120% 0;
+  }
+}
+
+/* Splash capability points presented as quiet spotlight cards. */
+.splash-point {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: var(--radius-md);
+  padding: 11px 13px;
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+}
+
+/* Staggered rise-in for dashboard metric cards. */
+.request-metrics .spotlight-card {
+  animation: metric-rise 0.5s ease both;
+}
+
+.request-metrics .spotlight-card:nth-child(2) {
+  animation-delay: 60ms;
+}
+
+.request-metrics .spotlight-card:nth-child(3) {
+  animation-delay: 120ms;
+}
+
+.request-metrics .spotlight-card:nth-child(4) {
+  animation-delay: 180ms;
+}
+
+.request-metrics .spotlight-card:nth-child(5) {
+  animation-delay: 240ms;
+}
+
+@keyframes metric-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Soft pulse on the dot of active workflow status pills. */
+.status-pill--info::before {
+  animation: status-dot-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes status-dot-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.9);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+/* One-shot ping when the notification badge appears. */
+.notification-bell__badge {
+  animation: badge-ping 0.6s ease;
+}
+
+@keyframes badge-ping {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--critical) 60%, transparent);
+    transform: scale(0.8);
+  }
+
+  100% {
+    box-shadow: 0 0 0 9px transparent;
+    transform: scale(1);
+  }
+}

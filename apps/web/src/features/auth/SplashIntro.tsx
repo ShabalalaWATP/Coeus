@@ -1,5 +1,8 @@
 import { Radar, ShieldCheck, Workflow } from "lucide-react";
 
+import { ParticleField } from "../../components/effects/ParticleField";
+import { SpotlightCard } from "../../components/effects/SpotlightCard";
+
 const capabilities = [
   {
     icon: Radar,
@@ -21,6 +24,7 @@ const capabilities = [
 export function SplashIntro() {
   return (
     <section className="splash-intro" aria-label="About Istari">
+      <ParticleField />
       <div className="splash-intro__logo-wrap">
         <img
           alt="Istari logo"
@@ -32,7 +36,7 @@ export function SplashIntro() {
         />
       </div>
       <h1 className="splash-intro__title">Istari</h1>
-      <p className="splash-intro__tagline">Task. Assess. Deliver.</p>
+      <p className="splash-intro__tagline shiny-text">Task. Assess. Deliver.</p>
       <p className="splash-intro__pitch">
         The secure workspace for intelligence tasking: route customer requests, task analysts and
         release quality-assured products with every action audited.
@@ -40,11 +44,13 @@ export function SplashIntro() {
       <ul className="splash-intro__points">
         {capabilities.map((capability) => (
           <li key={capability.title}>
-            <capability.icon aria-hidden="true" size={19} strokeWidth={1.9} />
-            <div>
-              <strong>{capability.title}</strong>
-              <span>{capability.detail}</span>
-            </div>
+            <SpotlightCard className="splash-point">
+              <capability.icon aria-hidden="true" size={19} strokeWidth={1.9} />
+              <div>
+                <strong>{capability.title}</strong>
+                <span>{capability.detail}</span>
+              </div>
+            </SpotlightCard>
           </li>
         ))}
       </ul>

@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { CountUp } from "../../components/effects/CountUp";
+import { SpotlightCard } from "../../components/effects/SpotlightCard";
 import { EmptyState } from "../../components/ui/PageState";
 import { formatWorkflowState } from "../../lib/workflow/state-format";
 import type { Ticket } from "../../lib/api-client/tickets";
@@ -34,15 +36,17 @@ export function RequestDashboard({ canCreate, onOpen, tickets }: RequestDashboar
         {metricItems.map((metric) => {
           const Icon = metric.icon;
           return (
-            <article className="request-metric" key={metric.label}>
+            <SpotlightCard className="request-metric" key={metric.label}>
               <span className={`metric-icon metric-icon--${metric.tone}`} aria-hidden="true">
                 <Icon size={22} strokeWidth={1.8} />
               </span>
               <div>
-                <strong>{metric.value}</strong>
+                <strong>
+                  <CountUp value={metric.value} />
+                </strong>
                 <span>{metric.label}</span>
               </div>
-            </article>
+            </SpotlightCard>
           );
         })}
       </section>

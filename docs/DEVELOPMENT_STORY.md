@@ -328,3 +328,24 @@
   the security changes and remaining deferred risks in the threat model.
 - Checks: line limit, Prettier, ESLint, tsc, Vitest coverage (99.8% lines,
   95.9% branches), pytest (145 tests, 95.62%), mypy and ruff all pass.
+
+## 2026-07-06 Ambient UI effects
+
+- Adapted three React Bits components as dependency-free versions in
+  `src/components/effects`: ParticleField (2D canvas points drifting behind
+  the splash hero), SpotlightCard (pointer-tracked highlight, now on the
+  splash capability points and the dashboard metric cards) and CountUp
+  (requestAnimationFrame ease-out for dashboard metric values).
+- Added CSS-only touches in `effects.css`: a slow shiny sweep on the splash
+  tagline, a staggered rise-in for metric cards, a soft pulse on active
+  workflow status-pill dots and a one-shot ping when the notification badge
+  appears.
+- Every effect honours prefers-reduced-motion: CSS animations are killed by
+  the existing global rule, and the JS effects check the media query
+  themselves, rendering a static frame or the final value instantly.
+  Environments without matchMedia (jsdom) take the static path so tests stay
+  deterministic. No new dependencies were added.
+- Verified in the browser (particles animating, spotlight tracking, count-up
+  settling) and refreshed the splash screenshots. Frontend gates pass: 213
+  tests, 99.75% lines and 95.95% branches, ESLint, tsc, Prettier and the
+  line limit. The backend is untouched.

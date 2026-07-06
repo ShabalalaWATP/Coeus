@@ -21,6 +21,7 @@
 }
 
 .splash-intro {
+  position: relative;
   display: grid;
   justify-items: center;
   gap: 12px;
@@ -156,10 +157,7 @@
 }
 
 .splash-intro__points li {
-  display: grid;
-  grid-template-columns: 20px minmax(0, 1fr);
-  gap: 12px;
-  align-items: start;
+  display: block;
 }
 
 .splash-intro__points svg {
