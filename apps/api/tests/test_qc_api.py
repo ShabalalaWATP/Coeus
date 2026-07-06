@@ -13,7 +13,7 @@ from rfi_search_helpers import login, submitted_ticket
 
 
 @pytest.mark.asyncio
-async def test_qc_approves_ingests_indexes_disseminates_and_requests_feedback() -> None:
+async def test_qc_approval_hands_over_to_manager_release() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     acg_id = _acg_id(app, "ACG-ALPHA-REGIONAL")
     async with AsyncClient(
@@ -36,13 +36,15 @@ async def test_qc_approves_ingests_indexes_disseminates_and_requests_feedback() 
     assert len(queue.json()["products"][0]["checklistKeys"]) == 9
     assert approved.status_code == 200
     body = approved.json()
-    assert body["state"] == "DISSEMINATION_READY"
+    assert body["state"] == "MANAGER_RELEASE"
     assert body["decisions"][0]["status"] == "approved"
     assert [record["status"] for record in body["indexRecords"]] == ["queued", "indexed"]
     assert body["ingestedProduct"]["title"] == "Approved Arctic QC product"
-    assert body["disseminations"][0]["productId"] == body["ingestedProduct"]["id"]
-    assert body["feedbackRequests"][0]["productId"] == body["ingestedProduct"]["id"]
-    assert body["ingestedProduct"]["id"] in {product["id"] for product in search.json()["products"]}
+    assert body["disseminations"] == []
+    assert body["feedbackRequests"] == []
+    assert body["ingestedProduct"]["id"] not in {
+        product["id"] for product in search.json()["products"]
+    }
 
 
 @pytest.mark.asyncio

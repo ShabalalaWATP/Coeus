@@ -84,6 +84,22 @@ export default function ProductDetailPage() {
                   : "Not recorded"}
               </dd>
             </div>
+            <div>
+              <dt>Source</dt>
+              <dd>{product.sourceType.replaceAll("_", " ")}</dd>
+            </div>
+            <div>
+              <dt>Releasability</dt>
+              <dd>{product.releasability.join(", ") || "Not recorded"}</dd>
+            </div>
+            <div>
+              <dt>Caveats</dt>
+              <dd>{product.handlingCaveats.join(", ") || "None"}</dd>
+            </div>
+            <div>
+              <dt>Status</dt>
+              <dd>{product.status}</dd>
+            </div>
           </dl>
           <div className="store-facets">
             {product.geojsonRef !== null ? (
@@ -107,8 +123,14 @@ export default function ProductDetailPage() {
                 to={`/store/products/${product.id}/assets/${asset.id}`}
               >
                 <FileText aria-hidden="true" size={18} />
-                <span>{asset.name}</span>
-                <small>{asset.previewKind}</small>
+                <span>
+                  {asset.name}
+                  <small className="store-asset-meta">
+                    {asset.mimeType} | {Math.max(1, Math.round(asset.sizeBytes / 1024))} KB |
+                    SHA-256 {asset.sha256.slice(0, 12)}
+                  </small>
+                </span>
+                <small>{asset.previewKind.replaceAll("_", " ")}</small>
               </Link>
             ))}
           </div>

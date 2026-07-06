@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
 import { AssignAnalystPanel } from "./AssignAnalystPanel";
+import { ReleaseQueuePanel } from "./ReleaseQueuePanel";
 import {
   canApprove,
   canReject,
@@ -205,6 +206,7 @@ export default function RoutingQueuePage({ route }: RoutingQueuePageProps) {
           )}
         </section>
       </section>
+      <ReleaseQueuePanel csrfToken={csrfToken} route={route} />
     </div>
   );
 }

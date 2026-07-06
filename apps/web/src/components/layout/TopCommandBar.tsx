@@ -1,7 +1,8 @@
-import { Bell, LogOut, Moon, Search, Sun, UserCircle } from "lucide-react";
+import { LogOut, Moon, Search, Sun, UserCircle } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { NotificationsPopover } from "./NotificationsPopover";
 import { IconButton } from "../ui/IconButton";
 import { useTheme } from "../../lib/theme/theme-context";
 import { visibleNavigationItems, type UserProfile } from "../../lib/permissions/route-access";
@@ -87,14 +88,12 @@ export function TopCommandBar({ onLogout, profile }: TopCommandBarProps) {
         <IconButton ariaLabel={themeLabel} onClick={toggleTheme}>
           <ThemeIcon aria-hidden="true" size={18} strokeWidth={1.8} />
         </IconButton>
-        <IconButton
-          ariaLabel="Notifications"
-          onClick={() =>
+        <NotificationsPopover
+          onToggle={() =>
             setOpenPanel((current) => (current === "notifications" ? null : "notifications"))
           }
-        >
-          <Bell aria-hidden="true" size={18} strokeWidth={1.8} />
-        </IconButton>
+          open={openPanel === "notifications"}
+        />
         <button
           aria-label="Profile"
           className="profile-menu"
@@ -107,12 +106,6 @@ export function TopCommandBar({ onLogout, profile }: TopCommandBarProps) {
         <IconButton ariaLabel="Log out" onClick={() => void onLogout()}>
           <LogOut aria-hidden="true" size={18} strokeWidth={1.8} />
         </IconButton>
-        {openPanel === "notifications" ? (
-          <aside className="command-popover" aria-label="Notifications panel">
-            <strong>Notifications</strong>
-            <p>No new notifications.</p>
-          </aside>
-        ) : null}
         {openPanel === "profile" ? (
           <aside className="command-popover" aria-label="Profile panel">
             <strong>{profile.displayName}</strong>

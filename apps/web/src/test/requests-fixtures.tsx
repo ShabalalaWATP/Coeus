@@ -33,6 +33,7 @@ export const baseTicket: Ticket = {
   isReadyForSubmission: false,
   suggestedProjectName: null,
   visibleProductMatches: [],
+  releasedProductIds: [],
   collaborators: [],
   messages: [
     {

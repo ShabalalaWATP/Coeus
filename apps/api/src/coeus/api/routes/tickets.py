@@ -183,6 +183,7 @@ def _to_ticket_response(ticket: TicketRecord) -> TicketResponse:
         is_ready_for_submission=not ticket.intake.missing_information,
         suggested_project_name=ticket.suggested_project_name,
         visible_product_matches=list(ticket.visible_product_matches),
+        released_product_ids=[dissemination.product_id for dissemination in ticket.disseminations],
         collaborators=[
             _to_collaborator_response(collaborator) for collaborator in ticket.collaborators
         ],

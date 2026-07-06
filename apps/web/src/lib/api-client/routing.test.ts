@@ -1,7 +1,9 @@
 import {
   approveRoute,
+  listReleaseQueue,
   listRoutingQueue,
   rejectRoute,
+  releaseProduct,
   requestRouteClarification,
   runRoutingReviews,
 } from "./routing";
@@ -40,6 +42,31 @@ test("calls routing queue and manager action endpoints", async () => {
     credentials: "include",
     method: "GET",
   });
+});
+
+test("calls release queue and release endpoints", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValue({ ok: true, json: () => Promise.resolve({ ticketId: "ticket-1" }) });
+  vi.stubGlobal("fetch", fetchMock);
+
+  await listReleaseQueue("rfa");
+  await releaseProduct("ticket-1", "rfa", "csrf");
+
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    1,
+    "http://127.0.0.1:8001/api/v1/routing/rfa/release-queue",
+    { credentials: "include", method: "GET" },
+  );
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    2,
+    "http://127.0.0.1:8001/api/v1/routing/ticket-1/release",
+    expect.objectContaining({
+      body: JSON.stringify({ route: "rfa" }),
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": "csrf" },
+      method: "POST",
+    }),
+  );
 });
 
 test("posts routing review, approval, rejection and clarification payloads", async () => {

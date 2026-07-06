@@ -6,8 +6,10 @@ from fastapi import APIRouter, Depends
 from coeus.api.dependencies import (
     get_csrf_validated_session,
     get_current_session,
+    get_product_release_service,
     get_routing_service,
 )
+from coeus.core.errors import AppError
 from coeus.domain.auth import AuthenticatedSession
 from coeus.domain.tickets import (
     ClarificationRequest,
@@ -33,9 +35,45 @@ from coeus.schemas.routing import (
     RoutingStatsResponse,
     RoutingTicketResponse,
 )
+from coeus.services.product_release import ProductReleaseService
 from coeus.services.routing import RoutingService, RoutingStats
 
 router = APIRouter(prefix="/routing", tags=["routing"])
+
+RELEASE_ROUTES = {"rfa": RoutingRoute.RFA, "cm": RoutingRoute.CM}
+
+
+def _release_route(route: str) -> RoutingRoute:
+    resolved = RELEASE_ROUTES.get(route)
+    if resolved is None:
+        raise AppError(422, "route_invalid", "Route must be rfa or cm.")
+    return resolved
+
+
+@router.get("/{route}/release-queue", response_model=RoutingQueueResponse)
+async def release_queue(
+    route: str,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_current_session)],
+    releases: Annotated[ProductReleaseService, Depends(get_product_release_service)],
+    routing: Annotated[RoutingService, Depends(get_routing_service)],
+) -> RoutingQueueResponse:
+    tickets = releases.queue(authenticated.user, _release_route(route))
+    return RoutingQueueResponse(
+        tickets=[_ticket_response(ticket) for ticket in tickets],
+        stats=_stats_response(routing.stats(authenticated.user)),
+    )
+
+
+@router.post("/{ticket_id}/release", response_model=RoutingTicketResponse)
+async def release_product(
+    ticket_id: UUID,
+    payload: RouteApprovalRequest,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    releases: Annotated[ProductReleaseService, Depends(get_product_release_service)],
+) -> RoutingTicketResponse:
+    return _ticket_response(
+        releases.release(authenticated.user, ticket_id, _release_route(payload.route))
+    )
 
 
 @router.get("/rfa/queue", response_model=RoutingQueueResponse)

@@ -13,6 +13,8 @@ from coeus.services.ai_models import AiModelService
 from coeus.services.analyst_workflow import AnalystWorkflowService
 from coeus.services.auth import AuthService
 from coeus.services.feedback_analytics import FeedbackAnalyticsService
+from coeus.services.notifications import NotificationService
+from coeus.services.product_release import ProductReleaseService
 from coeus.services.quality_control import QualityControlService
 from coeus.services.registration import RegistrationService
 from coeus.services.rfi_search import RfiSearchService
@@ -57,6 +59,20 @@ def get_ai_model_service(request: Request) -> AiModelService:
     service = getattr(request.app.state, "ai_model_service", None)
     if not isinstance(service, AiModelService):
         raise AppError(500, "ai_models_not_configured", "AI model selection is not configured.")
+    return service
+
+
+def get_product_release_service(request: Request) -> ProductReleaseService:
+    service = getattr(request.app.state, "product_release_service", None)
+    if not isinstance(service, ProductReleaseService):
+        raise AppError(500, "release_not_configured", "Product release is not configured.")
+    return service
+
+
+def get_notification_service(request: Request) -> NotificationService:
+    service = getattr(request.app.state, "notification_service", None)
+    if not isinstance(service, NotificationService):
+        raise AppError(500, "notifications_not_configured", "Notifications are not configured.")
     return service
 
 

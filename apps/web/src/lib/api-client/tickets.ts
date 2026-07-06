@@ -75,6 +75,7 @@ export type Ticket = {
   isReadyForSubmission: boolean;
   suggestedProjectName: string | null;
   visibleProductMatches: string[];
+  releasedProductIds: string[];
   collaborators: TicketCollaborator[];
   messages: ChatMessage[];
   attachments: AttachmentMetadata[];
@@ -96,6 +97,7 @@ export type TicketState =
   | "ANALYST_IN_PROGRESS"
   | "QC_REVIEW"
   | "REWORK_REQUIRED"
+  | "MANAGER_RELEASE"
   | "DISSEMINATION_READY"
   | "CLOSED_EXISTING_PRODUCT_ACCEPTED"
   | "CANCELLED";

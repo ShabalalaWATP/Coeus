@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 
 import { ChatPanel } from "./ChatPanel";
 import { IntakePanel } from "./IntakePanel";
@@ -36,6 +37,7 @@ const ticket: Ticket = {
   isReadyForSubmission: true,
   suggestedProjectName: null,
   visibleProductMatches: [],
+  releasedProductIds: [],
   collaborators: [],
   messages: [],
   attachments: [],
@@ -144,6 +146,29 @@ test("opens tickets from the dashboard and shows tagged counts", async () => {
 
   expect(onOpen).toHaveBeenCalledWith("ticket-1");
   expect(screen.getByText("1 tagged")).toBeVisible();
+});
+
+test("links released products from the dashboard", () => {
+  render(
+    <MemoryRouter>
+      <RequestDashboard
+        canCreate
+        onOpen={vi.fn()}
+        tickets={[
+          {
+            ...ticket,
+            state: "DISSEMINATION_READY",
+            releasedProductIds: ["product-9"],
+          },
+        ]}
+      />
+    </MemoryRouter>,
+  );
+
+  expect(screen.getByRole("link", { name: /View released product/ })).toHaveAttribute(
+    "href",
+    "/store/products/product-9",
+  );
 });
 
 test("renders fallback titles and an empty dashboard state", () => {

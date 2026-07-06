@@ -168,10 +168,19 @@ async def _approved_feedback_request(client: AsyncClient, app: object, acg_id: s
         headers={"X-CSRF-Token": str(qc["csrfToken"])},
         json=_approval_payload(acg_id),
     )
+    manager = await login(client, "rfa.manager@example.test")
+    released = await client.post(
+        f"/api/v1/routing/{ticket_id}/release",
+        headers={"X-CSRF-Token": str(manager["csrfToken"])},
+        json={"route": "rfa"},
+    )
+    qc = await login(client, "qc.manager@example.test")
+    details = await client.get(f"/api/v1/qc/products/{ticket_id}")
     assert assigned.status_code == 200
     assert submitted.status_code == 200
     assert approved.status_code == 200
-    return str(approved.json()["feedbackRequests"][0]["id"])
+    assert released.status_code == 200
+    return str(details.json()["feedbackRequests"][0]["id"])
 
 
 async def _approved_route_ticket(

@@ -7,20 +7,10 @@ from coeus.core.permissions import Permission
 from coeus.domain.access import ProductStatus, ProjectWorkspace
 from coeus.domain.auth import UserAccount
 from coeus.domain.enums import TicketState
-from coeus.domain.qc import (
-    FeedbackRequest,
-    ProductIndexRecord,
-    QcChecklistItem,
-    QcDecisionStatus,
-)
+from coeus.domain.qc import ProductIndexRecord, QcChecklistItem, QcDecisionStatus
 from coeus.domain.state_machine import can_transition
 from coeus.domain.store import StoreAsset, StoreProduct, StoreProductMetadata
-from coeus.domain.tickets import (
-    DraftProductAsset,
-    DraftProductVersion,
-    ProductDissemination,
-    TicketRecord,
-)
+from coeus.domain.tickets import DraftProductAsset, DraftProductVersion, TicketRecord
 from coeus.repositories.access import SeedAccessRepository
 from coeus.repositories.store import new_store_product_id
 from coeus.services.analyst_records import approved_route
@@ -28,8 +18,6 @@ from coeus.services.audit import AuditLog
 from coeus.services.qc_acg_policy import validate_qc_acg_assignment
 from coeus.services.qc_records import (
     checklist_items,
-    dissemination,
-    feedback_request,
     indexed_product,
     preview_kind,
     qc_decision,
@@ -107,7 +95,8 @@ class ProductAutoIngestionService:
                 tags=frozenset({"mock", "qc-approved", ticket.reference.casefold()}),
                 acg_ids=acg_ids,
                 project_id=project.project_id if project else None,
-                status=ProductStatus.PUBLISHED,
+                # Held as draft until the route manager performs final release.
+                status=ProductStatus.DRAFT,
                 time_period_start=ticket.intake.time_period_start,
                 time_period_end=ticket.intake.time_period_end,
                 geojson_ref=None,
@@ -148,32 +137,6 @@ class ProductIndexingService:
         )
 
 
-class DisseminationService:
-    def __init__(self, store: StoreServices, access_repository: SeedAccessRepository) -> None:
-        self._store = store
-        self._access = access_repository
-
-    def disseminate(
-        self, actor: UserAccount, ticket: TicketRecord, product: StoreProduct
-    ) -> ProductDissemination:
-        self._require(actor, Permission.PRODUCT_DISSEMINATE)
-        requester = self._access.get_user(ticket.requester_user_id)
-        if requester is None or not requester.is_active:
-            raise AppError(409, "requester_not_active", "Requester must be active.")
-        self._store.details.get_visible_product(requester, product.product_id)
-        return dissemination(ticket.ticket_id, product.product_id, requester.user_id)
-
-    @staticmethod
-    def _require(actor: UserAccount, permission: Permission) -> None:
-        if permission not in actor.permissions:
-            raise AppError(403, "forbidden", "Permission denied.")
-
-
-class FeedbackRequestService:
-    def create_request(self, ticket: TicketRecord, product: StoreProduct) -> FeedbackRequest:
-        return feedback_request(ticket.ticket_id, product.product_id, ticket.requester_user_id)
-
-
 class QualityControlService:
     def __init__(
         self,
@@ -181,16 +144,12 @@ class QualityControlService:
         release_checks: ReleaseCheckService,
         ingestion: ProductAutoIngestionService,
         indexing: ProductIndexingService,
-        dissemination_service: DisseminationService,
-        feedback: FeedbackRequestService,
         audit_log: AuditLog,
     ) -> None:
         self._tickets = tickets
         self._release_checks = release_checks
         self._ingestion = ingestion
         self._indexing = indexing
-        self._dissemination = dissemination_service
-        self._feedback = feedback
         self._audit_log = audit_log
 
     def queue(self, actor: UserAccount) -> tuple[TicketRecord, ...]:
@@ -206,6 +165,7 @@ class QualityControlService:
         ticket = self._tickets.tickets.get_workflow_ticket(actor, ticket_id, QC_READ_PERMISSIONS)
         if ticket.state not in {
             TicketState.QC_REVIEW,
+            TicketState.MANAGER_RELEASE,
             TicketState.DISSEMINATION_READY,
             TicketState.REWORK_REQUIRED,
         }:
@@ -225,8 +185,6 @@ class QualityControlService:
         self._release_checks.validate_release_metadata(approval)
         product = self._ingestion.ingest(actor, ticket, approval)
         index_records = self._indexing.index_product(ticket, product)
-        dissemination_record = self._dissemination.disseminate(actor, ticket, product)
-        feedback = self._feedback.create_request(ticket, product)
         decision = qc_decision(
             ticket.ticket_id,
             QcDecisionStatus.APPROVED,
@@ -234,15 +192,13 @@ class QualityControlService:
             actor.user_id,
             checklist,
         )
-        self._ensure_transition(ticket.state, TicketState.DISSEMINATION_READY)
+        self._ensure_transition(ticket.state, TicketState.MANAGER_RELEASE)
         updated = self._tickets.tickets.save_system_update(
             replace(
                 ticket,
-                state=TicketState.DISSEMINATION_READY,
+                state=TicketState.MANAGER_RELEASE,
                 qc_decisions=(*ticket.qc_decisions, decision),
                 product_index_records=(*ticket.product_index_records, *index_records),
-                disseminations=(*ticket.disseminations, dissemination_record),
-                feedback_requests=(*ticket.feedback_requests, feedback),
                 timeline=(
                     *ticket.timeline,
                     timeline(ticket.ticket_id, actor.user_id, "qc_approved", product.reference),
@@ -250,10 +206,10 @@ class QualityControlService:
                         ticket.ticket_id, actor.user_id, "product_auto_ingested", product.reference
                     ),
                     timeline(
-                        ticket.ticket_id, actor.user_id, "product_disseminated", product.reference
-                    ),
-                    timeline(
-                        ticket.ticket_id, actor.user_id, "feedback_requested", "Feedback requested."
+                        ticket.ticket_id,
+                        actor.user_id,
+                        "sent_for_manager_release",
+                        "Awaiting final release by the route manager.",
                     ),
                 ),
             )
@@ -315,8 +271,6 @@ def build_quality_control_service(
         ReleaseCheckService(access_repository),
         ProductAutoIngestionService(store, access_repository),
         ProductIndexingService(),
-        DisseminationService(store, access_repository),
-        FeedbackRequestService(),
         audit_log,
     )
 

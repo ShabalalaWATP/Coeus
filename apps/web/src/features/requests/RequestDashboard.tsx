@@ -1,4 +1,12 @@
-import { CheckCircle2, ClipboardList, Hourglass, Search, UsersRound } from "lucide-react";
+import {
+  CheckCircle2,
+  ClipboardList,
+  Hourglass,
+  PackageOpen,
+  Search,
+  UsersRound,
+} from "lucide-react";
+import { Link } from "react-router-dom";
 
 import { EmptyState } from "../../components/ui/PageState";
 import { formatWorkflowState } from "../../lib/workflow/state-format";
@@ -56,22 +64,33 @@ export function RequestDashboard({ canCreate, onOpen, tickets }: RequestDashboar
         ) : null}
         <div className="access-list">
           {tickets.map((ticket) => (
-            <button
-              className="access-row request-open-row"
-              key={ticket.id}
-              onClick={() => onOpen(ticket.id)}
-              type="button"
-            >
-              <span>{ticket.reference}</span>
-              <strong>{ticket.intake.title ?? "Draft request"}</strong>
-              <small>{formatWorkflowState(ticket.state)}</small>
-              {ticket.collaborators.length > 0 ? (
-                <em className="request-open-row__shared">
-                  <UsersRound aria-hidden="true" size={13} />
-                  {ticket.collaborators.length} tagged
-                </em>
+            <div className="access-row request-open-row" key={ticket.id}>
+              <button
+                className="request-open-row__main"
+                onClick={() => onOpen(ticket.id)}
+                type="button"
+              >
+                <span>{ticket.reference}</span>
+                <strong>{ticket.intake.title ?? "Draft request"}</strong>
+                <small>{formatWorkflowState(ticket.state)}</small>
+                {ticket.collaborators.length > 0 ? (
+                  <em className="request-open-row__shared">
+                    <UsersRound aria-hidden="true" size={13} />
+                    {ticket.collaborators.length} tagged
+                  </em>
+                ) : null}
+              </button>
+              {ticket.releasedProductIds.length > 0 ? (
+                <Link
+                  className="request-open-row__product"
+                  state={{ from: "/app/requests" }}
+                  to={`/store/products/${ticket.releasedProductIds[0]}`}
+                >
+                  <PackageOpen aria-hidden="true" size={15} />
+                  View released product
+                </Link>
               ) : null}
-            </button>
+            </div>
           ))}
         </div>
       </section>

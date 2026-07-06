@@ -33,9 +33,12 @@ ALLOWED_TRANSITIONS: dict[TicketState, frozenset[TicketState]] = {
     ),
     TicketState.ANALYST_IN_PROGRESS: frozenset({TicketState.QC_REVIEW, TicketState.CANCELLED}),
     TicketState.QC_REVIEW: frozenset(
-        {TicketState.REWORK_REQUIRED, TicketState.DISSEMINATION_READY, TicketState.CANCELLED}
+        {TicketState.REWORK_REQUIRED, TicketState.MANAGER_RELEASE, TicketState.CANCELLED}
     ),
     TicketState.REWORK_REQUIRED: frozenset({TicketState.QC_REVIEW, TicketState.CANCELLED}),
+    TicketState.MANAGER_RELEASE: frozenset(
+        {TicketState.DISSEMINATION_READY, TicketState.CANCELLED}
+    ),
     TicketState.DISSEMINATION_READY: frozenset(),
     TicketState.CLOSED_EXISTING_PRODUCT_ACCEPTED: frozenset(),
     TicketState.CANCELLED: frozenset(),

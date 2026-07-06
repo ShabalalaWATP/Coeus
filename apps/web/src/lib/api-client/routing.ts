@@ -89,6 +89,24 @@ export async function listRoutingQueue(route: RoutingRoute): Promise<RoutingQueu
   return apiRequestJson<RoutingQueue>(path, { method: "GET" });
 }
 
+export async function listReleaseQueue(route: RoutingRoute): Promise<RoutingQueue> {
+  return apiRequestJson<RoutingQueue>(`/api/v1/routing/${route}/release-queue`, {
+    method: "GET",
+  });
+}
+
+export async function releaseProduct(
+  ticketId: string,
+  route: RoutingRoute,
+  csrfToken: string,
+): Promise<RoutingTicket> {
+  return apiRequestJson<RoutingTicket>(`/api/v1/routing/${ticketId}/release`, {
+    body: JSON.stringify({ route }),
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+    method: "POST",
+  });
+}
+
 export async function runRoutingReviews(
   ticketId: string,
   csrfToken: string,

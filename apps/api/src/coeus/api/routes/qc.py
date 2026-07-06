@@ -189,9 +189,9 @@ def _feedback_response(record: FeedbackRequest) -> QcFeedbackRequestResponse:
 def _ingested_product(
     ticket: TicketRecord, store: StoreServices
 ) -> QcProductSummaryResponse | None:
-    if not ticket.disseminations:
+    if not ticket.product_index_records:
         return None
-    product = store.repository.get_product(ticket.disseminations[-1].product_id)
+    product = store.repository.get_product(ticket.product_index_records[-1].product_id)
     return _product_summary(product) if product is not None else None
 
 

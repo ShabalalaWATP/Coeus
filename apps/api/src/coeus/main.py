@@ -12,6 +12,7 @@ from coeus.api.routes.audit import router as audit_router
 from coeus.api.routes.auth import router as auth_router
 from coeus.api.routes.feedback import router as feedback_router
 from coeus.api.routes.health import router as health_router
+from coeus.api.routes.notifications import router as notifications_router
 from coeus.api.routes.qc import router as qc_router
 from coeus.api.routes.rfi_search import router as rfi_search_router
 from coeus.api.routes.routing import router as routing_router
@@ -30,7 +31,9 @@ from coeus.services.analyst_workflow import build_analyst_workflow_service
 from coeus.services.audit import AuditLog
 from coeus.services.auth import AuthService
 from coeus.services.feedback_analytics import build_feedback_analytics_service
+from coeus.services.notifications import NotificationService
 from coeus.services.passwords import PasswordHasher
+from coeus.services.product_release import ProductReleaseService
 from coeus.services.quality_control import build_quality_control_service
 from coeus.services.registration import RegistrationService
 from coeus.services.rfi_search import build_rfi_search_service
@@ -105,6 +108,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         access_repository,
         audit_log,
     )
+    app.state.notification_service = NotificationService(audit_log)
+    app.state.product_release_service = ProductReleaseService(
+        tickets=app.state.ticket_services,
+        store=app.state.store_services,
+        access=access_repository,
+        notifications=app.state.notification_service,
+        audit_log=audit_log,
+    )
     app.state.feedback_analytics_service = build_feedback_analytics_service(
         app.state.ticket_services,
         app.state.store_services,
@@ -146,6 +157,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(qc_router, prefix="/api/v1")
     app.include_router(feedback_router, prefix="/api/v1")
     app.include_router(analytics_router, prefix="/api/v1")
+    app.include_router(notifications_router, prefix="/api/v1")
     app.include_router(health_router, prefix="/api/v1")
     return app
 

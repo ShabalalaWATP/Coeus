@@ -98,7 +98,7 @@ test("runs RFA capability checks and approves the recommended route", async () =
     .mockResolvedValueOnce(jsonResponse(reviewedTicket))
     .mockResolvedValueOnce(jsonResponse(approvedTicket))
     .mockResolvedValue(jsonResponse({ analysts: [] }));
-  vi.stubGlobal("fetch", fetchMock);
+  stubRoutingFetch(fetchMock);
 
   renderWithProviders(<RoutingQueuePage route="rfa" />, "/rfa/queue");
 
@@ -131,7 +131,7 @@ test("requests clarification from an RFA manager review", async () => {
     .fn()
     .mockResolvedValueOnce(jsonResponse(queueWith([clarificationTicket])))
     .mockResolvedValueOnce(jsonResponse({ ...clarificationTicket, state: "INFO_REQUIRED" }));
-  vi.stubGlobal("fetch", fetchMock);
+  stubRoutingFetch(fetchMock);
 
   renderWithProviders(<RoutingQueuePage route="rfa" />, "/rfa/queue");
 
@@ -159,7 +159,7 @@ test("requests clarification from an RFA manager review", async () => {
 });
 
 test("renders an empty collection queue", async () => {
-  vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(jsonResponse(queueWith([]))));
+  stubRoutingFetch(vi.fn().mockResolvedValueOnce(jsonResponse(queueWith([]))));
 
   renderWithProviders(<RoutingQueuePage route="cm" />, "/collection/queue");
 
@@ -172,7 +172,7 @@ test("runs route checks with an empty CSRF token when no session is present", as
     .fn()
     .mockResolvedValueOnce(jsonResponse(queueWith([baseTicket])))
     .mockResolvedValueOnce(jsonResponse(reviewedTicket));
-  vi.stubGlobal("fetch", fetchMock);
+  stubRoutingFetch(fetchMock);
 
   renderWithProviders(<RoutingQueuePage route="rfa" />, "/rfa/queue", null);
 
@@ -195,7 +195,7 @@ test("rejects an RFA route with a manager reason", async () => {
     .fn()
     .mockResolvedValueOnce(jsonResponse(queueWith([reviewedTicket])))
     .mockResolvedValueOnce(jsonResponse({ ...reviewedTicket, state: "INFO_REQUIRED" }));
-  vi.stubGlobal("fetch", fetchMock);
+  stubRoutingFetch(fetchMock);
 
   renderWithProviders(<RoutingQueuePage route="rfa" />, "/rfa/queue");
 
@@ -231,7 +231,7 @@ test("approves collection manager fallback routes", async () => {
     .mockResolvedValueOnce(jsonResponse(queueWith([cmTicket])))
     .mockResolvedValueOnce(jsonResponse({ ...cmTicket, state: "ANALYST_ASSIGNMENT" }))
     .mockResolvedValue(jsonResponse({ analysts: [] }));
-  vi.stubGlobal("fetch", fetchMock);
+  stubRoutingFetch(fetchMock);
 
   renderWithProviders(<RoutingQueuePage route="cm" />, "/collection/queue");
 
@@ -268,7 +268,7 @@ test("assigns an analyst after route approval and clears the ticket from the que
       }),
     )
     .mockResolvedValueOnce(jsonResponse({ ticketId: "ticket-1", state: "ANALYST_IN_PROGRESS" }));
-  vi.stubGlobal("fetch", fetchMock);
+  stubRoutingFetch(fetchMock);
 
   renderWithProviders(<RoutingQueuePage route="rfa" />, "/rfa/queue");
 
@@ -292,7 +292,7 @@ test("renders a queue error state with retry", async () => {
     status: 500,
     json: () => Promise.resolve({ error: { code: "server_error", message: "Failed." } }),
   };
-  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(failure));
+  stubRoutingFetch(vi.fn().mockResolvedValue(failure));
 
   renderWithProviders(<RoutingQueuePage route="rfa" />, "/rfa/queue");
 
@@ -317,6 +317,20 @@ function queueWith(tickets: RoutingTicket[]): RoutingQueue {
   };
 }
 
+type MockResponse = ReturnType<typeof jsonResponse>;
+
+function stubRoutingFetch(
+  sequential: ReturnType<typeof vi.fn<(url: string, init?: RequestInit) => Promise<MockResponse>>>,
+) {
+  const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+    if (url.includes("release-queue")) {
+      return Promise.resolve(jsonResponse(queueWith([])));
+    }
+    return sequential(url, init);
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  return sequential;
+}
 function jsonResponse(payload: unknown) {
   return { ok: true, json: () => Promise.resolve(payload) };
 }

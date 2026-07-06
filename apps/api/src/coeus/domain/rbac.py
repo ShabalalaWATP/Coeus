@@ -36,9 +36,16 @@ PRODUCT_TEAM_PERMISSIONS = SELF_SERVICE | frozenset(
         Permission.ACG_VIEW,
         Permission.PRODUCT_READ,
         Permission.PRODUCT_SEARCH,
-        Permission.PRODUCT_CREATE_EXISTING,
         Permission.PRODUCT_UPDATE_METADATA,
         Permission.PRODUCT_MANAGE_ASSETS,
+    }
+)
+
+MANAGER_RELEASE_PERMISSIONS = frozenset(
+    {
+        Permission.PRODUCT_CREATE_EXISTING,
+        Permission.PRODUCT_PUBLISH,
+        Permission.PRODUCT_DISSEMINATE,
     }
 )
 
@@ -57,6 +64,7 @@ ROLE_DEFINITIONS: dict[RoleName, RoleDefinition] = {
         name=RoleName.RFA_MANAGER,
         default_route="/rfa/queue",
         permissions=PRODUCT_TEAM_PERMISSIONS
+        | MANAGER_RELEASE_PERMISSIONS
         | frozenset(
             {
                 Permission.RFA_REVIEW,
@@ -75,6 +83,7 @@ ROLE_DEFINITIONS: dict[RoleName, RoleDefinition] = {
         name=RoleName.COLLECTION_MANAGER,
         default_route="/collection/queue",
         permissions=PRODUCT_TEAM_PERMISSIONS
+        | MANAGER_RELEASE_PERMISSIONS
         | frozenset(
             {
                 Permission.COLLECTION_REVIEW,

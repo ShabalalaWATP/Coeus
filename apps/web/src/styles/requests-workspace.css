@@ -226,6 +226,25 @@
 
 .request-open-row {
   position: relative;
+  display: grid;
+  gap: 8px;
+  padding: 0;
+}
+
+.request-open-row__main {
+  display: grid;
+  gap: 4px;
+  border: 0;
+  border-radius: inherit;
+  padding: 12px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.request-open-row__main:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 .request-open-row__shared {
@@ -236,4 +255,26 @@
   font-size: 0.76rem;
   font-style: normal;
   font-weight: 700;
+}
+
+.request-open-row__product {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-self: start;
+  margin: 0 12px 12px;
+  border: 1px solid color-mix(in srgb, var(--success) 50%, var(--border));
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  background: color-mix(in srgb, var(--success) 10%, transparent);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.request-open-row__product:hover,
+.request-open-row__product:focus-visible {
+  border-color: var(--success);
+  outline: none;
 }

@@ -155,6 +155,7 @@ class TicketResponse(BaseModel):
     is_ready_for_submission: bool = Field(serialization_alias="isReadyForSubmission")
     suggested_project_name: str | None = Field(serialization_alias="suggestedProjectName")
     visible_product_matches: list[str] = Field(serialization_alias="visibleProductMatches")
+    released_product_ids: list[UUID] = Field(serialization_alias="releasedProductIds")
     collaborators: list[CollaboratorResponse]
     messages: list[ChatMessageResponse]
     attachments: list[AttachmentMetadataResponse]

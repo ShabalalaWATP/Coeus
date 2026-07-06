@@ -245,3 +245,33 @@
   tagging and shared editing as the colleague user, date-filtered store
   search, the admin model switch persisting to the backend, audit events
   and responsive layouts at 390 and 1440 widths.
+
+## 2026-07-06 Manager final release, notifications and store polish
+
+- Restricted intelligence product uploads to RFA and Collection managers by
+  moving `product:create_existing` out of the shared product-team
+  permission set; the store upload route and button follow automatically.
+- Added a manager final-release stage: QC approval now ingests and indexes
+  the product as an unpublished draft and moves the ticket to the new
+  `MANAGER_RELEASE` state. The owning route manager releases it from a
+  Final Release panel on their queue page, which publishes the product,
+  disseminates it to the requester, raises the feedback request and moves
+  the ticket to `DISSEMINATION_READY`. Route matching, CSRF, separation of
+  duties and audit events are enforced, with a spec and threat model.
+- Added customer notifications: releases create an in-app notification
+  with a product link and record an email to a bounded local outbox with
+  an `email_recorded` audit event. The shell bell shows an unread badge,
+  lists notifications, marks them read and navigates to the product; the
+  customer dashboard links released products directly.
+- Made the Intelligence Store feel like a professional service: a
+  collapsible search-and-filters panel, a sort control (relevance, title,
+  newest coverage), mono product references, format icons and richer
+  metadata everywhere, including tags, releasability, caveats, source,
+  status and per-asset mime type, size and hash digests.
+- Fixed the CORS allow list to include PUT, which the admin AI model
+  switch needed.
+- Verified in the browser: the full pipeline from chat intake through QC
+  approval and manager release, the customer receiving the bell
+  notification and released-product link, upload visibility per role and
+  the audit trail recording qc_approved, product_released and
+  email_recorded.

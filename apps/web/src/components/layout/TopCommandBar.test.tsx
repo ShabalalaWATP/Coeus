@@ -3,8 +3,24 @@ import userEvent from "@testing-library/user-event";
 import { useLocation } from "react-router-dom";
 
 import { TopCommandBar } from "./TopCommandBar";
+import { resetQueryClientForTests } from "../../app/query-client";
 import { previewProfile } from "../../lib/permissions/route-access";
 import { renderWithProviders } from "../../test/test-utils";
+
+beforeEach(() => {
+  resetQueryClientForTests();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ notifications: [], unread: 0 }),
+    }),
+  );
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 test("toggles the theme from the command bar", async () => {
   const user = userEvent.setup();
