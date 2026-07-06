@@ -40,6 +40,21 @@ class ManagerRoutingDecisionStatus(StrEnum):
     CLARIFICATION_REQUESTED = "clarification_requested"
 
 
+class CollaboratorAccess(StrEnum):
+    EDITOR = "editor"
+    VIEWER = "viewer"
+
+
+@dataclass(frozen=True)
+class TicketCollaborator:
+    user_id: UUID
+    username: str
+    display_name: str
+    access: CollaboratorAccess
+    added_by_user_id: UUID
+    created_at: datetime
+
+
 @dataclass(frozen=True)
 class IntakeDetails:
     title: str | None = None
@@ -288,6 +303,7 @@ class TicketRecord:
     requester_user_id: UUID
     state: TicketState
     intake: IntakeDetails
+    collaborators: tuple[TicketCollaborator, ...] = field(default_factory=tuple)
     messages: tuple[ChatMessage, ...] = field(default_factory=tuple)
     attachments: tuple[AttachmentMetadata, ...] = field(default_factory=tuple)
     agent_runs: tuple[AgentRun, ...] = field(default_factory=tuple)

@@ -53,6 +53,36 @@ class AddInformationRequest(BaseModel):
     body: str = Field(min_length=3, max_length=2_000)
 
 
+class CollaboratorAddRequest(BaseModel):
+    username: str = Field(min_length=3, max_length=254)
+    access: str = Field(pattern="^(editor|viewer)$")
+
+
+class CollaboratorResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    user_id: UUID = Field(serialization_alias="userId")
+    username: str
+    display_name: str = Field(serialization_alias="displayName")
+    access: str
+    added_by_user_id: UUID = Field(serialization_alias="addedByUserId")
+    created_at: datetime = Field(serialization_alias="createdAt")
+
+
+class DirectoryUserResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    user_id: UUID = Field(serialization_alias="id")
+    username: str
+    display_name: str = Field(serialization_alias="displayName")
+
+
+class DirectoryResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    users: list[DirectoryUserResponse]
+
+
 class IntakeDetailsResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -125,6 +155,7 @@ class TicketResponse(BaseModel):
     is_ready_for_submission: bool = Field(serialization_alias="isReadyForSubmission")
     suggested_project_name: str | None = Field(serialization_alias="suggestedProjectName")
     visible_product_matches: list[str] = Field(serialization_alias="visibleProductMatches")
+    collaborators: list[CollaboratorResponse]
     messages: list[ChatMessageResponse]
     attachments: list[AttachmentMetadataResponse]
     agent_runs: list[AgentRunResponse] = Field(serialization_alias="agentRuns")

@@ -53,15 +53,16 @@ test("approves a pending access request", async () => {
 });
 
 test("rejects a pending access request with a reason", async () => {
+  const withoutJustification = { ...pendingRegistration, justification: "" };
   const fetchMock = vi
     .fn()
     .mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve({ registrations: [pendingRegistration] }),
+      json: () => Promise.resolve({ registrations: [withoutJustification] }),
     })
     .mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve({ ...pendingRegistration, status: "rejected" }),
+      json: () => Promise.resolve({ ...withoutJustification, status: "rejected" }),
     });
   vi.stubGlobal("fetch", fetchMock);
 
@@ -71,6 +72,7 @@ test("rejects a pending access request with a reason", async () => {
   );
 
   expect(await screen.findByText("New Operator")).toBeVisible();
+  expect(screen.queryByText("Mock regional reporting duties.")).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Reject" })).toBeDisabled();
   await userEvent.type(screen.getByLabelText("Rejection reason"), "Duties not confirmed.");
   await userEvent.click(screen.getByRole("button", { name: "Reject" }));

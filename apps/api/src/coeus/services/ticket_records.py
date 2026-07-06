@@ -2,7 +2,13 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from coeus.domain.auth import UserAccount
-from coeus.domain.tickets import ChatMessage, MessageAuthor, TicketRecord, TicketTimelineEntry
+from coeus.domain.tickets import (
+    ChatMessage,
+    CollaboratorAccess,
+    MessageAuthor,
+    TicketRecord,
+    TicketTimelineEntry,
+)
 
 
 def message(ticket_id: UUID, author: MessageAuthor, body: str) -> ChatMessage:
@@ -37,3 +43,14 @@ def suggest_project_name(ticket: TicketRecord) -> str:
 
 def is_owner(actor: UserAccount, ticket: TicketRecord) -> bool:
     return ticket.requester_user_id == actor.user_id
+
+
+def is_collaborator(actor: UserAccount, ticket: TicketRecord) -> bool:
+    return any(collaborator.user_id == actor.user_id for collaborator in ticket.collaborators)
+
+
+def is_editor(actor: UserAccount, ticket: TicketRecord) -> bool:
+    return any(
+        collaborator.user_id == actor.user_id and collaborator.access == CollaboratorAccess.EDITOR
+        for collaborator in ticket.collaborators
+    )

@@ -116,6 +116,12 @@ def _seed_user_specs() -> Iterable[tuple[str, str, frozenset[RoleName], bool]]:
         ),
         ("user@example.test", "Customer User", frozenset({RoleName.USER}), True),
         (
+            "colleague@example.test",
+            "Customer Colleague",
+            frozenset({RoleName.USER}),
+            True,
+        ),
+        (
             "rfa.manager@example.test",
             "RFA Manager",
             frozenset({RoleName.RFA_MANAGER}),

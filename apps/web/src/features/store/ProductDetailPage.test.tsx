@@ -100,6 +100,22 @@ test("renders controlled asset denial without exposing object storage", async ()
   expect(screen.queryByText("objectKey")).not.toBeInTheDocument();
 });
 
+test("uses the originating workspace for back navigation", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(product) }),
+  );
+
+  renderWithProviders(<ProductDetailPage />, "/store/products/product-regional", null, {
+    from: "/rfa/products",
+  });
+
+  expect(await screen.findByRole("link", { name: /Back to products/ })).toHaveAttribute(
+    "href",
+    "/rfa/products",
+  );
+});
+
 test("maps back navigation targets from the originating workspace", () => {
   expect(backNavigationFor(undefined)).toEqual({ path: "/store", label: "Back to store" });
   expect(backNavigationFor("/store")).toEqual({ path: "/store", label: "Back to store" });

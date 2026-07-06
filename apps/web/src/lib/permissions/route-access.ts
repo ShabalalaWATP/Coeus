@@ -150,6 +150,8 @@ export const previewProfile: UserProfile = {
     "acg:create",
     "acg:update",
     "acg:assign_user",
+    "chat:use",
+    "ticket:create",
   ],
 };
 

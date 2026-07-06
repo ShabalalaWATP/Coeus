@@ -22,14 +22,12 @@ export function RegistrationApprovalsPanel({ csrfToken }: RegistrationApprovalsP
     queryKey: ["registrations"],
     queryFn: listPendingRegistrations,
   });
+  const registrations = registrationsQuery.data?.registrations ?? [];
   const removeRegistration = (registration: PendingRegistration) => {
     setActionError(null);
-    queryClient.setQueryData<{ registrations: PendingRegistration[] }>(
-      ["registrations"],
-      (current) => ({
-        registrations: (current?.registrations ?? []).filter((item) => item.id !== registration.id),
-      }),
-    );
+    queryClient.setQueryData<{ registrations: PendingRegistration[] }>(["registrations"], {
+      registrations: registrations.filter((item) => item.id !== registration.id),
+    });
   };
   const failAction = () =>
     setActionError("The decision could not be applied. Refresh and try again.");
@@ -44,7 +42,6 @@ export function RegistrationApprovalsPanel({ csrfToken }: RegistrationApprovalsP
     onSuccess: removeRegistration,
     onError: failAction,
   });
-  const registrations = registrationsQuery.data?.registrations ?? [];
 
   return (
     <section className="surface approvals-panel" aria-labelledby="approvals-title">

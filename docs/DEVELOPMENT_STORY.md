@@ -213,3 +213,35 @@
 - Verified in the browser: request submission, admin approval, first login
   of the approved account, rejection with generic sign-in failure, splash
   responsiveness at 390, 768 and 1440 widths and the light theme.
+
+## 2026-07-06 Splash hero, focused customer workspace and collaboration
+
+- Enlarged and centred the Istari splash hero for desktop with a slow
+  radar-sweep ring around the badge, a pulsing glow, a gently floating logo
+  and a gradient title, all CSS-only and reduced-motion safe.
+- Simplified the customer experience into two focused screens: a request
+  dashboard (status metrics, request list with tagged counts and one "Open
+  new request" action) and a chat-first request workspace at
+  `/app/requests/:id`. The workspace shows a live checklist of the seven
+  details the intake assistant needs, keeps the manual intake form and
+  request history behind progressive-disclosure sections, and only shows
+  product offers once a request has been submitted.
+- Added ticket collaborators: requesters tag users from a directory as
+  editors or viewers. Tagged users see shared requests on their dashboard
+  and via direct link from any role; editors can chat and edit within their
+  own permissions while viewers get a read-only conversation. Added a
+  `colleague@example.test` seed user, timeline and audit events, a spec and
+  a threat model.
+- Added administrator AI model selection backed by
+  `GET/PUT /api/v1/admin/ai-model` with an audited, CSRF-protected switch
+  between configured Gemini models, and fixed the CORS method list to allow
+  PUT.
+- Extended the Intelligence Store with coverage date search
+  (`dateFrom`/`dateTo` period-overlap filtering, seeded synthetic coverage
+  periods), product-format icons for geospatial, imagery, SIGINT, database,
+  bundle and report types, and coverage/classification chips on results and
+  detail pages.
+- Verified in the browser: dashboard to chat intake with live checklist,
+  tagging and shared editing as the colleague user, date-filtered store
+  search, the admin model switch persisting to the backend, audit events
+  and responsive layouts at 390 and 1440 widths.

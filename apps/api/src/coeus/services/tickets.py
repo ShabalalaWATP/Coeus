@@ -24,6 +24,8 @@ from coeus.services.intake import (
     merge_intake,
 )
 from coeus.services.ticket_records import (
+    is_collaborator,
+    is_editor,
     is_owner,
     suggest_project_name,
     timeline,
@@ -53,9 +55,12 @@ class TicketService:
     def list_visible_tickets(self, actor: UserAccount) -> tuple[TicketRecord, ...]:
         if Permission.TICKET_READ_ALL in actor.permissions:
             return self._repository.list_tickets()
-        if Permission.TICKET_READ_OWN in actor.permissions:
-            return self._repository.list_for_requester(actor.user_id)
-        return ()
+        owns = Permission.TICKET_READ_OWN in actor.permissions
+        return tuple(
+            ticket
+            for ticket in self._repository.list_tickets()
+            if (owns and is_owner(actor, ticket)) or is_collaborator(actor, ticket)
+        )
 
     def get_visible_ticket(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         ticket = self._repository.get(ticket_id)
@@ -179,9 +184,8 @@ class TicketService:
     def add_information(self, actor: UserAccount, ticket_id: UUID, body: str) -> TicketRecord:
         ticket = self.get_visible_ticket(actor, ticket_id)
         if (
-            not is_owner(actor, ticket)
-            or Permission.TICKET_ADD_INFORMATION not in actor.permissions
-        ):
+            not is_owner(actor, ticket) and not is_editor(actor, ticket)
+        ) or Permission.TICKET_ADD_INFORMATION not in actor.permissions:
             raise AppError(404, "ticket_not_found", "Ticket was not found.")
         state = (
             TicketState.ROUTE_ASSESSMENT
@@ -212,7 +216,11 @@ class TicketService:
 
     def get_editable_ticket(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         ticket = self.get_visible_ticket(actor, ticket_id)
-        if not is_owner(actor, ticket) and Permission.TICKET_READ_ALL not in actor.permissions:
+        if (
+            not is_owner(actor, ticket)
+            and not is_editor(actor, ticket)
+            and Permission.TICKET_READ_ALL not in actor.permissions
+        ):
             raise AppError(404, "ticket_not_found", "Ticket was not found.")
         if ticket.state not in {TicketState.DRAFT_INTAKE, TicketState.INFO_REQUIRED}:
             raise AppError(409, "ticket_not_editable", "Ticket intake is no longer editable.")
@@ -227,7 +235,11 @@ class TicketService:
         return updated
 
     def _can_read(self, actor: UserAccount, ticket: TicketRecord) -> bool:
-        return is_owner(actor, ticket) or Permission.TICKET_READ_ALL in actor.permissions
+        return (
+            is_owner(actor, ticket)
+            or is_collaborator(actor, ticket)
+            or Permission.TICKET_READ_ALL in actor.permissions
+        )
 
     def _state_for_intake(self, current: TicketState, intake: IntakeDetails) -> TicketState:
         target = (

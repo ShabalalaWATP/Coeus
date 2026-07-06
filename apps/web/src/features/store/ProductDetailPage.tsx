@@ -76,8 +76,19 @@ export default function ProductDetailPage() {
               <dt>Classification</dt>
               <dd>{product.classificationLevel}</dd>
             </div>
+            <div>
+              <dt>Coverage</dt>
+              <dd>
+                {product.timePeriodStart
+                  ? `${product.timePeriodStart} to ${product.timePeriodEnd ?? "ongoing"}`
+                  : "Not recorded"}
+              </dd>
+            </div>
           </dl>
           <div className="store-facets">
+            {product.geojsonRef !== null ? (
+              <span className="store-chip">Geospatial layer</span>
+            ) : null}
             {product.tags.map((tag) => (
               <span className="store-chip" key={tag}>
                 {tag}

@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { AiModelPanel } from "./AiModelPanel";
 import { RegistrationApprovalsPanel } from "./RegistrationApprovalsPanel";
 import { apiClient } from "../../lib/api-client/client";
 import { useAuth } from "../../lib/auth/auth-context";
@@ -79,6 +80,8 @@ export default function AdminOverviewPage() {
       </section>
 
       <RegistrationApprovalsPanel csrfToken={session?.csrfToken ?? ""} />
+
+      <AiModelPanel csrfToken={session?.csrfToken ?? ""} />
 
       <section className="admin-action-grid" aria-label="Admin workspaces">
         {adminActions.map((item) => (

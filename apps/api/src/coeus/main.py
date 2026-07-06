@@ -25,6 +25,7 @@ from coeus.repositories.access import SeedAccessRepository
 from coeus.repositories.auth import LoginAttemptRepository, SeedUserRepository, SessionRepository
 from coeus.repositories.registration import RegistrationRepository
 from coeus.services.access import build_access_services
+from coeus.services.ai_models import AiModelService
 from coeus.services.analyst_workflow import build_analyst_workflow_service
 from coeus.services.audit import AuditLog
 from coeus.services.auth import AuthService
@@ -35,6 +36,7 @@ from coeus.services.registration import RegistrationService
 from coeus.services.rfi_search import build_rfi_search_service
 from coeus.services.routing import build_routing_service
 from coeus.services.store import build_store_services
+from coeus.services.ticket_collaborators import TicketCollaboratorService
 from coeus.services.tickets import build_ticket_services
 
 logger = get_logger(__name__)
@@ -78,6 +80,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.store_services = build_store_services(access_repository, audit_log)
     app.state.ticket_services = build_ticket_services(audit_log)
+    app.state.ticket_collaborator_service = TicketCollaboratorService(
+        users=user_repository,
+        tickets=app.state.ticket_services.tickets,
+        audit_log=audit_log,
+    )
+    app.state.ai_model_service = AiModelService(resolved_settings, audit_log)
     app.state.rfi_search_service = build_rfi_search_service(
         app.state.ticket_services,
         app.state.store_services,
@@ -109,7 +117,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         CORSMiddleware,
         allow_origins=resolved_settings.allowed_cors_origins,
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-CSRF-Token"],
     )
 

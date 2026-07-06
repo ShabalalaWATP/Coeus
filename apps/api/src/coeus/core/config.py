@@ -46,6 +46,15 @@ class Settings(BaseSettings):
     gemma_vertex_project_id: str | None = None
     gemma_vertex_location: str = "europe-west2"
     gemma_vertex_model: str = "gemma-4-31b"
+    available_gemini_models: list[str] = Field(
+        default_factory=lambda: [
+            "gemma-4-31b",
+            "gemini-2.5-flash",
+            "gemini-2.5-pro",
+            "gemini-3-flash",
+        ],
+        min_length=1,
+    )
     object_storage_provider: ObjectStorageProviderName = "local"
     gcs_product_assets_bucket: str | None = None
     gcs_generated_previews_bucket: str | None = None

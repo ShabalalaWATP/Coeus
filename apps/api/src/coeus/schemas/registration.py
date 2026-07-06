@@ -42,3 +42,15 @@ class RegistrationListResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     registrations: list[RegistrationResponse]
+
+
+class AiModelSelectRequest(BaseModel):
+    model: str = Field(min_length=3, max_length=80)
+
+
+class AiModelStateResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    provider: str
+    active_model: str = Field(serialization_alias="activeModel")
+    available_models: list[str] = Field(serialization_alias="availableModels")

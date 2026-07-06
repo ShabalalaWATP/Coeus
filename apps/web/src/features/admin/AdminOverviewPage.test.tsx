@@ -12,23 +12,41 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-test("renders admin action links and live service status", async () => {
+test("renders admin action links, approvals and AI model controls", async () => {
   vi.stubGlobal(
     "fetch",
-    vi.fn().mockResolvedValue({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          status: "available",
-          scope: "admin-overview",
-          userId: "admin-user",
-        }),
+    vi.fn((url: string) => {
+      if (url.includes("/admin/registrations")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ registrations: [] }) });
+      }
+      if (url.includes("/admin/ai-model")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              provider: "mock",
+              activeModel: "gemma-4-31b",
+              availableModels: ["gemma-4-31b", "gemini-2.5-pro"],
+            }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            status: "available",
+            scope: "admin-overview",
+            userId: "admin-user",
+          }),
+      });
     }),
   );
 
   renderWithProviders(<AdminOverviewPage />, "/admin/overview");
 
   expect(await screen.findByRole("heading", { name: "Available" })).toBeVisible();
+  expect(await screen.findByLabelText("Active model")).toHaveValue("gemma-4-31b");
+  expect(await screen.findByText("No pending access requests")).toBeVisible();
   expect(screen.getByRole("link", { name: /Access groups/ })).toHaveAttribute(
     "href",
     "/admin/acgs",

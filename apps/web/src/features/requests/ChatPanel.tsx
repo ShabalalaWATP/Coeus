@@ -6,10 +6,11 @@ import type { Ticket } from "../../lib/api-client/tickets";
 type ChatPanelProps = {
   isSending: boolean;
   onSend: (message: string) => void;
+  readOnly?: boolean;
   ticket?: Ticket;
 };
 
-export function ChatPanel({ isSending, onSend, ticket }: ChatPanelProps) {
+export function ChatPanel({ isSending, onSend, readOnly = false, ticket }: ChatPanelProps) {
   const [message, setMessage] = useState("");
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -40,20 +41,24 @@ export function ChatPanel({ isSending, onSend, ticket }: ChatPanelProps) {
           <p>No chat transcript</p>
         )}
       </div>
-      <form className="chat-form" onSubmit={handleSubmit}>
-        <label htmlFor="request-message">Message</label>
-        <textarea
-          id="request-message"
-          maxLength={4000}
-          onChange={(event) => setMessage(event.target.value)}
-          rows={4}
-          value={message}
-        />
-        <button disabled={isSending} type="submit">
-          <SendHorizonal aria-hidden="true" size={18} />
-          Send
-        </button>
-      </form>
+      {readOnly ? (
+        <p className="chat-readonly">The conversation is read-only for this request.</p>
+      ) : (
+        <form className="chat-form" onSubmit={handleSubmit}>
+          <label htmlFor="request-message">Message</label>
+          <textarea
+            id="request-message"
+            maxLength={4000}
+            onChange={(event) => setMessage(event.target.value)}
+            rows={4}
+            value={message}
+          />
+          <button disabled={isSending} type="submit">
+            <SendHorizonal aria-hidden="true" size={18} />
+            Send
+          </button>
+        </form>
+      )}
     </section>
   );
 }

@@ -45,10 +45,24 @@ async def search_products(
     source_type: Annotated[str | None, Query(alias="sourceType")] = None,
     status: ProductStatus | None = None,
     project_id: Annotated[UUID | None, Query(alias="projectId")] = None,
+    date_from: Annotated[
+        str | None, Query(alias="dateFrom", pattern=r"^\d{4}-\d{2}-\d{2}$")
+    ] = None,
+    date_to: Annotated[str | None, Query(alias="dateTo", pattern=r"^\d{4}-\d{2}-\d{2}$")] = None,
 ) -> StoreSearchResponse:
     result = store_services.search.search(
         authenticated.user,
-        StoreSearchFilters(query, product_type, region, tag, source_type, status, project_id),
+        StoreSearchFilters(
+            query,
+            product_type,
+            region,
+            tag,
+            source_type,
+            status,
+            project_id,
+            date_from,
+            date_to,
+        ),
     )
     return StoreSearchResponse(
         products=[_to_search_response(hit) for hit in result.hits],

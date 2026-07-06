@@ -3,6 +3,7 @@ import { Search, Upload } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 
+import { ProductTypeIcon } from "./ProductTypeIcon";
 import { productTypeLabel, productTypeOptions } from "./store-options";
 import { EmptyState, ErrorState } from "../../components/ui/PageState";
 import { searchStoreProducts, type StoreSearchFilters } from "../../lib/api-client/store";
@@ -36,6 +37,8 @@ export default function StorePage({
     region: "",
     tag: "",
     sourceType: "",
+    dateFrom: "",
+    dateTo: "",
   });
   const [submittedFilters, setSubmittedFilters] = useState<StoreSearchFilters>({});
   const productsQuery = useQuery({
@@ -142,6 +145,28 @@ export default function StorePage({
               value={draftFilters.sourceType}
             />
           </label>
+          <div className="store-filter-grid">
+            <label>
+              Coverage from
+              <input
+                onChange={(event) =>
+                  setDraftFilters((current) => ({ ...current, dateFrom: event.target.value }))
+                }
+                type="date"
+                value={draftFilters.dateFrom}
+              />
+            </label>
+            <label>
+              Coverage to
+              <input
+                onChange={(event) =>
+                  setDraftFilters((current) => ({ ...current, dateTo: event.target.value }))
+                }
+                type="date"
+                value={draftFilters.dateTo}
+              />
+            </label>
+          </div>
           <button type="submit">
             <Search aria-hidden="true" size={18} />
             Search products
@@ -175,13 +200,27 @@ export default function StorePage({
                   to={`/store/products/${product.id}`}
                 >
                   <div>
-                    <strong>{product.title}</strong>
+                    <div className="store-result__title">
+                      <span className="store-result__format" aria-hidden="true">
+                        <ProductTypeIcon productType={product.productType} />
+                      </span>
+                      <strong>{product.title}</strong>
+                    </div>
                     <p>{product.summary}</p>
+                    <div className="store-facets">
+                      <span className="store-chip">{productTypeLabel(product.productType)}</span>
+                      <span className="store-chip">Class {product.classificationLevel}</span>
+                      {product.timePeriodStart ? (
+                        <span className="store-chip">
+                          {product.timePeriodStart} to {product.timePeriodEnd ?? "ongoing"}
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
                   <dl>
                     <div>
-                      <dt>Type</dt>
-                      <dd>{productTypeLabel(product.productType)}</dd>
+                      <dt>Owner</dt>
+                      <dd>{product.ownerTeam}</dd>
                     </div>
                     <div>
                       <dt>Region</dt>

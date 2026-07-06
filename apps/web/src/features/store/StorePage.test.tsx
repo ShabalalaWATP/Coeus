@@ -35,9 +35,10 @@ const collectionProduct = {
   ...visibleProduct,
   id: "product-collection",
   title: "Collection Sensor Summary",
-  productType: "sigint_mock",
+  productType: "unmapped_type",
   ownerTeam: "Collection",
   areaOrRegion: "North Sea",
+  timePeriodStart: "2026-05-01",
 };
 
 const readOnlyCollectionSession: AuthSession = {
@@ -114,6 +115,8 @@ test("submits product search filters", async () => {
   await userEvent.type(screen.getByLabelText("Region"), "Baltic");
   await userEvent.type(screen.getByLabelText("Tag"), "regional");
   await userEvent.type(screen.getByLabelText("Source type"), "finished_assessment");
+  await userEvent.type(screen.getByLabelText("Coverage from"), "2026-05-01");
+  await userEvent.type(screen.getByLabelText("Coverage to"), "2026-06-30");
   await userEvent.click(screen.getByRole("button", { name: "Search products" }));
 
   const calls = fetchMock.mock.calls as Array<[string, RequestInit]>;
@@ -123,6 +126,8 @@ test("submits product search filters", async () => {
   expect(url).toContain("region=Baltic");
   expect(url).toContain("tag=regional");
   expect(url).toContain("sourceType=finished_assessment");
+  expect(url).toContain("dateFrom=2026-05-01");
+  expect(url).toContain("dateTo=2026-06-30");
   expect(init.credentials).toBe("include");
 });
 
@@ -144,6 +149,7 @@ test("filters my products by owner team and hides upload without create permissi
 
   expect(await screen.findByRole("heading", { name: "My Products" })).toBeVisible();
   expect(await screen.findByText("Collection Sensor Summary")).toBeVisible();
+  expect(screen.getByText("2026-05-01 to ongoing")).toBeVisible();
   expect(screen.queryByText("Regional Stability Brief")).not.toBeInTheDocument();
   expect(screen.queryByRole("link", { name: "Upload product" })).not.toBeInTheDocument();
   expect(screen.getByText("MOCK DATA ONLY")).toBeVisible();

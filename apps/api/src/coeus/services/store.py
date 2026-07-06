@@ -23,6 +23,7 @@ from coeus.repositories.access import SeedAccessRepository
 from coeus.repositories.store import InMemoryStoreRepository, new_store_product_id
 from coeus.services.audit import AuditLog
 from coeus.services.store_owner_policy import normalise_owner_team, require_owner_permission
+from coeus.services.store_search_dates import within_dates
 
 HASH_PATTERN = r"[a-fA-F0-9]{64}"
 
@@ -216,6 +217,7 @@ class StoreSearchService:
                 filters.source_type is None or metadata.source_type == filters.source_type,
                 filters.status is None or metadata.status == filters.status,
                 filters.project_id is None or metadata.project_id == filters.project_id,
+                within_dates(metadata, filters.date_from, filters.date_to),
             )
         )
 

@@ -67,6 +67,8 @@ class StoreSearchFilters:
     source_type: str | None = None
     status: ProductStatus | None = None
     project_id: UUID | None = None
+    date_from: str | None = None
+    date_to: str | None = None
 
 
 @dataclass(frozen=True)

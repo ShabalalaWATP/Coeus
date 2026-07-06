@@ -38,6 +38,7 @@ class InMemoryStoreRepository:
         products = (
             self._seed_product(
                 seed_name="regional-stability-brief",
+                time_period=("2026-03-01", "2026-04-30"),
                 reference="PROD-1001",
                 title="Regional Stability Brief",
                 summary="MOCK DATA ONLY assessment summary for Baltic regional stability.",
@@ -56,6 +57,7 @@ class InMemoryStoreRepository:
             ),
             self._seed_product(
                 seed_name="collection-sensor-summary",
+                time_period=("2026-05-01", "2026-06-15"),
                 reference="PROD-1002",
                 title="Collection Sensor Summary",
                 summary="MOCK DATA ONLY sensor summary for collection team members.",
@@ -74,6 +76,7 @@ class InMemoryStoreRepository:
             ),
             self._seed_product(
                 seed_name="assessment-draft-pack",
+                time_period=("2026-06-01", "2026-06-30"),
                 reference="PROD-1003",
                 title="Assessment Draft Pack",
                 summary="MOCK DATA ONLY draft material for assessment team coordination.",
@@ -113,6 +116,7 @@ class InMemoryStoreRepository:
         status: ProductStatus,
         created_by_user_id: UUID,
         created_at: datetime,
+        time_period: tuple[str, str] | None = None,
     ) -> StoreProduct:
         product_id = stable_seed_id(f"store-product-{seed_name}")
         asset = self._seed_asset(seed_name, product_id)
@@ -134,8 +138,8 @@ class InMemoryStoreRepository:
                 acg_ids=acg_ids,
                 project_id=project_id,
                 status=status,
-                time_period_start=None,
-                time_period_end=None,
+                time_period_start=time_period[0] if time_period else None,
+                time_period_end=time_period[1] if time_period else None,
                 geojson_ref=None,
                 bounding_box=BoundingBox(-7.0, 54.0, 31.0, 66.0),
             ),

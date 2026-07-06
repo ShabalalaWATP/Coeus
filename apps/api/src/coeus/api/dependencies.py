@@ -9,6 +9,7 @@ from coeus.core.permissions import Permission
 from coeus.db.session import DatabaseReadinessChecker
 from coeus.domain.auth import AuthenticatedSession
 from coeus.services.access import AccessServices
+from coeus.services.ai_models import AiModelService
 from coeus.services.analyst_workflow import AnalystWorkflowService
 from coeus.services.auth import AuthService
 from coeus.services.feedback_analytics import FeedbackAnalyticsService
@@ -17,6 +18,7 @@ from coeus.services.registration import RegistrationService
 from coeus.services.rfi_search import RfiSearchService
 from coeus.services.routing import RoutingService
 from coeus.services.store import StoreServices
+from coeus.services.ticket_collaborators import TicketCollaboratorService
 from coeus.services.tickets import TicketServices
 
 
@@ -42,6 +44,20 @@ def get_auth_service(request: Request) -> AuthService:
     if not isinstance(auth_service, AuthService):
         raise AppError(500, "auth_not_configured", "Authentication service is not configured.")
     return auth_service
+
+
+def get_ticket_collaborator_service(request: Request) -> TicketCollaboratorService:
+    service = getattr(request.app.state, "ticket_collaborator_service", None)
+    if not isinstance(service, TicketCollaboratorService):
+        raise AppError(500, "collaborators_not_configured", "Collaborators are not configured.")
+    return service
+
+
+def get_ai_model_service(request: Request) -> AiModelService:
+    service = getattr(request.app.state, "ai_model_service", None)
+    if not isinstance(service, AiModelService):
+        raise AppError(500, "ai_models_not_configured", "AI model selection is not configured.")
+    return service
 
 
 def get_registration_service(request: Request) -> RegistrationService:

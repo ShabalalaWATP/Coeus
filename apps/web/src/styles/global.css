@@ -4,6 +4,7 @@
 @import "./components.css";
 @import "./overview.css";
 @import "./requests.css";
+@import "./requests-workspace.css";
 @import "./routing.css";
 @import "./analyst.css";
 @import "./qc.css";
