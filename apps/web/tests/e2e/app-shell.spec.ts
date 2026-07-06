@@ -33,7 +33,7 @@ test("loads the authenticated app shell", async ({ page }) => {
   });
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: "Requests" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "My Requests", exact: true })).toBeVisible();
   await expect(page.getByLabel("Primary navigation")).toContainText("Intelligence Store");
   await expect(page.getByLabel("Primary navigation")).toContainText("Projects");
   await expect(page.getByLabel("Primary navigation")).toContainText("ACGs");
