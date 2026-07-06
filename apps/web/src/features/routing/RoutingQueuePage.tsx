@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { MessageCircleQuestion } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { AssignAnalystPanel } from "./AssignAnalystPanel";
@@ -159,43 +160,49 @@ export default function RoutingQueuePage({ route }: RoutingQueuePageProps) {
                   ticketId={selectedTicket.ticketId}
                 />
               ) : (
-                <div className="routing-forms">
-                  <label>
-                    Clarification reason
-                    <textarea
-                      onChange={(event) => setClarificationReason(event.target.value)}
-                      value={clarificationReason}
-                    />
-                  </label>
-                  <label>
-                    Clarification question
-                    <input
-                      onChange={(event) => setClarificationQuestion(event.target.value)}
-                      value={clarificationQuestion}
-                    />
-                  </label>
-                  <button
-                    disabled={!canSubmitClarification(selectedTicket, route, clarificationReason)}
-                    onClick={() => clarificationMutation.mutate()}
-                    type="button"
-                  >
-                    Request clarification
-                  </button>
-                  <label>
-                    Rejection reason
-                    <textarea
-                      onChange={(event) => setRejectReason(event.target.value)}
-                      value={rejectReason}
-                    />
-                  </label>
-                  <button
-                    disabled={!canReject(selectedTicket, route, rejectReason)}
-                    onClick={() => rejectMutation.mutate()}
-                    type="button"
-                  >
-                    Reject route
-                  </button>
-                </div>
+                <details className="workspace-details">
+                  <summary>
+                    <MessageCircleQuestion aria-hidden="true" size={16} />
+                    Query or reject this route
+                  </summary>
+                  <div className="routing-forms">
+                    <label>
+                      Clarification reason
+                      <textarea
+                        onChange={(event) => setClarificationReason(event.target.value)}
+                        value={clarificationReason}
+                      />
+                    </label>
+                    <label>
+                      Clarification question
+                      <input
+                        onChange={(event) => setClarificationQuestion(event.target.value)}
+                        value={clarificationQuestion}
+                      />
+                    </label>
+                    <button
+                      disabled={!canSubmitClarification(selectedTicket, route, clarificationReason)}
+                      onClick={() => clarificationMutation.mutate()}
+                      type="button"
+                    >
+                      Request clarification
+                    </button>
+                    <label>
+                      Rejection reason
+                      <textarea
+                        onChange={(event) => setRejectReason(event.target.value)}
+                        value={rejectReason}
+                      />
+                    </label>
+                    <button
+                      disabled={!canReject(selectedTicket, route, rejectReason)}
+                      onClick={() => rejectMutation.mutate()}
+                      type="button"
+                    >
+                      Reject route
+                    </button>
+                  </div>
+                </details>
               )}
             </>
           ) : (

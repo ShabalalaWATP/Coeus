@@ -2,6 +2,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { AiModelPanel } from "./AiModelPanel";
+import { modelInfoFor } from "./model-catalogue";
 import { resetQueryClientForTests } from "../../app/query-client";
 import { renderWithProviders } from "../../test/test-utils";
 
@@ -9,6 +10,8 @@ const modelState = {
   provider: "mock",
   activeModel: "gemma-4-31b",
   availableModels: ["gemma-4-31b", "gemini-2.5-flash", "gemini-2.5-pro"],
+  changedBy: null,
+  changedAt: null,
 };
 
 beforeEach(() => {
@@ -19,22 +22,35 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-test("switches the active Gemini model", async () => {
+test("describes catalogued models and falls back for unknown ones", () => {
+  expect(modelInfoFor("gemini-2.5-pro").tier).toBe("Advanced");
+  expect(modelInfoFor("gemini-3-flash").tier).toBe("Fast");
+  expect(modelInfoFor("experimental-model").tier).toBe("Custom");
+});
+
+test("switches the active Gemini model from the card catalogue", async () => {
   const fetchMock = vi
     .fn()
     .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(modelState) })
     .mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve({ ...modelState, activeModel: "gemini-2.5-pro" }),
+      json: () =>
+        Promise.resolve({
+          ...modelState,
+          activeModel: "gemini-2.5-pro",
+          changedBy: "admin@example.test",
+          changedAt: "2026-07-06T09:00:00Z",
+        }),
     });
   vi.stubGlobal("fetch", fetchMock);
 
   renderWithProviders(<AiModelPanel csrfToken="test-csrf-token" />, "/admin/overview");
 
-  const select = await screen.findByLabelText("Active model");
+  expect(await screen.findByRole("radio", { name: /gemma-4-31b/ })).toBeChecked();
+  expect(screen.getByText("Active")).toBeVisible();
   expect(screen.getByRole("button", { name: "Apply model" })).toBeDisabled();
 
-  await userEvent.selectOptions(select, "gemini-2.5-pro");
+  await userEvent.click(screen.getByRole("radio", { name: /gemini-2.5-pro/ }));
   await userEvent.click(screen.getByRole("button", { name: "Apply model" }));
 
   await waitFor(() =>
@@ -49,6 +65,7 @@ test("switches the active Gemini model", async () => {
     ),
   );
   expect(await screen.findByText(/local mock/)).toBeVisible();
+  expect(screen.getByText(/last changed by admin@example.test/)).toBeVisible();
   expect(screen.getByRole("button", { name: "Apply model" })).toBeDisabled();
 });
 
@@ -57,7 +74,13 @@ test("shows a generic error when the switch fails", async () => {
     .fn()
     .mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve({ ...modelState, provider: "gemma_vertex" }),
+      json: () =>
+        Promise.resolve({
+          ...modelState,
+          provider: "gemma_vertex",
+          changedBy: "admin@example.test",
+          changedAt: null,
+        }),
     })
     .mockResolvedValue({
       ok: false,
@@ -68,12 +91,13 @@ test("shows a generic error when the switch fails", async () => {
 
   renderWithProviders(<AiModelPanel csrfToken="test-csrf-token" />, "/admin/overview");
 
-  await userEvent.selectOptions(await screen.findByLabelText("Active model"), "gemini-2.5-flash");
+  await userEvent.click(await screen.findByRole("radio", { name: /gemini-2.5-flash/ }));
   await userEvent.click(screen.getByRole("button", { name: "Apply model" }));
 
   expect(
     await screen.findByText("The model could not be changed. Refresh and try again."),
   ).toBeVisible();
+  expect(screen.getByText(/last changed by admin@example.test/)).toBeVisible();
 });
 
 test("renders an error state when the model state cannot load", async () => {

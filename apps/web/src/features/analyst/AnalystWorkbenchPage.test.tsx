@@ -180,10 +180,12 @@ test("works an assigned task through notes, products, draft and QC submission", 
   renderWithProviders(<AnalystWorkbenchPage />, "/analyst/workbench");
 
   expect(await screen.findByRole("link", { name: /TCK-0001/ })).toBeVisible();
+  await userEvent.click(screen.getByText(/Working notes/));
   await userEvent.type(screen.getByLabelText("Note"), "Checked sources.");
   await userEvent.click(screen.getByRole("button", { name: "Add note" }));
   expect(await screen.findByText("Checked sources.")).toBeVisible();
 
+  await userEvent.click(screen.getByText(/Linked products/));
   await userEvent.type(screen.getByLabelText("Product search"), "assessment");
   await userEvent.click(screen.getByRole("button", { name: "Search products" }));
   await userEvent.click(await screen.findByRole("button", { name: "Assessment Draft Pack" }));

@@ -115,6 +115,12 @@ test("ignores short chat messages", async () => {
   expect(screen.getByText("No chat transcript")).toBeVisible();
 });
 
+test("shows the assistant typing indicator while a message is sending", () => {
+  render(<ChatPanel isSending onSend={vi.fn()} />);
+
+  expect(screen.getByRole("status")).toHaveTextContent("Istari is thinking");
+});
+
 test("opens tickets from the dashboard and shows tagged counts", async () => {
   const onOpen = vi.fn();
   render(

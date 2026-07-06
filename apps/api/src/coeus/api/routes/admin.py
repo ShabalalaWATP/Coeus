@@ -60,7 +60,11 @@ async def select_ai_model(
     ],
     ai_models: Annotated[AiModelService, Depends(get_ai_model_service)],
 ) -> AiModelStateResponse:
-    return _ai_model_response(ai_models.select(str(authenticated.user.user_id), payload.model))
+    return _ai_model_response(
+        ai_models.select(
+            str(authenticated.user.user_id), authenticated.user.username, payload.model
+        )
+    )
 
 
 def _ai_model_response(state: AiModelState) -> AiModelStateResponse:
@@ -68,6 +72,8 @@ def _ai_model_response(state: AiModelState) -> AiModelStateResponse:
         provider=state.provider,
         active_model=state.active_model,
         available_models=list(state.available_models),
+        changed_by=state.changed_by,
+        changed_at=state.changed_at,
     )
 
 

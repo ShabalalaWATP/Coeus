@@ -54,3 +54,5 @@ class AiModelStateResponse(BaseModel):
     provider: str
     active_model: str = Field(serialization_alias="activeModel")
     available_models: list[str] = Field(serialization_alias="availableModels")
+    changed_by: str | None = Field(default=None, serialization_alias="changedBy")
+    changed_at: datetime | None = Field(default=None, serialization_alias="changedAt")

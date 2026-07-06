@@ -275,3 +275,33 @@
   notification and released-product link, upload visibility per role and
   the audit trail recording qc_approved, product_released and
   email_recorded.
+
+## 2026-07-06 Themed ACGs, request journey and agentic UX
+
+- Seeded 43 access control groups: the three workflow groups plus a
+  40-group themed catalogue built from eight regions crossed with five
+  intelligence disciplines (European Cyber, African HUMINT, Maritime
+  GEOINT and so on), with realistic role memberships so store need-to-know
+  filtering demonstrates overlap. No access-control logic changed.
+- Added a transient "Request journey" dialog for requesters that maps
+  every workflow state onto seven plain-language stages with a "you are
+  here" marker. It opens automatically once on ticket submission, on
+  demand from the workspace meta bar, and closes on Escape, overlay click
+  or the close button.
+- Pushed the role screens further towards an AI-first feel: the chat is
+  now the "Intake assistant" with a typing indicator, machine-generated
+  recommendation cards carry agent chips (Routing agent, Capability
+  agent, RFI search agent), the analyst detail collapses notes and linked
+  products behind disclosures, and manager queues collapse the
+  clarification and rejection forms behind "Query or reject this route".
+- Rebuilt the admin AI model chooser as a card catalogue with tier chips
+  (Sovereign, Fast, Advanced, Custom fallback) and per-model descriptions,
+  an Active badge, and a last-changed line backed by new
+  `changedBy`/`changedAt` fields on the admin AI model endpoint.
+- Verified in the browser end to end: customer intake to submission with
+  the journey auto-opening, RFI offer rejection, RFA manager capability
+  checks and approval with agent chips, analyst workbench disclosures,
+  the admin model switch recording the change, and the themed ACG list.
+- Checks: line limit, Prettier, ESLint, tsc, Vitest coverage (99.8% lines,
+  95.9% branches), pytest coverage (95.61%, 139 tests), mypy and ruff all
+  pass.

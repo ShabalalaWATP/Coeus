@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MessageSquarePlus } from "lucide-react";
+import { useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { RequestDashboard } from "./RequestDashboard";
@@ -39,6 +40,7 @@ export default function RequestsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isNewRequest = location.pathname.endsWith("/new");
+  const [journeyOpen, setJourneyOpen] = useState(false);
   const csrfToken = session?.csrfToken ?? "";
   const canCreate = session !== null && hasPermissions(session.user, ["chat:use"]);
   const ticketsQuery = useQuery({
@@ -96,7 +98,11 @@ export default function RequestsPage() {
   });
   const submitMutation = useMutation({
     mutationFn: () => submitTicket(selectedTicketId, csrfToken),
-    onSuccess: updateTicketCache,
+    onSuccess: (ticket) => {
+      updateTicketCache(ticket);
+      // Transient roadmap popup so the requester sees where their request goes next.
+      setJourneyOpen(true);
+    },
   });
   const attachmentMutation = useMutation({
     mutationFn: (payload: AttachmentMetadataInput) =>
@@ -175,6 +181,8 @@ export default function RequestsPage() {
             onSubmit: () => submitMutation.mutate(),
           }}
           currentUserId={session?.user.id ?? ""}
+          journeyOpen={journeyOpen}
+          onJourneyToggle={setJourneyOpen}
           pending={{
             accepting: acceptOfferMutation.isPending,
             adding: informationMutation.isPending,

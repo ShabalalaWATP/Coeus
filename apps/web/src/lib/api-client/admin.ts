@@ -4,6 +4,8 @@ export type AiModelState = {
   provider: string;
   activeModel: string;
   availableModels: string[];
+  changedBy: string | null;
+  changedAt: string | null;
 };
 
 export async function getAiModelState(): Promise<AiModelState> {

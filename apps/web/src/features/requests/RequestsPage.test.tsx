@@ -130,6 +130,14 @@ test("edits intake manually and submits once complete", async () => {
   await userEvent.click(submit);
 
   expect((await screen.findAllByText("RFI SEARCHING")).length).toBeGreaterThan(0);
+
+  // Submission opens the transient journey popup so the requester sees what happens next.
+  expect(await screen.findByRole("dialog", { name: "Request journey" })).toBeVisible();
+  await userEvent.click(screen.getByRole("button", { name: "Close journey" }));
+  expect(screen.queryByRole("dialog", { name: "Request journey" })).not.toBeInTheDocument();
+
+  await userEvent.click(screen.getByRole("button", { name: "Request journey" }));
+  expect(await screen.findByText("You are here")).toBeVisible();
 });
 
 test("hides the new request action without a session", async () => {

@@ -137,6 +137,7 @@ test("requests clarification from an RFA manager review", async () => {
 
   await screen.findByText("Recommended route: RFA");
   expect(screen.getByText("Confirm a supported mock region.")).toBeVisible();
+  await userEvent.click(screen.getByText("Query or reject this route"));
   await userEvent.type(screen.getByLabelText("Clarification reason"), "Need tighter scope.");
   await userEvent.type(screen.getByLabelText("Clarification question"), "Which mock region?");
   await userEvent.click(screen.getByRole("button", { name: "Request clarification" }));
@@ -200,6 +201,7 @@ test("rejects an RFA route with a manager reason", async () => {
   renderWithProviders(<RoutingQueuePage route="rfa" />, "/rfa/queue");
 
   await screen.findByText("Recommended route: RFA");
+  await userEvent.click(screen.getByText("Query or reject this route"));
   await userEvent.type(screen.getByLabelText("Rejection reason"), "Assessment route is too broad.");
   await userEvent.click(screen.getByRole("button", { name: "Reject route" }));
 

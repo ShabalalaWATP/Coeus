@@ -13,8 +13,29 @@
 
 .ticket-workspace__meta {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   align-items: center;
+}
+
+.journey-trigger {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  min-height: 34px;
+  border: 1px solid color-mix(in srgb, var(--teal) 45%, var(--border));
+  border-radius: var(--radius-sm);
+  padding: 0 11px;
+  background: color-mix(in srgb, var(--teal) 8%, transparent);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.journey-trigger:hover,
+.journey-trigger:focus-visible {
+  border-color: var(--teal);
+  outline: none;
 }
 
 .workspace-details {

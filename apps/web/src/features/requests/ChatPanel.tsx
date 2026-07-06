@@ -1,4 +1,4 @@
-import { SendHorizonal } from "lucide-react";
+import { Bot, SendHorizonal } from "lucide-react";
 import { useState } from "react";
 
 import type { Ticket } from "../../lib/api-client/tickets";
@@ -26,8 +26,8 @@ export function ChatPanel({ isSending, onSend, readOnly = false, ticket }: ChatP
   return (
     <section className="surface chat-panel" aria-labelledby="chat-title">
       <div className="section-heading access-heading">
-        <SendHorizonal aria-hidden="true" size={20} />
-        <h2 id="chat-title">Chat Intake</h2>
+        <Bot aria-hidden="true" size={20} />
+        <h2 id="chat-title">Intake assistant</h2>
       </div>
       <div className="chat-transcript" aria-live="polite">
         {ticket?.messages.length ? (
@@ -40,6 +40,17 @@ export function ChatPanel({ isSending, onSend, readOnly = false, ticket }: ChatP
         ) : (
           <p>No chat transcript</p>
         )}
+        {isSending ? (
+          <p className="chat-typing" role="status">
+            <Bot aria-hidden="true" size={15} />
+            Istari is thinking
+            <span aria-hidden="true" className="chat-typing__dots">
+              <i />
+              <i />
+              <i />
+            </span>
+          </p>
+        ) : null}
       </div>
       {readOnly ? (
         <p className="chat-readonly">The conversation is read-only for this request.</p>

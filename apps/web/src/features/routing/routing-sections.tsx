@@ -1,9 +1,20 @@
+import { Bot } from "lucide-react";
+
 import type {
   CmCapabilityReview,
   RfaCapabilityReview,
   RoutingQueue,
   RoutingTicket,
 } from "../../lib/api-client/routing";
+
+function AgentChip({ label }: { label: string }) {
+  return (
+    <span className="agent-chip">
+      <Bot aria-hidden="true" size={13} />
+      {label}
+    </span>
+  );
+}
 
 export function RoutingStats({ queue }: { queue: RoutingQueue }) {
   return (
@@ -27,11 +38,13 @@ export function RoutingStats({ queue }: { queue: RoutingQueue }) {
 export function Recommendation({ ticket }: { ticket: RoutingTicket }) {
   return ticket.recommendation ? (
     <article className="routing-recommendation">
+      <AgentChip label="Routing agent" />
       <h3>Recommended route: {ticket.recommendation.recommendedRoute.toUpperCase()}</h3>
       <p>{ticket.recommendation.reasoningSummary}</p>
     </article>
   ) : (
     <article className="routing-recommendation">
+      <AgentChip label="Routing agent" />
       <h3>No route recommendation</h3>
       <p>Capability checks have not run for this ticket.</p>
     </article>
@@ -50,6 +63,7 @@ export function Review({
   }
   return (
     <article className="routing-review">
+      <AgentChip label="Capability agent" />
       <h3>{title}</h3>
       <p>{review.reasoningSummary}</p>
       <dl>

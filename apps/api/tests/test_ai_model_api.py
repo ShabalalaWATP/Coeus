@@ -32,6 +32,8 @@ async def test_admin_reads_and_switches_the_active_gemini_model() -> None:
         assert payload["provider"] == "mock"
         assert payload["activeModel"] == "gemma-4-31b"
         assert "gemini-2.5-pro" in payload["availableModels"]
+        assert payload["changedBy"] is None
+        assert payload["changedAt"] is None
 
         switched = await client.put(
             "/api/v1/admin/ai-model",
@@ -40,9 +42,12 @@ async def test_admin_reads_and_switches_the_active_gemini_model() -> None:
         )
         assert switched.status_code == 200
         assert switched.json()["activeModel"] == "gemini-2.5-pro"
+        assert switched.json()["changedBy"] == "admin@example.test"
+        assert switched.json()["changedAt"] is not None
 
         refreshed = await client.get("/api/v1/admin/ai-model")
         assert refreshed.json()["activeModel"] == "gemini-2.5-pro"
+        assert refreshed.json()["changedBy"] == "admin@example.test"
 
 
 @pytest.mark.asyncio

@@ -45,7 +45,7 @@ test("renders admin action links, approvals and AI model controls", async () => 
   renderWithProviders(<AdminOverviewPage />, "/admin/overview");
 
   expect(await screen.findByRole("heading", { name: "Available" })).toBeVisible();
-  expect(await screen.findByLabelText("Active model")).toHaveValue("gemma-4-31b");
+  expect(await screen.findByRole("radio", { name: /gemma-4-31b/ })).toBeChecked();
   expect(await screen.findByText("No pending access requests")).toBeVisible();
   expect(screen.getByRole("link", { name: /Access groups/ })).toHaveAttribute(
     "href",

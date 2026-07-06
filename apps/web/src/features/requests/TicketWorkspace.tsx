@@ -1,4 +1,4 @@
-import { ArrowLeft, History, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, History, Route, SlidersHorizontal } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { ChatPanel } from "./ChatPanel";
@@ -6,6 +6,7 @@ import { CollaboratorsPanel } from "./CollaboratorsPanel";
 import { DetailsChecklist } from "./DetailsChecklist";
 import { IntakePanel } from "./IntakePanel";
 import { ProductOffersPanel } from "./ProductOffersPanel";
+import { RequestJourney } from "./RequestJourney";
 import { TimelinePanel } from "./TimelinePanel";
 import { StatusPill } from "../../components/ui/StatusPill";
 import type { RfiSearchResults } from "../../lib/api-client/rfi-search";
@@ -29,6 +30,8 @@ type TicketWorkspaceActions = {
 type TicketWorkspaceProps = {
   actions: TicketWorkspaceActions;
   currentUserId: string;
+  journeyOpen: boolean;
+  onJourneyToggle: (open: boolean) => void;
   pending: Record<
     | "accepting"
     | "collaborating"
@@ -48,6 +51,8 @@ type TicketWorkspaceProps = {
 export function TicketWorkspace({
   actions,
   currentUserId,
+  journeyOpen,
+  onJourneyToggle,
   pending,
   rfiLoading,
   rfiResults,
@@ -74,9 +79,16 @@ export function TicketWorkspace({
           <div className="ticket-workspace__meta">
             <span className="mono-ref">{ticket.reference}</span>
             <StatusPill state={ticket.state} />
+            <button className="journey-trigger" onClick={() => onJourneyToggle(true)} type="button">
+              <Route aria-hidden="true" size={15} />
+              Request journey
+            </button>
           </div>
         ) : null}
       </div>
+      {journeyOpen && ticket ? (
+        <RequestJourney onClose={() => onJourneyToggle(false)} state={ticket.state} />
+      ) : null}
 
       <section className="request-workspace" aria-label="Request workspace">
         <ChatPanel

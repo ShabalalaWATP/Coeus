@@ -15,6 +15,18 @@ from coeus.repositories.auth import SeedUserRepository
 
 SEED_NAMESPACE = UUID("f71d6c95-85da-4f8b-8d55-e547c227c3a4")
 
+THEMED_ACG_REGIONS = (
+    ("EU", "European"),
+    ("AF", "African"),
+    ("ME", "Middle Eastern"),
+    ("AP", "Asia-Pacific"),
+    ("NA", "North American"),
+    ("SA", "South American"),
+    ("AR", "Arctic"),
+    ("MAR", "Maritime"),
+)
+THEMED_ACG_DISCIPLINES = ("Cyber", "HUMINT", "SIGINT", "GEOINT", "OSINT")
+
 
 def stable_seed_id(name: str) -> UUID:
     return uuid5(SEED_NAMESPACE, name)
@@ -125,6 +137,20 @@ class SeedAccessRepository:
             for member in members:
                 self.add_membership(acg.acg_id, member.user_id)
 
+        themed = self._seed_themed_acgs(admin)
+        colleague = self._user("colleague@example.test")
+        themed_memberships: tuple[tuple[str, tuple[UserAccount, ...]], ...] = (
+            ("European Cyber", (customer, colleague, rfa_manager, rfa_team, analyst, qc_manager)),
+            ("European HUMINT", (rfa_manager, analyst, qc_manager)),
+            ("Middle Eastern HUMINT", (rfa_manager,)),
+            ("European SIGINT", (collection_manager, collection_team)),
+            ("African Cyber", (collection_manager,)),
+            ("Maritime GEOINT", (collection_manager,)),
+        )
+        for name, themed_members in themed_memberships:
+            for member in themed_members:
+                self.add_membership(themed[name].acg_id, member.user_id)
+
         regional_product = self._seed_product(
             "regional-stability-brief",
             "Regional Stability Brief",
@@ -215,6 +241,21 @@ class SeedAccessRepository:
                 ),
             )
         }
+
+    def _seed_themed_acgs(self, admin: UserAccount) -> dict[str, AccessControlGroup]:
+        themed: dict[str, AccessControlGroup] = {}
+        for region_code, region in THEMED_ACG_REGIONS:
+            for discipline in THEMED_ACG_DISCIPLINES:
+                name = f"{region} {discipline}"
+                acg = self._seed_acg(
+                    f"ACG-{region_code}-{discipline.upper()}",
+                    name,
+                    f"Mock need-to-know group for {name} reporting.",
+                    admin.user_id,
+                )
+                self.add_membership(acg.acg_id, admin.user_id)
+                themed[name] = acg
+        return themed
 
     def _seed_acg(
         self, code: str, name: str, description: str, owner_user_id: UUID
