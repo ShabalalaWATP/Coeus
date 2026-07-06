@@ -163,3 +163,31 @@
   and pip-audit; frontend Prettier, ESLint, TypeScript, Vitest coverage, build,
   Playwright e2e and production dependency audit; Terraform fmt, init and
   validate; Checkov, Semgrep, Gitleaks, file line limit and Compose config.
+
+## 2026-07-06 Frontend design and role-view polish
+
+- Reworked the frontend design system for a dark, operational look: expanded
+  colour tokens with graphite surfaces and cyan, teal, green, amber and red
+  accents, a monospace accent face for references and tokens, grouped
+  navigation with section labels, a sticky blurred command bar with a
+  Ctrl+K shortcut, subtle hover and focus motion, and a technical grid
+  backdrop on the auth pages. All animation respects
+  `prefers-reduced-motion` and the light theme remains supported.
+- Completed the manager-to-analyst workflow in the UI: after route approval a
+  ticket now stays in the routing queue with an assign-analyst panel backed by
+  the existing `/analyst/candidates` and `/analyst/tasks/{id}/assign`
+  endpoints, so tickets no longer dead-end in `ANALYST_ASSIGNMENT`.
+- Gated ACG create, update and add-member forms behind `acg:create`,
+  `acg:update` and `acg:assign_user` permissions so view-only roles no longer
+  see actions they cannot use.
+- Added shared `LoadingState`, `ErrorState`, `EmptyState` and `StatusPill`
+  components with styles for the previously unstyled `request-row` and
+  `status-pill` classes, and wired loading, error, empty and success states
+  into the store, projects, analytics, audit, requests, routing, analyst, QC
+  and ACG pages.
+- Preserved product back-navigation context from team workspaces and project
+  pages, and relabelled the controlled asset grant with token expiry.
+- Verified all eight role views end to end in the browser, including the full
+  intake, RFI search, routing, assignment, analyst production and QC
+  dissemination pipeline, auth negative states and responsive layouts at
+  1440x900, 1280x720, 768x1024 and 390x844.

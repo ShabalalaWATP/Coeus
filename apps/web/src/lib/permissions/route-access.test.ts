@@ -1,5 +1,6 @@
 import {
   canAccessRoute,
+  groupedNavigationItems,
   navigationItems,
   previewProfile,
   routeByPath,
@@ -24,6 +25,18 @@ test("route access requires all route permissions", () => {
   expect(canAccessRoute(profile, navigationItems[0])).toBe(true);
   expect(canAccessRoute(profile, navigationItems[1])).toBe(false);
   expect(visibleNavigationItems(profile).map((item) => item.label)).toEqual(["Requests"]);
+});
+
+test("groups navigation items and omits empty groups", () => {
+  const operationsOnly = navigationItems.filter((item) => item.group === "operations");
+  const groups = groupedNavigationItems(operationsOnly);
+
+  expect(groups).toHaveLength(1);
+  expect(groups[0].label).toBe("Operations");
+  expect(groups[0].items.map((item) => item.label)).toContain("Requests");
+
+  const allGroups = groupedNavigationItems(navigationItems);
+  expect(allGroups.map((group) => group.label)).toEqual(["Operations", "Teams", "Governance"]);
 });
 
 test("route metadata includes sprint three access paths", () => {

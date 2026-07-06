@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { BarChart3, LineChart, Repeat2, Star } from "lucide-react";
 
+import { ErrorState, LoadingState } from "../../components/ui/PageState";
 import {
   getAnalyticsDashboard,
   type AnalyticsAudience,
@@ -39,7 +40,15 @@ export default function AnalyticsDashboardPage({ audience }: AnalyticsDashboardP
         </div>
         <div className="classification-note">MOCK DATA ONLY</div>
       </section>
-      {dashboard ? <DashboardContent dashboard={dashboard} /> : <p>Loading analytics.</p>}
+      {dashboardQuery.isError ? (
+        <section className="surface">
+          <ErrorState onRetry={() => void dashboardQuery.refetch()} />
+        </section>
+      ) : dashboard ? (
+        <DashboardContent dashboard={dashboard} />
+      ) : (
+        <LoadingState label="Loading analytics" />
+      )}
     </div>
   );
 }

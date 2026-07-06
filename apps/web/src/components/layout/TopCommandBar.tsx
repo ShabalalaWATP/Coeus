@@ -1,5 +1,5 @@
 import { Bell, LogOut, Moon, Search, Sun, UserCircle } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { IconButton } from "../ui/IconButton";
@@ -16,6 +16,7 @@ export function TopCommandBar({ onLogout, profile }: TopCommandBarProps) {
   const { theme, toggleTheme } = useTheme();
   const [commandQuery, setCommandQuery] = useState("");
   const [openPanel, setOpenPanel] = useState<"notifications" | "profile" | null>(null);
+  const commandInputRef = useRef<HTMLInputElement>(null);
   const ThemeIcon = theme === "dark" ? Sun : Moon;
   const themeLabel = theme === "dark" ? "Switch to light theme" : "Switch to dark theme";
   const commandMatches = useMemo(() => {
@@ -28,6 +29,17 @@ export function TopCommandBar({ onLogout, profile }: TopCommandBarProps) {
     );
   }, [commandQuery, profile]);
 
+  useEffect(() => {
+    function focusCommand(event: KeyboardEvent) {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        commandInputRef.current?.focus();
+      }
+    }
+    window.addEventListener("keydown", focusCommand);
+    return () => window.removeEventListener("keydown", focusCommand);
+  }, []);
+
   function openRoute(path: string) {
     setCommandQuery("");
     setOpenPanel(null);
@@ -37,10 +49,10 @@ export function TopCommandBar({ onLogout, profile }: TopCommandBarProps) {
   return (
     <header className="command-bar">
       <div className="command-search-wrap">
-        <label className="command-search" htmlFor="global-command">
+        <div className="command-search">
           <Search aria-hidden="true" size={18} strokeWidth={1.8} />
-          <span className="sr-only">Command</span>
           <input
+            aria-label="Command"
             autoComplete="off"
             id="global-command"
             onChange={(event) => setCommandQuery(event.target.value)}
@@ -49,14 +61,19 @@ export function TopCommandBar({ onLogout, profile }: TopCommandBarProps) {
                 event.preventDefault();
                 openRoute(commandMatches[0].path);
               }
+              if (event.key === "Escape") {
+                setCommandQuery("");
+              }
             }}
-            placeholder="Command"
+            placeholder="Go to workspace"
+            ref={commandInputRef}
             type="search"
             value={commandQuery}
           />
-        </label>
+          <kbd aria-hidden="true">Ctrl K</kbd>
+        </div>
         {commandQuery.trim() ? (
-          <div className="command-menu" role="listbox" aria-label="Command results">
+          <div className="command-menu" aria-label="Command results">
             {commandMatches.map((item) => (
               <button key={item.path} onClick={() => openRoute(item.path)} type="button">
                 {item.label}

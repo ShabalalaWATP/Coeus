@@ -2,6 +2,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 
 import AnalystTaskDetail from "./AnalystTaskDetail";
+import { ErrorState } from "../../components/ui/PageState";
+import { formatWorkflowState } from "../../lib/workflow/state-format";
 import {
   listAnalystTasks,
   type AnalystTask,
@@ -42,18 +44,24 @@ export default function AnalystWorkbenchPage() {
             <h2>Assigned tasks</h2>
             <p>{tasks.length} tasks in your queue.</p>
           </div>
-          {tasks.map((task) => (
-            <Link
-              className="request-row"
-              key={task.ticketId}
-              to={`/analyst/tasks/${task.ticketId}`}
-            >
-              <strong>{task.reference}</strong>
-              <span>{task.title}</span>
-              <small>{formatState(task.state)}</small>
-            </Link>
-          ))}
-          {tasks.length === 0 ? <p>No assigned tasks.</p> : null}
+          {tasksQuery.isError ? (
+            <ErrorState onRetry={() => void tasksQuery.refetch()} />
+          ) : (
+            <>
+              {tasks.map((task) => (
+                <Link
+                  className="request-row"
+                  key={task.ticketId}
+                  to={`/analyst/tasks/${task.ticketId}`}
+                >
+                  <strong>{task.reference}</strong>
+                  <span>{task.title}</span>
+                  <small>{formatWorkflowState(task.state)}</small>
+                </Link>
+              ))}
+              {tasks.length === 0 ? <p>No assigned tasks.</p> : null}
+            </>
+          )}
         </aside>
         <AnalystTaskDetail onTaskChange={updateTask} task={selectedTask} />
       </section>
@@ -64,8 +72,4 @@ export default function AnalystWorkbenchPage() {
 function replaceTask(tasks: AnalystTask[], nextTask: AnalystTask) {
   const withoutCurrent = tasks.filter((task) => task.ticketId !== nextTask.ticketId);
   return [nextTask, ...withoutCurrent];
-}
-
-function formatState(state: string) {
-  return state.replaceAll("_", " ");
 }

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
 import { ChatPanel } from "./ChatPanel";
+import { ErrorState } from "../../components/ui/PageState";
 import { IntakePanel } from "./IntakePanel";
 import { ProductOffersPanel } from "./ProductOffersPanel";
 import { RequestDashboard } from "./RequestDashboard";
@@ -127,6 +128,11 @@ export default function RequestsPage() {
         </div>
         <div className="classification-note">MOCK DATA ONLY</div>
       </section>
+      {ticketsQuery.isError ? (
+        <section className="surface">
+          <ErrorState onRetry={() => void ticketsQuery.refetch()} />
+        </section>
+      ) : null}
       <RequestDashboard
         onSelect={setSelectedTicketId}
         selectedTicketId={selectedTicket?.id}

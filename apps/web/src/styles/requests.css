@@ -134,11 +134,25 @@
   gap: 8px;
   min-height: 42px;
   border: 1px solid var(--accent);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 0 14px;
-  background: var(--accent-strong);
+  background: linear-gradient(
+    180deg,
+    var(--accent-strong),
+    color-mix(in srgb, var(--accent-strong) 80%, black)
+  );
   color: white;
-  font-weight: 850;
+  font-weight: 750;
+  transition: filter var(--speed-fast) ease;
+}
+
+.chat-form button:hover:enabled,
+.intake-actions button:hover:enabled,
+.attachment-form button:hover:enabled,
+.timeline-form button:hover:enabled,
+.offer-toolbar button:hover:enabled,
+.offer-actions button:hover:enabled {
+  filter: brightness(1.12);
 }
 
 .chat-form button:disabled,

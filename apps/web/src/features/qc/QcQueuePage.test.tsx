@@ -189,6 +189,9 @@ test("renders queued ingestion status for a QC product without a draft", async (
   expect(screen.getAllByText("Not set")).toHaveLength(2);
   expect(screen.getByText("queued in Intelligence Store indexing.")).toBeVisible();
   expect(screen.getByText("0 feedback request created.")).toBeVisible();
+
+  await userEvent.click(screen.getByRole("link", { name: /TCK-/ }));
+  expect(await screen.findByText("No draft product is attached.")).toBeVisible();
 });
 
 test("renders an empty QC queue", async () => {
@@ -199,6 +202,24 @@ test("renders an empty QC queue", async () => {
 
   expect(await screen.findByText("No products are awaiting QC.")).toBeVisible();
   expect(screen.getByText("No QC product selected.")).toBeVisible();
+});
+
+test("renders a QC queue error state", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ error: { code: "server_error", message: "Failed." } }),
+    }),
+  );
+
+  renderWithProviders(<QcQueuePage />, "/qc/queue");
+
+  expect(
+    await screen.findByText("Unable to load data", undefined, { timeout: 5000 }),
+  ).toBeVisible();
+  await userEvent.click(screen.getByRole("button", { name: "Retry" }));
 });
 
 function fetchByUrl({

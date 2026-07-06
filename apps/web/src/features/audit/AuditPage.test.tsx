@@ -1,4 +1,5 @@
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import AuditPage from "./AuditPage";
 import { resetQueryClientForTests } from "../../app/query-client";
@@ -50,7 +51,32 @@ test("renders empty audit logs", async () => {
 
   renderWithProviders(<AuditPage />, "/audit");
 
-  expect(await screen.findByText("No audit events recorded.")).toBeVisible();
+  expect(await screen.findByText("No audit events recorded")).toBeVisible();
+});
+
+test("renders an audit error state with retry", async () => {
+  const failure = {
+    ok: false,
+    status: 500,
+    json: () => Promise.resolve({ error: { code: "server_error", message: "Failed." } }),
+  };
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(failure)
+    .mockResolvedValueOnce(failure)
+    .mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ events: [] }),
+    });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<AuditPage />, "/audit");
+
+  expect(
+    await screen.findByText("Unable to load data", undefined, { timeout: 5000 }),
+  ).toBeVisible();
+  await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+  expect(await screen.findByText("No audit events recorded")).toBeVisible();
 });
 
 test("renders system audit actors", async () => {

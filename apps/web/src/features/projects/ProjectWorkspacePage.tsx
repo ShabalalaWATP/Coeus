@@ -1,8 +1,9 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ClipboardList, FolderKanban, ShieldCheck, UsersRound } from "lucide-react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 
+import { EmptyState, ErrorState, LoadingState } from "../../components/ui/PageState";
 import { apiClient, type ProjectWorkspace } from "../../lib/api-client/client";
 import { useAuth } from "../../lib/auth/auth-context";
 import { hasPermissions } from "../../lib/permissions/route-access";
@@ -46,9 +47,25 @@ export default function ProjectWorkspacePage({ view = "overview" }: ProjectWorks
         <div className="classification-note">MOCK DATA ONLY</div>
       </section>
 
-      {projectsQuery.isLoading ? <section className="surface">Loading projects</section> : null}
+      {projectsQuery.isLoading ? (
+        <section className="surface">
+          <LoadingState label="Loading projects" />
+        </section>
+      ) : null}
+      {projectsQuery.isError ? (
+        <section className="surface">
+          <ErrorState onRetry={() => void projectsQuery.refetch()} />
+        </section>
+      ) : null}
       {project === undefined ? (
-        <section className="surface">No visible projects</section>
+        projectsQuery.isLoading || projectsQuery.isError ? null : (
+          <section className="surface">
+            <EmptyState
+              hint="Projects appear here once you are added as a member or requester."
+              title="No visible projects"
+            />
+          </section>
+        )
       ) : (
         <ProjectWorkspaceContent
           diagnostics={diagnosticsQuery.data}
@@ -68,6 +85,7 @@ type ProjectWorkspaceContentProps = {
 
 function ProjectWorkspaceContent({ diagnostics, project, view }: ProjectWorkspaceContentProps) {
   const overviewPath = `/projects/${project.id}`;
+  const location = useLocation();
 
   return (
     <>
@@ -155,7 +173,12 @@ function ProjectWorkspaceContent({ diagnostics, project, view }: ProjectWorkspac
             </div>
             <div className="stack-list">
               {project.visibleProducts.map((product) => (
-                <Link className="stack-row" key={product.id} to={`/store/products/${product.id}`}>
+                <Link
+                  className="stack-row"
+                  key={product.id}
+                  state={{ from: location.pathname }}
+                  to={`/store/products/${product.id}`}
+                >
                   <strong>{product.title}</strong>
                   <span>{product.productType}</span>
                   <small>{product.status}</small>

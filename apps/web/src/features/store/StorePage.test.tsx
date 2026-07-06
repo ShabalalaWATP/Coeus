@@ -149,6 +149,24 @@ test("filters my products by owner team and hides upload without create permissi
   expect(screen.getByText("MOCK DATA ONLY")).toBeVisible();
 });
 
+test("renders a store search error state", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ error: { code: "server_error", message: "Failed." } }),
+    }),
+  );
+
+  renderWithProviders(<StorePage />, "/store");
+
+  expect(
+    await screen.findByText("Unable to load data", undefined, { timeout: 5000 }),
+  ).toBeVisible();
+  await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+});
+
 test("filters team product workspaces by explicit owner team", async () => {
   vi.stubGlobal(
     "fetch",

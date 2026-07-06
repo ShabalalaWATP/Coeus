@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { ClipboardList } from "lucide-react";
 
+import { EmptyState, ErrorState, LoadingState } from "../../components/ui/PageState";
 import { listAuditEvents } from "../../lib/api-client/audit";
 
 export default function AuditPage() {
@@ -28,8 +29,14 @@ export default function AuditPage() {
             <p>{events.length} events recorded.</p>
           </div>
         </div>
-        {auditQuery.isLoading ? <p>Loading audit events</p> : null}
-        {events.length === 0 && !auditQuery.isLoading ? <p>No audit events recorded.</p> : null}
+        {auditQuery.isLoading ? <LoadingState label="Loading audit events" /> : null}
+        {auditQuery.isError ? <ErrorState onRetry={() => void auditQuery.refetch()} /> : null}
+        {events.length === 0 && !auditQuery.isLoading && !auditQuery.isError ? (
+          <EmptyState
+            hint="Security and workflow events appear here as operators use the system."
+            title="No audit events recorded"
+          />
+        ) : null}
         <div className="stack-list">
           {events.map((event) => (
             <article className="stack-row" key={event.eventId}>

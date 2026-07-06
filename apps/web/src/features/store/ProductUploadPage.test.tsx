@@ -72,6 +72,26 @@ test("suggests metadata and submits a controlled product registration", async ()
   expect(init.body).toContain('"acgIds":["acg-alpha"]');
 });
 
+test("shows a generic error when product registration fails", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ acgs: [] }) })
+    .mockResolvedValue({
+      ok: false,
+      status: 422,
+      json: () => Promise.resolve({ error: { code: "invalid_product", message: "Invalid." } }),
+    });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<ProductUploadPage />, "/store/upload");
+  await screen.findByLabelText("ACG");
+  await userEvent.click(screen.getByRole("button", { name: "Register product" }));
+
+  expect(
+    await screen.findByText("Product registration failed. Check the metadata and try again."),
+  ).toBeVisible();
+});
+
 test("registers geographic products with the first visible ACG when none is selected", async () => {
   const fetchMock = vi
     .fn()

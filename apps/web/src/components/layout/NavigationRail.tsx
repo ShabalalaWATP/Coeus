@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
-import type { NavigationItem } from "../../lib/permissions/route-access";
+import { groupedNavigationItems, type NavigationItem } from "../../lib/permissions/route-access";
 
 const icons = {
   requests: ClipboardList,
@@ -35,6 +35,8 @@ type NavigationRailProps = {
 };
 
 export function NavigationRail({ activePath, items }: NavigationRailProps) {
+  const groups = groupedNavigationItems(items);
+
   return (
     <aside className="nav-rail" aria-label="Primary navigation">
       <div className="brand">
@@ -47,22 +49,40 @@ export function NavigationRail({ activePath, items }: NavigationRailProps) {
         </div>
       </div>
       <nav className="nav-rail__links">
-        {items.map((item) => {
-          const Icon = icons[item.icon];
-          const active = activePath === item.path || activePath.startsWith(`${item.path}/`);
-          return (
-            <NavLink
-              aria-current={active ? "page" : undefined}
-              className={active ? "nav-link nav-link--active" : "nav-link"}
-              key={item.path}
-              to={item.path}
-            >
-              <Icon aria-hidden="true" size={18} strokeWidth={1.9} />
-              <span>{item.label}</span>
-            </NavLink>
-          );
-        })}
+        {groups.map((group) => (
+          <NavGroup activePath={activePath} group={group} key={group.group} />
+        ))}
       </nav>
     </aside>
+  );
+}
+
+type NavGroupProps = {
+  activePath: string;
+  group: { group: string; label: string; items: NavigationItem[] };
+};
+
+function NavGroup({ activePath, group }: NavGroupProps) {
+  return (
+    <>
+      <p className="nav-group" aria-hidden="true">
+        {group.label}
+      </p>
+      {group.items.map((item) => {
+        const Icon = icons[item.icon];
+        const active = activePath === item.path || activePath.startsWith(`${item.path}/`);
+        return (
+          <NavLink
+            aria-current={active ? "page" : undefined}
+            className={active ? "nav-link nav-link--active" : "nav-link"}
+            key={item.path}
+            to={item.path}
+          >
+            <Icon aria-hidden="true" size={18} strokeWidth={1.9} />
+            <span>{item.label}</span>
+          </NavLink>
+        );
+      })}
+    </>
   );
 }

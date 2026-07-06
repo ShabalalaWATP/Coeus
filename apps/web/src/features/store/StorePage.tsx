@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Search, Upload } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 import { productTypeLabel, productTypeOptions } from "./store-options";
+import { EmptyState, ErrorState } from "../../components/ui/PageState";
 import { searchStoreProducts, type StoreSearchFilters } from "../../lib/api-client/store";
 import { useAuth } from "../../lib/auth/auth-context";
 import { hasPermissions } from "../../lib/permissions/route-access";
@@ -28,6 +29,7 @@ export default function StorePage({
   title,
 }: StorePageProps) {
   const { session } = useAuth();
+  const location = useLocation();
   const [draftFilters, setDraftFilters] = useState({
     query: "",
     productType: "",
@@ -161,27 +163,41 @@ export default function StorePage({
               </span>
             ))}
           </div>
-          <div className="store-result-list">
-            {visibleProducts.map((product) => (
-              <Link className="store-result" key={product.id} to={`/store/products/${product.id}`}>
-                <div>
-                  <strong>{product.title}</strong>
-                  <p>{product.summary}</p>
-                </div>
-                <dl>
+          {productsQuery.isError ? (
+            <ErrorState onRetry={() => void productsQuery.refetch()} />
+          ) : (
+            <div className="store-result-list">
+              {visibleProducts.map((product) => (
+                <Link
+                  className="store-result"
+                  key={product.id}
+                  state={{ from: location.pathname }}
+                  to={`/store/products/${product.id}`}
+                >
                   <div>
-                    <dt>Type</dt>
-                    <dd>{productTypeLabel(product.productType)}</dd>
+                    <strong>{product.title}</strong>
+                    <p>{product.summary}</p>
                   </div>
-                  <div>
-                    <dt>Region</dt>
-                    <dd>{product.areaOrRegion}</dd>
-                  </div>
-                </dl>
-              </Link>
-            ))}
-            {visibleProducts.length === 0 ? <p>No visible products match these filters.</p> : null}
-          </div>
+                  <dl>
+                    <div>
+                      <dt>Type</dt>
+                      <dd>{productTypeLabel(product.productType)}</dd>
+                    </div>
+                    <div>
+                      <dt>Region</dt>
+                      <dd>{product.areaOrRegion}</dd>
+                    </div>
+                  </dl>
+                </Link>
+              ))}
+              {visibleProducts.length === 0 ? (
+                <EmptyState
+                  hint="Adjust the filters or clear the search to see more of your authorised products."
+                  title="No visible products match these filters"
+                />
+              ) : null}
+            </div>
+          )}
         </section>
       </section>
     </div>

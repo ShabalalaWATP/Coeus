@@ -76,8 +76,35 @@ export type DraftProductInput = {
   }[];
 };
 
+type AnalystCandidate = {
+  userId: string;
+  username: string;
+  displayName: string;
+};
+
+export type AnalystCandidateList = {
+  analysts: AnalystCandidate[];
+};
+
 export async function listAnalystTasks(): Promise<AnalystTaskList> {
   return apiRequestJson<AnalystTaskList>("/api/v1/analyst/tasks", { method: "GET" });
+}
+
+export async function listAnalystCandidates(): Promise<AnalystCandidateList> {
+  return apiRequestJson<AnalystCandidateList>("/api/v1/analyst/candidates", { method: "GET" });
+}
+
+export async function assignAnalystTask(
+  ticketId: string,
+  analystUserId: string,
+  workPackages: string[],
+  csrfToken: string,
+): Promise<AnalystTask> {
+  return apiRequestJson<AnalystTask>(`/api/v1/analyst/tasks/${ticketId}/assign`, {
+    body: JSON.stringify({ analystUserId, workPackages }),
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+    method: "POST",
+  });
 }
 
 export async function addAnalystNote(

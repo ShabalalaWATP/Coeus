@@ -102,6 +102,24 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+test("renders a tickets error state with retry", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ error: { code: "server_error", message: "Failed." } }),
+    }),
+  );
+
+  renderWithProviders(<RequestsPage />);
+
+  expect(
+    await screen.findByText("Unable to load data", undefined, { timeout: 5000 }),
+  ).toBeVisible();
+  await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+});
+
 test("creates a ticket from chat and renders the extracted intake", async () => {
   const createdTicket = { ...baseTicket, messages: baseTicket.messages.slice(0, 2) };
   const fetchMock = vi

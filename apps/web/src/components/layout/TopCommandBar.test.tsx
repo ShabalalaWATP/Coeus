@@ -73,6 +73,19 @@ test("supports enter key command navigation and no-match feedback", async () => 
   expect(screen.getByTestId("location")).toHaveTextContent("/audit");
 });
 
+test("focuses the command input with Ctrl+K and clears it with Escape", async () => {
+  const user = userEvent.setup();
+  renderWithProviders(<TopCommandBar onLogout={vi.fn()} profile={previewProfile} />);
+
+  await user.keyboard("{Control>}k{/Control}");
+  expect(screen.getByLabelText("Command")).toHaveFocus();
+
+  await user.type(screen.getByLabelText("Command"), "Audit");
+  expect(screen.getByRole("button", { name: "Audit" })).toBeVisible();
+  await user.keyboard("{Escape}");
+  expect(screen.getByLabelText("Command")).toHaveValue("");
+});
+
 function LocationProbe() {
   const location = useLocation();
   return <span data-testid="location">{location.pathname}</span>;

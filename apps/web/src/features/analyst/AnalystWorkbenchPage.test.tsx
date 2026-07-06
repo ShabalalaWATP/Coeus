@@ -86,6 +86,24 @@ test("renders an empty analyst workbench", async () => {
   expect(screen.getByText("No assigned task selected.")).toBeVisible();
 });
 
+test("renders an analyst tasks error state", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ error: { code: "server_error", message: "Failed." } }),
+    }),
+  );
+
+  renderWithProviders(<AnalystWorkbenchPage />, "/analyst/workbench");
+
+  expect(
+    await screen.findByText("Unable to load data", undefined, { timeout: 5000 }),
+  ).toBeVisible();
+  await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+});
+
 test("works an assigned task through notes, products, draft and QC submission", async () => {
   const withNote = {
     ...baseTask,

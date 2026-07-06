@@ -2,12 +2,17 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Download, FileText, ShieldAlert } from "lucide-react";
 import { Link, useLocation, useParams } from "react-router-dom";
 
+import { backNavigationFor } from "./store-navigation";
 import { productTypeLabel } from "./store-options";
+import { LoadingState } from "../../components/ui/PageState";
 import { ApiError } from "../../lib/api-client/client";
-import { getAssetAccess, getStoreProduct } from "../../lib/api-client/store";
+import { getAssetAccess, getStoreProduct, type AssetAccessGrant } from "../../lib/api-client/store";
 
 export default function ProductDetailPage() {
   const { assetId, productId } = useStoreRouteIds();
+  const location = useLocation();
+  const from = (location.state as { from?: string } | null)?.from;
+  const back = backNavigationFor(from);
   const productQuery = useQuery({
     enabled: productId !== undefined,
     queryKey: ["store-product", productId],
@@ -25,7 +30,11 @@ export default function ProductDetailPage() {
     return <StoreDenied />;
   }
   if (productQuery.isLoading) {
-    return <section className="surface">Loading product</section>;
+    return (
+      <section className="surface">
+        <LoadingState label="Loading product" />
+      </section>
+    );
   }
   const product = productQuery.data;
   if (product === undefined) {
@@ -40,9 +49,9 @@ export default function ProductDetailPage() {
           <h1 id="product-title">{product.title}</h1>
           <p>{product.summary}</p>
         </div>
-        <Link className="store-action store-action--secondary" to="/store">
+        <Link className="store-action store-action--secondary" to={back.path}>
           <ArrowLeft aria-hidden="true" size={18} />
-          Back to store
+          {back.label}
         </Link>
       </section>
 
@@ -93,7 +102,7 @@ export default function ProductDetailPage() {
             ))}
           </div>
           {assetId !== undefined ? (
-            <AssetGrant status={accessQuery.status} token={accessQuery.data?.downloadToken} />
+            <AssetGrant grant={accessQuery.data} status={accessQuery.status} />
           ) : null}
         </aside>
       </section>
@@ -101,7 +110,7 @@ export default function ProductDetailPage() {
   );
 }
 
-function AssetGrant({ status, token }: { status: string; token?: string }) {
+function AssetGrant({ grant, status }: { grant?: AssetAccessGrant; status: string }) {
   if (status === "error") {
     return (
       <div className="asset-grant asset-grant--denied">
@@ -110,13 +119,16 @@ function AssetGrant({ status, token }: { status: string; token?: string }) {
       </div>
     );
   }
-  if (token === undefined) {
+  if (grant === undefined) {
     return <div className="asset-grant">Preparing controlled access</div>;
   }
   return (
     <div className="asset-grant">
       <Download aria-hidden="true" size={18} />
-      <span>{token}</span>
+      <div>
+        <strong>Download authorised.</strong> Controlled token: <code>{grant.downloadToken}</code>
+        <small> Expires in {Math.round(grant.expiresInSeconds / 60)} minutes.</small>
+      </div>
     </div>
   );
 }

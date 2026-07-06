@@ -96,7 +96,8 @@ test("runs RFA capability checks and approves the recommended route", async () =
     .fn()
     .mockResolvedValueOnce(jsonResponse(queueWith([baseTicket])))
     .mockResolvedValueOnce(jsonResponse(reviewedTicket))
-    .mockResolvedValueOnce(jsonResponse(approvedTicket));
+    .mockResolvedValueOnce(jsonResponse(approvedTicket))
+    .mockResolvedValue(jsonResponse({ analysts: [] }));
   vi.stubGlobal("fetch", fetchMock);
 
   renderWithProviders(<RoutingQueuePage route="rfa" />, "/rfa/queue");
@@ -105,7 +106,7 @@ test("runs RFA capability checks and approves the recommended route", async () =
   expect(await screen.findByText("Recommended route: RFA")).toBeVisible();
   await userEvent.click(screen.getByRole("button", { name: "Approve route" }));
 
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+  expect(await screen.findByLabelText("Assign analyst")).toBeVisible();
   expect(fetchMock).toHaveBeenNthCalledWith(
     3,
     "http://127.0.0.1:8001/api/v1/routing/ticket-1/approve",
@@ -228,7 +229,8 @@ test("approves collection manager fallback routes", async () => {
   const fetchMock = vi
     .fn()
     .mockResolvedValueOnce(jsonResponse(queueWith([cmTicket])))
-    .mockResolvedValueOnce(jsonResponse({ ...cmTicket, state: "ANALYST_ASSIGNMENT" }));
+    .mockResolvedValueOnce(jsonResponse({ ...cmTicket, state: "ANALYST_ASSIGNMENT" }))
+    .mockResolvedValue(jsonResponse({ analysts: [] }));
   vi.stubGlobal("fetch", fetchMock);
 
   renderWithProviders(<RoutingQueuePage route="cm" />, "/collection/queue");
@@ -236,7 +238,7 @@ test("approves collection manager fallback routes", async () => {
   expect(await screen.findByText("Recommended route: CM")).toBeVisible();
   await userEvent.click(screen.getByRole("button", { name: "Approve route" }));
 
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+  expect(await screen.findByLabelText("Assign analyst")).toBeVisible();
   expect(fetchMock).toHaveBeenNthCalledWith(
     2,
     "http://127.0.0.1:8001/api/v1/routing/ticket-1/approve",
@@ -247,6 +249,57 @@ test("approves collection manager fallback routes", async () => {
       method: "POST",
     },
   );
+});
+
+test("assigns an analyst after route approval and clears the ticket from the queue", async () => {
+  const assignmentTicket: RoutingTicket = { ...reviewedTicket, state: "ANALYST_ASSIGNMENT" };
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(jsonResponse(queueWith([assignmentTicket])))
+    .mockResolvedValueOnce(
+      jsonResponse({
+        analysts: [
+          {
+            userId: "analyst-1",
+            username: "analyst@example.test",
+            displayName: "Intelligence Analyst",
+          },
+        ],
+      }),
+    )
+    .mockResolvedValueOnce(jsonResponse({ ticketId: "ticket-1", state: "ANALYST_IN_PROGRESS" }));
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<RoutingQueuePage route="rfa" />, "/rfa/queue");
+
+  await userEvent.click(await screen.findByRole("button", { name: /TCK-0001/ }));
+  await screen.findByRole("option", { name: "Intelligence Analyst" });
+  await userEvent.selectOptions(screen.getByLabelText("Analyst"), "analyst-1");
+  await userEvent.click(screen.getByRole("button", { name: "Assign analyst" }));
+
+  expect(await screen.findByText("No tickets in this queue.")).toBeVisible();
+  expect(screen.getByText("No ticket selected")).toBeVisible();
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    3,
+    "http://127.0.0.1:8001/api/v1/analyst/tasks/ticket-1/assign",
+    expect.objectContaining({ method: "POST" }),
+  );
+});
+
+test("renders a queue error state with retry", async () => {
+  const failure = {
+    ok: false,
+    status: 500,
+    json: () => Promise.resolve({ error: { code: "server_error", message: "Failed." } }),
+  };
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(failure));
+
+  renderWithProviders(<RoutingQueuePage route="rfa" />, "/rfa/queue");
+
+  expect(
+    await screen.findByText("Unable to load data", undefined, { timeout: 5000 }),
+  ).toBeVisible();
+  await userEvent.click(screen.getByRole("button", { name: "Retry" }));
 });
 
 function queueWith(tickets: RoutingTicket[]): RoutingQueue {
