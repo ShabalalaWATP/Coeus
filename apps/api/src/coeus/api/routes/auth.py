@@ -33,6 +33,7 @@ async def login(
         payload.username,
         payload.password,
         replace_session_id=existing_session_id,
+        client_ip=request.client.host if request.client else None,
     )
     _set_session_cookie(response, settings, result.session.session_id)
     return AuthSessionResponse(
@@ -44,8 +45,11 @@ async def login(
 @router.post("/register", response_model=RegistrationSubmitResponse, status_code=202)
 async def register(
     payload: RegistrationSubmitRequest,
+    request: Request,
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
     registration_service: Annotated[RegistrationService, Depends(get_registration_service)],
 ) -> RegistrationSubmitResponse:
+    auth_service.throttle_source(request.client.host if request.client else None)
     registration_service.submit(
         payload.username,
         payload.display_name,

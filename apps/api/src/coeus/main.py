@@ -18,6 +18,7 @@ from coeus.api.routes.rfi_search import router as rfi_search_router
 from coeus.api.routes.routing import router as routing_router
 from coeus.api.routes.store import router as store_router
 from coeus.api.routes.tickets import router as tickets_router
+from coeus.api.routes.users_admin import router as users_admin_router
 from coeus.core.config import Settings
 from coeus.core.errors import AppError, app_error_handler, unhandled_exception_handler
 from coeus.core.logging import configure_logging, get_logger
@@ -40,7 +41,9 @@ from coeus.services.rfi_search import build_rfi_search_service
 from coeus.services.routing import build_routing_service
 from coeus.services.store import build_store_services
 from coeus.services.ticket_collaborators import TicketCollaboratorService
+from coeus.services.ticket_lifecycle import TicketLifecycleService
 from coeus.services.tickets import build_ticket_services
+from coeus.services.user_admin import UserAdminService
 
 logger = get_logger(__name__)
 
@@ -58,12 +61,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = resolved_settings
     password_hasher = PasswordHasher(resolved_settings)
     user_repository = SeedUserRepository(resolved_settings, password_hasher)
+    session_repository = SessionRepository()
     access_repository = SeedAccessRepository(user_repository)
     audit_log = AuditLog(max_events=resolved_settings.audit_log_max_events)
     app.state.auth_service = AuthService(
         settings=resolved_settings,
         users=user_repository,
-        sessions=SessionRepository(),
+        sessions=session_repository,
         login_attempts=LoginAttemptRepository(
             max_entries=resolved_settings.login_attempt_max_entries
         ),
@@ -86,6 +90,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.ticket_collaborator_service = TicketCollaboratorService(
         users=user_repository,
         tickets=app.state.ticket_services.tickets,
+        audit_log=audit_log,
+    )
+    app.state.ticket_lifecycle_service = TicketLifecycleService(
+        tickets=app.state.ticket_services.tickets,
+        audit_log=audit_log,
+    )
+    app.state.user_admin_service = UserAdminService(
+        users=user_repository,
+        sessions=session_repository,
         audit_log=audit_log,
     )
     app.state.ai_model_service = AiModelService(resolved_settings, audit_log)
@@ -147,6 +160,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(auth_router, prefix="/api/v1")
     app.include_router(admin_router, prefix="/api/v1")
+    app.include_router(users_admin_router, prefix="/api/v1")
     app.include_router(audit_router, prefix="/api/v1")
     app.include_router(access_router, prefix="/api/v1")
     app.include_router(store_router, prefix="/api/v1")

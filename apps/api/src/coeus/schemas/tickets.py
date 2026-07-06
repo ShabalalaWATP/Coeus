@@ -144,6 +144,20 @@ class TimelineEntryResponse(BaseModel):
     created_at: datetime = Field(serialization_alias="createdAt")
 
 
+class ClarificationResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    clarification_id: UUID = Field(serialization_alias="id")
+    route: str
+    reason: str
+    questions: list[str]
+    created_at: datetime = Field(serialization_alias="createdAt")
+
+
+class TicketCancelRequest(BaseModel):
+    reason: str = Field(min_length=3, max_length=300)
+
+
 class TicketResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -160,6 +174,9 @@ class TicketResponse(BaseModel):
     messages: list[ChatMessageResponse]
     attachments: list[AttachmentMetadataResponse]
     agent_runs: list[AgentRunResponse] = Field(serialization_alias="agentRuns")
+    clarification_requests: list[ClarificationResponse] = Field(
+        serialization_alias="clarificationRequests"
+    )
     timeline: list[TimelineEntryResponse]
     created_at: datetime = Field(serialization_alias="createdAt")
     updated_at: datetime = Field(serialization_alias="updatedAt")

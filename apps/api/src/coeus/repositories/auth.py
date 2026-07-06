@@ -106,6 +106,47 @@ class LoginAttemptRepository:
         return False
 
 
+class IpAttemptRepository:
+    """Bounded per-source sliding window for authentication attempts.
+
+    Complements the username-scoped lockout: a single source cannot spray many
+    usernames without tripping this budget. Storage is bounded; when full and
+    nothing stale can be evicted the check fails open, matching the lockout
+    repository's philosophy of never letting memory pressure deny all logins.
+    """
+
+    def __init__(self, max_entries: int = 10_000) -> None:
+        if max_entries < 1:
+            raise ValueError("IP attempt max_entries must be at least 1.")
+        self._max_entries = max_entries
+        self._attempts: dict[str, list[datetime]] = {}
+
+    def within_budget(self, source: str, max_attempts: int, window_seconds: int) -> bool:
+        now = datetime.now(UTC)
+        window_start = now - timedelta(seconds=window_seconds)
+        recent = [moment for moment in self._attempts.get(source, []) if moment > window_start]
+        if (
+            source not in self._attempts
+            and len(self._attempts) >= self._max_entries
+            and not self._evict_stale(window_start)
+        ):
+            return True
+        recent.append(now)
+        self._attempts[source] = recent
+        return len(recent) <= max_attempts
+
+    @property
+    def entry_count(self) -> int:
+        return len(self._attempts)
+
+    def _evict_stale(self, window_start: datetime) -> bool:
+        for source, moments in list(self._attempts.items()):
+            if not moments or moments[-1] <= window_start:
+                self._attempts.pop(source)
+                return True
+        return False
+
+
 def _seed_user_specs() -> Iterable[tuple[str, str, frozenset[RoleName], bool]]:
     return (
         (

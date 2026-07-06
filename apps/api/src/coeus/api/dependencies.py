@@ -21,7 +21,9 @@ from coeus.services.rfi_search import RfiSearchService
 from coeus.services.routing import RoutingService
 from coeus.services.store import StoreServices
 from coeus.services.ticket_collaborators import TicketCollaboratorService
+from coeus.services.ticket_lifecycle import TicketLifecycleService
 from coeus.services.tickets import TicketServices
+from coeus.services.user_admin import UserAdminService
 
 
 def get_settings(request: Request) -> Settings:
@@ -52,6 +54,22 @@ def get_ticket_collaborator_service(request: Request) -> TicketCollaboratorServi
     service = getattr(request.app.state, "ticket_collaborator_service", None)
     if not isinstance(service, TicketCollaboratorService):
         raise AppError(500, "collaborators_not_configured", "Collaborators are not configured.")
+    return service
+
+
+def get_ticket_lifecycle_service(request: Request) -> TicketLifecycleService:
+    service = getattr(request.app.state, "ticket_lifecycle_service", None)
+    if not isinstance(service, TicketLifecycleService):
+        raise AppError(
+            500, "ticket_lifecycle_not_configured", "Ticket lifecycle is not configured."
+        )
+    return service
+
+
+def get_user_admin_service(request: Request) -> UserAdminService:
+    service = getattr(request.app.state, "user_admin_service", None)
+    if not isinstance(service, UserAdminService):
+        raise AppError(500, "user_admin_not_configured", "User administration is not configured.")
     return service
 
 

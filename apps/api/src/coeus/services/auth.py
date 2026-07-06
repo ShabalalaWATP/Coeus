@@ -6,7 +6,12 @@ from coeus.core.config import Settings
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
 from coeus.domain.auth import AuthenticatedSession, SessionRecord, UserAccount
-from coeus.repositories.auth import LoginAttemptRepository, SeedUserRepository, SessionRepository
+from coeus.repositories.auth import (
+    IpAttemptRepository,
+    LoginAttemptRepository,
+    SeedUserRepository,
+    SessionRepository,
+)
 from coeus.services.audit import AuditLog
 from coeus.services.passwords import PasswordHasher
 
@@ -30,18 +35,27 @@ class AuthService:
         login_attempts: LoginAttemptRepository,
         password_hasher: PasswordHasher,
         audit_log: AuditLog,
+        ip_attempts: IpAttemptRepository | None = None,
     ) -> None:
         self._settings = settings
         self._users = users
         self._sessions = sessions
         self._login_attempts = login_attempts
+        self._ip_attempts = ip_attempts or IpAttemptRepository(
+            max_entries=settings.auth_ip_max_entries
+        )
         self._password_hasher = password_hasher
         self._audit_log = audit_log
         self._unknown_user_password_hash = password_hasher.hash(DUMMY_LOGIN_HASH_INPUT)
 
     def login(
-        self, username: str, credential: str, replace_session_id: str | None = None
+        self,
+        username: str,
+        credential: str,
+        replace_session_id: str | None = None,
+        client_ip: str | None = None,
     ) -> LoginResult:
+        self.throttle_source(client_ip)
         self._reject_if_locked(username)
         user = self._users.get_by_username(username)
         password_hash = user.password_hash if user is not None else self._unknown_user_password_hash
@@ -123,6 +137,23 @@ class AuthService:
         )
         self._sessions.save(session)
         return session
+
+    def throttle_source(self, client_ip: str | None) -> None:
+        """Reject authentication attempts from sources over their budget.
+
+        Applied to login and registration so a single source cannot spray many
+        usernames without ever tripping a per-username lockout.
+        """
+        if client_ip is None:
+            return
+        within = self._ip_attempts.within_budget(
+            client_ip,
+            self._settings.auth_ip_max_attempts,
+            self._settings.auth_ip_window_seconds,
+        )
+        if not within:
+            self._audit_log.record("auth_throttled", None, {"reason": "ip_budget_exceeded"})
+            raise AppError(429, "too_many_attempts", "Too many attempts. Try again later.")
 
     def _reject_if_locked(self, username: str) -> None:
         locked_until = self._login_attempts.get_lockout_until(username)

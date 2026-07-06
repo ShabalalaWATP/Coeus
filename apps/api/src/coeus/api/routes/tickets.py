@@ -7,6 +7,7 @@ from coeus.api.dependencies import (
     get_csrf_validated_session,
     get_current_session,
     get_ticket_collaborator_service,
+    get_ticket_lifecycle_service,
     get_ticket_services,
     require_permission,
 )
@@ -16,6 +17,7 @@ from coeus.domain.tickets import (
     AgentRun,
     AttachmentMetadata,
     ChatMessage,
+    ClarificationRequest,
     CollaboratorAccess,
     IntakeDetails,
     TicketCollaborator,
@@ -29,17 +31,20 @@ from coeus.schemas.tickets import (
     AttachmentMetadataResponse,
     ChatMessageRequest,
     ChatMessageResponse,
+    ClarificationResponse,
     CollaboratorAddRequest,
     CollaboratorResponse,
     DirectoryResponse,
     DirectoryUserResponse,
     IntakeDetailsResponse,
     IntakeUpdateRequest,
+    TicketCancelRequest,
     TicketListResponse,
     TicketResponse,
     TimelineEntryResponse,
 )
 from coeus.services.ticket_collaborators import TicketCollaboratorService
+from coeus.services.ticket_lifecycle import TicketLifecycleService
 from coeus.services.tickets import TicketServices
 
 router = APIRouter(tags=["tickets"])
@@ -162,6 +167,16 @@ async def remove_collaborator(
     return _to_ticket_response(collaborators.remove(authenticated.user, ticket_id, user_id))
 
 
+@router.post("/tickets/{ticket_id}/cancel", response_model=TicketResponse)
+async def cancel_ticket(
+    ticket_id: UUID,
+    payload: TicketCancelRequest,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    lifecycle: Annotated[TicketLifecycleService, Depends(get_ticket_lifecycle_service)],
+) -> TicketResponse:
+    return _to_ticket_response(lifecycle.cancel(authenticated.user, ticket_id, payload.reason))
+
+
 @router.post("/tickets/{ticket_id}/timeline", response_model=TicketResponse)
 async def add_information(
     ticket_id: UUID,
@@ -190,6 +205,9 @@ def _to_ticket_response(ticket: TicketRecord) -> TicketResponse:
         messages=[_to_message_response(message) for message in ticket.messages],
         attachments=[_to_attachment_response(attachment) for attachment in ticket.attachments],
         agent_runs=[_to_agent_run_response(run) for run in ticket.agent_runs],
+        clarification_requests=[
+            _to_clarification_response(item) for item in ticket.clarification_requests
+        ],
         timeline=[_to_timeline_response(entry) for entry in ticket.timeline],
         created_at=ticket.created_at,
         updated_at=ticket.updated_at,
@@ -255,6 +273,16 @@ def _to_agent_run_response(run: AgentRun) -> AgentRunResponse:
         summary=run.summary,
         safety_flags=list(run.safety_flags),
         created_at=run.created_at,
+    )
+
+
+def _to_clarification_response(item: ClarificationRequest) -> ClarificationResponse:
+    return ClarificationResponse(
+        clarification_id=item.clarification_id,
+        route=item.route.value,
+        reason=item.reason,
+        questions=list(item.questions),
+        created_at=item.created_at,
     )
 
 

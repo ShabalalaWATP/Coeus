@@ -345,7 +345,6 @@
   themselves, rendering a static frame or the final value instantly.
   Environments without matchMedia (jsdom) take the static path so tests stay
   deterministic. No new dependencies were added.
-- Verified in the browser (particles animating, spotlight tracking, count-up
-  settling) and refreshed the splash screenshots. Frontend gates pass: 213
-  tests, 99.75% lines and 95.95% branches, ESLint, tsc, Prettier and the
-  line limit. The backend is untouched.
+- Verified in the browser (particles, spotlight and count-up), refreshed the
+  splash screenshots, and passed the frontend gates: 213 tests, 99.75% lines,
+  95.95% branches, ESLint, tsc, Prettier and the line limit.

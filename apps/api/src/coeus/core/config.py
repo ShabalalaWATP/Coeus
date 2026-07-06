@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     login_lockout_seconds: int = 5 * 60
     login_attempt_max_entries: int = Field(default=10_000, ge=1)
     registration_max_pending: int = Field(default=500, ge=1)
+    auth_ip_max_attempts: int = Field(default=30, ge=1)
+    auth_ip_window_seconds: int = Field(default=300, ge=1)
+    auth_ip_max_entries: int = Field(default=10_000, ge=1)
     audit_log_max_events: int = Field(default=10_000, ge=1)
     argon2_time_cost: int = 2
     argon2_memory_cost: int = 19_456

@@ -2,7 +2,12 @@ import pytest
 
 from coeus.core.config import Settings
 from coeus.core.errors import AppError
-from coeus.repositories.auth import LoginAttemptRepository, SeedUserRepository, SessionRepository
+from coeus.repositories.auth import (
+    IpAttemptRepository,
+    LoginAttemptRepository,
+    SeedUserRepository,
+    SessionRepository,
+)
 from coeus.services.audit import AuditLog
 from coeus.services.auth import AuthService
 from coeus.services.passwords import PasswordHasher
@@ -89,6 +94,34 @@ def test_login_failure_state_is_bounded() -> None:
 
     assert attempts.entry_count == 3
     assert len(audit_log.list_events()) == 4
+
+
+def test_source_throttling_limits_username_spray() -> None:
+    settings = Settings(
+        environment="test",
+        argon2_memory_cost=8_192,
+        auth_ip_max_attempts=2,
+    )
+    service, _attempts, audit_log = build_auth_service_with_repositories(settings)
+
+    for index in range(settings.auth_ip_max_attempts):
+        with pytest.raises(AppError) as exc_info:
+            service.login(f"missing-{index}@example.test", "wrong", client_ip="203.0.113.10")
+        assert exc_info.value.code == "authentication_failed"
+    with pytest.raises(AppError) as throttled:
+        service.login("another@example.test", "wrong", client_ip="203.0.113.10")
+
+    assert throttled.value.status_code == 429
+    assert throttled.value.code == "too_many_attempts"
+    assert audit_log.list_events()[-1].event_type == "auth_throttled"
+
+
+def test_source_attempt_repository_is_bounded_and_fails_open_when_full() -> None:
+    attempts = IpAttemptRepository(max_entries=1)
+
+    assert attempts.within_budget("203.0.113.1", max_attempts=1, window_seconds=300)
+    assert attempts.within_budget("203.0.113.2", max_attempts=1, window_seconds=300)
+    assert attempts.entry_count == 1
 
 
 def test_username_spraying_does_not_evict_active_lockout() -> None:
