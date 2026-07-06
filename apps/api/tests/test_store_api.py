@@ -82,7 +82,7 @@ async def test_product_creation_requires_active_authorised_acg() -> None:
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
-        session = await login(client, "rfa.team@example.test")
+        session = await login(client, "rfa.manager@example.test")
         denied = await client.post(
             "/api/v1/store/products",
             headers={"X-CSRF-Token": str(session["csrfToken"])},

@@ -1,4 +1,4 @@
-import { BarChart3, CheckCircle2, PackageCheck, Search, XCircle } from "lucide-react";
+import { BarChart3, Bot, CheckCircle2, PackageCheck, Search, XCircle } from "lucide-react";
 import { useState } from "react";
 
 import type {
@@ -40,6 +40,10 @@ export function ProductOffersPanel({
       <div className="section-heading access-heading">
         <PackageCheck aria-hidden="true" size={20} />
         <h2 id="product-offers-title">Product Offers</h2>
+        <span className="agent-chip">
+          <Bot aria-hidden="true" size={13} />
+          RFI search agent
+        </span>
       </div>
       {ticket === undefined ? <p>No ticket selected</p> : null}
       {ticket !== undefined ? (

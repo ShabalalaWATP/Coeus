@@ -6,7 +6,7 @@ export default function SessionExpiredPage() {
       <section className="surface auth-message">
         <p className="auth-message__code">401</p>
         <h1 id="expired-title">Session expired</h1>
-        <p>Sign in again to continue working in Coeus.</p>
+        <p>Sign in again to continue working in Istari.</p>
         <Link className="text-link" to="/login">
           Sign in
         </Link>

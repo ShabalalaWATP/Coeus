@@ -1,4 +1,5 @@
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import ProjectWorkspacePage from "./ProjectWorkspacePage";
 import { resetQueryClientForTests } from "../../app/query-client";
@@ -76,6 +77,35 @@ test("renders a visible project workspace with filtered products", async () => {
   );
   expect(await screen.findByRole("heading", { name: "Access Diagnostics" })).toBeVisible();
   expect(screen.getByText("Shared ACG")).toBeVisible();
+});
+
+test("renders an empty state when no projects are visible", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ projects: [] }) }),
+  );
+
+  renderWithProviders(<ProjectWorkspacePage />, "/projects");
+
+  expect(await screen.findByText("No visible projects")).toBeVisible();
+});
+
+test("renders a projects error state", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ error: { code: "server_error", message: "Failed." } }),
+    }),
+  );
+
+  renderWithProviders(<ProjectWorkspacePage />, "/projects");
+
+  expect(
+    await screen.findByText("Unable to load data", undefined, { timeout: 5000 }),
+  ).toBeVisible();
+  await userEvent.click(screen.getByRole("button", { name: "Retry" }));
 });
 
 test("supports focused project plan route rendering", async () => {

@@ -72,6 +72,10 @@ def fallback_state(route: RoutingRoute, cm_review: CmCapabilityReview | None) ->
 def can_review_route(actor: UserAccount, ticket: TicketRecord) -> bool:
     if Permission.TICKET_READ_ALL in actor.permissions:
         return True
+    reviewer = (
+        Permission.RFA_REVIEW in actor.permissions
+        or Permission.COLLECTION_REVIEW in actor.permissions
+    )
     return (
         (
             ticket.state == TicketState.RFA_MANAGER_REVIEW
@@ -82,11 +86,7 @@ def can_review_route(actor: UserAccount, ticket: TicketRecord) -> bool:
             and Permission.COLLECTION_REVIEW in actor.permissions
         )
         or (
-            ticket.state == TicketState.ROUTE_ASSESSMENT
-            and (
-                Permission.RFA_REVIEW in actor.permissions
-                or Permission.COLLECTION_REVIEW in actor.permissions
-            )
+            ticket.state in {TicketState.ROUTE_ASSESSMENT, TicketState.MANAGER_RELEASE} and reviewer
         )
     )
 

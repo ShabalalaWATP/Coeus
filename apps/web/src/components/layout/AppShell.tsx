@@ -26,7 +26,7 @@ export function AppShell({ profile }: AppShellProps) {
       <NavigationRail activePath={location.pathname} items={navigationItems} />
       <div className="workspace">
         <TopCommandBar onLogout={handleLogout} profile={profile} />
-        <main className="workspace__main" aria-label="Coeus workspace">
+        <main className="workspace__main" aria-label="Istari workspace">
           <Outlet />
         </main>
       </div>

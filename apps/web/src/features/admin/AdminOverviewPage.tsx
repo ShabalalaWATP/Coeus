@@ -9,7 +9,10 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { AiModelPanel } from "./AiModelPanel";
+import { RegistrationApprovalsPanel } from "./RegistrationApprovalsPanel";
 import { apiClient } from "../../lib/api-client/client";
+import { useAuth } from "../../lib/auth/auth-context";
 
 type AdminOverview = {
   status: string;
@@ -51,6 +54,7 @@ const adminActions = [
 ];
 
 export default function AdminOverviewPage() {
+  const { session } = useAuth();
   const overviewQuery = useQuery({
     queryKey: ["admin-overview"],
     queryFn: () => apiClient.getJson<AdminOverview>("/api/v1/admin/overview"),
@@ -74,6 +78,10 @@ export default function AdminOverviewPage() {
         </div>
         <Activity aria-hidden="true" size={24} />
       </section>
+
+      <RegistrationApprovalsPanel csrfToken={session?.csrfToken ?? ""} />
+
+      <AiModelPanel csrfToken={session?.csrfToken ?? ""} />
 
       <section className="admin-action-grid" aria-label="Admin workspaces">
         {adminActions.map((item) => (

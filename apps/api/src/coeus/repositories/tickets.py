@@ -20,10 +20,3 @@ class InMemoryTicketRepository:
 
     def list_tickets(self) -> tuple[TicketRecord, ...]:
         return tuple(self._tickets.values())
-
-    def list_for_requester(self, requester_user_id: UUID) -> tuple[TicketRecord, ...]:
-        return tuple(
-            ticket
-            for ticket in self._tickets.values()
-            if ticket.requester_user_id == requester_user_id
-        )

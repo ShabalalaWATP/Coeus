@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { Link2, StickyNote } from "lucide-react";
 import { useState } from "react";
 
 import {
@@ -130,67 +131,80 @@ export default function AnalystTaskDetail({ onTaskChange, task }: AnalystTaskDet
           </label>
         ))}
       </section>
-      <section className="analyst-panel">
-        <h3>Notes</h3>
-        <form
-          className="analyst-inline-form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            noteMutation.mutate({ body: noteBody, ticketId: task.ticketId });
-          }}
-        >
-          <label>
-            Note
-            <textarea onChange={(event) => setNoteBody(event.target.value)} value={noteBody} />
-          </label>
-          <button disabled={noteBody.trim().length < 3} type="submit">
-            Add note
-          </button>
-        </form>
-        <ul className="analyst-list-items">
-          {task.notes.map((note) => (
-            <li key={note.id}>{note.body}</li>
-          ))}
-        </ul>
-      </section>
-      <section className="analyst-panel">
-        <h3>Linked products</h3>
-        <form
-          className="analyst-inline-form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            setSubmittedQuery(productQuery.trim());
-          }}
-        >
-          <label>
-            Product search
-            <input onChange={(event) => setProductQuery(event.target.value)} value={productQuery} />
-          </label>
-          <button disabled={productQuery.trim().length < 2} type="submit">
-            Search products
-          </button>
-        </form>
-        <div className="analyst-product-results">
-          {(productsQuery.data?.products ?? []).map((product) => (
-            <button
-              key={product.id}
-              onClick={() =>
-                linkMutation.mutate({ productId: product.id, ticketId: task.ticketId })
-              }
-              type="button"
-            >
-              {product.title}
+      <details className="workspace-details">
+        <summary>
+          <StickyNote aria-hidden="true" size={16} />
+          Working notes ({task.notes.length})
+        </summary>
+        <section className="analyst-panel">
+          <form
+            className="analyst-inline-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              noteMutation.mutate({ body: noteBody, ticketId: task.ticketId });
+            }}
+          >
+            <label>
+              Note
+              <textarea onChange={(event) => setNoteBody(event.target.value)} value={noteBody} />
+            </label>
+            <button disabled={noteBody.trim().length < 3} type="submit">
+              Add note
             </button>
-          ))}
-        </div>
-        <ul className="analyst-list-items">
-          {task.linkedProducts.map((product) => (
-            <li key={product.id}>
-              <strong>{product.reference}</strong> {product.title}
-            </li>
-          ))}
-        </ul>
-      </section>
+          </form>
+          <ul className="analyst-list-items">
+            {task.notes.map((note) => (
+              <li key={note.id}>{note.body}</li>
+            ))}
+          </ul>
+        </section>
+      </details>
+      <details className="workspace-details">
+        <summary>
+          <Link2 aria-hidden="true" size={16} />
+          Linked products ({task.linkedProducts.length})
+        </summary>
+        <section className="analyst-panel">
+          <form
+            className="analyst-inline-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setSubmittedQuery(productQuery.trim());
+            }}
+          >
+            <label>
+              Product search
+              <input
+                onChange={(event) => setProductQuery(event.target.value)}
+                value={productQuery}
+              />
+            </label>
+            <button disabled={productQuery.trim().length < 2} type="submit">
+              Search products
+            </button>
+          </form>
+          <div className="analyst-product-results">
+            {(productsQuery.data?.products ?? []).map((product) => (
+              <button
+                key={product.id}
+                onClick={() =>
+                  linkMutation.mutate({ productId: product.id, ticketId: task.ticketId })
+                }
+                type="button"
+              >
+                {product.title}
+              </button>
+            ))}
+          </div>
+          <ul className="analyst-list-items">
+            {task.linkedProducts.map((product) => (
+              <li key={product.id}>
+                <strong>{product.reference}</strong> {product.title}
+              </li>
+            ))}
+          </ul>
+        </section>
+      </details>
       <section className="analyst-panel">
         <h3>Draft product</h3>
         <DraftForm

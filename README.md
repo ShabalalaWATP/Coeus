@@ -1,57 +1,97 @@
-# Coeus
+# Istari
 
-Coeus is a secure, role-based intelligence tasking and intelligence product orchestration platform.
+Istari is a secure, role-based platform for intelligence tasking and product
+orchestration: it routes customer requests, tasks analysts, and releases
+quality-assured products, with every action audited. The product brand is
+Istari; internal package, module and infrastructure identifiers keep the
+original `coeus` working name.
 
-This repository is being implemented from `coeus_spec_driven_implementation_plan.md`. The current baseline covers Sprint 1 through Sprint 13 foundations: monorepo skeleton, FastAPI foundation, React/Vite app shell, local development services, CI, authentication, sessions, RBAC, ACG and project workspace access controls, ticket intake, mock chatbot extraction, customer request dashboard, Intelligence Store metadata search and controlled asset access, deterministic mock product seeding, RFI Search Agent product offers, RFA and CM routing, analyst workflow, QC review, automatic product ingestion, dissemination, feedback submission, analytics dashboards, product reuse analytics, GCP dev deployment scaffolding, security hardening gates, specs, ADRs and threat models.
+![Istari sign-in and splash page](docs/images/01-splash-login.png)
 
-## Repository Safety
+## What it does
 
-`ShabalalaWATP/coeus` is intended to be public. Do not commit real intelligence products, real operational examples, private URLs, credentials, classified strings, internal schemas, browser screenshots, or personal account details. Seed data and fixtures must be synthetic and clearly labelled as mock.
+- **Search before you task.** An RFI agent offers existing products before any
+  new work is raised.
+- **Conversational intake.** An assistant captures a complete requirement from a
+  chat, not a long form.
+- **Managed end to end.** Requests route through assessment or collection review,
+  analyst production, quality control and a manager release step.
+- **Controlled by design.** Role-based access, need-to-know access control
+  groups, clearance levels and a full audit trail.
+- **AI-first, human-decided.** Agents extract, rank and advise; a person makes
+  every decision that changes state. See [AI Agents](docs/AI_AGENTS.md).
 
-## Local Tooling
+## Documentation
 
-- Python 3.12 or later
-- `uv`
-- Node.js 22 or later
-- `pnpm`
-- Docker Desktop, for the local database and object store
+New here? Start with the [documentation index](docs/README.md).
 
-## Commands
+| Guide | Read it for |
+| --- | --- |
+| [Setup Guide](docs/SETUP.md) | Prerequisites, running locally, seed accounts, checks |
+| [User Guide](docs/USER_GUIDE.md) | Screenshot walkthrough of every role's workspace |
+| [Roles and User Stories](docs/ROLES_AND_USER_STORIES.md) | Roles, permissions, need-to-know groups, user stories |
+| [AI Agents](docs/AI_AGENTS.md) | What each agent reads, decides and returns |
 
-```powershell
-pnpm install
+## Quick start
+
+Istari is local-first: the backend seeds all data into in-memory repositories, so
+two processes and no database are enough. Full instructions are in the
+[Setup Guide](docs/SETUP.md).
+
+```bash
+# Install
 uv sync --project apps/api --all-groups
-pnpm --filter @coeus/web test
-uv run --directory apps/api pytest
-pnpm --filter @coeus/web test:e2e
-python scripts/seed/seed_mock_products.py --small --output-dir .local/mock-products-smoke
-pwsh ./scripts/dev.ps1
+corepack pnpm install
+
+# Run the API (terminal 1) and the web app (terminal 2)
+uv run --directory apps/api uvicorn coeus.main:app --host 127.0.0.1 --port 8001
+corepack pnpm --filter @coeus/web dev
 ```
 
-The local stack exposes:
+Open <http://127.0.0.1:5173> and sign in as `user@example.test` with the mock
+credential `CoeusLocal1!`. The full list of seed accounts is in the
+[Setup Guide](docs/SETUP.md#seed-accounts).
 
-- API: `http://localhost:8000/api/v1/health/live`
-- Web: `http://localhost:5173`
-- PostgreSQL: `localhost:5432`
-- MinIO console: `http://localhost:9001`
+## Tech stack
 
-Local seed users use mock `example.test` usernames and the mock local credential `CoeusLocal1!`. See `docs/specs/sprint-02-auth-rbac-sessions.md`.
+- **Backend:** Python 3.12, FastAPI, Pydantic v2, in-memory seed repositories,
+  managed with `uv`.
+- **Frontend:** React 19, Vite, TypeScript, React Router, TanStack Query,
+  react-hook-form, Zod; tested with Vitest and Playwright.
+- **Quality gates:** ruff, mypy, ESLint, Prettier, tsc, a 350-line file limit,
+  and at least 95% line and branch coverage on both backend and frontend.
 
-Mock product seed data is generated locally and is not committed. The full
-catalogue creates 190 products and 410 assets under `.local/mock-products` by
-default; every product and asset is synthetic and marked `MOCK DATA ONLY`.
+## Project structure
 
-## GitHub
+```
+apps/
+  api/    FastAPI backend (src/coeus: domain, repositories, services, schemas, api)
+  web/    React + Vite frontend (src/features, src/lib, src/app)
+docs/     Guides, specs, ADRs, threat models, runbooks, screenshots
+infra/    Docker and GCP (Terraform) scaffolding
+scripts/  Local development and seeding helpers
+```
 
-The implementation plan targets `ShabalalaWATP/coeus`. Work lands through protected-main pull requests with required CI/security checks.
+## Security and repository safety
 
-Security checks include backend and frontend quality gates, CodeQL, Semgrep,
-Gitleaks, Checkov, Trivy image scanning, CycloneDX SBOM generation and ZAP
-baseline scanning. See `docs/runbooks/ci-cd-pipeline.md`.
+- Treat every part of this repository as security-sensitive. Authorisation is
+  enforced server-side at the object and action level.
+- All data is synthetic. Do not commit real intelligence products, real
+  operational examples, private URLs, credentials, classified strings, internal
+  schemas or personal account details. Screenshots in [docs/images](docs/images)
+  are of synthetic, clearly labelled **MOCK DATA ONLY** content; never commit a
+  screenshot of real intelligence.
+- Per-feature threat models live in [docs/threat-model](docs/threat-model/).
 
-## GCP Dev Deployment
+## CI and deployment
 
-Sprint 12 adds Terraform and GitHub Actions scaffolding for the GCP dev
-environment. Start with `infra/gcp/README.md` and
-`docs/runbooks/gcp-dev-deployment.md`. Do not put GCP service account keys,
-database passwords or runtime secrets in repository files or chat.
+Work lands through protected-main pull requests with required CI and security
+checks: backend and frontend quality gates, CodeQL, Semgrep, Gitleaks, Checkov,
+Trivy image scanning, CycloneDX SBOM generation and ZAP baseline scanning. See
+[docs/runbooks/ci-cd-pipeline.md](docs/runbooks/ci-cd-pipeline.md).
+
+GCP dev deployment is scaffolded with Terraform and GitHub Actions; start with
+`infra/gcp/README.md` and
+[docs/runbooks/gcp-dev-deployment.md](docs/runbooks/gcp-dev-deployment.md). Do not
+put service account keys, database passwords or runtime secrets in repository
+files.

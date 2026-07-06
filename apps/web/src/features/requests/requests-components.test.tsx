@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 
 import { ChatPanel } from "./ChatPanel";
 import { IntakePanel } from "./IntakePanel";
@@ -36,6 +37,8 @@ const ticket: Ticket = {
   isReadyForSubmission: true,
   suggestedProjectName: null,
   visibleProductMatches: [],
+  releasedProductIds: [],
+  collaborators: [],
   messages: [],
   attachments: [],
   agentRuns: [],
@@ -112,31 +115,84 @@ test("ignores short chat messages", async () => {
   expect(screen.getByText("No chat transcript")).toBeVisible();
 });
 
-test("renders selected and unselected ticket rows", async () => {
-  const onSelect = vi.fn();
+test("shows the assistant typing indicator while a message is sending", () => {
+  render(<ChatPanel isSending onSend={vi.fn()} />);
+
+  expect(screen.getByRole("status")).toHaveTextContent("Istari is thinking");
+});
+
+test("opens tickets from the dashboard and shows tagged counts", async () => {
+  const onOpen = vi.fn();
   render(
     <RequestDashboard
-      onSelect={onSelect}
-      selectedTicketId="ticket-2"
-      tickets={[ticket, { ...ticket, id: "ticket-2", reference: "TCK-0002" }]}
+      canCreate
+      onOpen={onOpen}
+      tickets={[
+        ticket,
+        {
+          ...ticket,
+          id: "ticket-2",
+          reference: "TCK-0002",
+          collaborators: [
+            {
+              userId: "colleague-1",
+              username: "colleague@example.test",
+              displayName: "Customer Colleague",
+              access: "viewer",
+              addedByUserId: "preview-user",
+              createdAt: "2026-07-06T00:00:00Z",
+            },
+          ],
+        },
+      ]}
     />,
   );
 
   await userEvent.click(screen.getByRole("button", { name: /TCK-0001/ }));
 
-  expect(onSelect).toHaveBeenCalledWith("ticket-1");
+  expect(onOpen).toHaveBeenCalledWith("ticket-1");
+  expect(screen.getByText("1 tagged")).toBeVisible();
 });
 
-test("renders fallback titles for draft tickets", () => {
+test("links released products from the dashboard", () => {
   render(
+    <MemoryRouter>
+      <RequestDashboard
+        canCreate
+        onOpen={vi.fn()}
+        tickets={[
+          {
+            ...ticket,
+            state: "DISSEMINATION_READY",
+            releasedProductIds: ["product-9"],
+          },
+        ]}
+      />
+    </MemoryRouter>,
+  );
+
+  expect(screen.getByRole("link", { name: /View released product/ })).toHaveAttribute(
+    "href",
+    "/store/products/product-9",
+  );
+});
+
+test("renders fallback titles and an empty dashboard state", () => {
+  const { rerender } = render(
     <RequestDashboard
-      onSelect={vi.fn()}
-      selectedTicketId="ticket-1"
+      canCreate
+      onOpen={vi.fn()}
       tickets={[{ ...ticket, intake: { ...ticket.intake, title: null } }]}
     />,
   );
 
-  expect(screen.getByText("Draft intake")).toBeVisible();
+  expect(screen.getByText("Draft request")).toBeVisible();
+
+  rerender(<RequestDashboard canCreate={false} onOpen={vi.fn()} tickets={[]} />);
+  expect(screen.getByText("No requests yet")).toBeVisible();
+  expect(
+    screen.getByText("Requests shared with you appear here once you are tagged."),
+  ).toBeVisible();
 });
 
 test("shows empty intake state without attachment controls", () => {

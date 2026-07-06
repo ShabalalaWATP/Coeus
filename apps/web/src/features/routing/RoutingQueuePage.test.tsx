@@ -96,8 +96,9 @@ test("runs RFA capability checks and approves the recommended route", async () =
     .fn()
     .mockResolvedValueOnce(jsonResponse(queueWith([baseTicket])))
     .mockResolvedValueOnce(jsonResponse(reviewedTicket))
-    .mockResolvedValueOnce(jsonResponse(approvedTicket));
-  vi.stubGlobal("fetch", fetchMock);
+    .mockResolvedValueOnce(jsonResponse(approvedTicket))
+    .mockResolvedValue(jsonResponse({ analysts: [] }));
+  stubRoutingFetch(fetchMock);
 
   renderWithProviders(<RoutingQueuePage route="rfa" />, "/rfa/queue");
 
@@ -105,7 +106,7 @@ test("runs RFA capability checks and approves the recommended route", async () =
   expect(await screen.findByText("Recommended route: RFA")).toBeVisible();
   await userEvent.click(screen.getByRole("button", { name: "Approve route" }));
 
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+  expect(await screen.findByLabelText("Assign analyst")).toBeVisible();
   expect(fetchMock).toHaveBeenNthCalledWith(
     3,
     "http://127.0.0.1:8001/api/v1/routing/ticket-1/approve",
@@ -130,12 +131,13 @@ test("requests clarification from an RFA manager review", async () => {
     .fn()
     .mockResolvedValueOnce(jsonResponse(queueWith([clarificationTicket])))
     .mockResolvedValueOnce(jsonResponse({ ...clarificationTicket, state: "INFO_REQUIRED" }));
-  vi.stubGlobal("fetch", fetchMock);
+  stubRoutingFetch(fetchMock);
 
   renderWithProviders(<RoutingQueuePage route="rfa" />, "/rfa/queue");
 
   await screen.findByText("Recommended route: RFA");
   expect(screen.getByText("Confirm a supported mock region.")).toBeVisible();
+  await userEvent.click(screen.getByText("Query or reject this route"));
   await userEvent.type(screen.getByLabelText("Clarification reason"), "Need tighter scope.");
   await userEvent.type(screen.getByLabelText("Clarification question"), "Which mock region?");
   await userEvent.click(screen.getByRole("button", { name: "Request clarification" }));
@@ -158,7 +160,7 @@ test("requests clarification from an RFA manager review", async () => {
 });
 
 test("renders an empty collection queue", async () => {
-  vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(jsonResponse(queueWith([]))));
+  stubRoutingFetch(vi.fn().mockResolvedValueOnce(jsonResponse(queueWith([]))));
 
   renderWithProviders(<RoutingQueuePage route="cm" />, "/collection/queue");
 
@@ -171,7 +173,7 @@ test("runs route checks with an empty CSRF token when no session is present", as
     .fn()
     .mockResolvedValueOnce(jsonResponse(queueWith([baseTicket])))
     .mockResolvedValueOnce(jsonResponse(reviewedTicket));
-  vi.stubGlobal("fetch", fetchMock);
+  stubRoutingFetch(fetchMock);
 
   renderWithProviders(<RoutingQueuePage route="rfa" />, "/rfa/queue", null);
 
@@ -194,11 +196,12 @@ test("rejects an RFA route with a manager reason", async () => {
     .fn()
     .mockResolvedValueOnce(jsonResponse(queueWith([reviewedTicket])))
     .mockResolvedValueOnce(jsonResponse({ ...reviewedTicket, state: "INFO_REQUIRED" }));
-  vi.stubGlobal("fetch", fetchMock);
+  stubRoutingFetch(fetchMock);
 
   renderWithProviders(<RoutingQueuePage route="rfa" />, "/rfa/queue");
 
   await screen.findByText("Recommended route: RFA");
+  await userEvent.click(screen.getByText("Query or reject this route"));
   await userEvent.type(screen.getByLabelText("Rejection reason"), "Assessment route is too broad.");
   await userEvent.click(screen.getByRole("button", { name: "Reject route" }));
 
@@ -213,6 +216,9 @@ test("rejects an RFA route with a manager reason", async () => {
       method: "POST",
     },
   );
+  // Once the rejected ticket leaves the queue the detail panel must clear rather
+  // than silently fall back to an unrelated ticket.
+  expect(await screen.findByText("No ticket selected")).toBeVisible();
 });
 
 test("approves collection manager fallback routes", async () => {
@@ -228,15 +234,16 @@ test("approves collection manager fallback routes", async () => {
   const fetchMock = vi
     .fn()
     .mockResolvedValueOnce(jsonResponse(queueWith([cmTicket])))
-    .mockResolvedValueOnce(jsonResponse({ ...cmTicket, state: "ANALYST_ASSIGNMENT" }));
-  vi.stubGlobal("fetch", fetchMock);
+    .mockResolvedValueOnce(jsonResponse({ ...cmTicket, state: "ANALYST_ASSIGNMENT" }))
+    .mockResolvedValue(jsonResponse({ analysts: [] }));
+  stubRoutingFetch(fetchMock);
 
   renderWithProviders(<RoutingQueuePage route="cm" />, "/collection/queue");
 
   expect(await screen.findByText("Recommended route: CM")).toBeVisible();
   await userEvent.click(screen.getByRole("button", { name: "Approve route" }));
 
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+  expect(await screen.findByLabelText("Assign analyst")).toBeVisible();
   expect(fetchMock).toHaveBeenNthCalledWith(
     2,
     "http://127.0.0.1:8001/api/v1/routing/ticket-1/approve",
@@ -247,6 +254,57 @@ test("approves collection manager fallback routes", async () => {
       method: "POST",
     },
   );
+});
+
+test("assigns an analyst after route approval and clears the ticket from the queue", async () => {
+  const assignmentTicket: RoutingTicket = { ...reviewedTicket, state: "ANALYST_ASSIGNMENT" };
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(jsonResponse(queueWith([assignmentTicket])))
+    .mockResolvedValueOnce(
+      jsonResponse({
+        analysts: [
+          {
+            userId: "analyst-1",
+            username: "analyst@example.test",
+            displayName: "Intelligence Analyst",
+          },
+        ],
+      }),
+    )
+    .mockResolvedValueOnce(jsonResponse({ ticketId: "ticket-1", state: "ANALYST_IN_PROGRESS" }));
+  stubRoutingFetch(fetchMock);
+
+  renderWithProviders(<RoutingQueuePage route="rfa" />, "/rfa/queue");
+
+  await userEvent.click(await screen.findByRole("button", { name: /TCK-0001/ }));
+  await screen.findByRole("option", { name: "Intelligence Analyst" });
+  await userEvent.selectOptions(screen.getByLabelText("Analyst"), "analyst-1");
+  await userEvent.click(screen.getByRole("button", { name: "Assign analyst" }));
+
+  expect(await screen.findByText("No tickets in this queue.")).toBeVisible();
+  expect(screen.getByText("No ticket selected")).toBeVisible();
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    3,
+    "http://127.0.0.1:8001/api/v1/analyst/tasks/ticket-1/assign",
+    expect.objectContaining({ method: "POST" }),
+  );
+});
+
+test("renders a queue error state with retry", async () => {
+  const failure = {
+    ok: false,
+    status: 500,
+    json: () => Promise.resolve({ error: { code: "server_error", message: "Failed." } }),
+  };
+  stubRoutingFetch(vi.fn().mockResolvedValue(failure));
+
+  renderWithProviders(<RoutingQueuePage route="rfa" />, "/rfa/queue");
+
+  expect(
+    await screen.findByText("Unable to load data", undefined, { timeout: 5000 }),
+  ).toBeVisible();
+  await userEvent.click(screen.getByRole("button", { name: "Retry" }));
 });
 
 function queueWith(tickets: RoutingTicket[]): RoutingQueue {
@@ -264,6 +322,20 @@ function queueWith(tickets: RoutingTicket[]): RoutingQueue {
   };
 }
 
+type MockResponse = ReturnType<typeof jsonResponse>;
+
+function stubRoutingFetch(
+  sequential: ReturnType<typeof vi.fn<(url: string, init?: RequestInit) => Promise<MockResponse>>>,
+) {
+  const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+    if (url.includes("release-queue")) {
+      return Promise.resolve(jsonResponse(queueWith([])));
+    }
+    return sequential(url, init);
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  return sequential;
+}
 function jsonResponse(payload: unknown) {
   return { ok: true, json: () => Promise.resolve(payload) };
 }

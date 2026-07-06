@@ -1,6 +1,7 @@
 import { screen } from "@testing-library/react";
 
 import ProductDetailPage from "./ProductDetailPage";
+import { backNavigationFor } from "./store-navigation";
 import { resetQueryClientForTests } from "../../app/query-client";
 import { renderWithProviders } from "../../test/test-utils";
 
@@ -97,6 +98,35 @@ test("renders controlled asset denial without exposing object storage", async ()
 
   expect(await screen.findByText("Asset access denied or unavailable.")).toBeVisible();
   expect(screen.queryByText("objectKey")).not.toBeInTheDocument();
+});
+
+test("uses the originating workspace for back navigation", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(product) }),
+  );
+
+  renderWithProviders(<ProductDetailPage />, "/store/products/product-regional", null, {
+    from: "/rfa/products",
+  });
+
+  expect(await screen.findByRole("link", { name: /Back to products/ })).toHaveAttribute(
+    "href",
+    "/rfa/products",
+  );
+});
+
+test("maps back navigation targets from the originating workspace", () => {
+  expect(backNavigationFor(undefined)).toEqual({ path: "/store", label: "Back to store" });
+  expect(backNavigationFor("/store")).toEqual({ path: "/store", label: "Back to store" });
+  expect(backNavigationFor("/projects/project-1/products")).toEqual({
+    path: "/projects/project-1/products",
+    label: "Back to project",
+  });
+  expect(backNavigationFor("/rfa/products")).toEqual({
+    path: "/rfa/products",
+    label: "Back to products",
+  });
 });
 
 test("renders denied page without leaking product metadata", async () => {

@@ -46,6 +46,8 @@ export type StoreSearchFilters = {
   sourceType?: string;
   status?: string;
   projectId?: string;
+  dateFrom?: string;
+  dateTo?: string;
 };
 
 export type StoreSearchResponse = {

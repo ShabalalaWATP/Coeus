@@ -60,7 +60,7 @@ test("submits credentials and navigates to the backend default route", async () 
 
   await user.type(screen.getByLabelText("Username"), "admin@example.test");
   await user.type(screen.getByLabelText("Password"), "CoeusLocal1!");
-  await user.click(screen.getByRole("button", { name: "Sign in" }));
+  await user.click(screen.getByRole("button", { name: "Sign in to Istari" }));
 
   await waitFor(() => expect(screen.getByText("Requests route")).toBeVisible());
   expect(login).toHaveBeenCalledWith({
@@ -80,7 +80,7 @@ test("honours the route that originally required authentication", async () => {
 
   await user.type(screen.getByLabelText("Username"), "admin@example.test");
   await user.type(screen.getByLabelText("Password"), "CoeusLocal1!");
-  await user.click(screen.getByRole("button", { name: "Sign in" }));
+  await user.click(screen.getByRole("button", { name: "Sign in to Istari" }));
 
   await waitFor(() => expect(screen.getByText("RFA queue route")).toBeVisible());
 });
@@ -89,10 +89,27 @@ test("shows validation errors before submitting", async () => {
   const user = userEvent.setup();
   renderLogin(fakeClient({ login: vi.fn() }));
 
-  await user.click(screen.getByRole("button", { name: "Sign in" }));
+  await user.click(screen.getByRole("button", { name: "Sign in to Istari" }));
 
   expect(await screen.findByText("Enter a valid username.")).toBeVisible();
   expect(screen.getByText("Enter your password.")).toBeVisible();
+});
+
+test("introduces Istari and switches between sign in and request access", async () => {
+  const user = userEvent.setup();
+  renderLogin(fakeClient({ login: vi.fn() }));
+
+  expect(screen.getByRole("heading", { name: "Istari" })).toBeVisible();
+  expect(screen.getByAltText("Istari logo")).toBeVisible();
+  expect(screen.getByText("Task. Assess. Deliver.")).toBeVisible();
+
+  await user.click(screen.getByRole("button", { name: "Request access" }));
+  expect(screen.getByRole("heading", { name: "Request access" })).toBeVisible();
+  expect(screen.getByLabelText("Display name")).toBeVisible();
+
+  await user.click(screen.getByRole("button", { name: "Sign in" }));
+  expect(screen.getByRole("heading", { name: "Sign in" })).toBeVisible();
+  expect(screen.getByLabelText("Username")).toBeVisible();
 });
 
 test("shows generic auth errors and locked state", async () => {
@@ -105,14 +122,14 @@ test("shows generic auth errors and locked state", async () => {
 
   await user.type(screen.getByLabelText("Username"), "admin@example.test");
   await user.type(screen.getByLabelText("Password"), "wrong");
-  await user.click(screen.getByRole("button", { name: "Sign in" }));
+  await user.click(screen.getByRole("button", { name: "Sign in to Istari" }));
 
   await waitFor(() =>
     expect(
       screen.getByText("Authentication is temporarily locked. Try again later."),
     ).toBeVisible(),
   );
-  expect(screen.getByRole("button", { name: "Sign in" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Sign in to Istari" })).toBeDisabled();
 });
 
 test("shows generic authentication failure for non-lockout errors", async () => {
@@ -127,7 +144,7 @@ test("shows generic authentication failure for non-lockout errors", async () => 
 
   await user.type(screen.getByLabelText("Username"), "admin@example.test");
   await user.type(screen.getByLabelText("Password"), "wrong");
-  await user.click(screen.getByRole("button", { name: "Sign in" }));
+  await user.click(screen.getByRole("button", { name: "Sign in to Istari" }));
 
   await waitFor(() => expect(screen.getByText("Authentication failed.")).toBeVisible());
 });

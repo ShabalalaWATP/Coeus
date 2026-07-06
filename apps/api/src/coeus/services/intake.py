@@ -1,4 +1,5 @@
 from dataclasses import replace
+from re import search
 
 from coeus.domain.tickets import IntakeDetails
 
@@ -124,19 +125,39 @@ def _extract_question(text: str) -> str | None:
     return None
 
 
+REGION_MARKERS = (" in ", " around ", " for ")
+REGION_STOP_WORDS = ("the ", "a ", "an ")
+PRIORITY_TERMS = ("critical", "urgent", "high", "medium", "routine", "low")
+
+
 def _extract_region(text: str) -> str | None:
     lowered = text.casefold()
-    for marker in (" for ", " in ", " around "):
-        if marker in lowered:
-            start = lowered.rindex(marker) + len(marker)
-            return text[start:].strip(" .").title()
+    for marker in REGION_MARKERS:
+        if marker not in lowered:
+            continue
+        start = lowered.index(marker) + len(marker)
+        candidate = text[start:]
+        # Stop the region at the next locational marker or clause break so
+        # "activity in the Baltic region for a planning exercise" yields
+        # "Baltic Region" rather than the trailing purpose clause.
+        cut = len(candidate)
+        for stop in (*REGION_MARKERS, ". ", ", "):
+            position = candidate.casefold().find(stop)
+            if position != -1:
+                cut = min(cut, position)
+        candidate = candidate[:cut].strip(" .")
+        for prefix in REGION_STOP_WORDS:
+            if candidate.casefold().startswith(prefix):
+                candidate = candidate[len(prefix) :]
+        if candidate:
+            return candidate.title()
     return None
 
 
 def _extract_priority(lowered: str) -> str | None:
-    for priority in ("critical", "high", "medium", "low"):
-        if priority in lowered:
-            return priority
+    for priority in PRIORITY_TERMS:
+        if search(rf"\b{priority}\b", lowered):
+            return "high" if priority == "urgent" else priority
     return None
 
 
@@ -149,6 +170,12 @@ def _extract_output_format(lowered: str) -> str | None:
 
 
 def _extract_success_criteria(lowered: str) -> str | None:
+    # Prefer the customer's own words: lift the sentence that talks about
+    # success so the checklist reflects what they actually asked for.
+    for sentence in lowered.split("."):
+        cleaned = sentence.strip()
+        if "success" in cleaned or "criteria" in cleaned:
+            return cleaned[:220].capitalize() + "."
     if "decision" in lowered or "command" in lowered or "action" in lowered:
         return "Support a timely operational decision."
     return None

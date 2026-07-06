@@ -2,8 +2,10 @@ import { useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { KeyRound, Plus, Save, UserPlus, UsersRound } from "lucide-react";
 
+import { ErrorState, LoadingState } from "../../components/ui/PageState";
 import { apiClient, type AccessControlGroup } from "../../lib/api-client/client";
 import { useAuth } from "../../lib/auth/auth-context";
+import { hasPermissions } from "../../lib/permissions/route-access";
 
 type AcgFormState = {
   code: string;
@@ -34,6 +36,9 @@ export default function AcgAdminPage() {
     [acgs, selectedId],
   );
   const csrfToken = session?.csrfToken ?? "";
+  const canUpdate = session !== null && hasPermissions(session.user, ["acg:update"]);
+  const canAddMember = session !== null && hasPermissions(session.user, ["acg:assign_user"]);
+  const canCreate = session !== null && hasPermissions(session.user, ["acg:create"]);
 
   const createAcg = useMutation({
     mutationFn: () => apiClient.createAcg(createForm, csrfToken),
@@ -95,7 +100,8 @@ export default function AcgAdminPage() {
             <KeyRound aria-hidden="true" size={20} />
             <h2>Groups</h2>
           </div>
-          {acgsQuery.isLoading ? <p>Loading access groups</p> : null}
+          {acgsQuery.isLoading ? <LoadingState label="Loading access groups" /> : null}
+          {acgsQuery.isError ? <ErrorState onRetry={() => void acgsQuery.refetch()} /> : null}
           {acgs.map((acg) => (
             <button
               className={
@@ -138,86 +144,95 @@ export default function AcgAdminPage() {
                 </div>
               </dl>
               <p>{selectedAcg.description}</p>
-              <form className="inline-form" onSubmit={submitUpdate}>
-                <label>
-                  Name
-                  <input
-                    onChange={(event) => setEditName(event.target.value)}
-                    placeholder={selectedAcg.name}
-                    value={editName}
-                  />
-                </label>
-                <label className="checkbox-line">
-                  <input
-                    checked={isActive}
-                    onChange={(event) => setIsActive(event.target.checked)}
-                    type="checkbox"
-                  />
-                  Active
-                </label>
-                <button type="submit">
-                  <Save aria-hidden="true" size={16} /> Save
-                </button>
-              </form>
-              <form className="inline-form" onSubmit={submitMember}>
-                <label>
-                  User ID
-                  <input
-                    onChange={(event) => setMemberUserId(event.target.value)}
-                    placeholder="00000000-0000-0000-0000-000000000000"
-                    value={memberUserId}
-                  />
-                </label>
-                <button type="submit">
-                  <UserPlus aria-hidden="true" size={16} /> Add member
-                </button>
-              </form>
+              {canUpdate ? (
+                <form className="inline-form" onSubmit={submitUpdate}>
+                  <label>
+                    Name
+                    <input
+                      onChange={(event) => setEditName(event.target.value)}
+                      placeholder={selectedAcg.name}
+                      value={editName}
+                    />
+                  </label>
+                  <label className="checkbox-line">
+                    <input
+                      checked={isActive}
+                      onChange={(event) => setIsActive(event.target.checked)}
+                      type="checkbox"
+                    />
+                    Active
+                  </label>
+                  <button type="submit">
+                    <Save aria-hidden="true" size={16} /> Save
+                  </button>
+                </form>
+              ) : null}
+              {canAddMember ? (
+                <form className="inline-form" onSubmit={submitMember}>
+                  <label>
+                    User ID
+                    <input
+                      onChange={(event) => setMemberUserId(event.target.value)}
+                      placeholder="00000000-0000-0000-0000-000000000000"
+                      value={memberUserId}
+                    />
+                  </label>
+                  <button type="submit">
+                    <UserPlus aria-hidden="true" size={16} /> Add member
+                  </button>
+                </form>
+              ) : null}
+              {canUpdate || canAddMember ? null : (
+                <p>You have read-only access to access control groups.</p>
+              )}
             </>
           )}
         </div>
       </section>
 
-      <section className="surface" aria-labelledby="create-acg-title">
-        <div className="section-heading access-heading">
-          <Plus aria-hidden="true" size={20} />
-          <h2 id="create-acg-title">Create Group</h2>
-        </div>
-        <form
-          aria-label="Create access control group"
-          className="create-grid"
-          onSubmit={submitCreate}
-        >
-          <label>
-            Code
-            <input
-              onChange={(event) => setCreateForm({ ...createForm, code: event.target.value })}
-              required
-              value={createForm.code}
-            />
-          </label>
-          <label>
-            Name
-            <input
-              onChange={(event) => setCreateForm({ ...createForm, name: event.target.value })}
-              required
-              value={createForm.name}
-            />
-          </label>
-          <label>
-            Description
-            <input
-              onChange={(event) =>
-                setCreateForm({ ...createForm, description: event.target.value })
-              }
-              required
-              value={createForm.description}
-            />
-          </label>
-          <button type="submit">
-            <Plus aria-hidden="true" size={16} /> Create
-          </button>
-        </form>
-      </section>
+      {canCreate ? (
+        <section className="surface" aria-labelledby="create-acg-title">
+          <div className="section-heading access-heading">
+            <Plus aria-hidden="true" size={20} />
+            <h2 id="create-acg-title">Create Group</h2>
+          </div>
+          <form
+            aria-label="Create access control group"
+            className="create-grid"
+            onSubmit={submitCreate}
+          >
+            <label>
+              Code
+              <input
+                onChange={(event) => setCreateForm({ ...createForm, code: event.target.value })}
+                required
+                value={createForm.code}
+              />
+            </label>
+            <label>
+              Name
+              <input
+                onChange={(event) => setCreateForm({ ...createForm, name: event.target.value })}
+                required
+                value={createForm.name}
+              />
+            </label>
+            <label>
+              Description
+              <input
+                onChange={(event) =>
+                  setCreateForm({ ...createForm, description: event.target.value })
+                }
+                required
+                value={createForm.description}
+              />
+            </label>
+            <button type="submit">
+              <Plus aria-hidden="true" size={16} /> Create
+            </button>
+          </form>
+        </section>
+      ) : null}
     </div>
   );
 }

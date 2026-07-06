@@ -1,14 +1,25 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { MessageCircleQuestion } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { AssignAnalystPanel } from "./AssignAnalystPanel";
+import { ReleaseQueuePanel } from "./ReleaseQueuePanel";
+import {
+  canApprove,
+  canReject,
+  canSubmitClarification,
+  upsertRoutingTicket,
+} from "./routing-model";
+import { PlanUpdates, Recommendation, Review, RoutingStats } from "./routing-sections";
+import { EmptyState, ErrorState } from "../../components/ui/PageState";
+import { StatusPill } from "../../components/ui/StatusPill";
+import { formatWorkflowState } from "../../lib/workflow/state-format";
 import {
   approveRoute,
   listRoutingQueue,
   rejectRoute,
   requestRouteClarification,
   runRoutingReviews,
-  type CmCapabilityReview,
-  type RfaCapabilityReview,
   type RoutingQueue,
   type RoutingRoute,
   type RoutingTicket,
@@ -52,11 +63,23 @@ export default function RoutingQueuePage({ route }: RoutingQueuePageProps) {
     [queue.tickets, selectedTicketId],
   );
   const updateQueue = (ticket: RoutingTicket) => {
+    const nextTickets = upsertRoutingTicket(queue.tickets, ticket, route);
     queryClient.setQueryData<RoutingQueue>(["routing-queue", route], {
       ...queue,
-      tickets: upsertRoutingTicket(queue.tickets, ticket, route),
+      tickets: nextTickets,
     });
-    setSelectedTicketId(ticket.ticketId);
+    // Keep the ticket selected only while it stays in this queue. Once it is
+    // routed away (reject, clarification or approval) clear the selection so the
+    // detail panel does not silently fall back to an unrelated ticket.
+    const stillVisible = nextTickets.some((item) => item.ticketId === ticket.ticketId);
+    setSelectedTicketId(stillVisible ? ticket.ticketId : undefined);
+  };
+  const removeTicket = (ticketId: string) => {
+    queryClient.setQueryData<RoutingQueue>(["routing-queue", route], {
+      ...queue,
+      tickets: queue.tickets.filter((ticket) => ticket.ticketId !== ticketId),
+    });
+    setSelectedTicketId(undefined);
   };
   const runMutation = useMutation({
     mutationFn: () => runRoutingReviews(selectedTicket.ticketId, csrfToken),
@@ -99,21 +122,10 @@ export default function RoutingQueuePage({ route }: RoutingQueuePageProps) {
             <p>{queue.tickets.length} tickets need route action.</p>
           </div>
           <RoutingStats queue={queue} />
-          {queue.tickets.length ? (
-            queue.tickets.map((ticket) => (
-              <button
-                className="request-row"
-                key={ticket.ticketId}
-                onClick={() => setSelectedTicketId(ticket.ticketId)}
-                type="button"
-              >
-                <strong>{ticket.reference}</strong>
-                <span>{ticket.title}</span>
-                <small>{formatState(ticket.state)}</small>
-              </button>
-            ))
+          {queueQuery.isError ? (
+            <ErrorState onRetry={() => void queueQuery.refetch()} />
           ) : (
-            <p>No tickets in this queue.</p>
+            <TicketList onSelect={setSelectedTicketId} tickets={queue.tickets} />
           )}
         </aside>
         <section className="surface routing-detail" aria-label="Route recommendation">
@@ -123,7 +135,7 @@ export default function RoutingQueuePage({ route }: RoutingQueuePageProps) {
                 <h2>{selectedTicket.reference}</h2>
                 <p>{selectedTicket.title}</p>
               </div>
-              <p className="status-pill">{formatState(selectedTicket.state)}</p>
+              <StatusPill state={selectedTicket.state} />
               <Recommendation ticket={selectedTicket} />
               <Review title="RFA recommendation" review={selectedTicket.rfaReview} />
               <Review title="CM recommendation" review={selectedTicket.cmReview} />
@@ -146,167 +158,97 @@ export default function RoutingQueuePage({ route }: RoutingQueuePageProps) {
                   Approve route
                 </button>
               </div>
-              <div className="routing-forms">
-                <label>
-                  Clarification reason
-                  <textarea
-                    onChange={(event) => setClarificationReason(event.target.value)}
-                    value={clarificationReason}
-                  />
-                </label>
-                <label>
-                  Clarification question
-                  <input
-                    onChange={(event) => setClarificationQuestion(event.target.value)}
-                    value={clarificationQuestion}
-                  />
-                </label>
-                <button
-                  disabled={!canSubmitClarification(selectedTicket, route, clarificationReason)}
-                  onClick={() => clarificationMutation.mutate()}
-                  type="button"
-                >
-                  Request clarification
-                </button>
-                <label>
-                  Rejection reason
-                  <textarea
-                    onChange={(event) => setRejectReason(event.target.value)}
-                    value={rejectReason}
-                  />
-                </label>
-                <button
-                  disabled={!canReject(selectedTicket, route, rejectReason)}
-                  onClick={() => rejectMutation.mutate()}
-                  type="button"
-                >
-                  Reject route
-                </button>
-              </div>
+              {selectedTicket.state === "ANALYST_ASSIGNMENT" ? (
+                <AssignAnalystPanel
+                  csrfToken={csrfToken}
+                  onAssigned={(task) => removeTicket(task.ticketId)}
+                  ticketId={selectedTicket.ticketId}
+                />
+              ) : (
+                <details className="workspace-details">
+                  <summary>
+                    <MessageCircleQuestion aria-hidden="true" size={16} />
+                    Query or reject this route
+                  </summary>
+                  <div className="routing-forms">
+                    <label>
+                      Clarification reason
+                      <textarea
+                        onChange={(event) => setClarificationReason(event.target.value)}
+                        value={clarificationReason}
+                      />
+                    </label>
+                    <label>
+                      Clarification question
+                      <input
+                        onChange={(event) => setClarificationQuestion(event.target.value)}
+                        value={clarificationQuestion}
+                      />
+                    </label>
+                    <button
+                      disabled={!canSubmitClarification(selectedTicket, route, clarificationReason)}
+                      onClick={() => clarificationMutation.mutate()}
+                      type="button"
+                    >
+                      Request clarification
+                    </button>
+                    <label>
+                      Rejection reason
+                      <textarea
+                        onChange={(event) => setRejectReason(event.target.value)}
+                        value={rejectReason}
+                      />
+                    </label>
+                    <button
+                      disabled={!canReject(selectedTicket, route, rejectReason)}
+                      onClick={() => rejectMutation.mutate()}
+                      type="button"
+                    >
+                      Reject route
+                    </button>
+                  </div>
+                </details>
+              )}
             </>
           ) : (
-            <p>No ticket selected.</p>
+            <EmptyState
+              hint="Approved and routed tickets leave this queue automatically."
+              title="No ticket selected"
+            />
           )}
         </section>
       </section>
+      <ReleaseQueuePanel csrfToken={csrfToken} route={route} />
     </div>
   );
 }
 
-function RoutingStats({ queue }: { queue: RoutingQueue }) {
-  return (
-    <dl className="routing-stats" aria-label="Routing statistics">
-      <div>
-        <dt>RFA review</dt>
-        <dd>{queue.stats.rfaReviewCount}</dd>
-      </div>
-      <div>
-        <dt>CM review</dt>
-        <dd>{queue.stats.cmReviewCount}</dd>
-      </div>
-      <div>
-        <dt>CM fallback</dt>
-        <dd>{Math.round(queue.stats.cmFallbackRate * 100)}%</dd>
-      </div>
-    </dl>
-  );
-}
-
-function Recommendation({ ticket }: { ticket: RoutingTicket }) {
-  return ticket.recommendation ? (
-    <article className="routing-recommendation">
-      <h3>Recommended route: {ticket.recommendation.recommendedRoute.toUpperCase()}</h3>
-      <p>{ticket.recommendation.reasoningSummary}</p>
-    </article>
-  ) : (
-    <article className="routing-recommendation">
-      <h3>No route recommendation</h3>
-      <p>Capability checks have not run for this ticket.</p>
-    </article>
-  );
-}
-
-function Review({
-  review,
-  title,
+function TicketList({
+  onSelect,
+  tickets,
 }: {
-  review: CmCapabilityReview | RfaCapabilityReview | null;
-  title: string;
+  onSelect: (ticketId: string) => void;
+  tickets: RoutingTicket[];
 }) {
-  if (!review) {
-    return null;
+  if (tickets.length === 0) {
+    return <p>No tickets in this queue.</p>;
   }
   return (
-    <article className="routing-review">
-      <h3>{title}</h3>
-      <p>{review.reasoningSummary}</p>
-      <dl>
-        <div>
-          <dt>Can satisfy</dt>
-          <dd>{review.canSatisfy ? "Yes" : "No"}</dd>
-        </div>
-        <div>
-          <dt>Confidence</dt>
-          <dd>{Math.round(review.confidence * 100)}%</dd>
-        </div>
-        <div>
-          <dt>Effort</dt>
-          <dd>{review.estimatedEffort}</dd>
-        </div>
-      </dl>
-      {review.requiredClarifications.length ? (
-        <ul>
-          {review.requiredClarifications.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      ) : null}
-    </article>
+    <>
+      {tickets.map((ticket) => (
+        <button
+          className="request-row"
+          key={ticket.ticketId}
+          onClick={() => onSelect(ticket.ticketId)}
+          type="button"
+        >
+          <strong>{ticket.reference}</strong>
+          <span>{ticket.title}</span>
+          <small>{formatWorkflowState(ticket.state)}</small>
+        </button>
+      ))}
+    </>
   );
-}
-
-function PlanUpdates({ ticket }: { ticket: RoutingTicket }) {
-  return ticket.projectPlanUpdates.length ? (
-    <article className="routing-plan">
-      <h3>Project plan updates</h3>
-      <ul>
-        {ticket.projectPlanUpdates.map((item) => (
-          <li key={item.id}>
-            <strong>{item.title}</strong>
-            <span>{item.ownerRole}</span>
-          </li>
-        ))}
-      </ul>
-    </article>
-  ) : null;
-}
-
-function canApprove(ticket: RoutingTicket, route: RoutingRoute) {
-  return ticket.state === (route === "rfa" ? "RFA_MANAGER_REVIEW" : "CM_MANAGER_REVIEW");
-}
-
-function canReject(ticket: RoutingTicket, route: RoutingRoute, reason: string) {
-  return canApprove(ticket, route) && reason.trim().length >= 3;
-}
-
-function canSubmitClarification(ticket: RoutingTicket, route: RoutingRoute, reason: string) {
-  return canApprove(ticket, route) && reason.trim().length >= 3;
-}
-
-function formatState(state: string) {
-  return state.replaceAll("_", " ");
-}
-
-function upsertRoutingTicket(
-  tickets: RoutingTicket[],
-  nextTicket: RoutingTicket,
-  route: RoutingRoute,
-) {
-  const visibleState = route === "rfa" ? "RFA_MANAGER_REVIEW" : "CM_MANAGER_REVIEW";
-  const shouldRemainVisible =
-    nextTicket.state === visibleState || nextTicket.state === "ROUTE_ASSESSMENT";
-  const withoutCurrent = tickets.filter((ticket) => ticket.ticketId !== nextTicket.ticketId);
-  return shouldRemainVisible ? [nextTicket, ...withoutCurrent] : withoutCurrent;
 }
 
 const rfaLabels = {

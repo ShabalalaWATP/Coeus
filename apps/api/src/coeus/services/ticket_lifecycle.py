@@ -1,0 +1,42 @@
+from dataclasses import replace
+from uuid import UUID
+
+from coeus.core.errors import AppError
+from coeus.domain.auth import UserAccount
+from coeus.domain.enums import TicketState
+from coeus.domain.state_machine import can_transition
+from coeus.domain.tickets import TicketRecord
+from coeus.services.audit import AuditLog
+from coeus.services.ticket_records import is_owner, timeline
+from coeus.services.tickets import TicketService
+
+
+class TicketLifecycleService:
+    """Requester-driven lifecycle actions that sit outside the intake flow."""
+
+    def __init__(self, tickets: TicketService, audit_log: AuditLog) -> None:
+        self._tickets = tickets
+        self._audit_log = audit_log
+
+    def cancel(self, actor: UserAccount, ticket_id: UUID, reason: str) -> TicketRecord:
+        ticket = self._tickets.get_visible_ticket(actor, ticket_id)
+        if not is_owner(actor, ticket):
+            raise AppError(403, "forbidden", "Only the requester can cancel this request.")
+        if not can_transition(ticket.state, TicketState.CANCELLED):
+            raise AppError(409, "invalid_ticket_state", "This request can no longer be cancelled.")
+        updated = self._tickets.save_system_update(
+            replace(
+                ticket,
+                state=TicketState.CANCELLED,
+                timeline=(
+                    *ticket.timeline,
+                    timeline(ticket.ticket_id, actor.user_id, "ticket_cancelled", reason),
+                ),
+            )
+        )
+        self._audit_log.record(
+            "ticket_cancelled",
+            str(actor.user_id),
+            {"ticket_id": str(ticket.ticket_id)},
+        )
+        return updated

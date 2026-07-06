@@ -1,6 +1,8 @@
 import {
   addAnalystNote,
+  assignAnalystTask,
   linkAnalystProduct,
+  listAnalystCandidates,
   listAnalystTasks,
   saveDraftProduct,
   submitTaskToQc,
@@ -53,6 +55,31 @@ test("calls analyst workflow endpoints with CSRF-protected mutations", async () 
   expect(fetchMock).toHaveBeenLastCalledWith(
     "http://127.0.0.1:8001/api/v1/analyst/tasks/ticket-1/submit-qc",
     { credentials: "include", headers: { "X-CSRF-Token": "csrf" }, method: "POST" },
+  );
+});
+
+test("lists analyst candidates and assigns tasks with CSRF protection", async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    json: () => Promise.resolve({ analysts: [] }),
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  await listAnalystCandidates();
+  await assignAnalystTask("ticket-1", "analyst-1", ["Validate scope"], "csrf");
+
+  expect(fetchMock).toHaveBeenNthCalledWith(1, "http://127.0.0.1:8001/api/v1/analyst/candidates", {
+    credentials: "include",
+    method: "GET",
+  });
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    2,
+    "http://127.0.0.1:8001/api/v1/analyst/tasks/ticket-1/assign",
+    expect.objectContaining({
+      body: JSON.stringify({ analystUserId: "analyst-1", workPackages: ["Validate scope"] }),
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": "csrf" },
+      method: "POST",
+    }),
   );
 });
 

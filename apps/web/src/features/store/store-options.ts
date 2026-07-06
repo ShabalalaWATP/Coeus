@@ -6,7 +6,7 @@ export const productTypeOptions = [
   ["geographic_product", "Geographic product"],
   ["database_extract", "Database extract"],
   ["product_bundle", "Product bundle"],
-  ["finished_output", "Finished Coeus output"],
+  ["finished_output", "Finished Istari output"],
 ] as const;
 
 export function productTypeLabel(value: string) {

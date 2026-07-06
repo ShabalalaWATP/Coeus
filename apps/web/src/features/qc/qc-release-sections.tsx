@@ -96,14 +96,22 @@ export function ReleaseForm({
 }
 
 export function PostReleaseStatus({ product }: { product: QcProduct }) {
-  return product.ingestedProduct === null ? null : (
+  if (product.ingestedProduct === null) {
+    return null;
+  }
+  const released = product.disseminations.length > 0;
+  return (
     <section className="qc-panel qc-success">
-      <h3>Ingestion confirmed</h3>
+      <h3>{released ? "Released to customer" : "Awaiting manager release"}</h3>
       <p>
         {product.ingestedProduct.reference}: {product.ingestedProduct.title}
       </p>
       <p>{product.indexRecords.at(-1)?.status ?? "queued"} in Intelligence Store indexing.</p>
-      <p>{product.feedbackRequests.length} feedback request created.</p>
+      {released ? (
+        <p>{product.feedbackRequests.length} feedback request created.</p>
+      ) : (
+        <p>The route manager performs the final release and customer notification.</p>
+      )}
     </section>
   );
 }

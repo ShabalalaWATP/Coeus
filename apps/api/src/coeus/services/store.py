@@ -18,11 +18,13 @@ from coeus.domain.store import (
     StoreSearchFilters,
     StoreSearchHit,
     StoreSearchResult,
+    object_key_segment,
 )
 from coeus.repositories.access import SeedAccessRepository
 from coeus.repositories.store import InMemoryStoreRepository, new_store_product_id
 from coeus.services.audit import AuditLog
 from coeus.services.store_owner_policy import normalise_owner_team, require_owner_permission
+from coeus.services.store_search_dates import within_dates
 
 HASH_PATTERN = r"[a-fA-F0-9]{64}"
 
@@ -172,7 +174,7 @@ class StoreIngestionService:
                 mime_type=asset.mime_type,
                 size_bytes=asset.size_bytes,
                 sha256=asset.sha256,
-                object_key=f"store/uploads/{asset.asset_id}/{asset.name}",
+                object_key=f"store/uploads/{asset.asset_id}/{object_key_segment(asset.name)}",
                 preview_kind=asset.preview_kind,
             )
             for asset in assets
@@ -216,6 +218,7 @@ class StoreSearchService:
                 filters.source_type is None or metadata.source_type == filters.source_type,
                 filters.status is None or metadata.status == filters.status,
                 filters.project_id is None or metadata.project_id == filters.project_id,
+                within_dates(metadata, filters.date_from, filters.date_to),
             )
         )
 

@@ -3,6 +3,8 @@ import { CheckCircle2, RotateCcw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
+import { ErrorState } from "../../components/ui/PageState";
+import { formatWorkflowState } from "../../lib/workflow/state-format";
 import { apiClient, type AccessControlGroup } from "../../lib/api-client/client";
 import {
   approveQcProduct,
@@ -95,19 +97,25 @@ export default function QcQueuePage() {
             <h2>Submitted products</h2>
             <p>{products.length} products awaiting QC.</p>
           </div>
-          {products.map((product) => (
-            <Link
-              className="request-row"
-              key={product.ticketId}
-              onClick={() => setActionResult(undefined)}
-              to={`/qc/products/${product.ticketId}`}
-            >
-              <strong>{product.reference}</strong>
-              <span>{product.title}</span>
-              <small>{formatState(product.state)}</small>
-            </Link>
-          ))}
-          {products.length === 0 ? <p>No products are awaiting QC.</p> : null}
+          {queueQuery.isError ? (
+            <ErrorState onRetry={() => void queueQuery.refetch()} />
+          ) : (
+            <>
+              {products.map((product) => (
+                <Link
+                  className="request-row"
+                  key={product.ticketId}
+                  onClick={() => setActionResult(undefined)}
+                  to={`/qc/products/${product.ticketId}`}
+                >
+                  <strong>{product.reference}</strong>
+                  <span>{product.title}</span>
+                  <small>{formatWorkflowState(product.state)}</small>
+                </Link>
+              ))}
+              {products.length === 0 ? <p>No products are awaiting QC.</p> : null}
+            </>
+          )}
         </aside>
         <QcProductDetail
           acgs={acgsQuery.data ?? []}
@@ -212,7 +220,7 @@ function ProductPreview({ product }: { product: QcProduct }) {
       <dl className="qc-metadata">
         <div>
           <dt>State</dt>
-          <dd>{formatState(product.state)}</dd>
+          <dd>{formatWorkflowState(product.state)}</dd>
         </div>
         <div>
           <dt>Region</dt>
@@ -238,10 +246,6 @@ function updateQueue(queryClient: ReturnType<typeof useQueryClient>, product: Qc
 
 function keysToChecklist(keys: string[]) {
   return Object.fromEntries(keys.map((key) => [key, true]));
-}
-
-function formatState(state: string) {
-  return state.replaceAll("_", " ");
 }
 
 function formatKey(key: string) {

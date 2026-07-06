@@ -113,6 +113,63 @@ async def test_incomplete_intake_cannot_start_search() -> None:
 
 
 @pytest.mark.asyncio
+async def test_owner_can_cancel_ticket_and_cannot_cancel_twice() -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        session = await login(client)
+        created = await client.post(
+            "/api/v1/chat/messages",
+            headers={"X-CSRF-Token": str(session["csrfToken"])},
+            json={"message": "Need a routine brief on port activity."},
+        )
+        ticket_id = created.json()["id"]
+        cancelled = await client.post(
+            f"/api/v1/tickets/{ticket_id}/cancel",
+            headers={"X-CSRF-Token": str(session["csrfToken"])},
+            json={"reason": "Requirement no longer needed."},
+        )
+        duplicate = await client.post(
+            f"/api/v1/tickets/{ticket_id}/cancel",
+            headers={"X-CSRF-Token": str(session["csrfToken"])},
+            json={"reason": "Cancel again."},
+        )
+
+    assert cancelled.status_code == 200
+    assert cancelled.json()["state"] == TicketState.CANCELLED
+    assert cancelled.json()["timeline"][-1]["eventType"] == "ticket_cancelled"
+    assert duplicate.status_code == 409
+    assert duplicate.json()["error"]["code"] == "invalid_ticket_state"
+
+
+@pytest.mark.asyncio
+async def test_non_owner_cannot_cancel_visible_ticket() -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+
+    async with (
+        AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as user,
+        AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as admin,
+    ):
+        user_session = await login(user)
+        created = await user.post(
+            "/api/v1/chat/messages",
+            headers={"X-CSRF-Token": str(user_session["csrfToken"])},
+            json={"message": "Need a routine brief on port activity."},
+        )
+        admin_session = await login(admin, "admin@example.test")
+        response = await admin.post(
+            f"/api/v1/tickets/{created.json()['id']}/cancel",
+            headers={"X-CSRF-Token": str(admin_session["csrfToken"])},
+            json={"reason": "Admin should not cancel owned request."},
+        )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "forbidden"
+
+
+@pytest.mark.asyncio
 async def test_product_team_ticket_list_excludes_unrelated_submitted_tickets() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
 

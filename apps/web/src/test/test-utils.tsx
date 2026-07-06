@@ -15,11 +15,14 @@ export function renderWithProviders(
   ui: ReactElement,
   initialPath = "/app/requests",
   initialAuthSession: AuthSession | null = previewSession,
+  locationState?: unknown,
 ): RenderResult {
   window.history.pushState({}, "Test page", initialPath);
+  const initialEntry =
+    locationState === undefined ? initialPath : { pathname: initialPath, state: locationState };
   return render(
     <AppProviders initialAuthSession={initialAuthSession}>
-      <MemoryRouter initialEntries={[initialPath]}>{ui}</MemoryRouter>
+      <MemoryRouter initialEntries={[initialEntry]}>{ui}</MemoryRouter>
     </AppProviders>,
   );
 }

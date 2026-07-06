@@ -56,6 +56,20 @@ def test_dev_runtime_allows_explicit_seed_user_opt_in() -> None:
         secure_cookies=True,
         session_secret="s" * 32,
         csrf_secret="c" * 32,
+        local_seed_credential="Dev-Only-Rotated-Secret-9!",
     )
 
     settings.require_runtime_security()
+
+
+def test_dev_seed_users_reject_the_default_credential() -> None:
+    settings = Settings(
+        environment="dev",
+        allow_dev_seed_users=True,
+        secure_cookies=True,
+        session_secret="s" * 32,
+        csrf_secret="c" * 32,
+    )
+
+    with pytest.raises(ValueError, match="COEUS_LOCAL_SEED_CREDENTIAL"):
+        settings.require_runtime_security()

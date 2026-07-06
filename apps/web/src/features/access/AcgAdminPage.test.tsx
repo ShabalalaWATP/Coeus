@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 
 import AcgAdminPage from "./AcgAdminPage";
 import { resetQueryClientForTests } from "../../app/query-client";
+import type { AuthSession } from "../../lib/api-client/client";
 import { renderWithProviders } from "../../test/test-utils";
 
 const acg = {
@@ -104,6 +105,52 @@ test("updates selected access control group membership", async () => {
       method: "POST",
     }),
   );
+});
+
+test("hides mutation forms from view-only access", async () => {
+  const viewOnlySession: AuthSession = {
+    csrfToken: "test-csrf-token",
+    user: {
+      id: "team-user",
+      username: "rfa.team@example.test",
+      displayName: "RFA Team Member",
+      roles: ["RFA Team Member"],
+      defaultRoute: "/rfa/products",
+      permissions: ["acg:view"],
+    },
+  };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ acgs: [acg] }) }),
+  );
+
+  renderWithProviders(<AcgAdminPage />, "/admin/acgs", viewOnlySession);
+
+  expect(await screen.findByRole("heading", { name: "Alpha Regional" })).toBeVisible();
+  expect(screen.getByText("You have read-only access to access control groups.")).toBeVisible();
+  expect(
+    screen.queryByRole("form", { name: "Create access control group" }),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("User ID")).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /Save/i })).not.toBeInTheDocument();
+});
+
+test("renders an access groups error state", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ error: { code: "server_error", message: "Failed." } }),
+    }),
+  );
+
+  renderWithProviders(<AcgAdminPage />, "/admin/acgs");
+
+  expect(
+    await screen.findByText("Unable to load data", undefined, { timeout: 5000 }),
+  ).toBeVisible();
+  await userEvent.click(screen.getByRole("button", { name: "Retry" }));
 });
 
 test("selects and updates access control group details", async () => {

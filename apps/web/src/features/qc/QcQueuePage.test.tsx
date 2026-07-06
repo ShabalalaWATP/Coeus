@@ -57,7 +57,7 @@ const baseProduct: QcProduct = {
 
 const approvedProduct: QcProduct = {
   ...baseProduct,
-  state: "DISSEMINATION_READY",
+  state: "MANAGER_RELEASE",
   decisions: [
     {
       id: "decision-1",
@@ -72,15 +72,13 @@ const approvedProduct: QcProduct = {
     { id: "index-1", productId: "product-1", status: "queued", summary: "Queued." },
     { id: "index-2", productId: "product-1", status: "indexed", summary: "Indexed." },
   ],
-  disseminations: [{ id: "dis-1", productId: "product-1", recipientUserId: "user-1" }],
-  feedbackRequests: [
-    { id: "feedback-1", productId: "product-1", requesterUserId: "user-1", status: "requested" },
-  ],
+  disseminations: [],
+  feedbackRequests: [],
   ingestedProduct: {
     id: "product-1",
     reference: "PROD-1004",
     title: "Arctic QC product",
-    status: "published",
+    status: "draft",
     acgIds: ["acg-1"],
   },
 };
@@ -104,9 +102,12 @@ test("approves a QC product and confirms ingestion", async () => {
   await userEvent.click(screen.getByRole("button", { name: /Mark all complete/ }));
   await userEvent.click(screen.getByRole("button", { name: /Approve and disseminate/ }));
 
-  expect(await screen.findByText("Ingestion confirmed")).toBeVisible();
+  expect(await screen.findByText("Awaiting manager release")).toBeVisible();
   expect(screen.getByText("PROD-1004: Arctic QC product")).toBeVisible();
   expect(screen.getByText("indexed in Intelligence Store indexing.")).toBeVisible();
+  expect(
+    screen.getByText("The route manager performs the final release and customer notification."),
+  ).toBeVisible();
   await waitFor(() =>
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8001/api/v1/qc/products/ticket-1/approve",
@@ -178,6 +179,7 @@ test("renders queued ingestion status for a QC product without a draft", async (
     operationalQuestion: null,
     requiredOutputFormat: null,
     indexRecords: [],
+    disseminations: [{ id: "dis-1", productId: "product-1", recipientUserId: "user-1" }],
     feedbackRequests: [],
   };
   const fetchMock = vi.fn(fetchByUrl({ queueProducts: [detailProduct] }));
@@ -187,8 +189,12 @@ test("renders queued ingestion status for a QC product without a draft", async (
 
   expect(await screen.findByText("No draft product is attached.")).toBeVisible();
   expect(screen.getAllByText("Not set")).toHaveLength(2);
+  expect(screen.getByText("Released to customer")).toBeVisible();
   expect(screen.getByText("queued in Intelligence Store indexing.")).toBeVisible();
   expect(screen.getByText("0 feedback request created.")).toBeVisible();
+
+  await userEvent.click(screen.getByRole("link", { name: /TCK-/ }));
+  expect(await screen.findByText("No draft product is attached.")).toBeVisible();
 });
 
 test("renders an empty QC queue", async () => {
@@ -199,6 +205,24 @@ test("renders an empty QC queue", async () => {
 
   expect(await screen.findByText("No products are awaiting QC.")).toBeVisible();
   expect(screen.getByText("No QC product selected.")).toBeVisible();
+});
+
+test("renders a QC queue error state", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ error: { code: "server_error", message: "Failed." } }),
+    }),
+  );
+
+  renderWithProviders(<QcQueuePage />, "/qc/queue");
+
+  expect(
+    await screen.findByText("Unable to load data", undefined, { timeout: 5000 }),
+  ).toBeVisible();
+  await userEvent.click(screen.getByRole("button", { name: "Retry" }));
 });
 
 function fetchByUrl({

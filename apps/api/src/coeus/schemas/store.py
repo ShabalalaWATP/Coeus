@@ -10,11 +10,14 @@ class BoundingBoxRequest(BaseModel):
     north: float
 
 
+MAX_ASSET_SIZE_BYTES = 5_000_000_000
+
+
 class StoreAssetRequest(BaseModel):
     name: str = Field(min_length=3, max_length=180)
     asset_type: str = Field(min_length=2, max_length=80, validation_alias="assetType")
     mime_type: str = Field(min_length=3, max_length=120, validation_alias="mimeType")
-    size_bytes: int = Field(validation_alias="sizeBytes")
+    size_bytes: int = Field(le=MAX_ASSET_SIZE_BYTES, validation_alias="sizeBytes")
     sha256: str = Field(min_length=1, max_length=128)
 
 

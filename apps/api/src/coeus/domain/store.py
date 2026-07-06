@@ -47,6 +47,20 @@ class StoreAsset:
     preview_kind: str
 
 
+def object_key_segment(name: str) -> str:
+    """Reduce a client-supplied asset name to a single safe path segment.
+
+    Object keys are built from a server-generated UUID plus the asset name.
+    Stripping any directory components (``/`` or ``\\``) and parent references
+    keeps a malicious name from escaping its key prefix once a real object
+    store is wired in. The display name on the asset is left untouched.
+    """
+    segment = name.replace("\\", "/").rsplit("/", 1)[-1].strip()
+    if segment in {"", ".", ".."}:
+        return "asset"
+    return segment
+
+
 @dataclass(frozen=True)
 class StoreProduct:
     product_id: UUID
@@ -67,6 +81,8 @@ class StoreSearchFilters:
     source_type: str | None = None
     status: ProductStatus | None = None
     project_id: UUID | None = None
+    date_from: str | None = None
+    date_to: str | None = None
 
 
 @dataclass(frozen=True)

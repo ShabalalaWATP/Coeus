@@ -6,6 +6,8 @@ from fastapi import APIRouter, Depends
 from coeus.api.dependencies import (
     get_csrf_validated_session,
     get_current_session,
+    get_ticket_collaborator_service,
+    get_ticket_lifecycle_service,
     get_ticket_services,
     require_permission,
 )
@@ -15,7 +17,10 @@ from coeus.domain.tickets import (
     AgentRun,
     AttachmentMetadata,
     ChatMessage,
+    ClarificationRequest,
+    CollaboratorAccess,
     IntakeDetails,
+    TicketCollaborator,
     TicketRecord,
     TicketTimelineEntry,
 )
@@ -26,12 +31,20 @@ from coeus.schemas.tickets import (
     AttachmentMetadataResponse,
     ChatMessageRequest,
     ChatMessageResponse,
+    ClarificationResponse,
+    CollaboratorAddRequest,
+    CollaboratorResponse,
+    DirectoryResponse,
+    DirectoryUserResponse,
     IntakeDetailsResponse,
     IntakeUpdateRequest,
+    TicketCancelRequest,
     TicketListResponse,
     TicketResponse,
     TimelineEntryResponse,
 )
+from coeus.services.ticket_collaborators import TicketCollaboratorService
+from coeus.services.ticket_lifecycle import TicketLifecycleService
 from coeus.services.tickets import TicketServices
 
 router = APIRouter(tags=["tickets"])
@@ -111,6 +124,59 @@ async def submit_ticket(
     return _to_ticket_response(ticket_services.tickets.submit(authenticated.user, ticket_id))
 
 
+@router.get("/users/directory", response_model=DirectoryResponse)
+async def user_directory(
+    authenticated: Annotated[AuthenticatedSession, Depends(get_current_session)],
+    collaborators: Annotated[TicketCollaboratorService, Depends(get_ticket_collaborator_service)],
+) -> DirectoryResponse:
+    return DirectoryResponse(
+        users=[
+            DirectoryUserResponse(
+                user_id=user.user_id,
+                username=user.username,
+                display_name=user.display_name,
+            )
+            for user in collaborators.directory(authenticated.user)
+        ]
+    )
+
+
+@router.post("/tickets/{ticket_id}/collaborators", response_model=TicketResponse)
+async def add_collaborator(
+    ticket_id: UUID,
+    payload: CollaboratorAddRequest,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    collaborators: Annotated[TicketCollaboratorService, Depends(get_ticket_collaborator_service)],
+) -> TicketResponse:
+    ticket = collaborators.add(
+        authenticated.user,
+        ticket_id,
+        payload.username,
+        CollaboratorAccess(payload.access),
+    )
+    return _to_ticket_response(ticket)
+
+
+@router.delete("/tickets/{ticket_id}/collaborators/{user_id}", response_model=TicketResponse)
+async def remove_collaborator(
+    ticket_id: UUID,
+    user_id: UUID,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    collaborators: Annotated[TicketCollaboratorService, Depends(get_ticket_collaborator_service)],
+) -> TicketResponse:
+    return _to_ticket_response(collaborators.remove(authenticated.user, ticket_id, user_id))
+
+
+@router.post("/tickets/{ticket_id}/cancel", response_model=TicketResponse)
+async def cancel_ticket(
+    ticket_id: UUID,
+    payload: TicketCancelRequest,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    lifecycle: Annotated[TicketLifecycleService, Depends(get_ticket_lifecycle_service)],
+) -> TicketResponse:
+    return _to_ticket_response(lifecycle.cancel(authenticated.user, ticket_id, payload.reason))
+
+
 @router.post("/tickets/{ticket_id}/timeline", response_model=TicketResponse)
 async def add_information(
     ticket_id: UUID,
@@ -132,9 +198,16 @@ def _to_ticket_response(ticket: TicketRecord) -> TicketResponse:
         is_ready_for_submission=not ticket.intake.missing_information,
         suggested_project_name=ticket.suggested_project_name,
         visible_product_matches=list(ticket.visible_product_matches),
+        released_product_ids=[dissemination.product_id for dissemination in ticket.disseminations],
+        collaborators=[
+            _to_collaborator_response(collaborator) for collaborator in ticket.collaborators
+        ],
         messages=[_to_message_response(message) for message in ticket.messages],
         attachments=[_to_attachment_response(attachment) for attachment in ticket.attachments],
         agent_runs=[_to_agent_run_response(run) for run in ticket.agent_runs],
+        clarification_requests=[
+            _to_clarification_response(item) for item in ticket.clarification_requests
+        ],
         timeline=[_to_timeline_response(entry) for entry in ticket.timeline],
         created_at=ticket.created_at,
         updated_at=ticket.updated_at,
@@ -159,6 +232,17 @@ def _to_intake_response(intake: IntakeDetails) -> IntakeDetailsResponse:
         suggested_acg_context=intake.suggested_acg_context,
         missing_information=list(intake.missing_information),
         confidence=intake.confidence,
+    )
+
+
+def _to_collaborator_response(collaborator: TicketCollaborator) -> CollaboratorResponse:
+    return CollaboratorResponse(
+        user_id=collaborator.user_id,
+        username=collaborator.username,
+        display_name=collaborator.display_name,
+        access=collaborator.access.value,
+        added_by_user_id=collaborator.added_by_user_id,
+        created_at=collaborator.created_at,
     )
 
 
@@ -189,6 +273,16 @@ def _to_agent_run_response(run: AgentRun) -> AgentRunResponse:
         summary=run.summary,
         safety_flags=list(run.safety_flags),
         created_at=run.created_at,
+    )
+
+
+def _to_clarification_response(item: ClarificationRequest) -> ClarificationResponse:
+    return ClarificationResponse(
+        clarification_id=item.clarification_id,
+        route=item.route.value,
+        reason=item.reason,
+        questions=list(item.questions),
+        created_at=item.created_at,
     )
 
 

@@ -190,6 +190,11 @@ export default function ProductUploadPage() {
             Created {created.reference}: {created.title}
           </p>
         ) : null}
+        {createMutation.isError ? (
+          <p className="auth-error" role="alert">
+            Product registration failed. Check the metadata and try again.
+          </p>
+        ) : null}
       </form>
     </div>
   );

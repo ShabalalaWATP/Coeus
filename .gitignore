@@ -64,3 +64,4 @@ override.tf.json
 # IDEs
 .idea/
 .vscode/
+.claude/

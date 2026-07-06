@@ -58,6 +58,15 @@ export function createAppRouter() {
           element: protectedPage(<RequestsPage />, ["ticket:read_own"]),
         },
         {
+          path: "app/requests/new",
+          element: protectedPage(<RequestsPage />, ["ticket:read_own", "chat:use"]),
+        },
+        {
+          // Tagged collaborators from any role can follow a shared request link.
+          path: "app/requests/:ticketId",
+          element: protectedPage(<RequestsPage />, []),
+        },
+        {
           path: "store",
           element: protectedPage(<StorePage />, ["product:read", "product:search"]),
         },

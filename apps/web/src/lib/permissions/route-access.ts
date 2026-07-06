@@ -2,9 +2,18 @@ import type { AuthUser, Permission } from "../api-client/client";
 
 export type UserProfile = AuthUser;
 
+type NavigationGroup = "operations" | "teams" | "governance";
+
+const navigationGroupLabels: Record<NavigationGroup, string> = {
+  operations: "Operations",
+  teams: "Teams",
+  governance: "Governance",
+};
+
 export type NavigationItem = {
   label: string;
   path: string;
+  group: NavigationGroup;
   icon:
     | "requests"
     | "store"
@@ -24,68 +33,108 @@ export const navigationItems: readonly NavigationItem[] = [
   {
     label: "Requests",
     path: "/app/requests",
+    group: "operations",
     icon: "requests",
     requiredPermissions: ["ticket:read_own"],
   },
   {
     label: "Intelligence Store",
     path: "/store",
+    group: "operations",
     icon: "store",
     requiredPermissions: ["product:read", "product:search"],
   },
-  { label: "Projects", path: "/projects", icon: "projects", requiredPermissions: ["project:read"] },
-  { label: "RFA Queue", path: "/rfa/queue", icon: "rfa", requiredPermissions: ["rfa:review"] },
+  {
+    label: "Projects",
+    path: "/projects",
+    group: "operations",
+    icon: "projects",
+    requiredPermissions: ["project:read"],
+  },
+  {
+    label: "RFA Queue",
+    path: "/rfa/queue",
+    group: "teams",
+    icon: "rfa",
+    requiredPermissions: ["rfa:review"],
+  },
   {
     label: "RFA Products",
     path: "/rfa/products",
+    group: "teams",
     icon: "rfa",
     requiredPermissions: ["rfa:add_product", "product:read", "product:search"],
   },
   {
     label: "RFA Analytics",
     path: "/rfa/analytics",
+    group: "teams",
     icon: "analytics",
     requiredPermissions: ["analytics:view_team", "rfa:review"],
   },
   {
     label: "Collection Queue",
     path: "/collection/queue",
+    group: "teams",
     icon: "collection",
     requiredPermissions: ["collection:review"],
   },
   {
     label: "Collection Products",
     path: "/collection/products",
+    group: "teams",
     icon: "collection",
     requiredPermissions: ["collection:add_product", "product:read", "product:search"],
   },
   {
     label: "Collection Analytics",
     path: "/collection/analytics",
+    group: "teams",
     icon: "analytics",
     requiredPermissions: ["analytics:view_team", "collection:review"],
   },
   {
     label: "Analyst",
     path: "/analyst/workbench",
+    group: "teams",
     icon: "analyst",
     requiredPermissions: ["analyst:work"],
   },
-  { label: "QC", path: "/qc/queue", icon: "qc", requiredPermissions: ["qc:review"] },
+  {
+    label: "QC",
+    path: "/qc/queue",
+    group: "teams",
+    icon: "qc",
+    requiredPermissions: ["qc:review"],
+  },
   {
     label: "Admin",
     path: "/admin/overview",
+    group: "governance",
     icon: "admin",
     requiredPermissions: ["system:configure"],
   },
   {
     label: "Admin Analytics",
     path: "/admin/analytics",
+    group: "governance",
     icon: "analytics",
     requiredPermissions: ["analytics:view_global"],
   },
-  { label: "ACGs", path: "/admin/acgs", icon: "admin", requiredPermissions: ["acg:view"] },
-  { label: "Audit", path: "/audit", icon: "audit", requiredPermissions: ["audit:read"] },
+  {
+    label: "ACGs",
+    path: "/admin/acgs",
+    group: "governance",
+    icon: "admin",
+    requiredPermissions: ["acg:view"],
+  },
+  {
+    label: "Audit",
+    path: "/audit",
+    group: "governance",
+    icon: "audit",
+    requiredPermissions: ["audit:read"],
+  },
 ];
 
 export const previewProfile: UserProfile = {
@@ -98,6 +147,11 @@ export const previewProfile: UserProfile = {
     ...navigationItems.flatMap((item) => item.requiredPermissions),
     "product:create_existing",
     "product:download",
+    "acg:create",
+    "acg:update",
+    "acg:assign_user",
+    "chat:use",
+    "ticket:create",
   ],
 };
 
@@ -112,6 +166,17 @@ export function hasPermissions(profile: UserProfile, permissions: readonly Permi
 
 export function visibleNavigationItems(profile: UserProfile) {
   return navigationItems.filter((item) => canAccessRoute(profile, item));
+}
+
+export function groupedNavigationItems(items: readonly NavigationItem[]) {
+  const groups: { group: NavigationGroup; label: string; items: NavigationItem[] }[] = [];
+  for (const group of Object.keys(navigationGroupLabels) as NavigationGroup[]) {
+    const groupItems = items.filter((item) => item.group === group);
+    if (groupItems.length > 0) {
+      groups.push({ group, label: navigationGroupLabels[group], items: groupItems });
+    }
+  }
+  return groups;
 }
 
 export function routeByPath(path: string) {

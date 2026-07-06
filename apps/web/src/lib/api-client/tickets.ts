@@ -51,6 +51,21 @@ type TimelineEntry = {
   createdAt: string;
 };
 
+type TicketCollaborator = {
+  userId: string;
+  username: string;
+  displayName: string;
+  access: "editor" | "viewer";
+  addedByUserId: string;
+  createdAt: string;
+};
+
+export type DirectoryUser = {
+  id: string;
+  username: string;
+  displayName: string;
+};
+
 export type Ticket = {
   id: string;
   reference: string;
@@ -60,6 +75,8 @@ export type Ticket = {
   isReadyForSubmission: boolean;
   suggestedProjectName: string | null;
   visibleProductMatches: string[];
+  releasedProductIds: string[];
+  collaborators: TicketCollaborator[];
   messages: ChatMessage[];
   attachments: AttachmentMetadata[];
   agentRuns: AgentRun[];
@@ -80,6 +97,7 @@ export type TicketState =
   | "ANALYST_IN_PROGRESS"
   | "QC_REVIEW"
   | "REWORK_REQUIRED"
+  | "MANAGER_RELEASE"
   | "DISSEMINATION_READY"
   | "CLOSED_EXISTING_PRODUCT_ACCEPTED"
   | "CANCELLED";
@@ -167,5 +185,36 @@ export async function addTicketInformation(
     body: JSON.stringify({ body }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
+  });
+}
+
+export async function listUserDirectory(): Promise<DirectoryUser[]> {
+  const response = await apiRequestJson<{ users: DirectoryUser[] }>("/api/v1/users/directory", {
+    method: "GET",
+  });
+  return response.users;
+}
+
+export async function addTicketCollaborator(
+  ticketId: string,
+  username: string,
+  access: "editor" | "viewer",
+  csrfToken: string,
+): Promise<Ticket> {
+  return apiRequestJson<Ticket>(`/api/v1/tickets/${ticketId}/collaborators`, {
+    body: JSON.stringify({ username, access }),
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+    method: "POST",
+  });
+}
+
+export async function removeTicketCollaborator(
+  ticketId: string,
+  userId: string,
+  csrfToken: string,
+): Promise<Ticket> {
+  return apiRequestJson<Ticket>(`/api/v1/tickets/${ticketId}/collaborators/${userId}`, {
+    headers: { "X-CSRF-Token": csrfToken },
+    method: "DELETE",
   });
 }

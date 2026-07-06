@@ -32,11 +32,17 @@ async def test_admin_lists_acgs_and_customer_is_denied() -> None:
 
     assert user_response.status_code == 403
     assert admin_response.status_code == 200
-    assert [acg["code"] for acg in admin_response.json()["acgs"]] == [
+    admin_codes = {acg["code"] for acg in admin_response.json()["acgs"]}
+    assert {
         "ACG-ALPHA-REGIONAL",
         "ACG-BRAVO-COLLECTION",
         "ACG-CHARLIE-ASSESSMENT",
-    ]
+        "ACG-EU-CYBER",
+        "ACG-EU-HUMINT",
+        "ACG-AF-CYBER",
+        "ACG-MAR-GEOINT",
+    } <= admin_codes
+    assert len(admin_codes) >= 43
 
 
 @pytest.mark.asyncio
@@ -104,10 +110,15 @@ async def test_manager_can_view_relevant_acgs_but_not_unrelated_detail() -> None
         unrelated_response = await client.get(f"/api/v1/acgs/{collection_acg.acg_id}")
 
     assert response.status_code == 200
-    assert [acg["code"] for acg in response.json()["acgs"]] == [
+    manager_codes = {acg["code"] for acg in response.json()["acgs"]}
+    assert {
         "ACG-ALPHA-REGIONAL",
         "ACG-CHARLIE-ASSESSMENT",
-    ]
+        "ACG-EU-CYBER",
+        "ACG-EU-HUMINT",
+        "ACG-ME-HUMINT",
+    } <= manager_codes
+    assert "ACG-BRAVO-COLLECTION" not in manager_codes
     assert unrelated_response.status_code == 404
 
 

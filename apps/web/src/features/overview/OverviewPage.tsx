@@ -1,5 +1,6 @@
 import { Activity, AlertTriangle, CheckCircle2, ClipboardList, Hourglass } from "lucide-react";
 
+import { SpotlightCard } from "../../components/effects/SpotlightCard";
 import { StatusSummary } from "../../components/status/StatusSummary";
 
 const requestMetrics = [
@@ -21,7 +22,7 @@ export default function OverviewPage() {
         {requestMetrics.map((metric) => {
           const Icon = metric.icon;
           return (
-            <article className="request-metric" key={metric.label}>
+            <SpotlightCard className="request-metric" key={metric.label}>
               <span className={`metric-icon metric-icon--${metric.tone}`} aria-hidden="true">
                 <Icon size={22} strokeWidth={1.8} />
               </span>
@@ -29,7 +30,7 @@ export default function OverviewPage() {
                 <strong>{metric.value}</strong>
                 <span>{metric.label}</span>
               </div>
-            </article>
+            </SpotlightCard>
           );
         })}
       </section>

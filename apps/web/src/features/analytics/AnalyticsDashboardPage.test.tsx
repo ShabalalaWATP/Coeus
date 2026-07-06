@@ -1,4 +1,5 @@
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import AnalyticsDashboardPage from "./AnalyticsDashboardPage";
 import { resetQueryClientForTests } from "../../app/query-client";
@@ -105,6 +106,24 @@ test("renders pending product reuse feedback ratings", async () => {
   expect(await screen.findByRole("heading", { name: "RFA Analytics" })).toBeVisible();
   expect(await screen.findByText("Arctic feedback product")).toBeVisible();
   expect(screen.getAllByText("Pending")).toHaveLength(2);
+});
+
+test("renders an analytics error state", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ error: { code: "server_error", message: "Failed." } }),
+    }),
+  );
+
+  renderWithProviders(<AnalyticsDashboardPage audience="admin" />, "/admin/analytics");
+
+  expect(
+    await screen.findByText("Unable to load data", undefined, { timeout: 5000 }),
+  ).toBeVisible();
+  await userEvent.click(screen.getByRole("button", { name: "Retry" }));
 });
 
 function jsonResponse(payload: unknown) {
