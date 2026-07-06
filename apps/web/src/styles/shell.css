@@ -27,17 +27,13 @@
 }
 
 .brand__mark {
-  display: grid;
-  place-items: center;
+  display: block;
   width: 42px;
   height: 42px;
-  border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--border));
-  border-radius: var(--radius-md);
-  background: linear-gradient(160deg, var(--surface-strong), var(--surface-muted));
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  border-radius: 50%;
   box-shadow: var(--glow-accent);
-  color: var(--accent);
-  font-family: var(--font-mono);
-  font-weight: 700;
+  object-fit: cover;
 }
 
 .brand__name,

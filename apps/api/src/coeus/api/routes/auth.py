@@ -6,13 +6,16 @@ from coeus.api.dependencies import (
     get_auth_service,
     get_csrf_validated_session,
     get_current_session,
+    get_registration_service,
     get_settings,
 )
 from coeus.core.config import Settings
 from coeus.domain.auth import AuthenticatedSession, UserAccount
 from coeus.domain.rbac import default_route_for_roles
 from coeus.schemas.auth import AuthSessionResponse, LoginRequest, UserProfileResponse
+from coeus.schemas.registration import RegistrationSubmitRequest, RegistrationSubmitResponse
 from coeus.services.auth import AuthService
+from coeus.services.registration import RegistrationService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -36,6 +39,20 @@ async def login(
         user=_to_user_response(result.user, result.default_route),
         csrf_token=result.session.csrf_token,
     )
+
+
+@router.post("/register", response_model=RegistrationSubmitResponse, status_code=202)
+async def register(
+    payload: RegistrationSubmitRequest,
+    registration_service: Annotated[RegistrationService, Depends(get_registration_service)],
+) -> RegistrationSubmitResponse:
+    registration_service.submit(
+        payload.username,
+        payload.display_name,
+        payload.justification,
+        payload.password,
+    )
+    return RegistrationSubmitResponse(status="pending")
 
 
 @router.post("/logout", status_code=204)

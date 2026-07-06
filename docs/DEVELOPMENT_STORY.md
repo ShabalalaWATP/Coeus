@@ -191,3 +191,25 @@
   intake, RFI search, routing, assignment, analyst production and QC
   dissemination pipeline, auth negative states and responsive layouts at
   1440x900, 1280x720, 768x1024 and 390x844.
+
+## 2026-07-06 Istari rebrand, splash login and access requests
+
+- Rebranded the product from Coeus to Istari across the web UI, page
+  metadata, favicon and the FastAPI docs title, using the supplied logo with
+  resized 64px and 256px assets. Internal package, module and infrastructure
+  identifiers keep the `coeus` working name.
+- Rebuilt the login page as a splash introduction: glowing, gently floating
+  logo, "Task. Assess. Deliver." tagline, a short pitch, three capability
+  points and an access card that switches between sign in and request
+  access. Animations remain CSS-only and respect `prefers-reduced-motion`.
+- Added a self-service registration flow: public `POST /auth/register` with
+  Argon2 hashing at submission, generic anti-enumeration responses, a
+  pending-request cap with `429` throttling, and admin review endpoints
+  gated by `user:create` plus CSRF. Approval creates an active `User`
+  account at clearance level 1; decisions are audit logged.
+- Added an Access Requests panel to the admin overview for approving or
+  rejecting requests with a recorded reason, plus a spec and threat model
+  for the feature.
+- Verified in the browser: request submission, admin approval, first login
+  of the approved account, rejection with generic sign-in failure, splash
+  responsiveness at 390, 768 and 1440 widths and the light theme.

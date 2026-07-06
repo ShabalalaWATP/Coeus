@@ -1,6 +1,6 @@
-# Coeus
+# Istari
 
-Coeus is a secure, role-based intelligence tasking and intelligence product orchestration platform.
+Istari is a secure, role-based intelligence tasking and intelligence product orchestration platform. The product brand is Istari; internal package, module and infrastructure identifiers retain the original `coeus` working name.
 
 This repository is being implemented from `coeus_spec_driven_implementation_plan.md`. The current baseline covers Sprint 1 through Sprint 13 foundations: monorepo skeleton, FastAPI foundation, React/Vite app shell, local development services, CI, authentication, sessions, RBAC, ACG and project workspace access controls, ticket intake, mock chatbot extraction, customer request dashboard, Intelligence Store metadata search and controlled asset access, deterministic mock product seeding, RFI Search Agent product offers, RFA and CM routing, analyst workflow, QC review, automatic product ingestion, dissemination, feedback submission, analytics dashboards, product reuse analytics, GCP dev deployment scaffolding, security hardening gates, specs, ADRs and threat models.
 

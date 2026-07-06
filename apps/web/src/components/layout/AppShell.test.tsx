@@ -10,7 +10,7 @@ test("renders the expected shell landmarks and navigation", () => {
   renderWithProviders(<AppShell profile={previewProfile} />);
 
   expect(screen.getByLabelText("Primary navigation")).toBeVisible();
-  expect(screen.getByLabelText("Coeus workspace")).toBeVisible();
+  expect(screen.getByLabelText("Istari workspace")).toBeVisible();
   expect(screen.getByRole("searchbox", { name: "Command" })).toBeVisible();
   expect(screen.getByRole("button", { name: "Notifications" })).toBeVisible();
   expect(screen.getByRole("button", { name: "Profile" })).toBeVisible();

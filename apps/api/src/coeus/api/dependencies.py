@@ -13,6 +13,7 @@ from coeus.services.analyst_workflow import AnalystWorkflowService
 from coeus.services.auth import AuthService
 from coeus.services.feedback_analytics import FeedbackAnalyticsService
 from coeus.services.quality_control import QualityControlService
+from coeus.services.registration import RegistrationService
 from coeus.services.rfi_search import RfiSearchService
 from coeus.services.routing import RoutingService
 from coeus.services.store import StoreServices
@@ -41,6 +42,13 @@ def get_auth_service(request: Request) -> AuthService:
     if not isinstance(auth_service, AuthService):
         raise AppError(500, "auth_not_configured", "Authentication service is not configured.")
     return auth_service
+
+
+def get_registration_service(request: Request) -> RegistrationService:
+    registration_service = getattr(request.app.state, "registration_service", None)
+    if not isinstance(registration_service, RegistrationService):
+        raise AppError(500, "registration_not_configured", "Registration is not configured.")
+    return registration_service
 
 
 def get_access_services(request: Request) -> AccessServices:

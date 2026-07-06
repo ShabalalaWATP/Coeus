@@ -8,7 +8,7 @@ export default function ForbiddenPage() {
         <h1 id="forbidden-title">Access denied</h1>
         <p>Your current role does not permit this workspace.</p>
         <Link className="text-link" to="/">
-          Return to Coeus
+          Return to Istari
         </Link>
       </section>
     </main>

@@ -23,6 +23,7 @@ from coeus.core.logging import configure_logging, get_logger
 from coeus.core.security import apply_security_headers
 from coeus.repositories.access import SeedAccessRepository
 from coeus.repositories.auth import LoginAttemptRepository, SeedUserRepository, SessionRepository
+from coeus.repositories.registration import RegistrationRepository
 from coeus.services.access import build_access_services
 from coeus.services.analyst_workflow import build_analyst_workflow_service
 from coeus.services.audit import AuditLog
@@ -30,6 +31,7 @@ from coeus.services.auth import AuthService
 from coeus.services.feedback_analytics import build_feedback_analytics_service
 from coeus.services.passwords import PasswordHasher
 from coeus.services.quality_control import build_quality_control_service
+from coeus.services.registration import RegistrationService
 from coeus.services.rfi_search import build_rfi_search_service
 from coeus.services.routing import build_routing_service
 from coeus.services.store import build_store_services
@@ -44,7 +46,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     configure_logging(resolved_settings.log_level)
 
     app = FastAPI(
-        title="Coeus API",
+        title="Istari API",
         version="0.1.0",
         description="Secure intelligence tasking and product orchestration API.",
     )
@@ -60,6 +62,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         login_attempts=LoginAttemptRepository(
             max_entries=resolved_settings.login_attempt_max_entries
         ),
+        password_hasher=password_hasher,
+        audit_log=audit_log,
+    )
+    app.state.registration_service = RegistrationService(
+        settings=resolved_settings,
+        users=user_repository,
+        registrations=RegistrationRepository(),
         password_hasher=password_hasher,
         audit_log=audit_log,
     )

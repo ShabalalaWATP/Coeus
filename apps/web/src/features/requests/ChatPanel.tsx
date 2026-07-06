@@ -32,7 +32,7 @@ export function ChatPanel({ isSending, onSend, ticket }: ChatPanelProps) {
         {ticket?.messages.length ? (
           ticket.messages.map((item) => (
             <article className={`chat-message chat-message--${item.author}`} key={item.id}>
-              <strong>{item.author === "user" ? "You" : "Coeus"}</strong>
+              <strong>{item.author === "user" ? "You" : "Istari"}</strong>
               <p>{item.body}</p>
             </article>
           ))
