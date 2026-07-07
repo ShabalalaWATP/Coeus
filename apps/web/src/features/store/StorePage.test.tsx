@@ -140,7 +140,48 @@ test("submits product search filters", async () => {
   expect(url).toContain("sourceType=finished_assessment");
   expect(url).toContain("dateFrom=2026-05-01");
   expect(url).toContain("dateTo=2026-06-30");
+  expect(url).toContain("page=1");
+  expect(url).toContain("pageSize=6");
   expect(init.credentials).toBe("include");
+});
+
+test("requests the next store result page", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          products: [visibleProduct],
+          total: 8,
+          page: 1,
+          pageSize: 6,
+          totalPages: 2,
+          facets: { productTypes: [], regions: [], tags: [] },
+        }),
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          products: [collectionProduct],
+          total: 8,
+          page: 2,
+          pageSize: 6,
+          totalPages: 2,
+          facets: { productTypes: [], regions: [], tags: [] },
+        }),
+    });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<StorePage />, "/store");
+
+  expect(await screen.findByText("Showing 1-6 of 8")).toBeVisible();
+  await userEvent.click(screen.getByRole("button", { name: "Next page" }));
+
+  expect(await screen.findByText("Collection Sensor Summary")).toBeVisible();
+  const calls = fetchMock.mock.calls as Array<[string, RequestInit]>;
+  expect(calls[calls.length - 1][0]).toContain("page=2");
 });
 
 test("filters my products by owner team and hides upload without create permission", async () => {

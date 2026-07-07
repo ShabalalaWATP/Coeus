@@ -1,7 +1,10 @@
 from datetime import datetime
+from typing import Annotated
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
+
+ClarificationQuestion = Annotated[str, Field(min_length=3, max_length=300)]
 
 
 class RouteApprovalRequest(BaseModel):
@@ -22,7 +25,24 @@ class RouteReasonRequest(BaseModel):
 class RouteClarificationRequest(BaseModel):
     route: str = Field(pattern="^(rfa|cm)$")
     reason: str = Field(min_length=3, max_length=1_000)
-    questions: list[str] = Field(min_length=1, max_length=5)
+    questions: list[ClarificationQuestion] = Field(min_length=1, max_length=5)
+
+
+class CapabilityTeamResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    team_id: str = Field(serialization_alias="teamId")
+    name: str
+    department: str
+    keywords: list[str]
+    work_packages: list[str] = Field(serialization_alias="workPackages")
+    source_labels: list[str] = Field(serialization_alias="sourceLabels")
+
+
+class CapabilityCatalogueResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    teams: list[CapabilityTeamResponse]
 
 
 class RfaCapabilityReviewResponse(BaseModel):
@@ -34,6 +54,7 @@ class RfaCapabilityReviewResponse(BaseModel):
     required_clarifications: list[str] = Field(serialization_alias="requiredClarifications")
     suggested_work_packages: list[str] = Field(serialization_alias="suggestedWorkPackages")
     suggested_team_id: str | None = Field(serialization_alias="suggestedTeamId")
+    suggested_team_name: str | None = Field(serialization_alias="suggestedTeamName")
     estimated_effort: str = Field(serialization_alias="estimatedEffort")
     risks: list[str]
     manager_review_required: bool = Field(serialization_alias="managerReviewRequired")
@@ -49,6 +70,12 @@ class CmCapabilityReviewResponse(BaseModel):
     confidence: float
     required_clarifications: list[str] = Field(serialization_alias="requiredClarifications")
     suggested_collection_route: str | None = Field(serialization_alias="suggestedCollectionRoute")
+    suggested_collection_team_id: str | None = Field(
+        serialization_alias="suggestedCollectionTeamId"
+    )
+    suggested_collection_team_name: str | None = Field(
+        serialization_alias="suggestedCollectionTeamName"
+    )
     suggested_collection_sources: list[str] = Field(
         serialization_alias="suggestedCollectionSources"
     )
@@ -115,6 +142,7 @@ class RoutingTicketResponse(BaseModel):
     cm_review: CmCapabilityReviewResponse | None = Field(serialization_alias="cmReview")
     recommendation: RouteRecommendationResponse | None
     clarifications: list[ClarificationRequestResponse]
+    agent_runs: list[str] = Field(serialization_alias="agentRuns")
     manager_decisions: list[ManagerDecisionResponse] = Field(serialization_alias="managerDecisions")
     project_plan_updates: list[ProjectPlanUpdateResponse] = Field(
         serialization_alias="projectPlanUpdates"

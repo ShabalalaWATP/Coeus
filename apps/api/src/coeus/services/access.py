@@ -30,7 +30,7 @@ class AccessControlGroupService:
     def list_visible_acgs(self, user: UserAccount) -> tuple[AccessControlGroup, ...]:
         if Permission.ACG_VIEW not in user.permissions:
             raise AppError(403, "forbidden", "Permission denied.")
-        if Permission.SYSTEM_CONFIGURE in user.permissions:
+        if _can_administer_acgs(user):
             return self._repository.list_acgs()
         user_acg_ids = self._repository.active_acg_ids_for_user(user.user_id)
         return tuple(acg for acg in self._repository.list_acgs() if acg.acg_id in user_acg_ids)
@@ -97,6 +97,7 @@ class AccessControlGroupService:
         self._get_acg(acg_id)
         if self._repository.get_user(user_id) is None:
             raise AppError(404, "user_not_found", "User was not found.")
+        self._reject_non_admin_self_membership_change(actor, user_id)
         self._repository.add_membership(acg_id, user_id)
         self._audit_log.record(
             "acg_membership_added",
@@ -107,6 +108,7 @@ class AccessControlGroupService:
     def remove_user(self, actor: UserAccount, acg_id: UUID, user_id: UUID) -> None:
         self._require(actor, Permission.ACG_ASSIGN_USER)
         self._get_acg(acg_id)
+        self._reject_non_admin_self_membership_change(actor, user_id)
         self._repository.remove_membership(acg_id, user_id)
         self._audit_log.record(
             "acg_membership_removed",
@@ -130,6 +132,23 @@ class AccessControlGroupService:
     def _require(user: UserAccount, permission: Permission) -> None:
         if permission not in user.permissions:
             raise AppError(403, "forbidden", "Permission denied.")
+
+    @staticmethod
+    def _reject_non_admin_self_membership_change(actor: UserAccount, user_id: UUID) -> None:
+        if actor.user_id == user_id and Permission.SYSTEM_CONFIGURE not in actor.permissions:
+            raise AppError(403, "forbidden", "Permission denied.")
+
+
+def _can_administer_acgs(user: UserAccount) -> bool:
+    return bool(
+        {
+            Permission.SYSTEM_CONFIGURE,
+            Permission.ACG_CREATE,
+            Permission.ACG_UPDATE,
+            Permission.ACG_ASSIGN_USER,
+            Permission.ACG_ASSIGN_PRODUCT,
+        }.intersection(user.permissions)
+    )
 
 
 class ProductAccessPolicy:
@@ -163,14 +182,13 @@ class ProductAccessPolicy:
                     "Draft products require product management permission.",
                 )
             )
-        has_admin_override = Permission.PRODUCT_READ_RESTRICTED in user.permissions
         user_acg_ids = self._repository.active_acg_ids_for_user(user.user_id)
         has_shared_acg = bool(user_acg_ids.intersection(product.acg_ids))
         checks.append(
             AccessCheck(
                 "acg_membership",
-                has_admin_override or has_shared_acg,
-                "User shares a product ACG or has an administrative override.",
+                has_shared_acg,
+                "User shares a product ACG.",
             )
         )
         allowed = all(check.passed for check in checks)

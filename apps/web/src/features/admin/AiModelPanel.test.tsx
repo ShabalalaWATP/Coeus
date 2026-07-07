@@ -10,6 +10,7 @@ const modelState = {
   provider: "mock",
   activeModel: "gemma-4-31b",
   availableModels: ["gemma-4-31b", "gemini-2.5-flash", "gemini-2.5-pro"],
+  apiKeyConfigured: false,
   changedBy: null,
   changedAt: null,
 };
@@ -64,9 +65,45 @@ test("switches the active Gemini model from the card catalogue", async () => {
       }),
     ),
   );
-  expect(await screen.findByText(/local mock/)).toBeVisible();
+  expect(await screen.findByText(/mock provider active/)).toBeVisible();
   expect(screen.getByText(/last changed by admin@example.test/)).toBeVisible();
   expect(screen.getByRole("button", { name: "Apply model" })).toBeDisabled();
+});
+
+test("stores a Gemini API key without rendering the key back", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(modelState) })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          ...modelState,
+          apiKeyConfigured: true,
+          changedBy: "admin@example.test",
+          changedAt: "2026-07-06T09:00:00Z",
+        }),
+    });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<AiModelPanel csrfToken="test-csrf-token" />, "/admin/overview");
+
+  await userEvent.type(await screen.findByLabelText("Gemini API key"), "gemini-secret-key");
+  await userEvent.click(screen.getByRole("button", { name: "Save key" }));
+
+  await waitFor(() =>
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "http://127.0.0.1:8001/api/v1/admin/ai-model/api-key",
+      expect.objectContaining({
+        body: JSON.stringify({ apiKey: "gemini-secret-key" }),
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": "test-csrf-token" },
+        method: "PUT",
+      }),
+    ),
+  );
+  expect(await screen.findByText(/Gemini API key configured/)).toBeVisible();
+  expect(screen.queryByDisplayValue("gemini-secret-key")).not.toBeInTheDocument();
 });
 
 test("shows a generic error when the switch fails", async () => {

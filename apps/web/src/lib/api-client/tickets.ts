@@ -1,4 +1,4 @@
-import { apiRequestJson } from "./client";
+import { apiRequestJson, pathSegment } from "./client";
 
 type IntakeDetails = {
   title: string | null;
@@ -51,6 +51,14 @@ type TimelineEntry = {
   createdAt: string;
 };
 
+type ClarificationRequest = {
+  id: string;
+  route: string;
+  reason: string;
+  questions: string[];
+  createdAt: string;
+};
+
 type TicketCollaborator = {
   userId: string;
   username: string;
@@ -80,6 +88,7 @@ export type Ticket = {
   messages: ChatMessage[];
   attachments: AttachmentMetadata[];
   agentRuns: AgentRun[];
+  clarificationRequests?: ClarificationRequest[];
   timeline: TimelineEntry[];
   createdAt: string;
   updatedAt: string;
@@ -150,7 +159,7 @@ export async function updateTicketIntake(
   payload: IntakeUpdate,
   csrfToken: string,
 ): Promise<Ticket> {
-  return apiRequestJson<Ticket>(`/api/v1/tickets/${ticketId}/intake`, {
+  return apiRequestJson<Ticket>(`/api/v1/tickets/${pathSegment(ticketId)}/intake`, {
     body: JSON.stringify(payload),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "PATCH",
@@ -162,7 +171,7 @@ export async function addTicketAttachment(
   payload: AttachmentMetadataInput,
   csrfToken: string,
 ): Promise<Ticket> {
-  return apiRequestJson<Ticket>(`/api/v1/tickets/${ticketId}/attachments`, {
+  return apiRequestJson<Ticket>(`/api/v1/tickets/${pathSegment(ticketId)}/attachments`, {
     body: JSON.stringify(payload),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
@@ -170,8 +179,20 @@ export async function addTicketAttachment(
 }
 
 export async function submitTicket(ticketId: string, csrfToken: string): Promise<Ticket> {
-  return apiRequestJson<Ticket>(`/api/v1/tickets/${ticketId}/submit`, {
+  return apiRequestJson<Ticket>(`/api/v1/tickets/${pathSegment(ticketId)}/submit`, {
     headers: { "X-CSRF-Token": csrfToken },
+    method: "POST",
+  });
+}
+
+export async function cancelTicket(
+  ticketId: string,
+  reason: string,
+  csrfToken: string,
+): Promise<Ticket> {
+  return apiRequestJson<Ticket>(`/api/v1/tickets/${pathSegment(ticketId)}/cancel`, {
+    body: JSON.stringify({ reason }),
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
   });
 }
@@ -181,7 +202,7 @@ export async function addTicketInformation(
   body: string,
   csrfToken: string,
 ): Promise<Ticket> {
-  return apiRequestJson<Ticket>(`/api/v1/tickets/${ticketId}/timeline`, {
+  return apiRequestJson<Ticket>(`/api/v1/tickets/${pathSegment(ticketId)}/timeline`, {
     body: JSON.stringify({ body }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
@@ -201,7 +222,7 @@ export async function addTicketCollaborator(
   access: "editor" | "viewer",
   csrfToken: string,
 ): Promise<Ticket> {
-  return apiRequestJson<Ticket>(`/api/v1/tickets/${ticketId}/collaborators`, {
+  return apiRequestJson<Ticket>(`/api/v1/tickets/${pathSegment(ticketId)}/collaborators`, {
     body: JSON.stringify({ username, access }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
@@ -213,8 +234,11 @@ export async function removeTicketCollaborator(
   userId: string,
   csrfToken: string,
 ): Promise<Ticket> {
-  return apiRequestJson<Ticket>(`/api/v1/tickets/${ticketId}/collaborators/${userId}`, {
-    headers: { "X-CSRF-Token": csrfToken },
-    method: "DELETE",
-  });
+  return apiRequestJson<Ticket>(
+    `/api/v1/tickets/${pathSegment(ticketId)}/collaborators/${pathSegment(userId)}`,
+    {
+      headers: { "X-CSRF-Token": csrfToken },
+      method: "DELETE",
+    },
+  );
 }

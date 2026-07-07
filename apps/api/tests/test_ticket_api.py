@@ -42,7 +42,7 @@ async def test_chat_creates_ticket_and_returns_follow_up_questions() -> None:
     assert ticket["intake"]["title"] == "North Coast Port Activity"
     assert "priority" in ticket["intake"]["missingInformation"]
     assert ticket["messages"][-1]["author"] == "assistant"
-    assert ticket["agentRuns"][0]["agentName"] == "intake-extraction"
+    assert ticket["agentRuns"][0]["agentName"] == "customer-chatbot-agent"
 
 
 @pytest.mark.asyncio
@@ -84,8 +84,8 @@ async def test_intake_can_be_edited_and_submitted_when_complete() -> None:
     assert payload["state"] == TicketState.RFI_SEARCHING
     assert payload["suggestedProjectName"] == "Regional Port Activity Workspace"
     assert [run["agentName"] for run in payload["agentRuns"]] == [
-        "intake-extraction",
-        "rfi-search",
+        "customer-chatbot-agent",
+        "rfi-search-agent",
     ]
     assert any(entry["eventType"] == "search_started" for entry in payload["timeline"])
 

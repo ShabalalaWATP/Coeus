@@ -1,7 +1,10 @@
+import os
 from collections.abc import AsyncIterator
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+
+os.environ.setdefault("COEUS_PERSISTENCE_PROVIDER", "memory")
 
 from coeus.main import create_app
 

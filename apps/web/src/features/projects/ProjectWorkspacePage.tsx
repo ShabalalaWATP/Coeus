@@ -84,7 +84,7 @@ type ProjectWorkspaceContentProps = {
 };
 
 function ProjectWorkspaceContent({ diagnostics, project, view }: ProjectWorkspaceContentProps) {
-  const overviewPath = `/projects/${project.id}`;
+  const overviewPath = `/projects/${encodeURIComponent(project.id)}`;
   const location = useLocation();
 
   return (
@@ -177,7 +177,7 @@ function ProjectWorkspaceContent({ diagnostics, project, view }: ProjectWorkspac
                   className="stack-row"
                   key={product.id}
                   state={{ from: location.pathname }}
-                  to={`/store/products/${product.id}`}
+                  to={`/store/products/${encodeURIComponent(product.id)}`}
                 >
                   <strong>{product.title}</strong>
                   <span>{product.productType}</span>

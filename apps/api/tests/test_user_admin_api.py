@@ -64,6 +64,51 @@ async def test_admin_user_management_updates_user_and_revokes_sessions() -> None
 
 
 @pytest.mark.asyncio
+async def test_admin_can_reset_user_credential_without_leaking_secret() -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+
+    async with (
+        AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as admin,
+        AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as user,
+    ):
+        await login(user, "user@example.test")
+        admin_csrf = await login(admin, "admin@example.test")
+        users = await admin.get("/api/v1/admin/users")
+        target = next(
+            item for item in users.json()["users"] if item["username"] == "user@example.test"
+        )
+        reset = await admin.post(
+            f"/api/v1/admin/users/{target['id']}/credential-reset",
+            headers={"X-CSRF-Token": admin_csrf},
+        )
+        old_session = await user.get("/api/v1/auth/me")
+        old_credential = await user.post(
+            "/api/v1/auth/login",
+            json={"username": "user@example.test", "password": SEED_CREDENTIAL},
+        )
+        new_credential = await user.post(
+            "/api/v1/auth/login",
+            json={
+                "username": "user@example.test",
+                "password": reset.json()["temporaryCredential"],
+            },
+        )
+        audit = await admin.get("/api/v1/audit")
+
+    assert reset.status_code == 200
+    assert reset.json()["temporaryCredential"].startswith("Istari-")
+    assert old_session.status_code == 401
+    assert old_credential.status_code == 401
+    assert new_credential.status_code == 200
+    reset_events = [
+        event for event in audit.json()["events"] if event["eventType"] == "user_credential_reset"
+    ]
+    assert reset_events
+    assert "temporaryCredential" not in reset_events[-1]["metadata"]
+    assert reset.json()["temporaryCredential"] not in str(reset_events[-1]["metadata"])
+
+
+@pytest.mark.asyncio
 async def test_admin_user_management_rejects_self_and_invalid_role_changes() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
 

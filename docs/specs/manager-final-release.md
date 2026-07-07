@@ -4,8 +4,8 @@
 
 Uploading intelligence products and releasing analyst work are manager
 responsibilities. QC approval no longer publishes a product directly;
-the owning route manager performs the final release, which notifies the
-requesting customer.
+the owning RFA or Collection manager performs the final release, which
+notifies the requesting customer.
 
 ## Behaviour
 
@@ -22,8 +22,8 @@ requesting customer.
   feedback request and moves the ticket to `DISSEMINATION_READY`.
 - On release the customer receives an in-app notification with a link to
   the product and an email is recorded to the local outbox
-  (`email_recorded` audit event). No SMTP relay exists locally; deployed
-  environments attach a real delivery provider.
+  (`email_recorded` audit event). Optional SMTP delivery can be enabled with
+  `COEUS_EMAIL_PROVIDER=smtp`.
 - `GET /api/v1/notifications` returns the caller's notifications and
   unread count; `POST /api/v1/notifications/{id}/read` (CSRF) marks one
   read. The web shell shows an unread badge on the bell and released
@@ -31,5 +31,4 @@ requesting customer.
 
 ## Out of scope
 
-- Real email transport.
 - Release delegation or multi-stage release approvals.

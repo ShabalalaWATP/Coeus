@@ -26,7 +26,7 @@ ROUTE_PERMISSIONS: dict[RoutingRoute, Permission] = {
 
 
 class ProductReleaseService:
-    """Final release of QC-approved products by the owning route manager."""
+    """Final release of QC-approved products by the owning RFA or Collection manager."""
 
     def __init__(
         self,
@@ -62,11 +62,13 @@ class ProductReleaseService:
             raise AppError(409, "invalid_ticket_state", "Ticket is not awaiting final release.")
         if not can_transition(ticket.state, TicketState.DISSEMINATION_READY):
             raise AppError(409, "invalid_ticket_state", "Ticket cannot move to that state.")
-        product = self._published_product(ticket)
+        product = self._publishable_product(ticket)
         requester = self._access.get_user(ticket.requester_user_id)
         if requester is None or not requester.is_active:
             raise AppError(409, "requester_not_active", "Requester must be active.")
-        self._store.details.get_visible_product(requester, product.product_id)
+        if not self._store.details.can_read_product(requester, product):
+            raise AppError(404, "product_not_found", "Product was not found.")
+        self._store.repository.save_product(product)
         dissemination_record = dissemination(
             ticket.ticket_id, product.product_id, requester.user_id
         )
@@ -99,7 +101,7 @@ class ProductReleaseService:
         )
         return updated
 
-    def _published_product(self, ticket: TicketRecord) -> StoreProduct:
+    def _publishable_product(self, ticket: TicketRecord) -> StoreProduct:
         if not ticket.product_index_records:
             raise AppError(409, "product_not_ingested", "No QC-approved product to release.")
         product_id = ticket.product_index_records[-1].product_id
@@ -110,7 +112,6 @@ class ProductReleaseService:
             product,
             metadata=replace(product.metadata, status=ProductStatus.PUBLISHED),
         )
-        self._store.repository.save_product(published)
         return published
 
     def _notify_requester(

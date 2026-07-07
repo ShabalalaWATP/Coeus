@@ -3,6 +3,7 @@ from re import findall
 
 from coeus.domain.store import StoreProduct, StoreSearchHit
 from coeus.domain.tickets import IntakeDetails, ProductOffer, ProductOfferStatus
+from coeus.services.store_semantics import product_semantic_text, semantic_label_reasons
 
 RFI_OFFER_THRESHOLD = 0.25
 RFI_MAX_OFFERS = 5
@@ -35,8 +36,12 @@ def rank_rfi_hits(
         text_score, text_reasons = _full_text_score(hit.product, query_tokens)
         vector_score, vector_reasons = _semantic_score(hit.product, query_tokens)
         metadata_score, metadata_reasons = _metadata_score(hit.product, intake)
-        score = min(1.0, (text_score * 0.45) + (vector_score * 0.4) + metadata_score)
-        reasons = (*text_reasons[:3], *vector_reasons[:2], *metadata_reasons)
+        label_score, label_reasons = _semantic_label_score(hit.product, query_text(intake))
+        score = min(
+            1.0,
+            (text_score * 0.38) + (vector_score * 0.34) + metadata_score + label_score,
+        )
+        reasons = (*label_reasons, *text_reasons[:3], *vector_reasons[:2], *metadata_reasons)
         if score >= RFI_OFFER_THRESHOLD:
             scored.append((hit, round(score, 4), tuple(dict.fromkeys(reasons))))
     ranked = sorted(scored, key=lambda item: (-item[1], item[0].product.metadata.title))
@@ -69,19 +74,7 @@ def _tokens(text: str) -> tuple[str, ...]:
 
 
 def _product_text(product: StoreProduct) -> str:
-    metadata = product.metadata
-    return " ".join(
-        (
-            metadata.title,
-            metadata.summary,
-            metadata.description,
-            metadata.product_type,
-            metadata.source_type,
-            metadata.area_or_region,
-            " ".join(metadata.tags),
-            " ".join(asset.asset_type for asset in product.assets),
-        )
-    )
+    return product_semantic_text(product)
 
 
 def _full_text_score(
@@ -123,6 +116,11 @@ def _metadata_score(product: StoreProduct, intake: IntakeDetails) -> tuple[float
         score += 0.08
         reasons.append("metadata:format")
     return min(score, 0.24), tuple(reasons)
+
+
+def _semantic_label_score(product: StoreProduct, query: str) -> tuple[float, tuple[str, ...]]:
+    reasons = semantic_label_reasons(product, query)
+    return min(0.12, len(reasons) * 0.06), reasons
 
 
 def _token_overlap(left: str, right: str) -> bool:

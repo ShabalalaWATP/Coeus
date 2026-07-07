@@ -1,4 +1,4 @@
-import { ApiClient, ApiError } from "./client";
+import { ApiClient, ApiError, pathSegment } from "./client";
 import { previewSession } from "../../test/test-utils";
 
 test("sends request id headers and returns typed JSON", async () => {
@@ -267,6 +267,10 @@ test("throws parsed API errors on non-success responses", async () => {
   await expect(new ApiClient("http://api.test").getCurrentUser()).rejects.toEqual(
     new ApiError(423, "account_locked", "Authentication temporarily locked."),
   );
+});
+
+test("encodes reserved characters in path segments", () => {
+  expect(pathSegment("product/one two")).toBe("product%2Fone%20two");
 });
 
 test("uses fallback API error details when the response body is not JSON", async () => {

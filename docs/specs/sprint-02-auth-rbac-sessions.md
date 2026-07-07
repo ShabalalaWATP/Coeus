@@ -42,6 +42,7 @@ All seed accounts use synthetic `example.test` usernames and the mock local cred
 | `collection.team@example.test` | Collection Team Member | `/collection/products` |
 | `analyst@example.test` | Intelligence Analyst | `/analyst/workbench` |
 | `qc.manager@example.test` | Quality Control Manager | `/qc/queue` |
+| `store.manager@example.test` | Intelligence Store Manager | `/store` |
 | `disabled@example.test` | User, disabled | blocked |
 
 These are mock development credentials, not production credentials.

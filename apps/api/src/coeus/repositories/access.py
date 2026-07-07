@@ -11,6 +11,8 @@ from coeus.domain.access import (
     ProjectWorkspace,
 )
 from coeus.domain.auth import UserAccount
+from coeus.persistence.state_store import StateStore
+from coeus.repositories.access_state import load_access_snapshot, save_access_snapshot
 from coeus.repositories.auth import SeedUserRepository
 
 SEED_NAMESPACE = UUID("f71d6c95-85da-4f8b-8d55-e547c227c3a4")
@@ -33,13 +35,21 @@ def stable_seed_id(name: str) -> UUID:
 
 
 class SeedAccessRepository:
-    def __init__(self, users: SeedUserRepository) -> None:
+    def __init__(
+        self,
+        users: SeedUserRepository,
+        state_store: StateStore | None = None,
+    ) -> None:
         self._users = users
+        self._state_store = state_store
+        self._initialising = True
         self._acgs: dict[UUID, AccessControlGroup] = {}
         self._memberships: set[AccessControlGroupMembership] = set()
         self._products: dict[UUID, ProductRecord] = {}
         self._projects: dict[UUID, ProjectWorkspace] = {}
         self._seed_access_data()
+        self._initialising = False
+        self._restore_or_persist()
 
     def list_users(self) -> tuple[UserAccount, ...]:
         return self._users.list_users()
@@ -58,12 +68,15 @@ class SeedAccessRepository:
 
     def save_acg(self, acg: AccessControlGroup) -> None:
         self._acgs[acg.acg_id] = acg
+        self._persist()
 
     def add_membership(self, acg_id: UUID, user_id: UUID) -> None:
         self._memberships.add(AccessControlGroupMembership(acg_id=acg_id, user_id=user_id))
+        self._persist()
 
     def remove_membership(self, acg_id: UUID, user_id: UUID) -> None:
         self._memberships.discard(AccessControlGroupMembership(acg_id=acg_id, user_id=user_id))
+        self._persist()
 
     def list_memberships_for_acg(self, acg_id: UUID) -> tuple[AccessControlGroupMembership, ...]:
         return tuple(
@@ -98,6 +111,29 @@ class SeedAccessRepository:
 
     def get_project(self, project_id: UUID) -> ProjectWorkspace | None:
         return self._projects.get(project_id)
+
+    def _restore_or_persist(self) -> None:
+        if self._state_store is None:
+            return
+        snapshot = load_access_snapshot(self._state_store)
+        if snapshot is None:
+            self._persist()
+            return
+        self._acgs = snapshot.acgs
+        self._memberships = snapshot.memberships
+        self._products = snapshot.products
+        self._projects = snapshot.projects
+
+    def _persist(self) -> None:
+        if self._state_store is None or self._initialising:
+            return
+        save_access_snapshot(
+            self._state_store,
+            self.list_acgs(),
+            self._memberships,
+            self._products,
+            self._projects,
+        )
 
     def _seed_access_data(self) -> None:
         admin = self._user("admin@example.test")

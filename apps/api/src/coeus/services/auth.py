@@ -7,6 +7,7 @@ from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
 from coeus.domain.auth import AuthenticatedSession, SessionRecord, UserAccount
 from coeus.repositories.auth import (
+    AttemptStoreFull,
     IpAttemptRepository,
     LoginAttemptRepository,
     SeedUserRepository,
@@ -164,11 +165,15 @@ class AuthService:
             self._login_attempts.reset(username)
 
     def _record_login_failure(self, username: str, user: UserAccount | None) -> None:
-        locked_until = self._login_attempts.record_failure(
-            username,
-            self._settings.login_lockout_threshold,
-            self._settings.login_lockout_seconds,
-        )
+        try:
+            locked_until = self._login_attempts.record_failure(
+                username,
+                self._settings.login_lockout_threshold,
+                self._settings.login_lockout_seconds,
+            )
+        except AttemptStoreFull as exc:
+            self._audit_log.record("auth_throttled", None, {"reason": "attempt_store_full"})
+            raise AppError(429, "too_many_attempts", "Too many attempts. Try again later.") from exc
         metadata = {"reason": "invalid_credentials"}
         if locked_until is not None:
             metadata["locked_until"] = locked_until.isoformat()

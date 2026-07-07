@@ -12,6 +12,9 @@ Scope: the user directory endpoint and collaborator management on tickets.
   require `ticket:add_information`). Viewers receive read access only, and
   collaborator management itself remains requester-only, so an editor
   cannot widen sharing.
+- Product metadata leakage through collaboration: the generic ticket response
+  only returns RFI match titles to the requester. Collaborators must use the
+  RFI results endpoint, where offers are filtered by their own Store access.
 - Account probing through tagging: invalid targets (unknown, disabled,
   self) return one generic `collaborator_invalid` error. The directory
   already lists active users to signed-in users, which is accepted for
@@ -23,5 +26,5 @@ Scope: the user directory endpoint and collaborator management on tickets.
 ## Residual risks
 
 - Any authenticated user can enumerate active usernames via the directory.
-  Accepted: the platform is a closed, vetted user base and products/tickets
-  remain protected by ACG and ownership checks.
+  Accepted: the platform is a closed, vetted user base and product metadata
+  remains protected by Store ACG, clearance and ownership checks.

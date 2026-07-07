@@ -1,4 +1,4 @@
-import { apiRequestJson } from "./client";
+import { apiRequestJson, pathSegment, resolveApiBaseUrl } from "./client";
 
 type StoreAsset = {
   id: string;
@@ -24,6 +24,7 @@ export type StoreProduct = {
   releasability: string[];
   handlingCaveats: string[];
   tags: string[];
+  semanticLabels: string[];
   acgIds: string[];
   projectId: string | null;
   status: string;
@@ -48,11 +49,17 @@ export type StoreSearchFilters = {
   projectId?: string;
   dateFrom?: string;
   dateTo?: string;
+  ownerTeam?: string;
+  page?: number;
+  pageSize?: number;
 };
 
 export type StoreSearchResponse = {
   products: StoreSearchProduct[];
   total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
   facets: {
     productTypes: string[];
     regions: string[];
@@ -72,6 +79,7 @@ export type StoreProductCreateInput = {
   releasability: string[];
   handlingCaveats: string[];
   tags: string[];
+  semanticLabels?: string[];
   acgIds: string[];
   status: string;
   geojsonRef?: string | null;
@@ -103,6 +111,7 @@ export type MetadataSuggestion = {
   entities: string[];
   sourceType: string;
   acgIds: string[];
+  semanticLabels: string[];
 };
 
 export async function searchStoreProducts(
@@ -110,8 +119,9 @@ export async function searchStoreProducts(
 ): Promise<StoreSearchResponse> {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(filters)) {
-    if (value !== undefined && value.trim() !== "") {
-      params.set(key, value);
+    const normalised = value === undefined ? "" : String(value).trim();
+    if (normalised !== "") {
+      params.set(key, normalised);
     }
   }
   const suffix = params.size > 0 ? `?${params.toString()}` : "";
@@ -121,7 +131,24 @@ export async function searchStoreProducts(
 }
 
 export async function getStoreProduct(productId: string): Promise<StoreProduct> {
-  return apiRequestJson<StoreProduct>(`/api/v1/store/products/${productId}`, { method: "GET" });
+  return apiRequestJson<StoreProduct>(`/api/v1/store/products/${pathSegment(productId)}`, {
+    method: "GET",
+  });
+}
+
+export async function breakGlassStoreProduct(
+  productId: string,
+  reason: string,
+  csrfToken: string,
+): Promise<StoreProduct> {
+  return apiRequestJson<StoreProduct>(
+    `/api/v1/store/products/${pathSegment(productId)}/break-glass`,
+    {
+      body: JSON.stringify({ reason }),
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+      method: "POST",
+    },
+  );
 }
 
 export async function getAssetAccess(
@@ -129,8 +156,26 @@ export async function getAssetAccess(
   assetId: string,
 ): Promise<AssetAccessGrant> {
   return apiRequestJson<AssetAccessGrant>(
-    `/api/v1/store/products/${productId}/assets/${assetId}/access`,
+    `/api/v1/store/products/${pathSegment(productId)}/assets/${pathSegment(assetId)}/access`,
     { method: "GET" },
+  );
+}
+
+export async function breakGlassAssetAccess(
+  productId: string,
+  assetId: string,
+  reason: string,
+  csrfToken: string,
+): Promise<AssetAccessGrant> {
+  return apiRequestJson<AssetAccessGrant>(
+    `/api/v1/store/products/${pathSegment(productId)}/assets/${pathSegment(
+      assetId,
+    )}/break-glass-access`,
+    {
+      body: JSON.stringify({ reason }),
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+      method: "POST",
+    },
   );
 }
 
@@ -143,6 +188,28 @@ export async function createStoreProduct(
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
   });
+}
+
+export async function uploadStoreProduct(
+  payload: Omit<StoreProductCreateInput, "assets">,
+  file: File,
+  csrfToken: string,
+): Promise<StoreProduct> {
+  const form = new FormData();
+  form.append("metadata", JSON.stringify(payload));
+  form.append("asset", file);
+  return apiRequestJson<StoreProduct>("/api/v1/store/products/upload", {
+    body: form,
+    headers: { "X-CSRF-Token": csrfToken },
+    method: "POST",
+  });
+}
+
+export function assetDownloadUrl(productId: string, assetId: string, token: string): string {
+  const params = new URLSearchParams({ token });
+  return `${resolveApiBaseUrl()}/api/v1/store/products/${pathSegment(
+    productId,
+  )}/assets/${pathSegment(assetId)}/download?${params}`;
 }
 
 export async function suggestStoreMetadata(

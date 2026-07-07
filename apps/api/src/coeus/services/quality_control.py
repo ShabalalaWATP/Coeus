@@ -29,6 +29,7 @@ from coeus.services.qc_records import (
     queued_index,
 )
 from coeus.services.store import StoreServices
+from coeus.services.store_semantics import derive_semantic_labels
 from coeus.services.ticket_records import timeline
 from coeus.services.tickets import TicketServices
 
@@ -83,6 +84,14 @@ class ProductAutoIngestionService:
         validate_qc_acg_assignment(self._access, actor, approval.acg_ids, project_acg_ids)
         acg_ids = approval.acg_ids | project_acg_ids
         now = datetime.now(UTC)
+        semantic_labels = derive_semantic_labels(
+            draft.title,
+            draft.summary,
+            draft.product_type,
+            draft.content,
+            ticket.intake.area_or_region or "",
+            ticket.intake.required_output_format or "",
+        )
         product = StoreProduct(
             product_id=new_store_product_id(),
             reference=self._store.repository.next_reference(),
@@ -98,9 +107,10 @@ class ProductAutoIngestionService:
                 releasability=frozenset(approval.releasability),
                 handling_caveats=frozenset(approval.handling_caveats),
                 tags=frozenset({"mock", "qc-approved", ticket.reference.casefold()}),
+                semantic_labels=semantic_labels,
                 acg_ids=acg_ids,
                 project_id=project.project_id if project else None,
-                # Held as draft until the route manager performs final release.
+                # Held as draft until the owning manager performs final release.
                 status=ProductStatus.DRAFT,
                 time_period_start=ticket.intake.time_period_start,
                 time_period_end=ticket.intake.time_period_end,
@@ -119,10 +129,7 @@ class ProductAutoIngestionService:
 
     def _project_for_ticket(self, ticket: TicketRecord) -> ProjectWorkspace | None:
         for project in self._access.list_projects():
-            if (
-                ticket.ticket_id in project.ticket_ids
-                or project.requester_user_id == ticket.requester_user_id
-            ):
+            if ticket.ticket_id in project.ticket_ids:
                 return project
         return None
 
@@ -214,7 +221,7 @@ class QualityControlService:
                         ticket.ticket_id,
                         actor.user_id,
                         "sent_for_manager_release",
-                        "Awaiting final release by the route manager.",
+                        "Awaiting final release by the owning RFA or Collection manager.",
                     ),
                 ),
             )

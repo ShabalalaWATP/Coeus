@@ -168,6 +168,7 @@ class RfaCapabilityReview:
     manager_review_required: bool
     reasoning_summary: str
     created_at: datetime
+    suggested_team_name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -184,6 +185,8 @@ class CmCapabilityReview:
     manager_review_required: bool
     reasoning_summary: str
     created_at: datetime
+    suggested_collection_team_id: str | None = None
+    suggested_collection_team_name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -239,6 +242,7 @@ class AnalystAssignment:
     assigned_by_user_id: UUID
     route: RoutingRoute
     created_at: datetime
+    team_name: str | None = None
 
 
 @dataclass(frozen=True)

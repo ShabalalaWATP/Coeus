@@ -100,7 +100,7 @@ def test_inactive_acg_no_longer_grants_project_or_product_access() -> None:
     )
 
 
-def test_administrator_gets_access_diagnostic_override() -> None:
+def test_administrator_access_diagnostics_follow_acg_membership() -> None:
     services = build_seed_access_services()
     admin = services.repository.list_users()[0]
     collection_product = next(
@@ -109,8 +109,9 @@ def test_administrator_gets_access_diagnostic_override() -> None:
 
     decision = services.diagnostics.diagnose_product(collection_product.product_id, admin.user_id)
 
-    assert Permission.PRODUCT_READ_RESTRICTED in admin.permissions
     assert decision.allowed is True
+    assert Permission.PRODUCT_READ_RESTRICTED in admin.permissions
+    assert any(check.name == "acg_membership" and check.passed for check in decision.checks)
 
 
 def test_disabled_user_is_denied_project_and_product_access() -> None:

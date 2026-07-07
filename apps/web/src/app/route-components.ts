@@ -5,6 +5,7 @@ export const ForbiddenPage = lazy(() => import("../features/auth/ForbiddenPage")
 export const SessionExpiredPage = lazy(() => import("../features/auth/SessionExpiredPage"));
 export const AcgAdminPage = lazy(() => import("../features/access/AcgAdminPage"));
 export const AdminOverviewPage = lazy(() => import("../features/admin/AdminOverviewPage"));
+export const UserManagementPage = lazy(() => import("../features/admin/UserManagementPage"));
 export const AnalyticsDashboardPage = lazy(
   () => import("../features/analytics/AnalyticsDashboardPage"),
 );

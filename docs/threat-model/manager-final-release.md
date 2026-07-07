@@ -8,12 +8,16 @@ release endpoints and customer notifications.
 - Unauthorised product publication: `product:create_existing`,
   `product:publish` and `product:disseminate` are limited to RFA and
   Collection managers (and administrators). QC-approved products stay in
-  draft status, invisible to customers, until the owning route manager
-  releases them.
+  draft status, invisible to customers, until the owning RFA or Collection
+  manager releases them.
 - Cross-route release: the release endpoint validates that the ticket is
   in `MANAGER_RELEASE` and that its approved route matches the caller's
   review permission, so a Collection manager cannot release RFA work and
   vice versa. Repeat releases fail on the state check.
+- Partial publication on failed release: release builds the proposed published
+  product in memory, validates that the requester would be able to read that
+  published product, then saves it. A failed visibility check leaves the product
+  in draft, with no dissemination record, ticket transition or release audit.
 - Separation of duties: QC quality approval and manager release remain
   distinct actions by distinct roles, both audit logged
   (`qc_approved`, `product_released`).

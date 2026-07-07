@@ -3,6 +3,7 @@ import { Search, SlidersHorizontal, Upload } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 
+import { PaginationControls, PaginationSummary } from "./StorePagination";
 import { ProductTypeIcon } from "./ProductTypeIcon";
 import { productTypeLabel, productTypeOptions } from "./store-options";
 import { EmptyState, ErrorState } from "../../components/ui/PageState";
@@ -13,6 +14,9 @@ import { hasPermissions } from "../../lib/permissions/route-access";
 const emptySearch = {
   products: [],
   total: 0,
+  page: 1,
+  pageSize: 6,
+  totalPages: 0,
   facets: { productTypes: [], regions: [], tags: [] },
 };
 
@@ -40,6 +44,7 @@ const OWNER_TEAM_ROLE_HINT: Record<string, string> = {
   rfa: "assessment",
   collection: "collection",
 };
+const STORE_PAGE_SIZE = 6;
 
 function ownsTeamProduct(roleNames: readonly string[], ownerTeam: string): boolean {
   const hint = OWNER_TEAM_ROLE_HINT[ownerTeam.toLowerCase()];
@@ -47,6 +52,13 @@ function ownsTeamProduct(roleNames: readonly string[], ownerTeam: string): boole
     return false;
   }
   return roleNames.some((role) => role.toLowerCase().includes(hint));
+}
+
+function ownerTeamForRoles(roleNames: readonly string[]): string | undefined {
+  const matched = Object.entries(OWNER_TEAM_ROLE_HINT).find(([, hint]) =>
+    roleNames.some((role) => role.toLowerCase().includes(hint)),
+  );
+  return matched ? (matched[0] === "rfa" ? "RFA" : "Collection") : undefined;
 }
 
 export default function StorePage({
@@ -58,6 +70,7 @@ export default function StorePage({
   const { session } = useAuth();
   const location = useLocation();
   const [sort, setSort] = useState<StoreSort>("relevance");
+  const [page, setPage] = useState(1);
   const [draftFilters, setDraftFilters] = useState({
     query: "",
     productType: "",
@@ -68,9 +81,20 @@ export default function StorePage({
     dateTo: "",
   });
   const [submittedFilters, setSubmittedFilters] = useState<StoreSearchFilters>({});
+  const activeOwnerTeam =
+    ownerTeam ?? (scope === "mine" && session ? ownerTeamForRoles(session.user.roles) : undefined);
+  const searchFilters = useMemo<StoreSearchFilters>(
+    () => ({
+      ...submittedFilters,
+      ...(activeOwnerTeam ? { ownerTeam: activeOwnerTeam } : {}),
+      page,
+      pageSize: STORE_PAGE_SIZE,
+    }),
+    [activeOwnerTeam, page, submittedFilters],
+  );
   const productsQuery = useQuery({
-    queryKey: ["store-products", submittedFilters],
-    queryFn: () => searchStoreProducts(submittedFilters),
+    queryKey: ["store-products", searchFilters],
+    queryFn: () => searchStoreProducts(searchFilters),
     placeholderData: emptySearch,
   });
   const visibleProducts = useMemo(() => {
@@ -115,6 +139,7 @@ export default function StorePage({
             onSubmit={(event) => {
               event.preventDefault();
               setSubmittedFilters(cleanFilters(draftFilters));
+              setPage(1);
             }}
           >
             <p className="store-filters__note">Filters run after ACG and classification checks.</p>
@@ -206,7 +231,7 @@ export default function StorePage({
           <div className="store-results__header">
             <div>
               <span className="eyebrow">Visible results</span>
-              <h2>{visibleProducts.length} products</h2>
+              <h2>{productsQuery.data?.total ?? visibleProducts.length} products</h2>
             </div>
             <label className="store-sort">
               Sort by
@@ -218,6 +243,11 @@ export default function StorePage({
             </label>
             {productsQuery.isFetching ? <span className="store-chip">Refreshing</span> : null}
           </div>
+          <PaginationSummary
+            page={productsQuery.data?.page ?? page}
+            pageSize={productsQuery.data?.pageSize ?? STORE_PAGE_SIZE}
+            total={productsQuery.data?.total ?? visibleProducts.length}
+          />
           <div className="store-facets" aria-label="Visible facets">
             {(productsQuery.data?.facets.productTypes ?? []).map((type) => (
               <span className="store-chip" key={type}>
@@ -234,7 +264,7 @@ export default function StorePage({
                   className="store-result"
                   key={product.id}
                   state={{ from: location.pathname }}
-                  to={`/store/products/${product.id}`}
+                  to={`/store/products/${encodeURIComponent(product.id)}`}
                 >
                   <div>
                     <div className="store-result__title">
@@ -282,6 +312,12 @@ export default function StorePage({
               ) : null}
             </div>
           )}
+          <PaginationControls
+            onNext={() => setPage((current) => current + 1)}
+            onPrevious={() => setPage((current) => Math.max(1, current - 1))}
+            page={productsQuery.data?.page ?? page}
+            totalPages={productsQuery.data?.totalPages ?? 0}
+          />
         </section>
       </section>
     </div>

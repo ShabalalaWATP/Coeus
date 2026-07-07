@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MessageSquarePlus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { RequestDashboard } from "./RequestDashboard";
@@ -19,6 +19,7 @@ import {
   addTicketAttachment,
   addTicketCollaborator,
   addTicketInformation,
+  cancelTicket,
   listTickets,
   removeTicketCollaborator,
   sendChatMessage,
@@ -41,6 +42,7 @@ export default function RequestsPage() {
   const queryClient = useQueryClient();
   const isNewRequest = location.pathname.endsWith("/new");
   const [journeyOpen, setJourneyOpen] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const csrfToken = session?.csrfToken ?? "";
   const canCreate = session !== null && hasPermissions(session.user, ["chat:use"]);
   const ticketsQuery = useQuery({
@@ -66,14 +68,17 @@ export default function RequestsPage() {
     queryFn: () => getRfiSearchResults(selectedTicketId),
     queryKey: selectedRfiKey,
   });
+  useEffect(() => setActionError(null), [selectedTicketId]);
 
   const updateTicketCache = (ticket: Ticket) => {
+    setActionError(null);
     queryClient.setQueryData<Ticket[]>(["tickets"], (current) => upsertTicket(current, ticket));
     if (ticket.id !== ticketId) {
-      void navigate(`/app/requests/${ticket.id}`, { replace: true });
+      void navigate(`/app/requests/${encodeURIComponent(ticket.id)}`, { replace: true });
     }
   };
   const updateRfiCache = (result: RfiSearchResults) => {
+    setActionError(null);
     queryClient.setQueryData(["rfi-search", result.ticketId], result);
     queryClient.setQueryData<Ticket[]>(["tickets"], (current) =>
       (current ?? EMPTY_TICKETS).map((ticket) =>
@@ -87,17 +92,25 @@ export default function RequestsPage() {
       ),
     );
   };
+  const failAction = (message: string) => () => setActionError(message);
+  const clearActionError = () => setActionError(null);
   const chatMutation = useMutation({
     mutationFn: (message: string) =>
       sendChatMessage({ ticketId: selectedTicket?.id, message }, csrfToken),
+    onError: failAction("The message could not be sent. Try again."),
+    onMutate: clearActionError,
     onSuccess: updateTicketCache,
   });
   const intakeMutation = useMutation({
     mutationFn: (payload: IntakeUpdate) => updateTicketIntake(selectedTicketId, payload, csrfToken),
+    onError: failAction("The request details could not be saved. Refresh and try again."),
+    onMutate: clearActionError,
     onSuccess: updateTicketCache,
   });
   const submitMutation = useMutation({
     mutationFn: () => submitTicket(selectedTicketId, csrfToken),
+    onError: failAction("The request could not be submitted. Check the details and try again."),
+    onMutate: clearActionError,
     onSuccess: (ticket) => {
       updateTicketCache(ticket);
       // Transient roadmap popup so the requester sees where their request goes next.
@@ -107,32 +120,52 @@ export default function RequestsPage() {
   const attachmentMutation = useMutation({
     mutationFn: (payload: AttachmentMetadataInput) =>
       addTicketAttachment(selectedTicketId, payload, csrfToken),
+    onError: failAction("Attachment metadata could not be added. Try again."),
+    onMutate: clearActionError,
     onSuccess: updateTicketCache,
   });
   const informationMutation = useMutation({
     mutationFn: (body: string) => addTicketInformation(selectedTicketId, body, csrfToken),
+    onError: failAction("Additional information could not be added. Try again."),
+    onMutate: clearActionError,
     onSuccess: updateTicketCache,
   });
   const runRfiMutation = useMutation({
     mutationFn: () => runRfiSearch(selectedTicketId, csrfToken),
+    onError: failAction("The product search could not be started. Try again."),
+    onMutate: clearActionError,
     onSuccess: updateRfiCache,
   });
   const acceptOfferMutation = useMutation({
     mutationFn: (productId: string) => acceptProductOffer(selectedTicketId, productId, csrfToken),
+    onError: failAction("The product offer could not be accepted. Try again."),
+    onMutate: clearActionError,
     onSuccess: updateRfiCache,
   });
   const rejectOfferMutation = useMutation({
     mutationFn: ({ productId, reason }: { productId: string; reason: string }) =>
       rejectProductOffer(selectedTicketId, productId, reason, csrfToken),
+    onError: failAction("The product offer could not be rejected. Try again."),
+    onMutate: clearActionError,
     onSuccess: updateRfiCache,
   });
   const addCollaboratorMutation = useMutation({
     mutationFn: ({ username, access }: { username: string; access: "editor" | "viewer" }) =>
       addTicketCollaborator(selectedTicketId, username, access, csrfToken),
+    onError: failAction("The user could not be tagged on this request. Try again."),
+    onMutate: clearActionError,
     onSuccess: updateTicketCache,
   });
   const removeCollaboratorMutation = useMutation({
     mutationFn: (userId: string) => removeTicketCollaborator(selectedTicketId, userId, csrfToken),
+    onError: failAction("The tagged user could not be removed. Try again."),
+    onMutate: clearActionError,
+    onSuccess: updateTicketCache,
+  });
+  const cancelMutation = useMutation({
+    mutationFn: (reason: string) => cancelTicket(selectedTicketId, reason, csrfToken),
+    onError: failAction("The request could not be cancelled. Refresh and try again."),
+    onMutate: clearActionError,
     onSuccess: updateTicketCache,
   });
   const showWorkspace = isNewRequest || ticketId !== undefined;
@@ -173,6 +206,7 @@ export default function RequestsPage() {
             onAddCollaborator: (username, access) =>
               addCollaboratorMutation.mutate({ username, access }),
             onAddInformation: (body) => informationMutation.mutate(body),
+            onCancel: (reason) => cancelMutation.mutate(reason),
             onReject: (productId, reason) => rejectOfferMutation.mutate({ productId, reason }),
             onRemoveCollaborator: (userId) => removeCollaboratorMutation.mutate(userId),
             onRun: () => runRfiMutation.mutate(),
@@ -180,12 +214,15 @@ export default function RequestsPage() {
             onSend: (message) => chatMutation.mutate(message),
             onSubmit: () => submitMutation.mutate(),
           }}
+          actionError={actionError}
           currentUserId={session?.user.id ?? ""}
           journeyOpen={journeyOpen}
+          onClearActionError={clearActionError}
           onJourneyToggle={setJourneyOpen}
           pending={{
             accepting: acceptOfferMutation.isPending,
             adding: informationMutation.isPending,
+            cancelling: cancelMutation.isPending,
             collaborating:
               addCollaboratorMutation.isPending || removeCollaboratorMutation.isPending,
             rejecting: rejectOfferMutation.isPending,
@@ -202,7 +239,7 @@ export default function RequestsPage() {
         <>
           <RequestDashboard
             canCreate={canCreate}
-            onOpen={(id) => void navigate(`/app/requests/${id}`)}
+            onOpen={(id) => void navigate(`/app/requests/${encodeURIComponent(id)}`)}
             tickets={tickets}
           />
           <FeedbackPanel csrfToken={csrfToken} />

@@ -12,6 +12,8 @@ type ChatPanelProps = {
 
 export function ChatPanel({ isSending, onSend, readOnly = false, ticket }: ChatPanelProps) {
   const [message, setMessage] = useState("");
+  const clarificationRequests =
+    ticket?.state === "INFO_REQUIRED" ? (ticket.clarificationRequests ?? []) : [];
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -27,7 +29,7 @@ export function ChatPanel({ isSending, onSend, readOnly = false, ticket }: ChatP
     <section className="surface chat-panel" aria-labelledby="chat-title">
       <div className="section-heading access-heading">
         <Bot aria-hidden="true" size={20} />
-        <h2 id="chat-title">Intake assistant</h2>
+        <h2 id="chat-title">Customer chatbot</h2>
       </div>
       <div className="chat-transcript" aria-live="polite">
         {ticket?.messages.length ? (
@@ -40,6 +42,20 @@ export function ChatPanel({ isSending, onSend, readOnly = false, ticket }: ChatP
         ) : (
           <p>No chat transcript</p>
         )}
+        {clarificationRequests.map((request) => (
+          <article
+            className="chat-message chat-message--assistant chat-message--clarification"
+            key={request.id}
+          >
+            <strong>Istari</strong>
+            <p>Manager clarification requested: {request.reason}</p>
+            <ul>
+              {request.questions.map((question) => (
+                <li key={question}>{question}</li>
+              ))}
+            </ul>
+          </article>
+        ))}
         {isSending ? (
           <p className="chat-typing" role="status">
             <Bot aria-hidden="true" size={15} />

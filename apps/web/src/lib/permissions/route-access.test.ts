@@ -27,6 +27,30 @@ test("route access requires all route permissions", () => {
   expect(visibleNavigationItems(profile).map((item) => item.label)).toEqual(["Requests"]);
 });
 
+test("store manager sees store administration surfaces without admin overview", () => {
+  const profile: UserProfile = {
+    id: "store-manager",
+    username: "store.manager@example.test",
+    displayName: "Intelligence Store Manager",
+    roles: ["Intelligence Store Manager"],
+    defaultRoute: "/store",
+    permissions: [
+      "acg:view",
+      "acg:assign_user",
+      "acg:assign_product",
+      "product:create_existing",
+      "product:read",
+      "product:search",
+    ],
+  };
+
+  expect(visibleNavigationItems(profile).map((item) => item.label)).toEqual([
+    "Intelligence Store",
+    "ACGs",
+  ]);
+  expect(canAccessRoute(profile, routeByPath("/admin/overview")!)).toBe(false);
+});
+
 test("groups navigation items and omits empty groups", () => {
   const operationsOnly = navigationItems.filter((item) => item.group === "operations");
   const groups = groupedNavigationItems(operationsOnly);

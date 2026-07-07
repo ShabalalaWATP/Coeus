@@ -4,6 +4,7 @@ from uuid import UUID, uuid4
 
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
+from coeus.domain.agent_names import CUSTOMER_CHATBOT_AGENT, RFI_SEARCH_AGENT
 from coeus.domain.auth import UserAccount
 from coeus.domain.enums import TicketState
 from coeus.domain.state_machine import can_transition
@@ -18,8 +19,8 @@ from coeus.domain.tickets import (
 from coeus.repositories.tickets import InMemoryTicketRepository
 from coeus.services.audit import AuditLog
 from coeus.services.intake import (
+    IntakeAssistantProvider,
     IntakeExtractionService,
-    MockLlmProvider,
     RequirementCompletenessService,
     merge_intake,
 )
@@ -153,7 +154,7 @@ class TicketService:
         search_run = AgentRun(
             run_id=uuid4(),
             ticket_id=ticket.ticket_id,
-            agent_name="rfi-search",
+            agent_name=RFI_SEARCH_AGENT,
             status=AgentRunStatus.QUEUED,
             summary="Controlled search queued after intake completion.",
             safety_flags=(),
@@ -260,7 +261,7 @@ class ConversationService:
         repository: InMemoryTicketRepository,
         tickets: TicketService,
         extractor: IntakeExtractionService,
-        llm_provider: MockLlmProvider,
+        llm_provider: IntakeAssistantProvider,
         audit_log: AuditLog,
     ) -> None:
         self._repository = repository
@@ -288,7 +289,7 @@ class ConversationService:
         agent_run = AgentRun(
             run_id=uuid4(),
             ticket_id=ticket.ticket_id,
-            agent_name="intake-extraction",
+            agent_name=CUSTOMER_CHATBOT_AGENT,
             status=AgentRunStatus.COMPLETED,
             summary="Structured intake fields extracted from user chat.",
             safety_flags=safety_flags,
@@ -331,17 +332,3 @@ class ConversationService:
         )
         self._repository.save(ticket)
         return ticket
-
-
-def build_ticket_services(audit_log: AuditLog) -> TicketServices:
-    repository = InMemoryTicketRepository()
-    completeness = RequirementCompletenessService()
-    tickets = TicketService(repository, completeness, audit_log)
-    conversations = ConversationService(
-        repository,
-        tickets,
-        IntakeExtractionService(),
-        MockLlmProvider(),
-        audit_log,
-    )
-    return TicketServices(tickets=tickets, conversations=conversations)

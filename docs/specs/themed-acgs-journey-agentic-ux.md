@@ -40,7 +40,7 @@ give administrators a proper model catalogue for the Gemini selection.
 
 ### 3. Agentic, simplified role screens
 
-- The intake chat is presented as the "Intake assistant" with a typing
+- The intake chat is presented as the customer chatbot with a typing
   indicator while a message is in flight.
 - Agent chips (`Routing agent`, `Capability agent`, `RFI search agent`)
   label machine-generated recommendation cards so human actions and agent

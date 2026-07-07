@@ -1,15 +1,26 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Download, FileText, ShieldAlert } from "lucide-react";
+import { useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 
 import { backNavigationFor } from "./store-navigation";
 import { productTypeLabel } from "./store-options";
 import { LoadingState } from "../../components/ui/PageState";
 import { ApiError } from "../../lib/api-client/client";
-import { getAssetAccess, getStoreProduct, type AssetAccessGrant } from "../../lib/api-client/store";
+import {
+  assetDownloadUrl,
+  breakGlassAssetAccess,
+  breakGlassStoreProduct,
+  getAssetAccess,
+  getStoreProduct,
+  type AssetAccessGrant,
+} from "../../lib/api-client/store";
+import { useAuth } from "../../lib/auth/auth-context";
 
 export default function ProductDetailPage() {
   const { assetId, productId } = useStoreRouteIds();
+  const { session } = useAuth();
+  const [breakGlassReason, setBreakGlassReason] = useState<string | null>(null);
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from;
   const back = backNavigationFor(from);
@@ -19,15 +30,43 @@ export default function ProductDetailPage() {
     queryFn: () => getStoreProduct(productId ?? ""),
     retry: false,
   });
+  const breakGlassMutation = useMutation({
+    mutationFn: (reason: string) =>
+      breakGlassStoreProduct(productId ?? "", reason, session?.csrfToken ?? ""),
+    onSuccess: (_product, reason) => setBreakGlassReason(reason),
+  });
   const accessQuery = useQuery({
-    enabled: productId !== undefined && assetId !== undefined && productQuery.data !== undefined,
+    enabled:
+      productId !== undefined &&
+      assetId !== undefined &&
+      (productQuery.data !== undefined ||
+        (breakGlassMutation.data !== undefined && breakGlassReason !== null)),
     queryKey: ["store-asset-access", productId, assetId],
-    queryFn: () => getAssetAccess(productId ?? "", assetId ?? ""),
+    queryFn: () =>
+      breakGlassMutation.data !== undefined && breakGlassReason !== null
+        ? breakGlassAssetAccess(
+            productId ?? "",
+            assetId ?? "",
+            breakGlassReason,
+            session?.csrfToken ?? "",
+          )
+        : getAssetAccess(productId ?? "", assetId ?? ""),
     retry: false,
   });
+  const emergencyProduct = breakGlassMutation.data;
 
-  if (productQuery.isError && isNotFound(productQuery.error)) {
-    return <StoreDenied />;
+  if (productQuery.isError && isNotFound(productQuery.error) && emergencyProduct === undefined) {
+    return (
+      <StoreDenied
+        canBreakGlass={
+          productId !== undefined &&
+          (session?.user.permissions.includes("product:read_restricted") ?? false)
+        }
+        isPending={breakGlassMutation.isPending}
+        onBreakGlass={(reason) => breakGlassMutation.mutate(reason)}
+        showError={breakGlassMutation.isError}
+      />
+    );
   }
   if (productQuery.isLoading) {
     return (
@@ -36,9 +75,19 @@ export default function ProductDetailPage() {
       </section>
     );
   }
-  const product = productQuery.data;
+  const product = emergencyProduct ?? productQuery.data;
   if (product === undefined) {
-    return <StoreDenied />;
+    return (
+      <StoreDenied
+        canBreakGlass={
+          productId !== undefined &&
+          (session?.user.permissions.includes("product:read_restricted") ?? false)
+        }
+        isPending={breakGlassMutation.isPending}
+        onBreakGlass={(reason) => breakGlassMutation.mutate(reason)}
+        showError={breakGlassMutation.isError}
+      />
+    );
   }
 
   return (
@@ -110,6 +159,11 @@ export default function ProductDetailPage() {
                 {tag}
               </span>
             ))}
+            {product.semanticLabels.map((label) => (
+              <span className="store-chip store-chip--semantic" key={label}>
+                {label}
+              </span>
+            ))}
           </div>
         </article>
 
@@ -120,7 +174,9 @@ export default function ProductDetailPage() {
               <Link
                 className="stack-row store-asset-row"
                 key={asset.id}
-                to={`/store/products/${product.id}/assets/${asset.id}`}
+                to={`/store/products/${encodeURIComponent(product.id)}/assets/${encodeURIComponent(
+                  asset.id,
+                )}`}
               >
                 <FileText aria-hidden="true" size={18} />
                 <span>
@@ -135,7 +191,12 @@ export default function ProductDetailPage() {
             ))}
           </div>
           {assetId !== undefined ? (
-            <AssetGrant grant={accessQuery.data} status={accessQuery.status} />
+            <AssetGrant
+              assetId={assetId}
+              grant={accessQuery.data}
+              productId={product.id}
+              status={accessQuery.status}
+            />
           ) : null}
         </aside>
       </section>
@@ -143,7 +204,17 @@ export default function ProductDetailPage() {
   );
 }
 
-function AssetGrant({ grant, status }: { grant?: AssetAccessGrant; status: string }) {
+function AssetGrant({
+  assetId,
+  grant,
+  productId,
+  status,
+}: {
+  assetId?: string;
+  grant?: AssetAccessGrant;
+  productId: string;
+  status: string;
+}) {
   if (status === "error") {
     return (
       <div className="asset-grant asset-grant--denied">
@@ -155,24 +226,70 @@ function AssetGrant({ grant, status }: { grant?: AssetAccessGrant; status: strin
   if (grant === undefined) {
     return <div className="asset-grant">Preparing controlled access</div>;
   }
+  const href =
+    assetId === undefined ? "#" : assetDownloadUrl(productId, assetId, grant.downloadToken);
   return (
     <div className="asset-grant">
       <Download aria-hidden="true" size={18} />
       <div>
-        <strong>Download authorised.</strong> Controlled token: <code>{grant.downloadToken}</code>
+        <strong>Download authorised.</strong>{" "}
+        <a href={href} rel="noreferrer">
+          Download asset
+        </a>
         <small> Expires in {Math.round(grant.expiresInSeconds / 60)} minutes.</small>
       </div>
     </div>
   );
 }
 
-function StoreDenied() {
+function StoreDenied({
+  canBreakGlass = false,
+  isPending = false,
+  onBreakGlass = () => undefined,
+  showError = false,
+}: {
+  canBreakGlass?: boolean;
+  isPending?: boolean;
+  onBreakGlass?: (reason: string) => void;
+  showError?: boolean;
+}) {
+  const [reason, setReason] = useState("");
+  const reasonIsValid = reason.trim().length >= 10;
   return (
     <section className="surface store-denied" aria-labelledby="store-denied-title">
       <ShieldAlert aria-hidden="true" size={22} />
       <div>
         <h1 id="store-denied-title">Product not available</h1>
         <p>The product either does not exist or is outside your active ACGs.</p>
+        {canBreakGlass ? (
+          <form
+            className="break-glass-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (reasonIsValid) {
+                onBreakGlass(reason.trim());
+              }
+            }}
+          >
+            <label>
+              Emergency support reason
+              <textarea
+                onChange={(event) => setReason(event.target.value)}
+                placeholder="Explain the authorised site-administration need"
+                value={reason}
+              />
+            </label>
+            <button disabled={!reasonIsValid || isPending} type="submit">
+              <ShieldAlert aria-hidden="true" size={18} />
+              Access with audit log
+            </button>
+            {showError ? (
+              <p className="auth-error" role="alert">
+                Emergency access failed. Confirm the product ID and your permissions.
+              </p>
+            ) : null}
+          </form>
+        ) : null}
         <Link className="store-action store-action--secondary" to="/store">
           <ArrowLeft aria-hidden="true" size={18} />
           Back to store

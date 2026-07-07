@@ -1,7 +1,20 @@
-import { apiRequestJson } from "./client";
+import { apiRequestJson, pathSegment } from "./client";
 import type { TicketState } from "./tickets";
 
 export type RoutingRoute = "rfa" | "cm";
+
+export type CapabilityTeam = {
+  teamId: string;
+  name: string;
+  department: RoutingRoute;
+  keywords: string[];
+  workPackages: string[];
+  sourceLabels: string[];
+};
+
+export type CapabilityCatalogue = {
+  teams: CapabilityTeam[];
+};
 
 type CapabilityReview = {
   id: string;
@@ -18,10 +31,13 @@ type CapabilityReview = {
 export type RfaCapabilityReview = CapabilityReview & {
   suggestedWorkPackages: string[];
   suggestedTeamId: string | null;
+  suggestedTeamName: string | null;
 };
 
 export type CmCapabilityReview = CapabilityReview & {
   suggestedCollectionRoute: string | null;
+  suggestedCollectionTeamId: string | null;
+  suggestedCollectionTeamName: string | null;
   suggestedCollectionSources: string[];
 };
 
@@ -50,6 +66,7 @@ export type RoutingTicket = {
     requestedByUserId: string;
     createdAt: string;
   }[];
+  agentRuns: string[];
   managerDecisions: {
     id: string;
     route: string;
@@ -89,6 +106,12 @@ export async function listRoutingQueue(route: RoutingRoute): Promise<RoutingQueu
   return apiRequestJson<RoutingQueue>(path, { method: "GET" });
 }
 
+export async function listCapabilityCatalogue(): Promise<CapabilityCatalogue> {
+  return apiRequestJson<CapabilityCatalogue>("/api/v1/routing/capability-catalogue", {
+    method: "GET",
+  });
+}
+
 export async function listReleaseQueue(route: RoutingRoute): Promise<RoutingQueue> {
   return apiRequestJson<RoutingQueue>(`/api/v1/routing/${route}/release-queue`, {
     method: "GET",
@@ -100,7 +123,7 @@ export async function releaseProduct(
   route: RoutingRoute,
   csrfToken: string,
 ): Promise<RoutingTicket> {
-  return apiRequestJson<RoutingTicket>(`/api/v1/routing/${ticketId}/release`, {
+  return apiRequestJson<RoutingTicket>(`/api/v1/routing/${pathSegment(ticketId)}/release`, {
     body: JSON.stringify({ route }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
@@ -111,7 +134,7 @@ export async function runRoutingReviews(
   ticketId: string,
   csrfToken: string,
 ): Promise<RoutingTicket> {
-  return apiRequestJson<RoutingTicket>(`/api/v1/routing/${ticketId}/run`, {
+  return apiRequestJson<RoutingTicket>(`/api/v1/routing/${pathSegment(ticketId)}/run`, {
     headers: { "X-CSRF-Token": csrfToken },
     method: "POST",
   });
@@ -123,7 +146,7 @@ export async function approveRoute(
   csrfToken: string,
   overrideReason?: string,
 ): Promise<RoutingTicket> {
-  return apiRequestJson<RoutingTicket>(`/api/v1/routing/${ticketId}/approve`, {
+  return apiRequestJson<RoutingTicket>(`/api/v1/routing/${pathSegment(ticketId)}/approve`, {
     body: JSON.stringify({ route, overrideReason }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
@@ -136,7 +159,7 @@ export async function rejectRoute(
   reason: string,
   csrfToken: string,
 ): Promise<RoutingTicket> {
-  return apiRequestJson<RoutingTicket>(`/api/v1/routing/${ticketId}/reject`, {
+  return apiRequestJson<RoutingTicket>(`/api/v1/routing/${pathSegment(ticketId)}/reject`, {
     body: JSON.stringify({ route, reason }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
@@ -150,7 +173,7 @@ export async function requestRouteClarification(
   questions: string[],
   csrfToken: string,
 ): Promise<RoutingTicket> {
-  return apiRequestJson<RoutingTicket>(`/api/v1/routing/${ticketId}/clarification`, {
+  return apiRequestJson<RoutingTicket>(`/api/v1/routing/${pathSegment(ticketId)}/clarification`, {
     body: JSON.stringify({ route, reason, questions }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",

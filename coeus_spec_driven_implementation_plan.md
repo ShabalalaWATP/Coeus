@@ -12,8 +12,8 @@ Use these values for local documentation, deployment notes, GitHub Actions varia
 ```text
 GitHub repository: ShabalalaWATP/coeus
 Google Cloud project name: Coeus
-Google Cloud project ID: coeus-501415
-Google Cloud project number: 710037672478
+Google Cloud project ID: `<work-gcp-project-id>`
+Google Cloud project number: `<work-gcp-project-number>`
 Default development environment name: dev
 ```
 
@@ -1853,8 +1853,8 @@ Initial development target:
 
 ```text
 GCP project name: Coeus
-GCP project ID: coeus-501415
-GCP project number: 710037672478
+GCP project ID: `<work-gcp-project-id>`
+GCP project number: `<work-gcp-project-number>`
 GitHub repository: ShabalalaWATP/coeus
 Current organisation status: No organisation
 ```

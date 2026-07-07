@@ -52,18 +52,16 @@ were added and are covered by tests.
 | On-path downgrade or clickjacking against browser clients. | The API sets a narrow `Content-Security-Policy` (`frame-ancestors 'none'; base-uri 'none'`) always and `Strict-Transport-Security` when serving over TLS; the browser-facing nginx config sets a full resource CSP plus HSTS (`core/security.py`, `infra/docker/nginx-web.conf`). |
 | A client-supplied asset name escapes its object-key prefix once real storage is wired in. | Asset object keys reduce the name to a single safe path segment via `object_key_segment`, stripping directory components and parent references (`domain/store.py`, used by store and QC ingestion). |
 | A client declares an implausible asset size to bypass future quota logic. | `StoreAssetRequest.size_bytes` now has an upper bound at the schema boundary in addition to the service-layer positive-size check. |
+| Long list item strings amplify request size or get persisted into workflow records. | Store metadata arrays, routing clarification questions, analyst assignment work-package titles and admin role names now bound each item as well as list length. |
+| Reserved characters in browser route IDs or API path IDs cause path confusion. | Frontend API clients encode dynamic path segments, and local navigation links encode request, project, task, QC, product and asset IDs before constructing routes. |
 | Cross-task data association in the analyst workbench, or a stale routing selection after a ticket leaves the queue. | Frontend state is reset on selection change (analyst detail keyed by task; routing selection cleared when a ticket is routed away), preventing one task's draft being submitted against another. |
 
 ## Open Risks
 
-- Login lockout is username-scoped and process-local. IP-based and distributed
-  rate limiting (for example a Cloud Armor rule or an application limiter) are
-  still required before a public deployment; tracked for when GCP hosting is
-  un-parked.
-- The store asset "download token" is currently a deterministic identifier for
-  scaffolding only. Before a real download endpoint consumes it, it must become a
-  random, server-stored, expiring capability that re-checks authorisation at
-  redemption.
+- Distributed rate limiting is still required before a public multi-instance
+  deployment, even though local IP-based login throttling exists.
+- Store uploads still need malware scanning and stronger MIME verification
+  before accepting untrusted production files.
 - Native GitHub secret scanning and push protection are repository settings and
   must be confirmed in GitHub, not by local files alone.
 - ZAP is unauthenticated. It does not prove role-protected flows are free from

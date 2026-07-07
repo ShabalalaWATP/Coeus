@@ -10,7 +10,7 @@ import {
   updateWorkPackage,
   type AnalystTask,
 } from "../../lib/api-client/analyst";
-import { searchStoreProducts } from "../../lib/api-client/store";
+import { searchStoreProducts, type StoreSearchResponse } from "../../lib/api-client/store";
 import { useAuth } from "../../lib/auth/auth-context";
 
 type AnalystTaskDetailProps = {
@@ -18,9 +18,12 @@ type AnalystTaskDetailProps = {
   onTaskChange: (task: AnalystTask) => void;
 };
 
-const EMPTY_SEARCH = {
+const EMPTY_SEARCH: StoreSearchResponse = {
   products: [],
   total: 0,
+  page: 1,
+  pageSize: 0,
+  totalPages: 0,
   facets: { productTypes: [], regions: [], tags: [] },
 };
 const ACTIVE_ANALYST_STATES = new Set(["ANALYST_IN_PROGRESS", "REWORK_REQUIRED"]);
@@ -247,6 +250,10 @@ function TaskContext({ task }: { task: AnalystTask }) {
         <div>
           <dt>Output</dt>
           <dd>{task.requiredOutputFormat ?? "Not set"}</dd>
+        </div>
+        <div>
+          <dt>Team</dt>
+          <dd>{task.assignment?.teamName ?? "Not assigned"}</dd>
         </div>
       </dl>
       <p>{task.description}</p>

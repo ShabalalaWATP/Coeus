@@ -5,7 +5,11 @@ import { Link } from "react-router-dom";
 
 import { csvToValues, productTypeOptions } from "./store-options";
 import { apiClient } from "../../lib/api-client/client";
-import { createStoreProduct, suggestStoreMetadata } from "../../lib/api-client/store";
+import {
+  createStoreProduct,
+  suggestStoreMetadata,
+  uploadStoreProduct,
+} from "../../lib/api-client/store";
 import { useAuth } from "../../lib/auth/auth-context";
 
 const initialForm = {
@@ -29,26 +33,33 @@ const initialForm = {
 export default function ProductUploadPage() {
   const { session } = useAuth();
   const [form, setForm] = useState(initialForm);
+  const [assetFile, setAssetFile] = useState<File | null>(null);
   const acgsQuery = useQuery({ queryKey: ["acgs"], queryFn: () => apiClient.listAcgs() });
   const csrfToken = session?.csrfToken ?? "";
   const createMutation = useMutation({
-    mutationFn: () =>
-      createStoreProduct(
+    mutationFn: () => {
+      const payload = {
+        title: form.title,
+        summary: form.summary,
+        description: form.description,
+        productType: form.productType,
+        sourceType: form.sourceType,
+        ownerTeam: form.ownerTeam,
+        areaOrRegion: form.areaOrRegion,
+        classificationLevel: Number(form.classificationLevel),
+        releasability: ["MOCK"],
+        handlingCaveats: ["MOCK DATA ONLY"],
+        tags: csvToValues(form.tags),
+        acgIds: [selectedAcgId(form, acgsQuery.data)],
+        status: "published",
+        geojsonRef: form.productType === "geographic_product" ? "mock://geojson/layer" : null,
+      };
+      if (assetFile !== null) {
+        return uploadStoreProduct(payload, assetFile, csrfToken);
+      }
+      return createStoreProduct(
         {
-          title: form.title,
-          summary: form.summary,
-          description: form.description,
-          productType: form.productType,
-          sourceType: form.sourceType,
-          ownerTeam: form.ownerTeam,
-          areaOrRegion: form.areaOrRegion,
-          classificationLevel: Number(form.classificationLevel),
-          releasability: ["MOCK"],
-          handlingCaveats: ["MOCK DATA ONLY"],
-          tags: csvToValues(form.tags),
-          acgIds: [selectedAcgId(form, acgsQuery.data)],
-          status: "published",
-          geojsonRef: form.productType === "geographic_product" ? "mock://geojson/layer" : null,
+          ...payload,
           assets: [
             {
               name: form.assetName,
@@ -60,7 +71,8 @@ export default function ProductUploadPage() {
           ],
         },
         csrfToken,
-      ),
+      );
+    },
   });
   const suggestMutation = useMutation({
     mutationFn: () =>
@@ -171,6 +183,10 @@ export default function ProductUploadPage() {
             <input name="assetName" onChange={handleChange(setForm)} value={form.assetName} />
           </label>
           <label>
+            Asset file
+            <input name="assetFile" onChange={handleFile(setForm, setAssetFile)} type="file" />
+          </label>
+          <label>
             SHA-256
             <input name="sha256" onChange={handleChange(setForm)} value={form.sha256} />
           </label>
@@ -185,6 +201,15 @@ export default function ProductUploadPage() {
             Register product
           </button>
         </div>
+        {suggestMutation.data?.semanticLabels.length ? (
+          <div className="store-facets" aria-label="Suggested semantic labels">
+            {suggestMutation.data.semanticLabels.map((label) => (
+              <span className="store-chip store-chip--semantic" key={label}>
+                {label}
+              </span>
+            ))}
+          </div>
+        ) : null}
         {created !== undefined ? (
           <p className="store-success">
             Created {created.reference}: {created.title}
@@ -203,6 +228,27 @@ export default function ProductUploadPage() {
 function handleChange(setForm: Dispatch<SetStateAction<typeof initialForm>>) {
   return (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
+  };
+}
+
+function handleFile(
+  setForm: Dispatch<SetStateAction<typeof initialForm>>,
+  setAssetFile: Dispatch<SetStateAction<File | null>>,
+) {
+  return (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    setAssetFile(file);
+    if (file === null) {
+      return;
+    }
+    const assetType = file.name.split(".").pop() || "binary";
+    setForm((current) => ({
+      ...current,
+      assetName: file.name,
+      assetType,
+      mimeType: file.type || "application/octet-stream",
+      sizeBytes: String(file.size),
+    }));
   };
 }
 

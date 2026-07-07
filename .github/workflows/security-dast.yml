@@ -41,6 +41,9 @@ jobs:
       - name: Start local target
         env:
           COEUS_ALLOWED_CORS_ORIGINS: '["http://127.0.0.1:4173"]'
+          COEUS_PERSISTENCE_PROVIDER: memory
+          COEUS_OBJECT_STORAGE_PROVIDER: local
+          COEUS_EMAIL_PROVIDER: outbox
         run: |
           uv run --directory apps/api uvicorn coeus.main:app \
             --host 127.0.0.1 \

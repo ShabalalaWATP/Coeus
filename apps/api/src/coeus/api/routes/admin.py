@@ -13,6 +13,7 @@ from coeus.core.permissions import Permission
 from coeus.domain.auth import AuthenticatedSession
 from coeus.domain.registration import RegistrationRequest
 from coeus.schemas.registration import (
+    AiModelApiKeyRequest,
     AiModelSelectRequest,
     AiModelStateResponse,
     RegistrationDecisionRequest,
@@ -67,11 +68,31 @@ async def select_ai_model(
     )
 
 
+@router.put("/ai-model/api-key", response_model=AiModelStateResponse)
+async def configure_ai_api_key(
+    payload: AiModelApiKeyRequest,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    permitted: Annotated[
+        AuthenticatedSession,
+        Depends(require_permission(Permission.SYSTEM_CONFIGURE)),
+    ],
+    ai_models: Annotated[AiModelService, Depends(get_ai_model_service)],
+) -> AiModelStateResponse:
+    return _ai_model_response(
+        ai_models.configure_api_key(
+            str(authenticated.user.user_id),
+            authenticated.user.username,
+            payload.api_key,
+        )
+    )
+
+
 def _ai_model_response(state: AiModelState) -> AiModelStateResponse:
     return AiModelStateResponse(
         provider=state.provider,
         active_model=state.active_model,
         available_models=list(state.available_models),
+        api_key_configured=state.api_key_configured,
         changed_by=state.changed_by,
         changed_at=state.changed_at,
     )

@@ -6,6 +6,7 @@ import {
   Database,
   FolderKanban,
   ShieldCheck,
+  UserCog,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -38,6 +39,12 @@ const adminActions = [
     icon: ClipboardList,
     label: "Audit log",
     to: "/audit",
+  },
+  {
+    description: "Assign roles, clearance levels and account status.",
+    icon: UserCog,
+    label: "Users",
+    to: "/admin/users",
   },
   {
     description: "Search controlled products and asset metadata.",

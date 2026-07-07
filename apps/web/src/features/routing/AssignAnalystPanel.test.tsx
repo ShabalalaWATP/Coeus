@@ -41,6 +41,7 @@ test("assigns an analyst with custom work packages", async () => {
 
   await screen.findByRole("option", { name: "Intelligence Analyst" });
   await userEvent.selectOptions(screen.getByLabelText("Analyst"), "analyst-1");
+  await userEvent.type(screen.getByLabelText("Team name"), "Maritime Assessment Cell");
   await userEvent.type(
     screen.getByLabelText("Work packages (semicolon separated)"),
     "Validate scope; Draft assessment ;",
@@ -53,6 +54,7 @@ test("assigns an analyst with custom work packages", async () => {
     {
       body: JSON.stringify({
         analystUserId: "analyst-1",
+        teamName: "Maritime Assessment Cell",
         workPackages: ["Validate scope", "Draft assessment"],
       }),
       credentials: "include",

@@ -14,7 +14,7 @@ from rfi_search_helpers import login, submitted_ticket
 @pytest.mark.asyncio
 async def test_customer_submits_feedback_and_admin_dashboard_tracks_reuse() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
-    acg_id = _acg_id(app, "ACG-ALPHA-REGIONAL")
+    acg_id = _acg_id(app, "ACG-EU-CYBER")
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:

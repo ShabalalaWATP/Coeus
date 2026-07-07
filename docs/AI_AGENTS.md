@@ -6,28 +6,28 @@ decision that changes state. This document describes each agent precisely: what
 triggers it, what it reads, how it decides, what it returns, and where the human
 stays in control.
 
-> All agents are deterministic mocks in local and test environments
+> Agents are deterministic mocks by default in local and test environments
 > (`COEUS_LLM_PROVIDER=mock`). They do not call an external model, they never
-> execute user instructions, and every input is treated as synthetic. In a
-> deployed environment the same interfaces are backed by Gemma on Vertex AI (see
-> [Model provider and selection](#model-provider-and-selection)).
+> execute user instructions, and every input is treated as synthetic. Admins can
+> configure a Gemini API key locally for the chatbot response provider without
+> requiring Google Cloud hosting.
 
 ## Agents at a glance
 
 | Agent | Stage | Trigger | Output | Human decision |
 | --- | --- | --- | --- | --- |
-| Intake assistant | Describe the need | Customer chat message | Extracted requirement, completeness, safety flags | Customer confirms and submits |
+| Customer Chatbot Agent | Describe the need | Customer chat message | Extracted requirement, completeness, safety flags | Customer confirms and submits |
 | RFI Search Agent | Search existing intelligence | Ticket submitted | Ranked existing-product offers | Customer accepts or rejects an offer |
 | RFA Capability Agent | Route review | Manager runs capability checks | Assessment-route feasibility review | RFA manager approves, rejects or queries |
 | CM Capability Agent | Route review | Manager runs capability checks | Collection-route feasibility review | CM manager approves, rejects or queries |
-| Route recommendation | Route review | Both capability reviews complete | Recommended route + reasoning | Manager may follow or override with a reason |
+| Orchestrator Agent | Route review | RFI search plus RFA and CM reviews | Recommended route and reasoning | Manager may follow or override with a reason |
 
 The stages map one-to-one onto the customer-facing
 [request journey](USER_GUIDE.md#the-request-journey).
 
 ---
 
-## 1. Intake assistant
+## 1. Customer Chatbot Agent
 
 - **Lives in:** `apps/api/src/coeus/services/intake.py`
 - **Classes:** `MockLlmProvider`, `IntakeExtractionService`, `RequirementCompletenessService`
@@ -115,15 +115,16 @@ context, output format, success criteria) is compared to the product:
 
 | Signal | Weight | Basis |
 | --- | --- | --- |
-| Full-text overlap | 0.45 | Query tokens found in the product's text |
-| Semantic overlap | 0.40 | Cosine-style token overlap normalised by length |
+| Full-text overlap | 0.38 | Query tokens found in the product's text |
+| Semantic overlap | 0.34 | Cosine-style token overlap normalised by length |
+| Semantic label match | up to 0.12 | Controlled labels derived from product and request language |
 | Metadata match | up to 0.24 | Region match (+0.16), output-format/type match (+0.08) |
 
 Scores are capped at 1.0. A product is only offered when its score is at or above
 the **offer threshold of 0.25**, and at most **five** offers are returned,
 highest score first. Each offer carries its `match_reasons` (for example
-`full-text:baltic`, `semantic:assessment`, `metadata:region`) so the customer can
-see why it was suggested.
+`semantic-label:maritime`, `full-text:baltic`, `semantic:assessment`,
+`metadata:region`) so the customer can see why it was suggested.
 
 ### Output
 
@@ -146,7 +147,7 @@ closes a ticket by itself.
 
 ### Purpose
 
-Advise the route managers on whether the request is better served by an
+Advise RFA and Collection managers on whether the request is better served by an
 assessment-led route (RFA, Request for Assessment) or a collection-led route (CM,
 Collection Management), and surface the clarifications and risks a manager should
 weigh.
@@ -193,27 +194,35 @@ manager must approve, reject or request clarification.
 
 ---
 
-## 5. Route recommendation
+## 5. Orchestrator Agent
 
 - **Lives in:** `apps/api/src/coeus/services/routing_records.py` (`recommend_route`)
 - **Orchestrated by:** `RoutingService.run_reviews` in `services/routing.py`
 
 ### Purpose
 
-Combine the two capability reviews into a single recommended route and move the
-ticket into the correct manager queue.
+Combine RFI search results and the two capability reviews into a single
+recommended route. If existing intelligence or an RFA route can satisfy the
+request, collection is avoided. If the intelligence is missing and collection
+signals are present, the orchestrator recommends the Collection manager queue.
 
 ### How it decides
 
-The recommendation prefers the route whose capability agent can satisfy the
-request with the higher confidence, falling back to collection management when the
-request is collection-led. The resulting state is either `RFA_MANAGER_REVIEW` or
-`CM_MANAGER_REVIEW`.
+The recommendation prefers RFA when the assessment route can satisfy the
+request, falls back to collection management when collection is needed, and asks
+for clarification when neither path has enough information. The resulting state
+is `RFA_MANAGER_REVIEW`, `CM_MANAGER_REVIEW` or `INFO_REQUIRED`.
+
+When clarification is required, the orchestrator hands the questions back
+through the customer chatbot. The ticket receives a normal assistant message
+containing the actual questions, plus a `customer_clarification_sent` timeline
+event, so the customer does not need to inspect manager-only route metadata.
 
 ### Human control
 
-The recommendation is a default, not a decision. A manager can approve the
-recommended route, or approve the other route by supplying a written
+The orchestrator is a recommendation source, not a route manager. A human RFA or
+Collection manager can approve the recommended route, or approve the other route
+by supplying a written
 **override reason**, which is recorded as a `manager_override` audit event. Every
 approval, rejection and clarification is written to the audit log.
 
@@ -223,18 +232,21 @@ approval, rejection and clarification is written to the audit log.
 
 The agents depend on an LLM provider interface, not on a specific model:
 
-- **Local and test:** `COEUS_LLM_PROVIDER=mock`. Deterministic, no network calls,
-  reproducible in CI.
-- **Deployed:** `gemma_vertex`, backed by Gemma on Vertex AI. Configuration lives
-  in `apps/api/src/coeus/integrations/gcp/gemma.py`.
+- **Local and test default:** `COEUS_LLM_PROVIDER=mock`. Deterministic, no
+  network calls, reproducible in CI.
+- **Local optional:** admins can enter a Gemini API key and select the active
+  model from the Admin workspace. The key is held by the running API process,
+  never returned to the browser and not persisted to generic app state.
+- **Future GCP deployment:** the same runtime boundary can point at Google
+  managed services without changing the workflow contracts.
 
-Administrators choose which Gemini/Gemma model the agents should use from the
-Admin workspace. The catalogue, tiers and the audit of who last changed the model
-are described in the [User Guide](USER_GUIDE.md#administrator) and implemented in
-`apps/api/src/coeus/services/ai_models.py`. The selection records the active
-model and raises an `ai_model_changed` audit event; the provider stays `mock`
-locally, so the choice documents intent for deployed environments without
-changing local behaviour.
+Administrators choose which Gemini model the chatbot provider should use from the
+Admin workspace. The catalogue, tiers and the audit of who last changed the
+model are described in the [User Guide](USER_GUIDE.md#administrator) and
+implemented in `apps/api/src/coeus/services/ai_models.py`. The selection records
+the active model and raises an `ai_model_changed` audit event. Persisted
+provider credentials should be supplied through environment configuration or a
+secret manager, not through the admin UI runtime key field.
 
 ## Design principles
 

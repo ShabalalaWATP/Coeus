@@ -2,29 +2,129 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from coeus.domain.access import AccessControlGroup, ProductStatus
-from coeus.domain.store import BoundingBox, StoreAsset, StoreProduct, StoreProductMetadata
+from coeus.domain.store import (
+    BoundingBox,
+    StoreAsset,
+    StoreProduct,
+    StoreProductMetadata,
+    StoreSearchFilters,
+    StoreVisibilityScope,
+)
+from coeus.persistence.codec import decode_value, encode_value
+from coeus.persistence.state_store import StateStore
 from coeus.repositories.access import SeedAccessRepository, stable_seed_id
+from coeus.repositories.store_projection import StoreProjection
 
 
 class InMemoryStoreRepository:
-    def __init__(self, access_repository: SeedAccessRepository) -> None:
+    def __init__(
+        self,
+        access_repository: SeedAccessRepository,
+        state_store: StateStore | None = None,
+        projection: StoreProjection | None = None,
+    ) -> None:
         self._access_repository = access_repository
+        self._state_store = state_store
+        self._projection = projection
+        self._initialising = True
         self._products: dict[UUID, StoreProduct] = {}
         self._reference_counter = 1000
         self._seed_products()
+        self._initialising = False
+        self._restore_or_persist()
 
     def list_products(self) -> tuple[StoreProduct, ...]:
+        self._refresh_from_projection(allow_empty=True)
         return tuple(sorted(self._products.values(), key=lambda product: product.metadata.title))
 
+    def search_products(
+        self, filters: StoreSearchFilters, scope: StoreVisibilityScope
+    ) -> tuple[StoreProduct, ...]:
+        if self._projection is None:
+            return self.list_products()
+        products = self._projection.search_products(filters, scope)
+        self._products.update({product.product_id: product for product in products})
+        return products
+
+    def get_visible_product(
+        self, product_id: UUID, scope: StoreVisibilityScope
+    ) -> StoreProduct | None:
+        if self._projection is None:
+            return self.get_product(product_id)
+        product = self._projection.get_visible_product(product_id, scope)
+        if product is not None:
+            self._products[product.product_id] = product
+        return product
+
     def get_product(self, product_id: UUID) -> StoreProduct | None:
+        self._refresh_from_projection(allow_empty=True)
         return self._products.get(product_id)
 
     def save_product(self, product: StoreProduct) -> None:
+        self._refresh_from_projection(allow_empty=True)
         self._products[product.product_id] = product
+        self._persist()
 
     def next_reference(self) -> str:
+        self._refresh_from_projection(allow_empty=True)
         self._reference_counter += 1
         return f"PROD-{self._reference_counter}"
+
+    def _restore_or_persist(self) -> None:
+        if self._restore_from_projection():
+            self._persist_json_state()
+            self._persist_projection()
+            return
+        if self._state_store is None:
+            self._persist_projection()
+            return
+        payload = self._state_store.load("store")
+        if payload is None:
+            self._persist()
+            return
+        products = tuple(decode_value(item) for item in payload.get("products", []))
+        self._products = {product.product_id: product for product in products}
+        self._reference_counter = int(payload.get("reference_counter", 1000))
+        self._persist_projection()
+
+    def _persist(self) -> None:
+        if self._initialising:
+            return
+        self._persist_json_state()
+        self._persist_projection()
+
+    def _persist_json_state(self) -> None:
+        if self._state_store is None:
+            return
+        products = sorted(self._products.values(), key=lambda product: product.metadata.title)
+        self._state_store.save(
+            "store",
+            {
+                "reference_counter": self._reference_counter,
+                "products": [encode_value(product) for product in products],
+            },
+        )
+
+    def _persist_projection(self) -> None:
+        if self._projection is None:
+            return
+        products = tuple(
+            sorted(self._products.values(), key=lambda product: product.metadata.title)
+        )
+        self._projection.save_products(products)
+
+    def _restore_from_projection(self) -> bool:
+        return self._refresh_from_projection(allow_empty=False)
+
+    def _refresh_from_projection(self, *, allow_empty: bool) -> bool:
+        if self._projection is None:
+            return False
+        products = self._projection.list_products()
+        if not products and not allow_empty:
+            return False
+        self._products = {product.product_id: product for product in products}
+        self._reference_counter = _max_reference_counter(products, self._reference_counter)
+        return True
 
     def _seed_products(self) -> None:
         regional = self._acg_by_code("ACG-ALPHA-REGIONAL")
@@ -49,6 +149,7 @@ class InMemoryStoreRepository:
                 area_or_region="Baltic ports",
                 classification_level=2,
                 tags=frozenset({"regional", "ports", "baltic"}),
+                semantic_labels=frozenset({"assessment", "maritime"}),
                 acg_ids=frozenset({regional.acg_id}),
                 project_id=project.project_id,
                 status=ProductStatus.PUBLISHED,
@@ -68,6 +169,7 @@ class InMemoryStoreRepository:
                 area_or_region="North Sea",
                 classification_level=3,
                 tags=frozenset({"collection", "sensor", "mock"}),
+                semantic_labels=frozenset({"collection", "sigint"}),
                 acg_ids=frozenset({collection.acg_id}),
                 project_id=project.project_id,
                 status=ProductStatus.PUBLISHED,
@@ -87,6 +189,7 @@ class InMemoryStoreRepository:
                 area_or_region="Baltic ports",
                 classification_level=3,
                 tags=frozenset({"draft", "assessment", "mock"}),
+                semantic_labels=frozenset({"assessment"}),
                 acg_ids=frozenset({assessment.acg_id}),
                 project_id=project.project_id,
                 status=ProductStatus.DRAFT,
@@ -111,6 +214,7 @@ class InMemoryStoreRepository:
         area_or_region: str,
         classification_level: int,
         tags: frozenset[str],
+        semantic_labels: frozenset[str],
         acg_ids: frozenset[UUID],
         project_id: UUID,
         status: ProductStatus,
@@ -135,6 +239,7 @@ class InMemoryStoreRepository:
                 releasability=frozenset({"MOCK"}),
                 handling_caveats=frozenset({"MOCK DATA ONLY"}),
                 tags=tags,
+                semantic_labels=semantic_labels,
                 acg_ids=acg_ids,
                 project_id=project_id,
                 status=status,
@@ -173,3 +278,12 @@ class InMemoryStoreRepository:
 
 def new_store_product_id() -> UUID:
     return uuid4()
+
+
+def _max_reference_counter(products: tuple[StoreProduct, ...], default: int) -> int:
+    counter = default
+    for product in products:
+        prefix, _, suffix = product.reference.partition("-")
+        if prefix == "PROD" and suffix.isdigit():
+            counter = max(counter, int(suffix))
+    return counter

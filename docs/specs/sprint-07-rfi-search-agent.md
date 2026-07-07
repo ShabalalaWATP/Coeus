@@ -12,6 +12,7 @@ safe search metrics.
 - Access-filtered RFI product search from submitted ticket intake.
 - Deterministic full-text and semantic scoring adapters behind service
   boundaries.
+- Controlled semantic labels derived from request and product language.
 - Hybrid ranking with match explanations.
 - Product offers with accept and reject actions.
 - Existing-product acceptance that closes the ticket and records dissemination.
@@ -34,6 +35,8 @@ safe search metrics.
 
 - The agent searches only products visible to the ticket requester.
 - Full-text and semantic scores are combined into one hybrid score.
+- Semantic labels can explain a match, but they are applied only after Store
+  access filtering.
 - Results below the offer threshold are not offered.
 - Archived and draft products are excluded from default RFI offers.
 - Product IDs, counts and facets are never returned for products the caller

@@ -38,13 +38,13 @@ export function RoutingStats({ queue }: { queue: RoutingQueue }) {
 export function Recommendation({ ticket }: { ticket: RoutingTicket }) {
   return ticket.recommendation ? (
     <article className="routing-recommendation">
-      <AgentChip label="Routing agent" />
+      <AgentChip label="Orchestrator agent" />
       <h3>Recommended route: {ticket.recommendation.recommendedRoute.toUpperCase()}</h3>
       <p>{ticket.recommendation.reasoningSummary}</p>
     </article>
   ) : (
     <article className="routing-recommendation">
-      <AgentChip label="Routing agent" />
+      <AgentChip label="Orchestrator agent" />
       <h3>No route recommendation</h3>
       <p>Capability checks have not run for this ticket.</p>
     </article>
@@ -79,6 +79,10 @@ export function Review({
           <dt>Effort</dt>
           <dd>{review.estimatedEffort}</dd>
         </div>
+        <div>
+          <dt>Team</dt>
+          <dd>{reviewTeamName(review) ?? "No team matched"}</dd>
+        </div>
       </dl>
       {review.requiredClarifications.length ? (
         <ul>
@@ -89,6 +93,13 @@ export function Review({
       ) : null}
     </article>
   );
+}
+
+function reviewTeamName(review: CmCapabilityReview | RfaCapabilityReview) {
+  if ("suggestedTeamName" in review) {
+    return review.suggestedTeamName;
+  }
+  return review.suggestedCollectionTeamName;
 }
 
 export function PlanUpdates({ ticket }: { ticket: RoutingTicket }) {

@@ -1,12 +1,14 @@
 from dataclasses import replace
+from secrets import token_urlsafe
 from uuid import UUID
 
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
 from coeus.domain.auth import RoleName, UserAccount
 from coeus.domain.rbac import permissions_for_roles
-from coeus.repositories.auth import SeedUserRepository, SessionRepository
+from coeus.repositories.auth import LoginAttemptRepository, SeedUserRepository, SessionRepository
 from coeus.services.audit import AuditLog
+from coeus.services.passwords import PasswordHasher
 
 MIN_CLEARANCE = 1
 MAX_CLEARANCE = 5
@@ -24,10 +26,14 @@ class UserAdminService:
         self,
         users: SeedUserRepository,
         sessions: SessionRepository,
+        login_attempts: LoginAttemptRepository,
+        password_hasher: PasswordHasher,
         audit_log: AuditLog,
     ) -> None:
         self._users = users
         self._sessions = sessions
+        self._login_attempts = login_attempts
+        self._password_hasher = password_hasher
         self._audit_log = audit_log
 
     def list_users(self, actor: UserAccount) -> tuple[UserAccount, ...]:
@@ -75,6 +81,20 @@ class UserAdminService:
             {"user_id": str(user_id)},
         )
         return updated
+
+    def reset_credential(self, actor: UserAccount, user_id: UUID) -> str:
+        self._require(actor, Permission.USER_DISABLE)
+        user = self._target(actor, user_id)
+        temporary_credential = f"Istari-{token_urlsafe(18)}"
+        updated = replace(user, password_hash=self._password_hasher.hash(temporary_credential))
+        self._apply(updated)
+        self._login_attempts.reset(user.username)
+        self._audit_log.record(
+            "user_credential_reset",
+            str(actor.user_id),
+            {"user_id": str(user_id)},
+        )
+        return temporary_credential
 
     def _target(self, actor: UserAccount, user_id: UUID) -> UserAccount:
         if user_id == actor.user_id:

@@ -1,6 +1,12 @@
+from typing import Annotated
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
+
+ReleasabilityText = Annotated[str, Field(min_length=1, max_length=40)]
+HandlingCaveatText = Annotated[str, Field(min_length=1, max_length=120)]
+TagText = Annotated[str, Field(min_length=1, max_length=60)]
+SemanticLabelText = Annotated[str, Field(min_length=1, max_length=80)]
 
 
 class BoundingBoxRequest(BaseModel):
@@ -30,9 +36,18 @@ class StoreProductCreateRequest(BaseModel):
     owner_team: str = Field(min_length=2, max_length=80, validation_alias="ownerTeam")
     area_or_region: str = Field(min_length=2, max_length=180, validation_alias="areaOrRegion")
     classification_level: int = Field(ge=0, le=5, validation_alias="classificationLevel")
-    releasability: list[str] = Field(default_factory=list)
-    handling_caveats: list[str] = Field(default_factory=list, validation_alias="handlingCaveats")
-    tags: list[str] = Field(default_factory=list)
+    releasability: list[ReleasabilityText] = Field(default_factory=list, max_length=12)
+    handling_caveats: list[HandlingCaveatText] = Field(
+        default_factory=list,
+        max_length=12,
+        validation_alias="handlingCaveats",
+    )
+    tags: list[TagText] = Field(default_factory=list, max_length=30)
+    semantic_labels: list[SemanticLabelText] = Field(
+        default_factory=list,
+        max_length=30,
+        validation_alias="semanticLabels",
+    )
     acg_ids: list[UUID] = Field(default_factory=list, validation_alias="acgIds")
     project_id: UUID | None = Field(default=None, validation_alias="projectId")
     status: str = "published"
@@ -48,6 +63,10 @@ class MetadataSuggestionRequest(BaseModel):
     summary: str = Field(min_length=3, max_length=500)
     product_type: str = Field(min_length=3, max_length=80, validation_alias="productType")
     area_or_region: str = Field(min_length=2, max_length=180, validation_alias="areaOrRegion")
+
+
+class BreakGlassProductAccessRequest(BaseModel):
+    reason: str = Field(min_length=10, max_length=500)
 
 
 class StoreAssetResponse(BaseModel):
@@ -78,6 +97,7 @@ class StoreProductResponse(BaseModel):
     releasability: list[str]
     handling_caveats: list[str] = Field(serialization_alias="handlingCaveats")
     tags: list[str]
+    semantic_labels: list[str] = Field(serialization_alias="semanticLabels")
     acg_ids: list[UUID] = Field(serialization_alias="acgIds")
     project_id: UUID | None = Field(serialization_alias="projectId")
     status: str
@@ -105,6 +125,9 @@ class StoreSearchResponse(BaseModel):
 
     products: list[StoreProductSearchResponse]
     total: int
+    page: int
+    page_size: int = Field(serialization_alias="pageSize")
+    total_pages: int = Field(serialization_alias="totalPages")
     facets: StoreFacetsResponse
 
 
@@ -123,3 +146,4 @@ class MetadataSuggestionResponse(BaseModel):
     entities: list[str]
     source_type: str = Field(serialization_alias="sourceType")
     acg_ids: list[UUID] = Field(serialization_alias="acgIds")
+    semantic_labels: list[str] = Field(serialization_alias="semanticLabels")

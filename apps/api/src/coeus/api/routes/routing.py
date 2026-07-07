@@ -11,6 +11,7 @@ from coeus.api.dependencies import (
 )
 from coeus.core.errors import AppError
 from coeus.domain.auth import AuthenticatedSession
+from coeus.domain.capabilities import CapabilityTeam
 from coeus.domain.tickets import (
     ClarificationRequest,
     CmCapabilityReview,
@@ -22,6 +23,8 @@ from coeus.domain.tickets import (
     TicketRecord,
 )
 from coeus.schemas.routing import (
+    CapabilityCatalogueResponse,
+    CapabilityTeamResponse,
     ClarificationRequestResponse,
     CmCapabilityReviewResponse,
     ManagerDecisionResponse,
@@ -36,7 +39,8 @@ from coeus.schemas.routing import (
     RoutingTicketResponse,
 )
 from coeus.services.product_release import ProductReleaseService
-from coeus.services.routing import RoutingService, RoutingStats
+from coeus.services.routing import RoutingService
+from coeus.services.routing_stats import RoutingStats
 
 router = APIRouter(prefix="/routing", tags=["routing"])
 
@@ -104,6 +108,19 @@ async def routing_stats(
     routing: Annotated[RoutingService, Depends(get_routing_service)],
 ) -> RoutingStatsResponse:
     return _stats_response(routing.stats(authenticated.user))
+
+
+@router.get("/capability-catalogue", response_model=CapabilityCatalogueResponse)
+async def capability_catalogue(
+    authenticated: Annotated[AuthenticatedSession, Depends(get_current_session)],
+    routing: Annotated[RoutingService, Depends(get_routing_service)],
+) -> CapabilityCatalogueResponse:
+    return CapabilityCatalogueResponse(
+        teams=[
+            _capability_team_response(team)
+            for team in routing.capability_catalogue(authenticated.user)
+        ]
+    )
 
 
 @router.get("/{ticket_id}", response_model=RoutingTicketResponse)
@@ -185,10 +202,22 @@ def _ticket_response(ticket: TicketRecord) -> RoutingTicketResponse:
         if ticket.route_recommendations
         else None,
         clarifications=[_clarification_response(item) for item in ticket.clarification_requests],
+        agent_runs=[run.agent_name for run in ticket.agent_runs],
         manager_decisions=[_decision_response(item) for item in ticket.manager_decisions],
         project_plan_updates=[
             _project_update_response(item) for item in ticket.project_plan_updates
         ],
+    )
+
+
+def _capability_team_response(team: CapabilityTeam) -> CapabilityTeamResponse:
+    return CapabilityTeamResponse(
+        team_id=team.team_id,
+        name=team.name,
+        department=team.department.value,
+        keywords=sorted(team.keywords),
+        work_packages=list(team.work_packages),
+        source_labels=list(team.source_labels),
     )
 
 
@@ -200,6 +229,7 @@ def _rfa_response(review: RfaCapabilityReview) -> RfaCapabilityReviewResponse:
         required_clarifications=list(review.required_clarifications),
         suggested_work_packages=list(review.suggested_work_packages),
         suggested_team_id=review.suggested_team_id,
+        suggested_team_name=review.suggested_team_name,
         estimated_effort=review.estimated_effort,
         risks=list(review.risks),
         manager_review_required=review.manager_review_required,
@@ -215,6 +245,8 @@ def _cm_response(review: CmCapabilityReview) -> CmCapabilityReviewResponse:
         confidence=review.confidence,
         required_clarifications=list(review.required_clarifications),
         suggested_collection_route=review.suggested_collection_route,
+        suggested_collection_team_id=review.suggested_collection_team_id,
+        suggested_collection_team_name=review.suggested_collection_team_name,
         suggested_collection_sources=list(review.suggested_collection_sources),
         estimated_effort=review.estimated_effort,
         risks=list(review.risks),
