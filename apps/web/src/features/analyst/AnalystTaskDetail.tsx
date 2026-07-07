@@ -12,6 +12,7 @@ import {
 } from "../../lib/api-client/analyst";
 import { searchStoreProducts, type StoreSearchResponse } from "../../lib/api-client/store";
 import { useAuth } from "../../lib/auth/auth-context";
+import { useActionError } from "../../lib/mutations/action-error";
 
 type AnalystTaskDetailProps = {
   task: AnalystTask | undefined;
@@ -47,9 +48,12 @@ export default function AnalystTaskDetail({ onTaskChange, task }: AnalystTaskDet
     enabled: submittedQuery.trim().length > 0,
     placeholderData: EMPTY_SEARCH,
   });
+  const { actionError, clearActionError, failActionWith } = useActionError();
   const noteMutation = useMutation({
     mutationFn: ({ body, ticketId }: { body: string; ticketId: string }) =>
       addAnalystNote(ticketId, body, csrfToken),
+    onError: failActionWith("The note could not be added. Try again."),
+    onMutate: clearActionError,
     onSuccess: (nextTask) => {
       setNoteBody("");
       onTaskChange(nextTask);
@@ -58,11 +62,15 @@ export default function AnalystTaskDetail({ onTaskChange, task }: AnalystTaskDet
   const linkMutation = useMutation({
     mutationFn: ({ productId, ticketId }: { productId: string; ticketId: string }) =>
       linkAnalystProduct(ticketId, productId, csrfToken),
+    onError: failActionWith("The product could not be linked. Try again."),
+    onMutate: clearActionError,
     onSuccess: onTaskChange,
   });
   const packageMutation = useMutation({
     mutationFn: ({ packageId, ticketId }: { packageId: string; ticketId: string }) =>
       updateWorkPackage(ticketId, packageId, "complete", csrfToken),
+    onError: failActionWith("The work package could not be updated. Try again."),
+    onMutate: clearActionError,
     onSuccess: onTaskChange,
   });
   const draftMutation = useMutation({
@@ -88,6 +96,8 @@ export default function AnalystTaskDetail({ onTaskChange, task }: AnalystTaskDet
         },
         csrfToken,
       ),
+    onError: failActionWith("The draft could not be saved. Try again."),
+    onMutate: clearActionError,
     onSuccess: (nextTask) => {
       setDraft((current) => ({ ...current, title: "", summary: "", content: "" }));
       onTaskChange(nextTask);
@@ -95,6 +105,8 @@ export default function AnalystTaskDetail({ onTaskChange, task }: AnalystTaskDet
   });
   const submitMutation = useMutation({
     mutationFn: ({ ticketId }: { ticketId: string }) => submitTaskToQc(ticketId, csrfToken),
+    onError: failActionWith("The task could not be submitted to QC. Try again."),
+    onMutate: clearActionError,
     onSuccess: onTaskChange,
   });
 
@@ -117,6 +129,11 @@ export default function AnalystTaskDetail({ onTaskChange, task }: AnalystTaskDet
         <h2>{task.reference}</h2>
         <p>{task.title}</p>
       </div>
+      {actionError ? (
+        <p className="auth-error" role="alert">
+          {actionError}
+        </p>
+      ) : null}
       <TaskContext task={task} />
       <section className="analyst-panel">
         <h3>Work packages</h3>

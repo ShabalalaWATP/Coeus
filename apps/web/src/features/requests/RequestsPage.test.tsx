@@ -140,6 +140,79 @@ test("edits intake manually and submits once complete", async () => {
   expect(await screen.findByText("You are here")).toBeVisible();
 });
 
+test("hides the mock-data badge from users who can create requests", async () => {
+  vi.stubGlobal(
+    "fetch",
+    fetchByUrl([
+      ["/api/v1/tickets", { tickets: [baseTicket] }],
+      ["/feedback/requests", { requests: [] }],
+    ]),
+  );
+
+  renderRequests("/app/requests/new");
+
+  expect(await screen.findByRole("heading", { name: "Request" })).toBeVisible();
+  expect(screen.queryByText("MOCK DATA ONLY")).not.toBeInTheDocument();
+});
+
+test("confirms delivery of a disseminated request from the dashboard", async () => {
+  const readyTicket: Ticket = { ...baseTicket, state: "DISSEMINATION_READY" };
+  const closedTicket: Ticket = { ...readyTicket, state: "CLOSED_DELIVERED" };
+  const fetchMock = vi.fn((url: string) => {
+    if (url.includes("/confirm-delivery")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(closedTicket) });
+    }
+    if (url.includes("/api/v1/tickets")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ tickets: [readyTicket] }) });
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderRequests("/app/requests");
+
+  await userEvent.click(await screen.findByRole("button", { name: "Confirm receipt and close" }));
+
+  expect(await screen.findByText("CLOSED DELIVERED")).toBeVisible();
+  expect(
+    screen.queryByRole("button", { name: "Confirm receipt and close" }),
+  ).not.toBeInTheDocument();
+  expect(fetchMock).toHaveBeenCalledWith(
+    "http://127.0.0.1:8001/api/v1/tickets/ticket-1/confirm-delivery",
+    expect.objectContaining({
+      headers: { "X-CSRF-Token": "test-csrf-token" },
+      method: "POST",
+    }),
+  );
+});
+
+test("shows a dismissible error when delivery confirmation fails", async () => {
+  const readyTicket: Ticket = { ...baseTicket, state: "DISSEMINATION_READY" };
+  const fetchMock = vi.fn((url: string) => {
+    if (url.includes("/confirm-delivery")) {
+      return Promise.resolve({
+        ok: false,
+        status: 409,
+        json: () =>
+          Promise.resolve({ error: { code: "invalid_state", message: "Not ready to close." } }),
+      });
+    }
+    if (url.includes("/api/v1/tickets")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ tickets: [readyTicket] }) });
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderRequests("/app/requests");
+
+  await userEvent.click(await screen.findByRole("button", { name: "Confirm receipt and close" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("Not ready to close.");
+  await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+});
+
 test("hides the new request action without a session", async () => {
   vi.stubGlobal(
     "fetch",

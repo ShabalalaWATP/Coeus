@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Lightbulb, Upload } from "lucide-react";
 import { useState, type ChangeEvent, type Dispatch, type SetStateAction } from "react";
 import { Link } from "react-router-dom";
@@ -11,6 +11,7 @@ import {
   uploadStoreProduct,
 } from "../../lib/api-client/store";
 import { useAuth } from "../../lib/auth/auth-context";
+import { useActionError } from "../../lib/mutations/action-error";
 
 const initialForm = {
   title: "Mock Harbour Activity Brief",
@@ -32,11 +33,19 @@ const initialForm = {
 
 export default function ProductUploadPage() {
   const { session } = useAuth();
+  const queryClient = useQueryClient();
   const [form, setForm] = useState(initialForm);
   const [assetFile, setAssetFile] = useState<File | null>(null);
   const acgsQuery = useQuery({ queryKey: ["acgs"], queryFn: () => apiClient.listAcgs() });
   const csrfToken = session?.csrfToken ?? "";
+  const { actionError, clearActionError, failActionWith } = useActionError();
   const createMutation = useMutation({
+    onError: failActionWith("Product registration failed. Check the metadata and try again."),
+    onMutate: clearActionError,
+    onSuccess: () => {
+      // Newly registered products must appear in store searches immediately.
+      void queryClient.invalidateQueries({ queryKey: ["store-products"] });
+    },
     mutationFn: () => {
       const payload = {
         title: form.title,
@@ -215,9 +224,9 @@ export default function ProductUploadPage() {
             Created {created.reference}: {created.title}
           </p>
         ) : null}
-        {createMutation.isError ? (
+        {actionError ? (
           <p className="auth-error" role="alert">
-            Product registration failed. Check the metadata and try again.
+            {actionError}
           </p>
         ) : null}
       </form>

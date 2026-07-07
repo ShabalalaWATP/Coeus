@@ -2,7 +2,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import ProductUploadPage from "./ProductUploadPage";
-import { resetQueryClientForTests } from "../../app/query-client";
+import { getQueryClient, resetQueryClientForTests } from "../../app/query-client";
 import { renderWithProviders } from "../../test/test-utils";
 
 beforeEach(() => {
@@ -54,6 +54,7 @@ test("suggests metadata and submits a controlled product registration", async ()
         }),
     });
   vi.stubGlobal("fetch", fetchMock);
+  const invalidateSpy = vi.spyOn(getQueryClient(), "invalidateQueries");
 
   renderWithProviders(<ProductUploadPage />, "/store/upload");
   expect(await screen.findByLabelText("ACG")).toBeVisible();
@@ -64,6 +65,8 @@ test("suggests metadata and submits a controlled product registration", async ()
   await userEvent.click(screen.getByRole("button", { name: "Register product" }));
 
   expect(await screen.findByText("Created PROD-2001: Mock Harbour Activity Brief")).toBeVisible();
+  // New products must appear in store searches without a manual refresh.
+  expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["store-products"] });
   const calls = fetchMock.mock.calls as Array<[string, RequestInit]>;
   const [url, init] = calls[calls.length - 1];
   expect(url).toContain("/api/v1/store/products");
@@ -74,14 +77,33 @@ test("suggests metadata and submits a controlled product registration", async ()
   expect(init.body).toContain('"acgIds":["acg-alpha"]');
 });
 
-test("shows a generic error when product registration fails", async () => {
+test("shows the API validation message when product registration fails", async () => {
   const fetchMock = vi
     .fn()
     .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ acgs: [] }) })
     .mockResolvedValue({
       ok: false,
       status: 422,
-      json: () => Promise.resolve({ error: { code: "invalid_product", message: "Invalid." } }),
+      json: () =>
+        Promise.resolve({ error: { code: "invalid_product", message: "Invalid metadata." } }),
+    });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<ProductUploadPage />, "/store/upload");
+  await screen.findByLabelText("ACG");
+  await userEvent.click(screen.getByRole("button", { name: "Register product" }));
+
+  expect(await screen.findByText("Invalid metadata.")).toBeVisible();
+});
+
+test("shows a generic error when product registration fails without a body", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ acgs: [] }) })
+    .mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.reject(new Error("no body")),
     });
   vi.stubGlobal("fetch", fetchMock);
 

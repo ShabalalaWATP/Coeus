@@ -7,8 +7,10 @@ import { CapabilityCataloguePanel } from "./CapabilityCataloguePanel";
 import { ReleaseQueuePanel } from "./ReleaseQueuePanel";
 import {
   canApprove,
+  canApproveWithOverride,
   canReject,
   canSubmitClarification,
+  isRouteOverride,
   upsertRoutingTicket,
 } from "./routing-model";
 import { PlanUpdates, Recommendation, Review, RoutingStats } from "./routing-sections";
@@ -26,6 +28,7 @@ import {
   type RoutingTicket,
 } from "../../lib/api-client/routing";
 import { useAuth } from "../../lib/auth/auth-context";
+import { useActionError } from "../../lib/mutations/action-error";
 
 type RoutingQueuePageProps = {
   route: RoutingRoute;
@@ -52,6 +55,8 @@ export default function RoutingQueuePage({ route }: RoutingQueuePageProps) {
   const [clarificationReason, setClarificationReason] = useState("");
   const [clarificationQuestion, setClarificationQuestion] = useState("");
   const [rejectReason, setRejectReason] = useState("");
+  const [overrideReason, setOverrideReason] = useState("");
+  const { actionError, clearActionError, failActionWith } = useActionError();
   const queueQuery = useQuery({
     queryKey: ["routing-queue", route],
     queryFn: () => listRoutingQueue(route),
@@ -84,15 +89,33 @@ export default function RoutingQueuePage({ route }: RoutingQueuePageProps) {
   };
   const runMutation = useMutation({
     mutationFn: () => runRoutingReviews(selectedTicket.ticketId, csrfToken),
+    onError: failActionWith("The capability checks could not be run. Try again."),
+    onMutate: clearActionError,
     onSuccess: updateQueue,
   });
   const approveMutation = useMutation({
-    mutationFn: () => approveRoute(selectedTicket.ticketId, route, csrfToken),
-    onSuccess: updateQueue,
+    mutationFn: () =>
+      approveRoute(
+        selectedTicket.ticketId,
+        route,
+        csrfToken,
+        isRouteOverride(selectedTicket, route) ? overrideReason.trim() : undefined,
+      ),
+    onError: failActionWith("The route could not be approved. Try again."),
+    onMutate: clearActionError,
+    onSuccess: (ticket) => {
+      setOverrideReason("");
+      updateQueue(ticket);
+    },
   });
   const rejectMutation = useMutation({
     mutationFn: () => rejectRoute(selectedTicket.ticketId, route, rejectReason, csrfToken),
-    onSuccess: updateQueue,
+    onError: failActionWith("The route could not be rejected. Try again."),
+    onMutate: clearActionError,
+    onSuccess: (ticket) => {
+      setRejectReason("");
+      updateQueue(ticket);
+    },
   });
   const clarificationMutation = useMutation({
     mutationFn: () =>
@@ -103,7 +126,13 @@ export default function RoutingQueuePage({ route }: RoutingQueuePageProps) {
         [clarificationQuestion],
         csrfToken,
       ),
-    onSuccess: updateQueue,
+    onError: failActionWith("The clarification request could not be sent. Try again."),
+    onMutate: clearActionError,
+    onSuccess: (ticket) => {
+      setClarificationReason("");
+      setClarificationQuestion("");
+      updateQueue(ticket);
+    },
   });
   const labels = route === "rfa" ? rfaLabels : cmLabels;
 
@@ -142,6 +171,21 @@ export default function RoutingQueuePage({ route }: RoutingQueuePageProps) {
               <Review title="RFA recommendation" review={selectedTicket.rfaReview} />
               <Review title="CM recommendation" review={selectedTicket.cmReview} />
               <PlanUpdates ticket={selectedTicket} />
+              {canApprove(selectedTicket, route) && isRouteOverride(selectedTicket, route) ? (
+                <div className="routing-override">
+                  <label htmlFor="routing-override-reason">Override reason</label>
+                  <textarea
+                    id="routing-override-reason"
+                    onChange={(event) => setOverrideReason(event.target.value)}
+                    placeholder="Explain why this queue should take the request instead."
+                    value={overrideReason}
+                  />
+                  <small>
+                    The orchestrator recommended a different route. An override reason of at least 3
+                    characters is required.
+                  </small>
+                </div>
+              ) : null}
               <div className="routing-actions">
                 {selectedTicket.state === "ROUTE_ASSESSMENT" ? (
                   <button
@@ -153,13 +197,21 @@ export default function RoutingQueuePage({ route }: RoutingQueuePageProps) {
                   </button>
                 ) : null}
                 <button
-                  disabled={!canApprove(selectedTicket, route) || approveMutation.isPending}
+                  disabled={
+                    !canApproveWithOverride(selectedTicket, route, overrideReason) ||
+                    approveMutation.isPending
+                  }
                   onClick={() => approveMutation.mutate()}
                   type="button"
                 >
                   Approve route
                 </button>
               </div>
+              {actionError ? (
+                <p className="auth-error" role="alert">
+                  {actionError}
+                </p>
+              ) : null}
               {selectedTicket.state === "ANALYST_ASSIGNMENT" ? (
                 <AssignAnalystPanel
                   csrfToken={csrfToken}
@@ -189,7 +241,14 @@ export default function RoutingQueuePage({ route }: RoutingQueuePageProps) {
                       />
                     </label>
                     <button
-                      disabled={!canSubmitClarification(selectedTicket, route, clarificationReason)}
+                      disabled={
+                        !canSubmitClarification(
+                          selectedTicket,
+                          route,
+                          clarificationReason,
+                          clarificationQuestion,
+                        )
+                      }
                       onClick={() => clarificationMutation.mutate()}
                       type="button"
                     >

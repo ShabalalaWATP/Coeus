@@ -13,8 +13,12 @@ class InMemoryTicketRepository:
         self._restore_or_persist()
 
     def next_reference(self) -> str:
-        self._counter += 1
-        return f"TCK-{self._counter:04d}"
+        existing = {ticket.reference for ticket in self._tickets.values()}
+        while True:
+            self._counter += 1
+            reference = f"TCK-{self._counter:04d}"
+            if reference not in existing:
+                return reference
 
     def save(self, ticket: TicketRecord) -> None:
         self._tickets[ticket.ticket_id] = ticket
@@ -35,7 +39,12 @@ class InMemoryTicketRepository:
             return
         tickets = tuple(decode_value(item) for item in payload.get("tickets", []))
         self._tickets = {ticket.ticket_id: ticket for ticket in tickets}
-        self._counter = int(payload.get("counter", len(tickets)))
+        # Restore from the highest issued reference, not the item count, so
+        # deletions can never cause a reference to be handed out twice.
+        self._counter = max(
+            int(payload.get("counter", 0)),
+            _max_reference_counter(tickets),
+        )
 
     def _persist(self) -> None:
         if self._state_store is None:
@@ -48,3 +57,12 @@ class InMemoryTicketRepository:
                 "tickets": [encode_value(ticket) for ticket in tickets],
             },
         )
+
+
+def _max_reference_counter(tickets: tuple[TicketRecord, ...]) -> int:
+    counter = 0
+    for ticket in tickets:
+        prefix, _, suffix = ticket.reference.partition("-")
+        if prefix == "TCK" and suffix.isdigit():
+            counter = max(counter, int(suffix))
+    return counter

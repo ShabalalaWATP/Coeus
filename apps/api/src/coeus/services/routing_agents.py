@@ -1,3 +1,4 @@
+import re
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -16,7 +17,9 @@ ASSESSMENT_TERMS = frozenset(
 COLLECTION_TERMS = frozenset(
     {"collection", "collect", "sensor", "imagery", "source", "monitor", "surveillance"}
 )
-UNSUPPORTED_TERMS = frozenset({"mars", "martian", "unknown", "tbd", "unbounded"})
+UNSUPPORTED_TERMS = frozenset({"mars", "martian", "tbd", "unbounded"})
+
+_TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
 
 
 class RfaCapabilityAgent:
@@ -72,11 +75,14 @@ class CmCapabilityAgent:
         terms = _terms(text)
         clarifications = _base_clarifications(ticket.intake, terms)
         team = self._catalogue.best_cm_team(terms)
-        collection_signal = bool(terms.intersection(COLLECTION_TERMS)) or team is not None
-        if collection_signal and team is None:
+        # A confident answer needs a genuine collection term; a team-keyword
+        # match alone is only an unconfirmed signal.
+        collection_hit = bool(terms.intersection(COLLECTION_TERMS))
+        signal_present = collection_hit or team is not None
+        if collection_hit and team is None:
             team = self._catalogue.default_cm_team()
-        can_satisfy = not clarifications and collection_signal
-        confidence = _confidence(can_satisfy, collection_signal, clarifications)
+        can_satisfy = not clarifications and collection_hit
+        confidence = _confidence(can_satisfy, signal_present, clarifications)
         risks = _risks(ticket.intake, terms)
         return CmCapabilityReview(
             review_id=uuid4(),
@@ -91,7 +97,8 @@ class CmCapabilityAgent:
             manager_review_required=True,
             reasoning_summary=_cm_reason(
                 can_satisfy,
-                collection_signal,
+                collection_hit,
+                signal_present,
                 team.name if team else None,
             ),
             created_at=datetime.now(UTC),
@@ -114,7 +121,12 @@ def _intake_text(intake: IntakeDetails) -> str:
 
 
 def _terms(text: str) -> frozenset[str]:
-    return frozenset(word.strip(".,:;()[]") for word in text.split())
+    # Tokenise on alphanumeric runs so punctuation such as "assessment?"
+    # still matches, and fold simple plurals ("sensors" also counts as
+    # "sensor") without a stemming dependency.
+    tokens = set(_TOKEN_PATTERN.findall(text))
+    tokens.update(token[:-1] for token in tuple(tokens) if token.endswith("s") and len(token) > 3)
+    return frozenset(tokens)
 
 
 def _base_clarifications(intake: IntakeDetails, terms: frozenset[str]) -> tuple[str, ...]:
@@ -179,10 +191,14 @@ def _rfa_reason(
     return "No strong assessment signal was found in the intake."
 
 
-def _cm_reason(can_satisfy: bool, collection_signal: bool, team_name: str | None) -> str:
+def _cm_reason(
+    can_satisfy: bool, collection_hit: bool, signal_present: bool, team_name: str | None
+) -> str:
     if can_satisfy:
         team = team_name or "Collection Coordination Triage Cell"
         return f"Collection management can satisfy the request through {team}."
-    if collection_signal:
+    if collection_hit:
         return "Collection signal exists but clarifications are required before approval."
+    if signal_present:
+        return "A collection team keyword matched but no confirmed collection signal was found."
     return "No strong collection signal was found in the intake."

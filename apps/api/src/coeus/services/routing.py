@@ -24,10 +24,12 @@ from coeus.services.routing_agents import CmCapabilityAgent, RfaCapabilityAgent
 from coeus.services.routing_records import (
     can_review_route,
     count_state,
+    current_queue_permission,
     decision,
     decision_project_update,
+    ensure_manager_state,
+    ensure_override,
     fallback_state,
-    filled,
     latest_cm_review,
     latest_recommendation,
     project_update,
@@ -157,13 +159,15 @@ class RoutingService:
         route: RoutingRoute,
         override_reason: str | None,
     ) -> TicketRecord:
-        self._require_route_permission(actor, route)
         ticket = self.details(actor, ticket_id)
         recommendation = latest_recommendation(ticket)
+        # The approving manager must own the queue the ticket currently sits
+        # in; an override changes the route, never which queue can decide.
+        self._require_current_queue_permission(actor, ticket)
         if recommendation.recommended_route == route:
-            self._ensure_manager_state(ticket, route)
+            ensure_manager_state(ticket, route)
         else:
-            self._ensure_override(ticket, override_reason)
+            ensure_override(override_reason)
         self._ensure_transition(ticket.state, TicketState.ANALYST_ASSIGNMENT)
         manager_decision = decision(
             ticket.ticket_id,
@@ -191,7 +195,7 @@ class RoutingService:
     ) -> TicketRecord:
         self._require_route_permission(actor, route)
         ticket = self.details(actor, ticket_id)
-        self._ensure_manager_state(ticket, route)
+        ensure_manager_state(ticket, route)
         target_state = fallback_state(route, latest_cm_review(ticket))
         self._ensure_transition(ticket.state, target_state)
         manager_decision = decision(
@@ -220,7 +224,7 @@ class RoutingService:
     ) -> TicketRecord:
         self._require_route_permission(actor, route)
         ticket = self.details(actor, ticket_id)
-        self._ensure_manager_state(ticket, route)
+        ensure_manager_state(ticket, route)
         self._ensure_transition(ticket.state, TicketState.INFO_REQUIRED)
         handoff = manager_clarification_handoff(
             ticket.ticket_id, actor.user_id, route, reason, questions
@@ -324,26 +328,13 @@ class RoutingService:
         )
         self._require(actor, permission)
 
+    def _require_current_queue_permission(self, actor: UserAccount, ticket: TicketRecord) -> None:
+        self._require(actor, current_queue_permission(ticket))
+
     @staticmethod
     def _ensure_transition(current: TicketState, target: TicketState) -> None:
         if not can_transition(current, target):
             raise AppError(409, "invalid_ticket_state", "Ticket cannot move to that state.")
-
-    @staticmethod
-    def _ensure_manager_state(ticket: TicketRecord, route: RoutingRoute) -> None:
-        allowed = {
-            RoutingRoute.RFA: TicketState.RFA_MANAGER_REVIEW,
-            RoutingRoute.CM: TicketState.CM_MANAGER_REVIEW,
-        }
-        if ticket.state != allowed[route]:
-            raise AppError(409, "invalid_ticket_state", "Ticket is not in that manager queue.")
-
-    @staticmethod
-    def _ensure_override(ticket: TicketRecord, override_reason: str | None) -> None:
-        if ticket.state not in {TicketState.RFA_MANAGER_REVIEW, TicketState.CM_MANAGER_REVIEW}:
-            raise AppError(409, "invalid_ticket_state", "Ticket is not in manager review.")
-        if not filled(override_reason):
-            raise AppError(422, "override_reason_required", "Override reason is required.")
 
 
 def build_routing_service(ticket_services: TicketServices, audit_log: AuditLog) -> RoutingService:

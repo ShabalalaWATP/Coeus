@@ -14,6 +14,9 @@ REQUIRED_INTAKE_FIELDS = (
     "customer_success_criteria",
 )
 
+# Substring markers are matched against a normalised message (casefolded,
+# zero-width characters stripped, whitespace collapsed), so case, doubled
+# spaces and newlines between words cannot bypass them.
 PROMPT_INJECTION_MARKERS = (
     "act as admin",
     "bypass rbac",
@@ -23,7 +26,6 @@ PROMPT_INJECTION_MARKERS = (
     "fabricate existing product",
     "fabricate product",
     "hidden prompt",
-    "ignore previous instructions",
     "ignore safety",
     "jailbreak",
     "make me admin",
@@ -34,6 +36,17 @@ PROMPT_INJECTION_MARKERS = (
     "tool call",
     "use admin tool",
 )
+
+# Regex families catch phrasing variants such as "ignore all previous
+# instructions" or "disregard prior instructions".
+PROMPT_INJECTION_PATTERNS = (
+    re.compile(
+        r"\b(?:ignore|disregard|forget)\s+(?:all\s+|any\s+)?"
+        r"(?:previous|prior|above|earlier)\s+instructions\b"
+    ),
+)
+
+_ZERO_WIDTH_PATTERN = re.compile("[\u200b\u200c\u200d\u2060\ufeff]")
 
 
 class IntakeAssistantProvider(Protocol):
@@ -75,8 +88,10 @@ class IntakeExtractionService:
         return RequirementCompletenessService().with_completeness(extracted)
 
     def safety_flags_for(self, message: str) -> tuple[str, ...]:
-        lowered = message.casefold()
-        if any(marker in lowered for marker in PROMPT_INJECTION_MARKERS):
+        normalised = _normalise_for_scanning(message)
+        if any(pattern.search(normalised) for pattern in PROMPT_INJECTION_PATTERNS):
+            return ("prompt_injection_attempt",)
+        if any(marker in normalised for marker in PROMPT_INJECTION_MARKERS):
             return ("prompt_injection_attempt",)
         return ()
 
@@ -117,21 +132,44 @@ def merge_intake(intake: IntakeDetails, updates: dict[str, str]) -> IntakeDetail
     )
 
 
-def _extract_title(text: str) -> str:
+REQUIREMENT_CUES = frozenset(
+    {
+        "need",
+        "needs",
+        "request",
+        "require",
+        "required",
+        "assess",
+        "assessment",
+        "brief",
+        "briefing",
+        "report",
+        "analysis",
+        "provide",
+        "produce",
+        "want",
+    }
+)
+
+
+def _extract_title(text: str) -> str | None:
     lowered = text.casefold()
     if " titled " in lowered:
         start = lowered.index(" titled ") + len(" titled ")
         raw = text[start:].split(" for ", 1)[0].strip(" .")
         return raw.title()
+    # Fall back to the first six words only when the message reads like a
+    # requirement statement, so incidental chat does not become a title.
+    if not frozenset(re.findall(r"[a-z0-9]+", lowered)).intersection(REQUIREMENT_CUES):
+        return None
     words = [word.strip(".,") for word in text.split() if word.strip(".,")]
-    return " ".join(words[:6]).title() if words else "Untitled Requirement"
+    return " ".join(words[:6]).title() if words else None
 
 
 def _extract_question(text: str) -> str | None:
+    # Only lift a question the customer actually asked; nothing is invented.
     if "?" in text:
         return text.split("?", 1)[0].strip() + "?"
-    if any(word in text.casefold() for word in ("assess", "assessment", "brief", "need")):
-        return "What does the customer need to understand?"
     return None
 
 
@@ -225,9 +263,6 @@ def _extract_success_criteria(text: str) -> str | None:
             return _normalise_sentence(cleaned[lowered.index("so that") :])
         if lowered.startswith(("include ", "including ")):
             return _normalise_sentence(cleaned)
-    lowered_text = text.casefold()
-    if "decision" in lowered_text or "command" in lowered_text or "action" in lowered_text:
-        return "Support a timely operational decision."
     return None
 
 
@@ -243,6 +278,11 @@ def _is_blank(value: object) -> bool:
 
 def _normalise_spaces(value: str) -> str:
     return " ".join(value.split())
+
+
+def _normalise_for_scanning(value: str) -> str:
+    stripped = _ZERO_WIDTH_PATTERN.sub("", value)
+    return " ".join(stripped.casefold().split())
 
 
 def _sentences(value: str) -> tuple[str, ...]:

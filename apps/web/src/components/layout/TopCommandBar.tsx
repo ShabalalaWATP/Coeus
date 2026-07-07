@@ -1,6 +1,6 @@
-import { LogOut, Moon, Search, Sun, UserCircle } from "lucide-react";
+import { KeyRound, LogOut, Moon, Search, Sun, UserCircle } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { NotificationsPopover } from "./NotificationsPopover";
 import { IconButton } from "../ui/IconButton";
@@ -18,6 +18,7 @@ export function TopCommandBar({ onLogout, profile }: TopCommandBarProps) {
   const [commandQuery, setCommandQuery] = useState("");
   const [openPanel, setOpenPanel] = useState<"notifications" | "profile" | null>(null);
   const commandInputRef = useRef<HTMLInputElement>(null);
+  const actionsRef = useRef<HTMLDivElement>(null);
   const ThemeIcon = theme === "dark" ? Sun : Moon;
   const themeLabel = theme === "dark" ? "Switch to light theme" : "Switch to dark theme";
   const commandMatches = useMemo(() => {
@@ -40,6 +41,30 @@ export function TopCommandBar({ onLogout, profile }: TopCommandBarProps) {
     window.addEventListener("keydown", focusCommand);
     return () => window.removeEventListener("keydown", focusCommand);
   }, []);
+
+  // Close open popovers on Escape and on clicks outside the actions cluster,
+  // matching the RequestJourney modal behaviour.
+  useEffect(() => {
+    if (openPanel === null) {
+      return;
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpenPanel(null);
+      }
+    }
+    function onPointerDown(event: MouseEvent) {
+      if (actionsRef.current !== null && !actionsRef.current.contains(event.target as Node)) {
+        setOpenPanel(null);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("mousedown", onPointerDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("mousedown", onPointerDown);
+    };
+  }, [openPanel]);
 
   function openRoute(path: string) {
     setCommandQuery("");
@@ -84,7 +109,7 @@ export function TopCommandBar({ onLogout, profile }: TopCommandBarProps) {
           </div>
         ) : null}
       </div>
-      <div className="command-bar__actions">
+      <div className="command-bar__actions" ref={actionsRef}>
         <IconButton ariaLabel={themeLabel} onClick={toggleTheme}>
           <ThemeIcon aria-hidden="true" size={18} strokeWidth={1.8} />
         </IconButton>
@@ -111,6 +136,14 @@ export function TopCommandBar({ onLogout, profile }: TopCommandBarProps) {
             <strong>{profile.displayName}</strong>
             <p>{profile.username}</p>
             <small>{profile.roles.join(", ")}</small>
+            <Link
+              className="store-action store-action--secondary"
+              onClick={() => setOpenPanel(null)}
+              to="/account/password"
+            >
+              <KeyRound aria-hidden="true" size={15} />
+              Change password
+            </Link>
           </aside>
         ) : null}
       </div>

@@ -10,6 +10,7 @@ import {
   selectAiModel,
   type AiModelState,
 } from "../../lib/api-client/admin";
+import { useActionError } from "../../lib/mutations/action-error";
 
 type AiModelPanelProps = {
   csrfToken: string;
@@ -19,25 +20,25 @@ export function AiModelPanel({ csrfToken }: AiModelPanelProps) {
   const queryClient = useQueryClient();
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState("");
-  const [saveError, setSaveError] = useState(false);
+  const { actionError, clearActionError, failActionWith } = useActionError();
   const stateQuery = useQuery({ queryKey: ["ai-model"], queryFn: getAiModelState });
   const saveMutation = useMutation({
     mutationFn: (model: string) => selectAiModel(model, csrfToken),
+    onError: failActionWith("The model could not be changed. Refresh and try again."),
+    onMutate: clearActionError,
     onSuccess: (state: AiModelState) => {
-      setSaveError(false);
       setSelectedModel(null);
       queryClient.setQueryData(["ai-model"], state);
     },
-    onError: () => setSaveError(true),
   });
   const keyMutation = useMutation({
     mutationFn: (key: string) => configureAiApiKey(key, csrfToken),
+    onError: failActionWith("The API key could not be saved. Check the key and try again."),
+    onMutate: clearActionError,
     onSuccess: (state: AiModelState) => {
-      setSaveError(false);
       setApiKey("");
       queryClient.setQueryData(["ai-model"], state);
     },
-    onError: () => setSaveError(true),
   });
   const state = stateQuery.data;
   const activeChoice = selectedModel ?? state?.activeModel ?? "";
@@ -134,9 +135,9 @@ export function AiModelPanel({ csrfToken }: AiModelPanelProps) {
           </p>
         </form>
       ) : null}
-      {saveError ? (
+      {actionError ? (
         <p className="auth-error" role="alert">
-          The model could not be changed. Refresh and try again.
+          {actionError}
         </p>
       ) : null}
     </section>

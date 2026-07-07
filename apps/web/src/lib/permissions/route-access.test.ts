@@ -46,9 +46,18 @@ test("store manager sees store administration surfaces without admin overview", 
 
   expect(visibleNavigationItems(profile).map((item) => item.label)).toEqual([
     "Intelligence Store",
+    "My Products",
     "ACGs",
   ]);
   expect(canAccessRoute(profile, routeByPath("/admin/overview")!)).toBe(false);
+});
+
+test("my products is reachable from the navigation", () => {
+  expect(routeByPath("/store/my-products")?.label).toBe("My Products");
+  expect(routeByPath("/store/my-products")?.requiredPermissions).toEqual([
+    "product:read",
+    "product:search",
+  ]);
 });
 
 test("groups navigation items and omits empty groups", () => {

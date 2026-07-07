@@ -50,6 +50,8 @@ class AccessControlGroupService:
         owner_user_id: UUID | None = None,
     ) -> AccessControlGroup:
         self._require(actor, Permission.ACG_CREATE)
+        if any(existing.code == code for existing in self._repository.list_acgs()):
+            raise AppError(409, "acg_code_exists", "An ACG already uses this code.")
         acg = AccessControlGroup(
             acg_id=uuid4(),
             code=code,
@@ -94,7 +96,9 @@ class AccessControlGroupService:
 
     def add_user(self, actor: UserAccount, acg_id: UUID, user_id: UUID) -> None:
         self._require(actor, Permission.ACG_ASSIGN_USER)
-        self._get_acg(acg_id)
+        acg = self._get_acg(acg_id)
+        if not acg.is_active:
+            raise AppError(409, "acg_inactive", "Members cannot be added to an inactive ACG.")
         if self._repository.get_user(user_id) is None:
             raise AppError(404, "user_not_found", "User was not found.")
         self._reject_non_admin_self_membership_change(actor, user_id)

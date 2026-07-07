@@ -1,19 +1,18 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Download, FileText, ShieldAlert } from "lucide-react";
+import { ArrowLeft, FileText, ShieldAlert } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 
+import { AssetGrant } from "./AssetGrant";
 import { backNavigationFor } from "./store-navigation";
 import { productTypeLabel } from "./store-options";
 import { LoadingState } from "../../components/ui/PageState";
 import { ApiError } from "../../lib/api-client/client";
 import {
-  assetDownloadUrl,
   breakGlassAssetAccess,
   breakGlassStoreProduct,
   getAssetAccess,
   getStoreProduct,
-  type AssetAccessGrant,
 } from "../../lib/api-client/store";
 import { useAuth } from "../../lib/auth/auth-context";
 
@@ -24,6 +23,7 @@ export default function ProductDetailPage() {
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from;
   const back = backNavigationFor(from);
+  const canDownload = session?.user.permissions.includes("product:download") ?? false;
   const productQuery = useQuery({
     enabled: productId !== undefined,
     queryKey: ["store-product", productId],
@@ -169,30 +169,53 @@ export default function ProductDetailPage() {
 
         <aside className="surface product-assets" aria-labelledby="assets-title">
           <h2 id="assets-title">Assets</h2>
+          {canDownload ? null : (
+            <p className="store-asset-hint">
+              You do not have permission to download assets. Metadata remains visible.
+            </p>
+          )}
           <div className="stack-list">
-            {product.assets.map((asset) => (
-              <Link
-                className="stack-row store-asset-row"
-                key={asset.id}
-                to={`/store/products/${encodeURIComponent(product.id)}/assets/${encodeURIComponent(
-                  asset.id,
-                )}`}
-              >
-                <FileText aria-hidden="true" size={18} />
-                <span>
-                  {asset.name}
-                  <small className="store-asset-meta">
-                    {asset.mimeType} | {Math.max(1, Math.round(asset.sizeBytes / 1024))} KB |
-                    SHA-256 {asset.sha256.slice(0, 12)}
-                  </small>
-                </span>
-                <small>{asset.previewKind.replaceAll("_", " ")}</small>
-              </Link>
-            ))}
+            {product.assets.map((asset) => {
+              const row = (
+                <>
+                  <FileText aria-hidden="true" size={18} />
+                  <span>
+                    {asset.name}
+                    <small className="store-asset-meta">
+                      {asset.mimeType} | {Math.max(1, Math.round(asset.sizeBytes / 1024))} KB |
+                      SHA-256 {asset.sha256.slice(0, 12)}
+                    </small>
+                  </span>
+                  <small>{asset.previewKind.replaceAll("_", " ")}</small>
+                </>
+              );
+              if (!canDownload) {
+                return (
+                  <div className="stack-row store-asset-row" key={asset.id}>
+                    {row}
+                  </div>
+                );
+              }
+              return (
+                <Link
+                  className="stack-row store-asset-row"
+                  key={asset.id}
+                  state={{ from }}
+                  to={`/store/products/${encodeURIComponent(
+                    product.id,
+                  )}/assets/${encodeURIComponent(asset.id)}`}
+                >
+                  {row}
+                </Link>
+              );
+            })}
           </div>
           {assetId !== undefined ? (
             <AssetGrant
               assetId={assetId}
+              assetName={
+                product.assets.find((asset) => asset.id === assetId)?.name ?? "asset-download"
+              }
               grant={accessQuery.data}
               productId={product.id}
               status={accessQuery.status}
@@ -200,44 +223,6 @@ export default function ProductDetailPage() {
           ) : null}
         </aside>
       </section>
-    </div>
-  );
-}
-
-function AssetGrant({
-  assetId,
-  grant,
-  productId,
-  status,
-}: {
-  assetId?: string;
-  grant?: AssetAccessGrant;
-  productId: string;
-  status: string;
-}) {
-  if (status === "error") {
-    return (
-      <div className="asset-grant asset-grant--denied">
-        <ShieldAlert aria-hidden="true" size={18} />
-        <span>Asset access denied or unavailable.</span>
-      </div>
-    );
-  }
-  if (grant === undefined) {
-    return <div className="asset-grant">Preparing controlled access</div>;
-  }
-  const href =
-    assetId === undefined ? "#" : assetDownloadUrl(productId, assetId, grant.downloadToken);
-  return (
-    <div className="asset-grant">
-      <Download aria-hidden="true" size={18} />
-      <div>
-        <strong>Download authorised.</strong>{" "}
-        <a href={href} rel="noreferrer">
-          Download asset
-        </a>
-        <small> Expires in {Math.round(grant.expiresInSeconds / 60)} minutes.</small>
-      </div>
     </div>
   );
 }

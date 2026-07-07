@@ -9,6 +9,20 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=1, max_length=256)
 
 
+class PasswordChangeRequest(BaseModel):
+    current_password: str = Field(
+        min_length=1,
+        max_length=256,
+        validation_alias="currentPassword",
+    )
+    # Same policy as registration passwords.
+    new_password: str = Field(
+        min_length=12,
+        max_length=256,
+        validation_alias="newPassword",
+    )
+
+
 class UserProfileResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -18,6 +32,10 @@ class UserProfileResponse(BaseModel):
     roles: list[str]
     permissions: list[str]
     default_route: str = Field(serialization_alias="defaultRoute")
+    password_reset_required: bool = Field(
+        default=False,
+        serialization_alias="passwordResetRequired",
+    )
 
 
 class AuthSessionResponse(BaseModel):

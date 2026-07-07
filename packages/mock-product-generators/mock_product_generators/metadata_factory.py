@@ -56,6 +56,112 @@ ACCESS_SCENARIOS = (
     },
 )
 
+SEARCH_SCENARIOS = (
+    {
+        "name": "maritime_port_disruption",
+        "query": "baltic port disruption maritime supply",
+        "expectedSemanticLabels": ("maritime", "supply-chain"),
+        "expectedTags": ("ports", "maritime"),
+        "visibleAccessScenario": "customer_regional",
+    },
+    {
+        "name": "cyber_energy_intrusion",
+        "query": "cyber intrusion energy network",
+        "expectedSemanticLabels": ("cyber", "infrastructure"),
+        "expectedTags": ("cyber", "energy"),
+        "visibleAccessScenario": "data_steward",
+    },
+    {
+        "name": "geospatial_border_crossing",
+        "query": "border crossing geospatial map",
+        "expectedSemanticLabels": ("border", "geospatial"),
+        "expectedTags": ("border", "map"),
+        "visibleAccessScenario": "geo_specialist",
+    },
+    {
+        "name": "collection_sensor_activity",
+        "query": "sensor radar collection coastal",
+        "expectedSemanticLabels": ("collection", "sigint"),
+        "expectedTags": ("sensor", "coastal"),
+        "visibleAccessScenario": "collection_team",
+    },
+)
+
+DOMAIN_VARIANTS = (
+    {
+        "topic": "Baltic port disruption",
+        "area": "Baltic ports",
+        "tags": ("ports", "maritime", "supply-chain"),
+        "labels": ("maritime", "supply-chain"),
+    },
+    {
+        "topic": "North Sea lane congestion",
+        "area": "North Sea lanes",
+        "tags": ("shipping", "maritime", "logistics"),
+        "labels": ("maritime", "supply-chain"),
+    },
+    {
+        "topic": "coastal sensor activity",
+        "area": "Fictional coastal grid",
+        "tags": ("sensor", "coastal", "radar"),
+        "labels": ("collection", "sigint"),
+    },
+    {
+        "topic": "Delta training range access",
+        "area": "Delta training range",
+        "tags": ("map", "terrain", "geographic"),
+        "labels": ("geospatial",),
+    },
+    {
+        "topic": "Echo logistics district flows",
+        "area": "Echo logistics district",
+        "tags": ("database", "logistics", "freight"),
+        "labels": ("supply-chain",),
+    },
+    {
+        "topic": "Arctic power infrastructure",
+        "area": "Arctic energy corridor",
+        "tags": ("energy", "power", "infrastructure"),
+        "labels": ("infrastructure", "environment"),
+    },
+    {
+        "topic": "aviation route change",
+        "area": "Mock northern air corridor",
+        "tags": ("aviation", "aircraft", "runway"),
+        "labels": ("aviation",),
+    },
+    {
+        "topic": "public media narratives",
+        "area": "Open source media space",
+        "tags": ("osint", "media", "public"),
+        "labels": ("osint",),
+    },
+    {
+        "topic": "health logistics strain",
+        "area": "Fictional medical supply hub",
+        "tags": ("health", "medical", "supply"),
+        "labels": ("health", "supply-chain"),
+    },
+    {
+        "topic": "border checkpoint pressure",
+        "area": "Mock border corridor",
+        "tags": ("border", "checkpoint", "migration"),
+        "labels": ("border",),
+    },
+    {
+        "topic": "cyber intrusion indicators",
+        "area": "Synthetic network enclave",
+        "tags": ("cyber", "network", "credential"),
+        "labels": ("cyber",),
+    },
+    {
+        "topic": "flood impact on rail",
+        "area": "Fictional flood plain",
+        "tags": ("flood", "rail", "weather"),
+        "labels": ("environment", "infrastructure"),
+    },
+)
+
 TEMPLATES = (
     ProductTemplate(
         "assessment",
@@ -159,33 +265,53 @@ def _product_from_template(
     template: ProductTemplate, index: int, reference_number: int
 ) -> SeedProduct:
     slug = f"{template.family}-{index:03d}"
-    title = f"Mock {template.family.title()} Product {index:03d}"
+    variant = DOMAIN_VARIANTS[(index - 1) % len(DOMAIN_VARIANTS)]
+    title = f"Mock {template.family.title()} Product {index:03d}: {variant['topic']}"
+    tags = _merged(template.tags, variant["tags"])
+    semantic_labels = _merged(template.tags, variant["labels"])
+    period_start, period_end = _coverage_window(index)
     return SeedProduct(
         product_id=stable_id(f"product-{slug}"),
         reference=f"PROD-{reference_number}",
         title=title,
-        summary=f"{MOCK_BANNER} synthetic {template.family} summary for {template.area_or_region}.",
+        summary=(
+            f"{MOCK_BANNER} synthetic {template.family} summary for "
+            f"{variant['area']} covering {variant['topic']}."
+        ),
         description=(
             f"{MOCK_BANNER} generated product for deterministic Sprint 6 seed data. "
+            f"Fictional search terms include {', '.join(tags)}. "
             "It contains fictional entities and no operational content."
         ),
         product_type=template.product_type,
         source_type=template.source_type,
         owner_team=template.owner_team,
-        area_or_region=template.area_or_region,
+        area_or_region=str(variant["area"]),
         classification_level=template.classification_level,
         releasability=("MOCK",),
         handling_caveats=(MOCK_BANNER,),
-        tags=template.tags,
+        tags=tags,
+        semantic_labels=semantic_labels,
         acg_codes=template.acg_codes,
         access_scenario=_scenario_for_acgs(template.acg_codes),
+        status="published",
+        time_period_start=period_start,
+        time_period_end=period_end,
         geojson_ref=f"assets/{slug}/{slug}.geojson"
         if "geojson" in template.asset_formats
         else None,
-        bounding_box=(-7.0, 54.0, 31.0, 66.0)
-        if "geojson" in template.asset_formats
-        else None,
+        bounding_box=(-7.0, 54.0, 31.0, 66.0) if "geojson" in template.asset_formats else None,
     )
+
+
+def _merged(*values: tuple[str, ...]) -> tuple[str, ...]:
+    return tuple(sorted({item for group in values for item in group}))
+
+
+def _coverage_window(index: int) -> tuple[str, str]:
+    year = 2025 + ((index - 1) // 12)
+    month = ((index - 1) % 12) + 1
+    return f"{year}-{month:02d}-01", f"{year}-{month:02d}-28"
 
 
 def _scenario_for_acgs(acg_codes: tuple[str, ...]) -> str:

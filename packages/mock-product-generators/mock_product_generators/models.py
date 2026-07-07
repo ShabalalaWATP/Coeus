@@ -30,8 +30,12 @@ class SeedProduct:
     releasability: tuple[str, ...]
     handling_caveats: tuple[str, ...]
     tags: tuple[str, ...]
+    semantic_labels: tuple[str, ...]
     acg_codes: tuple[str, ...]
     access_scenario: str
+    status: str
+    time_period_start: str
+    time_period_end: str
     assets: tuple[SeedAsset, ...] = field(default_factory=tuple)
     geojson_ref: str | None = None
     bounding_box: tuple[float, float, float, float] | None = None

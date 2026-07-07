@@ -178,6 +178,37 @@ async def test_admin_gemini_settings_drive_ticket_assistant(
 
 
 @pytest.mark.asyncio
+async def test_env_key_alone_does_not_override_the_configured_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class ForbiddenClient:
+        def __init__(self, *, timeout: int) -> None:
+            raise AssertionError("Gemini API must not be called when the provider is mock.")
+
+    monkeypatch.setattr(gemini_api.httpx, "Client", ForbiddenClient)
+    app = create_app(
+        Settings(environment="test", argon2_memory_cost=8_192, gemini_api_key="env-secret")
+    )
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        await _login(client, "admin@example.test")
+        state = await client.get("/api/v1/admin/ai-model")
+        assert state.json()["provider"] == "mock"
+        assert state.json()["apiKeyConfigured"] is True
+
+        user_csrf = await _login(client, "user@example.test")
+        response = await client.post(
+            "/api/v1/chat/messages",
+            headers={"X-CSRF-Token": user_csrf},
+            json={"message": "Need a routine assessment for Baltic ports."},
+        )
+
+    assert response.status_code == 201
+    assert "before this can be submitted." in response.json()["messages"][-1]["body"]
+
+
+@pytest.mark.asyncio
 async def test_unknown_models_are_rejected() -> None:
     async with _client() as client:
         csrf = await _login(client, "admin@example.test")

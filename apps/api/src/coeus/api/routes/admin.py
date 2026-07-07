@@ -99,7 +99,7 @@ def _ai_model_response(state: AiModelState) -> AiModelStateResponse:
 
 
 @router.get("/registrations", response_model=RegistrationListResponse)
-async def list_registrations(
+def list_registrations(
     authenticated: Annotated[
         AuthenticatedSession,
         Depends(require_permission(Permission.USER_CREATE)),
@@ -115,7 +115,7 @@ async def list_registrations(
 
 
 @router.post("/registrations/{registration_id}/approve", response_model=RegistrationResponse)
-async def approve_registration(
+def approve_registration(
     registration_id: UUID,
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
     registration_service: Annotated[RegistrationService, Depends(get_registration_service)],
@@ -124,7 +124,7 @@ async def approve_registration(
 
 
 @router.post("/registrations/{registration_id}/reject", response_model=RegistrationResponse)
-async def reject_registration(
+def reject_registration(
     registration_id: UUID,
     payload: RegistrationDecisionRequest,
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],

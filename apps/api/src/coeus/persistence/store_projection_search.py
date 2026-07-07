@@ -46,10 +46,12 @@ def search_products(
 
 
 def _search_params(filters: StoreSearchFilters, scope: StoreVisibilityScope) -> dict[str, object]:
+    query = _blank_to_none(filters.query)
     return _scope_params(scope) | {
-        "query": _blank_to_none(filters.query),
+        "query": query,
+        "query_like": _escape_like(query),
         "product_type": filters.product_type,
-        "region": _blank_to_none(filters.region),
+        "region": _escape_like(_blank_to_none(filters.region)),
         "tag": _blank_to_none(filters.tag),
         "source_type": filters.source_type,
         "status": filters.status.value if filters.status else None,
@@ -74,6 +76,13 @@ def _blank_to_none(value: str | None) -> str | None:
     if value is None or value.strip() == "":
         return None
     return value.strip()
+
+
+def _escape_like(value: str | None) -> str | None:
+    """Escape user input used in ILIKE patterns so wildcards match literally."""
+    if value is None:
+        return None
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 def _mapping_rows(result: Any) -> tuple[dict[str, Any], ...]:
@@ -175,7 +184,7 @@ WHERE p.status <> :archived_status
   )
   AND (
       CAST(:region AS text) IS NULL
-      OR p.area_or_region ILIKE '%' || CAST(:region AS text) || '%'
+      OR p.area_or_region ILIKE '%' || CAST(:region AS text) || '%' ESCAPE '\\'
   )
   AND (
       CAST(:tag AS text) IS NULL
@@ -207,7 +216,7 @@ WHERE p.status <> :archived_status
           p.area_or_region,
           array_to_string(p.tags, ' '),
           array_to_string(p.semantic_labels, ' ')
-      ) ILIKE '%' || CAST(:query AS text) || '%'
+      ) ILIKE '%' || CAST(:query_like AS text) || '%' ESCAPE '\\'
   )
 ORDER BY p.title ASC
 """

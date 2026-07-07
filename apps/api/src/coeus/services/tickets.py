@@ -217,10 +217,12 @@ class TicketService:
 
     def get_editable_ticket(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         ticket = self.get_visible_ticket(actor, ticket_id)
+        # Read-all visibility never confers write access: edits require
+        # ownership, editor collaboration, or the explicit write-all grant.
         if (
             not is_owner(actor, ticket)
             and not is_editor(actor, ticket)
-            and Permission.TICKET_READ_ALL not in actor.permissions
+            and Permission.TICKET_WRITE_ALL not in actor.permissions
         ):
             raise AppError(404, "ticket_not_found", "Ticket was not found.")
         if ticket.state not in {TicketState.DRAFT_INTAKE, TicketState.INFO_REQUIRED}:
@@ -280,7 +282,9 @@ class ConversationService:
         )
         user_message = message_record(ticket.ticket_id, MessageAuthor.USER, message)
         safety_flags = self._extractor.safety_flags_for(message)
-        intake = self._extractor.extract(message, ticket.intake)
+        # Flagged messages are never extracted, so injected text cannot land
+        # in intake fields; the message, flags and refusal are still recorded.
+        intake = ticket.intake if safety_flags else self._extractor.extract(message, ticket.intake)
         assistant_message = message_record(
             ticket.ticket_id,
             MessageAuthor.ASSISTANT,
@@ -291,7 +295,11 @@ class ConversationService:
             ticket_id=ticket.ticket_id,
             agent_name=CUSTOMER_CHATBOT_AGENT,
             status=AgentRunStatus.COMPLETED,
-            summary="Structured intake fields extracted from user chat.",
+            summary=(
+                "Message flagged; intake extraction skipped."
+                if safety_flags
+                else "Structured intake fields extracted from user chat."
+            ),
             safety_flags=safety_flags,
             created_at=datetime.now(UTC),
         )

@@ -10,7 +10,9 @@ stays in control.
 > (`COEUS_LLM_PROVIDER=mock`). They do not call an external model, they never
 > execute user instructions, and every input is treated as synthetic. Admins can
 > configure a Gemini API key locally for the chatbot response provider without
-> requiring Google Cloud hosting.
+> requiring Google Cloud hosting. The configured provider setting is
+> authoritative: an API key supplied through the environment never switches the
+> provider by itself.
 
 ## Agents at a glance
 
@@ -54,11 +56,13 @@ The assistant works towards seven required fields:
 6. `required_output_format`
 7. `customer_success_criteria`
 
-Extraction is heuristic and transparent: for example a phrase after "titled" or
-the first six words becomes the title, a sentence ending in "?" becomes the
-operational question, and keywords such as "critical/high/medium/low" set the
-priority. Anything the customer does not provide is left blank rather than
-invented.
+Extraction is heuristic and transparent: for example a phrase after "titled"
+becomes the title (or the first six words, when the message reads like a
+requirement statement), a sentence ending in "?" becomes the operational
+question, and keywords such as "critical/high/medium/low" set the priority.
+Anything the customer does not provide is left blank rather than invented: no
+operational question or success criteria is ever synthesised on the customer's
+behalf.
 
 ### Completeness and confidence
 
@@ -72,11 +76,17 @@ can only be submitted once `missing_information` is empty.
 
 ### Safety
 
-`safety_flags_for` scans each message against a fixed list of prompt-injection
-markers (for example "ignore previous instructions", "make me admin", "reveal
-hidden prompt"). If any is present the assistant returns a fixed refusal message
-and flags `prompt_injection_attempt`; it never acts on the instruction, because
-the mock provider has no tools and no privileges to act with in the first place.
+`safety_flags_for` normalises each message first (casefolded, zero-width
+characters stripped, whitespace collapsed) and then scans it against families
+of prompt-injection markers: instruction-override phrasing and its common
+synonyms, privilege-escalation requests such as "make me admin", and attempts
+to reveal hidden or system prompts. Simple bypasses such as unusual casing,
+doubled spaces, newlines between words or zero-width characters do not evade
+the scan. If a message is flagged the assistant returns a fixed refusal on
+every provider path, the flagged text is never sent to an external model, and
+intake extraction is skipped entirely so injected text cannot land in any
+requirement field. The user message, the flags and the refusal are still
+recorded on the ticket.
 
 ### Output
 
@@ -159,20 +169,24 @@ required output format, known context and success criteria.
 
 ### How they decide
 
-Both agents tokenise the intake and look for domain signals:
+Both agents tokenise the intake on alphanumeric runs (so punctuation such as
+"assessment?" still matches) with simple plural folding, and look for domain
+signals:
 
 - **Assessment signal:** terms such as *assessment, assess, brief, report,
   estimate, analysis*.
 - **Collection signal:** terms such as *collection, sensor, imagery, source,
   monitor, surveillance*.
-- **Unsupported markers:** terms such as *mars, unknown, tbd, unbounded* raise a
+- **Unsupported markers:** terms such as *mars, tbd, unbounded* raise a
   clarification instead of a confident answer.
 
 From those signals each agent produces:
 
 - `can_satisfy` — the RFA agent says yes when there is an assessment signal, no
   outstanding clarifications, and the request is not purely collection-led; the
-  CM agent says yes when there is a collection signal and no clarifications.
+  CM agent says yes only when a genuine collection term is present and there
+  are no clarifications. A collection-team keyword match on its own is treated
+  as an unconfirmed signal, not a confident answer.
 - `confidence` — 0.86 when it can satisfy, 0.48 when a signal exists but is
   unconfirmed, 0.34 with no signal, and 0.28 when clarifications are outstanding.
 - `required_clarifications` — carried over from missing intake plus any raised by
@@ -235,8 +249,15 @@ The agents depend on an LLM provider interface, not on a specific model:
 - **Local and test default:** `COEUS_LLM_PROVIDER=mock`. Deterministic, no
   network calls, reproducible in CI.
 - **Local optional:** admins can enter a Gemini API key and select the active
-  model from the Admin workspace. The key is held by the running API process,
-  never returned to the browser and not persisted to generic app state.
+  model from the Admin workspace. Entering a key through the Admin workspace is
+  an explicit opt-in to the Gemini provider; a key present only in the
+  environment never changes the configured provider. The key is held by the
+  running API process, never returned to the browser and not persisted to
+  generic app state.
+- **Graceful degradation:** if the Gemini API is unavailable, times out or is
+  selected without a key, the chatbot falls back to the deterministic mock
+  reply. The customer's message is always saved and the chat turn never fails
+  because the external provider did.
 - **Future GCP deployment:** the same runtime boundary can point at Google
   managed services without changing the workflow contracts.
 
@@ -256,5 +277,6 @@ secret manager, not through the admin UI runtime key field.
   product, so agents cannot leak what a user may not see.
 - **Deterministic and auditable.** Local agents are pure functions of their
   inputs, and every human decision they inform is written to the audit log.
-- **No tool use in the mock.** The local provider cannot act, so prompt injection
-  has nothing to act on; it is flagged and refused.
+- **No tool use in any provider path.** Neither the mock nor the Gemini path can
+  act on instructions, and flagged messages are refused locally on both paths
+  before any external call is made.

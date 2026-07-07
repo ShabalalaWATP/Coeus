@@ -173,13 +173,33 @@ def get_feedback_analytics_service(request: Request) -> FeedbackAnalyticsService
     return service
 
 
+# Endpoints a user may still call while a forced password rotation is pending.
+PASSWORD_RESET_ALLOWED_PATHS = frozenset(
+    {
+        "/api/v1/auth/me",
+        "/api/v1/auth/logout",
+        "/api/v1/auth/password",
+    }
+)
+
+
 def get_current_session(
     request: Request,
     settings: Annotated[Settings, Depends(get_settings)],
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> AuthenticatedSession:
     session_id = request.cookies.get(settings.session_cookie_name)
-    return auth_service.require_session(session_id)
+    authenticated = auth_service.require_session(session_id)
+    if (
+        authenticated.user.password_reset_required
+        and request.url.path not in PASSWORD_RESET_ALLOWED_PATHS
+    ):
+        raise AppError(
+            403,
+            "password_change_required",
+            "Change the temporary password before using this endpoint.",
+        )
+    return authenticated
 
 
 def get_csrf_validated_session(

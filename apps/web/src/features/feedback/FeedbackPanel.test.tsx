@@ -68,6 +68,34 @@ test("submits customer feedback for a pending request", async () => {
   expect(await screen.findByText("submitted")).toBeVisible();
 });
 
+test("shows an inline error when feedback submission fails", async () => {
+  const fetchMock = vi.fn((input: RequestInfo | URL) => {
+    const url = requestUrl(input);
+    if (url.endsWith("/api/v1/feedback/requests")) {
+      return Promise.resolve(jsonResponse({ requests: [request] }));
+    }
+    return Promise.resolve({
+      ok: false,
+      status: 409,
+      json: () =>
+        Promise.resolve({ error: { code: "already_submitted", message: "Already submitted." } }),
+    });
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(
+    <FeedbackPanel csrfToken="test-csrf-token" />,
+    "/app/requests",
+    feedbackSession,
+  );
+
+  await screen.findByText("Arctic feedback product");
+  await userEvent.type(screen.getByLabelText("Comment"), "Clear and useful mock output.");
+  await userEvent.click(screen.getByRole("button", { name: /Submit feedback/ }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("Already submitted.");
+});
+
 test("does not render feedback controls without feedback permission", () => {
   const fetchMock = vi.fn();
   vi.stubGlobal("fetch", fetchMock);

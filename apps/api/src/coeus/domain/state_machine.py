@@ -47,7 +47,8 @@ ALLOWED_TRANSITIONS: dict[TicketState, frozenset[TicketState]] = {
     TicketState.MANAGER_RELEASE: frozenset(
         {TicketState.DISSEMINATION_READY, TicketState.CANCELLED}
     ),
-    TicketState.DISSEMINATION_READY: frozenset(),
+    TicketState.DISSEMINATION_READY: frozenset({TicketState.CLOSED_DELIVERED}),
+    TicketState.CLOSED_DELIVERED: frozenset(),
     TicketState.CLOSED_EXISTING_PRODUCT_ACCEPTED: frozenset(),
     TicketState.CANCELLED: frozenset(),
 }

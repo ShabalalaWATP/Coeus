@@ -46,16 +46,34 @@ async def _tag(
 
 
 @pytest.mark.asyncio
-async def test_directory_lists_active_users_without_self() -> None:
+async def test_directory_requires_a_search_term() -> None:
     async with _client() as client:
         await _login(client, "user@example.test")
-        response = await client.get("/api/v1/users/directory")
+
+        missing = await client.get("/api/v1/users/directory")
+        assert missing.status_code == 422
+
+        too_short = await client.get("/api/v1/users/directory?q=an")
+        assert too_short.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_directory_returns_matching_active_users_without_self() -> None:
+    async with _client() as client:
+        await _login(client, "user@example.test")
+        response = await client.get("/api/v1/users/directory?q=Analyst")
 
         assert response.status_code == 200
         usernames = [user["username"] for user in response.json()["users"]]
-        assert "user@example.test" not in usernames
-        assert "disabled@example.test" not in usernames
         assert "analyst@example.test" in usernames
+        assert all("analyst" in username for username in usernames)
+
+        broad = await client.get("/api/v1/users/directory?q=example")
+        matched = [user["username"] for user in broad.json()["users"]]
+        assert "user@example.test" not in matched
+        assert "disabled@example.test" not in matched
+        # Twelve active seed accounts match "example"; the response is capped.
+        assert len(matched) == 10
 
 
 @pytest.mark.asyncio

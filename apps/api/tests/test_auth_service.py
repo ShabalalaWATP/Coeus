@@ -1,3 +1,5 @@
+from datetime import UTC, datetime, timedelta
+
 import pytest
 
 from coeus.core.config import Settings
@@ -9,7 +11,7 @@ from coeus.repositories.auth import (
     SessionRepository,
 )
 from coeus.services.audit import AuditLog
-from coeus.services.auth import AuthService
+from coeus.services.auth import AuthService, hash_session_id
 from coeus.services.passwords import PasswordHasher
 
 SEED_CREDENTIAL = "CoeusLocal1!"
@@ -174,7 +176,7 @@ def test_expired_session_is_rejected_and_removed() -> None:
     result = service.login("admin@example.test", SEED_CREDENTIAL)
 
     with pytest.raises(AppError) as exc_info:
-        service.require_session(result.session.session_id)
+        service.require_session(result.session_token)
 
     assert exc_info.value.code == "session_expired"
 
@@ -195,9 +197,44 @@ def test_replace_session_id_revokes_existing_session() -> None:
     second = service.login(
         "admin@example.test",
         SEED_CREDENTIAL,
-        replace_session_id=first.session.session_id,
+        replace_session_id=first.session_token,
     )
 
     with pytest.raises(AppError):
-        service.require_session(first.session.session_id)
-    assert service.require_session(second.session.session_id).user.username == "admin@example.test"
+        service.require_session(first.session_token)
+    assert service.require_session(second.session_token).user.username == "admin@example.test"
+
+
+def test_sessions_are_stored_hashed_at_rest() -> None:
+    service = build_auth_service()
+    result = service.login("admin@example.test", SEED_CREDENTIAL)
+
+    assert result.session.session_id != result.session_token
+    assert result.session.session_id == hash_session_id(result.session_token)
+    assert service.require_session(result.session_token).user.username == "admin@example.test"
+    # The stored hash must not be usable as a cookie value.
+    with pytest.raises(AppError) as exc_info:
+        service.require_session(result.session.session_id)
+    assert exc_info.value.code == "not_authenticated"
+
+
+def test_stale_login_failures_decay_outside_lockout_window() -> None:
+    attempts = LoginAttemptRepository()
+    stale = datetime.now(UTC) - timedelta(seconds=600)
+    attempts._attempts["user@example.test"] = ((stale, stale), None)
+
+    locked_until = attempts.record_failure("user@example.test", threshold=3, lockout_seconds=300)
+
+    assert locked_until is None
+    assert attempts.get_lockout_until("user@example.test") is None
+
+
+def test_login_failures_within_window_still_trigger_lockout() -> None:
+    attempts = LoginAttemptRepository()
+
+    first = attempts.record_failure("user@example.test", threshold=2, lockout_seconds=300)
+    second = attempts.record_failure("user@example.test", threshold=2, lockout_seconds=300)
+
+    assert first is None
+    assert second is not None
+    assert second > datetime.now(UTC)

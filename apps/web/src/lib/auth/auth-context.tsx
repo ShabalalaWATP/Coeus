@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type PropsWithChildren,
 } from "react";
@@ -13,6 +14,7 @@ import {
   ApiClient,
   ApiError,
   apiClient,
+  setAuthEventHandlers,
   type AuthSession,
   type LoginRequest,
 } from "../api-client/client";
@@ -24,6 +26,7 @@ type AuthContextValue = {
   session: AuthSession | null;
   login: (request: LoginRequest) => Promise<AuthSession>;
   logout: () => Promise<void>;
+  refreshSession: () => Promise<AuthSession>;
 };
 
 type AuthProviderProps = PropsWithChildren<{
@@ -48,6 +51,8 @@ export function AuthProvider({
         ? "anonymous"
         : "authenticated",
   );
+  const statusRef = useRef(status);
+  statusRef.current = status;
 
   useEffect(() => {
     if (initialSession !== undefined) {
@@ -77,6 +82,30 @@ export function AuthProvider({
     };
   }, [clearSensitiveCache, client, initialSession]);
 
+  // Mirror the initial-load handling for calls made after login: a 401 from
+  // any endpoint means the backend session is gone, and a password-change
+  // demand locks the app to the change-password screen.
+  useEffect(() => {
+    setAuthEventHandlers({
+      onUnauthorized: () => {
+        if (statusRef.current !== "authenticated") {
+          return;
+        }
+        setSession(null);
+        setStatus("expired");
+        clearSensitiveCache();
+      },
+      onPasswordChangeRequired: () => {
+        setSession((current) =>
+          current === null || current.passwordResetRequired === true
+            ? current
+            : { ...current, passwordResetRequired: true },
+        );
+      },
+    });
+    return () => setAuthEventHandlers({});
+  }, [clearSensitiveCache]);
+
   const login = useCallback(
     async (request: LoginRequest) => {
       const nextSession = await client.login(request);
@@ -101,14 +130,22 @@ export function AuthProvider({
     }
   }, [clearSensitiveCache, client, session?.csrfToken]);
 
+  const refreshSession = useCallback(async () => {
+    const currentSession = await client.getCurrentUser();
+    setSession(currentSession);
+    setStatus("authenticated");
+    return currentSession;
+  }, [client]);
+
   const value = useMemo(
     () => ({
       status,
       session,
       login,
       logout,
+      refreshSession,
     }),
-    [login, logout, session, status],
+    [login, logout, refreshSession, session, status],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

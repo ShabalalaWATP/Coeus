@@ -3,43 +3,10 @@ import userEvent from "@testing-library/user-event";
 
 import ProductDetailPage from "./ProductDetailPage";
 import { backNavigationFor } from "./store-navigation";
+import { productFixture as product } from "./store-test-fixtures";
 import { resetQueryClientForTests } from "../../app/query-client";
 import type { Permission } from "../../lib/api-client/client";
 import { previewSession, renderWithProviders } from "../../test/test-utils";
-
-const product = {
-  id: "product-regional",
-  reference: "PROD-1001",
-  title: "Regional Stability Brief",
-  summary: "MOCK DATA ONLY assessment summary",
-  description: "Synthetic detail",
-  productType: "assessment_report",
-  sourceType: "finished_assessment",
-  ownerTeam: "RFA",
-  areaOrRegion: "Baltic ports",
-  classificationLevel: 2,
-  releasability: ["MOCK"],
-  handlingCaveats: ["MOCK DATA ONLY"],
-  tags: ["regional", "ports"],
-  semanticLabels: ["assessment", "maritime"],
-  acgIds: ["acg-alpha"],
-  projectId: "project-northstar",
-  status: "published",
-  timePeriodStart: null,
-  timePeriodEnd: null,
-  geojsonRef: null,
-  assets: [
-    {
-      id: "asset-brief",
-      name: "regional-brief.pdf",
-      assetType: "pdf",
-      mimeType: "application/pdf",
-      sizeBytes: 12000,
-      sha256: "b".repeat(64),
-      previewKind: "pdf_metadata",
-    },
-  ],
-};
 
 beforeEach(() => {
   resetQueryClientForTests();
@@ -61,31 +28,6 @@ test("renders product metadata and asset list", async () => {
   expect(screen.getByText("Assessment report")).toBeVisible();
   expect(screen.getByText("maritime")).toBeVisible();
   expect(screen.getByText("regional-brief.pdf")).toBeVisible();
-});
-
-test("renders controlled asset grant for selected asset route", async () => {
-  vi.stubGlobal(
-    "fetch",
-    vi
-      .fn()
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(product) })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            assetId: "asset-brief",
-            downloadToken: "asset-token-asset-brief",
-            expiresInSeconds: 900,
-          }),
-      }),
-  );
-
-  renderWithProviders(<ProductDetailPage />, "/store/products/product-regional/assets/asset-brief");
-
-  expect(await screen.findByRole("link", { name: "Download asset" })).toHaveAttribute(
-    "href",
-    expect.stringContaining("asset-token-asset-brief"),
-  );
 });
 
 test("renders controlled asset denial without exposing object storage", async () => {
@@ -238,10 +180,7 @@ test("uses audited break-glass grants for hidden asset downloads", async () => {
   );
   await userEvent.click(screen.getByRole("button", { name: "Access with audit log" }));
 
-  expect(await screen.findByRole("link", { name: "Download asset" })).toHaveAttribute(
-    "href",
-    expect.stringContaining("asset-token-break-glass"),
-  );
+  expect(await screen.findByRole("button", { name: "Download asset" })).toBeVisible();
   expect(fetchMock).toHaveBeenNthCalledWith(
     3,
     "http://127.0.0.1:8001/api/v1/store/products/product-hidden/assets/asset-brief/break-glass-access",

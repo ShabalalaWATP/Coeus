@@ -2,6 +2,7 @@ import {
   CheckCircle2,
   ClipboardList,
   Hourglass,
+  PackageCheck,
   PackageOpen,
   Search,
   UsersRound,
@@ -17,11 +18,21 @@ import { ticketMetrics } from "./ticket-collection";
 
 type RequestDashboardProps = {
   canCreate: boolean;
+  currentUserId: string;
+  isConfirming: boolean;
+  onConfirmDelivery: (ticketId: string) => void;
   onOpen: (ticketId: string) => void;
   tickets: Ticket[];
 };
 
-export function RequestDashboard({ canCreate, onOpen, tickets }: RequestDashboardProps) {
+export function RequestDashboard({
+  canCreate,
+  currentUserId,
+  isConfirming,
+  onConfirmDelivery,
+  onOpen,
+  tickets,
+}: RequestDashboardProps) {
   const metrics = ticketMetrics(tickets);
   const metricItems = [
     { label: "Total requests", value: metrics.total, icon: ClipboardList, tone: "info" },
@@ -93,6 +104,18 @@ export function RequestDashboard({ canCreate, onOpen, tickets }: RequestDashboar
                   <PackageOpen aria-hidden="true" size={15} />
                   View released product
                 </Link>
+              ) : null}
+              {ticket.state === "DISSEMINATION_READY" &&
+              ticket.requesterUserId === currentUserId ? (
+                <button
+                  className="request-open-row__product"
+                  disabled={isConfirming}
+                  onClick={() => onConfirmDelivery(ticket.id)}
+                  type="button"
+                >
+                  <PackageCheck aria-hidden="true" size={15} />
+                  Confirm receipt and close
+                </button>
               ) : null}
             </div>
           ))}

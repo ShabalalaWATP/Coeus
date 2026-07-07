@@ -121,8 +121,8 @@ test("shows a generic error when the switch fails", async () => {
     })
     .mockResolvedValue({
       ok: false,
-      status: 422,
-      json: () => Promise.resolve({ error: { code: "model_not_available", message: "No." } }),
+      status: 500,
+      json: () => Promise.reject(new Error("no body")),
     });
   vi.stubGlobal("fetch", fetchMock);
 
@@ -135,6 +135,27 @@ test("shows a generic error when the switch fails", async () => {
     await screen.findByText("The model could not be changed. Refresh and try again."),
   ).toBeVisible();
   expect(screen.getByText(/last changed by admin@example.test/)).toBeVisible();
+});
+
+test("shows a key-specific error when saving the API key fails", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(modelState) })
+    .mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.reject(new Error("no body")),
+    });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<AiModelPanel csrfToken="test-csrf-token" />, "/admin/overview");
+
+  await userEvent.type(await screen.findByLabelText("Gemini API key"), "gemini-secret-key");
+  await userEvent.click(screen.getByRole("button", { name: "Save key" }));
+
+  expect(
+    await screen.findByText("The API key could not be saved. Check the key and try again."),
+  ).toBeVisible();
 });
 
 test("renders an error state when the model state cannot load", async () => {

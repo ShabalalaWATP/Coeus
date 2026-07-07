@@ -1,7 +1,7 @@
 import pytest
 
 from coeus.db import session
-from coeus.db.session import DatabaseReadinessChecker
+from coeus.db.session import DatabaseReadinessChecker, dispose_readiness_engines
 
 
 class FakeConnection:
@@ -18,12 +18,21 @@ class FakeConnection:
 class FakeEngine:
     def __init__(self) -> None:
         self.disposed = False
+        self.connect_calls = 0
 
     def connect(self) -> FakeConnection:
+        self.connect_calls += 1
         return FakeConnection()
 
     async def dispose(self) -> None:
         self.disposed = True
+
+
+@pytest.fixture(autouse=True)
+async def _reset_engine_cache():
+    await dispose_readiness_engines()
+    yield
+    await dispose_readiness_engines()
 
 
 @pytest.mark.asyncio
@@ -47,6 +56,32 @@ async def test_database_readiness_checker_returns_ready_for_success(
 
     assert result.ready is True
     assert result.detail == "database reachable"
+
+
+@pytest.mark.asyncio
+async def test_database_readiness_checker_reuses_cached_engine(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake_engine = FakeEngine()
+    created = []
+
+    def build(*_args, **_kwargs) -> FakeEngine:
+        created.append(1)
+        return fake_engine
+
+    monkeypatch.setattr(session, "create_async_engine", build)
+
+    checker = DatabaseReadinessChecker("postgresql+asyncpg://example")
+    first = await checker.check()
+    second = await checker.check()
+
+    assert first.ready is True
+    assert second.ready is True
+    assert len(created) == 1
+    assert fake_engine.connect_calls == 2
+    assert fake_engine.disposed is False
+
+    await dispose_readiness_engines()
     assert fake_engine.disposed is True
 
 

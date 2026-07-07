@@ -8,6 +8,7 @@ import {
   type FeedbackRequest,
 } from "../../lib/api-client/analytics";
 import { useAuth } from "../../lib/auth/auth-context";
+import { useActionError } from "../../lib/mutations/action-error";
 
 const EMPTY_FEEDBACK: FeedbackRequest[] = [];
 
@@ -30,7 +31,10 @@ export function FeedbackPanel({ csrfToken }: FeedbackPanelProps) {
   });
   const requests = feedbackQuery.data ?? EMPTY_FEEDBACK;
   const pendingRequest = requests.find((request) => request.status === "requested");
+  const { actionError, clearActionError, failActionWith } = useActionError();
   const submitMutation = useMutation({
+    onError: failActionWith("The feedback could not be submitted. Try again."),
+    onMutate: clearActionError,
     mutationFn: () =>
       submitFeedback(
         pendingRequest?.id ?? "",
@@ -106,6 +110,11 @@ export function FeedbackPanel({ csrfToken }: FeedbackPanelProps) {
             />
             <span>Request follow-up</span>
           </label>
+          {actionError ? (
+            <p className="auth-error" role="alert">
+              {actionError}
+            </p>
+          ) : null}
           <button disabled={comment.trim().length < 3 || submitMutation.isPending} type="submit">
             <Send aria-hidden="true" size={18} /> Submit feedback
           </button>

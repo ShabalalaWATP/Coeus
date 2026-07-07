@@ -3,6 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+ISO_DATE_PATTERN = r"^\d{4}-\d{2}-\d{2}$"
 ReleasabilityText = Annotated[str, Field(min_length=1, max_length=40)]
 HandlingCaveatText = Annotated[str, Field(min_length=1, max_length=120)]
 TagText = Annotated[str, Field(min_length=1, max_length=60)]
@@ -51,8 +52,16 @@ class StoreProductCreateRequest(BaseModel):
     acg_ids: list[UUID] = Field(default_factory=list, validation_alias="acgIds")
     project_id: UUID | None = Field(default=None, validation_alias="projectId")
     status: str = "published"
-    time_period_start: str | None = Field(default=None, validation_alias="timePeriodStart")
-    time_period_end: str | None = Field(default=None, validation_alias="timePeriodEnd")
+    time_period_start: str | None = Field(
+        default=None,
+        pattern=ISO_DATE_PATTERN,
+        validation_alias="timePeriodStart",
+    )
+    time_period_end: str | None = Field(
+        default=None,
+        pattern=ISO_DATE_PATTERN,
+        validation_alias="timePeriodEnd",
+    )
     geojson_ref: str | None = Field(default=None, validation_alias="geojsonRef")
     bounding_box: BoundingBoxRequest | None = Field(default=None, validation_alias="boundingBox")
     assets: list[StoreAssetRequest] = Field(min_length=1)

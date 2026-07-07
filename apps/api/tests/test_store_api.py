@@ -69,7 +69,7 @@ async def test_admin_can_upload_and_download_real_asset_bytes(tmp_path: Path) ->
         )
         downloaded = await client.get(
             f"/api/v1/store/products/{product['id']}/assets/{asset['id']}/download",
-            params={"token": grant.json()["downloadToken"]},
+            headers={"X-Asset-Token": grant.json()["downloadToken"]},
         )
 
     assert created.status_code == 201

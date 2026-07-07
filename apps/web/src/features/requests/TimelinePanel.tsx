@@ -11,14 +11,15 @@ type TimelinePanelProps = {
 
 export function TimelinePanel({ isAdding, onAddInformation, ticket }: TimelinePanelProps) {
   const [body, setBody] = useState("");
+  const trimmedBody = body.trim();
+  const bodyTooShort = trimmedBody.length > 0 && trimmedBody.length < 3;
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const trimmed = body.trim();
-    if (trimmed.length < 3) {
+    if (trimmedBody.length < 3) {
       return;
     }
-    onAddInformation(trimmed);
+    onAddInformation(trimmedBody);
     setBody("");
   }
 
@@ -49,7 +50,10 @@ export function TimelinePanel({ isAdding, onAddInformation, ticket }: TimelinePa
             rows={3}
             value={body}
           />
-          <button disabled={isAdding} type="submit">
+          {bodyTooShort ? (
+            <small className="field-hint">Entries need at least 3 characters.</small>
+          ) : null}
+          <button disabled={isAdding || trimmedBody.length < 3} type="submit">
             <Plus aria-hidden="true" size={18} />
             Add information
           </button>

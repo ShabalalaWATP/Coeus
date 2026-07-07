@@ -1,0 +1,23 @@
+.routing-override {
+  display: grid;
+  gap: 6px;
+  color: var(--text);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.routing-override textarea {
+  min-height: 64px;
+  border: 1px solid color-mix(in srgb, var(--warning) 45%, var(--border));
+  border-radius: var(--radius-md);
+  padding: 10px;
+  resize: vertical;
+  background: var(--surface-muted);
+  color: var(--text);
+  font-weight: 400;
+}
+
+.routing-override small {
+  color: var(--muted);
+  font-weight: 400;
+}

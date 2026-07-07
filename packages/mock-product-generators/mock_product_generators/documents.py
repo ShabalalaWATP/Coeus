@@ -1,17 +1,20 @@
 from pathlib import Path
+from textwrap import wrap
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from .models import MOCK_BANNER, SeedProduct
 
+DOCX_CONTENT_TYPE = (
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"
+)
+OFFICE_DOCUMENT_RELATIONSHIP = (
+    "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
+)
+
 
 def write_pdf(path: Path, product: SeedProduct) -> None:
     _ensure_parent(path)
-    stream = (
-        "BT /F1 18 Tf 72 740 Td "
-        f"({MOCK_BANNER}) Tj 0 -28 Td "
-        f"({product.title}) Tj 0 -24 Td "
-        f"({product.summary}) Tj ET"
-    )
+    stream = _pdf_stream(product)
     body = (
         "%PDF-1.4\n"
         "1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n"
@@ -23,7 +26,7 @@ def write_pdf(path: Path, product: SeedProduct) -> None:
         "xref\n0 6\n0000000000 65535 f \n"
         "trailer << /Root 1 0 R /Size 6 >>\nstartxref\n0\n%%EOF\n"
     )
-    path.write_bytes(body.encode("utf-8"))
+    path.write_bytes(body.encode())
 
 
 def write_docx(path: Path, product: SeedProduct) -> None:
@@ -38,26 +41,61 @@ def write_docx(path: Path, product: SeedProduct) -> None:
 </w:document>
 """
     with ZipFile(path, "w", ZIP_DEFLATED) as archive:
-        archive.writestr(
-            "[Content_Types].xml",
-            """<?xml version="1.0" encoding="UTF-8"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-  <Default Extension="xml" ContentType="application/xml"/>
-  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
-</Types>
-""",
-        )
-        archive.writestr(
-            "_rels/.rels",
-            """<?xml version="1.0" encoding="UTF-8"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
-</Relationships>
-""",
-        )
+        archive.writestr("[Content_Types].xml", _content_types_xml())
+        archive.writestr("_rels/.rels", _relationships_xml())
         archive.writestr("word/document.xml", document)
 
 
 def _ensure_parent(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+
+
+def _content_types_xml() -> str:
+    return "\n".join(
+        (
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">',
+            (
+                '  <Default Extension="rels" '
+                'ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+            ),
+            '  <Default Extension="xml" ContentType="application/xml"/>',
+            (f'  <Override PartName="/word/document.xml" ContentType="{DOCX_CONTENT_TYPE}"/>'),
+            "</Types>",
+        )
+    )
+
+
+def _relationships_xml() -> str:
+    return "\n".join(
+        (
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+            (
+                '  <Relationship Id="rId1" '
+                f'Type="{OFFICE_DOCUMENT_RELATIONSHIP}" Target="word/document.xml"/>'
+            ),
+            "</Relationships>",
+        )
+    )
+
+
+def _pdf_stream(product: SeedProduct) -> str:
+    lines = [
+        MOCK_BANNER,
+        product.title,
+        product.summary,
+        product.description,
+        f"Tags: {', '.join(product.tags)}",
+        f"Semantic labels: {', '.join(product.semantic_labels)}",
+        f"Coverage: {product.time_period_start} to {product.time_period_end}",
+    ]
+    wrapped = [part for line in lines for part in wrap(line, width=72)]
+    commands = ["BT /F1 13 Tf 72 760 Td 17 TL"]
+    commands.extend(f"({_escape_pdf_text(line)}) Tj T*" for line in wrapped[:38])
+    commands.append("ET")
+    return "\n".join(commands)
+
+
+def _escape_pdf_text(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")

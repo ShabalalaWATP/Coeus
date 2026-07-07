@@ -69,7 +69,7 @@ async def release_queue(
 
 
 @router.post("/{ticket_id}/release", response_model=RoutingTicketResponse)
-async def release_product(
+def release_product(
     ticket_id: UUID,
     payload: RouteApprovalRequest,
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],

@@ -2,15 +2,20 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { AuthProvider, useAuth } from "./auth-context";
-import { ApiError, type ApiClient, type AuthSession } from "../api-client/client";
+import { ApiError, apiRequestJson, type ApiClient, type AuthSession } from "../api-client/client";
 import { previewSession } from "../../test/test-utils";
 
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 function AuthProbe() {
-  const { login, logout, session, status } = useAuth();
+  const { login, logout, refreshSession, session, status } = useAuth();
   return (
     <div>
       <p>{status}</p>
       <p>{session?.user.displayName ?? "No user"}</p>
+      <p>{session?.passwordResetRequired === true ? "reset-required" : "reset-not-required"}</p>
       <button
         type="button"
         onClick={() => void login({ username: "admin@example.test", password: "mock" })}
@@ -19,6 +24,9 @@ function AuthProbe() {
       </button>
       <button type="button" onClick={() => void logout()}>
         Logout
+      </button>
+      <button type="button" onClick={() => void refreshSession()}>
+        Refresh
       </button>
     </div>
   );
@@ -85,6 +93,89 @@ test("login and logout update session state without local storage tokens", async
   expect(logout).toHaveBeenCalledWith(nextSession.csrfToken);
   expect(window.localStorage.getItem("token")).toBeNull();
   expect(window.localStorage.getItem("coeus_session")).toBeNull();
+});
+
+test("moves an authenticated session to expired when any API call returns 401", async () => {
+  const clearSensitiveCache = vi.fn();
+  const client = fakeClient({});
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: () => Promise.resolve({ error: { code: "session_expired", message: "Expired." } }),
+    }),
+  );
+
+  render(
+    <AuthProvider
+      clearSensitiveCache={clearSensitiveCache}
+      client={client}
+      initialSession={previewSession}
+    >
+      <AuthProbe />
+    </AuthProvider>,
+  );
+
+  expect(screen.getByText("authenticated")).toBeVisible();
+  await expect(apiRequestJson("/api/v1/tickets", { method: "GET" })).rejects.toBeInstanceOf(
+    ApiError,
+  );
+
+  await waitFor(() => expect(screen.getByText("expired")).toBeVisible());
+  expect(screen.getByText("No user")).toBeVisible();
+  expect(clearSensitiveCache).toHaveBeenCalled();
+});
+
+test("flags the session for a forced password change on 403 password_change_required", async () => {
+  const client = fakeClient({});
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      json: () =>
+        Promise.resolve({
+          error: { code: "password_change_required", message: "Change your password." },
+        }),
+    }),
+  );
+
+  render(
+    <AuthProvider client={client} initialSession={previewSession}>
+      <AuthProbe />
+    </AuthProvider>,
+  );
+
+  expect(screen.getByText("reset-not-required")).toBeVisible();
+  await expect(apiRequestJson("/api/v1/tickets", { method: "GET" })).rejects.toBeInstanceOf(
+    ApiError,
+  );
+
+  await waitFor(() => expect(screen.getByText("reset-required")).toBeVisible());
+  expect(screen.getByText("authenticated")).toBeVisible();
+});
+
+test("refreshes the session from the backend on demand", async () => {
+  const refreshedSession: AuthSession = {
+    ...previewSession,
+    passwordResetRequired: false,
+    user: { ...previewSession.user, displayName: "Refreshed Operator" },
+  };
+  const client = fakeClient({
+    getCurrentUser: vi.fn().mockResolvedValue(refreshedSession),
+  });
+
+  render(
+    <AuthProvider client={client} initialSession={previewSession}>
+      <AuthProbe />
+    </AuthProvider>,
+  );
+
+  await userEvent.click(screen.getByRole("button", { name: "Refresh" }));
+
+  await waitFor(() => expect(screen.getByText("Refreshed Operator")).toBeVisible());
+  expect(screen.getByText("authenticated")).toBeVisible();
 });
 
 test("rejects auth hook usage outside provider", () => {

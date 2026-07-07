@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 
 from coeus.api.dependencies import (
     get_csrf_validated_session,
@@ -137,8 +137,11 @@ async def get_asset_access(
     asset_id: UUID,
     authenticated: Annotated[AuthenticatedSession, Depends(get_current_session)],
     store_services: Annotated[StoreServices, Depends(get_store_services)],
+    response: Response,
 ) -> AssetAccessResponse:
     grant = store_services.assets.grant_access(authenticated.user, product_id, asset_id)
+    # Short-lived download tokens must never be served from the browser HTTP cache.
+    response.headers["Cache-Control"] = "no-store"
     return AssetAccessResponse(
         asset_id=grant.asset.asset_id,
         download_token=grant.download_token,

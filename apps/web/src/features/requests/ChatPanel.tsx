@@ -14,14 +14,15 @@ export function ChatPanel({ isSending, onSend, readOnly = false, ticket }: ChatP
   const [message, setMessage] = useState("");
   const clarificationRequests =
     ticket?.state === "INFO_REQUIRED" ? (ticket.clarificationRequests ?? []) : [];
+  const trimmedMessage = message.trim();
+  const messageTooShort = trimmedMessage.length > 0 && trimmedMessage.length < 3;
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const trimmed = message.trim();
-    if (trimmed.length < 3) {
+    if (trimmedMessage.length < 3) {
       return;
     }
-    onSend(trimmed);
+    onSend(trimmedMessage);
     setMessage("");
   }
 
@@ -80,7 +81,10 @@ export function ChatPanel({ isSending, onSend, readOnly = false, ticket }: ChatP
             rows={4}
             value={message}
           />
-          <button disabled={isSending} type="submit">
+          {messageTooShort ? (
+            <small className="field-hint">Messages need at least 3 characters.</small>
+          ) : null}
+          <button disabled={isSending || trimmedMessage.length < 3} type="submit">
             <SendHorizonal aria-hidden="true" size={18} />
             Send
           </button>

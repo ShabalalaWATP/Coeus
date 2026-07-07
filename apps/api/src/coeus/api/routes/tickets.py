@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from coeus.api.dependencies import (
     get_csrf_validated_session,
@@ -63,8 +63,11 @@ async def list_tickets(
     )
 
 
+# Plain def so FastAPI runs this handler in the threadpool: the assistant
+# reply may call the Gemini HTTP API synchronously and must not block the
+# event loop.
 @router.post("/chat/messages", response_model=TicketResponse, status_code=201)
-async def send_chat_message(
+def send_chat_message(
     payload: ChatMessageRequest,
     authenticated: Annotated[
         AuthenticatedSession,
@@ -132,6 +135,7 @@ async def submit_ticket(
 async def user_directory(
     authenticated: Annotated[AuthenticatedSession, Depends(get_current_session)],
     collaborators: Annotated[TicketCollaboratorService, Depends(get_ticket_collaborator_service)],
+    q: Annotated[str, Query(min_length=3, max_length=254)],
 ) -> DirectoryResponse:
     return DirectoryResponse(
         users=[
@@ -140,7 +144,7 @@ async def user_directory(
                 username=user.username,
                 display_name=user.display_name,
             )
-            for user in collaborators.directory(authenticated.user)
+            for user in collaborators.directory(authenticated.user, q)
         ]
     )
 
@@ -183,6 +187,18 @@ async def cancel_ticket(
 ) -> TicketResponse:
     return _to_ticket_response(
         lifecycle.cancel(authenticated.user, ticket_id, payload.reason),
+        authenticated.user,
+    )
+
+
+@router.post("/tickets/{ticket_id}/confirm-delivery", response_model=TicketResponse)
+async def confirm_delivery(
+    ticket_id: UUID,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    lifecycle: Annotated[TicketLifecycleService, Depends(get_ticket_lifecycle_service)],
+) -> TicketResponse:
+    return _to_ticket_response(
+        lifecycle.confirm_delivery(authenticated.user, ticket_id),
         authenticated.user,
     )
 

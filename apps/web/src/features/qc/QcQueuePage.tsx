@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, RotateCcw } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { ErrorState } from "../../components/ui/PageState";
@@ -15,6 +15,7 @@ import {
   type QcQueue,
 } from "../../lib/api-client/qc";
 import { useAuth } from "../../lib/auth/auth-context";
+import { useActionError } from "../../lib/mutations/action-error";
 import {
   csvToValues,
   initialReleaseForm,
@@ -54,6 +55,20 @@ export default function QcQueuePage() {
       products[0],
     [actionResult, detailQuery.data, productId, products],
   );
+  const selectedProductId = selectedProduct?.ticketId;
+  const { actionError, clearActionError, failActionWith } = useActionError();
+  const requestedMissing =
+    productId !== undefined &&
+    detailQuery.isError &&
+    products.every((product) => product.ticketId !== productId);
+
+  // Checklist ticks and release metadata belong to one product. Reset both
+  // whenever the reviewer moves to a different product so state cannot leak.
+  useEffect(() => {
+    setChecklist({});
+    setReleaseForm(initialReleaseForm);
+  }, [selectedProductId]);
+
   const approveMutation = useMutation({
     mutationFn: () =>
       approveQcProduct(
@@ -68,6 +83,8 @@ export default function QcQueuePage() {
         },
         csrfToken,
       ),
+    onError: failActionWith("The product could not be approved. Try again."),
+    onMutate: clearActionError,
     onSuccess: (product) => {
       setActionResult(product);
       updateQueue(queryClient, product);
@@ -76,8 +93,11 @@ export default function QcQueuePage() {
   const rejectMutation = useMutation({
     mutationFn: () =>
       rejectQcProduct(selectedProduct.ticketId, releaseForm.rejectionReason, csrfToken),
+    onError: failActionWith("The product could not be returned to the analyst. Try again."),
+    onMutate: clearActionError,
     onSuccess: (product) => {
       setActionResult(product);
+      setReleaseForm((current) => ({ ...current, rejectionReason: "" }));
       updateQueue(queryClient, product);
     },
   });
@@ -118,7 +138,8 @@ export default function QcQueuePage() {
           )}
         </aside>
         <QcProductDetail
-          acgs={acgsQuery.data ?? []}
+          acgs={acgsQuery.data}
+          actionError={actionError}
           checklist={checklist}
           onChecklistChange={setChecklist}
           onReleaseFormChange={setReleaseForm}
@@ -126,6 +147,7 @@ export default function QcQueuePage() {
           onReject={() => rejectMutation.mutate()}
           product={selectedProduct}
           releaseForm={releaseForm}
+          requestedMissing={requestedMissing}
         />
       </section>
     </div>
@@ -134,6 +156,7 @@ export default function QcQueuePage() {
 
 function QcProductDetail({
   acgs,
+  actionError,
   checklist,
   onApprove,
   onChecklistChange,
@@ -141,8 +164,10 @@ function QcProductDetail({
   onReleaseFormChange,
   product,
   releaseForm,
+  requestedMissing,
 }: {
-  acgs: AccessControlGroup[];
+  acgs: AccessControlGroup[] | undefined;
+  actionError: string | null;
   checklist: Record<string, boolean>;
   onApprove: () => void;
   onChecklistChange: (checklist: Record<string, boolean>) => void;
@@ -150,25 +175,35 @@ function QcProductDetail({
   onReleaseFormChange: (form: QcReleaseFormState) => void;
   product: QcProduct | undefined;
   releaseForm: QcReleaseFormState;
+  requestedMissing: boolean;
 }) {
+  const missingNotice = requestedMissing ? (
+    <p className="workspace-alert" role="alert">
+      The requested product was not found or is no longer in the QC queue.{" "}
+      <Link to="/qc/queue">Back to the QC queue</Link>
+    </p>
+  ) : null;
   if (!product) {
     return (
       <section className="surface qc-detail" aria-label="QC product detail">
+        {missingNotice}
         <p>No QC product selected.</p>
       </section>
     );
   }
   const draft = product.latestDraft;
   const allChecklistComplete = product.checklistKeys.every((key) => checklist[key]);
-  const canApprove = product.state === "QC_REVIEW" && allChecklistComplete;
+  const releaseAcgId = selectedAcgId(releaseForm, acgs);
+  const canApprove = product.state === "QC_REVIEW" && allChecklistComplete && releaseAcgId !== "";
   return (
     <section className="surface qc-detail" aria-label="QC product detail">
+      {missingNotice}
       <div className="section-heading">
         <h2>{product.reference}</h2>
         <p>{product.title}</p>
       </div>
       <ProductPreview product={product} />
-      <MetadataChecks acgId={selectedAcgId(releaseForm, acgs)} product={product} />
+      <MetadataChecks acgId={releaseAcgId} product={product} />
       <section className="qc-panel">
         <h3>QC checklist</h3>
         <button
@@ -189,7 +224,7 @@ function QcProductDetail({
           </label>
         ))}
       </section>
-      <ReleaseForm acgs={acgs} form={releaseForm} onChange={onReleaseFormChange} />
+      <ReleaseForm acgs={acgs ?? []} form={releaseForm} onChange={onReleaseFormChange} />
       <div className="qc-actions">
         <button disabled={!canApprove} onClick={onApprove} type="button">
           <CheckCircle2 aria-hidden="true" size={18} /> Approve and disseminate
@@ -202,6 +237,11 @@ function QcProductDetail({
           <RotateCcw aria-hidden="true" size={18} /> Return to analyst
         </button>
       </div>
+      {actionError ? (
+        <p className="auth-error" role="alert">
+          {actionError}
+        </p>
+      ) : null}
       <PostReleaseStatus product={product} />
       {draft === null ? null : (
         <p className="qc-footnote">

@@ -7,14 +7,12 @@ from .models import MOCK_BANNER, SeedProduct
 
 def write_png(path: Path, product: SeedProduct) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    width, height = 8, 8
+    width, height = 320, 180
     colour = _colour(product.reference)
-    rows = b"".join(b"\x00" + bytes(colour) * width for _ in range(height))
+    rows = b"".join(_png_row(width, colour, y) for y in range(height))
     chunks = [
         _png_chunk(b"IHDR", pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)),
-        _png_chunk(
-            b"tEXt", f"Comment\x00{MOCK_BANNER} {product.title}".encode("utf-8")
-        ),
+        _png_chunk(b"tEXt", f"Comment\x00{MOCK_BANNER} {product.title}".encode()),
         _png_chunk(b"IDAT", compress(rows)),
         _png_chunk(b"IEND", b""),
     ]
@@ -23,7 +21,7 @@ def write_png(path: Path, product: SeedProduct) -> None:
 
 def write_jpeg(path: Path, product: SeedProduct) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    comment = f"{MOCK_BANNER} {product.title}".encode("utf-8")
+    comment = f"{MOCK_BANNER} {product.title}".encode()
     # Minimal placeholder JPEG envelope with a comment marker. The seed is
     # metadata-focused; real imagery bytes arrive in a later storage sprint.
     payload = (
@@ -45,3 +43,17 @@ def _png_chunk(kind: bytes, data: bytes) -> bytes:
 def _colour(seed: str) -> tuple[int, int, int]:
     value = sum(seed.encode("utf-8"))
     return (64 + value % 120, 90 + value % 80, 120 + value % 70)
+
+
+def _png_row(width: int, colour: tuple[int, int, int], y: int) -> bytes:
+    pixels = []
+    for x in range(width):
+        band = (x // 32 + y // 24) % 4
+        pixels.extend(
+            (
+                min(255, colour[0] + band * 12),
+                min(255, colour[1] + band * 8),
+                min(255, colour[2] + band * 10),
+            )
+        )
+    return b"\x00" + bytes(pixels)

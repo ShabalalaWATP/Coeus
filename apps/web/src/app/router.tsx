@@ -12,6 +12,7 @@ import {
   AnalystWorkbenchPage,
   AnalyticsDashboardPage,
   AuditPage,
+  ChangePasswordPage,
   ForbiddenPage,
   LoginPage,
   ProductDetailPage,
@@ -54,6 +55,10 @@ export function createAppRouter() {
       element: <AuthenticatedShell />,
       children: [
         { index: true, element: <DefaultRouteRedirect /> },
+        {
+          path: "account/password",
+          element: protectedPage(<ChangePasswordPage />, []),
+        },
         {
           path: "app/requests",
           element: protectedPage(<RequestsPage />, ["ticket:read_own"]),

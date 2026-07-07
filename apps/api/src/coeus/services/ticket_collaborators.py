@@ -11,6 +11,8 @@ from coeus.services.audit import AuditLog
 from coeus.services.ticket_records import is_owner, timeline
 from coeus.services.tickets import TicketService
 
+DIRECTORY_RESULT_LIMIT = 10
+
 
 class TicketCollaboratorService:
     """Lets requesters tag other users into a ticket as editors or viewers."""
@@ -25,13 +27,21 @@ class TicketCollaboratorService:
         self._tickets = tickets
         self._audit_log = audit_log
 
-    def directory(self, actor: UserAccount) -> tuple[UserAccount, ...]:
-        """Active accounts a signed-in user can tag, excluding themselves."""
-        return tuple(
+    def directory(self, actor: UserAccount, query: str) -> tuple[UserAccount, ...]:
+        """Search active accounts a signed-in user can tag, excluding themselves.
+
+        Need-to-know applies: callers must supply a search term, and at most
+        ten matches are returned rather than the whole account list.
+        """
+        needle = query.strip().casefold()
+        matches = tuple(
             user
             for user in self._users.list_users()
-            if user.is_active and user.user_id != actor.user_id
+            if user.is_active
+            and user.user_id != actor.user_id
+            and (needle in user.username.casefold() or needle in user.display_name.casefold())
         )
+        return matches[:DIRECTORY_RESULT_LIMIT]
 
     def add(
         self,
@@ -115,6 +125,8 @@ class TicketCollaboratorService:
 
     def _owned_ticket(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         ticket = self._tickets.get_visible_ticket(actor, ticket_id)
-        if not is_owner(actor, ticket) and Permission.TICKET_READ_ALL not in actor.permissions:
+        # Managing collaborators is a write action: read-all visibility alone
+        # is not enough.
+        if not is_owner(actor, ticket) and Permission.TICKET_WRITE_ALL not in actor.permissions:
             raise AppError(404, "ticket_not_found", "Ticket was not found.")
         return ticket

@@ -20,6 +20,7 @@ import {
   addTicketCollaborator,
   addTicketInformation,
   cancelTicket,
+  confirmTicketDelivery,
   listTickets,
   removeTicketCollaborator,
   sendChatMessage,
@@ -30,6 +31,7 @@ import {
   type Ticket,
 } from "../../lib/api-client/tickets";
 import { useAuth } from "../../lib/auth/auth-context";
+import { actionErrorMessage } from "../../lib/mutations/action-error";
 import { hasPermissions } from "../../lib/permissions/route-access";
 
 const EMPTY_TICKETS: Ticket[] = [];
@@ -87,12 +89,17 @@ export default function RequestsPage() {
               ...ticket,
               state: result.ticketState,
               visibleProductMatches: result.offers.map((offer) => offer.title),
+              releasedProductIds: withAcceptedProduct(
+                ticket.releasedProductIds,
+                result.metrics?.acceptedProductId ?? null,
+              ),
             }
           : ticket,
       ),
     );
   };
-  const failAction = (message: string) => () => setActionError(message);
+  const failAction = (message: string) => (error: unknown) =>
+    setActionError(actionErrorMessage(error, message));
   const clearActionError = () => setActionError(null);
   const chatMutation = useMutation({
     mutationFn: (message: string) =>
@@ -168,6 +175,13 @@ export default function RequestsPage() {
     onMutate: clearActionError,
     onSuccess: updateTicketCache,
   });
+  const confirmDeliveryMutation = useMutation({
+    mutationFn: (confirmTicketId: string) => confirmTicketDelivery(confirmTicketId, csrfToken),
+    onError: failAction("Delivery could not be confirmed. Refresh and try again."),
+    onMutate: clearActionError,
+    onSuccess: (ticket) =>
+      queryClient.setQueryData<Ticket[]>(["tickets"], (current) => upsertTicket(current, ticket)),
+  });
   const showWorkspace = isNewRequest || ticketId !== undefined;
 
   return (
@@ -190,9 +204,8 @@ export default function RequestsPage() {
             <MessageSquarePlus aria-hidden="true" size={18} />
             Open new request
           </button>
-        ) : (
-          <div className="classification-note">MOCK DATA ONLY</div>
-        )}
+        ) : null}
+        {!canCreate ? <div className="classification-note">MOCK DATA ONLY</div> : null}
       </section>
       {ticketsQuery.isError ? (
         <section className="surface">
@@ -231,14 +244,26 @@ export default function RequestsPage() {
             sending: chatMutation.isPending,
             submitting: submitMutation.isPending,
           }}
+          rfiError={rfiResultsQuery.isError}
           rfiLoading={rfiResultsQuery.isLoading}
           rfiResults={rfiResultsQuery.data}
           ticket={selectedTicket}
         />
       ) : (
         <>
+          {actionError ? (
+            <div className="workspace-alert" role="alert">
+              <span>{actionError}</span>
+              <button onClick={clearActionError} type="button">
+                Dismiss
+              </button>
+            </div>
+          ) : null}
           <RequestDashboard
             canCreate={canCreate}
+            currentUserId={session?.user.id ?? ""}
+            isConfirming={confirmDeliveryMutation.isPending}
+            onConfirmDelivery={(id) => confirmDeliveryMutation.mutate(id)}
             onOpen={(id) => void navigate(`/app/requests/${encodeURIComponent(id)}`)}
             tickets={tickets}
           />
@@ -247,4 +272,11 @@ export default function RequestsPage() {
       )}
     </div>
   );
+}
+
+function withAcceptedProduct(current: string[], acceptedProductId: string | null) {
+  if (acceptedProductId === null || current.includes(acceptedProductId)) {
+    return current;
+  }
+  return [...current, acceptedProductId];
 }

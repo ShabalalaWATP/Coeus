@@ -1,14 +1,15 @@
+from collections.abc import Callable
 from dataclasses import replace
 from hashlib import sha256
 from pathlib import Path
-from typing import Callable
 
 from .documents import write_docx, write_pdf
 from .geospatial import write_geojson, write_kml
 from .images import write_jpeg, write_png
 from .metadata_factory import (
-    ACG_DEFINITIONS,
     ACCESS_SCENARIOS,
+    ACG_DEFINITIONS,
+    SEARCH_SCENARIOS,
     product_shells,
     stable_id,
 )
@@ -77,8 +78,12 @@ def manifest_product(product: SeedProduct) -> dict[str, object]:
         "releasability": list(product.releasability),
         "handlingCaveats": list(product.handling_caveats),
         "tags": list(product.tags),
+        "semanticLabels": list(product.semantic_labels),
         "acgCodes": list(product.acg_codes),
         "accessScenario": product.access_scenario,
+        "status": product.status,
+        "timePeriodStart": product.time_period_start,
+        "timePeriodEnd": product.time_period_end,
         "geojsonRef": product.geojson_ref,
         "boundingBox": product.bounding_box,
         "assets": [
@@ -96,9 +101,7 @@ def manifest_product(product: SeedProduct) -> dict[str, object]:
     }
 
 
-def _write_product(
-    output_dir: Path, product: SeedProduct, *, write_assets: bool
-) -> SeedProduct:
+def _write_product(output_dir: Path, product: SeedProduct, *, write_assets: bool) -> SeedProduct:
     assets: list[SeedAsset] = []
     family = product.reference.lower()
     slug = _slug(product.title)
@@ -111,9 +114,7 @@ def _write_product(
             writer(asset_path, product)
             content = asset_path.read_bytes()
         else:
-            content = f"{MOCK_BANNER}:{product.reference}:{asset_format}".encode(
-                "utf-8"
-            )
+            content = f"{MOCK_BANNER}:{product.reference}:{asset_format}".encode()
         assets.append(
             SeedAsset(
                 asset_id=stable_id(f"asset-{product.reference}-{asset_format}"),
@@ -132,9 +133,7 @@ def _write_product(
     return replace(
         product,
         assets=tuple(assets),
-        geojson_ref=geojson_asset.relative_path
-        if geojson_asset
-        else product.geojson_ref,
+        geojson_ref=geojson_asset.relative_path if geojson_asset else product.geojson_ref,
     )
 
 
@@ -163,6 +162,7 @@ def _manifest(products: list[SeedProduct]) -> dict[str, object]:
         "assetCount": asset_count,
         "acgs": list(ACG_DEFINITIONS),
         "accessScenarios": list(ACCESS_SCENARIOS),
+        "searchScenarios": list(SEARCH_SCENARIOS),
         "products": [manifest_product(product) for product in products],
     }
 
@@ -171,19 +171,11 @@ def _validate_counts(counts: dict[str, int]) -> None:
     missing = set(DEFAULT_PRODUCT_COUNTS) - set(counts)
     unknown = set(counts) - set(DEFAULT_PRODUCT_COUNTS)
     if missing or unknown:
-        raise ValueError(
-            f"Invalid product count keys. Missing={missing}; unknown={unknown}"
-        )
+        raise ValueError(f"Invalid product count keys. Missing={missing}; unknown={unknown}")
     invalid = {family: count for family, count in counts.items() if count < 0}
     if invalid:
         raise ValueError(f"Product counts must be non-negative: {invalid}")
 
 
 def _slug(value: str) -> str:
-    return (
-        value.casefold()
-        .replace(" ", "-")
-        .replace("/", "-")
-        .replace("\\", "-")
-        .replace(":", "-")
-    )
+    return value.casefold().replace(" ", "-").replace("/", "-").replace("\\", "-").replace(":", "-")

@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
 from coeus.domain.auth import UserAccount
+from coeus.domain.enums import TicketState
 from coeus.domain.qc import FeedbackRequest, FeedbackRequestStatus, FeedbackSubmission
 from coeus.domain.tickets import ManagerRoutingDecisionStatus, RoutingRoute, TicketRecord
 from coeus.services.audit import AuditLog
@@ -176,9 +177,7 @@ class FeedbackAnalyticsService:
         search_metrics = [item for ticket in tickets for item in ticket.search_metrics]
         return AnalyticsMetrics(
             total_tickets=len(tickets),
-            active_tickets=sum(
-                1 for ticket in tickets if not ticket.state.name.startswith("CLOSED")
-            ),
+            active_tickets=sum(1 for ticket in tickets if _is_active(ticket)),
             disseminations=sum(len(ticket.disseminations) for ticket in tickets),
             feedback_requested=sum(len(ticket.feedback_requests) for ticket in tickets),
             feedback_submitted=len(submissions),
@@ -265,6 +264,11 @@ def build_feedback_analytics_service(
     tickets: TicketServices, store: StoreServices, audit_log: AuditLog
 ) -> FeedbackAnalyticsService:
     return FeedbackAnalyticsService(tickets, store, audit_log)
+
+
+def _is_active(ticket: TicketRecord) -> bool:
+    """Closed and cancelled tickets are not active work in progress."""
+    return not ticket.state.name.startswith("CLOSED") and ticket.state != TicketState.CANCELLED
 
 
 def _approved_route(ticket: TicketRecord) -> RoutingRoute | None:

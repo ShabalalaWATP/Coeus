@@ -22,6 +22,7 @@ test.each([
   ["DRAFT_INTAKE", "warning"],
   ["DISSEMINATION_READY", "success"],
   ["COMPLETE", "success"],
+  ["CLOSED_DELIVERED", "success"],
   ["RFI_SEARCHING", "info"],
 ] as const)("maps %s to the %s tone", (state, tone) => {
   expect(toneForState(state)).toBe(tone);

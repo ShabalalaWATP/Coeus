@@ -11,7 +11,7 @@ export function toneForState(state: string): StatusTone {
   if (state.includes("REQUIRED") || state.includes("DRAFT")) {
     return "warning";
   }
-  if (state.includes("READY") || state.includes("COMPLETE")) {
+  if (state.includes("READY") || state.includes("COMPLETE") || state.includes("DELIVERED")) {
     return "success";
   }
   return "info";

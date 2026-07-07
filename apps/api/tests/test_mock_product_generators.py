@@ -23,6 +23,16 @@ def test_mock_catalog_default_counts_are_public_safe() -> None:
         "ACG-ECHO-DATA",
     }
     assert all("MOCK DATA ONLY" in product["summary"] for product in manifest["products"])
+    assert all(product["status"] == "published" for product in manifest["products"])
+    assert all(product["timePeriodStart"] for product in manifest["products"])
+    assert all(product["timePeriodEnd"] for product in manifest["products"])
+    assert all(product["semanticLabels"] for product in manifest["products"])
+    assert {scenario["name"] for scenario in manifest["searchScenarios"]} >= {
+        "maritime_port_disruption",
+        "cyber_energy_intrusion",
+        "geospatial_border_crossing",
+        "collection_sensor_activity",
+    }
 
 
 def test_mock_catalog_generation_writes_safe_assets(tmp_path: Path) -> None:

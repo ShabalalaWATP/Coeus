@@ -120,14 +120,18 @@ function UserManagementRow({
   user,
 }: UserManagementRowProps) {
   const self = user.id === currentUserId;
+  const [roleWarning, setRoleWarning] = useState<string | null>(null);
 
   function toggleRole(role: string, checked: boolean) {
     const nextRoles = checked
       ? [...new Set([...user.roles, role])]
       : user.roles.filter((currentRole) => currentRole !== role);
-    if (nextRoles.length > 0) {
-      onUpdate({ type: "roles", userId: user.id, roles: nextRoles });
+    if (nextRoles.length === 0) {
+      setRoleWarning("An account must keep at least one role.");
+      return;
     }
+    setRoleWarning(null);
+    onUpdate({ type: "roles", userId: user.id, roles: nextRoles });
   }
 
   return (
@@ -151,6 +155,11 @@ function UserManagementRow({
             {role}
           </label>
         ))}
+        {roleWarning ? (
+          <p className="auth-error" role="alert">
+            {roleWarning}
+          </p>
+        ) : null}
       </fieldset>
       <label className="admin-user-row__select">
         Clearance

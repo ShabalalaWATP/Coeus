@@ -66,6 +66,31 @@ test("shows the unread badge and opens a release notification", async () => {
   expect(onToggle).toHaveBeenCalled();
 });
 
+test("shows an inline error when marking a notification as read fails", async () => {
+  const fetchMock = vi.fn((url: string) => {
+    if (url.endsWith("/read")) {
+      return Promise.resolve({
+        ok: false,
+        status: 500,
+        json: () => Promise.reject(new Error("no body")),
+      });
+    }
+    return Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({ notifications: [releaseNotification], unread: 1 }),
+    });
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<NotificationsPopover onToggle={vi.fn()} open />, "/app/requests");
+
+  await userEvent.click(await screen.findByRole("button", { name: /TCK-0001 released/ }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "The notification could not be marked as read.",
+  );
+});
+
 test("renders an empty notifications panel", async () => {
   vi.stubGlobal(
     "fetch",

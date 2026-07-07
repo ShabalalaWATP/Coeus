@@ -53,6 +53,33 @@ test("opens notifications and profile panels", async () => {
   expect(screen.getByLabelText("Profile panel")).toHaveTextContent(previewProfile.username);
 });
 
+test("links to the change password page from the profile panel", async () => {
+  const user = userEvent.setup();
+  renderWithProviders(<TopCommandBar onLogout={vi.fn()} profile={previewProfile} />);
+
+  await user.click(screen.getByRole("button", { name: "Profile" }));
+
+  const changePassword = screen.getByRole("link", { name: "Change password" });
+  expect(changePassword).toHaveAttribute("href", "/account/password");
+  await user.click(changePassword);
+  expect(screen.queryByLabelText("Profile panel")).not.toBeInTheDocument();
+});
+
+test("closes popovers on Escape and on outside clicks", async () => {
+  const user = userEvent.setup();
+  renderWithProviders(<TopCommandBar onLogout={vi.fn()} profile={previewProfile} />);
+
+  await user.click(screen.getByRole("button", { name: "Profile" }));
+  expect(screen.getByLabelText("Profile panel")).toBeVisible();
+  await user.keyboard("{Escape}");
+  expect(screen.queryByLabelText("Profile panel")).not.toBeInTheDocument();
+
+  await user.click(screen.getByRole("button", { name: "Notifications" }));
+  expect(screen.getByLabelText("Notifications panel")).toBeVisible();
+  await user.click(document.body);
+  expect(screen.queryByLabelText("Notifications panel")).not.toBeInTheDocument();
+});
+
 test("navigates from command search results", async () => {
   const user = userEvent.setup();
   renderWithProviders(
