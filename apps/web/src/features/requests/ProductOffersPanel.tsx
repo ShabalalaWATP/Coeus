@@ -10,6 +10,7 @@ import type { Ticket } from "../../lib/api-client/tickets";
 
 type ProductOffersPanelProps = {
   isAccepting: boolean;
+  isError?: boolean;
   isLoading: boolean;
   isRejecting: boolean;
   isRunning: boolean;
@@ -22,6 +23,7 @@ type ProductOffersPanelProps = {
 
 export function ProductOffersPanel({
   isAccepting,
+  isError = false,
   isLoading,
   isRejecting,
   isRunning,
@@ -57,7 +59,11 @@ export function ProductOffersPanel({
           </div>
           {results?.metrics ? <SearchMetrics metrics={results.metrics} /> : null}
           {isLoading ? <p>Loading product offers</p> : null}
-          {offers.length ? (
+          {isError ? (
+            <p className="auth-error" role="alert">
+              Product offers could not be loaded. Refresh and try again.
+            </p>
+          ) : offers.length ? (
             <div className="offer-list">
               {offers.map((offer) => (
                 <OfferCard

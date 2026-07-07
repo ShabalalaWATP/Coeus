@@ -228,6 +228,45 @@ test("scopes my products to the RFA team for an assessment manager", async () =>
   expect(screen.queryByText("Collection Sensor Summary")).not.toBeInTheDocument();
 });
 
+test("keeps counts and pagination consistent when the mine scope filters client-side", async () => {
+  const adminSession: AuthSession = {
+    csrfToken: "test-csrf-token",
+    user: {
+      id: "admin-user",
+      username: "admin@example.test",
+      displayName: "Administrator",
+      roles: ["Administrator"],
+      defaultRoute: "/admin/overview",
+      permissions: ["product:read", "product:search"],
+    },
+  };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          products: [visibleProduct, collectionProduct],
+          total: 8,
+          page: 1,
+          pageSize: 6,
+          totalPages: 2,
+          facets: { productTypes: [], regions: [], tags: [] },
+        }),
+    }),
+  );
+
+  renderWithProviders(<StorePage scope="mine" />, "/store/my-products", adminSession);
+
+  expect(await screen.findByRole("heading", { name: "My Products" })).toBeVisible();
+  // Administrator roles do not map to an owner team, so the client-side
+  // filter yields no owned products; counts must reflect that, not the
+  // server totals for the unfiltered search.
+  expect(await screen.findByRole("heading", { name: "0 products" })).toBeVisible();
+  expect(screen.getByText("No products to show.")).toBeVisible();
+  expect(screen.queryByRole("navigation", { name: "Store pages" })).not.toBeInTheDocument();
+});
+
 test("renders a store search error state", async () => {
   vi.stubGlobal(
     "fetch",

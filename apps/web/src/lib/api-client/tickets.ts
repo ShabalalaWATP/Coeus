@@ -108,6 +108,7 @@ export type TicketState =
   | "REWORK_REQUIRED"
   | "MANAGER_RELEASE"
   | "DISSEMINATION_READY"
+  | "CLOSED_DELIVERED"
   | "CLOSED_EXISTING_PRODUCT_ACCEPTED"
   | "CANCELLED";
 
@@ -209,11 +210,20 @@ export async function addTicketInformation(
   });
 }
 
-export async function listUserDirectory(): Promise<DirectoryUser[]> {
-  const response = await apiRequestJson<{ users: DirectoryUser[] }>("/api/v1/users/directory", {
-    method: "GET",
-  });
+export async function listUserDirectory(query: string): Promise<DirectoryUser[]> {
+  const params = new URLSearchParams({ q: query });
+  const response = await apiRequestJson<{ users: DirectoryUser[] }>(
+    `/api/v1/users/directory?${params.toString()}`,
+    { method: "GET" },
+  );
   return response.users;
+}
+
+export async function confirmTicketDelivery(ticketId: string, csrfToken: string): Promise<Ticket> {
+  return apiRequestJson<Ticket>(`/api/v1/tickets/${pathSegment(ticketId)}/confirm-delivery`, {
+    headers: { "X-CSRF-Token": csrfToken },
+    method: "POST",
+  });
 }
 
 export async function addTicketCollaborator(

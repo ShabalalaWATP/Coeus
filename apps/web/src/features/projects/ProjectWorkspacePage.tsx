@@ -57,6 +57,29 @@ export default function ProjectWorkspacePage({ view = "overview" }: ProjectWorks
           <ErrorState onRetry={() => void projectsQuery.refetch()} />
         </section>
       ) : null}
+      {projects.length > 0 ? (
+        <nav className="surface project-picker" aria-label="Your projects">
+          <span className="eyebrow">Your projects</span>
+          <ul>
+            {projects.map((item) => (
+              <li key={item.id}>
+                <Link
+                  aria-current={item.id === project?.id ? "page" : undefined}
+                  className={
+                    item.id === project?.id
+                      ? "store-action store-action--secondary project-picker__active"
+                      : "store-action store-action--secondary"
+                  }
+                  to={`/projects/${encodeURIComponent(item.id)}`}
+                >
+                  <span className="mono-ref">{item.reference}</span>
+                  {item.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      ) : null}
       {project === undefined ? (
         projectsQuery.isLoading || projectsQuery.isError ? null : (
           <section className="surface">

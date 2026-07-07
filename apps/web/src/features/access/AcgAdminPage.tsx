@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { KeyRound, Plus, Save, UserPlus, UsersRound } from "lucide-react";
+import { useParams } from "react-router-dom";
 
 import { ErrorState, LoadingState } from "../../components/ui/PageState";
 import { apiClient, type AccessControlGroup } from "../../lib/api-client/client";
@@ -14,6 +15,7 @@ type AcgFormState = {
 };
 
 export default function AcgAdminPage() {
+  const { acgId } = useParams();
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -31,10 +33,17 @@ export default function AcgAdminPage() {
     queryFn: () => apiClient.listAcgs(),
   });
   const acgs = useMemo(() => acgsQuery.data ?? [], [acgsQuery.data]);
+  // Honour the :acgId route parameter until the user picks a group manually.
+  // Fall back to the first group only when the requested id is absent or not
+  // found, and say so when a requested id does not exist.
+  const routedAcgExists = acgId !== undefined && acgs.some((acg) => acg.id === acgId);
+  const requestedId = selectedId ?? (routedAcgExists ? acgId : undefined) ?? acgs[0]?.id;
   const selectedAcg = useMemo(
-    () => acgs.find((acg) => acg.id === (selectedId ?? acgs[0]?.id)),
-    [acgs, selectedId],
+    () => acgs.find((acg) => acg.id === requestedId),
+    [acgs, requestedId],
   );
+  const routedAcgMissing =
+    acgId !== undefined && acgs.length > 0 && !routedAcgExists && selectedId === null;
   const csrfToken = session?.csrfToken ?? "";
   const canUpdate = session !== null && hasPermissions(session.user, ["acg:update"]);
   const canAddMember = session !== null && hasPermissions(session.user, ["acg:assign_user"]);
@@ -93,6 +102,12 @@ export default function AcgAdminPage() {
         </div>
         <div className="classification-note">MOCK DATA ONLY</div>
       </section>
+
+      {routedAcgMissing ? (
+        <p className="workspace-alert" role="alert">
+          The requested access group was not found. Showing the first available group instead.
+        </p>
+      ) : null}
 
       <section className="access-grid">
         <div className="surface access-list" aria-label="Access control groups">

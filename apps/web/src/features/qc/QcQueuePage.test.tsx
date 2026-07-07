@@ -2,86 +2,16 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import QcQueuePage from "./QcQueuePage";
+import {
+  approvedProduct,
+  baseProduct,
+  fetchByUrl,
+  jsonResponse,
+  renderQcRoutes,
+} from "./qc-test-fixtures";
 import { resetQueryClientForTests } from "../../app/query-client";
 import type { QcProduct } from "../../lib/api-client/qc";
 import { renderWithProviders } from "../../test/test-utils";
-
-const baseProduct: QcProduct = {
-  ticketId: "ticket-1",
-  reference: "TCK-0001",
-  requesterUserId: "user-1",
-  state: "QC_REVIEW",
-  title: "Arctic QC product",
-  operationalQuestion: "What activity needs command attention?",
-  areaOrRegion: "Arctic fisheries",
-  priority: "high",
-  requiredOutputFormat: "assessment report",
-  checklistKeys: [
-    "answers_customer_question",
-    "sources_are_sufficient",
-    "metadata_complete",
-    "classification_checked",
-    "releasability_checked",
-    "acg_assignment_checked",
-    "format_correct",
-    "handling_caveats_applied",
-    "manager_comments_resolved",
-  ],
-  latestDraft: {
-    id: "draft-1",
-    versionNumber: 1,
-    title: "Arctic QC product",
-    summary: "MOCK DATA ONLY draft.",
-    productType: "finished_output",
-    content: "MOCK DATA ONLY assessment content.",
-    createdByUserId: "analyst-1",
-    createdAt: "2026-07-05T00:00:00Z",
-    assets: [
-      {
-        id: "asset-1",
-        name: "assessment-draft.pdf",
-        assetType: "pdf",
-        mimeType: "application/pdf",
-        sizeBytes: 512,
-        sha256: "d".repeat(64),
-      },
-    ],
-  },
-  managerNotes: ["Approved for analyst assignment."],
-  decisions: [],
-  indexRecords: [],
-  disseminations: [],
-  feedbackRequests: [],
-  ingestedProduct: null,
-};
-
-const approvedProduct: QcProduct = {
-  ...baseProduct,
-  state: "MANAGER_RELEASE",
-  decisions: [
-    {
-      id: "decision-1",
-      status: "approved",
-      reason: "QC checklist complete.",
-      reviewerUserId: "qc-1",
-      checklist: baseProduct.checklistKeys.map((key) => ({ key, passed: true })),
-      createdAt: "2026-07-05T00:05:00Z",
-    },
-  ],
-  indexRecords: [
-    { id: "index-1", productId: "product-1", status: "queued", summary: "Queued." },
-    { id: "index-2", productId: "product-1", status: "indexed", summary: "Indexed." },
-  ],
-  disseminations: [],
-  feedbackRequests: [],
-  ingestedProduct: {
-    id: "product-1",
-    reference: "PROD-1004",
-    title: "Arctic QC product",
-    status: "draft",
-    acgIds: ["acg-1"],
-  },
-};
 
 beforeEach(() => {
   resetQueryClientForTests();
@@ -199,6 +129,94 @@ test("renders queued ingestion status for a QC product without a draft", async (
   expect(await screen.findByText("No draft product is attached.")).toBeVisible();
 });
 
+test("keeps approval disabled until access control groups are available", async () => {
+  const fetchMock = vi.fn(fetchByUrl({ acgs: [] }));
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<QcQueuePage />, "/qc/queue");
+
+  await screen.findByRole("link", { name: /TCK-0001/ });
+  await userEvent.click(screen.getByRole("button", { name: /Mark all complete/ }));
+
+  expect(screen.getByRole("button", { name: /Approve and disseminate/ })).toBeDisabled();
+});
+
+test("resets the checklist and release form when the selected product changes", async () => {
+  const secondProduct: QcProduct = {
+    ...baseProduct,
+    ticketId: "ticket-2",
+    reference: "TCK-0002",
+    title: "Baltic QC product",
+  };
+  const fetchMock = vi.fn((url: string) => {
+    if (url.endsWith("/api/v1/qc/products/ticket-2")) {
+      return Promise.resolve(jsonResponse(secondProduct));
+    }
+    return fetchByUrl({ queueProducts: [baseProduct, secondProduct] })(url);
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderQcRoutes("/qc/queue");
+
+  await screen.findByRole("link", { name: /TCK-0001/ });
+  await userEvent.click(screen.getByRole("button", { name: /Mark all complete/ }));
+  await userEvent.type(screen.getByLabelText("Rejection reason"), "Needs new sources.");
+  expect(screen.getByLabelText("answers customer question")).toBeChecked();
+
+  await userEvent.click(screen.getByRole("link", { name: /TCK-0002/ }));
+
+  await waitFor(() => expect(screen.getByLabelText("answers customer question")).not.toBeChecked());
+  expect(screen.getByLabelText("Rejection reason")).toHaveValue("");
+});
+
+test("notes when the requested QC product cannot be found", async () => {
+  const fetchMock = vi.fn(fetchByUrl({}));
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderQcRoutes("/qc/products/ticket-404");
+
+  expect(
+    await screen.findByText(
+      "The requested product was not found or is no longer in the QC queue.",
+      undefined,
+      { timeout: 5000 },
+    ),
+  ).toBeVisible();
+  expect(screen.getByRole("link", { name: "Back to the QC queue" })).toHaveAttribute(
+    "href",
+    "/qc/queue",
+  );
+  // The first queue product still renders below the notice.
+  expect(
+    within(screen.getByLabelText("QC product detail")).getByText("Arctic QC product"),
+  ).toBeVisible();
+});
+
+test("shows QC action failures inline", async () => {
+  const fetchMock = vi.fn((url: string) => {
+    if (url.endsWith("/reject")) {
+      return Promise.resolve({
+        ok: false,
+        status: 409,
+        json: () =>
+          Promise.resolve({
+            error: { code: "invalid_state", message: "Product already left QC." },
+          }),
+      });
+    }
+    return fetchByUrl({})(url);
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<QcQueuePage />, "/qc/queue");
+
+  await screen.findByRole("link", { name: /TCK-0001/ });
+  await userEvent.type(screen.getByLabelText("Rejection reason"), "Needs new sources.");
+  await userEvent.click(screen.getByRole("button", { name: /Return to analyst/ }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("Product already left QC.");
+});
+
 test("renders an empty QC queue", async () => {
   const fetchMock = vi.fn(fetchByUrl({ queueProducts: [] }));
   vi.stubGlobal("fetch", fetchMock);
@@ -226,63 +244,3 @@ test("renders a QC queue error state", async () => {
   ).toBeVisible();
   await userEvent.click(screen.getByRole("button", { name: "Retry" }));
 });
-
-function fetchByUrl({
-  approve = approvedProduct,
-  detail = baseProduct,
-  queueProducts = [baseProduct],
-  reject = baseProduct,
-}: {
-  approve?: QcProduct;
-  detail?: QcProduct;
-  queueProducts?: QcProduct[];
-  reject?: QcProduct;
-}) {
-  return (input: RequestInfo | URL) => {
-    const url = requestUrl(input);
-    if (url.endsWith("/api/v1/qc/queue")) {
-      return Promise.resolve(jsonResponse({ products: queueProducts }));
-    }
-    if (url.endsWith("/api/v1/qc/products/ticket-1")) {
-      return Promise.resolve(jsonResponse(detail));
-    }
-    if (url.endsWith("/api/v1/acgs")) {
-      return Promise.resolve(
-        jsonResponse({
-          acgs: [
-            {
-              id: "acg-1",
-              code: "ACG-ALPHA-REGIONAL",
-              name: "Alpha Regional",
-              description: "Regional mock access group.",
-              ownerUserId: "admin-1",
-              isActive: true,
-              memberUserIds: ["user-1"],
-            },
-          ],
-        }),
-      );
-    }
-    if (url.endsWith("/approve")) {
-      return Promise.resolve(jsonResponse(approve));
-    }
-    if (url.endsWith("/reject")) {
-      return Promise.resolve(jsonResponse(reject));
-    }
-    return Promise.resolve(jsonResponse(baseProduct));
-  };
-}
-
-function requestUrl(input: RequestInfo | URL) {
-  if (input instanceof URL) {
-    return input.toString();
-  }
-  if (typeof input === "string") {
-    return input;
-  }
-  return input.url;
-}
-
-function jsonResponse(payload: unknown) {
-  return { ok: true, json: () => Promise.resolve(payload) };
-}

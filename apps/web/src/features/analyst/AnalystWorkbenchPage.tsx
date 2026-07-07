@@ -22,7 +22,10 @@ export default function AnalystWorkbenchPage() {
     initialDataUpdatedAt: 0,
   });
   const tasks = tasksQuery.data.tasks;
-  const selectedTask = tasks.find((task) => task.ticketId === taskId) ?? tasks[0];
+  const requestedTask = tasks.find((task) => task.ticketId === taskId);
+  const requestedMissing =
+    taskId !== undefined && requestedTask === undefined && !tasksQuery.isFetching;
+  const selectedTask = requestedTask ?? tasks[0];
   const updateTask = (task: AnalystTask) => {
     queryClient.setQueryData<AnalystTaskList>(["analyst-tasks"], (current) => ({
       tasks: replaceTask(current?.tasks ?? [], task),
@@ -38,6 +41,12 @@ export default function AnalystWorkbenchPage() {
         </div>
         <div className="classification-note">MOCK DATA ONLY</div>
       </section>
+      {requestedMissing ? (
+        <p className="workspace-alert" role="alert">
+          The requested task was not found or is no longer assigned to you.{" "}
+          <Link to="/analyst/workbench">Back to your task list</Link>
+        </p>
+      ) : null}
       <section className="analyst-grid">
         <aside className="surface analyst-list" aria-label="Assigned tasks">
           <div className="section-heading">

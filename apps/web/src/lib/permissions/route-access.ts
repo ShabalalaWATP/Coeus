@@ -45,6 +45,13 @@ export const navigationItems: readonly NavigationItem[] = [
     requiredPermissions: ["product:read", "product:search"],
   },
   {
+    label: "My Products",
+    path: "/store/my-products",
+    group: "operations",
+    icon: "store",
+    requiredPermissions: ["product:read", "product:search"],
+  },
+  {
     label: "Projects",
     path: "/projects",
     group: "operations",

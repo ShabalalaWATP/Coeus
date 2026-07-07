@@ -9,7 +9,14 @@ test("maps workflow states onto journey stages with a safe fallback", () => {
   expect(stageIndexForState("DRAFT_INTAKE")).toBe(0);
   expect(stageIndexForState("QC_REVIEW")).toBe(4);
   expect(stageIndexForState("MANAGER_RELEASE")).toBe(5);
+  expect(stageIndexForState("CLOSED_DELIVERED")).toBe(6);
   expect(stageIndexForState("CANCELLED")).toBe(0);
+});
+
+test("marks the delivered stage for confirmed deliveries", () => {
+  render(<RequestJourney onClose={vi.fn()} state="CLOSED_DELIVERED" />);
+
+  expect(screen.getByText("Delivered").closest("li")).toHaveClass("journey-step--current");
 });
 
 test("marks the current stage and closes on escape", async () => {

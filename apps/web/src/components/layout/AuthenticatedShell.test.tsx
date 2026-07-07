@@ -55,6 +55,21 @@ test("shows loading while checking the backend session", () => {
   expect(screen.getByText("Loading workspace")).toBeVisible();
 });
 
+test("forces password changes before any other route", () => {
+  render(
+    <AppProviders initialAuthSession={{ ...previewSession, passwordResetRequired: true }}>
+      <MemoryRouter initialEntries={["/"]}>
+        <Routes>
+          <Route path="/" element={<AuthenticatedShell />} />
+          <Route path="/account/password" element={<p>Password route</p>} />
+        </Routes>
+      </MemoryRouter>
+    </AppProviders>,
+  );
+
+  expect(screen.getByText("Password route")).toBeVisible();
+});
+
 test("redirects expired sessions", async () => {
   render(
     <AppProviders

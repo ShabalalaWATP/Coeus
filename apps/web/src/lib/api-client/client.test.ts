@@ -1,6 +1,10 @@
 import { ApiClient, ApiError, pathSegment } from "./client";
 import { previewSession } from "../../test/test-utils";
 
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 test("sends request id headers and returns typed JSON", async () => {
   const fetchMock = vi.fn().mockResolvedValue({
     ok: true,

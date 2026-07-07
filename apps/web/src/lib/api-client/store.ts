@@ -1,4 +1,4 @@
-import { apiRequestJson, pathSegment, resolveApiBaseUrl } from "./client";
+import { ApiError, apiRequestJson, pathSegment, resolveApiBaseUrl } from "./client";
 
 type StoreAsset = {
   id: string;
@@ -205,11 +205,31 @@ export async function uploadStoreProduct(
   });
 }
 
-export function assetDownloadUrl(productId: string, assetId: string, token: string): string {
-  const params = new URLSearchParams({ token });
-  return `${resolveApiBaseUrl()}/api/v1/store/products/${pathSegment(
-    productId,
-  )}/assets/${pathSegment(assetId)}/download?${params}`;
+export async function downloadAssetBlob(
+  productId: string,
+  assetId: string,
+  token: string,
+): Promise<Blob> {
+  const response = await fetch(
+    `${resolveApiBaseUrl()}/api/v1/store/products/${pathSegment(productId)}/assets/${pathSegment(
+      assetId,
+    )}/download`,
+    {
+      // The response varies with the token header, so bypass the HTTP cache.
+      cache: "no-store",
+      credentials: "include",
+      headers: { "X-Asset-Token": token },
+      method: "GET",
+    },
+  );
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      "asset_download_failed",
+      `Asset download failed with status ${response.status}`,
+    );
+  }
+  return response.blob();
 }
 
 export async function suggestStoreMetadata(

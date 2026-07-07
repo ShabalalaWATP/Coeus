@@ -186,3 +186,23 @@
     grid-template-columns: 1fr;
   }
 }
+
+.project-picker {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.project-picker ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.project-picker__active {
+  border-color: var(--accent);
+  color: var(--text);
+}

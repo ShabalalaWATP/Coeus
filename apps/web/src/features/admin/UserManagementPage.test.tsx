@@ -112,6 +112,27 @@ test("renders users and applies role, clearance and status changes", async () =>
   expect(await screen.findByText("Istari-temporary")).toBeVisible();
 });
 
+test("refuses to remove the last role and explains why", async () => {
+  const fetchMock = vi.fn((url: string) => {
+    if (url.endsWith("/admin/users")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ users: [analystUser] }),
+      });
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<UserManagementPage />, "/admin/users");
+
+  await userEvent.click(await screen.findByLabelText("Intelligence Analyst"));
+
+  expect(await screen.findByText("An account must keep at least one role.")).toBeVisible();
+  expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining("/roles"), expect.anything());
+  expect(screen.getByLabelText("Intelligence Analyst")).toBeChecked();
+});
+
 test("shows an actionable error when a user update fails", async () => {
   vi.stubGlobal(
     "fetch",

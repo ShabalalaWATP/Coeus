@@ -8,8 +8,33 @@ export function canReject(ticket: RoutingTicket, route: RoutingRoute, reason: st
   return canApprove(ticket, route) && reason.trim().length >= 3;
 }
 
-export function canSubmitClarification(ticket: RoutingTicket, route: RoutingRoute, reason: string) {
-  return canApprove(ticket, route) && reason.trim().length >= 3;
+export function canSubmitClarification(
+  ticket: RoutingTicket,
+  route: RoutingRoute,
+  reason: string,
+  question: string,
+) {
+  return canApprove(ticket, route) && reason.trim().length >= 3 && question.trim().length >= 3;
+}
+
+/**
+ * Approving a route that the orchestrator did not recommend is an override
+ * and requires a manager-provided reason. Overrides are same-queue only, so
+ * the check is simply "the recommendation exists and points elsewhere".
+ */
+export function isRouteOverride(ticket: RoutingTicket, route: RoutingRoute) {
+  return ticket.recommendation !== null && ticket.recommendation.recommendedRoute !== route;
+}
+
+export function canApproveWithOverride(
+  ticket: RoutingTicket,
+  route: RoutingRoute,
+  overrideReason: string,
+) {
+  if (!canApprove(ticket, route)) {
+    return false;
+  }
+  return !isRouteOverride(ticket, route) || overrideReason.trim().length >= 3;
 }
 
 export function upsertRoutingTicket(

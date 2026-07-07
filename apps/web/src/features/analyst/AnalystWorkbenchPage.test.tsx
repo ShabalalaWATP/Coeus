@@ -1,10 +1,12 @@
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 import AnalystWorkbenchPage from "./AnalystWorkbenchPage";
+import { AppProviders } from "../../app/providers";
 import { resetQueryClientForTests } from "../../app/query-client";
 import type { AnalystTask } from "../../lib/api-client/analyst";
-import { renderWithProviders } from "../../test/test-utils";
+import { previewSession, renderWithProviders } from "../../test/test-utils";
 
 const baseTask: AnalystTask = {
   ticketId: "ticket-1",
@@ -103,6 +105,57 @@ test("renders an analyst tasks error state", async () => {
     await screen.findByText("Unable to load data", undefined, { timeout: 5000 }),
   ).toBeVisible();
   await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+});
+
+test("notes when the requested task is not assigned to the analyst", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ tasks: [baseTask] }),
+    }),
+  );
+
+  window.history.pushState({}, "Test page", "/analyst/tasks/ticket-404");
+  render(
+    <AppProviders initialAuthSession={previewSession}>
+      <MemoryRouter initialEntries={["/analyst/tasks/ticket-404"]}>
+        <Routes>
+          <Route path="/analyst/tasks/:taskId" element={<AnalystWorkbenchPage />} />
+        </Routes>
+      </MemoryRouter>
+    </AppProviders>,
+  );
+
+  expect(
+    await screen.findByText("The requested task was not found or is no longer assigned to you."),
+  ).toBeVisible();
+  expect(screen.getByRole("link", { name: "Back to your task list" })).toHaveAttribute(
+    "href",
+    "/analyst/workbench",
+  );
+  // The first assigned task still renders as the fallback selection.
+  expect(screen.getAllByText("Arctic Fisheries Assessment").length).toBeGreaterThan(0);
+});
+
+test("shows analyst mutation failures inline", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ tasks: [baseTask] }) })
+    .mockResolvedValue({
+      ok: false,
+      status: 409,
+      json: () =>
+        Promise.resolve({ error: { code: "invalid_state", message: "Task is no longer active." } }),
+    });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<AnalystWorkbenchPage />, "/analyst/workbench");
+
+  await screen.findByRole("link", { name: /TCK-0001/ });
+  await userEvent.click(screen.getByLabelText("Review permitted products"));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("Task is no longer active.");
 });
 
 test("works an assigned task through notes, products, draft and QC submission", async () => {

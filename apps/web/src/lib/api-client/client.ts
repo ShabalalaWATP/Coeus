@@ -1,3 +1,7 @@
+import { toApiError } from "./client-errors";
+
+export { ApiError, setAuthEventHandlers } from "./client-errors";
+
 export type HealthResponse = {
   status: "ok" | "ready" | "not_ready";
   service: string;
@@ -77,11 +81,17 @@ export type AuthUser = {
 export type AuthSession = {
   user: AuthUser;
   csrfToken: string;
+  passwordResetRequired?: boolean;
 };
 
 export type LoginRequest = {
   username: string;
   password: string;
+};
+
+export type ChangePasswordRequest = {
+  currentPassword: string;
+  newPassword: string;
 };
 
 export type AccessControlGroup = {
@@ -157,24 +167,6 @@ export type UpdateAccessControlGroupRequest = {
   isActive?: boolean;
 };
 
-type ErrorPayload = {
-  error?: {
-    code?: string;
-    message?: string;
-  };
-};
-
-export class ApiError extends Error {
-  constructor(
-    readonly status: number,
-    readonly code: string,
-    message: string,
-  ) {
-    super(message);
-    this.name = "ApiError";
-  }
-}
-
 export class ApiClient {
   constructor(private readonly baseUrl: string) {}
 
@@ -204,6 +196,14 @@ export class ApiClient {
   async logout(csrfToken: string): Promise<void> {
     await this.requestNoContent("/api/v1/auth/logout", {
       headers: { "X-CSRF-Token": csrfToken },
+      method: "POST",
+    });
+  }
+
+  async changePassword(payload: ChangePasswordRequest, csrfToken: string): Promise<void> {
+    await this.requestNoContent("/api/v1/auth/password", {
+      body: JSON.stringify(payload),
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
       method: "POST",
     });
   }
@@ -280,7 +280,7 @@ export class ApiClient {
       credentials: "include",
     });
     if (!response.ok) {
-      throw await toApiError(response);
+      throw await toApiError(response, path);
     }
     return (await response.json()) as TResponse;
   }
@@ -291,23 +291,9 @@ export class ApiClient {
       credentials: "include",
     });
     if (!response.ok) {
-      throw await toApiError(response);
+      throw await toApiError(response, path);
     }
   }
-}
-
-async function toApiError(response: Response): Promise<ApiError> {
-  let payload: ErrorPayload = {};
-  try {
-    payload = (await response.json()) as ErrorPayload;
-  } catch {
-    payload = {};
-  }
-  return new ApiError(
-    response.status,
-    payload.error?.code ?? "request_failed",
-    payload.error?.message ?? `API request failed with status ${response.status}`,
-  );
 }
 
 export async function apiRequestJson<TResponse>(
@@ -319,7 +305,7 @@ export async function apiRequestJson<TResponse>(
     credentials: "include",
   });
   if (!response.ok) {
-    throw await toApiError(response);
+    throw await toApiError(response, path);
   }
   return (await response.json()) as TResponse;
 }

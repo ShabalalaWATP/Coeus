@@ -1,4 +1,4 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 
 import { AppShell } from "./AppShell";
 import { RouteFallback } from "./RouteFallback";
@@ -6,6 +6,7 @@ import { useAuth } from "../../lib/auth/auth-context";
 
 export function AuthenticatedShell() {
   const { session, status } = useAuth();
+  const location = useLocation();
 
   if (status === "loading") {
     return <RouteFallback />;
@@ -15,6 +16,9 @@ export function AuthenticatedShell() {
   }
   if (session === null) {
     return <Navigate to="/login" replace />;
+  }
+  if (session.passwordResetRequired === true && location.pathname !== "/account/password") {
+    return <Navigate to="/account/password" replace />;
   }
   return <AppShell profile={session.user} />;
 }

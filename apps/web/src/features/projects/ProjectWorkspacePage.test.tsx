@@ -79,6 +79,34 @@ test("renders a visible project workspace with filtered products", async () => {
   expect(screen.getByText("Shared ACG")).toBeVisible();
 });
 
+test("lists the user's projects as a picker with the active project marked", async () => {
+  const secondProject = {
+    ...project,
+    id: "project-aurora",
+    reference: "PRJ-AURORA",
+    name: "Aurora Collection Workspace",
+    visibleProducts: [],
+  };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ projects: [project, secondProject] }),
+    }),
+  );
+
+  renderWithProviders(<ProjectWorkspacePage />, "/projects");
+
+  const picker = await screen.findByRole("navigation", { name: "Your projects" });
+  const activeLink = screen.getByRole("link", { name: /Northstar RFI Workspace/ });
+  expect(activeLink).toHaveAttribute("href", "/projects/project-northstar");
+  expect(activeLink).toHaveAttribute("aria-current", "page");
+  const otherLink = screen.getByRole("link", { name: /Aurora Collection Workspace/ });
+  expect(otherLink).toHaveAttribute("href", "/projects/project-aurora");
+  expect(otherLink).not.toHaveAttribute("aria-current");
+  expect(picker).toBeVisible();
+});
+
 test("renders an empty state when no projects are visible", async () => {
   vi.stubGlobal(
     "fetch",

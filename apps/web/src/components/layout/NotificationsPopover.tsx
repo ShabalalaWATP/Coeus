@@ -10,6 +10,7 @@ import {
   type NotificationList,
 } from "../../lib/api-client/notifications";
 import { useAuth } from "../../lib/auth/auth-context";
+import { useActionError } from "../../lib/mutations/action-error";
 
 type NotificationsPopoverProps = {
   onToggle: () => void;
@@ -26,8 +27,11 @@ export function NotificationsPopover({ onToggle, open }: NotificationsPopoverPro
     queryFn: listNotifications,
     refetchInterval: 60_000,
   });
+  const { actionError, clearActionError, failActionWith } = useActionError();
   const readMutation = useMutation({
     mutationFn: (notificationId: string) => markNotificationRead(notificationId, csrfToken),
+    onError: failActionWith("The notification could not be marked as read."),
+    onMutate: clearActionError,
     onSuccess: (updated: AppNotification) => {
       queryClient.setQueryData<NotificationList>(["notifications"], (current) =>
         current === undefined
@@ -72,6 +76,11 @@ export function NotificationsPopover({ onToggle, open }: NotificationsPopoverPro
       {open ? (
         <aside className="command-popover notifications-popover" aria-label="Notifications panel">
           <strong>Notifications</strong>
+          {actionError ? (
+            <p className="auth-error" role="alert">
+              {actionError}
+            </p>
+          ) : null}
           {notifications.length === 0 ? <p>No new notifications.</p> : null}
           <ul>
             {notifications.slice(0, 8).map((notification) => (

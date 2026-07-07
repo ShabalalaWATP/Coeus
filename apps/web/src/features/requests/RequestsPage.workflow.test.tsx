@@ -54,6 +54,7 @@ test("tags and removes a collaborator as the request owner", async () => {
 
   renderRequests("/app/requests/ticket-1");
 
+  await userEvent.type(await screen.findByLabelText("Search users"), "colleague");
   await screen.findByRole("option", { name: "Customer Colleague" });
   await userEvent.selectOptions(screen.getByLabelText("Tag a user"), "colleague@example.test");
   await userEvent.selectOptions(screen.getByLabelText("Access"), "editor");
@@ -146,9 +147,9 @@ test("shows request mutation failures instead of failing silently", async () => 
   await userEvent.type(await screen.findByLabelText("Message"), "Please use routine priority.");
   await userEvent.click(screen.getByRole("button", { name: "Send" }));
 
-  expect(await screen.findByRole("alert")).toHaveTextContent(
-    "The message could not be sent. Try again.",
-  );
+  // The API error body carries the reason, so it is preferred over the
+  // generic fallback message.
+  expect(await screen.findByRole("alert")).toHaveTextContent("Failed.");
   await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 });
@@ -190,6 +191,7 @@ test("runs RFI search and accepts an offered product", async () => {
   const acceptedResults = {
     ...rfiSearchResults,
     ticketState: "CLOSED_EXISTING_PRODUCT_ACCEPTED",
+    metrics: { ...rfiSearchResults.metrics, acceptedProductId: "product-1" },
     offers: [{ ...rfiSearchResults.offers[0], status: "accepted" }],
   };
   const fetchMock = vi.fn((url: string, init?: RequestInit) => {
@@ -223,6 +225,14 @@ test("runs RFI search and accepts an offered product", async () => {
       "http://127.0.0.1:8001/api/v1/rfi-search/ticket-1/offers/product-1/accept",
       expect.objectContaining({ method: "POST" }),
     ),
+  );
+
+  // Accepting an offer records the released product so the dashboard can link
+  // to it without a refetch.
+  await userEvent.click(screen.getByRole("link", { name: "Back to my requests" }));
+  expect(await screen.findByRole("link", { name: /View released product/ })).toHaveAttribute(
+    "href",
+    "/store/products/product-1",
   );
 });
 

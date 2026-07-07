@@ -1,0 +1,21 @@
+.store-asset-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.asset-grant__download {
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.asset-grant__download:disabled {
+  color: var(--muted);
+  cursor: progress;
+}

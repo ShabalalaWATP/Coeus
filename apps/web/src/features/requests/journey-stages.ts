@@ -59,7 +59,7 @@ export const JOURNEY_STAGES: JourneyStage[] = [
     label: "Delivered",
     detail: "The product reaches your dashboard, notifications and the store.",
     icon: PackageOpen,
-    states: ["DISSEMINATION_READY", "CLOSED_EXISTING_PRODUCT_ACCEPTED"],
+    states: ["DISSEMINATION_READY", "CLOSED_DELIVERED", "CLOSED_EXISTING_PRODUCT_ACCEPTED"],
   },
 ];
 

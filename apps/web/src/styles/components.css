@@ -228,3 +228,9 @@
   text-transform: uppercase;
   white-space: nowrap;
 }
+
+.field-hint {
+  color: var(--warning);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}

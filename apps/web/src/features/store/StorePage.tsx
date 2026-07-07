@@ -108,6 +108,13 @@ export default function StorePage({
     return [...scoped].sort(sorters[sort]);
   }, [ownerTeam, productsQuery.data?.products, scope, session, sort]);
   const canUpload = session !== null && hasPermissions(session.user, ["product:create_existing"]);
+  // When the "mine" scope cannot be pushed to the server (no owner team maps
+  // to the user's roles) the filter runs client-side, so server totals and
+  // pagination would be wrong. Use the filtered list for counts instead.
+  const clientScoped = scope === "mine" && activeOwnerTeam === undefined;
+  const totalVisible = clientScoped
+    ? visibleProducts.length
+    : (productsQuery.data?.total ?? visibleProducts.length);
 
   return (
     <div className="store-page">
@@ -231,7 +238,7 @@ export default function StorePage({
           <div className="store-results__header">
             <div>
               <span className="eyebrow">Visible results</span>
-              <h2>{productsQuery.data?.total ?? visibleProducts.length} products</h2>
+              <h2>{totalVisible} products</h2>
             </div>
             <label className="store-sort">
               Sort by
@@ -244,9 +251,13 @@ export default function StorePage({
             {productsQuery.isFetching ? <span className="store-chip">Refreshing</span> : null}
           </div>
           <PaginationSummary
-            page={productsQuery.data?.page ?? page}
-            pageSize={productsQuery.data?.pageSize ?? STORE_PAGE_SIZE}
-            total={productsQuery.data?.total ?? visibleProducts.length}
+            page={clientScoped ? 1 : (productsQuery.data?.page ?? page)}
+            pageSize={
+              clientScoped
+                ? Math.max(visibleProducts.length, 1)
+                : (productsQuery.data?.pageSize ?? STORE_PAGE_SIZE)
+            }
+            total={totalVisible}
           />
           <div className="store-facets" aria-label="Visible facets">
             {(productsQuery.data?.facets.productTypes ?? []).map((type) => (
@@ -316,7 +327,7 @@ export default function StorePage({
             onNext={() => setPage((current) => current + 1)}
             onPrevious={() => setPage((current) => Math.max(1, current - 1))}
             page={productsQuery.data?.page ?? page}
-            totalPages={productsQuery.data?.totalPages ?? 0}
+            totalPages={clientScoped ? 0 : (productsQuery.data?.totalPages ?? 0)}
           />
         </section>
       </section>

@@ -1,10 +1,26 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 import AcgAdminPage from "./AcgAdminPage";
+import { AppProviders } from "../../app/providers";
 import { resetQueryClientForTests } from "../../app/query-client";
 import type { AuthSession } from "../../lib/api-client/client";
-import { renderWithProviders } from "../../test/test-utils";
+import { previewSession, renderWithProviders } from "../../test/test-utils";
+
+function renderAcgRoute(initialPath: string) {
+  window.history.pushState({}, "Test page", initialPath);
+  return render(
+    <AppProviders initialAuthSession={previewSession}>
+      <MemoryRouter initialEntries={[initialPath]}>
+        <Routes>
+          <Route path="/admin/acgs" element={<AcgAdminPage />} />
+          <Route path="/admin/acgs/:acgId" element={<AcgAdminPage />} />
+        </Routes>
+      </MemoryRouter>
+    </AppProviders>,
+  );
+}
 
 const acg = {
   id: "acg-alpha",
@@ -133,6 +149,42 @@ test("hides mutation forms from view-only access", async () => {
   ).not.toBeInTheDocument();
   expect(screen.queryByLabelText("User ID")).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /Save/i })).not.toBeInTheDocument();
+});
+
+test("honours the acgId route parameter when selecting a group", async () => {
+  const bravoAcg = {
+    ...acg,
+    id: "acg-bravo",
+    code: "ACG-BRAVO",
+    name: "Bravo Collection",
+  };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ acgs: [acg, bravoAcg] }) }),
+  );
+
+  renderAcgRoute("/admin/acgs/acg-bravo");
+
+  expect(await screen.findByRole("heading", { name: "Bravo Collection" })).toBeVisible();
+  expect(
+    screen.queryByText("The requested access group was not found.", { exact: false }),
+  ).not.toBeInTheDocument();
+});
+
+test("notes when the requested access group does not exist", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ acgs: [acg] }) }),
+  );
+
+  renderAcgRoute("/admin/acgs/acg-missing");
+
+  expect(
+    await screen.findByText(
+      "The requested access group was not found. Showing the first available group instead.",
+    ),
+  ).toBeVisible();
+  expect(screen.getByRole("heading", { name: "Alpha Regional" })).toBeVisible();
 });
 
 test("renders an access groups error state", async () => {

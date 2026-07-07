@@ -62,6 +62,7 @@ type TicketWorkspaceProps = {
     | "submitting",
     boolean
   >;
+  rfiError?: boolean;
   rfiLoading: boolean;
   rfiResults?: RfiSearchResults;
   ticket?: Ticket;
@@ -75,6 +76,7 @@ export function TicketWorkspace({
   onClearActionError,
   onJourneyToggle,
   pending,
+  rfiError = false,
   rfiLoading,
   rfiResults,
   ticket,
@@ -148,6 +150,7 @@ export function TicketWorkspace({
           {showOffers ? (
             <ProductOffersPanel
               isAccepting={pending.accepting}
+              isError={rfiError}
               isLoading={rfiLoading}
               isRejecting={pending.rejecting}
               isRunning={pending.running}

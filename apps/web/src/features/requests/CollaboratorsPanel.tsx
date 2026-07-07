@@ -21,13 +21,20 @@ export function CollaboratorsPanel({
 }: CollaboratorsPanelProps) {
   const [username, setUsername] = useState("");
   const [access, setAccess] = useState<"editor" | "viewer">("viewer");
+  const [search, setSearch] = useState("");
+  const trimmedSearch = search.trim();
+  const canSearch = isOwner && trimmedSearch.length >= 3;
+  // The directory endpoint requires a query of at least 3 characters and
+  // returns at most 10 active users.
   const directoryQuery = useQuery({
-    queryKey: ["user-directory"],
-    queryFn: listUserDirectory,
-    enabled: isOwner,
+    queryKey: ["user-directory", trimmedSearch],
+    queryFn: () => listUserDirectory(trimmedSearch),
+    enabled: canSearch,
   });
   const taggedIds = new Set(ticket.collaborators.map((collaborator) => collaborator.userId));
-  const candidates = (directoryQuery.data ?? []).filter((user) => !taggedIds.has(user.id));
+  const candidates = (canSearch ? (directoryQuery.data ?? []) : []).filter(
+    (user) => !taggedIds.has(user.id),
+  );
 
   return (
     <section className="surface collaborators-panel" aria-labelledby="collaborators-title">
@@ -71,6 +78,28 @@ export function CollaboratorsPanel({
             setUsername("");
           }}
         >
+          <label>
+            Search users
+            <input
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setUsername("");
+              }}
+              placeholder="Name or username"
+              value={search}
+            />
+          </label>
+          {trimmedSearch.length > 0 && trimmedSearch.length < 3 ? (
+            <small className="field-hint">Type at least 3 characters to search.</small>
+          ) : null}
+          {directoryQuery.isError ? (
+            <p className="auth-error" role="alert">
+              The user directory could not be searched. Try again.
+            </p>
+          ) : null}
+          {canSearch && directoryQuery.isSuccess && candidates.length === 0 ? (
+            <small className="field-hint">No matching users found.</small>
+          ) : null}
           <label>
             Tag a user
             <select onChange={(event) => setUsername(event.target.value)} value={username}>
