@@ -1,35 +1,56 @@
 import { expect, test } from "@playwright/test";
 
+const API = "http://127.0.0.1:8001/api/v1";
+
 test("loads the authenticated app shell", async ({ page }) => {
-  await page.route("http://127.0.0.1:8001/api/v1/auth/me", async (route) => {
-    await route.fulfill({
-      contentType: "application/json",
-      json: {
-        csrfToken: "csrf-e2e",
-        user: {
-          id: "e2e-user",
-          username: "admin@example.test",
-          displayName: "Admin Operator",
-          roles: ["Administrator"],
-          permissions: [
-            "ticket:read_own",
-            "product:read",
-            "product:search",
-            "project:read",
-            "acg:view",
-            "rfa:review",
-            "rfa:add_product",
-            "collection:review",
-            "collection:add_product",
-            "analyst:work",
-            "qc:review",
-            "system:configure",
-            "audit:read",
-          ],
-          defaultRoute: "/app/requests",
+  await page.route(`${API}/**`, async (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname.replace("/api/v1", "");
+
+    if (request.method() === "GET" && path === "/auth/me") {
+      return route.fulfill({
+        contentType: "application/json",
+        json: {
+          csrfToken: "csrf-e2e",
+          user: {
+            defaultRoute: "/app/requests",
+            displayName: "Admin Operator",
+            id: "e2e-user",
+            permissions: [
+              "ticket:read_own",
+              "chat:use",
+              "product:read",
+              "product:search",
+              "project:read",
+              "acg:view",
+              "rfa:review",
+              "rfa:add_product",
+              "collection:review",
+              "collection:add_product",
+              "analyst:work",
+              "qc:review",
+              "system:configure",
+              "audit:read",
+            ],
+            roles: ["Administrator"],
+            username: "admin@example.test",
+          },
         },
-      },
-    });
+      });
+    }
+    if (request.method() === "GET" && path === "/tickets") {
+      return route.fulfill({ contentType: "application/json", json: { tickets: [] } });
+    }
+    if (request.method() === "GET" && path === "/notifications") {
+      return route.fulfill({
+        contentType: "application/json",
+        json: { notifications: [], unread: 0 },
+      });
+    }
+    if (request.method() === "GET" && path === "/feedback/requests") {
+      return route.fulfill({ contentType: "application/json", json: { requests: [] } });
+    }
+    return route.fulfill({ contentType: "application/json", json: {} });
   });
   await page.goto("/");
 
