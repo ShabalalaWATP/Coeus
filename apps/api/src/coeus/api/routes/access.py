@@ -194,6 +194,7 @@ async def diagnose_product_access(
         AuthenticatedSession,
         Depends(require_permission(Permission.SYSTEM_CONFIGURE)),
     ],
+    _csrf_validated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
     access_services: Annotated[AccessServices, Depends(get_access_services)],
 ) -> AccessDiagnosticsResponse:
     decision = access_services.diagnostics.diagnose_product(product_id, payload.user_id)

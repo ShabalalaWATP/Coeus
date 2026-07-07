@@ -189,7 +189,10 @@ async def test_rejecting_last_product_offer_routes_to_assessment() -> None:
     assert rejected.json()["metrics"]["rejectedCount"] == 1
     assert manager["user"]["username"] == "collection.manager@example.test"
     assert manager_results.json()["offers"] == []
-    assert manager_results.json()["metrics"]["candidateCount"] == 0
+    # The candidate count reflects the permitted candidates searched for the
+    # requester; per-viewer filtering only hides the offers themselves.
+    assert manager_results.json()["metrics"]["candidateCount"] == 1
+    assert manager_results.json()["metrics"]["offeredCount"] == 0
 
 
 @pytest.mark.asyncio

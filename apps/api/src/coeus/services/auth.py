@@ -1,6 +1,8 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
+from hashlib import sha256
 from secrets import compare_digest, token_urlsafe
+from typing import NoReturn
 
 from coeus.core.config import Settings
 from coeus.core.errors import AppError
@@ -20,11 +22,19 @@ AUTHENTICATION_FAILED = "Authentication failed."
 DUMMY_LOGIN_HASH_INPUT = "coeus-unknown-user"
 
 
+def hash_session_id(session_id: str) -> str:
+    """Session identifiers are stored hashed so a state-file or database backup
+    cannot be replayed to hijack a live session."""
+    return sha256(session_id.encode("utf-8")).hexdigest()
+
+
 @dataclass(frozen=True)
 class LoginResult:
     user: UserAccount
     session: SessionRecord
     default_route: str
+    # Raw cookie value; only the SHA-256 hash is retained server-side.
+    session_token: str
 
 
 class AuthService:
@@ -63,15 +73,13 @@ class AuthService:
         password_valid = self._password_hasher.verify(password_hash, credential)
         if user is None or not password_valid:
             self._record_login_failure(username, user)
-        if user is None:
-            raise self._auth_failed()
         if not user.is_active:
             self._audit_log.record("login_failure", str(user.user_id), {"reason": "user_disabled"})
             raise self._auth_failed()
         if replace_session_id is not None:
-            self._sessions.delete(replace_session_id)
+            self._sessions.delete(hash_session_id(replace_session_id))
         self._login_attempts.reset(username)
-        session = self._create_session(user)
+        session_token, session = self._create_session(user)
         self._audit_log.record("login_success", str(user.user_id))
         from coeus.domain.rbac import default_route_for_roles
 
@@ -79,17 +87,18 @@ class AuthService:
             user=user,
             session=session,
             default_route=default_route_for_roles(user.roles),
+            session_token=session_token,
         )
 
     def logout(self, session_id: str) -> None:
         authenticated = self.require_session(session_id)
-        self._sessions.delete(session_id)
+        self._sessions.delete(authenticated.session.session_id)
         self._audit_log.record("logout", str(authenticated.user.user_id))
 
     def require_session(self, session_id: str | None) -> AuthenticatedSession:
         if session_id is None or session_id == "":
             raise AppError(401, "not_authenticated", "Authentication is required.")
-        session = self._sessions.get(session_id)
+        session = self._sessions.get(hash_session_id(session_id))
         if session is None:
             raise AppError(401, "not_authenticated", "Authentication is required.")
         if session.expires_at <= datetime.now(UTC):
@@ -118,26 +127,60 @@ class AuthService:
         if permission not in authenticated.user.permissions:
             raise AppError(403, "forbidden", "Permission denied.")
 
-    def rotate_session(self, session_id: str) -> SessionRecord:
+    def rotate_session(self, session_id: str) -> tuple[str, SessionRecord]:
         authenticated = self.require_session(session_id)
-        self._sessions.delete(session_id)
+        self._sessions.delete(authenticated.session.session_id)
         return self._create_session(authenticated.user)
+
+    def change_password(
+        self, session_id: str | None, current_password: str, new_password: str
+    ) -> LoginResult:
+        authenticated = self.require_session(session_id)
+        user = authenticated.user
+        if not self._password_hasher.verify(user.password_hash, current_password):
+            self._audit_log.record(
+                "password_change_failed",
+                str(user.user_id),
+                {"reason": "invalid_current_password"},
+            )
+            raise AppError(403, "invalid_current_password", "Current password is incorrect.")
+        updated = replace(
+            user,
+            password_hash=self._password_hasher.hash(new_password),
+            password_reset_required=False,
+        )
+        self._users.save(updated)
+        # Invalidate every session for this user, then issue a fresh one for
+        # the caller so a stolen pre-change session cannot survive the change.
+        self._sessions.delete_for_user(user.user_id)
+        self._login_attempts.reset(user.username)
+        session_token, session = self._create_session(updated)
+        self._audit_log.record("password_changed", str(user.user_id))
+        from coeus.domain.rbac import default_route_for_roles
+
+        return LoginResult(
+            user=updated,
+            session=session,
+            default_route=default_route_for_roles(updated.roles),
+            session_token=session_token,
+        )
 
     @property
     def audit_log(self) -> AuditLog:
         return self._audit_log
 
-    def _create_session(self, user: UserAccount) -> SessionRecord:
+    def _create_session(self, user: UserAccount) -> tuple[str, SessionRecord]:
         now = datetime.now(UTC)
+        session_token = token_urlsafe(32)
         session = SessionRecord(
-            session_id=token_urlsafe(32),
+            session_id=hash_session_id(session_token),
             user_id=user.user_id,
             csrf_token=token_urlsafe(32),
             created_at=now,
             expires_at=now + timedelta(seconds=self._settings.session_ttl_seconds),
         )
         self._sessions.save(session)
-        return session
+        return session_token, session
 
     def throttle_source(self, client_ip: str | None) -> None:
         """Reject authentication attempts from sources over their budget.
@@ -164,7 +207,7 @@ class AuthService:
         if locked_until is not None:
             self._login_attempts.reset(username)
 
-    def _record_login_failure(self, username: str, user: UserAccount | None) -> None:
+    def _record_login_failure(self, username: str, user: UserAccount | None) -> NoReturn:
         try:
             locked_until = self._login_attempts.record_failure(
                 username,

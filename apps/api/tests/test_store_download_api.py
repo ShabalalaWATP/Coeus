@@ -49,7 +49,7 @@ async def test_asset_download_rejects_malformed_tokens(tmp_path: Path) -> None:
         await login(client, "admin@example.test")
         response = await client.get(
             f"/api/v1/store/products/{product.product_id}/assets/{asset.asset_id}/download",
-            params={"token": "asset-token-not-valid.not-valid"},
+            headers={"X-Asset-Token": "asset-token-not-valid.not-valid"},
         )
 
     assert response.status_code == 403
@@ -76,7 +76,7 @@ async def test_asset_download_rechecks_token_claims_and_asset_state(tmp_path: Pa
         wrong_product_token = app.state.asset_token_service.issue(admin, uuid4(), asset.asset_id)
         mismatch = await client.get(
             f"/api/v1/store/products/{product.product_id}/assets/{asset.asset_id}/download",
-            params={"token": wrong_product_token},
+            headers={"X-Asset-Token": wrong_product_token},
         )
         missing_asset_id = uuid4()
         missing_asset_token = app.state.asset_token_service.issue(
@@ -84,7 +84,7 @@ async def test_asset_download_rechecks_token_claims_and_asset_state(tmp_path: Pa
         )
         missing_asset = await client.get(
             f"/api/v1/store/products/{product.product_id}/assets/{missing_asset_id}/download",
-            params={"token": missing_asset_token},
+            headers={"X-Asset-Token": missing_asset_token},
         )
         app.state.object_storage.path_for(asset.object_key).unlink()
         missing_bytes_token = app.state.asset_token_service.issue(
@@ -92,7 +92,7 @@ async def test_asset_download_rechecks_token_claims_and_asset_state(tmp_path: Pa
         )
         missing_bytes = await client.get(
             f"/api/v1/store/products/{product.product_id}/assets/{asset.asset_id}/download",
-            params={"token": missing_bytes_token},
+            headers={"X-Asset-Token": missing_bytes_token},
         )
 
     assert mismatch.status_code == 403
@@ -149,7 +149,7 @@ async def test_break_glass_asset_access_is_audited_and_downloadable(tmp_path: Pa
         )
         downloaded = await client.get(
             f"/api/v1/store/products/{product['id']}/assets/{asset['id']}/download",
-            params={"token": break_glass_grant.json()["downloadToken"]},
+            headers={"X-Asset-Token": break_glass_grant.json()["downloadToken"]},
         )
         audit = await client.get("/api/v1/audit")
 

@@ -40,3 +40,36 @@ class TicketLifecycleService:
             {"ticket_id": str(ticket.ticket_id)},
         )
         return updated
+
+    def confirm_delivery(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
+        """Requester confirms receipt of the released product, closing the ticket."""
+        ticket = self._tickets.get_visible_ticket(actor, ticket_id)
+        if not is_owner(actor, ticket):
+            raise AppError(403, "forbidden", "Only the requester can confirm delivery.")
+        if ticket.state != TicketState.DISSEMINATION_READY or not can_transition(
+            ticket.state, TicketState.CLOSED_DELIVERED
+        ):
+            raise AppError(
+                409, "invalid_ticket_state", "This request is not awaiting delivery confirmation."
+            )
+        updated = self._tickets.save_system_update(
+            replace(
+                ticket,
+                state=TicketState.CLOSED_DELIVERED,
+                timeline=(
+                    *ticket.timeline,
+                    timeline(
+                        ticket.ticket_id,
+                        actor.user_id,
+                        "delivery_confirmed",
+                        "Requester confirmed receipt and closed the request.",
+                    ),
+                ),
+            )
+        )
+        self._audit_log.record(
+            "ticket_delivery_confirmed",
+            str(actor.user_id),
+            {"ticket_id": str(ticket.ticket_id)},
+        )
+        return updated

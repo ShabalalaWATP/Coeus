@@ -30,6 +30,9 @@ RFI_RESULTS_REVIEW_PERMISSIONS = frozenset({Permission.RFA_REVIEW, Permission.CO
 RFI_RESULTS_REVIEW_STATES = frozenset(
     {TicketState.ROUTE_ASSESSMENT, TicketState.RFA_MANAGER_REVIEW, TicketState.CM_MANAGER_REVIEW}
 )
+# Ranking must see every permitted PUBLISHED product, not the store-browse page
+# size, so the candidate search uses one large internal page.
+RFI_CANDIDATE_SEARCH_LIMIT = 500
 
 
 @dataclass(frozen=True)
@@ -62,7 +65,10 @@ class RfiSearchService:
         requester = self._requester(ticket)
         search = self._store_search.search(
             requester,
-            StoreSearchFilters(status=ProductStatus.PUBLISHED),
+            StoreSearchFilters(
+                status=ProductStatus.PUBLISHED,
+                page_size=RFI_CANDIDATE_SEARCH_LIMIT,
+            ),
         )
         query = query_text(ticket.intake)
         offers = rank_rfi_hits(search.hits, ticket.intake)
@@ -204,9 +210,10 @@ class RfiSearchService:
         )
         metric = ticket.search_metrics[-1] if ticket.search_metrics else None
         if metric is not None and len(visible_offers) != len(ticket.product_offers):
+            # candidate_count stays the permitted candidate total from the search
+            # run; only the offer counts are re-scoped to what this viewer can see.
             metric = replace(
                 metric,
-                candidate_count=len(visible_offers),
                 offered_count=len(visible_offers),
                 rejected_count=sum(
                     offer.status == ProductOfferStatus.REJECTED for offer in visible_offers

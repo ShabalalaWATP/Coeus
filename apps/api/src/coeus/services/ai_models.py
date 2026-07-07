@@ -37,11 +37,7 @@ class AiModelService:
         self._state_store = state_store
         self._provider = settings.llm_provider
         self._available_models = tuple(settings.available_gemini_models)
-        default_model = (
-            settings.gemma_vertex_model
-            if settings.llm_provider == "gemma_vertex"
-            else settings.gemini_api_model
-        )
+        default_model = settings.gemini_api_model
         self._active_model = (
             default_model if default_model in self._available_models else self._available_models[0]
         )
@@ -61,7 +57,7 @@ class AiModelService:
         )
 
     def provider(self) -> str:
-        return "gemini_api" if self._api_key else self._provider
+        return self._provider
 
     def active_model(self) -> str:
         return self._active_model
@@ -90,7 +86,11 @@ class AiModelService:
         actor_username: str,
         api_key: str,
     ) -> AiModelState:
+        # Configuring a key through the admin API is an explicit opt-in to the
+        # Gemini provider. A key supplied only through the environment never
+        # overrides COEUS_LLM_PROVIDER.
         self._api_key = api_key
+        self._provider = "gemini_api"
         self._changed_by = actor_username
         self._changed_at = datetime.now(UTC)
         self._audit_log.record("ai_api_key_configured", actor_user_id, {"provider": "gemini_api"})

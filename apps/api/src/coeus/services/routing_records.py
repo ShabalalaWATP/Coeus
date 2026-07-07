@@ -35,7 +35,7 @@ def recommend_route(
     rfa_review: RfaCapabilityReview,
     cm_review: CmCapabilityReview,
 ) -> RouteRecommendation:
-    if rfa_review.can_satisfy and rfa_review.confidence >= 0.65:
+    if rfa_review.can_satisfy:
         route = RoutingRoute.RFA
         reason = "RFA route preferred because assessment can satisfy the request."
     elif cm_review.can_satisfy:
@@ -93,6 +93,34 @@ def can_review_route(actor: UserAccount, ticket: TicketRecord) -> bool:
 
 def filled(value: str | None) -> bool:
     return value is not None and value.strip() != ""
+
+
+def current_queue_permission(ticket: TicketRecord) -> Permission:
+    """The review permission owned by the queue the ticket currently sits in."""
+    queue_permissions = {
+        TicketState.RFA_MANAGER_REVIEW: Permission.RFA_REVIEW,
+        TicketState.CM_MANAGER_REVIEW: Permission.COLLECTION_REVIEW,
+    }
+    permission = queue_permissions.get(ticket.state)
+    if permission is None:
+        raise AppError(409, "invalid_ticket_state", "Ticket is not in manager review.")
+    return permission
+
+
+def ensure_manager_state(ticket: TicketRecord, route: RoutingRoute) -> None:
+    allowed = {
+        RoutingRoute.RFA: TicketState.RFA_MANAGER_REVIEW,
+        RoutingRoute.CM: TicketState.CM_MANAGER_REVIEW,
+    }
+    if ticket.state != allowed[route]:
+        raise AppError(409, "invalid_ticket_state", "Ticket is not in that manager queue.")
+
+
+def ensure_override(override_reason: str | None) -> None:
+    # Queue membership is enforced by the current-queue permission check; an
+    # off-recommendation approval still needs a recorded reason.
+    if not filled(override_reason):
+        raise AppError(422, "override_reason_required", "Override reason is required.")
 
 
 def decision(

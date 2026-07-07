@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 EnvironmentName = Literal["local", "dev", "staging", "prod", "test"]
 EmailProviderName = Literal["outbox", "smtp"]
-LlmProviderName = Literal["mock", "gemini_api", "gemma_vertex", "gemma_vllm"]
+LlmProviderName = Literal["mock", "gemini_api"]
 ObjectStorageProviderName = Literal["local", "gcs"]
 PersistenceProviderName = Literal["memory", "file", "postgres"]
 SEED_USER_ENVIRONMENTS = frozenset({"local", "test"})
@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     csrf_header_name: str = "X-CSRF-Token"
     login_lockout_threshold: int = 5
     login_lockout_seconds: int = 5 * 60
+    # Number of trusted reverse proxies in front of the API. 0 (default) means
+    # X-Forwarded-For is ignored and the socket peer address is used.
+    trusted_proxy_count: int = Field(default=0, ge=0, le=10)
     login_attempt_max_entries: int = Field(default=10_000, ge=1)
     registration_max_pending: int = Field(default=500, ge=1)
     auth_ip_max_attempts: int = Field(default=30, ge=1)
@@ -54,9 +57,6 @@ class Settings(BaseSettings):
     gemini_api_key: str | None = None
     gemini_api_model: str = "gemini-2.5-flash"
     gemini_api_timeout_seconds: int = Field(default=10, ge=1, le=60)
-    gemma_vertex_project_id: str | None = None
-    gemma_vertex_location: str = "europe-west2"
-    gemma_vertex_model: str = "gemma-4-31b"
     available_gemini_models: list[str] = Field(
         default_factory=lambda: [
             "gemma-4-31b",

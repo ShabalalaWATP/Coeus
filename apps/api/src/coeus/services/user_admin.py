@@ -86,7 +86,12 @@ class UserAdminService:
         self._require(actor, Permission.USER_DISABLE)
         user = self._target(actor, user_id)
         temporary_credential = f"Istari-{token_urlsafe(18)}"
-        updated = replace(user, password_hash=self._password_hasher.hash(temporary_credential))
+        updated = replace(
+            user,
+            password_hash=self._password_hasher.hash(temporary_credential),
+            # A temporary credential must be rotated by the user at next login.
+            password_reset_required=True,
+        )
         self._apply(updated)
         self._login_attempts.reset(user.username)
         self._audit_log.record(

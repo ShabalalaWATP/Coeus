@@ -35,6 +35,7 @@ class UserAccount:
     password_hash: str
     is_active: bool
     clearance_level: int
+    password_reset_required: bool = False
 
 
 @dataclass(frozen=True)

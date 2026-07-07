@@ -65,10 +65,20 @@ class InMemoryStoreRepository:
         self._products[product.product_id] = product
         self._persist()
 
+    def delete_product(self, product_id: UUID) -> None:
+        """Remove a product, e.g. rolling back a failed QC approval."""
+        self._refresh_from_projection(allow_empty=True)
+        if self._products.pop(product_id, None) is not None:
+            self._persist()
+
     def next_reference(self) -> str:
         self._refresh_from_projection(allow_empty=True)
-        self._reference_counter += 1
-        return f"PROD-{self._reference_counter}"
+        existing = {product.reference for product in self._products.values()}
+        while True:
+            self._reference_counter += 1
+            reference = f"PROD-{self._reference_counter}"
+            if reference not in existing:
+                return reference
 
     def _restore_or_persist(self) -> None:
         if self._restore_from_projection():
@@ -84,7 +94,11 @@ class InMemoryStoreRepository:
             return
         products = tuple(decode_value(item) for item in payload.get("products", []))
         self._products = {product.product_id: product for product in products}
-        self._reference_counter = int(payload.get("reference_counter", 1000))
+        # Never let a regressed persisted counter re-issue an existing reference.
+        self._reference_counter = max(
+            int(payload.get("reference_counter", 1000)),
+            _max_reference_counter(products, 1000),
+        )
         self._persist_projection()
 
     def _persist(self) -> None:

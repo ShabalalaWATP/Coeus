@@ -23,6 +23,7 @@ class Permission(StrEnum):
     TICKET_CREATE = "ticket:create"
     TICKET_READ_OWN = "ticket:read_own"
     TICKET_READ_ALL = "ticket:read_all"
+    TICKET_WRITE_ALL = "ticket:write_all"
     TICKET_ADD_INFORMATION = "ticket:add_information"
     TICKET_ADD_COMMENT = "ticket:add_comment"
     TICKET_TRANSITION = "ticket:transition"

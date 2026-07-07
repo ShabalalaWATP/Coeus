@@ -4,7 +4,7 @@ from pathlib import PurePath
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Header, UploadFile
 from pydantic import ValidationError
 from starlette.responses import FileResponse
 
@@ -52,10 +52,11 @@ async def upload_product(
 
 
 @router.get("/products/{product_id}/assets/{asset_id}/download")
-async def download_asset(
+def download_asset(
     product_id: UUID,
     asset_id: UUID,
-    token: Annotated[str, Query(min_length=20)],
+    # The token travels in a header so it never lands in URL logs or history.
+    token: Annotated[str, Header(alias="X-Asset-Token", min_length=20)],
     authenticated: Annotated[AuthenticatedSession, Depends(get_current_session)],
     tokens: Annotated[AssetTokenService, Depends(get_asset_token_service)],
     storage: Annotated[LocalObjectStorage, Depends(get_object_storage)],
@@ -82,6 +83,8 @@ async def download_asset(
         storage.path_for(selected.object_key),
         filename=object_key_segment(selected.name),
         media_type=selected.mime_type,
+        # Controlled downloads must never be served from the browser HTTP cache.
+        headers={"Cache-Control": "no-store"},
     )
 
 

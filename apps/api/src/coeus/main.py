@@ -1,4 +1,5 @@
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
 from uuid import uuid4
 
 from fastapi import FastAPI, Request, Response
@@ -24,6 +25,7 @@ from coeus.core.config import Settings
 from coeus.core.errors import AppError, app_error_handler, unhandled_exception_handler
 from coeus.core.logging import configure_logging, get_logger
 from coeus.core.security import apply_security_headers
+from coeus.db.session import dispose_readiness_engines
 from coeus.persistence.factory import build_state_store
 from coeus.repositories.access import SeedAccessRepository
 from coeus.repositories.auth import LoginAttemptRepository, SeedUserRepository, SessionRepository
@@ -53,6 +55,12 @@ from coeus.services.user_admin import UserAdminService
 logger = get_logger(__name__)
 
 
+@asynccontextmanager
+async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    yield
+    await dispose_readiness_engines()
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     resolved_settings = settings or Settings()
     resolved_settings.require_runtime_security()
@@ -62,6 +70,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         title="Istari API",
         version="0.1.0",
         description="Secure intelligence tasking and product orchestration API.",
+        lifespan=_lifespan,
     )
     app.state.settings = resolved_settings
     app.state.state_store = build_state_store(resolved_settings)
@@ -150,6 +159,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.store_services,
         access_repository,
         audit_log,
+        app.state.object_storage,
     )
     app.state.notification_service = NotificationService(
         audit_log,
@@ -176,7 +186,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_origins=resolved_settings.allowed_cors_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-CSRF-Token"],
+        allow_headers=[
+            "Authorization",
+            "Content-Type",
+            "X-Request-ID",
+            "X-CSRF-Token",
+            "X-Asset-Token",
+        ],
     )
 
     @app.middleware("http")

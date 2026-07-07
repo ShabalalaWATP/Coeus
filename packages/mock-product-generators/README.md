@@ -13,5 +13,11 @@ python scripts/seed/seed_mock_products.py --small --output-dir .local/mock-produ
 The default catalogue creates 190 products and 410 generated assets. The small
 mode creates one product per family and is intended for fast smoke checks.
 
+Each manifest entry includes product metadata for search and access-control
+tests: product type, source type, owner team, region, classification level,
+releasability, caveats, tags, semantic labels, ACG codes, status, coverage
+dates, hashes and asset paths. The manifest also includes named search scenarios
+with example queries and expected tags or semantic labels.
+
 Generated assets are deterministic and public-repository-safe. They should stay
 outside Git under `.local/` or another ignored local directory.

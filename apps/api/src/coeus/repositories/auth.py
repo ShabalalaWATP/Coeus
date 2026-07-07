@@ -126,7 +126,7 @@ class LoginAttemptRepository:
         if max_entries < 1:
             raise ValueError("Login attempt max_entries must be at least 1.")
         self._max_entries = max_entries
-        self._attempts: dict[str, tuple[int, datetime | None]] = {}
+        self._attempts: dict[str, tuple[tuple[datetime, ...], datetime | None]] = {}
 
     def get_lockout_until(self, username: str) -> datetime | None:
         attempts = self._attempts.get(username.casefold())
@@ -145,10 +145,16 @@ class LoginAttemptRepository:
             and not self._evict_non_locked_attempt(now)
         ):
             raise AttemptStoreFull("Login attempt store is full.")
-        count, _locked_until = self._attempts.get(key, (0, None))
-        count += 1
-        locked_until = now + timedelta(seconds=lockout_seconds) if count >= threshold else None
-        self._attempts[key] = (count, locked_until)
+        moments, _locked_until = self._attempts.get(key, ((), None))
+        # Failures older than the lockout window no longer count, so a slow
+        # trickle of failures cannot keep an account locked out indefinitely.
+        window_start = now - timedelta(seconds=lockout_seconds)
+        recent = tuple(moment for moment in moments if moment > window_start)
+        recent = (*recent, now)
+        locked_until = (
+            now + timedelta(seconds=lockout_seconds) if len(recent) >= threshold else None
+        )
+        self._attempts[key] = (recent, locked_until)
         return locked_until
 
     def reset(self, username: str) -> None:
@@ -159,7 +165,7 @@ class LoginAttemptRepository:
         return len(self._attempts)
 
     def _evict_non_locked_attempt(self, now: datetime) -> bool:
-        for key, (_count, locked_until) in list(self._attempts.items()):
+        for key, (_moments, locked_until) in list(self._attempts.items()):
             if locked_until is None or locked_until <= now:
                 self._attempts.pop(key)
                 return True

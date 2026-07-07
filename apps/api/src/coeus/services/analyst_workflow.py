@@ -69,9 +69,12 @@ class AnalystWorkflowService:
         ticket = self._tickets.tickets.get_workflow_ticket(
             actor, ticket_id, ASSIGNMENT_READ_PERMISSIONS
         )
-        if ticket.state != TicketState.ANALYST_ASSIGNMENT:
+        # Managers may reassign an in-progress ticket, e.g. after an analyst
+        # account is deactivated; the state stays ANALYST_IN_PROGRESS.
+        reassignment = ticket.state == TicketState.ANALYST_IN_PROGRESS
+        if ticket.state not in {TicketState.ANALYST_ASSIGNMENT, TicketState.ANALYST_IN_PROGRESS}:
             raise AppError(409, "invalid_ticket_state", "Ticket is not awaiting assignment.")
-        if latest_assignment(ticket) is not None:
+        if not reassignment and latest_assignment(ticket) is not None:
             raise AppError(409, "analyst_already_assigned", "Ticket already has an analyst.")
         route = approved_route(ticket)
         if route is None:
@@ -89,11 +92,13 @@ class AnalystWorkflowService:
         )
         assignment_team = _normalise_team_name(team_name) or _suggested_team_name(ticket, route)
         target_state = TicketState.ANALYST_IN_PROGRESS
-        self._ensure_transition(ticket.state, target_state)
+        if not reassignment:
+            self._ensure_transition(ticket.state, target_state)
         assignment = assignment_record(
             ticket.ticket_id, analyst.user_id, actor.user_id, route, assignment_team
         )
-        packages = work_package_records(ticket.ticket_id, titles)
+        packages = () if reassignment else work_package_records(ticket.ticket_id, titles)
+        event_type = "analyst_reassigned" if reassignment else "analyst_assigned"
         updated = self._tickets.tickets.save_system_update(
             replace(
                 ticket,
@@ -105,7 +110,7 @@ class AnalystWorkflowService:
                     timeline(
                         ticket.ticket_id,
                         actor.user_id,
-                        "analyst_assigned",
+                        event_type,
                         _assignment_summary(analyst.username, assignment_team),
                     ),
                 ),
@@ -117,7 +122,7 @@ class AnalystWorkflowService:
         }
         if assignment_team:
             metadata["team_name"] = assignment_team
-        self._audit_log.record("analyst_assigned", str(actor.user_id), metadata)
+        self._audit_log.record(event_type, str(actor.user_id), metadata)
         return updated
 
     def list_tasks(self, actor: UserAccount) -> tuple[TicketRecord, ...]:
@@ -200,12 +205,19 @@ class AnalystWorkflowService:
         self, actor: UserAccount, ticket_id: UUID, package_id: UUID, status: WorkPackageStatus
     ) -> TicketRecord:
         ticket = self._active_task(actor, ticket_id)
+        target = next(
+            (package for package in ticket.work_packages if package.package_id == package_id),
+            None,
+        )
+        if target is None:
+            raise AppError(404, "work_package_not_found", "Work package was not found.")
+        if target.status == status:
+            # Setting the current status again is a successful no-op.
+            return ticket
         packages = tuple(
             replace(package, status=status) if package.package_id == package_id else package
             for package in ticket.work_packages
         )
-        if packages == ticket.work_packages:
-            raise AppError(404, "work_package_not_found", "Work package was not found.")
         return self._tickets.tickets.save_system_update(
             replace(
                 ticket,

@@ -68,7 +68,7 @@ def _tokens(text: str) -> tuple[str, ...]:
         dict.fromkeys(
             token
             for token in findall(r"[a-z0-9]+", text.casefold())
-            if len(token) > 2 and token not in STOP_WORDS
+            if len(token) >= 2 and token not in STOP_WORDS
         )
     )
 
@@ -85,7 +85,7 @@ def _full_text_score(
         return 0.0, ()
     product_text = _product_text(product).casefold()
     matches = tuple(token for token in query_tokens if token in product_text)
-    score = len(matches) / max(min(len(query_tokens), 8), 1)
+    score = len(matches) / max(len(query_tokens), 1)
     return min(score, 1.0), tuple(f"full-text:{token}" for token in matches)
 
 

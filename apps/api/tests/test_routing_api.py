@@ -34,7 +34,9 @@ async def test_routing_runs_rfa_first_capability_review() -> None:
     assert routed.json()["recommendation"]["recommendedRoute"] == "rfa"
     assert routed.json()["rfaReview"]["canSatisfy"] is True
     assert routed.json()["rfaReview"]["suggestedTeamName"] == "Maritime Assessment Cell"
-    assert routed.json()["cmReview"]["canSatisfy"] is True
+    # No genuine collection term in this intake: a team-keyword match alone
+    # must not claim the CM route can satisfy the request.
+    assert routed.json()["cmReview"]["canSatisfy"] is False
     assert routed.json()["agentRuns"][-3:] == [
         "rfa-capability-agent",
         "cm-capability-agent",

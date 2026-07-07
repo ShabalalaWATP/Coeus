@@ -25,7 +25,7 @@ router = APIRouter(prefix="/admin/users", tags=["admin"])
 
 
 @router.get("", response_model=AdminUserListResponse)
-async def list_users(
+def list_users(
     authenticated: Annotated[
         AuthenticatedSession,
         Depends(require_permission(Permission.USER_ASSIGN_ROLE)),
@@ -38,7 +38,7 @@ async def list_users(
 
 
 @router.put("/{user_id}/roles", response_model=AdminUserResponse)
-async def set_roles(
+def set_roles(
     user_id: UUID,
     payload: UserRolesRequest,
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
@@ -49,7 +49,7 @@ async def set_roles(
 
 
 @router.put("/{user_id}/clearance", response_model=AdminUserResponse)
-async def set_clearance(
+def set_clearance(
     user_id: UUID,
     payload: UserClearanceRequest,
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
@@ -61,7 +61,7 @@ async def set_clearance(
 
 
 @router.put("/{user_id}/status", response_model=AdminUserResponse)
-async def set_status(
+def set_status(
     user_id: UUID,
     payload: UserStatusRequest,
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
@@ -71,7 +71,7 @@ async def set_status(
 
 
 @router.post("/{user_id}/credential-reset", response_model=CredentialResetResponse)
-async def reset_credential(
+def reset_credential(
     user_id: UUID,
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
     service: Annotated[UserAdminService, Depends(get_user_admin_service)],
