@@ -5,6 +5,7 @@ from sqlalchemy.engine import Connection
 
 from coeus.domain.access import ProductStatus
 from coeus.domain.store import StoreProduct, StoreSearchFilters, StoreVisibilityScope
+from coeus.persistence.store_projection_decode import decode_product
 
 
 def get_visible_product(
@@ -85,8 +86,6 @@ def _decode_product(
     acg_rows: tuple[dict[str, Any], ...],
     label_rows: tuple[dict[str, Any], ...],
 ) -> StoreProduct:
-    from coeus.persistence.store_projection import _decode_product as decode_product
-
     return decode_product(row, asset_rows, acg_rows, label_rows)
 
 

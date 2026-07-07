@@ -18,6 +18,8 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    if _migration_identity()[0] != "20260706_0001":
+        raise RuntimeError("Unexpected Alembic revision metadata.")
     for statement in store_schema_statements():
         op.execute(statement)
 
@@ -37,3 +39,12 @@ def downgrade() -> None:
     op.execute("DROP TABLE IF EXISTS intelligence_store_product_acgs")
     op.execute("DROP TABLE IF EXISTS intelligence_store_assets")
     op.execute("DROP TABLE IF EXISTS intelligence_store_products")
+
+
+def _migration_identity() -> tuple[
+    str,
+    str | None,
+    str | Sequence[str] | None,
+    str | Sequence[str] | None,
+]:
+    return revision, down_revision, branch_labels, depends_on
