@@ -13,6 +13,7 @@ class RoleName(StrEnum):
     RFA_TEAM_MEMBER = "Request for Assessment Team Member"
     COLLECTION_MANAGER = "Collection Manager"
     COLLECTION_TEAM_MEMBER = "Collection Team Member"
+    INTELLIGENCE_STORE_MANAGER = "Intelligence Store Manager"
     INTELLIGENCE_ANALYST = "Intelligence Analyst"
     QUALITY_CONTROL_MANAGER = "Quality Control Manager"
 

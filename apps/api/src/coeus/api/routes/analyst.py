@@ -37,12 +37,9 @@ from coeus.schemas.analyst import (
     WorkPackageResponse,
     WorkPackageUpdateRequest,
 )
+from coeus.services.analyst_drafts import DraftAssetInput, DraftProductInput
 from coeus.services.analyst_records import latest_assignment
-from coeus.services.analyst_workflow import (
-    AnalystWorkflowService,
-    DraftAssetInput,
-    DraftProductInput,
-)
+from coeus.services.analyst_workflow import AnalystWorkflowService
 
 router = APIRouter(prefix="/analyst", tags=["analyst"])
 
@@ -91,6 +88,7 @@ async def assign_analyst(
             ticket_id,
             payload.analyst_user_id,
             tuple(payload.work_packages),
+            payload.team_name,
         )
     )
 
@@ -195,6 +193,7 @@ def _assignment_response(
         assigned_by_user_id=assignment.assigned_by_user_id,
         route=assignment.route.value,
         created_at=assignment.created_at,
+        team_name=assignment.team_name,
     )
 
 

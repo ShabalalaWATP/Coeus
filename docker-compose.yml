@@ -38,8 +38,15 @@ services:
       COEUS_DATABASE_URL: postgresql+asyncpg://coeus:coeus-local@postgres:5432/coeus
       COEUS_ALLOWED_CORS_ORIGINS: '["http://localhost:5173","http://127.0.0.1:5173"]'
       COEUS_LOG_LEVEL: INFO
+      COEUS_PERSISTENCE_PROVIDER: postgres
+      COEUS_OBJECT_STORAGE_PROVIDER: local
+      COEUS_LOCAL_OBJECT_STORAGE_PATH: /var/lib/coeus/objects
+      COEUS_ASSET_TOKEN_SECRET: local-docker-only-asset-token-secret-32
+      COEUS_EMAIL_PROVIDER: outbox
     ports:
       - "8000:8000"
+    volumes:
+      - coeus-api-local-data:/var/lib/coeus
     depends_on:
       postgres:
         condition: service_healthy
@@ -58,3 +65,4 @@ services:
 volumes:
   coeus-postgres:
   coeus-minio:
+  coeus-api-local-data:

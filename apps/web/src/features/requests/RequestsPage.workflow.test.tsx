@@ -77,6 +77,82 @@ test("tags and removes a collaborator as the request owner", async () => {
   );
 });
 
+test("cancels an owned request with a recorded reason", async () => {
+  const cancelledTicket: Ticket = {
+    ...baseTicket,
+    state: "CANCELLED",
+    timeline: [
+      ...baseTicket.timeline,
+      {
+        id: "timeline-cancelled",
+        eventType: "ticket_cancelled",
+        body: "No longer required.",
+        actorUserId: "preview-user",
+        createdAt: "2026-07-06T00:02:00Z",
+      },
+    ],
+  };
+  const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+    if (url.includes("/cancel")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(cancelledTicket) });
+    }
+    if (url.includes("/users/directory")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(directory) });
+    }
+    if (url.includes("/api/v1/tickets")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ tickets: [baseTicket] }) });
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({}), init });
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderRequests("/app/requests/ticket-1");
+
+  await userEvent.click((await screen.findAllByText("Cancel request"))[0]);
+  await userEvent.type(screen.getByLabelText("Reason"), "No longer required.");
+  await userEvent.click(screen.getByRole("button", { name: "Cancel request" }));
+
+  expect((await screen.findAllByText("CANCELLED"))[0]).toBeVisible();
+  expect(fetchMock).toHaveBeenCalledWith(
+    "http://127.0.0.1:8001/api/v1/tickets/ticket-1/cancel",
+    expect.objectContaining({
+      body: JSON.stringify({ reason: "No longer required." }),
+      method: "POST",
+    }),
+  );
+});
+
+test("shows request mutation failures instead of failing silently", async () => {
+  const fetchMock = vi.fn((url: string) => {
+    if (url.includes("/chat/messages")) {
+      return Promise.resolve({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({ error: { code: "server_error", message: "Failed." } }),
+      });
+    }
+    if (url.includes("/users/directory")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(directory) });
+    }
+    if (url.includes("/api/v1/tickets")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ tickets: [baseTicket] }) });
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderRequests("/app/requests/ticket-1");
+
+  await userEvent.type(await screen.findByLabelText("Message"), "Please use routine priority.");
+  await userEvent.click(screen.getByRole("button", { name: "Send" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "The message could not be sent. Try again.",
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+});
+
 test("shows a read-only conversation to tagged viewers", async () => {
   const viewerSession: AuthSession = {
     csrfToken: "test-csrf-token",

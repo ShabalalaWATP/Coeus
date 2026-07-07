@@ -121,6 +121,34 @@ test("shows the assistant typing indicator while a message is sending", () => {
   expect(screen.getByRole("status")).toHaveTextContent("Istari is thinking");
 });
 
+test("surfaces manager clarification questions in the chat", () => {
+  render(
+    <ChatPanel
+      isSending={false}
+      onSend={vi.fn()}
+      ticket={{
+        ...ticket,
+        state: "INFO_REQUIRED",
+        clarificationRequests: [
+          {
+            id: "clarification-1",
+            route: "rfa",
+            reason: "Scope needs tightening.",
+            questions: ["Which region matters most?", "What deadline should be used?"],
+            createdAt: "2026-07-06T00:00:00Z",
+          },
+        ],
+      }}
+    />,
+  );
+
+  expect(
+    screen.getByText("Manager clarification requested: Scope needs tightening."),
+  ).toBeVisible();
+  expect(screen.getByText("Which region matters most?")).toBeVisible();
+  expect(screen.getByText("What deadline should be used?")).toBeVisible();
+});
+
 test("opens tickets from the dashboard and shows tagged counts", async () => {
   const onOpen = vi.fn();
   render(

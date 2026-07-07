@@ -107,9 +107,8 @@ test("particle field stays inert without matchMedia support", () => {
 test("particle field exits early when no 2D context exists", () => {
   stubMatchMedia(true);
   const frames = stubAnimationFrames();
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
 
-  // jsdom canvases return null from getContext (after logging a jsdom
-  // not-implemented notice), so the effect exits before drawing.
   render(<ParticleField />);
 
   expect(frames.pending).toBe(0);

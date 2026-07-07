@@ -4,11 +4,15 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 EnvironmentName = Literal["local", "dev", "staging", "prod", "test"]
-LlmProviderName = Literal["mock", "gemma_vertex", "gemma_vllm"]
+EmailProviderName = Literal["outbox", "smtp"]
+LlmProviderName = Literal["mock", "gemini_api", "gemma_vertex", "gemma_vllm"]
 ObjectStorageProviderName = Literal["local", "gcs"]
+PersistenceProviderName = Literal["memory", "file", "postgres"]
 SEED_USER_ENVIRONMENTS = frozenset({"local", "test"})
 SECURE_COOKIE_ENVIRONMENTS = frozenset({"staging", "prod"})
 DEFAULT_SEED_CREDENTIAL = "CoeusLocal1!"
+# Local-only default; startup rejects it outside local/test.
+DEFAULT_ASSET_TOKEN_SECRET = "local-only-asset-token-secret-not-for-deploy"  # noqa: S105  # nosec B105
 
 
 class Settings(BaseSettings):
@@ -47,6 +51,9 @@ class Settings(BaseSettings):
     gcp_project_id: str | None = None
     gcp_region: str = "europe-west2"
     llm_provider: LlmProviderName = "mock"
+    gemini_api_key: str | None = None
+    gemini_api_model: str = "gemini-2.5-flash"
+    gemini_api_timeout_seconds: int = Field(default=10, ge=1, le=60)
     gemma_vertex_project_id: str | None = None
     gemma_vertex_location: str = "europe-west2"
     gemma_vertex_model: str = "gemma-4-31b"
@@ -60,6 +67,19 @@ class Settings(BaseSettings):
         min_length=1,
     )
     object_storage_provider: ObjectStorageProviderName = "local"
+    local_object_storage_path: str = ".local-data/objects"
+    local_upload_max_bytes: int = Field(default=50_000_000, ge=1)
+    asset_token_secret: str = DEFAULT_ASSET_TOKEN_SECRET
+    persistence_provider: PersistenceProviderName = "postgres"
+    persistence_path: str = ".local-data/state/coeus-state.json"
+    email_provider: EmailProviderName = "outbox"
+    smtp_host: str | None = None
+    smtp_port: int = Field(default=587, ge=1, le=65_535)
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_from: str | None = None
+    smtp_starttls: bool = True
+    smtp_timeout_seconds: int = Field(default=10, ge=1, le=60)
     gcs_product_assets_bucket: str | None = None
     gcs_generated_previews_bucket: str | None = None
     pubsub_enabled: bool = False
@@ -84,6 +104,24 @@ class Settings(BaseSettings):
                 errors.append("COEUS_SESSION_SECRET must be at least 32 characters.")
             if not self.csrf_secret or len(self.csrf_secret) < 32:
                 errors.append("COEUS_CSRF_SECRET must be at least 32 characters.")
+            if (
+                self.asset_token_secret == DEFAULT_ASSET_TOKEN_SECRET
+                or len(self.asset_token_secret) < 32
+            ):
+                errors.append("COEUS_ASSET_TOKEN_SECRET must be a non-default secret.")
+        if (
+            self.llm_provider == "gemini_api"
+            and not self.gemini_api_key
+            and self.environment in {"dev", "staging", "prod"}
+        ):
+            errors.append("COEUS_GEMINI_API_KEY is required when COEUS_LLM_PROVIDER=gemini_api.")
+        if self.email_provider == "smtp":
+            if not self.smtp_host:
+                errors.append("COEUS_SMTP_HOST is required when COEUS_EMAIL_PROVIDER=smtp.")
+            if not self.smtp_from:
+                errors.append("COEUS_SMTP_FROM is required when COEUS_EMAIL_PROVIDER=smtp.")
+            if self.environment in {"dev", "staging", "prod"} and not self.smtp_starttls:
+                errors.append("COEUS_SMTP_STARTTLS must be true outside local/test.")
         if self.environment in SECURE_COOKIE_ENVIRONMENTS and not self.secure_cookies:
             errors.append(
                 "Secure cookies are required for staging/prod environments. "

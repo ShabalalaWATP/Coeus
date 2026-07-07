@@ -79,6 +79,48 @@
   line-height: 1.5;
 }
 
+.capability-catalogue__list {
+  display: grid;
+  max-height: 360px;
+  gap: 8px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.capability-team {
+  display: grid;
+  gap: 5px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  background: var(--surface-muted);
+}
+
+.capability-team strong {
+  color: var(--text);
+  font-size: 0.86rem;
+}
+
+.capability-team span {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+.capability-team__labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.capability-team__labels small {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 7px;
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
 .routing-actions,
 .routing-forms {
   display: flex;

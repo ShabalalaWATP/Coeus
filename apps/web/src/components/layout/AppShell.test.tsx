@@ -33,6 +33,10 @@ test("renders the expected shell landmarks and navigation", () => {
 });
 
 test("has no automated accessibility violations in the shell", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => new Promise(() => undefined)),
+  );
   const { container } = renderWithProviders(<AppShell profile={previewProfile} />);
 
   expect(await axe(container)).toHaveNoViolations();

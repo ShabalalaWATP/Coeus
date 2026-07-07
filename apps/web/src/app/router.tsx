@@ -22,6 +22,7 @@ import {
   RoutingQueuePage,
   SessionExpiredPage,
   StorePage,
+  UserManagementPage,
 } from "./route-components";
 
 function withSuspense(element: React.ReactNode) {
@@ -169,6 +170,10 @@ export function createAppRouter() {
         {
           path: "admin/overview",
           element: protectedPage(<AdminOverviewPage />, ["system:configure"]),
+        },
+        {
+          path: "admin/users",
+          element: protectedPage(<UserManagementPage />, ["user:assign_role"]),
         },
         {
           path: "admin/acgs",

@@ -127,6 +127,19 @@ def agent_run(ticket_id: UUID, agent_name: str, summary: str) -> AgentRun:
     )
 
 
+def review_agent_runs(
+    ticket_id: UUID,
+    rfa_review: RfaCapabilityReview,
+    cm_review: CmCapabilityReview,
+    recommendation: RouteRecommendation,
+) -> tuple[AgentRun, ...]:
+    return (
+        agent_run(ticket_id, "rfa-capability-agent", rfa_review.reasoning_summary),
+        agent_run(ticket_id, "cm-capability-agent", cm_review.reasoning_summary),
+        agent_run(ticket_id, "orchestrator-agent", recommendation.reasoning_summary),
+    )
+
+
 def project_update(
     ticket_id: UUID,
     state: TicketState,

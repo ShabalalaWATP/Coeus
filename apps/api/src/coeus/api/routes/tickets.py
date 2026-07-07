@@ -12,7 +12,7 @@ from coeus.api.dependencies import (
     require_permission,
 )
 from coeus.core.permissions import Permission
-from coeus.domain.auth import AuthenticatedSession
+from coeus.domain.auth import AuthenticatedSession, UserAccount
 from coeus.domain.tickets import (
     AgentRun,
     AttachmentMetadata,
@@ -57,7 +57,7 @@ async def list_tickets(
 ) -> TicketListResponse:
     return TicketListResponse(
         tickets=[
-            _to_ticket_response(ticket)
+            _to_ticket_response(ticket, authenticated.user)
             for ticket in ticket_services.tickets.list_visible_tickets(authenticated.user)
         ]
     )
@@ -78,7 +78,7 @@ async def send_chat_message(
         payload.message,
         payload.ticket_id,
     )
-    return _to_ticket_response(ticket)
+    return _to_ticket_response(ticket, authenticated.user)
 
 
 @router.patch("/tickets/{ticket_id}/intake", response_model=TicketResponse)
@@ -94,7 +94,8 @@ async def update_intake(
         if value is not None
     }
     return _to_ticket_response(
-        ticket_services.tickets.update_intake(authenticated.user, ticket_id, updates)
+        ticket_services.tickets.update_intake(authenticated.user, ticket_id, updates),
+        authenticated.user,
     )
 
 
@@ -112,7 +113,7 @@ async def add_attachment(
         payload.description,
         payload.source_type,
     )
-    return _to_ticket_response(ticket)
+    return _to_ticket_response(ticket, authenticated.user)
 
 
 @router.post("/tickets/{ticket_id}/submit", response_model=TicketResponse)
@@ -121,7 +122,10 @@ async def submit_ticket(
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
     ticket_services: Annotated[TicketServices, Depends(get_ticket_services)],
 ) -> TicketResponse:
-    return _to_ticket_response(ticket_services.tickets.submit(authenticated.user, ticket_id))
+    return _to_ticket_response(
+        ticket_services.tickets.submit(authenticated.user, ticket_id),
+        authenticated.user,
+    )
 
 
 @router.get("/users/directory", response_model=DirectoryResponse)
@@ -154,7 +158,7 @@ async def add_collaborator(
         payload.username,
         CollaboratorAccess(payload.access),
     )
-    return _to_ticket_response(ticket)
+    return _to_ticket_response(ticket, authenticated.user)
 
 
 @router.delete("/tickets/{ticket_id}/collaborators/{user_id}", response_model=TicketResponse)
@@ -164,7 +168,10 @@ async def remove_collaborator(
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
     collaborators: Annotated[TicketCollaboratorService, Depends(get_ticket_collaborator_service)],
 ) -> TicketResponse:
-    return _to_ticket_response(collaborators.remove(authenticated.user, ticket_id, user_id))
+    return _to_ticket_response(
+        collaborators.remove(authenticated.user, ticket_id, user_id),
+        authenticated.user,
+    )
 
 
 @router.post("/tickets/{ticket_id}/cancel", response_model=TicketResponse)
@@ -174,7 +181,10 @@ async def cancel_ticket(
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
     lifecycle: Annotated[TicketLifecycleService, Depends(get_ticket_lifecycle_service)],
 ) -> TicketResponse:
-    return _to_ticket_response(lifecycle.cancel(authenticated.user, ticket_id, payload.reason))
+    return _to_ticket_response(
+        lifecycle.cancel(authenticated.user, ticket_id, payload.reason),
+        authenticated.user,
+    )
 
 
 @router.post("/tickets/{ticket_id}/timeline", response_model=TicketResponse)
@@ -185,10 +195,10 @@ async def add_information(
     ticket_services: Annotated[TicketServices, Depends(get_ticket_services)],
 ) -> TicketResponse:
     ticket = ticket_services.tickets.add_information(authenticated.user, ticket_id, payload.body)
-    return _to_ticket_response(ticket)
+    return _to_ticket_response(ticket, authenticated.user)
 
 
-def _to_ticket_response(ticket: TicketRecord) -> TicketResponse:
+def _to_ticket_response(ticket: TicketRecord, actor: UserAccount) -> TicketResponse:
     return TicketResponse(
         ticket_id=ticket.ticket_id,
         reference=ticket.reference,
@@ -197,7 +207,7 @@ def _to_ticket_response(ticket: TicketRecord) -> TicketResponse:
         intake=_to_intake_response(ticket.intake),
         is_ready_for_submission=not ticket.intake.missing_information,
         suggested_project_name=ticket.suggested_project_name,
-        visible_product_matches=list(ticket.visible_product_matches),
+        visible_product_matches=_visible_product_matches(ticket, actor),
         released_product_ids=[dissemination.product_id for dissemination in ticket.disseminations],
         collaborators=[
             _to_collaborator_response(collaborator) for collaborator in ticket.collaborators
@@ -212,6 +222,12 @@ def _to_ticket_response(ticket: TicketRecord) -> TicketResponse:
         created_at=ticket.created_at,
         updated_at=ticket.updated_at,
     )
+
+
+def _visible_product_matches(ticket: TicketRecord, actor: UserAccount) -> list[str]:
+    if ticket.requester_user_id != actor.user_id:
+        return []
+    return list(ticket.visible_product_matches)
 
 
 def _to_intake_response(intake: IntakeDetails) -> IntakeDetailsResponse:

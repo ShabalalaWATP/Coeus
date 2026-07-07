@@ -5,14 +5,29 @@ from uuid import UUID, uuid4
 from coeus.core.config import Settings
 from coeus.domain.auth import RoleName, SessionRecord, UserAccount
 from coeus.domain.rbac import permissions_for_roles
+from coeus.persistence.codec import decode_value, encode_value
+from coeus.persistence.state_store import StateStore
 from coeus.services.passwords import PasswordHasher
 
 
+class AttemptStoreFull(RuntimeError):
+    pass
+
+
 class SeedUserRepository:
-    def __init__(self, settings: Settings, password_hasher: PasswordHasher) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        password_hasher: PasswordHasher,
+        state_store: StateStore | None = None,
+    ) -> None:
+        self._state_store = state_store
+        self._initialising = True
         self._users_by_username: dict[str, UserAccount] = {}
         self._users_by_id: dict[UUID, UserAccount] = {}
         self._seed_users(settings.local_seed_credential, password_hasher)
+        self._initialising = False
+        self._restore_or_persist()
 
     def _seed_users(self, seed_credential: str, password_hasher: PasswordHasher) -> None:
         for username, display_name, roles, is_active in _seed_user_specs():
@@ -31,6 +46,7 @@ class SeedUserRepository:
     def save(self, user: UserAccount) -> None:
         self._users_by_username[user.username.casefold()] = user
         self._users_by_id[user.user_id] = user
+        self._persist()
 
     def get_by_username(self, username: str) -> UserAccount | None:
         return self._users_by_username.get(username.casefold())
@@ -41,24 +57,68 @@ class SeedUserRepository:
     def list_users(self) -> tuple[UserAccount, ...]:
         return tuple(self._users_by_id.values())
 
+    def _restore_or_persist(self) -> None:
+        if self._state_store is None:
+            return
+        payload = self._state_store.load("users")
+        if payload is None:
+            self._persist()
+            return
+        seeded_users = dict(self._users_by_username)
+        users = tuple(decode_value(item) for item in payload.get("users", []))
+        self._users_by_username = {user.username.casefold(): user for user in users}
+        self._users_by_id = {user.user_id: user for user in users}
+        for username, user in seeded_users.items():
+            if username not in self._users_by_username:
+                self.save(user)
+
+    def _persist(self) -> None:
+        if self._state_store is None or self._initialising:
+            return
+        users = sorted(self._users_by_id.values(), key=lambda user: user.username)
+        self._state_store.save("users", {"users": [encode_value(user) for user in users]})
+
 
 class SessionRepository:
-    def __init__(self) -> None:
+    def __init__(self, state_store: StateStore | None = None) -> None:
+        self._state_store = state_store
         self._sessions: dict[str, SessionRecord] = {}
+        self._restore_or_persist()
 
     def save(self, session: SessionRecord) -> None:
         self._sessions[session.session_id] = session
+        self._persist()
 
     def get(self, session_id: str) -> SessionRecord | None:
         return self._sessions.get(session_id)
 
     def delete(self, session_id: str) -> None:
         self._sessions.pop(session_id, None)
+        self._persist()
 
     def delete_for_user(self, user_id: UUID) -> None:
         for session_id, session in list(self._sessions.items()):
             if session.user_id == user_id:
                 self.delete(session_id)
+
+    def _restore_or_persist(self) -> None:
+        if self._state_store is None:
+            return
+        payload = self._state_store.load("sessions")
+        if payload is None:
+            self._persist()
+            return
+        sessions = tuple(decode_value(item) for item in payload.get("sessions", []))
+        self._sessions = {session.session_id: session for session in sessions}
+
+    def _persist(self) -> None:
+        if self._state_store is None:
+            return
+        sessions = sorted(self._sessions.values(), key=lambda session: session.created_at)
+        self._state_store.save(
+            "sessions",
+            {"sessions": [encode_value(session) for session in sessions]},
+        )
 
 
 class LoginAttemptRepository:
@@ -84,7 +144,7 @@ class LoginAttemptRepository:
             and len(self._attempts) >= self._max_entries
             and not self._evict_non_locked_attempt(now)
         ):
-            return None
+            raise AttemptStoreFull("Login attempt store is full.")
         count, _locked_until = self._attempts.get(key, (0, None))
         count += 1
         locked_until = now + timedelta(seconds=lockout_seconds) if count >= threshold else None
@@ -111,8 +171,8 @@ class IpAttemptRepository:
 
     Complements the username-scoped lockout: a single source cannot spray many
     usernames without tripping this budget. Storage is bounded; when full and
-    nothing stale can be evicted the check fails open, matching the lockout
-    repository's philosophy of never letting memory pressure deny all logins.
+    nothing stale can be evicted, new sources are over budget rather than
+    bypassing throttling.
     """
 
     def __init__(self, max_entries: int = 10_000) -> None:
@@ -130,7 +190,7 @@ class IpAttemptRepository:
             and len(self._attempts) >= self._max_entries
             and not self._evict_stale(window_start)
         ):
-            return True
+            return False
         recent.append(now)
         self._attempts[source] = recent
         return len(recent) <= max_attempts
@@ -187,8 +247,32 @@ def _seed_user_specs() -> Iterable[tuple[str, str, frozenset[RoleName], bool]]:
             True,
         ),
         (
+            "store.manager@example.test",
+            "Intelligence Store Manager",
+            frozenset({RoleName.INTELLIGENCE_STORE_MANAGER}),
+            True,
+        ),
+        (
             "analyst@example.test",
             "Intelligence Analyst",
+            frozenset({RoleName.INTELLIGENCE_ANALYST}),
+            True,
+        ),
+        (
+            "analyst.maritime@example.test",
+            "Maritime Assessment Analyst",
+            frozenset({RoleName.INTELLIGENCE_ANALYST}),
+            True,
+        ),
+        (
+            "analyst.cyber@example.test",
+            "Cyber Threat Analyst",
+            frozenset({RoleName.INTELLIGENCE_ANALYST}),
+            True,
+        ),
+        (
+            "analyst.geo@example.test",
+            "Geospatial Assessment Analyst",
             frozenset({RoleName.INTELLIGENCE_ANALYST}),
             True,
         ),

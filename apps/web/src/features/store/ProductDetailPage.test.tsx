@@ -1,9 +1,11 @@
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import ProductDetailPage from "./ProductDetailPage";
 import { backNavigationFor } from "./store-navigation";
 import { resetQueryClientForTests } from "../../app/query-client";
-import { renderWithProviders } from "../../test/test-utils";
+import type { Permission } from "../../lib/api-client/client";
+import { previewSession, renderWithProviders } from "../../test/test-utils";
 
 const product = {
   id: "product-regional",
@@ -19,6 +21,7 @@ const product = {
   releasability: ["MOCK"],
   handlingCaveats: ["MOCK DATA ONLY"],
   tags: ["regional", "ports"],
+  semanticLabels: ["assessment", "maritime"],
   acgIds: ["acg-alpha"],
   projectId: "project-northstar",
   status: "published",
@@ -56,6 +59,7 @@ test("renders product metadata and asset list", async () => {
 
   expect(await screen.findByRole("heading", { name: "Regional Stability Brief" })).toBeVisible();
   expect(screen.getByText("Assessment report")).toBeVisible();
+  expect(screen.getByText("maritime")).toBeVisible();
   expect(screen.getByText("regional-brief.pdf")).toBeVisible();
 });
 
@@ -78,7 +82,10 @@ test("renders controlled asset grant for selected asset route", async () => {
 
   renderWithProviders(<ProductDetailPage />, "/store/products/product-regional/assets/asset-brief");
 
-  expect(await screen.findByText("asset-token-asset-brief")).toBeVisible();
+  expect(await screen.findByRole("link", { name: "Download asset" })).toHaveAttribute(
+    "href",
+    expect.stringContaining("asset-token-asset-brief"),
+  );
 });
 
 test("renders controlled asset denial without exposing object storage", async () => {
@@ -143,4 +150,110 @@ test("renders denied page without leaking product metadata", async () => {
 
   expect(await screen.findByRole("heading", { name: "Product not available" })).toBeVisible();
   expect(screen.queryByText("Regional Stability Brief")).not.toBeInTheDocument();
+});
+
+test("allows audited break-glass access for restricted-read administrators", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      json: () => Promise.resolve({ error: { code: "product_not_found", message: "Not found." } }),
+    })
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(product) });
+  vi.stubGlobal("fetch", fetchMock);
+  const session = {
+    ...previewSession,
+    user: {
+      ...previewSession.user,
+      permissions: [
+        ...previewSession.user.permissions,
+        "product:read_restricted",
+      ] satisfies Permission[],
+    },
+  };
+
+  renderWithProviders(<ProductDetailPage />, "/store/products/product-hidden", session);
+
+  await userEvent.type(
+    await screen.findByLabelText("Emergency support reason"),
+    "Synthetic support incident requiring audited access.",
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Access with audit log" }));
+
+  expect(await screen.findByRole("heading", { name: "Regional Stability Brief" })).toBeVisible();
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    2,
+    "http://127.0.0.1:8001/api/v1/store/products/product-hidden/break-glass",
+    expect.objectContaining({
+      body: JSON.stringify({ reason: "Synthetic support incident requiring audited access." }),
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": "test-csrf-token",
+      },
+      method: "POST",
+    }),
+  );
+});
+
+test("uses audited break-glass grants for hidden asset downloads", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      json: () => Promise.resolve({ error: { code: "product_not_found", message: "Not found." } }),
+    })
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(product) })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          assetId: "asset-brief",
+          downloadToken: "asset-token-break-glass",
+          expiresInSeconds: 900,
+        }),
+    });
+  vi.stubGlobal("fetch", fetchMock);
+  const session = {
+    ...previewSession,
+    user: {
+      ...previewSession.user,
+      permissions: [
+        ...previewSession.user.permissions,
+        "product:read_restricted",
+      ] satisfies Permission[],
+    },
+  };
+
+  renderWithProviders(
+    <ProductDetailPage />,
+    "/store/products/product-hidden/assets/asset-brief",
+    session,
+  );
+
+  await userEvent.type(
+    await screen.findByLabelText("Emergency support reason"),
+    "Synthetic support incident requiring audited asset access.",
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Access with audit log" }));
+
+  expect(await screen.findByRole("link", { name: "Download asset" })).toHaveAttribute(
+    "href",
+    expect.stringContaining("asset-token-break-glass"),
+  );
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    3,
+    "http://127.0.0.1:8001/api/v1/store/products/product-hidden/assets/asset-brief/break-glass-access",
+    expect.objectContaining({
+      body: JSON.stringify({
+        reason: "Synthetic support incident requiring audited asset access.",
+      }),
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": "test-csrf-token",
+      },
+      method: "POST",
+    }),
+  );
 });

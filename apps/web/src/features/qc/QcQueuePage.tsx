@@ -106,7 +106,7 @@ export default function QcQueuePage() {
                   className="request-row"
                   key={product.ticketId}
                   onClick={() => setActionResult(undefined)}
-                  to={`/qc/products/${product.ticketId}`}
+                  to={`/qc/products/${encodeURIComponent(product.ticketId)}`}
                 >
                   <strong>{product.reference}</strong>
                   <span>{product.title}</span>

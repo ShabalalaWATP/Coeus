@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from uuid import UUID
 
@@ -33,6 +33,7 @@ class StoreProductMetadata:
     time_period_end: str | None
     geojson_ref: str | None
     bounding_box: BoundingBox | None
+    semantic_labels: frozenset[str] = field(default_factory=frozenset)
 
 
 @dataclass(frozen=True)
@@ -83,6 +84,16 @@ class StoreSearchFilters:
     project_id: UUID | None = None
     date_from: str | None = None
     date_to: str | None = None
+    owner_team: str | None = None
+    page: int = 1
+    page_size: int = 12
+
+
+@dataclass(frozen=True)
+class StoreVisibilityScope:
+    acg_ids: frozenset[UUID]
+    clearance_level: int
+    include_drafts: bool
 
 
 @dataclass(frozen=True)
@@ -103,6 +114,9 @@ class StoreFacets:
 class StoreSearchResult:
     hits: tuple[StoreSearchHit, ...]
     total: int
+    page: int
+    page_size: int
+    total_pages: int
     facets: StoreFacets
 
 
@@ -119,3 +133,4 @@ class MetadataSuggestion:
     entities: tuple[str, ...]
     source_type: str
     acg_ids: tuple[UUID, ...]
+    semantic_labels: tuple[str, ...] = ()

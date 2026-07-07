@@ -49,6 +49,22 @@ MANAGER_RELEASE_PERMISSIONS = frozenset(
     }
 )
 
+STORE_MANAGER_PERMISSIONS = SELF_SERVICE | frozenset(
+    {
+        Permission.ACG_VIEW,
+        Permission.ACG_ASSIGN_USER,
+        Permission.ACG_ASSIGN_PRODUCT,
+        Permission.PRODUCT_CREATE_EXISTING,
+        Permission.PRODUCT_READ,
+        Permission.PRODUCT_SEARCH,
+        Permission.PRODUCT_UPDATE_METADATA,
+        Permission.PRODUCT_MANAGE_ASSETS,
+        Permission.PRODUCT_DOWNLOAD,
+        Permission.PRODUCT_PUBLISH,
+        Permission.PRODUCT_ARCHIVE,
+    }
+)
+
 ROLE_DEFINITIONS: dict[RoleName, RoleDefinition] = {
     RoleName.ADMINISTRATOR: RoleDefinition(
         name=RoleName.ADMINISTRATOR,
@@ -97,6 +113,11 @@ ROLE_DEFINITIONS: dict[RoleName, RoleDefinition] = {
         name=RoleName.COLLECTION_TEAM_MEMBER,
         default_route="/collection/products",
         permissions=PRODUCT_TEAM_PERMISSIONS | frozenset({Permission.COLLECTION_ADD_PRODUCT}),
+    ),
+    RoleName.INTELLIGENCE_STORE_MANAGER: RoleDefinition(
+        name=RoleName.INTELLIGENCE_STORE_MANAGER,
+        default_route="/store",
+        permissions=STORE_MANAGER_PERMISSIONS,
     ),
     RoleName.INTELLIGENCE_ANALYST: RoleDefinition(
         name=RoleName.INTELLIGENCE_ANALYST,

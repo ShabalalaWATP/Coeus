@@ -11,11 +11,18 @@ import {
 type AssignAnalystPanelProps = {
   csrfToken: string;
   onAssigned: (task: AnalystTask) => void;
+  suggestedTeamName?: string | null;
   ticketId: string;
 };
 
-export function AssignAnalystPanel({ csrfToken, onAssigned, ticketId }: AssignAnalystPanelProps) {
+export function AssignAnalystPanel({
+  csrfToken,
+  onAssigned,
+  suggestedTeamName,
+  ticketId,
+}: AssignAnalystPanelProps) {
   const [analystUserId, setAnalystUserId] = useState("");
+  const [teamName, setTeamName] = useState(suggestedTeamName ?? "");
   const [workPackages, setWorkPackages] = useState("");
   const candidatesQuery = useQuery({
     queryKey: ["analyst-candidates"],
@@ -23,7 +30,13 @@ export function AssignAnalystPanel({ csrfToken, onAssigned, ticketId }: AssignAn
   });
   const assignMutation = useMutation({
     mutationFn: () =>
-      assignAnalystTask(ticketId, analystUserId, packageTitles(workPackages), csrfToken),
+      assignAnalystTask(
+        ticketId,
+        analystUserId,
+        teamName.trim(),
+        packageTitles(workPackages),
+        csrfToken,
+      ),
     onSuccess: (task) => onAssigned(task),
   });
   const candidates = candidatesQuery.data?.analysts ?? [];
@@ -54,6 +67,14 @@ export function AssignAnalystPanel({ csrfToken, onAssigned, ticketId }: AssignAn
               </option>
             ))}
           </select>
+        </label>
+        <label>
+          Team name
+          <input
+            onChange={(event) => setTeamName(event.target.value)}
+            placeholder="Analyst or capability team"
+            value={teamName}
+          />
         </label>
         <label>
           Work packages (semicolon separated)

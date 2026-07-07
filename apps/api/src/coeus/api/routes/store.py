@@ -20,6 +20,7 @@ from coeus.domain.store import (
 )
 from coeus.schemas.store import (
     AssetAccessResponse,
+    BreakGlassProductAccessRequest,
     MetadataSuggestionRequest,
     MetadataSuggestionResponse,
     StoreAssetResponse,
@@ -30,25 +31,36 @@ from coeus.schemas.store import (
     StoreSearchResponse,
 )
 from coeus.services.store import StoreProductDraft, StoreServices
+from coeus.services.store_semantics import effective_semantic_labels
 
 router = APIRouter(prefix="/store", tags=["store"])
+SEARCH_TEXT_MAX_LENGTH = 200
+SEARCH_FIELD_MAX_LENGTH = 80
+SEARCH_REGION_MAX_LENGTH = 180
 
 
 @router.get("/products", response_model=StoreSearchResponse)
 async def search_products(
     authenticated: Annotated[AuthenticatedSession, Depends(get_current_session)],
     store_services: Annotated[StoreServices, Depends(get_store_services)],
-    query: str | None = None,
-    product_type: Annotated[str | None, Query(alias="productType")] = None,
-    region: str | None = None,
-    tag: str | None = None,
-    source_type: Annotated[str | None, Query(alias="sourceType")] = None,
+    query: Annotated[str | None, Query(max_length=SEARCH_TEXT_MAX_LENGTH)] = None,
+    product_type: Annotated[
+        str | None, Query(alias="productType", max_length=SEARCH_FIELD_MAX_LENGTH)
+    ] = None,
+    region: Annotated[str | None, Query(max_length=SEARCH_REGION_MAX_LENGTH)] = None,
+    tag: Annotated[str | None, Query(max_length=SEARCH_FIELD_MAX_LENGTH)] = None,
+    source_type: Annotated[
+        str | None, Query(alias="sourceType", max_length=SEARCH_FIELD_MAX_LENGTH)
+    ] = None,
     status: ProductStatus | None = None,
     project_id: Annotated[UUID | None, Query(alias="projectId")] = None,
     date_from: Annotated[
         str | None, Query(alias="dateFrom", pattern=r"^\d{4}-\d{2}-\d{2}$")
     ] = None,
     date_to: Annotated[str | None, Query(alias="dateTo", pattern=r"^\d{4}-\d{2}-\d{2}$")] = None,
+    owner_team: Annotated[str | None, Query(alias="ownerTeam", min_length=2, max_length=80)] = None,
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(alias="pageSize", ge=1, le=50)] = 12,
 ) -> StoreSearchResponse:
     result = store_services.search.search(
         authenticated.user,
@@ -62,11 +74,17 @@ async def search_products(
             project_id,
             date_from,
             date_to,
+            owner_team,
+            page,
+            page_size,
         ),
     )
     return StoreSearchResponse(
         products=[_to_search_response(hit) for hit in result.hits],
         total=result.total,
+        page=result.page,
+        page_size=result.page_size,
+        total_pages=result.total_pages,
         facets=StoreFacetsResponse(
             product_types=list(result.facets.product_types),
             regions=list(result.facets.regions),
@@ -99,6 +117,20 @@ async def get_product(
     )
 
 
+@router.post("/products/{product_id}/break-glass", response_model=StoreProductResponse)
+async def break_glass_product_access(
+    product_id: UUID,
+    payload: BreakGlassProductAccessRequest,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    store_services: Annotated[StoreServices, Depends(get_store_services)],
+) -> StoreProductResponse:
+    return _to_product_response(
+        store_services.details.get_break_glass_product(
+            authenticated.user, product_id, payload.reason
+        )
+    )
+
+
 @router.get("/products/{product_id}/assets/{asset_id}/access", response_model=AssetAccessResponse)
 async def get_asset_access(
     product_id: UUID,
@@ -107,6 +139,27 @@ async def get_asset_access(
     store_services: Annotated[StoreServices, Depends(get_store_services)],
 ) -> AssetAccessResponse:
     grant = store_services.assets.grant_access(authenticated.user, product_id, asset_id)
+    return AssetAccessResponse(
+        asset_id=grant.asset.asset_id,
+        download_token=grant.download_token,
+        expires_in_seconds=grant.expires_in_seconds,
+    )
+
+
+@router.post(
+    "/products/{product_id}/assets/{asset_id}/break-glass-access",
+    response_model=AssetAccessResponse,
+)
+async def get_break_glass_asset_access(
+    product_id: UUID,
+    asset_id: UUID,
+    payload: BreakGlassProductAccessRequest,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    store_services: Annotated[StoreServices, Depends(get_store_services)],
+) -> AssetAccessResponse:
+    grant = store_services.assets.grant_break_glass_access(
+        authenticated.user, product_id, asset_id, payload.reason
+    )
     return AssetAccessResponse(
         asset_id=grant.asset.asset_id,
         download_token=grant.download_token,
@@ -131,6 +184,7 @@ async def suggest_metadata(
         entities=list(suggestion.entities),
         source_type=suggestion.source_type,
         acg_ids=list(suggestion.acg_ids),
+        semantic_labels=list(suggestion.semantic_labels),
     )
 
 
@@ -158,6 +212,7 @@ def _to_product_draft(payload: StoreProductCreateRequest) -> StoreProductDraft:
         releasability=frozenset(payload.releasability),
         handling_caveats=frozenset(payload.handling_caveats),
         tags=frozenset(payload.tags),
+        semantic_labels=frozenset(payload.semantic_labels),
         acg_ids=frozenset(payload.acg_ids),
         project_id=payload.project_id,
         status=status,
@@ -216,6 +271,7 @@ def _product_payload(product: StoreProduct) -> dict[str, object]:
         "releasability": sorted(metadata.releasability),
         "handling_caveats": sorted(metadata.handling_caveats),
         "tags": sorted(metadata.tags),
+        "semantic_labels": sorted(effective_semantic_labels(product)),
         "acg_ids": list(metadata.acg_ids),
         "project_id": metadata.project_id,
         "status": metadata.status.value,

@@ -15,7 +15,7 @@ how the agents work see [AI Agents](AI_AGENTS.md).
 - [The request journey](#the-request-journey)
 - [Customer](#customer)
 - [Intelligence Store](#intelligence-store)
-- [Route managers (RFA and Collection)](#route-managers-rfa-and-collection)
+- [RFA and Collection managers](#rfa-and-collection-managers)
 - [Intelligence analyst](#intelligence-analyst)
 - [Quality control](#quality-control)
 - [Administrator](#administrator)
@@ -84,17 +84,20 @@ so a customer only ever sees products they are entitled to.
 
 ![Intelligence Store search and results](images/06-intelligence-store.png)
 
-Each result carries rich metadata: reference, owning team, region, classification,
-coverage window, tags and format. Only RFA and Collection managers may upload
-products, and only through the release workflow described below.
+Each result carries rich metadata: reference, owning team, region,
+classification, coverage window, tags and format. RFA managers, Collection
+managers and Intelligence Store Managers can administer store metadata and
+assets. Viewing or downloading product content still depends on ACG membership
+and clearance.
 
 ---
 
-## Route managers (RFA and Collection)
+## RFA and Collection managers
 
-Route managers work a queue. Selecting a ticket and running **capability checks**
-invokes the RFA and CM capability agents; their advice appears as agent-badged
-cards alongside a recommended route.
+RFA and Collection managers work route-specific queues. Selecting a ticket and
+running **capability checks** invokes the RFA and CM capability agents plus the
+orchestrator; their advice appears as agent-badged cards alongside a recommended
+route.
 
 ![RFA manager queue with agent recommendations](images/07-rfa-queue.png)
 
@@ -104,7 +107,8 @@ A manager can:
   override reason.
 - **Query or reject** the route (the form is tucked behind a disclosure to keep
   the screen focused).
-- **Assign an analyst** with work packages once a route is approved.
+- **Assign an analyst** with a team name and work packages once a route is
+  approved.
 - **Release** a QC-approved product to the customer from the Final Release panel,
   which publishes the product, links it on the customer's dashboard, sends a
   notification and records the email in the local outbox.
@@ -144,7 +148,9 @@ audit log.
 The **AI model** panel presents each available model as a selectable card with a
 tier (Sovereign, Fast, Advanced, or Custom for anything unrecognised) and a
 description. The active model is badged, and the panel records who last changed
-it and when.
+it and when. Entering a Gemini API key enables Gemini-backed assistant replies
+for every user in the current API process, but the key is write-only and not
+persisted; model choice is persisted.
 
 ![Admin AI model catalogue](images/12-admin-ai-model.png)
 

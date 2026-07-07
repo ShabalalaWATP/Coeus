@@ -3,6 +3,7 @@ import { MessageCircleQuestion } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { AssignAnalystPanel } from "./AssignAnalystPanel";
+import { CapabilityCataloguePanel } from "./CapabilityCataloguePanel";
 import { ReleaseQueuePanel } from "./ReleaseQueuePanel";
 import {
   canApprove,
@@ -122,6 +123,7 @@ export default function RoutingQueuePage({ route }: RoutingQueuePageProps) {
             <p>{queue.tickets.length} tickets need route action.</p>
           </div>
           <RoutingStats queue={queue} />
+          <CapabilityCataloguePanel route={route} />
           {queueQuery.isError ? (
             <ErrorState onRetry={() => void queueQuery.refetch()} />
           ) : (
@@ -162,6 +164,7 @@ export default function RoutingQueuePage({ route }: RoutingQueuePageProps) {
                 <AssignAnalystPanel
                   csrfToken={csrfToken}
                   onAssigned={(task) => removeTicket(task.ticketId)}
+                  suggestedTeamName={teamNameForAssignment(selectedTicket, route)}
                   ticketId={selectedTicket.ticketId}
                 />
               ) : (
@@ -262,3 +265,10 @@ const cmLabels = {
   shortName: "Collection",
   description: "Review CM capability decisions and approve collection-backed routes.",
 };
+
+function teamNameForAssignment(ticket: RoutingTicket, route: RoutingRoute) {
+  if (route === "rfa") {
+    return ticket.rfaReview?.suggestedTeamName ?? "";
+  }
+  return ticket.cmReview?.suggestedCollectionTeamName ?? "";
+}

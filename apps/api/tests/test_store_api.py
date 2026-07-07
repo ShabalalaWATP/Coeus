@@ -1,45 +1,12 @@
+import json
+from pathlib import Path
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from coeus.core.config import Settings
 from coeus.main import create_app
-
-SEED_CREDENTIAL = "CoeusLocal1!"
-
-
-async def login(client: AsyncClient, username: str) -> dict[str, object]:
-    response = await client.post(
-        "/api/v1/auth/login",
-        json={"username": username, "password": SEED_CREDENTIAL},
-    )
-    assert response.status_code == 200
-    return response.json()
-
-
-def product_payload(acg_id: str, *, owner_team: str = "RFA") -> dict[str, object]:
-    return {
-        "title": "Mock Harbour Activity Brief",
-        "summary": "MOCK DATA ONLY assessment of harbour activity.",
-        "description": "Synthetic product metadata for Sprint 5 testing.",
-        "productType": "assessment_report",
-        "sourceType": "finished_assessment",
-        "ownerTeam": owner_team,
-        "areaOrRegion": "Baltic ports",
-        "classificationLevel": 2,
-        "releasability": ["MOCK"],
-        "handlingCaveats": ["MOCK DATA ONLY"],
-        "tags": ["ports", "activity"],
-        "acgIds": [acg_id],
-        "assets": [
-            {
-                "name": "harbour-brief.pdf",
-                "assetType": "pdf",
-                "mimeType": "application/pdf",
-                "sizeBytes": 42_000,
-                "sha256": "a" * 64,
-            }
-        ],
-    }
+from store_api_helpers import login, product_payload
 
 
 @pytest.mark.asyncio
@@ -67,6 +34,50 @@ async def test_admin_can_create_existing_product_and_search_metadata() -> None:
     assert search.status_code == 200
     assert any(item["title"] == "Mock Harbour Activity Brief" for item in search.json()["products"])
     assert "product_created" in [event["eventType"] for event in audit.json()["events"]]
+
+
+@pytest.mark.asyncio
+async def test_admin_can_upload_and_download_real_asset_bytes(tmp_path: Path) -> None:
+    app = create_app(
+        Settings(
+            environment="test",
+            argon2_memory_cost=8_192,
+            local_object_storage_path=str(tmp_path / "objects"),
+        )
+    )
+    acg_id = str(app.state.access_services.repository.list_acgs()[0].acg_id)
+    metadata = product_payload(acg_id)
+    metadata.pop("assets")
+    content = b"MOCK DATA ONLY uploaded asset bytes"
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        session = await login(client, "admin@example.test")
+        created = await client.post(
+            "/api/v1/store/products/upload",
+            headers={"X-CSRF-Token": str(session["csrfToken"])},
+            files={
+                "asset": ("uploaded-brief.txt", content, "text/plain"),
+                "metadata": (None, json.dumps(metadata), "application/json"),
+            },
+        )
+        product = created.json()
+        asset = product["assets"][0]
+        grant = await client.get(
+            f"/api/v1/store/products/{product['id']}/assets/{asset['id']}/access"
+        )
+        downloaded = await client.get(
+            f"/api/v1/store/products/{product['id']}/assets/{asset['id']}/download",
+            params={"token": grant.json()["downloadToken"]},
+        )
+
+    assert created.status_code == 201
+    assert asset["sha256"] != "a" * 64
+    assert grant.status_code == 200
+    assert grant.json()["downloadToken"].startswith("asset-token-")
+    assert downloaded.status_code == 200
+    assert downloaded.content == content
 
 
 @pytest.mark.asyncio
@@ -128,6 +139,30 @@ async def test_product_creation_requires_active_authorised_acg() -> None:
 
 
 @pytest.mark.asyncio
+async def test_store_manager_can_admin_products_without_restricted_read() -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    collection_acg = next(
+        acg for acg in app.state.access_services.repository.list_acgs() if "BRAVO" in acg.code
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        session = await login(client, "store.manager@example.test")
+        created = await client.post(
+            "/api/v1/store/products",
+            headers={"X-CSRF-Token": str(session["csrfToken"])},
+            json=product_payload(str(collection_acg.acg_id), owner_team="Collection"),
+        )
+        hidden_detail = await client.get(f"/api/v1/store/products/{created.json()['id']}")
+
+    assert session["user"]["defaultRoute"] == "/store"
+    assert "product:read_restricted" not in session["user"]["permissions"]
+    assert created.status_code == 201
+    assert hidden_detail.status_code == 404
+
+
+@pytest.mark.asyncio
 async def test_search_filters_after_access_checks_without_count_leakage() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
 
@@ -153,6 +188,45 @@ async def test_search_filters_after_access_checks_without_count_leakage() -> Non
     assert collection_query.json()["total"] == 0
     assert collection_query.json()["facets"]["productTypes"] == []
     assert regional_filter.json()["total"] == 1
+
+
+@pytest.mark.asyncio
+async def test_store_search_paginates_after_access_and_owner_filters() -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        await login(client, "admin@example.test")
+        first_page = await client.get(
+            "/api/v1/store/products",
+            params={"ownerTeam": "RFA", "page": 1, "pageSize": 1},
+        )
+        second_page = await client.get(
+            "/api/v1/store/products",
+            params={"ownerTeam": "RFA", "page": 2, "pageSize": 1},
+        )
+        invalid_page_size = await client.get(
+            "/api/v1/store/products",
+            params={"page": 1, "pageSize": 0},
+        )
+        oversized_query = await client.get(
+            "/api/v1/store/products",
+            params={"query": "x" * 201},
+        )
+
+    assert first_page.status_code == 200
+    assert first_page.json()["total"] >= 2
+    assert first_page.json()["page"] == 1
+    assert first_page.json()["pageSize"] == 1
+    assert first_page.json()["totalPages"] >= 2
+    assert len(first_page.json()["products"]) == 1
+    assert len(second_page.json()["products"]) == 1
+    assert first_page.json()["products"][0]["id"] != second_page.json()["products"][0]["id"]
+    assert all(product["ownerTeam"] == "RFA" for product in first_page.json()["products"])
+    assert "assessment_report" in first_page.json()["facets"]["productTypes"]
+    assert invalid_page_size.status_code == 422
+    assert oversized_query.status_code == 422
 
 
 @pytest.mark.asyncio
@@ -214,6 +288,7 @@ async def test_metadata_suggestions_do_not_assign_acgs() -> None:
     assert response.json()["tags"] == ["baltic", "geographic", "mock"]
     assert response.json()["entities"]
     assert response.json()["acgIds"] == []
+    assert {"geospatial", "maritime"}.issubset(response.json()["semanticLabels"])
 
 
 @pytest.mark.asyncio

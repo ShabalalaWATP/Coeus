@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from re import fullmatch
 from uuid import UUID
@@ -8,7 +8,6 @@ from coeus.core.permissions import Permission
 from coeus.domain.access import ProductStatus
 from coeus.domain.auth import UserAccount
 from coeus.domain.store import (
-    AssetAccessGrant,
     BoundingBox,
     MetadataSuggestion,
     StoreAsset,
@@ -18,13 +17,16 @@ from coeus.domain.store import (
     StoreSearchFilters,
     StoreSearchHit,
     StoreSearchResult,
+    StoreVisibilityScope,
     object_key_segment,
 )
 from coeus.repositories.access import SeedAccessRepository
 from coeus.repositories.store import InMemoryStoreRepository, new_store_product_id
 from coeus.services.audit import AuditLog
+from coeus.services.store_access import StoreAssetService, StoreDetailService
 from coeus.services.store_owner_policy import normalise_owner_team, require_owner_permission
 from coeus.services.store_search_dates import within_dates
+from coeus.services.store_semantics import derive_semantic_labels, product_semantic_text
 
 HASH_PATTERN = r"[a-fA-F0-9]{64}"
 
@@ -50,6 +52,7 @@ class StoreProductDraft:
     geojson_ref: str | None
     bounding_box: BoundingBox | None
     assets: tuple[StoreAsset, ...]
+    semantic_labels: frozenset[str] = field(default_factory=frozenset)
 
 
 class StoreProductAccessPolicy:
@@ -61,7 +64,7 @@ class StoreProductAccessPolicy:
         if Permission.PRODUCT_READ not in user.permissions or not user.is_active:
             return False
         if metadata.status == ProductStatus.ARCHIVED:
-            return Permission.PRODUCT_READ_RESTRICTED in user.permissions
+            return False
         if user.clearance_level < metadata.classification_level:
             return False
         if (
@@ -70,8 +73,13 @@ class StoreProductAccessPolicy:
         ):
             return False
         user_acg_ids = self._access_repository.active_acg_ids_for_user(user.user_id)
-        return Permission.PRODUCT_READ_RESTRICTED in user.permissions or bool(
-            user_acg_ids.intersection(metadata.acg_ids)
+        return bool(user_acg_ids.intersection(metadata.acg_ids))
+
+    def visibility_scope(self, user: UserAccount) -> StoreVisibilityScope:
+        return StoreVisibilityScope(
+            acg_ids=self._access_repository.active_acg_ids_for_user(user.user_id),
+            clearance_level=user.clearance_level,
+            include_drafts=Permission.PRODUCT_MANAGE_ASSETS in user.permissions,
         )
 
 
@@ -98,6 +106,19 @@ class StoreIngestionService:
             raise AppError(
                 409, "geographic_metadata_required", "Geographic products need geometry."
             )
+        assets = self._with_object_keys(draft.assets)
+        semantic_labels = derive_semantic_labels(
+            draft.title,
+            draft.summary,
+            draft.description,
+            draft.product_type,
+            draft.source_type,
+            draft.owner_team,
+            draft.area_or_region,
+            " ".join(draft.tags),
+            " ".join(asset.asset_type for asset in assets),
+            existing=draft.semantic_labels,
+        )
         now = datetime.now(UTC)
         product = StoreProduct(
             product_id=new_store_product_id(),
@@ -121,8 +142,9 @@ class StoreIngestionService:
                 time_period_end=draft.time_period_end,
                 geojson_ref=draft.geojson_ref,
                 bounding_box=draft.bounding_box,
+                semantic_labels=semantic_labels,
             ),
-            assets=self._with_object_keys(draft.assets),
+            assets=assets,
             created_by_user_id=actor.user_id,
             created_at=now,
             updated_at=now,
@@ -145,6 +167,7 @@ class StoreIngestionService:
                 raise AppError(409, "product_acg_required", "Products must use active ACGs.")
             if (
                 Permission.PRODUCT_READ_RESTRICTED not in actor.permissions
+                and Permission.ACG_ASSIGN_PRODUCT not in actor.permissions
                 and acg_id not in actor_acgs
             ):
                 raise AppError(403, "acg_not_authorised", "User cannot assign that ACG.")
@@ -191,11 +214,8 @@ class StoreSearchService:
     def search(self, actor: UserAccount, filters: StoreSearchFilters) -> StoreSearchResult:
         if Permission.PRODUCT_SEARCH not in actor.permissions:
             raise AppError(403, "forbidden", "Permission denied.")
-        visible = tuple(
-            product
-            for product in self._repository.list_products()
-            if self._policy.can_read(actor, product)
-        )
+        candidates = self._repository.search_products(filters, self._policy.visibility_scope(actor))
+        visible = tuple(product for product in candidates if self._policy.can_read(actor, product))
         filtered = tuple(product for product in visible if self._matches_filters(product, filters))
         hits = tuple(
             sorted(
@@ -203,7 +223,17 @@ class StoreSearchService:
                 key=lambda hit: (-hit.match_score, hit.product.metadata.title),
             )
         )
-        return StoreSearchResult(hits=hits, total=len(hits), facets=self._facets(filtered))
+        offset = (filters.page - 1) * filters.page_size
+        page_hits = hits[offset : offset + filters.page_size]
+        total_pages = (len(hits) + filters.page_size - 1) // filters.page_size
+        return StoreSearchResult(
+            hits=page_hits,
+            total=len(hits),
+            page=filters.page,
+            page_size=filters.page_size,
+            total_pages=total_pages,
+            facets=self._facets(filtered),
+        )
 
     @staticmethod
     def _matches_filters(product: StoreProduct, filters: StoreSearchFilters) -> bool:
@@ -219,6 +249,8 @@ class StoreSearchService:
                 filters.status is None or metadata.status == filters.status,
                 filters.project_id is None or metadata.project_id == filters.project_id,
                 within_dates(metadata, filters.date_from, filters.date_to),
+                filters.owner_team is None
+                or metadata.owner_team.casefold() == filters.owner_team.casefold(),
             )
         )
 
@@ -243,38 +275,6 @@ class StoreSearchService:
         )
 
 
-class StoreDetailService:
-    def __init__(
-        self, repository: InMemoryStoreRepository, policy: StoreProductAccessPolicy
-    ) -> None:
-        self._repository = repository
-        self._policy = policy
-
-    def get_visible_product(self, actor: UserAccount, product_id: UUID) -> StoreProduct:
-        product = self._repository.get_product(product_id)
-        if product is None or not self._policy.can_read(actor, product):
-            raise AppError(404, "product_not_found", "Product was not found.")
-        return product
-
-
-class StoreAssetService:
-    def __init__(self, details: StoreDetailService) -> None:
-        self._details = details
-
-    def grant_access(
-        self, actor: UserAccount, product_id: UUID, asset_id: UUID
-    ) -> AssetAccessGrant:
-        if Permission.PRODUCT_DOWNLOAD not in actor.permissions:
-            raise AppError(403, "forbidden", "Permission denied.")
-        product = self._details.get_visible_product(actor, product_id)
-        for asset in product.assets:
-            if asset.asset_id == asset_id:
-                return AssetAccessGrant(
-                    asset=asset, download_token=f"asset-token-{asset_id}", expires_in_seconds=900
-                )
-        raise AppError(404, "asset_not_found", "Asset was not found.")
-
-
 class MetadataSuggestionService:
     def suggest(
         self, title: str, summary: str, product_type: str, area_or_region: str
@@ -287,8 +287,13 @@ class MetadataSuggestionService:
             tags.append("geographic")
         tags.append("mock")
         entities = (area_or_region, "MOCK DATA ONLY")
+        labels = derive_semantic_labels(title, summary, product_type, area_or_region)
         return MetadataSuggestion(
-            tags=tuple(dict.fromkeys(tags)), entities=entities, source_type="synthetic", acg_ids=()
+            tags=tuple(dict.fromkeys(tags)),
+            entities=entities,
+            source_type="synthetic",
+            acg_ids=(),
+            semantic_labels=tuple(labels),
         )
 
 
@@ -302,36 +307,8 @@ class StoreServices:
     suggestions: MetadataSuggestionService
 
 
-def build_store_services(
-    access_repository: SeedAccessRepository, audit_log: AuditLog
-) -> StoreServices:
-    repository = InMemoryStoreRepository(access_repository)
-    policy = StoreProductAccessPolicy(access_repository)
-    details = StoreDetailService(repository, policy)
-    return StoreServices(
-        repository=repository,
-        ingestion=StoreIngestionService(repository, access_repository, audit_log),
-        search=StoreSearchService(repository, policy),
-        details=details,
-        assets=StoreAssetService(details),
-        suggestions=MetadataSuggestionService(),
-    )
-
-
 def _search_blob(product: StoreProduct) -> str:
-    metadata = product.metadata
-    return " ".join(
-        (
-            metadata.title,
-            metadata.summary,
-            metadata.description,
-            metadata.product_type,
-            metadata.source_type,
-            metadata.owner_team,
-            metadata.area_or_region,
-            " ".join(metadata.tags),
-        )
-    )
+    return product_semantic_text(product)
 
 
 def _contains(value: str, needle: str | None) -> bool:

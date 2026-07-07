@@ -1,7 +1,11 @@
 # Coeus GCP Infrastructure
 
-Sprint 12 adds the development GCP deployment baseline. Terraform creates the
-resource shell, but does not store application secret values in Terraform state.
+Coeus is intended to run locally for day-to-day development. This folder is a
+reference deployment baseline for a future work-owned GCP project, not a
+requirement for using the app.
+
+Terraform creates the development resource shell but does not store application
+secret values in Terraform state.
 
 ## Dev Environment
 
@@ -9,33 +13,41 @@ Path: `infra/gcp/environments/dev`
 
 Creates:
 
-- Required GCP APIs.
-- Workload Identity Federation for GitHub Actions.
-- Runtime and deployer service accounts.
-- Artifact Registry Docker repository.
-- Cloud SQL PostgreSQL instance and application database.
-- Private Cloud Storage buckets for products, previews and audit exports.
-- Pub/Sub topics, worker subscriptions and dead-letter topics.
-- Secret Manager placeholders.
-- Cloud Run services for API and web containers.
+- required GCP APIs
+- Workload Identity Federation for GitHub Actions
+- runtime and deployer service accounts
+- Artifact Registry Docker repository
+- Cloud SQL PostgreSQL instance and application database shell
+- private Cloud Storage buckets for products, previews and audit exports
+- Pub/Sub topics, worker subscriptions and dead-letter topics
+- Secret Manager placeholders
+- Cloud Run services for API and web containers
+
+## Required Variables
+
+Copy `terraform.tfvars.example` to a private, gitignored `terraform.tfvars` and
+replace every placeholder with values from the work GCP project.
+
+Do not commit `terraform.tfvars`, Terraform state, plans or secrets.
 
 ## Required Secret Values
 
-Create Secret Manager versions for these secrets after `terraform apply`:
+After Terraform creates the secret placeholders, add versions for:
 
 - `coeus-dev-database-url`
 - `coeus-dev-session-secret`
 - `coeus-dev-csrf-secret`
+- `coeus-dev-local-seed-credential`
 - `coeus-dev-llm-provider-config`
 - `coeus-dev-object-storage-config`
 
-Do not put those values in Terraform variables, GitHub workflow files, Markdown
-or chat. Use the GCP console or `gcloud secrets versions add`.
+Use Secret Manager in the GCP console or `gcloud secrets versions add`. Never put
+these values in Terraform variables, GitHub workflow files, Markdown or chat.
 
 ## GitHub Variables
 
-After `terraform apply`, copy these Terraform outputs into GitHub environment or
-repository variables:
+After `terraform apply`, copy Terraform outputs into the protected GitHub
+Environment named `dev`:
 
 - `GCP_PROJECT_ID`
 - `GCP_REGION`
@@ -45,8 +57,7 @@ repository variables:
 - `GCP_API_SERVICE`
 - `GCP_WEB_SERVICE`
 
-Enable `GCP_DEPLOY_DEV_ENABLED=true` only after the first manual deployment has
-worked from the protected `dev` GitHub Environment.
+Keep `GCP_DEPLOY_DEV_ENABLED=false` until the first manual deployment succeeds.
 
 ## Commands
 

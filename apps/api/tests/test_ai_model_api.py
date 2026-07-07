@@ -2,7 +2,11 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from coeus.core.config import Settings
+from coeus.integrations import gemini_api
 from coeus.main import create_app
+from coeus.persistence.state_store import MemoryStateStore
+from coeus.services.ai_models import AI_MODEL_NAMESPACE, AiModelService
+from coeus.services.audit import AuditLog
 
 SEED_CREDENTIAL = "CoeusLocal1!"
 
@@ -30,8 +34,9 @@ async def test_admin_reads_and_switches_the_active_gemini_model() -> None:
         assert state.status_code == 200
         payload = state.json()
         assert payload["provider"] == "mock"
-        assert payload["activeModel"] == "gemma-4-31b"
+        assert payload["activeModel"] == "gemini-2.5-flash"
         assert "gemini-2.5-pro" in payload["availableModels"]
+        assert payload["apiKeyConfigured"] is False
         assert payload["changedBy"] is None
         assert payload["changedAt"] is None
 
@@ -48,6 +53,128 @@ async def test_admin_reads_and_switches_the_active_gemini_model() -> None:
         refreshed = await client.get("/api/v1/admin/ai-model")
         assert refreshed.json()["activeModel"] == "gemini-2.5-pro"
         assert refreshed.json()["changedBy"] == "admin@example.test"
+
+
+@pytest.mark.asyncio
+async def test_admin_configures_gemini_key_without_reading_it_back() -> None:
+    async with _client() as client:
+        csrf = await _login(client, "admin@example.test")
+
+        configured = await client.put(
+            "/api/v1/admin/ai-model/api-key",
+            headers={"X-CSRF-Token": csrf},
+            json={"apiKey": "gemini-api-key-value"},
+        )
+        assert configured.status_code == 200
+        assert configured.json()["provider"] == "gemini_api"
+        assert configured.json()["apiKeyConfigured"] is True
+        assert "gemini-api-key-value" not in configured.text
+
+        refreshed = await client.get("/api/v1/admin/ai-model")
+        assert refreshed.json()["apiKeyConfigured"] is True
+        assert "gemini-api-key-value" not in refreshed.text
+
+
+def test_gemini_key_is_not_persisted_in_state_store() -> None:
+    state_store = MemoryStateStore()
+    service = AiModelService(
+        Settings(environment="test", gemini_api_key="env-secret"),
+        AuditLog(),
+        state_store=state_store,
+    )
+
+    payload = state_store.load(AI_MODEL_NAMESPACE)
+    assert payload is not None
+    assert "api_key" not in payload
+    assert "env-secret" not in str(payload)
+
+    service.configure_api_key("admin-id", "admin@example.test", "runtime-secret")
+
+    payload = state_store.load(AI_MODEL_NAMESPACE)
+    assert payload is not None
+    assert service.api_key() == "runtime-secret"
+    assert "api_key" not in payload
+    assert "runtime-secret" not in str(payload)
+
+
+def test_legacy_persisted_gemini_key_is_scrubbed() -> None:
+    state_store = MemoryStateStore()
+    state_store.save(
+        AI_MODEL_NAMESPACE,
+        {"active_model": "gemini-2.5-pro", "api_key": "legacy-secret"},
+    )
+
+    service = AiModelService(Settings(environment="test"), AuditLog(), state_store=state_store)
+
+    payload = state_store.load(AI_MODEL_NAMESPACE)
+    assert payload is not None
+    assert service.api_key() is None
+    assert service.active_model() == "gemini-2.5-pro"
+    assert "api_key" not in payload
+    assert "legacy-secret" not in str(payload)
+
+
+@pytest.mark.asyncio
+async def test_admin_gemini_settings_drive_ticket_assistant(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    class FakeResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, object]:
+            return {"candidates": [{"content": {"parts": [{"text": "Gemini reply."}]}}]}
+
+    class FakeClient:
+        def __init__(self, *, timeout: int) -> None:
+            captured["timeout"] = timeout
+
+        def __enter__(self) -> "FakeClient":
+            return self
+
+        def __exit__(self, _exc_type: object, _exc: object, _traceback: object) -> None:
+            return None
+
+        def post(
+            self,
+            url: str,
+            *,
+            json: dict[str, object],
+            headers: dict[str, str],
+        ) -> FakeResponse:
+            captured["url"] = url
+            captured["headers"] = headers
+            captured["body"] = json
+            return FakeResponse()
+
+    monkeypatch.setattr(gemini_api.httpx, "Client", FakeClient)
+
+    async with _client() as client:
+        csrf = await _login(client, "admin@example.test")
+        await client.put(
+            "/api/v1/admin/ai-model",
+            headers={"X-CSRF-Token": csrf},
+            json={"model": "gemini-2.5-pro"},
+        )
+        await client.put(
+            "/api/v1/admin/ai-model/api-key",
+            headers={"X-CSRF-Token": csrf},
+            json={"apiKey": "gemini-api-key-value"},
+        )
+        user_csrf = await _login(client, "user@example.test")
+        response = await client.post(
+            "/api/v1/chat/messages",
+            headers={"X-CSRF-Token": user_csrf},
+            json={"message": "Need a routine assessment for Baltic ports."},
+        )
+
+    assert response.status_code == 201
+    assert response.json()["messages"][-1]["body"] == "Gemini reply."
+    assert "models/gemini-2.5-pro:generateContent" in str(captured["url"])
+    headers = {str(key).casefold(): value for key, value in captured["headers"].items()}
+    assert headers["x-goog-api-key"] == "gemini-api-key-value"
 
 
 @pytest.mark.asyncio

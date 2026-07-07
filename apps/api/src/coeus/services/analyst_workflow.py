@@ -1,7 +1,5 @@
-from dataclasses import dataclass, replace
-from datetime import UTC, datetime
-from re import fullmatch
-from uuid import UUID, uuid4
+from dataclasses import replace
+from uuid import UUID
 
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
@@ -10,12 +8,12 @@ from coeus.domain.enums import TicketState
 from coeus.domain.state_machine import can_transition
 from coeus.domain.tickets import (
     AnalystNote,
-    DraftProductAsset,
     RoutingRoute,
     TicketRecord,
     WorkPackageStatus,
 )
 from coeus.repositories.access import SeedAccessRepository
+from coeus.services.analyst_drafts import DraftProductInput, draft_asset, new_uuid, now
 from coeus.services.analyst_records import (
     all_work_packages_complete,
     approved_route,
@@ -33,28 +31,9 @@ from coeus.services.store import StoreServices
 from coeus.services.ticket_records import timeline
 from coeus.services.tickets import TicketServices
 
-HASH_PATTERN = r"[a-fA-F0-9]{64}"
 ACTIVE_ANALYST_STATES = {TicketState.ANALYST_IN_PROGRESS, TicketState.REWORK_REQUIRED}
 ANALYST_READ_PERMISSIONS = frozenset({Permission.ANALYST_WORK})
 ASSIGNMENT_READ_PERMISSIONS = frozenset({Permission.RFA_ASSIGN, Permission.COLLECTION_ASSIGN})
-
-
-@dataclass(frozen=True)
-class DraftAssetInput:
-    name: str
-    asset_type: str
-    mime_type: str
-    size_bytes: int
-    sha256: str
-
-
-@dataclass(frozen=True)
-class DraftProductInput:
-    title: str
-    summary: str
-    product_type: str
-    content: str
-    assets: tuple[DraftAssetInput, ...]
 
 
 class AnalystWorkflowService:
@@ -84,6 +63,7 @@ class AnalystWorkflowService:
         ticket_id: UUID,
         analyst_user_id: UUID,
         work_package_titles: tuple[str, ...],
+        team_name: str | None = None,
     ) -> TicketRecord:
         self._require_any(actor, {Permission.RFA_ASSIGN, Permission.COLLECTION_ASSIGN})
         ticket = self._tickets.tickets.get_workflow_ticket(
@@ -107,9 +87,12 @@ class AnalystWorkflowService:
         titles = _normalise_titles(work_package_titles) or default_work_package_titles(
             ticket, route
         )
+        assignment_team = _normalise_team_name(team_name) or _suggested_team_name(ticket, route)
         target_state = TicketState.ANALYST_IN_PROGRESS
         self._ensure_transition(ticket.state, target_state)
-        assignment = assignment_record(ticket.ticket_id, analyst.user_id, actor.user_id, route)
+        assignment = assignment_record(
+            ticket.ticket_id, analyst.user_id, actor.user_id, route, assignment_team
+        )
         packages = work_package_records(ticket.ticket_id, titles)
         updated = self._tickets.tickets.save_system_update(
             replace(
@@ -119,15 +102,22 @@ class AnalystWorkflowService:
                 work_packages=(*ticket.work_packages, *packages),
                 timeline=(
                     *ticket.timeline,
-                    timeline(ticket.ticket_id, actor.user_id, "analyst_assigned", analyst.username),
+                    timeline(
+                        ticket.ticket_id,
+                        actor.user_id,
+                        "analyst_assigned",
+                        _assignment_summary(analyst.username, assignment_team),
+                    ),
                 ),
             )
         )
-        self._audit_log.record(
-            "analyst_assigned",
-            str(actor.user_id),
-            {"ticket_id": str(ticket.ticket_id), "analyst_user_id": str(analyst.user_id)},
-        )
+        metadata = {
+            "ticket_id": str(ticket.ticket_id),
+            "analyst_user_id": str(analyst.user_id),
+        }
+        if assignment_team:
+            metadata["team_name"] = assignment_team
+        self._audit_log.record("analyst_assigned", str(actor.user_id), metadata)
         return updated
 
     def list_tasks(self, actor: UserAccount) -> tuple[TicketRecord, ...]:
@@ -153,11 +143,11 @@ class AnalystWorkflowService:
     def add_note(self, actor: UserAccount, ticket_id: UUID, body: str) -> TicketRecord:
         ticket = self._active_task(actor, ticket_id)
         note = AnalystNote(
-            note_id=_new_uuid(),
+            note_id=new_uuid(),
             ticket_id=ticket.ticket_id,
             body=body,
             created_by_user_id=actor.user_id,
-            created_at=_now(),
+            created_at=now(),
         )
         updated = self._tickets.tickets.save_system_update(
             replace(
@@ -231,7 +221,7 @@ class AnalystWorkflowService:
         self, actor: UserAccount, ticket_id: UUID, draft: DraftProductInput
     ) -> TicketRecord:
         ticket = self._active_task(actor, ticket_id)
-        assets = tuple(_draft_asset(asset) for asset in draft.assets)
+        assets = tuple(draft_asset(asset) for asset in draft.assets)
         version = draft_version(
             ticket.ticket_id,
             next_draft_version(ticket),
@@ -326,24 +316,22 @@ def _normalise_titles(titles: tuple[str, ...]) -> tuple[str, ...]:
     return tuple(dict.fromkeys(title.strip() for title in titles if title.strip()))
 
 
-def _draft_asset(asset: DraftAssetInput) -> DraftProductAsset:
-    if not fullmatch(HASH_PATTERN, asset.sha256):
-        raise AppError(409, "asset_hash_invalid", "Asset SHA-256 must be 64 hex chars.")
-    if asset.size_bytes < 1:
-        raise AppError(409, "asset_size_invalid", "Asset size must be positive.")
-    return DraftProductAsset(
-        asset_id=_new_uuid(),
-        name=asset.name,
-        asset_type=asset.asset_type,
-        mime_type=asset.mime_type,
-        size_bytes=asset.size_bytes,
-        sha256=asset.sha256,
-    )
+def _normalise_team_name(team_name: str | None) -> str | None:
+    if team_name is None:
+        return None
+    cleaned = " ".join(team_name.split())
+    return cleaned[:120] or None
 
 
-def _now() -> datetime:
-    return datetime.now(UTC)
+def _suggested_team_name(ticket: TicketRecord, route: RoutingRoute) -> str | None:
+    if route == RoutingRoute.RFA and ticket.rfa_reviews:
+        return ticket.rfa_reviews[-1].suggested_team_name
+    if route == RoutingRoute.CM and ticket.cm_reviews:
+        return ticket.cm_reviews[-1].suggested_collection_team_name
+    return None
 
 
-def _new_uuid() -> UUID:
-    return uuid4()
+def _assignment_summary(username: str, team_name: str | None) -> str:
+    if team_name:
+        return f"{username} assigned via {team_name}."
+    return username

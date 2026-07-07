@@ -46,6 +46,7 @@ zap-baseline/
 
 # Local runtime data
 .local/
+.local-data/
 tmp/
 data/
 

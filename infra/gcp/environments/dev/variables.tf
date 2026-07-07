@@ -1,13 +1,11 @@
 variable "project_id" {
   description = "GCP project ID."
   type        = string
-  default     = "coeus-501415"
 }
 
 variable "project_number" {
   description = "GCP project number."
   type        = string
-  default     = "710037672478"
 }
 
 variable "region" {
@@ -25,19 +23,16 @@ variable "environment" {
 variable "github_repository" {
   description = "GitHub repository allowed to use workload identity."
   type        = string
-  default     = "ShabalalaWATP/Coeus"
 }
 
 variable "api_image" {
   description = "Initial API image. The deploy workflow replaces this by SHA."
   type        = string
-  default     = "europe-west2-docker.pkg.dev/coeus-501415/coeus/coeus-api:bootstrap"
 }
 
 variable "web_image" {
   description = "Initial web image. The deploy workflow replaces this by SHA."
   type        = string
-  default     = "europe-west2-docker.pkg.dev/coeus-501415/coeus/coeus-web:bootstrap"
 }
 
 variable "allowed_cors_origins" {

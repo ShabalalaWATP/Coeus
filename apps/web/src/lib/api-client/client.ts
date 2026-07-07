@@ -231,7 +231,7 @@ export class ApiClient {
     payload: UpdateAccessControlGroupRequest,
     csrfToken: string,
   ): Promise<AccessControlGroup> {
-    return this.requestJson<AccessControlGroup>(`/api/v1/acgs/${acgId}`, {
+    return this.requestJson<AccessControlGroup>(`/api/v1/acgs/${pathSegment(acgId)}`, {
       body: JSON.stringify(payload),
       headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
       method: "PATCH",
@@ -243,7 +243,7 @@ export class ApiClient {
     userId: string,
     csrfToken: string,
   ): Promise<AccessControlGroup> {
-    return this.requestJson<AccessControlGroup>(`/api/v1/acgs/${acgId}/members`, {
+    return this.requestJson<AccessControlGroup>(`/api/v1/acgs/${pathSegment(acgId)}/members`, {
       body: JSON.stringify({ userId }),
       headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
       method: "POST",
@@ -258,14 +258,14 @@ export class ApiClient {
   }
 
   async getProject(projectId: string): Promise<ProjectWorkspace> {
-    return this.requestJson<ProjectWorkspace>(`/api/v1/projects/${projectId}`, {
+    return this.requestJson<ProjectWorkspace>(`/api/v1/projects/${pathSegment(projectId)}`, {
       method: "GET",
     });
   }
 
   async diagnoseProductAccess(productId: string, userId: string): Promise<AccessDiagnostics> {
     return this.requestJson<AccessDiagnostics>(
-      `/api/v1/store/products/${productId}/access-diagnostics`,
+      `/api/v1/store/products/${pathSegment(productId)}/access-diagnostics`,
       {
         body: JSON.stringify({ userId }),
         headers: { "Content-Type": "application/json" },
@@ -324,9 +324,13 @@ export async function apiRequestJson<TResponse>(
   return (await response.json()) as TResponse;
 }
 
-function resolveApiBaseUrl(): string {
+export function resolveApiBaseUrl(): string {
   const configuredUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
   return configuredUrl ?? "http://127.0.0.1:8001";
+}
+
+export function pathSegment(value: string): string {
+  return encodeURIComponent(value);
 }
 
 export const apiClient = new ApiClient(resolveApiBaseUrl());

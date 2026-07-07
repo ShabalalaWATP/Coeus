@@ -8,14 +8,14 @@ def test_gemma_vertex_config_uses_gcp_project_fallback() -> None:
     config = gemma_vertex_config_from_settings(
         Settings(
             llm_provider="gemma_vertex",
-            gcp_project_id="coeus-501415",
+            gcp_project_id="example-gcp-project",
             gemma_vertex_location="europe-west2",
             gemma_vertex_model="gemma-test",
         )
     )
 
     assert config is not None
-    assert config.project_id == "coeus-501415"
+    assert config.project_id == "example-gcp-project"
     assert config.location == "europe-west2"
     assert config.model == "gemma-test"
 
@@ -24,7 +24,7 @@ def test_gemma_vertex_config_can_override_project() -> None:
     config = gemma_vertex_config_from_settings(
         Settings(
             llm_provider="gemma_vertex",
-            gcp_project_id="coeus-501415",
+            gcp_project_id="example-gcp-project",
             gemma_vertex_project_id="coeus-models",
         )
     )
@@ -56,6 +56,8 @@ def test_dev_runtime_allows_explicit_seed_user_opt_in() -> None:
         secure_cookies=True,
         session_secret="s" * 32,
         csrf_secret="c" * 32,
+        asset_token_secret="a" * 32,
+        gemini_api_key="g" * 32,
         local_seed_credential="Dev-Only-Rotated-Secret-9!",
     )
 

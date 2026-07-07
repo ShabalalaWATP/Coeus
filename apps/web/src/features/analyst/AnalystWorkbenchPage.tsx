@@ -52,7 +52,7 @@ export default function AnalystWorkbenchPage() {
                 <Link
                   className="request-row"
                   key={task.ticketId}
-                  to={`/analyst/tasks/${task.ticketId}`}
+                  to={`/analyst/tasks/${encodeURIComponent(task.ticketId)}`}
                 >
                   <strong>{task.reference}</strong>
                   <span>{task.title}</span>

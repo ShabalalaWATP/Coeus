@@ -1,5 +1,9 @@
 # CI/CD Pipeline Runbook
 
+This is the source of truth for GitHub Actions, status checks and repository
+security gates. Keep the root README high-level and link here instead of listing
+individual scanners there.
+
 ## Current Pipeline
 
 The repository uses GitHub Actions for pull-request and `main` branch checks.
@@ -15,7 +19,7 @@ The repository uses GitHub Actions for pull-request and `main` branch checks.
 | `Container Security` | pull request, push to `main`, weekly schedule | Docker image build and Trivy vulnerability scanning for API and web images. |
 | `Supply Chain Security` | pull request, push to `main`, weekly schedule | Gitleaks committed-history scan and CycloneDX SBOM artifact generation. |
 | `DAST Security` | pull request, push to `main`, weekly schedule | ZAP baseline scan against a local CI-hosted web target. |
-| `Deploy Dev` | manual dispatch, optional push to `main` | Keyless build, push and Cloud Run deploy for the GCP dev environment. |
+| `Deploy Dev` | manual dispatch, optional push to `main` | Keyless build, push and Cloud Run deploy for a future GCP dev environment. |
 
 Dependabot runs weekly for GitHub Actions, npm, pip, Docker and Terraform
 dependencies. Each ecosystem has a 7-day cooldown for version updates. npm
@@ -25,7 +29,8 @@ PRs.
 
 ## Required Status Checks
 
-After the workflows have run on GitHub, configure the `protect main` ruleset to require these exact check-run contexts:
+After the workflows have run on GitHub, configure the `protect main` ruleset to
+require these exact check-run contexts:
 
 - `backend`
 - `frontend`
@@ -39,7 +44,9 @@ After the workflows have run on GitHub, configure the `protect main` ruleset to 
 - `sbom`
 - `zap-baseline`
 
-GitHub only offers checks that have recently run in the repository, so push the workflow commit first, let the checks complete, then add them to the branch protection rule.
+GitHub only offers checks that have recently run in the repository. Push the
+workflow commit first, let the checks complete, then add them to the branch
+protection rule.
 
 ## Repository Security Settings
 
@@ -55,14 +62,17 @@ Enable these GitHub repository settings:
   security results where GitHub exposes those tools in the ruleset UI.
 - Branch protection for `main` as described in `docs/runbooks/github-branch-protection.md`.
 
-Dependency Review can be added later if GitHub reports it as supported for the repository. At the time this runbook was written, GitHub reported that Dependency Review was not supported without Dependency Graph and GitHub Advanced Security support for the repository.
+Dependency Review can be added if GitHub reports it as supported for the
+repository. Treat it as an optional repository setting unless it appears as an
+available required check.
 
 ## Deployment
 
-Sprint 12 adds a protected dev deployment workflow. It uses GitHub OIDC and GCP
-Workload Identity Federation, not service account key JSON. Keep the workflow
-manual until the `dev` GitHub Environment variables are configured and the first
-deployment succeeds.
+The current app is local-first. The protected dev deployment workflow is a
+reference path for a future work-owned GCP project. It uses GitHub OIDC and GCP
+Workload Identity Federation, not service account key JSON. Keep deployment
+disabled unless the `dev` GitHub Environment variables are configured and the
+first manual deployment succeeds.
 
 Deployment jobs must:
 

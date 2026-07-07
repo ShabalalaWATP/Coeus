@@ -1,12 +1,21 @@
 from datetime import datetime
+from typing import Annotated
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+WorkPackageText = Annotated[str, Field(min_length=3, max_length=180)]
+
 
 class AnalystAssignmentRequest(BaseModel):
     analyst_user_id: UUID = Field(validation_alias="analystUserId")
-    work_packages: list[str] = Field(
+    team_name: str | None = Field(
+        default=None,
+        min_length=2,
+        max_length=120,
+        validation_alias="teamName",
+    )
+    work_packages: list[WorkPackageText] = Field(
         default_factory=list,
         max_length=8,
         validation_alias="workPackages",
@@ -57,6 +66,7 @@ class AnalystAssignmentResponse(BaseModel):
     assigned_by_user_id: UUID = Field(serialization_alias="assignedByUserId")
     route: str
     created_at: datetime = Field(serialization_alias="createdAt")
+    team_name: str | None = Field(serialization_alias="teamName")
 
 
 class WorkPackageResponse(BaseModel):

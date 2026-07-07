@@ -31,19 +31,28 @@ New here? Start with the [documentation index](docs/README.md).
 | [User Guide](docs/USER_GUIDE.md) | Screenshot walkthrough of every role's workspace |
 | [Roles and User Stories](docs/ROLES_AND_USER_STORIES.md) | Roles, permissions, need-to-know groups, user stories |
 | [AI Agents](docs/AI_AGENTS.md) | What each agent reads, decides and returns |
+| [Runbooks](docs/README.md#runbooks) | Local development, CI/CD, branch protection and deployment references |
 
 ## Quick start
 
-Istari is local-first: the backend seeds all data into in-memory repositories, so
-two processes and no database are enough. Full instructions are in the
-[Setup Guide](docs/SETUP.md).
+Istari is currently intended to run locally on a developer machine using
+PostgreSQL for application state, with relational Intelligence Store tables and
+pgvector-ready search indexes matching the future Cloud SQL for PostgreSQL
+direction. Store product metadata, assets, ACG joins and semantic labels are
+mirrored into those relational tables when the local PostgreSQL provider is
+enabled. Uploaded assets are stored on the local filesystem for now. Full
+instructions are in the [Setup Guide](docs/SETUP.md).
 
-```bash
+```powershell
 # Install
 uv sync --project apps/api --all-groups
 corepack pnpm install
 
-# Run the API (terminal 1) and the web app (terminal 2)
+# Local runtime configuration
+Copy-Item .env.example .env
+
+# Start local PostgreSQL, then run the API and web app
+docker compose up -d postgres
 uv run --directory apps/api uvicorn coeus.main:app --host 127.0.0.1 --port 8001
 corepack pnpm --filter @coeus/web dev
 ```
@@ -54,8 +63,8 @@ credential `CoeusLocal1!`. The full list of seed accounts is in the
 
 ## Tech stack
 
-- **Backend:** Python 3.12, FastAPI, Pydantic v2, in-memory seed repositories,
-  managed with `uv`.
+- **Backend:** Python 3.12, FastAPI, Pydantic v2, PostgreSQL, Alembic,
+  pgvector-ready Store schema, local object storage, managed with `uv`.
 - **Frontend:** React 19, Vite, TypeScript, React Router, TanStack Query,
   react-hook-form, Zod; tested with Vitest and Playwright.
 - **Quality gates:** ruff, mypy, ESLint, Prettier, tsc, a 350-line file limit,
@@ -83,15 +92,18 @@ scripts/  Local development and seeding helpers
   screenshot of real intelligence.
 - Per-feature threat models live in [docs/threat-model](docs/threat-model/).
 
-## CI and deployment
+## Operations
 
-Work lands through protected-main pull requests with required CI and security
-checks: backend and frontend quality gates, CodeQL, Semgrep, Gitleaks, Checkov,
-Trivy image scanning, CycloneDX SBOM generation and ZAP baseline scanning. See
-[docs/runbooks/ci-cd-pipeline.md](docs/runbooks/ci-cd-pipeline.md).
+Operational detail is kept in linked runbooks so this README stays focused on
+what the product is and how to start it:
 
-GCP dev deployment is scaffolded with Terraform and GitHub Actions; start with
-`infra/gcp/README.md` and
-[docs/runbooks/gcp-dev-deployment.md](docs/runbooks/gcp-dev-deployment.md). Do not
-put service account keys, database passwords or runtime secrets in repository
-files.
+- [CI/CD Pipeline Runbook](docs/runbooks/ci-cd-pipeline.md) covers GitHub
+  Actions, required checks and security gates.
+- [GitHub Branch Protection Runbook](docs/runbooks/github-branch-protection.md)
+  covers the `main` ruleset and pull-request requirements.
+- [GCP Reference Deployment Runbook](docs/runbooks/gcp-dev-deployment.md) covers
+  the future work-owned cloud deployment path.
+
+The app does not require GCP for local use. Do not put service account keys,
+database passwords, runtime secrets or personal cloud account details in
+repository files.

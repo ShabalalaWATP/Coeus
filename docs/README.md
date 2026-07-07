@@ -20,7 +20,19 @@ Start here. This index links the guides and the deeper design records.
 | [Specifications](specs/) | One Markdown spec per feature |
 | [Architecture Decision Records](adr/) | Why the significant choices were made |
 | [Threat Models](threat-model/) | Per-feature threat models and residual risks |
-| [Runbooks](runbooks/) | Local development, CI/CD, deployment, branch protection |
+
+## Runbooks
+
+Operational and repository-management detail lives here rather than in the root
+README.
+
+| Runbook | Read it for |
+| --- | --- |
+| [Local Development](runbooks/local-development.md) | Day-to-day local startup, health checks and local quality gates |
+| [CI/CD Pipeline](runbooks/ci-cd-pipeline.md) | GitHub Actions workflows, required status checks and security gates |
+| [GitHub Branch Protection](runbooks/github-branch-protection.md) | `main` ruleset, pull-request requirements and required code-scanning results |
+| [GCP Reference Deployment](runbooks/gcp-dev-deployment.md) | Future work-owned GCP deployment setup |
+| [Air-Gapped Deployment](runbooks/air-gapped-deployment.md) | Offline evidence bundle and restricted-environment notes |
 
 ## Screenshots
 
@@ -32,6 +44,8 @@ screen shows synthetic data labelled **MOCK DATA ONLY**.
 - UK English throughout.
 - All data is synthetic. Do not add real intelligence content, credentials or
   operational examples.
+- Keep the root README concise. Put CI/CD, branch protection, deployment and
+  operations detail in runbooks, then link to it.
 - Security-sensitive changes update the relevant [threat model](threat-model/).
 - Backend and frontend application code each hold at least 95% line and branch
   coverage.

@@ -1,0 +1,97 @@
+.workspace-details--danger {
+  border-color: color-mix(in srgb, var(--critical) 35%, var(--border));
+}
+
+.workspace-details--danger > summary {
+  color: color-mix(in srgb, var(--critical) 85%, var(--muted));
+}
+
+.workspace-alert {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid color-mix(in srgb, var(--critical) 45%, var(--border));
+  border-radius: var(--radius-md);
+  padding: 11px 13px;
+  background: color-mix(in srgb, var(--critical) 10%, var(--surface));
+  color: var(--text);
+}
+
+.workspace-alert button {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.workspace-alert button:hover,
+.workspace-alert button:focus-visible {
+  border-color: var(--critical);
+  color: var(--text);
+  outline: none;
+}
+
+.chat-message--clarification {
+  border-color: color-mix(in srgb, var(--warning) 45%, var(--border));
+  background: color-mix(in srgb, var(--warning) 8%, var(--surface-muted));
+}
+
+.chat-message--clarification ul {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--text);
+}
+
+.cancel-request-form {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.cancel-request-form p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.cancel-request-form label {
+  color: var(--text);
+  font-size: 0.86rem;
+  font-weight: 760;
+}
+
+.cancel-request-form textarea {
+  min-height: 86px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  resize: vertical;
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+.cancel-request-form button {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-self: start;
+  min-height: 40px;
+  border: 1px solid color-mix(in srgb, var(--critical) 55%, var(--border));
+  border-radius: var(--radius-md);
+  padding: 0 14px;
+  background: color-mix(in srgb, var(--critical) 14%, transparent);
+  color: var(--text);
+  font-weight: 760;
+}
+
+.cancel-request-form button:disabled {
+  cursor: not-allowed;
+  border-color: var(--border);
+  color: var(--muted);
+}

@@ -1,6 +1,9 @@
+from typing import Annotated
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
+
+RoleText = Annotated[str, Field(min_length=1, max_length=80)]
 
 
 class AdminUserResponse(BaseModel):
@@ -20,8 +23,14 @@ class AdminUserListResponse(BaseModel):
     users: list[AdminUserResponse]
 
 
+class CredentialResetResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    temporary_credential: str = Field(serialization_alias="temporaryCredential")
+
+
 class UserRolesRequest(BaseModel):
-    roles: list[str] = Field(min_length=1, max_length=8)
+    roles: list[RoleText] = Field(min_length=1, max_length=8)
 
 
 class UserClearanceRequest(BaseModel):

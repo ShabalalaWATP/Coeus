@@ -4,7 +4,12 @@ import { useState } from "react";
 
 import { modelInfoFor } from "./model-catalogue";
 import { ErrorState, LoadingState } from "../../components/ui/PageState";
-import { getAiModelState, selectAiModel, type AiModelState } from "../../lib/api-client/admin";
+import {
+  configureAiApiKey,
+  getAiModelState,
+  selectAiModel,
+  type AiModelState,
+} from "../../lib/api-client/admin";
 
 type AiModelPanelProps = {
   csrfToken: string;
@@ -13,6 +18,7 @@ type AiModelPanelProps = {
 export function AiModelPanel({ csrfToken }: AiModelPanelProps) {
   const queryClient = useQueryClient();
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
+  const [apiKey, setApiKey] = useState("");
   const [saveError, setSaveError] = useState(false);
   const stateQuery = useQuery({ queryKey: ["ai-model"], queryFn: getAiModelState });
   const saveMutation = useMutation({
@@ -20,6 +26,15 @@ export function AiModelPanel({ csrfToken }: AiModelPanelProps) {
     onSuccess: (state: AiModelState) => {
       setSaveError(false);
       setSelectedModel(null);
+      queryClient.setQueryData(["ai-model"], state);
+    },
+    onError: () => setSaveError(true),
+  });
+  const keyMutation = useMutation({
+    mutationFn: (key: string) => configureAiApiKey(key, csrfToken),
+    onSuccess: (state: AiModelState) => {
+      setSaveError(false);
+      setApiKey("");
       queryClient.setQueryData(["ai-model"], state);
     },
     onError: () => setSaveError(true),
@@ -87,13 +102,32 @@ export function AiModelPanel({ csrfToken }: AiModelPanelProps) {
             <Save aria-hidden="true" size={16} />
             Apply model
           </button>
+          <div className="ai-key-row">
+            <label>
+              Gemini API key
+              <input
+                autoComplete="off"
+                onChange={(event) => setApiKey(event.target.value)}
+                placeholder={state.apiKeyConfigured ? "API key configured" : "Paste Gemini API key"}
+                type="password"
+                value={apiKey}
+              />
+            </label>
+            <button
+              disabled={keyMutation.isPending || apiKey.trim().length < 10}
+              onClick={() => keyMutation.mutate(apiKey.trim())}
+              type="button"
+            >
+              <Save aria-hidden="true" size={16} />
+              Save key
+            </button>
+          </div>
           <p className="ai-model-provider">
             Provider: <code>{state.provider}</code>
-            {state.provider === "mock"
-              ? " (local mock; the selection applies to deployed Vertex AI environments)"
-              : null}
+            {state.apiKeyConfigured ? " | Gemini API key configured" : " | Gemini API key missing"}
+            {state.provider === "mock" ? " | mock provider active" : null}
             {state.changedBy
-              ? ` — last changed by ${state.changedBy}${
+              ? ` | last changed by ${state.changedBy}${
                   state.changedAt ? ` on ${new Date(state.changedAt).toLocaleString("en-GB")}` : ""
                 }`
               : null}

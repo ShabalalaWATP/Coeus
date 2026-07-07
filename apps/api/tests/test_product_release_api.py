@@ -1,7 +1,11 @@
+from uuid import UUID
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from coeus.core.config import Settings
+from coeus.domain.access import ProductStatus
+from coeus.domain.enums import TicketState
 from coeus.main import create_app
 from rfi_search_helpers import login
 from test_qc_api import _acg_id, _approval_payload, _submitted_qc_ticket
@@ -13,14 +17,14 @@ async def _ticket_awaiting_release(client: AsyncClient, app: object) -> str:
     approved = await client.post(
         f"/api/v1/qc/products/{ticket_id}/approve",
         headers={"X-CSRF-Token": str(qc_manager["csrfToken"])},
-        json=_approval_payload(_acg_id(app, "ACG-ALPHA-REGIONAL")),
+        json=_approval_payload(_acg_id(app, "ACG-EU-CYBER")),
     )
     assert approved.status_code == 200
     return ticket_id
 
 
 @pytest.mark.asyncio
-async def test_route_manager_releases_and_customer_is_notified() -> None:
+async def test_owning_manager_releases_and_customer_is_notified() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
@@ -77,7 +81,7 @@ async def test_route_manager_releases_and_customer_is_notified() -> None:
 
 
 @pytest.mark.asyncio
-async def test_release_requires_matching_route_manager_and_state() -> None:
+async def test_release_requires_matching_owning_manager_and_state() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
@@ -130,6 +134,41 @@ async def test_release_requires_matching_route_manager_and_state() -> None:
             json={"route": "rfa"},
         )
         assert repeat.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_failed_release_does_not_publish_product() -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        ticket_id = await _submitted_qc_ticket(client, app, "Too restricted release product")
+        qc_manager = await login(client, "qc.manager@example.test")
+        payload = _approval_payload(_acg_id(app, "ACG-EU-CYBER"))
+        payload["classificationLevel"] = 4
+        approved = await client.post(
+            f"/api/v1/qc/products/{ticket_id}/approve",
+            headers={"X-CSRF-Token": str(qc_manager["csrfToken"])},
+            json=payload,
+        )
+        manager = await login(client, "rfa.manager@example.test")
+        failed = await client.post(
+            f"/api/v1/routing/{ticket_id}/release",
+            headers={"X-CSRF-Token": str(manager["csrfToken"])},
+            json={"route": "rfa"},
+        )
+
+    assert approved.status_code == 200
+    ticket = app.state.ticket_services.tickets._repository.get(UUID(ticket_id))
+    assert ticket is not None
+    product_id = ticket.product_index_records[-1].product_id
+    product = app.state.store_services.repository.get_product(product_id)
+    assert failed.status_code == 404
+    assert failed.json()["error"]["code"] == "product_not_found"
+    assert product is not None
+    assert product.metadata.status == ProductStatus.DRAFT
+    assert ticket.state == TicketState.MANAGER_RELEASE
+    assert ticket.disseminations == ()
 
 
 @pytest.mark.asyncio

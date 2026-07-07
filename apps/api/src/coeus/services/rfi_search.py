@@ -5,6 +5,7 @@ from uuid import UUID, uuid4
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
 from coeus.domain.access import ProductStatus
+from coeus.domain.agent_names import LEGACY_RFI_SEARCH_AGENT, RFI_SEARCH_AGENT
 from coeus.domain.auth import UserAccount
 from coeus.domain.enums import TicketState
 from coeus.domain.store import StoreSearchFilters
@@ -21,7 +22,8 @@ from coeus.domain.tickets import (
 from coeus.repositories.access import SeedAccessRepository
 from coeus.services.audit import AuditLog
 from coeus.services.rfi_ranking import query_text, rank_rfi_hits
-from coeus.services.store import StoreDetailService, StoreSearchService, StoreServices
+from coeus.services.store import StoreSearchService, StoreServices
+from coeus.services.store_access import StoreDetailService
 from coeus.services.tickets import TicketService, TicketServices
 
 RFI_RESULTS_REVIEW_PERMISSIONS = frozenset({Permission.RFA_REVIEW, Permission.COLLECTION_REVIEW})
@@ -256,9 +258,13 @@ def _complete_agent_run(
     ticket: TicketRecord, summary: str, now: datetime
 ) -> tuple[tuple[AgentRun, ...], UUID]:
     for run in ticket.agent_runs:
-        if run.agent_name == "rfi-search" and run.status == AgentRunStatus.QUEUED:
+        if (
+            run.agent_name in {RFI_SEARCH_AGENT, LEGACY_RFI_SEARCH_AGENT}
+            and run.status == AgentRunStatus.QUEUED
+        ):
             updated = replace(
                 run,
+                agent_name=RFI_SEARCH_AGENT,
                 status=AgentRunStatus.COMPLETED,
                 summary=summary,
                 created_at=now,
@@ -270,7 +276,7 @@ def _complete_agent_run(
     run = AgentRun(
         uuid4(),
         ticket.ticket_id,
-        "rfi-search",
+        RFI_SEARCH_AGENT,
         AgentRunStatus.COMPLETED,
         summary,
         (),

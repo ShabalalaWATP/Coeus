@@ -116,12 +116,32 @@ def test_source_throttling_limits_username_spray() -> None:
     assert audit_log.list_events()[-1].event_type == "auth_throttled"
 
 
-def test_source_attempt_repository_is_bounded_and_fails_open_when_full() -> None:
+def test_source_attempt_repository_is_bounded_and_fails_closed_when_full() -> None:
     attempts = IpAttemptRepository(max_entries=1)
 
     assert attempts.within_budget("203.0.113.1", max_attempts=1, window_seconds=300)
-    assert attempts.within_budget("203.0.113.2", max_attempts=1, window_seconds=300)
+    assert not attempts.within_budget("203.0.113.2", max_attempts=1, window_seconds=300)
     assert attempts.entry_count == 1
+
+
+def test_login_attempt_store_saturation_fails_closed() -> None:
+    settings = Settings(
+        environment="test",
+        argon2_memory_cost=8_192,
+        login_lockout_threshold=1,
+        login_attempt_max_entries=1,
+    )
+    service, attempts, audit_log = build_auth_service_with_repositories(settings)
+
+    with pytest.raises(AppError):
+        service.login("admin@example.test", "wrong")
+    with pytest.raises(AppError) as exc_info:
+        service.login("missing@example.test", "wrong")
+
+    assert attempts.entry_count == 1
+    assert exc_info.value.status_code == 429
+    assert exc_info.value.code == "too_many_attempts"
+    assert audit_log.list_events()[-1].event_type == "auth_throttled"
 
 
 def test_username_spraying_does_not_evict_active_lockout() -> None:

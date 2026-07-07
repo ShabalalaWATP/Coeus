@@ -1,12 +1,15 @@
-project_id     = "coeus-501415"
-project_number = "710037672478"
+project_id     = "your-work-gcp-project-id"
+project_number = "123456789012"
 region         = "europe-west2"
 environment    = "dev"
 
-github_repository = "ShabalalaWATP/Coeus"
+github_repository = "your-org/your-repository"
 
 allowed_cors_origins = [
   "https://coeus-dev-web-example.a.run.app",
 ]
+
+api_image = "europe-west2-docker.pkg.dev/your-work-gcp-project-id/coeus/coeus-api:bootstrap"
+web_image = "europe-west2-docker.pkg.dev/your-work-gcp-project-id/coeus/coeus-web:bootstrap"
 
 cloud_sql_deletion_protection = false

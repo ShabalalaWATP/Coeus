@@ -33,7 +33,34 @@ async def test_routing_runs_rfa_first_capability_review() -> None:
     assert routed.json()["state"] == "RFA_MANAGER_REVIEW"
     assert routed.json()["recommendation"]["recommendedRoute"] == "rfa"
     assert routed.json()["rfaReview"]["canSatisfy"] is True
-    assert routed.json()["cmReview"]["canSatisfy"] is False
+    assert routed.json()["rfaReview"]["suggestedTeamName"] == "Maritime Assessment Cell"
+    assert routed.json()["cmReview"]["canSatisfy"] is True
+    assert routed.json()["agentRuns"][-3:] == [
+        "rfa-capability-agent",
+        "cm-capability-agent",
+        "orchestrator-agent",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_capability_catalogue_lists_rfa_and_collection_teams_for_managers() -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        await login(client, "rfa.manager@example.test")
+        catalogue = await client.get("/api/v1/routing/capability-catalogue")
+        await login(client, "user@example.test")
+        forbidden = await client.get("/api/v1/routing/capability-catalogue")
+
+    assert catalogue.status_code == 200
+    teams = catalogue.json()["teams"]
+    assert len([team for team in teams if team["department"] == "rfa"]) >= 10
+    assert len([team for team in teams if team["department"] == "cm"]) >= 20
+    assert "Maritime Assessment Cell" in {team["name"] for team in teams}
+    assert "Cyber Sensor Coordination Cell" in {team["name"] for team in teams}
+    assert forbidden.status_code == 403
+    assert forbidden.json()["error"]["code"] == "forbidden"
 
 
 @pytest.mark.asyncio
@@ -62,6 +89,9 @@ async def test_routing_falls_back_to_collection_when_rfa_cannot_satisfy() -> Non
     assert routed.json()["recommendation"]["recommendedRoute"] == "cm"
     assert routed.json()["rfaReview"]["canSatisfy"] is False
     assert routed.json()["cmReview"]["canSatisfy"] is True
+    assert routed.json()["cmReview"]["suggestedCollectionTeamName"] == (
+        "Collection Coordination Triage Cell"
+    )
     assert queue.json()["tickets"][0]["ticketId"] == ticket_id
 
 
@@ -112,6 +142,7 @@ async def test_routing_requests_clarification_when_neither_route_can_satisfy() -
             headers={"X-CSRF-Token": str(manager["csrfToken"])},
         )
         user = await login(client, "user@example.test")
+        tickets = await client.get("/api/v1/tickets")
         resumed = await client.post(
             f"/api/v1/tickets/{ticket_id}/timeline",
             headers={"X-CSRF-Token": str(user["csrfToken"])},
@@ -119,11 +150,57 @@ async def test_routing_requests_clarification_when_neither_route_can_satisfy() -
         )
 
     assert routed.status_code == 200
-    assert routed.json()["state"] == "INFO_REQUIRED"
-    assert routed.json()["recommendation"]["recommendedRoute"] == "clarification"
-    assert routed.json()["rfaReview"]["requiredClarifications"]
+    routed_payload = routed.json()
+    assert routed_payload["state"] == "INFO_REQUIRED"
+    assert routed_payload["recommendation"]["recommendedRoute"] == "clarification"
+    assert routed_payload["rfaReview"]["requiredClarifications"]
+    assert routed_payload["clarifications"][0]["route"] == "clarification"
+    ticket_payload = tickets.json()["tickets"][0]
+    assert ticket_payload["messages"][-1]["author"] == "assistant"
+    assert "Confirm a supported mock region" in ticket_payload["messages"][-1]["body"]
+    assert [run["agentName"] for run in ticket_payload["agentRuns"][-2:]] == [
+        "orchestrator-agent",
+        "customer-chatbot-agent",
+    ]
     assert resumed.status_code == 200
     assert resumed.json()["state"] == "ROUTE_ASSESSMENT"
+
+
+@pytest.mark.asyncio
+async def test_manager_clarification_is_handed_to_customer_chatbot() -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        user = await login(client, "user@example.test")
+        ticket_id = await _route_assessment_ticket(client, str(user["csrfToken"]))
+        manager = await login(client, "rfa.manager@example.test")
+        await client.post(
+            f"/api/v1/routing/{ticket_id}/run",
+            headers={"X-CSRF-Token": str(manager["csrfToken"])},
+        )
+        clarification = await client.post(
+            f"/api/v1/routing/{ticket_id}/clarification",
+            headers={"X-CSRF-Token": str(manager["csrfToken"])},
+            json={
+                "route": "rfa",
+                "reason": "Scope needs tightening before analyst assignment.",
+                "questions": ["Which mock port should take priority?"],
+            },
+        )
+        await login(client, "user@example.test")
+        tickets = await client.get("/api/v1/tickets")
+
+    assert clarification.status_code == 200
+    assert clarification.json()["state"] == "INFO_REQUIRED"
+    assert clarification.json()["clarifications"][0]["questions"] == [
+        "Which mock port should take priority?"
+    ]
+    ticket_payload = tickets.json()["tickets"][0]
+    assert ticket_payload["messages"][-1]["author"] == "assistant"
+    assert "Scope needs tightening" in ticket_payload["messages"][-1]["body"]
+    assert "Which mock port should take priority?" in ticket_payload["messages"][-1]["body"]
+    assert ticket_payload["timeline"][-1]["eventType"] == "customer_clarification_sent"
 
 
 @pytest.mark.asyncio

@@ -1,4 +1,4 @@
-import { apiRequestJson } from "./client";
+import { apiRequestJson, pathSegment } from "./client";
 
 export type RegistrationSubmission = {
   username: string;
@@ -39,7 +39,7 @@ export async function approveRegistration(
   csrfToken: string,
 ): Promise<PendingRegistration> {
   return apiRequestJson<PendingRegistration>(
-    `/api/v1/admin/registrations/${registrationId}/approve`,
+    `/api/v1/admin/registrations/${pathSegment(registrationId)}/approve`,
     { headers: { "X-CSRF-Token": csrfToken }, method: "POST" },
   );
 }
@@ -50,7 +50,7 @@ export async function rejectRegistration(
   csrfToken: string,
 ): Promise<PendingRegistration> {
   return apiRequestJson<PendingRegistration>(
-    `/api/v1/admin/registrations/${registrationId}/reject`,
+    `/api/v1/admin/registrations/${pathSegment(registrationId)}/reject`,
     {
       body: JSON.stringify({ reason }),
       headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },

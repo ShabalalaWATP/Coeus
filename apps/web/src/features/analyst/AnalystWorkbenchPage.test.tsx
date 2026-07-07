@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import AnalystWorkbenchPage from "./AnalystWorkbenchPage";
@@ -24,6 +24,7 @@ const baseTask: AnalystTask = {
     assignedByUserId: "manager-1",
     route: "rfa",
     createdAt: "2026-07-05T00:00:00Z",
+    teamName: "Maritime Assessment Cell",
   },
   workPackages: [
     {
@@ -181,20 +182,26 @@ test("works an assigned task through notes, products, draft and QC submission", 
 
   expect(await screen.findByRole("link", { name: /TCK-0001/ })).toBeVisible();
   await userEvent.click(screen.getByText(/Working notes/));
-  await userEvent.type(screen.getByLabelText("Note"), "Checked sources.");
+  fireEvent.change(screen.getByLabelText("Note"), { target: { value: "Checked sources." } });
   await userEvent.click(screen.getByRole("button", { name: "Add note" }));
   expect(await screen.findByText("Checked sources.")).toBeVisible();
 
   await userEvent.click(screen.getByText(/Linked products/));
-  await userEvent.type(screen.getByLabelText("Product search"), "assessment");
+  fireEvent.change(screen.getByLabelText("Product search"), { target: { value: "assessment" } });
   await userEvent.click(screen.getByRole("button", { name: "Search products" }));
   await userEvent.click(await screen.findByRole("button", { name: "Assessment Draft Pack" }));
   expect(await screen.findByText(/PROD-1001/)).toBeVisible();
 
   await userEvent.click(screen.getByLabelText("Review permitted products"));
-  await userEvent.type(screen.getByLabelText("Title"), "Arctic assessment draft");
-  await userEvent.type(screen.getByLabelText("Summary"), "MOCK DATA ONLY draft.");
-  await userEvent.type(screen.getByLabelText("Content"), "MOCK DATA ONLY draft content.");
+  fireEvent.change(screen.getByLabelText("Title"), {
+    target: { value: "Arctic assessment draft" },
+  });
+  fireEvent.change(screen.getByLabelText("Summary"), {
+    target: { value: "MOCK DATA ONLY draft." },
+  });
+  fireEvent.change(screen.getByLabelText("Content"), {
+    target: { value: "MOCK DATA ONLY draft content." },
+  });
   await userEvent.click(screen.getByRole("button", { name: "Save draft" }));
   expect(await screen.findByText("v1: Arctic assessment draft")).toBeVisible();
 

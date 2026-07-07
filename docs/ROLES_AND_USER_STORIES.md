@@ -21,6 +21,7 @@ just in the UI, so hiding a control is a convenience, never the security boundar
 | Collection Team Member | `/collection/products` | Contribute collection products |
 | Intelligence Analyst | `/analyst/workbench` | Produce draft products against assigned tasks |
 | Quality Control (QC) Manager | `/qc/queue` | Quality-assure and approve products |
+| Intelligence Store Manager | `/store` | Administer product metadata, assets and ACG assignment without blanket content access |
 
 A ninth state exists before a role is granted: a **pending registrant** who has
 requested access from the sign-in page and is awaiting administrator approval.
@@ -65,8 +66,16 @@ membership, and reads the audit log and global analytics.
 
 ### Quality Control Manager
 - Review submitted drafts and approve or reject them.
-- On approval, ingest the product and hand it to the route manager for release.
+- On approval, ingest the product and hand it to the RFA or Collection manager
+  for release.
 - Cannot approve a draft they authored (separation of duties is enforced).
+
+### Intelligence Store Manager
+- Administer product metadata, assets and product ACG assignment.
+- Manage store operations without receiving unrestricted report-content access.
+- Read product contents only when their account has at least one matching ACG,
+  while administrators must use an explicitly audited break-glass endpoint for
+  support access outside their ACGs.
 
 ## User stories
 
@@ -85,16 +94,17 @@ membership, and reads the audit log and global analytics.
   notification when a product is released so that I never miss a delivery.
 
 ### RFA / Collection Manager
-- As a route manager, I want an agent to assess feasibility and recommend a route
-  so that I can decide quickly with the reasoning in front of me.
-- As a route manager, I want to query or reject a route with a recorded reason so
-  that the decision trail is auditable.
-- As a route manager, I want to override the recommendation with a justification
-  so that I stay in control when the agent is wrong.
-- As a route manager, I want to assign an analyst with clear work packages so
-  that production starts with the right scope.
-- As a route manager, I want a final release step so that nothing reaches a
-  customer without a human sign-off.
+- As an RFA or Collection manager, I want capability agents and the orchestrator
+  to assess feasibility and recommend a route so that I can decide quickly with
+  the reasoning in front of me.
+- As an RFA or Collection manager, I want to query or reject a route with a
+  recorded reason so that the decision trail is auditable.
+- As an RFA or Collection manager, I want to override the recommendation with a
+  justification so that I stay in control when the agent is wrong.
+- As an RFA or Collection manager, I want to assign an analyst and enter the
+  analyst team name so that production starts with the right team and scope.
+- As an RFA or Collection manager, I want a final release step so that nothing
+  reaches a customer without a human sign-off.
 
 ### Intelligence Analyst
 - As an analyst, I want to see only my assigned tasks so that my workbench is not
@@ -121,6 +131,11 @@ membership, and reads the audit log and global analytics.
   the change is accountable.
 - As an administrator, I want realistic need-to-know groups so that product
   visibility reflects how teams are actually organised.
+
+### Intelligence Store Manager
+- As an Intelligence Store Manager, I want to administer product metadata,
+  assets and ACG labels so that the store stays useful without granting me
+  blanket access to report contents.
 
 ### Pending registrant
 - As a prospective user, I want to request access from the sign-in page so that I

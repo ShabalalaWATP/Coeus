@@ -1,6 +1,7 @@
 import { ArrowLeft, History, Route, SlidersHorizontal } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { CancelRequestPanel } from "./CancelRequestPanel";
 import { ChatPanel } from "./ChatPanel";
 import { CollaboratorsPanel } from "./CollaboratorsPanel";
 import { DetailsChecklist } from "./DetailsChecklist";
@@ -13,12 +14,27 @@ import type { RfiSearchResults } from "../../lib/api-client/rfi-search";
 import type { AttachmentMetadataInput, IntakeUpdate, Ticket } from "../../lib/api-client/tickets";
 
 const INTAKE_STATES = new Set(["DRAFT_INTAKE", "INFO_REQUIRED"]);
+const CANCELABLE_STATES = new Set([
+  "DRAFT_INTAKE",
+  "INFO_REQUIRED",
+  "RFI_SEARCHING",
+  "RFI_MATCH_OFFERED",
+  "ROUTE_ASSESSMENT",
+  "RFA_MANAGER_REVIEW",
+  "CM_MANAGER_REVIEW",
+  "ANALYST_ASSIGNMENT",
+  "ANALYST_IN_PROGRESS",
+  "QC_REVIEW",
+  "REWORK_REQUIRED",
+  "MANAGER_RELEASE",
+]);
 
 type TicketWorkspaceActions = {
   onAccept: (productId: string) => void;
   onAddAttachment: (payload: AttachmentMetadataInput) => void;
   onAddCollaborator: (username: string, access: "editor" | "viewer") => void;
   onAddInformation: (body: string) => void;
+  onCancel: (reason: string) => void;
   onReject: (productId: string, reason: string) => void;
   onRemoveCollaborator: (userId: string) => void;
   onRun: () => void;
@@ -29,12 +45,15 @@ type TicketWorkspaceActions = {
 
 type TicketWorkspaceProps = {
   actions: TicketWorkspaceActions;
+  actionError: string | null;
   currentUserId: string;
   journeyOpen: boolean;
+  onClearActionError: () => void;
   onJourneyToggle: (open: boolean) => void;
   pending: Record<
     | "accepting"
     | "collaborating"
+    | "cancelling"
     | "adding"
     | "rejecting"
     | "running"
@@ -50,8 +69,10 @@ type TicketWorkspaceProps = {
 
 export function TicketWorkspace({
   actions,
+  actionError,
   currentUserId,
   journeyOpen,
+  onClearActionError,
   onJourneyToggle,
   pending,
   rfiLoading,
@@ -67,6 +88,7 @@ export function TicketWorkspace({
   const canEdit = ticket === undefined || isOwner || isEditor;
   const showIntakeTools = ticket === undefined || INTAKE_STATES.has(ticket.state);
   const showOffers = ticket !== undefined && !INTAKE_STATES.has(ticket.state);
+  const canCancel = ticket !== undefined && isOwner && CANCELABLE_STATES.has(ticket.state);
 
   return (
     <div className="ticket-workspace">
@@ -88,6 +110,14 @@ export function TicketWorkspace({
       </div>
       {journeyOpen && ticket ? (
         <RequestJourney onClose={() => onJourneyToggle(false)} state={ticket.state} />
+      ) : null}
+      {actionError ? (
+        <div className="workspace-alert" role="alert">
+          <span>{actionError}</span>
+          <button onClick={onClearActionError} type="button">
+            Dismiss
+          </button>
+        </div>
       ) : null}
 
       <section className="request-workspace" aria-label="Request workspace">
@@ -136,6 +166,9 @@ export function TicketWorkspace({
               onRemove={actions.onRemoveCollaborator}
               ticket={ticket}
             />
+          ) : null}
+          {canCancel ? (
+            <CancelRequestPanel isCancelling={pending.cancelling} onCancel={actions.onCancel} />
           ) : null}
         </div>
       </section>

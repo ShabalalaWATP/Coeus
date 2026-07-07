@@ -11,9 +11,11 @@ from coeus.domain.auth import AuthenticatedSession
 from coeus.services.access import AccessServices
 from coeus.services.ai_models import AiModelService
 from coeus.services.analyst_workflow import AnalystWorkflowService
+from coeus.services.asset_tokens import AssetTokenService
 from coeus.services.auth import AuthService
 from coeus.services.feedback_analytics import FeedbackAnalyticsService
 from coeus.services.notifications import NotificationService
+from coeus.services.object_storage import LocalObjectStorage
 from coeus.services.product_release import ProductReleaseService
 from coeus.services.quality_control import QualityControlService
 from coeus.services.registration import RegistrationService
@@ -120,6 +122,20 @@ def get_store_services(request: Request) -> StoreServices:
     if not isinstance(store_services, StoreServices):
         raise AppError(500, "store_not_configured", "Store services are not configured.")
     return store_services
+
+
+def get_object_storage(request: Request) -> LocalObjectStorage:
+    storage = getattr(request.app.state, "object_storage", None)
+    if not isinstance(storage, LocalObjectStorage):
+        raise AppError(500, "object_storage_not_configured", "Object storage is not configured.")
+    return storage
+
+
+def get_asset_token_service(request: Request) -> AssetTokenService:
+    service = getattr(request.app.state, "asset_token_service", None)
+    if not isinstance(service, AssetTokenService):
+        raise AppError(500, "asset_tokens_not_configured", "Asset tokens are not configured.")
+    return service
 
 
 def get_rfi_search_service(request: Request) -> RfiSearchService:

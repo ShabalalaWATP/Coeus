@@ -1,8 +1,10 @@
 # Setup Guide
 
-Istari is local-first. The backend seeds all of its data into in-memory
-repositories at start-up, so you can run the whole application with two processes
-and no database. A full Docker stack is also provided for parity with deployment.
+Istari is currently designed to run locally on a developer machine with a local
+PostgreSQL database. This keeps local development aligned with the future
+production direction on Google Cloud SQL for PostgreSQL while requiring no GCP
+account or hosted service. Uploaded asset bytes are stored in a local object
+directory for now.
 
 ## Prerequisites
 
@@ -12,7 +14,7 @@ and no database. A full Docker stack is also provided for parity with deployment
 | [uv](https://docs.astral.sh/uv/) | latest | Python dependency and venv manager |
 | Node.js | 22+ | Frontend runtime |
 | pnpm | via `corepack` | Frontend package manager |
-| Docker Desktop | latest | Optional: full local stack |
+| Docker Desktop | latest | Local PostgreSQL and optional full app stack |
 
 Enable pnpm through Corepack (it ships with Node) rather than installing it
 globally:
@@ -33,18 +35,34 @@ uv sync --project apps/api --all-groups
 corepack pnpm install
 ```
 
-## Run the app (recommended: two processes)
+Create a local `.env` from the safe example values. The file is gitignored and
+keeps local persistence, object storage and optional integration settings out of
+committed source.
 
-This is the fastest way to develop and is how the app is verified. It needs no
-database.
+```bash
+cp .env.example .env
+```
 
-**Terminal 1: API on port 8001**
+## Run the app (recommended local development)
+
+This is the supported default for current development and demos. It runs
+PostgreSQL in Docker, then runs the API and web app as normal local processes.
+The app stores persisted state in PostgreSQL and uploaded asset bytes under
+`.local-data/objects`.
+
+**Terminal 1: PostgreSQL**
+
+```bash
+docker compose up -d postgres
+```
+
+**Terminal 2: API on port 8001**
 
 ```bash
 uv run --directory apps/api uvicorn coeus.main:app --host 127.0.0.1 --port 8001
 ```
 
-**Terminal 2: web app on port 5173**
+**Terminal 3: web app on port 5173**
 
 ```bash
 corepack pnpm --filter @coeus/web dev
@@ -59,7 +77,9 @@ the web app at a different API, set `VITE_API_BASE_URL` before starting Vite.
 
 ## Run the app (full Docker stack)
 
-For parity with the deployment topology (PostgreSQL with pgvector and MinIO):
+For local parity with the future deployment topology, Docker starts PostgreSQL,
+MinIO and the app containers. The API stores app state in PostgreSQL and keeps
+uploaded asset bytes on a named local Docker volume.
 
 ```powershell
 pwsh ./scripts/dev.ps1            # add -Detached to run in the background
@@ -71,6 +91,9 @@ This exposes:
 - Web: <http://localhost:5173>
 - PostgreSQL: `localhost:5432`
 - MinIO console: <http://localhost:9001>
+
+Current uploads use the app's local object-storage adapter rather than MinIO.
+MinIO remains in the stack as future object-storage parity scaffolding.
 
 ## Seed accounts
 
@@ -85,7 +108,11 @@ credential `CoeusLocal1!`. They exist only in `local` and `test` environments.
 | `rfa.team@example.test` | RFA Team Member | `/rfa/products` |
 | `collection.manager@example.test` | Collection Manager | `/collection/queue` |
 | `collection.team@example.test` | Collection Team Member | `/collection/products` |
+| `store.manager@example.test` | Intelligence Store Manager | `/store` |
 | `analyst@example.test` | Intelligence Analyst | `/analyst/workbench` |
+| `analyst.maritime@example.test` | Maritime Assessment Analyst | `/analyst/workbench` |
+| `analyst.cyber@example.test` | Cyber Threat Analyst | `/analyst/workbench` |
+| `analyst.geo@example.test` | Geospatial Assessment Analyst | `/analyst/workbench` |
 | `qc.manager@example.test` | Quality Control Manager | `/qc/queue` |
 | `disabled@example.test` | (disabled) | Blocked from login |
 
@@ -123,10 +150,46 @@ coverage. Do not lower the coverage gates.
   optional `.env`). See `apps/api/src/coeus/core/config.py`.
 - Never commit real secrets. `.env` is gitignored; `.env.example` ships with
   blank secret fields.
+- Leave `COEUS_ENVIRONMENT=local`, `COEUS_OBJECT_STORAGE_PROVIDER=local`,
+  `COEUS_EMAIL_PROVIDER=outbox` and `COEUS_PUBSUB_ENABLED=false` for normal
+  local use.
+- `COEUS_PERSISTENCE_PROVIDER=postgres` writes application state to the local
+  PostgreSQL service. The startup path creates the compatibility `coeus_state`
+  JSONB table plus relational Intelligence Store tables for products, assets,
+  ACG joins, semantic labels, full-text search and pgvector-ready embeddings.
+  Store product writes are mirrored into those relational tables, so local
+  development follows the same PostgreSQL shape expected for Cloud SQL later.
+  `memory` is only for isolated tests and throwaway demos; `file` is retained as
+  an explicit fallback, not the product target. `COEUS_PERSISTENCE_PATH` is
+  ignored unless that fallback is deliberately enabled.
+- Alembic migration files live under `apps/api/src/coeus/db/migrations`; apply
+  them with `uv run --directory apps/api alembic upgrade head` when managing a
+  persistent database explicitly.
+- Store uploads write real file bytes under `COEUS_LOCAL_OBJECT_STORAGE_PATH`.
+  Downloads require an authenticated session plus the signed, expiring token
+  returned by the asset-access endpoint.
+- To use Gemini from your machine without deploying to GCP, an administrator can
+  paste a Gemini API key and choose a model from `/admin/overview`. The key is
+  held by the running API process, never returned to the browser, not persisted
+  to PostgreSQL or fallback state files, and affects future assistant responses
+  for every user until the API restarts. Leave it unset for offline mock
+  behaviour. Use `COEUS_GEMINI_API_KEY` or a future secret manager integration
+  for a persistent provider credential.
+- To send real emails locally, set `COEUS_EMAIL_PROVIDER=smtp`,
+  `COEUS_SMTP_HOST`, `COEUS_SMTP_FROM` and any required username/password. The
+  default `outbox` provider records and audits emails without sending them.
 - Outside `local`/`test`, start-up fails closed if session/CSRF secrets are too
   short, if secure cookies are off in staging/prod, or if dev seed users are
   enabled without overriding the default seed credential. This is by design: it
   stops a known default password ever reaching a deployed environment.
+
+## GCP
+
+GCP is not required to run Istari locally. The Terraform and Cloud Run files are
+reference material for a future work-owned GCP project. See
+[GCP Reference Deployment Runbook](runbooks/gcp-dev-deployment.md) when that
+project exists; do not add personal project IDs, billing details or cloud
+secrets to committed files.
 
 ## Troubleshooting
 
@@ -137,5 +200,5 @@ coverage. Do not lower the coverage gates.
   API's `COEUS_ALLOWED_CORS_ORIGINS` to include that origin.
 - **`pnpm` not found.** Use `corepack pnpm ...`; pnpm is provided by Corepack and
   may not be on the global PATH.
-- **Stale session after restarting the API.** The in-memory store resets on
-  restart; sign in again to get a fresh session.
+- **Stale session after changing persistence mode.** Sign out and in again. If
+  you need a clean local state, stop the API and delete `.local-data`.

@@ -110,7 +110,7 @@ export function PostReleaseStatus({ product }: { product: QcProduct }) {
       {released ? (
         <p>{product.feedbackRequests.length} feedback request created.</p>
       ) : (
-        <p>The route manager performs the final release and customer notification.</p>
+        <p>The owning RFA or Collection manager performs the final release and notification.</p>
       )}
     </section>
   );

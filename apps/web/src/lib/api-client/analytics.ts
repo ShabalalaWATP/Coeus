@@ -1,4 +1,4 @@
-import { apiRequestJson } from "./client";
+import { apiRequestJson, pathSegment } from "./client";
 
 type FeedbackSubmission = {
   id: string;
@@ -74,11 +74,14 @@ export async function submitFeedback(
   payload: FeedbackSubmissionInput,
   csrfToken: string,
 ): Promise<FeedbackRequest> {
-  return apiRequestJson<FeedbackRequest>(`/api/v1/feedback/requests/${requestId}/submit`, {
-    body: JSON.stringify(payload),
-    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
-    method: "POST",
-  });
+  return apiRequestJson<FeedbackRequest>(
+    `/api/v1/feedback/requests/${pathSegment(requestId)}/submit`,
+    {
+      body: JSON.stringify(payload),
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+      method: "POST",
+    },
+  );
 }
 
 export async function getAnalyticsDashboard(

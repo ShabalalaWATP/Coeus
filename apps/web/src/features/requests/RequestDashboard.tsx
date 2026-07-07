@@ -88,7 +88,7 @@ export function RequestDashboard({ canCreate, onOpen, tickets }: RequestDashboar
                 <Link
                   className="request-open-row__product"
                   state={{ from: "/app/requests" }}
-                  to={`/store/products/${ticket.releasedProductIds[0]}`}
+                  to={`/store/products/${encodeURIComponent(ticket.releasedProductIds[0])}`}
                 >
                   <PackageOpen aria-hidden="true" size={15} />
                   View released product

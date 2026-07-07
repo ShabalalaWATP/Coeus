@@ -106,7 +106,9 @@ test("approves a QC product and confirms ingestion", async () => {
   expect(screen.getByText("PROD-1004: Arctic QC product")).toBeVisible();
   expect(screen.getByText("indexed in Intelligence Store indexing.")).toBeVisible();
   expect(
-    screen.getByText("The route manager performs the final release and customer notification."),
+    screen.getByText(
+      "The owning RFA or Collection manager performs the final release and notification.",
+    ),
   ).toBeVisible();
   await waitFor(() =>
     expect(fetchMock).toHaveBeenCalledWith(

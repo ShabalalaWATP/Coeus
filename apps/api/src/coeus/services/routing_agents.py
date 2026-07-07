@@ -1,12 +1,14 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
+from coeus.domain.capabilities import CapabilityTeam
 from coeus.domain.tickets import (
     CmCapabilityReview,
     IntakeDetails,
     RfaCapabilityReview,
     TicketRecord,
 )
+from coeus.services.capability_catalogue import CapabilityCatalogue
 
 ASSESSMENT_TERMS = frozenset(
     {"assessment", "assess", "brief", "briefing", "report", "estimate", "analysis"}
@@ -18,11 +20,15 @@ UNSUPPORTED_TERMS = frozenset({"mars", "martian", "unknown", "tbd", "unbounded"}
 
 
 class RfaCapabilityAgent:
+    def __init__(self, catalogue: CapabilityCatalogue | None = None) -> None:
+        self._catalogue = catalogue or CapabilityCatalogue()
+
     def review(self, ticket: TicketRecord) -> RfaCapabilityReview:
         text = _intake_text(ticket.intake)
         terms = _terms(text)
         output_terms = _terms(ticket.intake.required_output_format or "")
         clarifications = _base_clarifications(ticket.intake, terms)
+        team = self._catalogue.best_rfa_team(terms)
         assessment_signal = bool(terms.intersection(ASSESSMENT_TERMS))
         collection_output = bool(output_terms.intersection(COLLECTION_TERMS)) and not bool(
             output_terms.intersection(ASSESSMENT_TERMS)
@@ -39,22 +45,36 @@ class RfaCapabilityAgent:
             can_satisfy=can_satisfy,
             confidence=confidence,
             required_clarifications=clarifications,
-            suggested_work_packages=_rfa_work_packages(ticket.intake) if can_satisfy else (),
-            suggested_team_id="RFA-MOCK-REGIONAL" if can_satisfy else None,
+            suggested_work_packages=_rfa_work_packages(ticket.intake, team.name)
+            if can_satisfy
+            else (),
+            suggested_team_id=team.team_id if can_satisfy else None,
             estimated_effort=_estimated_effort(ticket.intake.priority),
             risks=risks,
             manager_review_required=True,
-            reasoning_summary=_rfa_reason(can_satisfy, assessment_signal, collection_only),
+            reasoning_summary=_rfa_reason(
+                can_satisfy,
+                assessment_signal,
+                collection_only,
+                team.name,
+            ),
             created_at=datetime.now(UTC),
+            suggested_team_name=team.name if can_satisfy else None,
         )
 
 
 class CmCapabilityAgent:
+    def __init__(self, catalogue: CapabilityCatalogue | None = None) -> None:
+        self._catalogue = catalogue or CapabilityCatalogue()
+
     def review(self, ticket: TicketRecord) -> CmCapabilityReview:
         text = _intake_text(ticket.intake)
         terms = _terms(text)
         clarifications = _base_clarifications(ticket.intake, terms)
-        collection_signal = bool(terms.intersection(COLLECTION_TERMS))
+        team = self._catalogue.best_cm_team(terms)
+        collection_signal = bool(terms.intersection(COLLECTION_TERMS)) or team is not None
+        if collection_signal and team is None:
+            team = self._catalogue.default_cm_team()
         can_satisfy = not clarifications and collection_signal
         confidence = _confidence(can_satisfy, collection_signal, clarifications)
         risks = _risks(ticket.intake, terms)
@@ -64,13 +84,19 @@ class CmCapabilityAgent:
             can_satisfy=can_satisfy,
             confidence=confidence,
             required_clarifications=clarifications,
-            suggested_collection_route="collection_coordination" if can_satisfy else None,
-            suggested_collection_sources=_collection_sources(terms) if can_satisfy else (),
+            suggested_collection_route=team.team_id if can_satisfy and team else None,
+            suggested_collection_sources=_collection_sources(terms, team) if can_satisfy else (),
             estimated_effort=_estimated_effort(ticket.intake.priority),
             risks=risks,
             manager_review_required=True,
-            reasoning_summary=_cm_reason(can_satisfy, collection_signal),
+            reasoning_summary=_cm_reason(
+                can_satisfy,
+                collection_signal,
+                team.name if team else None,
+            ),
             created_at=datetime.now(UTC),
+            suggested_collection_team_id=team.team_id if can_satisfy and team else None,
+            suggested_collection_team_name=team.name if can_satisfy and team else None,
         )
 
 
@@ -119,31 +145,33 @@ def _risks(intake: IntakeDetails, terms: frozenset[str]) -> tuple[str, ...]:
     return tuple(risks)
 
 
-def _rfa_work_packages(intake: IntakeDetails) -> tuple[str, ...]:
+def _rfa_work_packages(intake: IntakeDetails, team_name: str) -> tuple[str, ...]:
     region = intake.area_or_region or "the nominated mock region"
     return (
-        f"Validate the requirement and assumptions for {region}.",
+        f"Validate the requirement and assumptions for {region} with {team_name}.",
         "Draft the assessment approach and evidence gaps.",
         "Prepare analyst assignment notes for Sprint 9.",
     )
 
 
-def _collection_sources(terms: frozenset[str]) -> tuple[str, ...]:
-    sources = ["collection manager coordination"]
+def _collection_sources(terms: frozenset[str], team: CapabilityTeam | None) -> tuple[str, ...]:
+    sources = list(team.source_labels) if team else ["collection manager coordination"]
     if "imagery" in terms:
         sources.append("mock imagery holdings")
     if "sensor" in terms:
         sources.append("mock sensor reporting")
-    return tuple(sources)
+    return tuple(dict.fromkeys(sources))
 
 
 def _estimated_effort(priority: str | None) -> str:
     return "1-2 days" if (priority or "").casefold() in {"critical", "high"} else "3-5 days"
 
 
-def _rfa_reason(can_satisfy: bool, assessment_signal: bool, collection_only: bool) -> str:
+def _rfa_reason(
+    can_satisfy: bool, assessment_signal: bool, collection_only: bool, team_name: str
+) -> str:
     if can_satisfy:
-        return "RFA can satisfy the request with assessment-led work packages."
+        return f"RFA can satisfy the request through {team_name}."
     if collection_only:
         return "Request is collection-led and should fall back to collection management."
     if assessment_signal:
@@ -151,9 +179,10 @@ def _rfa_reason(can_satisfy: bool, assessment_signal: bool, collection_only: boo
     return "No strong assessment signal was found in the intake."
 
 
-def _cm_reason(can_satisfy: bool, collection_signal: bool) -> str:
+def _cm_reason(can_satisfy: bool, collection_signal: bool, team_name: str | None) -> str:
     if can_satisfy:
-        return "Collection management can satisfy the request through controlled tasking."
+        team = team_name or "Collection Coordination Triage Cell"
+        return f"Collection management can satisfy the request through {team}."
     if collection_signal:
         return "Collection signal exists but clarifications are required before approval."
     return "No strong collection signal was found in the intake."

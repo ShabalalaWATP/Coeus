@@ -1,0 +1,54 @@
+import { useQuery } from "@tanstack/react-query";
+import { Bot } from "lucide-react";
+
+import {
+  listCapabilityCatalogue,
+  type CapabilityTeam,
+  type RoutingRoute,
+} from "../../lib/api-client/routing";
+
+type CapabilityCataloguePanelProps = {
+  route: RoutingRoute;
+};
+
+export function CapabilityCataloguePanel({ route }: CapabilityCataloguePanelProps) {
+  const catalogueQuery = useQuery({
+    queryKey: ["capability-catalogue"],
+    queryFn: listCapabilityCatalogue,
+  });
+  const teams = (catalogueQuery.data?.teams ?? []).filter((team) => team.department === route);
+  const title = route === "rfa" ? "RFA capability teams" : "Collection capability teams";
+
+  return (
+    <details className="workspace-details capability-catalogue" open>
+      <summary>
+        <Bot aria-hidden="true" size={16} />
+        {title}
+      </summary>
+      {catalogueQuery.isError ? (
+        <p role="alert">Capability catalogue could not be loaded.</p>
+      ) : null}
+      <div className="capability-catalogue__list">
+        {teams.map((team) => (
+          <CapabilityTeamRow key={team.teamId} team={team} />
+        ))}
+      </div>
+    </details>
+  );
+}
+
+function CapabilityTeamRow({ team }: { team: CapabilityTeam }) {
+  const labels = team.department === "cm" ? team.sourceLabels : team.keywords;
+  return (
+    <article className="capability-team">
+      <strong>{team.name}</strong>
+      <span>{team.teamId}</span>
+      <p>{team.workPackages[0]}</p>
+      <div className="capability-team__labels">
+        {labels.slice(0, 3).map((label) => (
+          <small key={label}>{label}</small>
+        ))}
+      </div>
+    </article>
+  );
+}

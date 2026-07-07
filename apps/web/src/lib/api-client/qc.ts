@@ -1,4 +1,4 @@
-import { apiRequestJson } from "./client";
+import { apiRequestJson, pathSegment } from "./client";
 import type { TicketState } from "./tickets";
 
 type QcDraft = {
@@ -71,7 +71,9 @@ export async function listQcQueue(): Promise<QcQueue> {
 }
 
 export async function getQcProduct(ticketId: string): Promise<QcProduct> {
-  return apiRequestJson<QcProduct>(`/api/v1/qc/products/${ticketId}`, { method: "GET" });
+  return apiRequestJson<QcProduct>(`/api/v1/qc/products/${pathSegment(ticketId)}`, {
+    method: "GET",
+  });
 }
 
 export async function approveQcProduct(
@@ -79,7 +81,7 @@ export async function approveQcProduct(
   payload: QcApprovalInput,
   csrfToken: string,
 ): Promise<QcProduct> {
-  return apiRequestJson<QcProduct>(`/api/v1/qc/products/${ticketId}/approve`, {
+  return apiRequestJson<QcProduct>(`/api/v1/qc/products/${pathSegment(ticketId)}/approve`, {
     body: JSON.stringify(payload),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
@@ -91,7 +93,7 @@ export async function rejectQcProduct(
   reason: string,
   csrfToken: string,
 ): Promise<QcProduct> {
-  return apiRequestJson<QcProduct>(`/api/v1/qc/products/${ticketId}/reject`, {
+  return apiRequestJson<QcProduct>(`/api/v1/qc/products/${pathSegment(ticketId)}/reject`, {
     body: JSON.stringify({ reason }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",

@@ -14,6 +14,7 @@ from coeus.domain.auth import AuthenticatedSession, RoleName, UserAccount
 from coeus.schemas.users_admin import (
     AdminUserListResponse,
     AdminUserResponse,
+    CredentialResetResponse,
     UserClearanceRequest,
     UserRolesRequest,
     UserStatusRequest,
@@ -67,6 +68,17 @@ async def set_status(
     service: Annotated[UserAdminService, Depends(get_user_admin_service)],
 ) -> AdminUserResponse:
     return _to_user_response(service.set_active(authenticated.user, user_id, payload.is_active))
+
+
+@router.post("/{user_id}/credential-reset", response_model=CredentialResetResponse)
+async def reset_credential(
+    user_id: UUID,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    service: Annotated[UserAdminService, Depends(get_user_admin_service)],
+) -> CredentialResetResponse:
+    return CredentialResetResponse(
+        temporary_credential=service.reset_credential(authenticated.user, user_id)
+    )
 
 
 def _to_role(value: str) -> RoleName:

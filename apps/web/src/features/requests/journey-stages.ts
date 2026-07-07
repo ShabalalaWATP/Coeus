@@ -21,7 +21,7 @@ export type JourneyStage = {
 export const JOURNEY_STAGES: JourneyStage[] = [
   {
     label: "Describe the need",
-    detail: "The intake assistant captures the requirement in chat.",
+    detail: "The customer chatbot captures the requirement in chat.",
     icon: MessageSquareText,
     states: ["DRAFT_INTAKE", "INFO_REQUIRED"],
   },
@@ -33,7 +33,7 @@ export const JOURNEY_STAGES: JourneyStage[] = [
   },
   {
     label: "Route review",
-    detail: "Capability agents advise and a route manager approves the path.",
+    detail: "Capability agents advise and an RFA or Collection manager approves the path.",
     icon: Route,
     states: ["ROUTE_ASSESSMENT", "RFA_MANAGER_REVIEW", "CM_MANAGER_REVIEW"],
   },
@@ -51,7 +51,7 @@ export const JOURNEY_STAGES: JourneyStage[] = [
   },
   {
     label: "Manager release",
-    detail: "The route manager performs the final release.",
+    detail: "The owning RFA or Collection manager performs the final release.",
     icon: Send,
     states: ["MANAGER_RELEASE"],
   },

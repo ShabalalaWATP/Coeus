@@ -24,6 +24,7 @@ async def test_manager_assigns_analyst_and_workbench_lists_assigned_tasks_only()
             headers={"X-CSRF-Token": str(manager["csrfToken"])},
             json={
                 "analystUserId": str(analyst_user.user_id),
+                "teamName": "Maritime Assessment Cell",
                 "workPackages": ["Review permitted products", "Draft assessment"],
             },
         )
@@ -32,9 +33,16 @@ async def test_manager_assigns_analyst_and_workbench_lists_assigned_tasks_only()
 
     assert candidates.status_code == 200
     assert candidates.json()["analysts"][0]["username"] == "analyst@example.test"
+    candidate_names = {candidate["displayName"] for candidate in candidates.json()["analysts"]}
+    assert {
+        "Maritime Assessment Analyst",
+        "Cyber Threat Analyst",
+        "Geospatial Assessment Analyst",
+    }.issubset(candidate_names)
     assert assigned.status_code == 200
     assert assigned.json()["state"] == "ANALYST_IN_PROGRESS"
     assert assigned.json()["assignment"]["analystUserId"] == str(analyst_user.user_id)
+    assert assigned.json()["assignment"]["teamName"] == "Maritime Assessment Cell"
     assert [package["title"] for package in assigned.json()["workPackages"]] == [
         "Review permitted products",
         "Draft assessment",
@@ -42,6 +50,7 @@ async def test_manager_assigns_analyst_and_workbench_lists_assigned_tasks_only()
     assert analyst["user"]["username"] == "analyst@example.test"
     assert tasks.status_code == 200
     assert [task["ticketId"] for task in tasks.json()["tasks"]] == [ticket_id]
+    assert tasks.json()["tasks"][0]["assignment"]["teamName"] == "Maritime Assessment Cell"
     assert tasks.json()["tasks"][0]["managerNotes"] == ["Approved for analyst assignment."]
 
 

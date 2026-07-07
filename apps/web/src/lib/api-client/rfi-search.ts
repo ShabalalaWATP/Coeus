@@ -1,4 +1,4 @@
-import { apiRequestJson } from "./client";
+import { apiRequestJson, pathSegment } from "./client";
 import type { TicketState } from "./tickets";
 
 export type RfiProductOffer = {
@@ -37,13 +37,13 @@ export type RfiSearchResults = {
 };
 
 export async function getRfiSearchResults(ticketId: string): Promise<RfiSearchResults> {
-  return apiRequestJson<RfiSearchResults>(`/api/v1/rfi-search/${ticketId}/results`, {
+  return apiRequestJson<RfiSearchResults>(`/api/v1/rfi-search/${pathSegment(ticketId)}/results`, {
     method: "GET",
   });
 }
 
 export async function runRfiSearch(ticketId: string, csrfToken: string): Promise<RfiSearchResults> {
-  return apiRequestJson<RfiSearchResults>(`/api/v1/rfi-search/${ticketId}/run`, {
+  return apiRequestJson<RfiSearchResults>(`/api/v1/rfi-search/${pathSegment(ticketId)}/run`, {
     headers: { "X-CSRF-Token": csrfToken },
     method: "POST",
   });
@@ -55,7 +55,7 @@ export async function acceptProductOffer(
   csrfToken: string,
 ): Promise<RfiSearchResults> {
   return apiRequestJson<RfiSearchResults>(
-    `/api/v1/rfi-search/${ticketId}/offers/${productId}/accept`,
+    `/api/v1/rfi-search/${pathSegment(ticketId)}/offers/${pathSegment(productId)}/accept`,
     {
       headers: { "X-CSRF-Token": csrfToken },
       method: "POST",
@@ -70,7 +70,7 @@ export async function rejectProductOffer(
   csrfToken: string,
 ): Promise<RfiSearchResults> {
   return apiRequestJson<RfiSearchResults>(
-    `/api/v1/rfi-search/${ticketId}/offers/${productId}/reject`,
+    `/api/v1/rfi-search/${pathSegment(ticketId)}/offers/${pathSegment(productId)}/reject`,
     {
       body: JSON.stringify({ reason }),
       headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },

@@ -115,6 +115,13 @@ export const navigationItems: readonly NavigationItem[] = [
     requiredPermissions: ["system:configure"],
   },
   {
+    label: "Users",
+    path: "/admin/users",
+    group: "governance",
+    icon: "admin",
+    requiredPermissions: ["user:assign_role"],
+  },
+  {
     label: "Admin Analytics",
     path: "/admin/analytics",
     group: "governance",

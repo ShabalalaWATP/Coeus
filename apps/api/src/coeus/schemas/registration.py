@@ -48,11 +48,16 @@ class AiModelSelectRequest(BaseModel):
     model: str = Field(min_length=3, max_length=80)
 
 
+class AiModelApiKeyRequest(BaseModel):
+    api_key: str = Field(min_length=10, max_length=4096, validation_alias="apiKey")
+
+
 class AiModelStateResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     provider: str
     active_model: str = Field(serialization_alias="activeModel")
     available_models: list[str] = Field(serialization_alias="availableModels")
+    api_key_configured: bool = Field(serialization_alias="apiKeyConfigured")
     changed_by: str | None = Field(default=None, serialization_alias="changedBy")
     changed_at: datetime | None = Field(default=None, serialization_alias="changedAt")

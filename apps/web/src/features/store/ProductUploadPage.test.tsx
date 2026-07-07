@@ -41,6 +41,7 @@ test("suggests metadata and submits a controlled product registration", async ()
           entities: ["Baltic ports"],
           sourceType: "synthetic",
           acgIds: [],
+          semanticLabels: ["geospatial", "maritime"],
         }),
     })
     .mockResolvedValueOnce({
@@ -58,6 +59,7 @@ test("suggests metadata and submits a controlled product registration", async ()
   expect(await screen.findByLabelText("ACG")).toBeVisible();
   await userEvent.click(screen.getByRole("button", { name: "Suggest metadata" }));
   expect(await screen.findByDisplayValue("baltic, geographic, mock")).toBeVisible();
+  expect(screen.getByLabelText("Suggested semantic labels")).toHaveTextContent("maritime");
   await userEvent.selectOptions(screen.getByLabelText("ACG"), "acg-alpha");
   await userEvent.click(screen.getByRole("button", { name: "Register product" }));
 

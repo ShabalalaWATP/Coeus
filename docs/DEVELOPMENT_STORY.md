@@ -9,7 +9,6 @@
 - Added the React/Vite app shell with dark default theme, theme switching, navigation, command bar, notification area and profile control.
 - Added local Docker Compose services for PostgreSQL with pgvector and MinIO.
 - Added CI foundations for backend, frontend and CodeQL.
-- Verified Sprint 1 gates: backend formatting, linting, mypy, pytest coverage, Bandit, pip-audit; frontend formatting, linting, typecheck, Vitest coverage, build, Playwright smoke and production dependency audit.
 
 ## 2026-07-04 Sprint 2
 
@@ -18,7 +17,6 @@
 - Added auth audit events for login success, login failure and logout.
 - Added `/login`, `/forbidden` and `/session-expired` frontend routes, protected app routes and backend-driven role navigation.
 - Added branch protection runbook for `ShabalalaWATP/coeus`.
-- Verified Sprint 2 gates: backend Ruff, mypy, pytest coverage, Bandit, pip-audit and Semgrep; frontend formatting, linting, typecheck, Vitest coverage, build, Playwright e2e and production dependency audit; Compose config and live browser auth smoke.
 
 ## 2026-07-04 Sprint 3
 
@@ -28,8 +26,6 @@
 - Added ACG audit events for group creation, group update, membership addition and membership removal.
 - Added `/admin/acgs` and `/projects` frontend workspaces with ACG management, project plan, member, product and diagnostic views.
 - Added Sprint 3 access-policy, API, client and UI tests.
-- Added the Sprint 3 spec, ACG/project ADR and threat-model update.
-- Verified local Sprint 3 gates: backend Ruff, mypy, pytest coverage, Bandit, pip-audit and Semgrep; frontend formatting, linting, typecheck, Vitest coverage, build, Playwright e2e and production dependency audit; Compose config.
 
 ## 2026-07-05 Sprint 4
 
@@ -38,8 +34,6 @@
 - Added ticket and chat APIs for ticket listing, chat create/resume, intake editing, attachment metadata, submission and post-submission information.
 - Added the `/app/requests` customer dashboard with ticket metrics, chat transcript, editable extracted intake, attachment metadata and timeline controls.
 - Added Sprint 4 API, client and UI tests, including prompt-injection regressions.
-- Added the Sprint 4 spec, local-first ticket intake ADR and threat-model document.
-- Verified local Sprint 4 gates: backend Ruff, mypy, pytest coverage, Bandit, pip-audit and Semgrep; frontend Prettier, ESLint, TypeScript, Vitest coverage, build, Playwright e2e and package audit; Compose config.
 
 ## 2026-07-05 Sprint 5
 
@@ -50,8 +44,6 @@
 - Added frontend Store search, My Products, Product Detail and Upload Product routes.
 - Added metadata-only upload controls with ACG selection, SHA-256 asset validation and synthetic metadata suggestions.
 - Added Sprint 5 API, service, client and UI tests for ACG enforcement, count leakage, IDOR-style detail denial and asset access denial.
-- Added the Sprint 5 spec, local-first Intelligence Store ADR and threat-model document.
-- Verified local Sprint 5 gates: backend Ruff, mypy, pytest coverage, Bandit, pip-audit and Semgrep; frontend Prettier, ESLint, TypeScript, Vitest coverage, build, Playwright e2e and package audit; Compose config.
 
 ## 2026-07-05 Sprint 6
 
@@ -60,8 +52,6 @@
 - Added a mock catalogue manifest with 190 default products, 410 asset descriptors, five ACG definitions and named access scenarios.
 - Added `scripts/seed/seed_mock_products.py` with full and small smoke modes.
 - Added generator tests for default counts, path-safe asset output, mock markers, deterministic IDs and CLI manifest creation.
-- Added the Sprint 6 spec, standard-library generator ADR and mock product seeding threat model.
-- Verified local Sprint 6 gates: backend Ruff, mypy, pytest coverage, Bandit, pip-audit and Semgrep; frontend Prettier, ESLint, TypeScript, Vitest coverage, build, Playwright e2e and package audit; seed smoke; file line limit; Compose config.
 - Completed a Codex Security diff scan for the staged Sprint 6 change set with 0 findings and 9 of 9 worklist rows closed.
 
 ## 2026-07-05 Sprint 7
@@ -72,8 +62,6 @@
 - Added `/api/v1/rfi-search` endpoints for run, results, accept and reject.
 - Added the request-dashboard Product Offers panel with run search, accept and rejection-reason controls.
 - Added Sprint 7 API, service, client and UI tests for hybrid ranking, ACG and clearance filtering, count leakage, no-match routing, and offer accept or reject flows.
-- Added the Sprint 7 spec, local-first RFI Search Agent ADR and threat-model document.
-- Verified local Sprint 7 gates: backend Ruff, mypy, pytest coverage, Bandit, pip-audit and Semgrep; frontend Prettier, ESLint, TypeScript, Vitest coverage, build, Playwright e2e and package audit; file line limit; Compose config.
 
 ## 2026-07-05 Sprint 8
 
@@ -84,8 +72,6 @@
 - Added human approval and manager override audit coverage before analyst assignment.
 - Added real `/rfa/queue` and `/collection/queue` frontend pages with manager actions and route statistics.
 - Added Sprint 8 API, service, client and UI tests for capability routing, fallback, clarification, approval and override flows.
-- Added the Sprint 8 spec, local-first routing agents ADR and threat-model document.
-- Verified local Sprint 8 gates: backend Ruff, mypy, pytest coverage, Bandit, pip-audit and Semgrep; frontend Prettier, ESLint, TypeScript, Vitest coverage, build, Playwright e2e and package audit; file line limit; Compose config.
 
 ## 2026-07-05 Sprint 9
 
@@ -95,8 +81,6 @@
 - Added `ANALYST_IN_PROGRESS` and `QC_REVIEW` state transitions.
 - Added a real `/analyst/workbench` and `/analyst/tasks/:taskId` frontend with checklist, notes, product search and draft controls.
 - Added Sprint 9 API, service, client and UI tests for assignment, visibility, product-link access, draft versioning and QC submission flows.
-- Added the Sprint 9 spec, local-first analyst workflow ADR and threat-model document.
-- Verified local Sprint 9 gates: backend Ruff, mypy, pytest coverage, Bandit, pip-audit and Semgrep; frontend Prettier, ESLint, TypeScript, Vitest coverage, build, Playwright e2e and package audit; file line limit; Compose config.
 
 ## 2026-07-05 Sprint 10
 
@@ -108,8 +92,6 @@
 - Added requester dissemination only after Store visibility validation, plus local queued and indexed records.
 - Added a real `/qc/queue` and `/qc/products/:productId` frontend with product preview, checklist, metadata checks, approve and return-to-analyst actions.
 - Added Sprint 10 API, service, client and UI tests for approval, rejection, separation of duties, auto-ingestion, dissemination, feedback requests and search visibility.
-- Added the Sprint 10 spec, local-first QC ingestion ADR and QC dissemination threat model.
-- Verified local Sprint 10 gates: backend Ruff, mypy, pytest coverage, Bandit, pip-audit and Semgrep; frontend Prettier, ESLint, TypeScript, Vitest coverage, build, Playwright e2e and package audit; file line limit; Compose config.
 
 ## 2026-07-05 Sprint 11
 
@@ -121,8 +103,6 @@
 - Added a customer feedback panel on `/app/requests`.
 - Added admin, RFA and collection analytics dashboard routes.
 - Added Sprint 11 API, service, client and UI tests for feedback submission, duplicate prevention, dashboard scoping, reuse analytics and trend rendering.
-- Added the Sprint 11 spec, local-first feedback analytics ADR and feedback analytics threat model.
-- Verified local Sprint 11 gates: backend Ruff, mypy, pytest coverage, Bandit, pip-audit and Semgrep; frontend Prettier, ESLint, TypeScript, Vitest coverage, build, Playwright e2e, package audit and pnpm supply-chain policy; file line limit; Compose config.
 
 ## 2026-07-05 Sprint 12
 
@@ -253,8 +233,8 @@
   permission set; the store upload route and button follow automatically.
 - Added a manager final-release stage: QC approval now ingests and indexes
   the product as an unpublished draft and moves the ticket to the new
-  `MANAGER_RELEASE` state. The owning route manager releases it from a
-  Final Release panel on their queue page, which publishes the product,
+  `MANAGER_RELEASE` state. The owning RFA or Collection manager releases
+  it from a Final Release panel on their queue page, which publishes the product,
   disseminates it to the requester, raises the feedback request and moves
   the ticket to `DISSEMINATION_READY`. Route matching, CSRF, separation of
   duties and audit events are enforced, with a spec and threat model.
@@ -289,11 +269,11 @@
   demand from the workspace meta bar, and closes on Escape, overlay click
   or the close button.
 - Pushed the role screens further towards an AI-first feel: the chat is
-  now the "Intake assistant" with a typing indicator, machine-generated
-  recommendation cards carry agent chips (Routing agent, Capability
-  agent, RFI search agent), the analyst detail collapses notes and linked
-  products behind disclosures, and manager queues collapse the
-  clarification and rejection forms behind "Query or reject this route".
+  now the customer chatbot with a typing indicator, machine-generated
+  recommendation cards carry agent chips (orchestrator, capability agent,
+  RFI search agent), the analyst detail collapses notes and linked products
+  behind disclosures, and manager queues collapse the clarification and
+  rejection forms behind "Query or reject this route".
 - Rebuilt the admin AI model chooser as a card catalogue with tier chips
   (Sovereign, Fast, Advanced, Custom fallback) and per-model descriptions,
   an Active badge, and a last-changed line backed by new
@@ -331,20 +311,40 @@
 
 ## 2026-07-06 Ambient UI effects
 
-- Adapted three React Bits components as dependency-free versions in
-  `src/components/effects`: ParticleField (2D canvas points drifting behind
-  the splash hero), SpotlightCard (pointer-tracked highlight, now on the
-  splash capability points and the dashboard metric cards) and CountUp
-  (requestAnimationFrame ease-out for dashboard metric values).
-- Added CSS-only touches in `effects.css`: a slow shiny sweep on the splash
-  tagline, a staggered rise-in for metric cards, a soft pulse on active
-  workflow status-pill dots and a one-shot ping when the notification badge
-  appears.
-- Every effect honours prefers-reduced-motion: CSS animations are killed by
-  the existing global rule, and the JS effects check the media query
-  themselves, rendering a static frame or the final value instantly.
-  Environments without matchMedia (jsdom) take the static path so tests stay
-  deterministic. No new dependencies were added.
-- Verified in the browser (particles, spotlight and count-up), refreshed the
+- Adapted React Bits-style ParticleField, SpotlightCard and CountUp effects as
+  dependency-free, reduced-motion-safe components.
+- Added CSS-only shine, stagger, pulse and notification badge effects, refreshed
   splash screenshots, and passed the frontend gates: 213 tests, 99.75% lines,
   95.95% branches, ESLint, tsc, Prettier and the line limit.
+
+## 2026-07-06 Request controls and user administration
+
+- Requesters can cancel cancellable requests with a recorded reason, clarification
+  requests surface in chat, and request mutation failures alert.
+- Added `/admin/users` for role assignment, clearance and activation changes,
+  protected by `user:assign_role` and guarded against editing the signed-in
+  account.
+- Browser verification covered admin overview, the Users screen with 10 seeded
+  accounts, and creating then cancelling a request.
+- Checks: Prettier, ESLint, TypeScript, line limit, Ruff, Knip, targeted Vitest
+  coverage, full Vitest coverage (219 tests, 99.71% lines, 95.69% branches) and
+  pytest (151 tests, 95.54%) all pass.
+
+## 2026-07-06 No-GCP hardening and local-first docs
+
+- Added local/test admin reset, store pagination, owner-team filters, a mocked
+  Playwright workflow, tighter intake extraction and local-first GCP docs.
+
+## 2026-07-06 Local persistence, files and integrations
+
+- Added PostgreSQL-backed local persistence, real Store asset bytes, signed
+  downloads, admin-managed Gemini settings and optional SMTP.
+- Mirrored Store products into relational PostgreSQL tables, refreshed Store
+  reads from them, and added SQL-side access predicates for search, detail and
+  asset grants with API policy rechecks.
+
+## 2026-07-06 Agent clarification handoff
+
+- Added explicit orchestrator/customer-chatbot clarification handoff: capability and manager questions now become requester-visible assistant messages, agent runs and a `customer_clarification_sent` event.
+- Added a restricted-read admin break-glass form on denied Store product pages; the UI requires a reason and uses the audited support endpoint.
+- Exposed the synthetic RFA/CM capability catalogue through a manager-only routing endpoint and queue-side panel.

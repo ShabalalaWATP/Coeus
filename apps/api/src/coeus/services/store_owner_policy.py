@@ -19,7 +19,11 @@ def normalise_owner_team(owner_team: str) -> str:
 
 def require_owner_permission(actor: UserAccount, owner_team: str) -> None:
     permission = MANAGED_OWNER_PERMISSIONS[_owner_team_key(owner_team)]
-    if permission not in actor.permissions:
+    is_store_manager = (
+        Permission.PRODUCT_CREATE_EXISTING in actor.permissions
+        and Permission.ACG_ASSIGN_PRODUCT in actor.permissions
+    )
+    if permission not in actor.permissions and not is_store_manager:
         raise AppError(403, "forbidden", "Permission denied.")
 
 
