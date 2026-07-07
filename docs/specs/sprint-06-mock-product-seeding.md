@@ -17,6 +17,8 @@ commit generated binaries or real intelligence examples.
   assets.
 - Deterministic product IDs, asset IDs, hashes, ACG assignments and access
   scenarios.
+- Search-oriented metadata including tags, semantic labels, status, coverage
+  dates and named search scenarios for future search tests.
 - Regression tests proving the generated content is mock-labelled, deterministic
   and path-safe.
 
@@ -59,6 +61,9 @@ This produces 190 products and 410 generated assets.
   assets.
 - The default manifest contains 190 products and 410 asset descriptors.
 - Product and asset IDs are deterministic across runs.
+- Manifest products include tags, semantic labels, ACG codes, status and
+  coverage dates.
+- Named search scenarios provide example queries and expected metadata matches.
 - PDF, DOCX, image, geospatial and tabular outputs carry mock markers.
 - ACG definitions and access scenarios are present in the manifest.
 - No real intelligence product content, credentials or operational examples are
