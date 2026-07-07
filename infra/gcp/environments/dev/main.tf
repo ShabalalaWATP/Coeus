@@ -218,10 +218,10 @@ module "api" {
   }
 
   secret_environment_variables = {
-    COEUS_DATABASE_URL            = "${local.name_prefix}-database-url"
-    COEUS_SESSION_SECRET          = "${local.name_prefix}-session-secret"
-    COEUS_CSRF_SECRET             = "${local.name_prefix}-csrf-secret"
-    COEUS_LOCAL_SEED_CREDENTIAL   = "${local.name_prefix}-local-seed-credential"
+    COEUS_DATABASE_URL          = "${local.name_prefix}-database-url"
+    COEUS_SESSION_SECRET        = "${local.name_prefix}-session-secret"
+    COEUS_CSRF_SECRET           = "${local.name_prefix}-csrf-secret"
+    COEUS_LOCAL_SEED_CREDENTIAL = "${local.name_prefix}-local-seed-credential"
   }
 
   depends_on = [
