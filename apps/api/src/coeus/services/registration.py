@@ -92,7 +92,11 @@ class RegistrationService:
         )
         self._users.save(account)
         decided = self._decide(registration, RegistrationStatus.APPROVED, actor)
-        self._registrations.save(decided)
+        try:
+            self._registrations.save(decided)
+        except Exception:
+            self._users.delete(account.user_id)
+            raise
         self._audit_log.record(
             "registration_approved",
             str(actor.user_id),
