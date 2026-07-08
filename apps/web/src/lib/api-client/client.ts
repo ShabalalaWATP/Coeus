@@ -250,6 +250,16 @@ export class ApiClient {
     });
   }
 
+  async removeAcgMember(acgId: string, userId: string, csrfToken: string): Promise<void> {
+    await this.requestNoContent(
+      `/api/v1/acgs/${pathSegment(acgId)}/members/${pathSegment(userId)}`,
+      {
+        headers: { "X-CSRF-Token": csrfToken },
+        method: "DELETE",
+      },
+    );
+  }
+
   async listProjects(): Promise<ProjectWorkspace[]> {
     const response = await this.requestJson<{ projects: ProjectWorkspace[] }>("/api/v1/projects", {
       method: "GET",

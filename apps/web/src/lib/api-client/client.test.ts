@@ -157,12 +157,14 @@ test("updates ACG metadata and membership through protected endpoints", async ()
     .mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({ ...updatedAcg, memberUserIds: ["user-alpha", "user-bravo"] }),
-    });
+    })
+    .mockResolvedValueOnce({ ok: true });
   vi.stubGlobal("fetch", fetchMock);
 
   const client = new ApiClient("http://api.test");
   await client.updateAcg("acg-alpha", { name: "Alpha Updated", isActive: false }, "csrf-token");
   await client.addAcgMember("acg-alpha", "user-bravo", "csrf-token");
+  await client.removeAcgMember("acg-alpha", "user-bravo", "csrf-token");
 
   expect(fetchMock).toHaveBeenNthCalledWith(1, "http://api.test/api/v1/acgs/acg-alpha", {
     body: JSON.stringify({ name: "Alpha Updated", isActive: false }),
@@ -176,6 +178,15 @@ test("updates ACG metadata and membership through protected endpoints", async ()
     headers: { "Content-Type": "application/json", "X-CSRF-Token": "csrf-token" },
     method: "POST",
   });
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    3,
+    "http://api.test/api/v1/acgs/acg-alpha/members/user-bravo",
+    {
+      credentials: "include",
+      headers: { "X-CSRF-Token": "csrf-token" },
+      method: "DELETE",
+    },
+  );
 });
 
 test("lists project workspaces and requests access diagnostics", async () => {

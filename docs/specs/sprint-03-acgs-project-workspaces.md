@@ -8,11 +8,11 @@ Add the first project and product visibility layer on top of Sprint 2 RBAC. RBAC
 
 - Local seed models for Access Control Groups, ACG memberships, product summaries and project workspaces.
 - Backend services for ACG administration, product access policy, project access policy, project workspace views and access diagnostics.
-- API routes for listing, creating, editing and assigning ACG members.
+- API routes for listing, creating, editing, assigning and removing ACG members.
 - API routes for listing project workspaces and reading project plan, member and product slices.
 - Product access diagnostics for administrators.
 - Frontend routes for `/admin/acgs`, `/admin/acgs/:acgId`, `/projects`, `/projects/:projectId`, `/projects/:projectId/plan`, `/projects/:projectId/members` and `/projects/:projectId/products`.
-- ACG administration UI for group creation, status updates and user assignment.
+- ACG administration UI for group creation, status updates, user assignment and member removal.
 - Project workspace UI showing linked ACGs, members, plan items and only permitted products.
 - Audit events for ACG creation, update, membership addition and membership removal.
 

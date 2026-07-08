@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { KeyRound, Plus, Save, UserPlus, UsersRound } from "lucide-react";
+import { KeyRound, Plus, Save, UserMinus, UserPlus, UsersRound } from "lucide-react";
 import { useParams } from "react-router-dom";
 
 import { ErrorState, LoadingState } from "../../components/ui/PageState";
@@ -55,7 +55,7 @@ export default function AcgAdminPage() {
     acgId !== undefined && acgs.length > 0 && !routedAcgExists && selectedId === null;
   const csrfToken = session?.csrfToken ?? "";
   const canUpdate = session !== null && hasPermissions(session.user, ["acg:update"]);
-  const canAddMember = session !== null && hasPermissions(session.user, ["acg:assign_user"]);
+  const canManageMembers = session !== null && hasPermissions(session.user, ["acg:assign_user"]);
   const canCreate = session !== null && hasPermissions(session.user, ["acg:create"]);
 
   const createAcg = useMutation({
@@ -82,6 +82,13 @@ export default function AcgAdminPage() {
       await queryClient.invalidateQueries({ queryKey: ["acgs"] });
     },
   });
+  const removeMember = useMutation({
+    mutationFn: ({ acg, userId }: { acg: AccessControlGroup; userId: string }) =>
+      apiClient.removeAcgMember(acg.id, userId, csrfToken),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["acgs"] });
+    },
+  });
 
   function submitCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -99,6 +106,12 @@ export default function AcgAdminPage() {
     event.preventDefault();
     if (selectedAcg !== undefined) {
       addMember.mutate(selectedAcg);
+    }
+  }
+
+  function removeSelectedMember(userId: string) {
+    if (selectedAcg !== undefined) {
+      removeMember.mutate({ acg: selectedAcg, userId });
     }
   }
 
@@ -168,6 +181,27 @@ export default function AcgAdminPage() {
                 </div>
               </dl>
               <p>{selectedAcg.description}</p>
+              <div className="member-list" aria-label="Access group members">
+                {selectedAcg.memberUserIds.length === 0 ? (
+                  <p>No members assigned.</p>
+                ) : (
+                  selectedAcg.memberUserIds.map((userId) => (
+                    <div className="member-row" key={userId}>
+                      <code>{userId}</code>
+                      {canManageMembers ? (
+                        <button
+                          aria-label={`Remove ${userId} from ${selectedAcg.name}`}
+                          disabled={removeMember.isPending}
+                          onClick={() => removeSelectedMember(userId)}
+                          type="button"
+                        >
+                          <UserMinus aria-hidden="true" size={15} /> Remove
+                        </button>
+                      ) : null}
+                    </div>
+                  ))
+                )}
+              </div>
               {canUpdate ? (
                 <form className="inline-form" onSubmit={submitUpdate}>
                   <label>
@@ -191,7 +225,7 @@ export default function AcgAdminPage() {
                   </button>
                 </form>
               ) : null}
-              {canAddMember ? (
+              {canManageMembers ? (
                 <form className="inline-form" onSubmit={submitMember}>
                   <label>
                     User ID
@@ -206,7 +240,7 @@ export default function AcgAdminPage() {
                   </button>
                 </form>
               ) : null}
-              {canUpdate || canAddMember ? null : (
+              {canUpdate || canManageMembers ? null : (
                 <p>You have read-only access to access control groups.</p>
               )}
             </>
