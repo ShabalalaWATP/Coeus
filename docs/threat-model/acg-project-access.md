@@ -35,6 +35,7 @@ Sprint 3 ACG membership, project workspace visibility, product access filtering,
 | Store Manager ACG administration leaks content | Users with ACG assignment permissions may see ACG metadata and memberships for administration, but product detail, search and downloads still require product RBAC, active ACG overlap, clearance and status checks. Site-admin support access outside ACGs is separate audited break-glass access. |
 | Project ACG inheritance leaks unrelated QC products | QC ingestion only inherits project ACGs when the ticket is explicitly linked in `project.ticket_ids`; same-requester projects do not implicitly attach to unrelated tickets. |
 | Missing accountability for ACG changes | ACG creation, update, membership addition and membership removal create audit events. |
+| Failed audit persistence leaves a hidden ACG change behind | ACG create, update, member-add and member-remove operations restore their previous repository state if audit recording fails. |
 | Diagnostic abuse by ordinary users | Product diagnostics require `system:configure`. |
 
 ## Open Risks

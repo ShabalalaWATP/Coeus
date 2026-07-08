@@ -3,6 +3,13 @@
 Sprint 1 to Sprint 13 entries live in
 [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVELOPMENT_STORY_SPRINTS_01-13.md).
 
+## 2026-07-09 Access-control audit rollback
+
+- Hardened ACG administration so create, update, membership-add and
+  membership-remove operations restore the previous repository state if audit
+  recording fails. Added regression coverage for all four mutation paths and
+  updated the ACG project-access threat model.
+
 ## 2026-07-08 No-match consent
 
 - Added Part C no-match consent. Zero-offer RFI searches now enter
