@@ -40,7 +40,11 @@ export default function QcQueuePage() {
     initialData: EMPTY_QUEUE,
     initialDataUpdatedAt: 0,
   });
-  const acgsQuery = useQuery({ queryKey: ["acgs"], queryFn: () => apiClient.listAcgs() });
+  const acgsQuery = useQuery({
+    queryKey: ["acgs"],
+    queryFn: () => apiClient.listAcgs(),
+    retry: false,
+  });
   const detailQuery = useQuery({
     queryKey: ["qc-product", productId],
     queryFn: () => getQcProduct(productId ?? ""),
@@ -152,9 +156,12 @@ export default function QcQueuePage() {
         </aside>
         <QcProductDetail
           acgs={acgsQuery.data}
+          acgsFailed={acgsQuery.isError}
+          acgsLoading={acgsQuery.isLoading}
           actionError={actionError}
           checklist={checklist}
           onChecklistChange={setChecklist}
+          onRetryAcgs={() => void acgsQuery.refetch()}
           onReleaseFormChange={setReleaseForm}
           onApprove={() => approveMutation.mutate()}
           onReject={() => rejectMutation.mutate()}
@@ -169,22 +176,28 @@ export default function QcQueuePage() {
 
 function QcProductDetail({
   acgs,
+  acgsFailed,
+  acgsLoading,
   actionError,
   checklist,
   onApprove,
   onChecklistChange,
   onReject,
+  onRetryAcgs,
   onReleaseFormChange,
   product,
   releaseForm,
   requestedMissing,
 }: {
   acgs: AccessControlGroup[] | undefined;
+  acgsFailed: boolean;
+  acgsLoading: boolean;
   actionError: string | null;
   checklist: Record<string, boolean>;
   onApprove: () => void;
   onChecklistChange: (checklist: Record<string, boolean>) => void;
   onReject: () => void;
+  onRetryAcgs: () => void;
   onReleaseFormChange: (form: QcReleaseFormState) => void;
   product: QcProduct | undefined;
   releaseForm: QcReleaseFormState;
@@ -207,7 +220,12 @@ function QcProductDetail({
   const draft = product.latestDraft;
   const allChecklistComplete = product.checklistKeys.every((key) => checklist[key]);
   const releaseAcgId = selectedAcgId(releaseForm, acgs);
-  const canApprove = product.state === "QC_REVIEW" && allChecklistComplete && releaseAcgId !== "";
+  const acgsUnavailable = acgsLoading || acgsFailed;
+  const canApprove =
+    product.state === "QC_REVIEW" &&
+    allChecklistComplete &&
+    releaseAcgId !== "" &&
+    !acgsUnavailable;
   return (
     <section className="surface qc-detail" aria-label="QC product detail">
       {missingNotice}
@@ -217,6 +235,14 @@ function QcProductDetail({
       </div>
       <ProductPreview product={product} />
       <MetadataChecks acgId={releaseAcgId} product={product} />
+      {acgsFailed ? (
+        <div className="workspace-alert" role="alert">
+          <span>Access groups could not be loaded. Refresh and try again.</span>
+          <button onClick={onRetryAcgs} type="button">
+            Retry access groups
+          </button>
+        </div>
+      ) : null}
       <section className="qc-panel">
         <h3>QC checklist</h3>
         <button
@@ -237,7 +263,12 @@ function QcProductDetail({
           </label>
         ))}
       </section>
-      <ReleaseForm acgs={acgs ?? []} form={releaseForm} onChange={onReleaseFormChange} />
+      <ReleaseForm
+        acgSelectDisabled={acgsUnavailable}
+        acgs={acgs ?? []}
+        form={releaseForm}
+        onChange={onReleaseFormChange}
+      />
       <div className="qc-actions">
         <button disabled={!canApprove} onClick={onApprove} type="button">
           <CheckCircle2 aria-hidden="true" size={18} /> Approve and disseminate
