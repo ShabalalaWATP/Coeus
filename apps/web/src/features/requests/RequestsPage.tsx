@@ -221,8 +221,10 @@ export default function RequestsPage() {
     mutationFn: (confirmTicketId: string) => confirmTicketDelivery(confirmTicketId, csrfToken),
     onError: failAction("Delivery could not be confirmed. Refresh and try again."),
     onMutate: clearActionError,
-    onSuccess: (ticket) =>
-      queryClient.setQueryData<Ticket[]>(["tickets"], (current) => upsertTicket(current, ticket)),
+    onSuccess: (ticket) => {
+      setActionError(null);
+      queryClient.setQueryData<Ticket[]>(["tickets"], (current) => upsertTicket(current, ticket));
+    },
   });
   const showWorkspace = isNewRequest || ticketId !== undefined;
 
