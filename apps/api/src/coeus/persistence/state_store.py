@@ -1,4 +1,5 @@
 import json
+from copy import deepcopy
 from pathlib import Path
 from threading import RLock
 from typing import TYPE_CHECKING, Any, Protocol
@@ -26,10 +27,11 @@ class MemoryStateStore:
         self._state: dict[str, dict[str, Any]] = {}
 
     def load(self, namespace: str) -> dict[str, Any] | None:
-        return self._state.get(namespace)
+        payload = self._state.get(namespace)
+        return deepcopy(payload) if payload is not None else None
 
     def save(self, namespace: str, payload: dict[str, Any]) -> None:
-        self._state[namespace] = payload
+        self._state[namespace] = deepcopy(payload)
 
 
 class FileStateStore:

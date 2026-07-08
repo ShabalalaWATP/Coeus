@@ -7,7 +7,27 @@ from coeus.core.config import Settings
 from coeus.persistence import state_store
 from coeus.persistence.factory import build_state_store
 from coeus.persistence.relational_schema import store_schema_statements
-from coeus.persistence.state_store import FileStateStore, PostgresStateStore, _sync_database_url
+from coeus.persistence.state_store import (
+    FileStateStore,
+    MemoryStateStore,
+    PostgresStateStore,
+    _sync_database_url,
+)
+
+
+def test_memory_state_store_returns_isolated_snapshots() -> None:
+    store = MemoryStateStore()
+    payload = {"tickets": [{"id": "ticket-1"}]}
+    store.save("tickets", payload)
+
+    payload["tickets"].append({"id": "mutated-input"})
+    loaded = store.load("tickets")
+    assert loaded == {"tickets": [{"id": "ticket-1"}]}
+    assert loaded is not None
+
+    loaded["tickets"].append({"id": "mutated-output"})
+
+    assert store.load("tickets") == {"tickets": [{"id": "ticket-1"}]}
 
 
 def test_file_state_store_rejects_invalid_json(tmp_path: Path) -> None:
