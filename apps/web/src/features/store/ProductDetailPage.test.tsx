@@ -94,6 +94,23 @@ test("renders denied page without leaking product metadata", async () => {
   expect(screen.queryByText("Regional Stability Brief")).not.toBeInTheDocument();
 });
 
+test("renders a retryable error state for product lookup failures", async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: false,
+    status: 500,
+    json: () => Promise.resolve({ error: { code: "server_error", message: "Failed." } }),
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<ProductDetailPage />, "/store/products/product-regional");
+
+  expect(await screen.findByText("Unable to load data")).toBeVisible();
+  expect(screen.queryByRole("heading", { name: "Product not available" })).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+});
+
 test("allows audited break-glass access for restricted-read administrators", async () => {
   const fetchMock = vi
     .fn()
