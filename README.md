@@ -28,6 +28,7 @@ New here? Start with the [documentation index](docs/README.md).
 | Guide | Read it for |
 | --- | --- |
 | [Setup Guide](docs/SETUP.md) | Prerequisites, running locally, seed accounts, checks |
+| [Architecture](docs/ARCHITECTURE.md) | System structure, the request journey, and local and future GCP diagrams |
 | [User Guide](docs/USER_GUIDE.md) | Screenshot walkthrough of every role's workspace |
 | [Roles and User Stories](docs/ROLES_AND_USER_STORIES.md) | Roles, permissions, need-to-know groups, user stories |
 | [AI Agents](docs/AI_AGENTS.md) | What each agent reads, decides and returns |

@@ -178,6 +178,29 @@ coverage. Do not lower the coverage gates.
 - To send real emails locally, set `COEUS_EMAIL_PROVIDER=smtp`,
   `COEUS_SMTP_HOST`, `COEUS_SMTP_FROM` and any required username/password. The
   default `outbox` provider records and audits emails without sending them.
+- Store search is hybrid: Postgres full text plus a pgvector semantic leg. The
+  embedding provider is selected by `COEUS_EMBEDDING_PROVIDER`, which defaults to
+  `mock` (deterministic, offline, no dependencies). For a real offline model set
+  `COEUS_EMBEDDING_PROVIDER=local` and install the optional extra:
+
+  ```powershell
+  uv sync --project apps/api --extra embeddings
+  ```
+
+  The model (`BAAI/bge-small-en-v1.5`, 384 dimensions) loads from
+  `COEUS_EMBEDDING_MODEL_PATH` (default `.local-data/embedding-models`); download
+  it there in advance for a fully offline machine. `gemini_api` uses the
+  configured Gemini key. The provider setting is authoritative: a key present in
+  the environment never switches the provider on by itself. If the provider is
+  unavailable at query time, search degrades to the lexical leg alone rather than
+  failing.
+- Embeddings are written when products are created, updated or ingested at QC.
+  To populate embeddings for products that predate the feature (or after
+  enabling a provider), run the batched, idempotent backfill:
+
+  ```powershell
+  uv run --directory apps/api python -m coeus.tools.backfill_embeddings
+  ```
 - Outside `local`/`test`, start-up fails closed if session/CSRF secrets are too
   short, if secure cookies are off in staging/prod, or if dev seed users are
   enabled without overriding the default seed credential. This is by design: it

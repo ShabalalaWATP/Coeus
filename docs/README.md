@@ -7,6 +7,9 @@ Start here. This index links the guides and the deeper design records.
 | Guide | Read it for |
 | --- | --- |
 | [Setup Guide](SETUP.md) | Prerequisites, installing, running locally, seed accounts, checks |
+| [Architecture](ARCHITECTURE.md) | System structure, data and persistence, security (with diagrams) |
+| [Architecture: Workflow](ARCHITECTURE_WORKFLOW.md) | The request journey, end-to-end sequence and AI agents |
+| [Architecture: Deployment](ARCHITECTURE_DEPLOYMENT.md) | Local runtime and the future GCP reference design |
 | [User Guide](USER_GUIDE.md) | A screenshot walkthrough of every role's workspace |
 | [Roles and User Stories](ROLES_AND_USER_STORIES.md) | Roles, permissions, need-to-know groups and user stories |
 | [AI Agents](AI_AGENTS.md) | Exactly what each agent reads, decides and returns |
