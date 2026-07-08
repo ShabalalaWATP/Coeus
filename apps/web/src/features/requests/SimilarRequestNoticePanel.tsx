@@ -22,7 +22,6 @@ export function SimilarRequestNoticePanel({
   onRetry,
 }: SimilarRequestNoticePanelProps) {
   const matches = notice?.matches ?? [];
-  const hiddenOnly = matches.length === 0 && notice?.hiddenMatchesPresent === true;
 
   if (isLoading) {
     return (
@@ -52,7 +51,7 @@ export function SimilarRequestNoticePanel({
       </section>
     );
   }
-  if (matches.length === 0 && !hiddenOnly) {
+  if (matches.length === 0) {
     return null;
   }
 
@@ -62,36 +61,27 @@ export function SimilarRequestNoticePanel({
         <GitMerge aria-hidden="true" size={20} />
         <h2>Similar request in progress</h2>
       </div>
-      {hiddenOnly ? (
-        <p>
-          The assessing team will check for overlapping work before tasking continues. No ticket
-          details are shown unless you already have access.
-        </p>
-      ) : (
-        <>
-          <p>A similar request appears to be in progress. You can join it or continue this one.</p>
-          <div className="similar-panel__list">
-            {matches.map((match) => (
-              <article className="similar-match" key={match.ticketId}>
-                <div>
-                  <strong>{match.reference}</strong>
-                  <span>{match.title}</span>
-                </div>
-                <Score value={match.score} />
-                <div className="similar-match__reasons">
-                  {match.reasons.map((reason) => (
-                    <span key={reason}>{reason}</span>
-                  ))}
-                </div>
-                <button disabled={isJoining} onClick={() => onJoin(match.ticketId)} type="button">
-                  <Eye aria-hidden="true" size={16} />
-                  Join as viewer
-                </button>
-              </article>
-            ))}
-          </div>
-        </>
-      )}
+      <p>A similar request appears to be in progress. You can join it or continue this one.</p>
+      <div className="similar-panel__list">
+        {matches.map((match) => (
+          <article className="similar-match" key={match.ticketId}>
+            <div>
+              <strong>{match.reference}</strong>
+              <span>{match.title}</span>
+            </div>
+            <Score value={match.score} />
+            <div className="similar-match__reasons">
+              {match.reasons.map((reason) => (
+                <span key={reason}>{reason}</span>
+              ))}
+            </div>
+            <button disabled={isJoining} onClick={() => onJoin(match.ticketId)} type="button">
+              <Eye aria-hidden="true" size={16} />
+              Join as viewer
+            </button>
+          </article>
+        ))}
+      </div>
       <div className="similar-panel__actions">
         <button className="store-action--secondary" onClick={onContinue} type="button">
           Continue request

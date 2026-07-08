@@ -82,7 +82,8 @@ INSERT INTO intelligence_store_products (
     created_at,
     updated_at,
     search_document,
-    embedding
+    embedding,
+    embedding_source_hash
 ) VALUES (
     CAST(:product_id AS uuid),
     :reference,
@@ -123,7 +124,8 @@ INSERT INTO intelligence_store_products (
             array_to_string(CAST(:semantic_labels AS text[]), ' ')
         )
     ),
-    CAST(:embedding AS vector)
+    CAST(:embedding AS vector),
+    :embedding_source_hash
 )
 ON CONFLICT (product_id)
 DO UPDATE SET
@@ -151,12 +153,31 @@ DO UPDATE SET
     created_at = EXCLUDED.created_at,
     updated_at = EXCLUDED.updated_at,
     search_document = EXCLUDED.search_document,
-    embedding = EXCLUDED.embedding
+    embedding = COALESCE(CAST(:embedding AS vector), intelligence_store_products.embedding),
+    embedding_source_hash = COALESCE(
+        :embedding_source_hash, intelligence_store_products.embedding_source_hash
+    )
+"""
+
+SELECT_EMBEDDING_HASHES_SQL = """
+SELECT product_id, embedding_source_hash
+FROM intelligence_store_products
+WHERE embedding IS NOT NULL
+  AND product_id = ANY(CAST(:product_ids AS uuid[]))
+"""
+
+SELECT_MISSING_EMBEDDING_IDS_SQL = """
+SELECT product_id
+FROM intelligence_store_products
+WHERE embedding IS NULL
+ORDER BY product_id ASC
+LIMIT :batch_size
 """
 
 UPDATE_PRODUCT_EMBEDDING_SQL = """
 UPDATE intelligence_store_products
-SET embedding = CAST(:embedding AS vector)
+SET embedding = CAST(:embedding AS vector),
+    embedding_source_hash = :embedding_source_hash
 WHERE product_id = CAST(:product_id AS uuid)
   AND embedding IS NULL
 """

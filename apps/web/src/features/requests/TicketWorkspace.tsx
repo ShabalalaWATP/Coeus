@@ -6,9 +6,11 @@ import { ChatPanel } from "./ChatPanel";
 import { CollaboratorsPanel } from "./CollaboratorsPanel";
 import { DetailsChecklist } from "./DetailsChecklist";
 import { IntakePanel } from "./IntakePanel";
+import { NoMatchConsentPanel } from "./NoMatchConsentPanel";
 import { ProductOffersPanel } from "./ProductOffersPanel";
 import { RequestJourney } from "./RequestJourney";
 import { SimilarRequestNoticePanel } from "./SimilarRequestNoticePanel";
+import { SIMILAR_NOTICE_STATES } from "./request-state-sets";
 import { TimelinePanel } from "./TimelinePanel";
 import { StatusPill } from "../../components/ui/StatusPill";
 import type { RfiSearchResults } from "../../lib/api-client/rfi-search";
@@ -21,6 +23,7 @@ const CANCELABLE_STATES = new Set([
   "INFO_REQUIRED",
   "RFI_SEARCHING",
   "RFI_MATCH_OFFERED",
+  "RFI_NO_MATCH",
   "ROUTE_ASSESSMENT",
   "RFA_MANAGER_REVIEW",
   "CM_MANAGER_REVIEW",
@@ -37,6 +40,7 @@ type TicketWorkspaceActions = {
   onAddCollaborator: (username: string, access: "editor" | "viewer") => void;
   onAddInformation: (body: string) => void;
   onCancel: (reason: string) => void;
+  onNoMatchConsent: (taskAsNewRequest: boolean) => void;
   onReject: (productId: string, reason: string) => void;
   onRemoveCollaborator: (userId: string) => void;
   onRun: () => void;
@@ -56,6 +60,7 @@ type TicketWorkspaceProps = {
     | "accepting"
     | "collaborating"
     | "cancelling"
+    | "consenting"
     | "adding"
     | "rejecting"
     | "running"
@@ -159,7 +164,7 @@ export function TicketWorkspace({
               />
             </details>
           ) : null}
-          {ticket && isOwner && similarNotice ? (
+          {ticket && isOwner && similarNotice && SIMILAR_NOTICE_STATES.has(ticket.state) ? (
             <SimilarRequestNoticePanel
               isJoining={similarNotice.isJoining}
               isLoading={similarNotice.isLoading}
@@ -168,6 +173,12 @@ export function TicketWorkspace({
               onContinue={similarNotice.onContinue}
               onJoin={similarNotice.onJoin}
               onRetry={similarNotice.onRetry}
+            />
+          ) : null}
+          {ticket && isOwner && ticket.state === "RFI_NO_MATCH" ? (
+            <NoMatchConsentPanel
+              isPending={pending.consenting}
+              onConsent={actions.onNoMatchConsent}
             />
           ) : null}
           {showOffers ? (

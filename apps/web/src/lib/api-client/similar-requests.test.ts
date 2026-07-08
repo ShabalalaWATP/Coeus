@@ -18,7 +18,6 @@ const notice = {
       alreadyLinked: false,
     },
   ],
-  hiddenMatchesPresent: false,
 };
 
 afterEach(() => {

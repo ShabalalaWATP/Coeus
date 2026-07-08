@@ -10,12 +10,14 @@ from coeus.domain.store import (
     StoreProductMetadata,
     StoreSearchFilters,
     StoreVisibilityScope,
+    product_in_scope,
 )
 from coeus.persistence.codec import decode_value, encode_value
 from coeus.persistence.state_store import StateStore
 from coeus.repositories.access import SeedAccessRepository, stable_seed_id
 from coeus.repositories.store_hybrid import memory_hybrid_candidates
 from coeus.repositories.store_projection import StoreProjection
+from coeus.services.embeddings import EmbeddingService
 
 
 class InMemoryStoreRepository:
@@ -24,10 +26,12 @@ class InMemoryStoreRepository:
         access_repository: SeedAccessRepository,
         state_store: StateStore | None = None,
         projection: StoreProjection | None = None,
+        embeddings: EmbeddingService | None = None,
     ) -> None:
         self._access_repository = access_repository
         self._state_store = state_store
         self._projection = projection
+        self._embeddings = embeddings
         self._initialising = True
         self._products: dict[UUID, StoreProduct] = {}
         self._reference_counter = 1000
@@ -66,9 +70,12 @@ class InMemoryStoreRepository:
                 {candidate.product.product_id: candidate.product for candidate in candidates}
             )
             return candidates
-        return memory_hybrid_candidates(
-            self.search_products(filters, scope), query, query_embedding
+        scoped = tuple(
+            product
+            for product in self.search_products(filters, scope)
+            if product_in_scope(product, scope)
         )
+        return memory_hybrid_candidates(scoped, query, query_embedding, self._embeddings)
 
     def get_visible_product(
         self, product_id: UUID, scope: StoreVisibilityScope

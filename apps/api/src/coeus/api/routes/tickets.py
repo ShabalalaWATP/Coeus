@@ -38,6 +38,7 @@ from coeus.schemas.tickets import (
     DirectoryUserResponse,
     IntakeDetailsResponse,
     IntakeUpdateRequest,
+    NoMatchConsentRequest,
     TicketCancelRequest,
     TicketListResponse,
     TicketResponse,
@@ -199,6 +200,19 @@ async def confirm_delivery(
 ) -> TicketResponse:
     return _to_ticket_response(
         lifecycle.confirm_delivery(authenticated.user, ticket_id),
+        authenticated.user,
+    )
+
+
+@router.post("/tickets/{ticket_id}/no-match-consent", response_model=TicketResponse)
+async def no_match_consent(
+    ticket_id: UUID,
+    payload: NoMatchConsentRequest,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    lifecycle: Annotated[TicketLifecycleService, Depends(get_ticket_lifecycle_service)],
+) -> TicketResponse:
+    return _to_ticket_response(
+        lifecycle.no_match_consent(authenticated.user, ticket_id, payload.task_as_new_request),
         authenticated.user,
     )
 

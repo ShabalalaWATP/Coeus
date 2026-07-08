@@ -1,4 +1,6 @@
 import json
+from collections.abc import Mapping
+from hashlib import sha256
 from typing import Any
 from uuid import UUID
 
@@ -24,7 +26,9 @@ from coeus.persistence.store_projection_sql import (
     INSERT_LABEL_SQL,
     SELECT_ACGS_SQL,
     SELECT_ASSETS_SQL,
+    SELECT_EMBEDDING_HASHES_SQL,
     SELECT_LABELS_SQL,
+    SELECT_MISSING_EMBEDDING_IDS_SQL,
     SELECT_PRODUCTS_SQL,
     UPDATE_PRODUCT_EMBEDDING_SQL,
     UPSERT_PRODUCT_SQL,
@@ -87,14 +91,18 @@ class PostgresStoreProjection:
     def save_product(self, product: StoreProduct) -> None:
         with self._engine.begin() as connection:
             ensure_relational_schema(connection)
-            _save_product(connection, product, self._embeddings)
+            existing = _existing_embedding_hashes(connection, (product.product_id,))
+            _save_product(connection, product, self._embeddings, existing)
 
     def save_products(self, products: tuple[StoreProduct, ...]) -> None:
         with self._engine.begin() as connection:
             ensure_relational_schema(connection)
             _delete_stale_products(connection, products)
+            existing = _existing_embedding_hashes(
+                connection, tuple(product.product_id for product in products)
+            )
             for product in products:
-                _save_product(connection, product, self._embeddings)
+                _save_product(connection, product, self._embeddings, existing)
 
     def embedded_product_count(self) -> int:
         with self._engine.begin() as connection:
@@ -113,25 +121,51 @@ class PostgresStoreProjection:
     def backfill_missing_embeddings(self, batch_size: int = 500) -> int:
         if self._embeddings is None:
             return 0
-        products = self.list_products()
+        products = {product.product_id: product for product in self.list_products()}
         updated = 0
+        while True:
+            missing = self._missing_embedding_ids(batch_size)
+            if not missing:
+                break
+            embedded_any = False
+            with self._engine.begin() as connection:
+                ensure_relational_schema(connection)
+                for product_id in missing:
+                    product = products.get(product_id)
+                    if product is None:
+                        continue
+                    if self._backfill_product(connection, product):
+                        updated += 1
+                        embedded_any = True
+            if not embedded_any:
+                break
+        return updated
+
+    def _missing_embedding_ids(self, batch_size: int) -> tuple[UUID, ...]:
         with self._engine.begin() as connection:
             ensure_relational_schema(connection)
-            for product in products[:batch_size]:
-                embedding = self._embeddings.embed(
-                    product_semantic_text(product), purpose="store-backfill"
-                )
-                if embedding is None:
-                    continue
-                result = connection.execute(
-                    text(UPDATE_PRODUCT_EMBEDDING_SQL),
-                    {
-                        "product_id": str(product.product_id),
-                        "embedding": vector_to_pg(embedding),
-                    },
-                )
-                updated += int(result.rowcount or 0)
-        return updated
+            result = connection.execute(
+                text(SELECT_MISSING_EMBEDDING_IDS_SQL),
+                {"batch_size": batch_size},
+            )
+            return tuple(UUID(str(row["product_id"])) for row in result.mappings())
+
+    def _backfill_product(self, connection: Connection, product: StoreProduct) -> bool:
+        if self._embeddings is None:
+            raise RuntimeError("embedding provider is required for store backfill")
+        semantic_text = product_semantic_text(product)
+        embedding = self._embeddings.embed(semantic_text, purpose="store-backfill")
+        if embedding is None:
+            return False
+        result = connection.execute(
+            text(UPDATE_PRODUCT_EMBEDDING_SQL),
+            {
+                "product_id": str(product.product_id),
+                "embedding": vector_to_pg(embedding),
+                "embedding_source_hash": _semantic_hash(semantic_text),
+            },
+        )
+        return bool(result.rowcount)
 
 
 def _mapping_rows(result: Result[Any]) -> tuple[dict[str, Any], ...]:
@@ -142,8 +176,12 @@ def _save_product(
     connection: Connection,
     product: StoreProduct,
     embeddings: EmbeddingService | None = None,
+    existing_hashes: Mapping[str, str | None] | None = None,
 ) -> None:
-    connection.execute(text(UPSERT_PRODUCT_SQL), _product_params(product, embeddings))
+    connection.execute(
+        text(UPSERT_PRODUCT_SQL),
+        _product_params(product, embeddings, existing_hashes or {}),
+    )
     _replace_product_children(
         connection,
         DELETE_ASSETS_SQL,
@@ -195,14 +233,19 @@ def _replace_product_children(
 
 
 def _product_params(
-    product: StoreProduct, embeddings: EmbeddingService | None = None
+    product: StoreProduct,
+    embeddings: EmbeddingService | None = None,
+    existing_hashes: Mapping[str, str | None] | None = None,
 ) -> dict[str, object]:
     metadata = product.metadata
-    embedding = (
-        None
-        if embeddings is None
-        else embeddings.embed(product_semantic_text(product), purpose="store-product-write")
-    )
+    hashes = existing_hashes or {}
+    semantic_text = product_semantic_text(product)
+    source_hash = _semantic_hash(semantic_text)
+    embedding: tuple[float, ...] | None = None
+    stored_hash: str | None = None
+    if embeddings is not None and hashes.get(str(product.product_id)) != source_hash:
+        embedding = embeddings.embed(semantic_text, purpose="store-product-write")
+        stored_hash = source_hash if embedding is not None else None
     return {
         "product_id": str(product.product_id),
         "reference": product.reference,
@@ -229,7 +272,29 @@ def _product_params(
         "created_at": product.created_at,
         "updated_at": product.updated_at,
         "embedding": vector_to_pg(embedding),
+        "embedding_source_hash": stored_hash,
     }
+
+
+def _existing_embedding_hashes(
+    connection: Connection, product_ids: tuple[UUID, ...]
+) -> dict[str, str | None]:
+    if not product_ids:
+        return {}
+    result = connection.execute(
+        text(SELECT_EMBEDDING_HASHES_SQL),
+        {"product_ids": [str(product_id) for product_id in product_ids]},
+    )
+    return {
+        str(row["product_id"]): (
+            None if row["embedding_source_hash"] is None else str(row["embedding_source_hash"])
+        )
+        for row in result.mappings()
+    }
+
+
+def _semantic_hash(semantic_text: str) -> str:
+    return sha256(semantic_text.encode("utf-8")).hexdigest()
 
 
 def _asset_params(product: StoreProduct) -> tuple[dict[str, object], ...]:

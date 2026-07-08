@@ -95,3 +95,39 @@
   border-color: var(--border);
   color: var(--muted);
 }
+
+.no-match-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.no-match-panel p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.no-match-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.no-match-panel__actions button {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 40px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  padding: 0 14px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--text);
+  font-weight: 760;
+}
+
+.no-match-panel__actions button:disabled {
+  cursor: not-allowed;
+  border-color: var(--border);
+  color: var(--muted);
+}

@@ -29,7 +29,7 @@ export const JOURNEY_STAGES: JourneyStage[] = [
     label: "Search existing intelligence",
     detail: "The RFI agent offers matching products before new tasking.",
     icon: Radar,
-    states: ["RFI_SEARCHING", "RFI_MATCH_OFFERED"],
+    states: ["RFI_SEARCHING", "RFI_MATCH_OFFERED", "RFI_NO_MATCH"],
   },
   {
     label: "Route review",

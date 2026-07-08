@@ -72,11 +72,13 @@ class EmbeddingService:
 
 
 class MockEmbeddingProvider:
-    """Hash canonical tokens into a deterministic local retrieval vector.
+    """Hash distinct tokens into a deterministic local retrieval vector.
 
-    Each token is lower-cased, lightly canonicalised, hashed with BLAKE2b and
-    added to one signed dimension. The final vector is L2-normalised, so cosine
-    similarity can be re-derived by hand from shared canonical token buckets.
+    Each token is lower-cased, hashed with BLAKE2b and added to one signed
+    dimension. The digest is stable across runs and platforms and does not
+    depend on ``PYTHONHASHSEED``. The final vector is L2-normalised, so cosine
+    similarity is driven purely by shared tokens: it carries no cross-vocabulary
+    semantic power and is intended only as a deterministic CI stand-in.
     """
 
     name = "mock"
@@ -179,29 +181,8 @@ def cosine_similarity(left: tuple[float, ...], right: tuple[float, ...]) -> floa
     return max(0.0, min(1.0, sum(left[index] * right[index] for index in range(length))))
 
 
-TOKEN_ALIASES = {
-    "boat": "vessel",
-    "boats": "vessel",
-    "craft": "vessel",
-    "gulf": "gulf-finland",
-    "finland": "gulf-finland",
-    "movement": "movement",
-    "movements": "movement",
-    "petersburg": "gulf-finland",
-    "shipping": "vessel",
-    "ships": "vessel",
-    "st": "gulf-finland",
-    "traffic": "movement",
-    "vessels": "vessel",
-}
-
-
 def _canonical_tokens(text: str) -> tuple[str, ...]:
-    tokens = []
-    for token in findall(r"[a-z0-9]+", text.casefold()):
-        if len(token) < 2:
-            continue
-        tokens.append(TOKEN_ALIASES.get(token, token))
+    tokens = [token for token in findall(r"[a-z0-9]+", text.casefold()) if len(token) >= 2]
     return tuple(dict.fromkeys(tokens))
 
 

@@ -1,4 +1,4 @@
-from dataclasses import dataclass, replace
+from dataclasses import replace
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -23,12 +23,6 @@ from coeus.services.ticket_records import is_collaborator, is_owner, timeline
 from coeus.services.tickets import TicketServices
 
 
-@dataclass(frozen=True)
-class SimilarRequestNotice:
-    matches: tuple[SimilarRequestMatch, ...]
-    hidden_matches_present: bool
-
-
 class SimilarRequestService:
     """Coordinates customer notices and manager links for similar open tickets."""
 
@@ -42,28 +36,34 @@ class SimilarRequestService:
         self._audit_log = audit_log
         self._embeddings = embeddings
 
-    def customer_notice(self, actor: UserAccount, ticket_id: UUID) -> SimilarRequestNotice:
+    def customer_notice(
+        self, actor: UserAccount, ticket_id: UUID
+    ) -> tuple[SimilarRequestMatch, ...]:
+        # Object-level check: the querying customer must be able to read the source ticket.
         source = self._tickets.tickets.get_visible_ticket(actor, ticket_id)
-        matches = self._score(source, CUSTOMER_SIMILARITY_THRESHOLD)
-        visible = []
-        hidden_count = 0
-        for match in matches:
-            if self._customer_can_see(actor, match.ticket_id):
-                visible.append(match)
-            else:
-                hidden_count += 1
-        notice = SimilarRequestNotice(tuple(visible), hidden_count > 0)
-        if notice.matches or notice.hidden_matches_present:
+        # Only run for submitted, non-editable tickets. Draft or info-required tickets keep
+        # their intake editable, which would let a customer replay the check as a probe. In
+        # those states there is no notice to give, so return without scoring.
+        if source.state not in OPEN_SIMILARITY_STATES:
+            return ()
+        # Customers only ever see matches they already have need-to-know for. Hidden overlaps
+        # are the manager panel's job to catch; nothing derived from invisible tickets (counts,
+        # booleans, audit fields) is computed or returned on the customer path.
+        visible = tuple(
+            match
+            for match in self._score(source, CUSTOMER_SIMILARITY_THRESHOLD)
+            if self._customer_can_see(actor, match.ticket_id)
+        )
+        if visible:
             self._audit_log.record(
                 "similar_request_notified",
                 str(actor.user_id),
                 {
                     "ticket_id": str(source.ticket_id),
                     "visible_match_ids": ",".join(str(match.ticket_id) for match in visible),
-                    "hidden_matches": str(hidden_count),
                 },
             )
-        return notice
+        return visible
 
     def join_visible_match(
         self, actor: UserAccount, ticket_id: UUID, related_ticket_id: UUID

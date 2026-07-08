@@ -158,6 +158,10 @@ class TicketCancelRequest(BaseModel):
     reason: str = Field(min_length=3, max_length=300)
 
 
+class NoMatchConsentRequest(BaseModel):
+    task_as_new_request: bool = Field(validation_alias="taskAsNewRequest")
+
+
 class TicketResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 

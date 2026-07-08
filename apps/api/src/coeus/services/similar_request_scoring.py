@@ -1,6 +1,4 @@
 from dataclasses import dataclass
-from math import sqrt
-from re import findall
 from uuid import UUID
 
 from coeus.core.permissions import Permission
@@ -10,9 +8,10 @@ from coeus.services.embeddings import EmbeddingService, cosine_similarity
 from coeus.services.rfi_ranking import (
     LEXICAL_SCORE_FLOOR,
     RRF_K,
-    STOP_WORDS,
     VECTOR_SIMILARITY_FLOOR,
+    lexical_text_score,
     query_text,
+    token_overlap,
 )
 
 CUSTOMER_SIMILARITY_THRESHOLD = 0.58
@@ -23,6 +22,7 @@ OPEN_SIMILARITY_STATES = frozenset(
     {
         TicketState.RFI_SEARCHING,
         TicketState.RFI_MATCH_OFFERED,
+        TicketState.RFI_NO_MATCH,
         TicketState.ROUTE_ASSESSMENT,
         TicketState.RFA_MANAGER_REVIEW,
         TicketState.CM_MANAGER_REVIEW,
@@ -94,9 +94,9 @@ def score_similar_requests(
 def _rank_lexical(
     source_text: str, candidates: tuple[TicketRecord, ...]
 ) -> dict[UUID, tuple[int, float]]:
-    source_tokens = _tokens(source_text)
     scored = [
-        (_lexical_score(source_tokens, query_text(ticket.intake)), ticket) for ticket in candidates
+        (lexical_text_score(source_text, query_text(ticket.intake)), ticket)
+        for ticket in candidates
     ]
     ranked = sorted(
         ((score, ticket) for score, ticket in scored if score >= LEXICAL_SCORE_FLOOR),
@@ -183,23 +183,5 @@ def _reasons(
     return tuple(reasons)
 
 
-def _lexical_score(source_tokens: tuple[str, ...], candidate_text: str) -> float:
-    candidate_tokens = set(_tokens(candidate_text))
-    if not source_tokens or not candidate_tokens:
-        return 0.0
-    overlap = sum(1 for token in source_tokens if token in candidate_tokens)
-    return overlap / sqrt(len(source_tokens) * len(candidate_tokens))
-
-
 def _has_overlap(left: str | None, right: str | None) -> bool:
-    return bool(left and right and set(_tokens(left)).intersection(_tokens(right)))
-
-
-def _tokens(text: str) -> tuple[str, ...]:
-    return tuple(
-        dict.fromkeys(
-            token
-            for token in findall(r"[a-z0-9]+", text.casefold())
-            if len(token) >= 2 and token not in STOP_WORDS
-        )
-    )
+    return bool(left and right and token_overlap(left, right))

@@ -99,6 +99,7 @@ export type TicketState =
   | "INFO_REQUIRED"
   | "RFI_SEARCHING"
   | "RFI_MATCH_OFFERED"
+  | "RFI_NO_MATCH"
   | "ROUTE_ASSESSMENT"
   | "RFA_MANAGER_REVIEW"
   | "CM_MANAGER_REVIEW"
@@ -193,6 +194,18 @@ export async function cancelTicket(
 ): Promise<Ticket> {
   return apiRequestJson<Ticket>(`/api/v1/tickets/${pathSegment(ticketId)}/cancel`, {
     body: JSON.stringify({ reason }),
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+    method: "POST",
+  });
+}
+
+export async function consentNoMatch(
+  ticketId: string,
+  taskAsNewRequest: boolean,
+  csrfToken: string,
+): Promise<Ticket> {
+  return apiRequestJson<Ticket>(`/api/v1/tickets/${pathSegment(ticketId)}/no-match-consent`, {
+    body: JSON.stringify({ taskAsNewRequest }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
   });

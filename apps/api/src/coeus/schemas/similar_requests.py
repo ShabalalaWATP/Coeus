@@ -19,7 +19,6 @@ class SimilarRequestNoticeResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     matches: list[SimilarRequestResponse]
-    hidden_matches_present: bool = Field(serialization_alias="hiddenMatchesPresent")
 
 
 class SimilarRequestListResponse(BaseModel):

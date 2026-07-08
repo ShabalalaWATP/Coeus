@@ -34,8 +34,13 @@ def store_schema_statements() -> Sequence[str]:
             created_at timestamptz NOT NULL DEFAULT now(),
             updated_at timestamptz NOT NULL DEFAULT now(),
             search_document tsvector NOT NULL DEFAULT ''::tsvector,
-            embedding vector(384)
+            embedding vector(384),
+            embedding_source_hash text
         )
+        """,
+        """
+        ALTER TABLE intelligence_store_products
+            ADD COLUMN IF NOT EXISTS embedding_source_hash text
         """,
         """
         CREATE TABLE IF NOT EXISTS intelligence_store_assets (

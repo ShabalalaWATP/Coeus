@@ -21,14 +21,35 @@ from coeus.services.embeddings import (
 from store_projection_helpers import seed_product
 
 
-def test_mock_embeddings_are_deterministic_and_semantic_enough_for_ci() -> None:
+def test_mock_embeddings_are_deterministic_384_dimensions() -> None:
     provider = MockEmbeddingProvider()
-    query = provider.embed("boat traffic near St Petersburg")
-    product = provider.embed("vessel movements in the Gulf of Finland")
+    vector = provider.embed("boat traffic near St Petersburg")
 
-    assert len(query) == EMBEDDING_DIMENSIONS
-    assert query == provider.embed("boat traffic near St Petersburg")
-    assert cosine_similarity(query, product) > 0.3
+    assert len(vector) == EMBEDDING_DIMENSIONS
+    assert vector == provider.embed("boat traffic near St Petersburg")
+
+
+def test_mock_embeddings_reward_shared_tokens_not_synonyms() -> None:
+    # The mock has no synonym knowledge: cosine tracks shared tokens only. This
+    # guards against re-introducing a curated alias map that games acceptance.
+    provider = MockEmbeddingProvider()
+    anchor = provider.embed("vessel movements Gulf of Finland")
+    shares_tokens = provider.embed("vessel movements Baltic approaches")
+    disjoint = provider.embed("crop harvest yield forecast")
+    synonym_only = provider.embed("boat traffic near St Petersburg")
+
+    assert cosine_similarity(anchor, shares_tokens) > cosine_similarity(anchor, disjoint)
+    assert cosine_similarity(anchor, disjoint) == 0.0
+    # No shared tokens means no similarity, however close the meaning is.
+    assert cosine_similarity(anchor, synonym_only) == 0.0
+
+
+def test_mock_embedding_of_tokenless_text_is_zero_vector() -> None:
+    provider = MockEmbeddingProvider()
+
+    vector = provider.embed("a 1 !")
+
+    assert vector == tuple([0.0] * EMBEDDING_DIMENSIONS)
 
 
 def test_embedding_provider_setting_is_authoritative_when_key_exists() -> None:

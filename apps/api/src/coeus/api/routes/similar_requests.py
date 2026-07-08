@@ -27,10 +27,9 @@ async def customer_notice(
     authenticated: Annotated[AuthenticatedSession, Depends(get_current_session)],
     service: Annotated[SimilarRequestService, Depends(get_similar_request_service)],
 ) -> SimilarRequestNoticeResponse:
-    notice = service.customer_notice(authenticated.user, ticket_id)
+    matches = service.customer_notice(authenticated.user, ticket_id)
     return SimilarRequestNoticeResponse(
-        matches=[_match_response(match) for match in notice.matches],
-        hidden_matches_present=notice.hidden_matches_present,
+        matches=[_match_response(match) for match in matches],
     )
 
 

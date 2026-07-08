@@ -95,7 +95,7 @@ async def test_customer_sees_visible_similar_ticket_and_can_join_owned_match() -
 
     assert notice.status_code == 200
     payload = notice.json()
-    assert payload["hiddenMatchesPresent"] is False
+    assert set(payload) == {"matches"}
     assert payload["matches"][0]["ticketId"] == target_id
     assert payload["matches"][0]["score"] >= 0.58
     assert any(
@@ -103,6 +103,8 @@ async def test_customer_sees_visible_similar_ticket_and_can_join_owned_match() -
     )
     assert joined.status_code == 200
     assert joined.json()["joinedTicketId"] == target_id
+    audit_types = [event.event_type for event in app.state.auth_service.audit_log.list_events()]
+    assert "similar_request_notified" in audit_types
 
 
 async def test_customer_cannot_see_hidden_similar_ticket_detail() -> None:
@@ -134,10 +136,61 @@ async def test_customer_cannot_see_hidden_similar_ticket_detail() -> None:
         )
         notice = await client.get(f"/api/v1/similar-requests/tickets/{source_id}")
 
+    # The customer path carries zero hidden-ticket signal: no matches, no boolean, no count,
+    # and no audit event that would confirm the invisible ticket exists.
     assert notice.status_code == 200
-    assert notice.json() == {"matches": [], "hiddenMatchesPresent": True}
+    assert notice.json() == {"matches": []}
     audit_types = [event.event_type for event in app.state.auth_service.audit_log.list_events()]
-    assert "similar_request_notified" in audit_types
+    assert "similar_request_notified" not in audit_types
+
+
+async def test_customer_notice_is_empty_for_editable_draft_source() -> None:
+    app = create_app(
+        Settings(environment="test", argon2_memory_cost=8_192, persistence_provider="memory")
+    )
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        user = await login(client, "user@example.test")
+        csrf_token = str(user["csrfToken"])
+        # A visible, submitted match owned by the same customer would otherwise surface.
+        await submitted_ticket(
+            client,
+            csrf_token,
+            title="Vessel movements Gulf of Finland",
+            question="What vessel movements are occurring around the Gulf of Finland?",
+            region="Gulf of Finland",
+            description="Track vessel movements near the Gulf of Finland.",
+            output_format="movement report",
+        )
+        # The source ticket stays in an editable draft state (never submitted), so the
+        # notice must not run: it is the replayable-probe surface we are closing.
+        created = await client.post(
+            "/api/v1/chat/messages",
+            headers={"X-CSRF-Token": csrf_token},
+            json={"message": "Boat traffic near St Petersburg."},
+        )
+        assert created.status_code == 201
+        draft_id = created.json()["id"]
+        await client.patch(
+            f"/api/v1/tickets/{draft_id}/intake",
+            headers={"X-CSRF-Token": csrf_token},
+            json={
+                "title": "Boat traffic near St Petersburg",
+                "description": "Assess boat traffic near St Petersburg.",
+                "operationalQuestion": "What boat traffic is near St Petersburg?",
+                "areaOrRegion": "St Petersburg",
+                "priority": "routine",
+                "requiredOutputFormat": "traffic picture",
+                "customerSuccessCriteria": "Identify activity requiring attention.",
+            },
+        )
+        notice = await client.get(f"/api/v1/similar-requests/tickets/{draft_id}")
+
+    assert notice.status_code == 200
+    assert notice.json() == {"matches": []}
+    audit_types = [event.event_type for event in app.state.auth_service.audit_log.list_events()]
+    assert "similar_request_notified" not in audit_types
 
 
 async def test_customer_join_adds_viewer_when_actor_owns_source_and_can_read_target() -> None:

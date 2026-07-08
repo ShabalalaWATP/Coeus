@@ -80,6 +80,10 @@ def hybrid_candidates(
     asset_rows = _mapping_rows(connection.execute(text(SEARCH_ASSETS_SQL), child_params))
     acg_rows = _mapping_rows(connection.execute(text(SEARCH_ACGS_SQL), child_params))
     label_rows = _mapping_rows(connection.execute(text(SEARCH_LABELS_SQL), child_params))
+    # The run is effectively lexical-only when the query never embedded or when
+    # no candidate carries an embedding, so the semantic leg contributed nothing.
+    has_vector_leg = any(row.get("vector_rank") is not None for row in product_rows)
+    lexical_only = query_embedding is None or not has_vector_leg
     return tuple(
         StoreHybridCandidate(
             product=_decode_product(row, asset_rows, acg_rows, label_rows),
@@ -87,7 +91,7 @@ def hybrid_candidates(
             lexical_score=float(row.get("lexical_score") or 0.0),
             vector_rank=_optional_int(row.get("vector_rank")),
             vector_score=float(row.get("vector_score") or 0.0),
-            lexical_only=query_embedding is None,
+            lexical_only=lexical_only,
         )
         for row in product_rows
     )

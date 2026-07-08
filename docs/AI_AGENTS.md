@@ -19,7 +19,7 @@ stays in control.
 | Agent                  | Stage                        | Trigger                                 | Output                                            | Human decision                                  |
 | ---------------------- | ---------------------------- | --------------------------------------- | ------------------------------------------------- | ----------------------------------------------- |
 | Customer Chatbot Agent | Describe the need            | Customer chat message                   | Extracted requirement, completeness, safety flags | Customer confirms and submits                   |
-| RFI Search Agent       | Search existing intelligence | Ticket submitted                        | Ranked existing-product offers                    | Customer accepts or rejects an offer            |
+| RFI Search Agent       | Search existing intelligence | Ticket submitted                        | Ranked offers or a no-match decision point        | Customer accepts, rejects or confirms tasking   |
 | Similar Request Check  | Search existing intelligence | Submitted request reaches open workflow | Similar open tickets and reasons                  | Customer may join or continue; manager may link |
 | RFA Capability Agent   | Route review                 | Manager runs capability checks          | Assessment-route feasibility review               | RFA manager approves, rejects or queries        |
 | CM Capability Agent    | Route review                 | Manager runs capability checks          | Collection-route feasibility review               | CM manager approves, rejects or queries         |
@@ -155,8 +155,10 @@ releasability, region, coverage dates and asset types.
 
 The customer accepts or rejects each offer. Accepting an offer closes the ticket
 as satisfied by an existing product (`CLOSED_EXISTING_PRODUCT_ACCEPTED`);
-rejecting all of them sends the ticket on to route assessment. The agent never
-closes a ticket by itself.
+rejecting all offered products sends the ticket on to route assessment. If no
+product matches at all, the ticket stops in `RFI_NO_MATCH` and asks the owner to
+confirm new tasking or cancel. The agent never closes or tasks a ticket by
+itself.
 
 ---
 
@@ -174,7 +176,8 @@ can consolidate early without blocking a customer's submitted request.
 
 ### What it reads
 
-Open tickets from `RFI_SEARCHING` through `MANAGER_RELEASE`. Draft,
+Open tickets from `RFI_SEARCHING` through `MANAGER_RELEASE`, including the
+`RFI_NO_MATCH` consent state. Draft,
 `INFO_REQUIRED`, cancelled and closed tickets are excluded, and the source ticket
 is never compared with itself.
 

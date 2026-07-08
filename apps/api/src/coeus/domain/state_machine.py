@@ -8,8 +8,9 @@ ALLOWED_TRANSITIONS: dict[TicketState, frozenset[TicketState]] = {
         {TicketState.DRAFT_INTAKE, TicketState.ROUTE_ASSESSMENT, TicketState.CANCELLED}
     ),
     TicketState.RFI_SEARCHING: frozenset(
-        {TicketState.RFI_MATCH_OFFERED, TicketState.ROUTE_ASSESSMENT, TicketState.CANCELLED}
+        {TicketState.RFI_MATCH_OFFERED, TicketState.RFI_NO_MATCH, TicketState.CANCELLED}
     ),
+    TicketState.RFI_NO_MATCH: frozenset({TicketState.ROUTE_ASSESSMENT, TicketState.CANCELLED}),
     TicketState.RFI_MATCH_OFFERED: frozenset(
         {
             TicketState.CLOSED_EXISTING_PRODUCT_ACCEPTED,

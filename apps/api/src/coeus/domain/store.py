@@ -96,6 +96,24 @@ class StoreVisibilityScope:
     include_drafts: bool
 
 
+def product_in_scope(product: "StoreProduct", scope: StoreVisibilityScope) -> bool:
+    """Mirror the SQL projection scope predicate for the in-memory fallback path.
+
+    Keeps the memory retrieval leg from ranking over products the requester
+    cannot see, matching the archived/clearance/draft/ACG filter applied in
+    ``store_projection_search_sql``. Security still relies on the service-layer
+    ``can_read`` recheck; this only stops hidden products distorting ranks.
+    """
+    metadata = product.metadata
+    if metadata.status == ProductStatus.ARCHIVED:
+        return False
+    if metadata.classification_level > scope.clearance_level:
+        return False
+    if metadata.status == ProductStatus.DRAFT and not scope.include_drafts:
+        return False
+    return bool(metadata.acg_ids & scope.acg_ids)
+
+
 @dataclass(frozen=True)
 class StoreSearchHit:
     product: StoreProduct
