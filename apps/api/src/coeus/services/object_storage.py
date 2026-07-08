@@ -15,6 +15,11 @@ class LocalObjectStorage:
     def exists(self, object_key: str) -> bool:
         return self.path_for(object_key).is_file()
 
+    def delete_bytes(self, object_key: str) -> None:
+        path = self.path_for(object_key)
+        path.unlink(missing_ok=True)
+        self._remove_empty_parents(path.parent)
+
     def path_for(self, object_key: str) -> Path:
         parts = _safe_parts(object_key)
         root = self._root.resolve()
@@ -22,6 +27,16 @@ class LocalObjectStorage:
         if not path.is_relative_to(root):
             raise ValueError("Object key escapes local storage root.")
         return path
+
+    def _remove_empty_parents(self, start: Path) -> None:
+        root = self._root.resolve()
+        current = start.resolve()
+        while current != root and current.is_relative_to(root):
+            try:
+                current.rmdir()
+            except OSError:
+                return
+            current = current.parent
 
 
 def seed_store_asset_placeholders(

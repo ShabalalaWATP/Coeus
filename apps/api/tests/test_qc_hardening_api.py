@@ -126,6 +126,7 @@ async def test_failed_ticket_update_rolls_back_ingested_product(
             for product in app.state.store_services.repository.list_products()
             if "qc-approved" in product.metadata.tags
         ]
+        orphaned_objects = list((tmp_path / "objects" / "store" / "qc" / ticket_id).rglob("*"))
         retried = await client.post(
             f"/api/v1/qc/products/{ticket_id}/approve",
             headers={"X-CSRF-Token": str(qc_manager["csrfToken"])},
@@ -133,5 +134,6 @@ async def test_failed_ticket_update_rolls_back_ingested_product(
         )
 
     assert orphaned == []
+    assert orphaned_objects == []
     assert retried.status_code == 200
     assert retried.json()["state"] == "MANAGER_RELEASE"

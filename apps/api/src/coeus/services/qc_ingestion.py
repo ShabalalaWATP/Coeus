@@ -124,6 +124,10 @@ class ProductAutoIngestionService:
 
     def discard(self, product_id: UUID) -> None:
         """Roll back an ingested product after a downstream failure."""
+        product = self._store.repository.get_product(product_id)
+        if product is not None:
+            for asset in product.assets:
+                self._storage.delete_bytes(asset.object_key)
         self._store.repository.delete_product(product_id)
 
     def _project_for_ticket(self, ticket: TicketRecord) -> ProjectWorkspace | None:
