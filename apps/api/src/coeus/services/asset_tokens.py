@@ -60,12 +60,17 @@ class AssetTokenService:
             payload = json.loads(_unb64(encoded).decode("utf-8"))
             expires_at = datetime.fromisoformat(str(payload["exp"]))
             asset_id = UUID(str(payload["asset_id"]))
-            break_glass = bool(payload.get("break_glass", False))
+            if expires_at.tzinfo is None or expires_at.utcoffset() is None:
+                raise ValueError("Asset token expiry must include a timezone.")
+            break_glass_claim = payload.get("break_glass", False)
+            if not isinstance(break_glass_claim, bool):
+                raise ValueError("Asset token break-glass claim must be boolean.")
             product_id = UUID(str(payload["product_id"]))
             user_id = UUID(str(payload["user_id"]))
         except (
             BinasciiError,
             KeyError,
+            TypeError,
             UnicodeDecodeError,
             ValueError,
             json.JSONDecodeError,
@@ -75,7 +80,7 @@ class AssetTokenService:
             raise AppError(410, "asset_token_expired", "Asset token has expired.")
         return AssetTokenClaims(
             asset_id=asset_id,
-            break_glass=break_glass,
+            break_glass=break_glass_claim,
             expires_at=expires_at,
             product_id=product_id,
             user_id=user_id,
