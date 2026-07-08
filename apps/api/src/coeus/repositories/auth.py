@@ -48,6 +48,12 @@ class SeedUserRepository:
         self._users_by_id[user.user_id] = user
         self._persist()
 
+    def delete(self, user_id: UUID) -> None:
+        user = self._users_by_id.pop(user_id, None)
+        if user is not None:
+            self._users_by_username.pop(user.username.casefold(), None)
+            self._persist()
+
     def get_by_username(self, username: str) -> UserAccount | None:
         return self._users_by_username.get(username.casefold())
 

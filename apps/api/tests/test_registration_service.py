@@ -58,3 +58,29 @@ def test_approval_rejects_registration_when_username_became_taken() -> None:
     assert decided is not None
     assert decided.status == RegistrationStatus.REJECTED
     assert decided.decided_by_user_id == admin.user_id
+
+
+def test_approval_rolls_back_account_when_decision_save_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service, users, registrations = _service()
+    admin = users.get_by_username("admin@example.test")
+    assert admin is not None
+    registration = _pending("new.operator@example.test")
+    registrations.save(registration)
+    original_save = registrations.save
+
+    def fail_approved_save(candidate: RegistrationRequest) -> None:
+        if candidate.status == RegistrationStatus.APPROVED:
+            raise RuntimeError("simulated registration decision failure")
+        original_save(candidate)
+
+    monkeypatch.setattr(registrations, "save", fail_approved_save)
+
+    with pytest.raises(RuntimeError, match="simulated registration decision failure"):
+        service.approve(admin, registration.registration_id)
+
+    assert users.get_by_username("new.operator@example.test") is None
+    current = registrations.get(registration.registration_id)
+    assert current is not None
+    assert current.status == RegistrationStatus.PENDING
