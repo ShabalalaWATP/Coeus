@@ -1,5 +1,6 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Route, Routes } from "react-router-dom";
 
 import ProjectWorkspacePage from "./ProjectWorkspacePage";
 import { resetQueryClientForTests } from "../../app/query-client";
@@ -123,6 +124,28 @@ test("renders an empty state when no projects are visible", async () => {
   renderWithProviders(<ProjectWorkspacePage />, "/projects");
 
   expect(await screen.findByText("No visible projects")).toBeVisible();
+});
+
+test("does not fall back to another project when a requested project is not visible", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ projects: [project] }) }),
+  );
+
+  renderWithProviders(
+    <Routes>
+      <Route path="/projects/:projectId" element={<ProjectWorkspacePage />} />
+    </Routes>,
+    "/projects/project-missing",
+  );
+
+  expect(await screen.findByText("Project not found")).toBeVisible();
+  expect(
+    screen.getByText("This project is not visible to your account or no longer exists."),
+  ).toBeVisible();
+  expect(
+    screen.queryByRole("heading", { name: "Northstar RFI Workspace" }),
+  ).not.toBeInTheDocument();
 });
 
 test("renders a projects error state", async () => {

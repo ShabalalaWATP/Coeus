@@ -20,10 +20,17 @@ export default function ProjectWorkspacePage({ view = "overview" }: ProjectWorks
     queryFn: () => apiClient.listProjects(),
   });
   const projects = useMemo(() => projectsQuery.data ?? [], [projectsQuery.data]);
-  const project = useMemo(
-    () => projects.find((item) => item.id === projectId) ?? projects[0],
-    [projectId, projects],
-  );
+  const project = useMemo(() => {
+    if (projectId === undefined) {
+      return projects[0];
+    }
+    return projects.find((item) => item.id === projectId);
+  }, [projectId, projects]);
+  const emptyTitle = projectId === undefined ? "No visible projects" : "Project not found";
+  const emptyHint =
+    projectId === undefined
+      ? "Projects appear here once you are added as a member or requester."
+      : "This project is not visible to your account or no longer exists.";
   const diagnosticProduct = project?.visibleProducts[0];
   const diagnosticProductId = diagnosticProduct?.id;
   const diagnosticUserId = session?.user.id;
@@ -90,10 +97,7 @@ export default function ProjectWorkspacePage({ view = "overview" }: ProjectWorks
       {project === undefined ? (
         projectsQuery.isLoading || projectsQuery.isError ? null : (
           <section className="surface">
-            <EmptyState
-              hint="Projects appear here once you are added as a member or requester."
-              title="No visible projects"
-            />
+            <EmptyState hint={emptyHint} title={emptyTitle} />
           </section>
         )
       ) : (
