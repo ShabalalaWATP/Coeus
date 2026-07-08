@@ -116,6 +116,45 @@ test("shows a generic error when product registration fails without a body", asy
   ).toBeVisible();
 });
 
+test("shows the API validation message when metadata suggestions fail", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ acgs: [] }) })
+    .mockResolvedValue({
+      ok: false,
+      status: 422,
+      json: () =>
+        Promise.resolve({ error: { code: "invalid_context", message: "Summary is too short." } }),
+    });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<ProductUploadPage />, "/store/upload");
+  await screen.findByLabelText("ACG");
+  await userEvent.click(screen.getByRole("button", { name: "Suggest metadata" }));
+
+  expect(await screen.findByText("Summary is too short.")).toBeVisible();
+});
+
+test("shows a generic error when metadata suggestions fail without a body", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ acgs: [] }) })
+    .mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.reject(new Error("no body")),
+    });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<ProductUploadPage />, "/store/upload");
+  await screen.findByLabelText("ACG");
+  await userEvent.click(screen.getByRole("button", { name: "Suggest metadata" }));
+
+  expect(
+    await screen.findByText("Metadata suggestions could not be generated. Try again."),
+  ).toBeVisible();
+});
+
 test("registers geographic products with the first visible ACG when none is selected", async () => {
   const fetchMock = vi
     .fn()
