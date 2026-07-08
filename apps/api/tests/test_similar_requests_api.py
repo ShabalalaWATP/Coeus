@@ -1,5 +1,6 @@
 from uuid import UUID
 
+import pytest
 from httpx import ASGITransport, AsyncClient
 
 from coeus.core.config import Settings
@@ -273,6 +274,46 @@ async def test_manager_lists_and_links_similar_requests_idempotently() -> None:
     assert _timeline_count(target, "related_ticket_linked") == 1
     audit_types = [event.event_type for event in app.state.auth_service.audit_log.list_events()]
     assert audit_types.count("tickets_linked") == 2
+
+
+async def test_manager_link_failure_rolls_back_related_ticket(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = create_app(
+        Settings(environment="test", argon2_memory_cost=8_192, persistence_provider="memory")
+    )
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        user = await login(client, "user@example.test")
+        source_id, target_id = await similar_ticket_pair(client, str(user["csrfToken"]))
+        manager = await login(client, "rfa.manager@example.test")
+        tickets = app.state.ticket_services.tickets
+        original_save = tickets.save_system_update
+        calls = 0
+
+        def fail_second_save(ticket):
+            nonlocal calls
+            calls += 1
+            if calls == 2:
+                raise RuntimeError("simulated source save failure")
+            return original_save(ticket)
+
+        monkeypatch.setattr(tickets, "save_system_update", fail_second_save)
+        with pytest.raises(RuntimeError, match="simulated source save failure"):
+            await client.post(
+                f"/api/v1/similar-requests/routing/{source_id}/link/{target_id}",
+                headers={"X-CSRF-Token": str(manager["csrfToken"])},
+            )
+
+    source = app.state.ticket_services.tickets._repository.get(UUID(source_id))
+    target = app.state.ticket_services.tickets._repository.get(UUID(target_id))
+    assert source is not None
+    assert target is not None
+    assert source.related_ticket_ids == ()
+    assert target.related_ticket_ids == ()
+    assert _timeline_count(source, "related_ticket_linked") == 0
+    assert _timeline_count(target, "related_ticket_linked") == 0
 
 
 def _timeline_count(ticket, event_type: str) -> int:
