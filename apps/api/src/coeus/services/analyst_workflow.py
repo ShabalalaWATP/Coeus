@@ -13,6 +13,12 @@ from coeus.domain.tickets import (
     WorkPackageStatus,
 )
 from coeus.repositories.access import SeedAccessRepository
+from coeus.services.analyst_assignment import (
+    assignment_summary,
+    normalise_team_name,
+    normalise_titles,
+    suggested_team_name,
+)
 from coeus.services.analyst_drafts import DraftProductInput, draft_asset, new_uuid, now
 from coeus.services.analyst_records import (
     all_work_packages_complete,
@@ -87,10 +93,8 @@ class AnalystWorkflowService:
             or RoleName.INTELLIGENCE_ANALYST not in analyst.roles
         ):
             raise AppError(422, "invalid_analyst", "Assigned user must be an active analyst.")
-        titles = _normalise_titles(work_package_titles) or default_work_package_titles(
-            ticket, route
-        )
-        assignment_team = _normalise_team_name(team_name) or _suggested_team_name(ticket, route)
+        titles = normalise_titles(work_package_titles) or default_work_package_titles(ticket, route)
+        assignment_team = normalise_team_name(team_name) or suggested_team_name(ticket, route)
         target_state = TicketState.ANALYST_IN_PROGRESS
         if not reassignment:
             self._ensure_transition(ticket.state, target_state)
@@ -111,7 +115,7 @@ class AnalystWorkflowService:
                         ticket.ticket_id,
                         actor.user_id,
                         event_type,
-                        _assignment_summary(analyst.username, assignment_team),
+                        assignment_summary(analyst.username, assignment_team),
                     ),
                 ),
             )
@@ -218,7 +222,7 @@ class AnalystWorkflowService:
             replace(package, status=status) if package.package_id == package_id else package
             for package in ticket.work_packages
         )
-        return self._tickets.tickets.save_system_update(
+        updated = self._tickets.tickets.save_system_update(
             replace(
                 ticket,
                 work_packages=packages,
@@ -228,6 +232,16 @@ class AnalystWorkflowService:
                 ),
             )
         )
+        self._audit_log.record(
+            "work_package_updated",
+            str(actor.user_id),
+            {
+                "ticket_id": str(ticket_id),
+                "package_id": str(package_id),
+                "status": status.value,
+            },
+        )
+        return updated
 
     def create_draft(
         self, actor: UserAccount, ticket_id: UUID, draft: DraftProductInput
@@ -322,28 +336,3 @@ def build_analyst_workflow_service(
     audit_log: AuditLog,
 ) -> AnalystWorkflowService:
     return AnalystWorkflowService(tickets, store, access_repository, audit_log)
-
-
-def _normalise_titles(titles: tuple[str, ...]) -> tuple[str, ...]:
-    return tuple(dict.fromkeys(title.strip() for title in titles if title.strip()))
-
-
-def _normalise_team_name(team_name: str | None) -> str | None:
-    if team_name is None:
-        return None
-    cleaned = " ".join(team_name.split())
-    return cleaned[:120] or None
-
-
-def _suggested_team_name(ticket: TicketRecord, route: RoutingRoute) -> str | None:
-    if route == RoutingRoute.RFA and ticket.rfa_reviews:
-        return ticket.rfa_reviews[-1].suggested_team_name
-    if route == RoutingRoute.CM and ticket.cm_reviews:
-        return ticket.cm_reviews[-1].suggested_collection_team_name
-    return None
-
-
-def _assignment_summary(username: str, team_name: str | None) -> str:
-    if team_name:
-        return f"{username} assigned via {team_name}."
-    return username
