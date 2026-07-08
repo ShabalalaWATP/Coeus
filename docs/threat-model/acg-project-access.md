@@ -31,6 +31,7 @@ Sprint 3 ACG membership, project workspace visibility, product access filtering,
 | Inactive ACG revocation bypass | Product and project policies use only active ACG memberships when evaluating visibility. |
 | Draft product leakage | Draft products require product management permission in addition to ACG membership. |
 | ACG membership manipulation | Create, update and membership endpoints require CSRF-validated authenticated sessions and ACG permissions. Non-administrator ACG managers cannot add or remove their own ACG memberships, preventing self-grant escalation into project or product visibility. |
+| Browser-only ACG revocation | The ACG member removal control calls the backend delete endpoint with the session CSRF token. The backend remains authoritative for permission, self-membership and audit enforcement. |
 | Store Manager ACG administration leaks content | Users with ACG assignment permissions may see ACG metadata and memberships for administration, but product detail, search and downloads still require product RBAC, active ACG overlap, clearance and status checks. Site-admin support access outside ACGs is separate audited break-glass access. |
 | Project ACG inheritance leaks unrelated QC products | QC ingestion only inherits project ACGs when the ticket is explicitly linked in `project.ticket_ids`; same-requester projects do not implicitly attach to unrelated tickets. |
 | Missing accountability for ACG changes | ACG creation, update, membership addition and membership removal create audit events. |
