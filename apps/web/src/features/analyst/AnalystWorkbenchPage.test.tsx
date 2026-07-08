@@ -107,6 +107,37 @@ test("renders an analyst tasks error state", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Retry" }));
 });
 
+test("does not show a missing-task notice when a direct task link fails to load", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ error: { code: "server_error", message: "Failed." } }),
+    }),
+  );
+
+  window.history.pushState({}, "Test page", "/analyst/tasks/ticket-1");
+  render(
+    <AppProviders initialAuthSession={previewSession}>
+      <MemoryRouter initialEntries={["/analyst/tasks/ticket-1"]}>
+        <Routes>
+          <Route path="/analyst/tasks/:taskId" element={<AnalystWorkbenchPage />} />
+        </Routes>
+      </MemoryRouter>
+    </AppProviders>,
+  );
+
+  expect(
+    await screen.findByText("Unable to load data", undefined, { timeout: 5000 }),
+  ).toBeVisible();
+  expect(
+    screen.queryByText("The requested task was not found or is no longer assigned to you.", {
+      exact: false,
+    }),
+  ).not.toBeInTheDocument();
+});
+
 test("notes when the requested task is not assigned to the analyst", async () => {
   vi.stubGlobal(
     "fetch",
