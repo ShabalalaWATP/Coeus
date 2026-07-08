@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -15,6 +16,8 @@ class AiModelState:
     active_model: str
     available_models: tuple[str, ...]
     api_key_configured: bool
+    embedding_provider: str
+    embedded_product_count: int
     changed_by: str | None
     changed_at: datetime | None
 
@@ -36,6 +39,8 @@ class AiModelService:
         self._audit_log = audit_log
         self._state_store = state_store
         self._provider = settings.llm_provider
+        self._embedding_provider = settings.embedding_provider
+        self._embedded_product_count: Callable[[], int] = lambda: 0
         self._available_models = tuple(settings.available_gemini_models)
         default_model = settings.gemini_api_model
         self._active_model = (
@@ -52,6 +57,8 @@ class AiModelService:
             active_model=self._active_model,
             available_models=self._available_models,
             api_key_configured=bool(self._api_key),
+            embedding_provider=self._embedding_provider,
+            embedded_product_count=self._embedded_product_count(),
             changed_by=self._changed_by,
             changed_at=self._changed_at,
         )
@@ -64,6 +71,9 @@ class AiModelService:
 
     def api_key(self) -> str | None:
         return self._api_key
+
+    def set_embedded_product_count_provider(self, provider: Callable[[], int]) -> None:
+        self._embedded_product_count = provider
 
     def select(self, actor_user_id: str, actor_username: str, model: str) -> AiModelState:
         if model not in self._available_models:

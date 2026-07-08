@@ -104,6 +104,16 @@ class StoreSearchHit:
 
 
 @dataclass(frozen=True)
+class StoreHybridCandidate:
+    product: StoreProduct
+    lexical_rank: int | None = None
+    lexical_score: float = 0.0
+    vector_rank: int | None = None
+    vector_score: float = 0.0
+    lexical_only: bool = False
+
+
+@dataclass(frozen=True)
 class StoreFacets:
     product_types: tuple[str, ...]
     regions: tuple[str, ...]

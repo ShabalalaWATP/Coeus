@@ -37,6 +37,7 @@ from coeus.services.asset_tokens import AssetTokenService
 from coeus.services.audit import AuditLog
 from coeus.services.auth import AuthService
 from coeus.services.email_delivery import build_email_provider
+from coeus.services.embeddings import build_embedding_service
 from coeus.services.feedback_analytics import build_feedback_analytics_service
 from coeus.services.notifications import NotificationService
 from coeus.services.object_storage import LocalObjectStorage, seed_store_asset_placeholders
@@ -104,20 +105,28 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         access_repository,
         audit_log,
     )
+    app.state.ai_model_service = AiModelService(
+        resolved_settings,
+        audit_log,
+        app.state.state_store,
+    )
+    app.state.embedding_service = build_embedding_service(
+        resolved_settings,
+        app.state.ai_model_service,
+    )
     app.state.store_services = build_store_services(
         access_repository,
         audit_log,
         app.state.asset_token_service,
         app.state.state_store,
+        app.state.embedding_service,
+    )
+    app.state.ai_model_service.set_embedded_product_count_provider(
+        app.state.store_services.repository.embedded_product_count
     )
     seed_store_asset_placeholders(
         app.state.object_storage,
         app.state.store_services.repository.list_products(),
-    )
-    app.state.ai_model_service = AiModelService(
-        resolved_settings,
-        audit_log,
-        app.state.state_store,
     )
     app.state.ticket_services = build_ticket_services(
         resolved_settings,
@@ -146,6 +155,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.store_services,
         access_repository,
         audit_log,
+        app.state.embedding_service,
     )
     app.state.routing_service = build_routing_service(app.state.ticket_services, audit_log)
     app.state.analyst_workflow_service = build_analyst_workflow_service(

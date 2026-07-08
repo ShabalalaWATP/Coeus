@@ -5,23 +5,29 @@ from uuid import UUID, uuid4
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
 from coeus.domain.access import ProductStatus
-from coeus.domain.agent_names import LEGACY_RFI_SEARCH_AGENT, RFI_SEARCH_AGENT
 from coeus.domain.auth import UserAccount
 from coeus.domain.enums import TicketState
 from coeus.domain.store import StoreSearchFilters
 from coeus.domain.tickets import (
-    AgentRun,
-    AgentRunStatus,
     ProductDissemination,
     ProductOffer,
     ProductOfferStatus,
     RfiSearchMetrics,
     TicketRecord,
-    TicketTimelineEntry,
 )
 from coeus.repositories.access import SeedAccessRepository
 from coeus.services.audit import AuditLog
-from coeus.services.rfi_ranking import query_text, rank_rfi_hits
+from coeus.services.embeddings import EmbeddingService
+from coeus.services.rfi_ranking import query_text, rank_hybrid_rfi_candidates
+from coeus.services.rfi_records import (
+    accepted_metric,
+    active_offer,
+    complete_agent_run,
+    rejected_metric,
+    run_summary,
+    set_offer_status,
+    timeline,
+)
 from coeus.services.store import StoreSearchService, StoreServices
 from coeus.services.store_access import StoreDetailService
 from coeus.services.tickets import TicketService, TicketServices
@@ -50,12 +56,14 @@ class RfiSearchService:
         store_details: StoreDetailService,
         access_repository: SeedAccessRepository,
         audit_log: AuditLog,
+        embeddings: EmbeddingService,
     ) -> None:
         self._tickets = tickets
         self._store_search = store_search
         self._store_details = store_details
         self._access_repository = access_repository
         self._audit_log = audit_log
+        self._embeddings = embeddings
 
     def run(self, actor: UserAccount, ticket_id: UUID) -> RfiSearchResults:
         self._require(actor, Permission.RFI_SEARCH)
@@ -71,11 +79,21 @@ class RfiSearchService:
             ),
         )
         query = query_text(ticket.intake)
-        offers = rank_rfi_hits(search.hits, ticket.intake)
+        query_embedding = self._embeddings.embed(query, purpose="rfi-query")
+        candidates = self._store_search.hybrid_candidates(
+            requester,
+            StoreSearchFilters(
+                status=ProductStatus.PUBLISHED,
+                page_size=RFI_CANDIDATE_SEARCH_LIMIT,
+            ),
+            query,
+            query_embedding,
+        )
+        offers = rank_hybrid_rfi_candidates(candidates, ticket.intake)
         target_state = TicketState.RFI_MATCH_OFFERED if offers else TicketState.ROUTE_ASSESSMENT
         now = datetime.now(UTC)
-        summary = _run_summary(len(offers), search.total)
-        agent_runs, run_id = _complete_agent_run(ticket, summary, now)
+        summary = run_summary(len(offers), search.total)
+        agent_runs, run_id = complete_agent_run(ticket, summary, now)
         metric = RfiSearchMetrics(
             run_id=run_id,
             query=query,
@@ -95,7 +113,7 @@ class RfiSearchService:
                 visible_product_matches=tuple(offer.title for offer in offers),
                 timeline=(
                     *ticket.timeline,
-                    _timeline(ticket.ticket_id, actor.user_id, "search_completed", summary),
+                    timeline(ticket.ticket_id, actor.user_id, "search_completed", summary),
                 ),
             )
         )
@@ -112,10 +130,10 @@ class RfiSearchService:
     def accept(self, actor: UserAccount, ticket_id: UUID, product_id: UUID) -> RfiSearchResults:
         self._require(actor, Permission.RFI_ACCEPT_PRODUCT)
         ticket = self._offer_ticket(actor, ticket_id)
-        offer = _active_offer(ticket, product_id)
+        offer = active_offer(ticket, product_id)
         self._store_details.get_visible_product(actor, offer.product_id)
         now = datetime.now(UTC)
-        offers = _set_offer_status(ticket.product_offers, product_id, ProductOfferStatus.ACCEPTED)
+        offers = set_offer_status(ticket.product_offers, product_id, ProductOfferStatus.ACCEPTED)
         dissemination = ProductDissemination(
             dissemination_id=uuid4(),
             ticket_id=ticket.ticket_id,
@@ -129,10 +147,10 @@ class RfiSearchService:
                 state=TicketState.CLOSED_EXISTING_PRODUCT_ACCEPTED,
                 product_offers=offers,
                 disseminations=(*ticket.disseminations, dissemination),
-                search_metrics=(*ticket.search_metrics[:-1], _accepted_metric(ticket, product_id)),
+                search_metrics=(*ticket.search_metrics[:-1], accepted_metric(ticket, product_id)),
                 timeline=(
                     *ticket.timeline,
-                    _timeline(
+                    timeline(
                         ticket.ticket_id,
                         actor.user_id,
                         "product_offer_accepted",
@@ -153,9 +171,9 @@ class RfiSearchService:
     ) -> RfiSearchResults:
         self._require(actor, Permission.RFI_REJECT_PRODUCT)
         ticket = self._offer_ticket(actor, ticket_id)
-        offer = _active_offer(ticket, product_id)
+        offer = active_offer(ticket, product_id)
         self._store_details.get_visible_product(actor, offer.product_id)
-        offers = _set_offer_status(
+        offers = set_offer_status(
             ticket.product_offers,
             product_id,
             ProductOfferStatus.REJECTED,
@@ -171,10 +189,10 @@ class RfiSearchService:
                 ticket,
                 state=next_state,
                 product_offers=offers,
-                search_metrics=(*ticket.search_metrics[:-1], _rejected_metric(ticket, offers)),
+                search_metrics=(*ticket.search_metrics[:-1], rejected_metric(ticket, offers)),
                 timeline=(
                     *ticket.timeline,
-                    _timeline(ticket.ticket_id, actor.user_id, "product_offer_rejected", reason),
+                    timeline(ticket.ticket_id, actor.user_id, "product_offer_rejected", reason),
                 ),
             )
         )
@@ -240,101 +258,12 @@ class RfiSearchService:
             raise AppError(403, "forbidden", "Permission denied.")
 
 
-def _active_offer(ticket: TicketRecord, product_id: UUID) -> ProductOffer:
-    for offer in ticket.product_offers:
-        if offer.product_id == product_id and offer.status == ProductOfferStatus.OFFERED:
-            return offer
-    raise AppError(404, "product_offer_not_found", "Product offer was not found.")
-
-
-def _set_offer_status(
-    offers: tuple[ProductOffer, ...],
-    product_id: UUID,
-    status: ProductOfferStatus,
-    rejection_reason: str | None = None,
-) -> tuple[ProductOffer, ...]:
-    return tuple(
-        replace(offer, status=status, rejection_reason=rejection_reason)
-        if offer.product_id == product_id
-        else offer
-        for offer in offers
-    )
-
-
-def _complete_agent_run(
-    ticket: TicketRecord, summary: str, now: datetime
-) -> tuple[tuple[AgentRun, ...], UUID]:
-    for run in ticket.agent_runs:
-        if (
-            run.agent_name in {RFI_SEARCH_AGENT, LEGACY_RFI_SEARCH_AGENT}
-            and run.status == AgentRunStatus.QUEUED
-        ):
-            updated = replace(
-                run,
-                agent_name=RFI_SEARCH_AGENT,
-                status=AgentRunStatus.COMPLETED,
-                summary=summary,
-                created_at=now,
-            )
-            runs = tuple(
-                updated if item.run_id == run.run_id else item for item in ticket.agent_runs
-            )
-            return runs, run.run_id
-    run = AgentRun(
-        uuid4(),
-        ticket.ticket_id,
-        RFI_SEARCH_AGENT,
-        AgentRunStatus.COMPLETED,
-        summary,
-        (),
-        now,
-    )
-    return (*ticket.agent_runs, run), run.run_id
-
-
-def _accepted_metric(ticket: TicketRecord, product_id: UUID) -> RfiSearchMetrics:
-    metric = ticket.search_metrics[-1]
-    return replace(metric, accepted_product_id=product_id)
-
-
-def _rejected_metric(ticket: TicketRecord, offers: tuple[ProductOffer, ...]) -> RfiSearchMetrics:
-    metric = ticket.search_metrics[-1]
-    return replace(
-        metric,
-        rejected_count=sum(offer.status == ProductOfferStatus.REJECTED for offer in offers),
-    )
-
-
-def _timeline(
-    ticket_id: UUID, actor_user_id: UUID, event_type: str, body: str
-) -> TicketTimelineEntry:
-    return TicketTimelineEntry(
-        uuid4(),
-        ticket_id,
-        event_type,
-        body,
-        actor_user_id,
-        datetime.now(UTC),
-    )
-
-
-def _run_summary(offer_count: int, candidate_count: int) -> str:
-    if offer_count:
-        return (
-            f"Search completed with {offer_count} offer(s) from "
-            f"{candidate_count} permitted candidate(s)."
-        )
-    return (
-        "No permitted existing product exceeded the offer threshold from "
-        f"{candidate_count} candidate(s)."
-    )
-
-
 def build_rfi_search_service(
     ticket_services: TicketServices,
     store_services: StoreServices,
     access_repository: SeedAccessRepository,
     audit_log: AuditLog,
+    embeddings: EmbeddingService,
 ) -> RfiSearchService:
     return RfiSearchService(
         ticket_services.tickets,
@@ -342,4 +271,5 @@ def build_rfi_search_service(
         store_services.details,
         access_repository,
         audit_log,
+        embeddings,
     )

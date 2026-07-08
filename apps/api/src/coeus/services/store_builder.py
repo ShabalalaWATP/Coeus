@@ -3,6 +3,7 @@ from coeus.repositories.access import SeedAccessRepository
 from coeus.repositories.store import InMemoryStoreRepository
 from coeus.services.asset_tokens import AssetTokenService
 from coeus.services.audit import AuditLog
+from coeus.services.embeddings import EmbeddingService
 from coeus.services.store import (
     MetadataSuggestionService,
     StoreIngestionService,
@@ -18,9 +19,12 @@ def build_store_services(
     audit_log: AuditLog,
     asset_tokens: AssetTokenService,
     state_store: StateStore | None = None,
+    embeddings: EmbeddingService | None = None,
 ) -> StoreServices:
     projection = (
-        state_store.store_projection() if isinstance(state_store, PostgresStateStore) else None
+        state_store.store_projection(embeddings)
+        if isinstance(state_store, PostgresStateStore)
+        else None
     )
     repository = InMemoryStoreRepository(access_repository, state_store, projection)
     policy = StoreProductAccessPolicy(access_repository)

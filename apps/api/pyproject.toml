@@ -17,6 +17,11 @@ dependencies = [
   "uvicorn[standard]>=0.35.0"
 ]
 
+[project.optional-dependencies]
+embeddings = [
+    "fastembed>=0.8.0",
+]
+
 [dependency-groups]
 dev = [
   "bandit>=1.8.6",

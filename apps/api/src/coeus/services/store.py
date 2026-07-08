@@ -12,6 +12,7 @@ from coeus.domain.store import (
     MetadataSuggestion,
     StoreAsset,
     StoreFacets,
+    StoreHybridCandidate,
     StoreProduct,
     StoreProductMetadata,
     StoreSearchFilters,
@@ -233,6 +234,25 @@ class StoreSearchService:
             page_size=filters.page_size,
             total_pages=total_pages,
             facets=self._facets(filtered),
+        )
+
+    def hybrid_candidates(
+        self,
+        actor: UserAccount,
+        filters: StoreSearchFilters,
+        query: str,
+        query_embedding: tuple[float, ...] | None,
+    ) -> tuple[StoreHybridCandidate, ...]:
+        if Permission.PRODUCT_SEARCH not in actor.permissions:
+            raise AppError(403, "forbidden", "Permission denied.")
+        candidates = self._repository.hybrid_candidates(
+            filters,
+            self._policy.visibility_scope(actor),
+            query,
+            query_embedding,
+        )
+        return tuple(
+            candidate for candidate in candidates if self._policy.can_read(actor, candidate.product)
         )
 
     @staticmethod

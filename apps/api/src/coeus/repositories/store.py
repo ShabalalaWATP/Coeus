@@ -5,6 +5,7 @@ from coeus.domain.access import AccessControlGroup, ProductStatus
 from coeus.domain.store import (
     BoundingBox,
     StoreAsset,
+    StoreHybridCandidate,
     StoreProduct,
     StoreProductMetadata,
     StoreSearchFilters,
@@ -13,6 +14,7 @@ from coeus.domain.store import (
 from coeus.persistence.codec import decode_value, encode_value
 from coeus.persistence.state_store import StateStore
 from coeus.repositories.access import SeedAccessRepository, stable_seed_id
+from coeus.repositories.store_hybrid import memory_hybrid_candidates
 from coeus.repositories.store_projection import StoreProjection
 
 
@@ -46,6 +48,28 @@ class InMemoryStoreRepository:
         self._products.update({product.product_id: product for product in products})
         return products
 
+    def hybrid_candidates(
+        self,
+        filters: StoreSearchFilters,
+        scope: StoreVisibilityScope,
+        query: str,
+        query_embedding: tuple[float, ...] | None,
+    ) -> tuple[StoreHybridCandidate, ...]:
+        if self._projection is not None:
+            candidates = self._projection.hybrid_candidates(
+                filters,
+                scope,
+                query,
+                query_embedding,
+            )
+            self._products.update(
+                {candidate.product.product_id: candidate.product for candidate in candidates}
+            )
+            return candidates
+        return memory_hybrid_candidates(
+            self.search_products(filters, scope), query, query_embedding
+        )
+
     def get_visible_product(
         self, product_id: UUID, scope: StoreVisibilityScope
     ) -> StoreProduct | None:
@@ -70,6 +94,16 @@ class InMemoryStoreRepository:
         self._refresh_from_projection(allow_empty=True)
         if self._products.pop(product_id, None) is not None:
             self._persist()
+
+    def embedded_product_count(self) -> int:
+        if self._projection is None:
+            return 0
+        return self._projection.embedded_product_count()
+
+    def backfill_missing_embeddings(self, batch_size: int = 500) -> int:
+        if self._projection is None:
+            return 0
+        return self._projection.backfill_missing_embeddings(batch_size)
 
     def next_reference(self) -> str:
         self._refresh_from_projection(allow_empty=True)

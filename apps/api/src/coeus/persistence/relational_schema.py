@@ -98,8 +98,7 @@ def store_schema_statements() -> Sequence[str]:
         """,
         """
         CREATE INDEX IF NOT EXISTS idx_store_products_embedding
-            ON intelligence_store_products USING ivfflat (embedding vector_cosine_ops)
-            WITH (lists = 64)
+            ON intelligence_store_products USING hnsw (embedding vector_cosine_ops)
             WHERE embedding IS NOT NULL
         """,
         """

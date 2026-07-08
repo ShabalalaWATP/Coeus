@@ -59,5 +59,7 @@ class AiModelStateResponse(BaseModel):
     active_model: str = Field(serialization_alias="activeModel")
     available_models: list[str] = Field(serialization_alias="availableModels")
     api_key_configured: bool = Field(serialization_alias="apiKeyConfigured")
+    embedding_provider: str = Field(serialization_alias="embeddingProvider")
+    embedded_product_count: int = Field(serialization_alias="embeddedProductCount")
     changed_by: str | None = Field(default=None, serialization_alias="changedBy")
     changed_at: datetime | None = Field(default=None, serialization_alias="changedAt")

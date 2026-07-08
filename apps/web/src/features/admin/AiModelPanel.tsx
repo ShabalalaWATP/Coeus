@@ -126,6 +126,8 @@ export function AiModelPanel({ csrfToken }: AiModelPanelProps) {
           <p className="ai-model-provider">
             Provider: <code>{state.provider}</code>
             {state.apiKeyConfigured ? " | Gemini API key configured" : " | Gemini API key missing"}
+            {` | embeddings: ${state.embeddingProvider}`}
+            {` | embedded products: ${state.embeddedProductCount}`}
             {state.provider === "mock" ? " | mock provider active" : null}
             {state.changedBy
               ? ` | last changed by ${state.changedBy}${

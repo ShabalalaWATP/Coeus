@@ -93,6 +93,8 @@ def _ai_model_response(state: AiModelState) -> AiModelStateResponse:
         active_model=state.active_model,
         available_models=list(state.available_models),
         api_key_configured=state.api_key_configured,
+        embedding_provider=state.embedding_provider,
+        embedded_product_count=state.embedded_product_count,
         changed_by=state.changed_by,
         changed_at=state.changed_at,
     )
