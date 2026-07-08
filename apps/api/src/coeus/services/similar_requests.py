@@ -142,7 +142,11 @@ class SimilarRequestService:
             self._audit_link(actor, source, related, already_linked=True)
             return source
         related_updated = self._save_related_link(related, source, actor)
-        source_updated = self._save_related_link(source, related, actor)
+        try:
+            source_updated = self._save_related_link(source, related, actor)
+        except Exception:
+            self._tickets.tickets.save_system_update(related)
+            raise
         self._audit_link(actor, source_updated, related_updated, already_linked=False)
         return source_updated
 
