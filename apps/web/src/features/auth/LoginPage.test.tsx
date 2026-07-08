@@ -112,11 +112,12 @@ test("introduces Istari and switches between sign in and request access", async 
   expect(screen.getByLabelText("Username")).toBeVisible();
 });
 
-test("shows generic auth errors and locked state", async () => {
+test("shows lockout errors without trapping the retry path", async () => {
   const user = userEvent.setup();
+  const login = vi.fn().mockRejectedValue(new ApiError(423, "account_locked", "Locked."));
   renderLogin(
     fakeClient({
-      login: vi.fn().mockRejectedValue(new ApiError(423, "account_locked", "Locked.")),
+      login,
     }),
   );
 
@@ -129,7 +130,10 @@ test("shows generic auth errors and locked state", async () => {
       screen.getByText("Authentication is temporarily locked. Try again later."),
     ).toBeVisible(),
   );
-  expect(screen.getByRole("button", { name: "Sign in to Istari" })).toBeDisabled();
+  await user.click(screen.getByRole("button", { name: "Sign in to Istari" }));
+
+  expect(screen.getByRole("button", { name: "Sign in to Istari" })).toBeEnabled();
+  expect(login).toHaveBeenCalledTimes(2);
 });
 
 test("shows generic authentication failure for non-lockout errors", async () => {
