@@ -1,20 +1,25 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from hashlib import sha256
 from typing import cast
 
 import pytest
 from sqlalchemy.engine import Engine
 
 from coeus.core.errors import AppError
+from coeus.domain.store import StoreProduct
 from coeus.persistence.state_store import MemoryStateStore
 from coeus.persistence.store_projection import PostgresStoreProjection
 from coeus.repositories.store import InMemoryStoreRepository
 from coeus.services.asset_tokens import AssetTokenService
 from coeus.services.audit import AuditLog
+from coeus.services.embeddings import EmbeddingService
 from coeus.services.store import StoreProductAccessPolicy, StoreSearchService
 from coeus.services.store_access import StoreAssetService, StoreDetailService
+from coeus.services.store_semantics import product_semantic_text
 from store_projection_helpers import (
+    FakeEmbeddingService,
     FakeSqlEngine,
     RecordingProjection,
     access_repository,
@@ -23,6 +28,10 @@ from store_projection_helpers import (
     seed_product,
     visibility_scope,
 )
+
+
+def _semantic_hash(product: StoreProduct) -> str:
+    return sha256(product_semantic_text(product).encode("utf-8")).hexdigest()
 
 
 def test_store_repository_mirrors_seed_products_to_projection() -> None:
@@ -223,7 +232,106 @@ def test_postgres_store_projection_upserts_product_and_children() -> None:
     assert "intelligence_store_assets" in sql
     assert "intelligence_store_product_acgs" in sql
     assert "intelligence_store_semantic_labels" in sql
-    assert "embedding = EXCLUDED.embedding" in sql
+    assert (
+        "embedding = COALESCE(CAST(:embedding AS vector), intelligence_store_products.embedding)"
+        in sql
+    )
+    assert "embedding = EXCLUDED.embedding" not in sql
     assert any(params.get("reference") == product.reference for params in engine.params)
     assert any("embedding" in params for params in engine.params)
     assert any(params.get("label") == "assessment" for params in engine.params)
+
+
+def _projection_with_embeddings(
+    engine: FakeSqlEngine, embeddings: FakeEmbeddingService
+) -> PostgresStoreProjection:
+    return PostgresStoreProjection(cast(Engine, engine), cast(EmbeddingService, embeddings))
+
+
+def _last_upsert_params(engine: FakeSqlEngine) -> dict[str, object]:
+    return [params for params in engine.params if "embedding_source_hash" in params][-1]
+
+
+def test_unchanged_product_skips_re_embedding() -> None:
+    product = seed_product()
+    engine = FakeSqlEngine((product,), embedded={str(product.product_id): _semantic_hash(product)})
+    embeddings = FakeEmbeddingService()
+    projection = _projection_with_embeddings(engine, embeddings)
+
+    projection.save_product(product)
+
+    assert embeddings.calls == []
+    params = _last_upsert_params(engine)
+    assert params["embedding"] is None
+    assert params["embedding_source_hash"] is None
+
+
+def test_changed_product_is_re_embedded_and_stores_new_hash() -> None:
+    product = seed_product()
+    engine = FakeSqlEngine((product,), embedded={str(product.product_id): "stale-hash"})
+    embeddings = FakeEmbeddingService()
+    projection = _projection_with_embeddings(engine, embeddings)
+
+    projection.save_product(product)
+
+    assert len(embeddings.calls) == 1
+    params = _last_upsert_params(engine)
+    assert params["embedding"] is not None
+    assert params["embedding_source_hash"] == _semantic_hash(product)
+
+
+def test_failed_embedding_does_not_overwrite_stored_vector() -> None:
+    product = seed_product()
+    engine = FakeSqlEngine((product,), embedded={str(product.product_id): "stale-hash"})
+    embeddings = FakeEmbeddingService(vector=None)
+    projection = _projection_with_embeddings(engine, embeddings)
+
+    projection.save_product(product)
+
+    # The provider was consulted (text changed) but returned nothing, so the
+    # upsert passes a NULL embedding and relies on COALESCE to keep the vector.
+    assert embeddings.calls
+    params = _last_upsert_params(engine)
+    assert params["embedding"] is None
+    assert params["embedding_source_hash"] is None
+    assert str(product.product_id) in engine.embedding_hashes
+
+
+def test_embedded_product_count_reflects_embedded_rows() -> None:
+    product = seed_product()
+    engine = FakeSqlEngine((product,), embedded={str(product.product_id): "hash"})
+    projection = PostgresStoreProjection(cast(Engine, engine))
+
+    assert projection.embedded_product_count() == 1
+
+
+def test_backfill_embeds_all_missing_products_across_batches() -> None:
+    products = InMemoryStoreRepository(access_repository()).list_products()
+    engine = FakeSqlEngine(products)
+    embeddings = FakeEmbeddingService()
+    projection = _projection_with_embeddings(engine, embeddings)
+
+    updated = projection.backfill_missing_embeddings(batch_size=1)
+
+    assert updated == len(products)
+    assert set(engine.embedding_hashes) == {str(product.product_id) for product in products}
+    embeddings.calls.clear()
+    assert projection.backfill_missing_embeddings(batch_size=1) == 0
+    assert embeddings.calls == []
+
+
+def test_backfill_stops_when_provider_unavailable() -> None:
+    products = InMemoryStoreRepository(access_repository()).list_products()
+    engine = FakeSqlEngine(products)
+    embeddings = FakeEmbeddingService(vector=None)
+    projection = _projection_with_embeddings(engine, embeddings)
+
+    assert projection.backfill_missing_embeddings() == 0
+    assert engine.embedding_hashes == {}
+
+
+def test_backfill_without_embeddings_is_noop() -> None:
+    engine = FakeSqlEngine((seed_product(),))
+    projection = PostgresStoreProjection(cast(Engine, engine))
+
+    assert projection.backfill_missing_embeddings() == 0

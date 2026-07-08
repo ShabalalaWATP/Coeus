@@ -56,11 +56,30 @@ class RecordingProjection:
         return min(len(self.products), batch_size)
 
 
+class FakeEmbeddingService:
+    """Records embed calls and returns a fixed 384-dimension retrieval vector."""
+
+    def __init__(self, vector: tuple[float, ...] | None = (0.1,) * 384) -> None:
+        self._vector = vector
+        self.calls: list[tuple[str, str]] = []
+
+    def embed(self, text: str, *, purpose: str) -> tuple[float, ...] | None:
+        self.calls.append((text, purpose))
+        return self._vector
+
+
 class FakeSqlEngine:
-    def __init__(self, products: tuple[StoreProduct, ...] = ()) -> None:
+    def __init__(
+        self,
+        products: tuple[StoreProduct, ...] = (),
+        embedded: dict[str, str | None] | None = None,
+    ) -> None:
         self.products = products
         self.statements: list[str] = []
         self.params: list[dict[str, Any]] = []
+        # Maps product_id -> stored embedding_source_hash for products that
+        # currently hold an embedding, mirroring the WHERE embedding IS NOT NULL rows.
+        self.embedding_hashes: dict[str, str | None] = dict(embedded or {})
 
     def begin(self) -> FakeConnection:
         return FakeConnection(self)
@@ -82,9 +101,29 @@ class FakeConnection:
         if params is not None:
             self._engine.params.append(params)
         if sql.startswith("SELECT count(*)"):
-            return FakeResult([{"count": len(self._engine.products)}])
+            return FakeResult([{"count": len(self._engine.embedding_hashes)}])
+        if sql.startswith("SELECT product_id, embedding_source_hash"):
+            requested = set(params.get("product_ids", []) if params else [])
+            return FakeResult(
+                [
+                    {"product_id": pid, "embedding_source_hash": stored_hash}
+                    for pid, stored_hash in self._engine.embedding_hashes.items()
+                    if pid in requested
+                ]
+            )
+        if sql.startswith("SELECT product_id") and "embedding IS NULL" in sql:
+            batch_size = int(params.get("batch_size", len(self._engine.products)) if params else 0)
+            missing = [
+                {"product_id": product.product_id}
+                for product in self._engine.products
+                if str(product.product_id) not in self._engine.embedding_hashes
+            ]
+            return FakeResult(missing[:batch_size])
         if sql.startswith("UPDATE intelligence_store_products"):
-            return FakeResult([], rowcount=len(self._engine.products))
+            return self._update_embedding(params or {})
+        if sql.startswith("INSERT INTO intelligence_store_products"):
+            self._record_upsert(params or {})
+            return FakeResult([])
         if sql.startswith("WITH scoped AS"):
             return FakeResult(
                 [
@@ -113,6 +152,20 @@ class FakeConnection:
                 [row for product in self._engine.products for row in _label_rows(product)]
             )
         return FakeResult([])
+
+    def _update_embedding(self, params: dict[str, Any]) -> FakeResult:
+        product_id = params.get("product_id")
+        if product_id is None or product_id in self._engine.embedding_hashes:
+            return FakeResult([], rowcount=0)
+        self._engine.embedding_hashes[str(product_id)] = params.get("embedding_source_hash")
+        return FakeResult([], rowcount=1)
+
+    def _record_upsert(self, params: dict[str, Any]) -> None:
+        product_id = params.get("product_id")
+        if product_id is None:
+            return
+        if params.get("embedding") is not None:
+            self._engine.embedding_hashes[str(product_id)] = params.get("embedding_source_hash")
 
 
 class FakeResult:
