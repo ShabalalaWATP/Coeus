@@ -14,11 +14,9 @@ if TYPE_CHECKING:
 
 
 class StateStore(Protocol):
-    def load(self, namespace: str) -> dict[str, Any] | None:
-        raise NotImplementedError
+    def load(self, namespace: str) -> dict[str, Any] | None: ...
 
-    def save(self, namespace: str, payload: dict[str, Any]) -> None:
-        raise NotImplementedError
+    def save(self, namespace: str, payload: dict[str, Any]) -> None: ...
 
 
 class MemoryStateStore:

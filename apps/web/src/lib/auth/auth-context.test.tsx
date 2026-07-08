@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { AuthProvider, useAuth } from "./auth-context";
@@ -118,9 +118,11 @@ test("moves an authenticated session to expired when any API call returns 401", 
   );
 
   expect(screen.getByText("authenticated")).toBeVisible();
-  await expect(apiRequestJson("/api/v1/tickets", { method: "GET" })).rejects.toBeInstanceOf(
-    ApiError,
-  );
+  await act(async () => {
+    await expect(apiRequestJson("/api/v1/tickets", { method: "GET" })).rejects.toBeInstanceOf(
+      ApiError,
+    );
+  });
 
   await waitFor(() => expect(screen.getByText("expired")).toBeVisible());
   expect(screen.getByText("No user")).toBeVisible();
@@ -148,9 +150,11 @@ test("flags the session for a forced password change on 403 password_change_requ
   );
 
   expect(screen.getByText("reset-not-required")).toBeVisible();
-  await expect(apiRequestJson("/api/v1/tickets", { method: "GET" })).rejects.toBeInstanceOf(
-    ApiError,
-  );
+  await act(async () => {
+    await expect(apiRequestJson("/api/v1/tickets", { method: "GET" })).rejects.toBeInstanceOf(
+      ApiError,
+    );
+  });
 
   await waitFor(() => expect(screen.getByText("reset-required")).toBeVisible());
   expect(screen.getByText("authenticated")).toBeVisible();

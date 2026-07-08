@@ -18,7 +18,7 @@ class OutboxEmailProvider:
 
 
 class EmailDeliveryError(RuntimeError):
-    pass
+    """Raised when an email provider cannot deliver a message."""
 
 
 class SmtpEmailProvider:

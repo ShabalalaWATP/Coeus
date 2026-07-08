@@ -11,7 +11,7 @@ from coeus.services.passwords import PasswordHasher
 
 
 class AttemptStoreFull(RuntimeError):
-    pass
+    """Raised when the bounded username attempt store cannot evict entries."""
 
 
 class SeedUserRepository:

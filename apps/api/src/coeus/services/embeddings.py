@@ -33,8 +33,7 @@ class EmbeddingProvider(Protocol):
 
 
 class ApiKeyProvider(Protocol):
-    def api_key(self) -> str | None:
-        raise NotImplementedError
+    def api_key(self) -> str | None: ...
 
 
 class EmbeddingService:
