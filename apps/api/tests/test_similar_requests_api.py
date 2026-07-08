@@ -113,7 +113,7 @@ async def test_customer_cannot_see_hidden_similar_ticket_detail() -> None:
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
         colleague = await login(client, "colleague@example.test")
-        _target_id = await submitted_ticket(
+        await submitted_ticket(
             client,
             str(colleague["csrfToken"]),
             title="Vessel movements Gulf of Finland",
