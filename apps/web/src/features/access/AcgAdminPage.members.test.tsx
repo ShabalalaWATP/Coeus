@@ -66,3 +66,28 @@ test("removes a member from the selected access control group", async () => {
     }),
   );
 });
+
+test("shows an inline error when member removal fails", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ acgs: [acg] }) })
+    .mockResolvedValueOnce({
+      ok: false,
+      status: 409,
+      json: () =>
+        Promise.resolve({
+          error: { code: "membership_required", message: "The member is required." },
+        }),
+    });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderPage();
+
+  const members = within(await screen.findByLabelText("Access group members"));
+  await userEvent.click(
+    members.getByRole("button", { name: "Remove user-bravo from Alpha Regional" }),
+  );
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("The member is required.");
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+});
