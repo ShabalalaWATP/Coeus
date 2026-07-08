@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { KeyRound, Plus, Save, UserPlus, UsersRound } from "lucide-react";
 import { useParams } from "react-router-dom";
@@ -42,6 +42,15 @@ export default function AcgAdminPage() {
     () => acgs.find((acg) => acg.id === requestedId),
     [acgs, requestedId],
   );
+  useEffect(() => {
+    if (selectedAcg === undefined) {
+      setEditName("");
+      setIsActive(true);
+      return;
+    }
+    setEditName(selectedAcg.name);
+    setIsActive(selectedAcg.isActive);
+  }, [selectedAcg]);
   const routedAcgMissing =
     acgId !== undefined && acgs.length > 0 && !routedAcgExists && selectedId === null;
   const csrfToken = session?.csrfToken ?? "";
