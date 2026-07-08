@@ -105,6 +105,9 @@ async def test_store_browse_query_does_not_match_cross_word_substrings() -> None
             environment="test",
             argon2_memory_cost=8_192,
             embedding_provider="gemini_api",
+            # Explicit None so an exported COEUS_GEMINI_API_KEY can never make
+            # this test call the real API; the provider must degrade offline.
+            gemini_api_key=None,
             persistence_provider="memory",
         )
     )
@@ -182,6 +185,9 @@ async def test_store_browse_applies_structured_filters_and_degrades_to_lexical()
             environment="test",
             argon2_memory_cost=8_192,
             embedding_provider="gemini_api",
+            # Explicit None so an exported COEUS_GEMINI_API_KEY can never make
+            # this test call the real API; the provider must degrade offline.
+            gemini_api_key=None,
             persistence_provider="memory",
         )
     )

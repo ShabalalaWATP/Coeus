@@ -54,13 +54,15 @@ def test_score_similar_requests_degrades_to_lexical_only_when_embeddings_are_una
 
 
 def test_plural_variant_duplicate_crosses_manager_similarity_threshold() -> None:
+    # Every content token differs only by plural inflection, so this match
+    # exists solely because of stem folding; it must fail if folding regresses.
     source = _ticket(
         "Sensor radar deployment",
-        question="Assess sensor and radar deployment near the port.",
+        question="Sensor and radar deployment covering port approach.",
     )
     candidate = _ticket(
-        "Sensors radars deployment",
-        question="Assess sensors and radars deployments near the ports.",
+        "Sensors radars deployments",
+        question="Sensors and radars deployments coverings ports approaches.",
     )
 
     matches = score_similar_requests(source, (candidate,), NoEmbeddingService(), 0.50)
