@@ -107,7 +107,7 @@ class ProductReleaseService:
         except Exception:
             self._store.repository.save_product(original_product)
             raise
-        self._notify_requester(requester, ticket, product)
+        self._notify_requester_best_effort(actor, requester, ticket, product)
         self._audit_log.record(
             "product_released",
             str(actor.user_id),
@@ -123,6 +123,26 @@ class ProductReleaseService:
         if product is None:
             raise AppError(409, "product_not_ingested", "No QC-approved product to release.")
         return product
+
+    def _notify_requester_best_effort(
+        self,
+        actor: UserAccount,
+        requester: UserAccount,
+        ticket: TicketRecord,
+        product: StoreProduct,
+    ) -> None:
+        try:
+            self._notify_requester(requester, ticket, product)
+        except Exception as exc:
+            self._audit_log.record(
+                "product_release_notification_failed",
+                str(actor.user_id),
+                {
+                    "ticket_id": str(ticket.ticket_id),
+                    "product_id": str(product.product_id),
+                    "error": type(exc).__name__,
+                },
+            )
 
     def _notify_requester(
         self, requester: UserAccount, ticket: TicketRecord, product: StoreProduct
