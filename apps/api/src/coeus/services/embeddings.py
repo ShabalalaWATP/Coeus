@@ -4,15 +4,12 @@ from math import sqrt
 from os import environ
 from pathlib import Path
 from re import findall
-from typing import TYPE_CHECKING, Protocol
+from typing import Protocol
 
 import httpx
 
 from coeus.core.config import Settings
 from coeus.core.logging import get_logger
-
-if TYPE_CHECKING:
-    from coeus.services.ai_models import AiModelService
 
 EMBEDDING_DIMENSIONS = 384
 GEMINI_EMBEDDING_URL = (
@@ -33,6 +30,11 @@ class EmbeddingProvider(Protocol):
 
     def embed(self, text: str) -> tuple[float, ...]:
         """Return a normalised vector for text or raise `EmbeddingUnavailable`."""
+
+
+class ApiKeyProvider(Protocol):
+    def api_key(self) -> str | None:
+        raise NotImplementedError
 
 
 class EmbeddingService:
@@ -124,7 +126,7 @@ class LocalFastEmbedProvider:
 class GeminiApiEmbeddingProvider:
     name = "gemini_api"
 
-    def __init__(self, settings: Settings, ai_models: "AiModelService") -> None:
+    def __init__(self, settings: Settings, ai_models: ApiKeyProvider) -> None:
         self._settings = settings
         self._ai_models = ai_models
 
@@ -153,7 +155,7 @@ class GeminiApiEmbeddingProvider:
         return _normalise(_coerce_vector(values))
 
 
-def build_embedding_service(settings: Settings, ai_models: "AiModelService") -> EmbeddingService:
+def build_embedding_service(settings: Settings, ai_models: ApiKeyProvider) -> EmbeddingService:
     provider: EmbeddingProvider
     if settings.embedding_provider == "local":
         provider = LocalFastEmbedProvider(settings.embedding_model_path)

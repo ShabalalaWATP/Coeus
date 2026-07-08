@@ -79,3 +79,7 @@ strict = true
 warn_return_any = true
 warn_unreachable = true
 packages = ["coeus"]
+
+[[tool.mypy.overrides]]
+module = ["fastembed"]
+ignore_missing_imports = true
