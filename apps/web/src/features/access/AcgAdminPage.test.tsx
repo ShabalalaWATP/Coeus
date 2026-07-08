@@ -171,6 +171,52 @@ test("honours the acgId route parameter when selecting a group", async () => {
   ).not.toBeInTheDocument();
 });
 
+test("initialises the edit form from a routed inactive group", async () => {
+  const bravoAcg = {
+    ...acg,
+    id: "acg-bravo",
+    code: "ACG-BRAVO",
+    name: "Bravo Collection",
+    isActive: false,
+  };
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ acgs: [acg, bravoAcg] }) })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ ...bravoAcg, name: "Bravo Reviewed" }),
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          acgs: [acg, { ...bravoAcg, name: "Bravo Reviewed" }],
+        }),
+    });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderAcgRoute("/admin/acgs/acg-bravo");
+
+  expect(await screen.findByRole("heading", { name: "Bravo Collection" })).toBeVisible();
+  const selectedGroup = within(screen.getByLabelText("Selected access group"));
+  expect(selectedGroup.getByLabelText("Name")).toHaveValue("Bravo Collection");
+  expect(selectedGroup.getByLabelText("Active")).not.toBeChecked();
+  await userEvent.clear(selectedGroup.getByLabelText("Name"));
+  await userEvent.type(selectedGroup.getByLabelText("Name"), "Bravo Reviewed");
+  await userEvent.click(selectedGroup.getByRole("button", { name: /Save/i }));
+
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    2,
+    "http://127.0.0.1:8001/api/v1/acgs/acg-bravo",
+    expect.objectContaining({
+      body: JSON.stringify({ name: "Bravo Reviewed", isActive: false }),
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": "test-csrf-token" },
+      method: "PATCH",
+    }),
+  );
+});
+
 test("notes when the requested access group does not exist", async () => {
   vi.stubGlobal(
     "fetch",
