@@ -263,12 +263,16 @@ export class ApiClient {
     });
   }
 
-  async diagnoseProductAccess(productId: string, userId: string): Promise<AccessDiagnostics> {
+  async diagnoseProductAccess(
+    productId: string,
+    userId: string,
+    csrfToken: string,
+  ): Promise<AccessDiagnostics> {
     return this.requestJson<AccessDiagnostics>(
       `/api/v1/store/products/${pathSegment(productId)}/access-diagnostics`,
       {
         body: JSON.stringify({ userId }),
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
         method: "POST",
       },
     );

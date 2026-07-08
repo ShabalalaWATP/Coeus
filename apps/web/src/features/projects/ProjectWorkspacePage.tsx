@@ -27,14 +27,21 @@ export default function ProjectWorkspacePage({ view = "overview" }: ProjectWorks
   const diagnosticProduct = project?.visibleProducts[0];
   const diagnosticProductId = diagnosticProduct?.id;
   const diagnosticUserId = session?.user.id;
+  const csrfToken = session?.csrfToken;
+  const canRequestDiagnostics =
+    session !== null &&
+    diagnosticProduct !== undefined &&
+    csrfToken !== undefined &&
+    hasPermissions(session.user, ["system:configure"]);
   const diagnosticsQuery = useQuery({
-    enabled:
-      session !== null &&
-      diagnosticProduct !== undefined &&
-      hasPermissions(session.user, ["system:configure"]),
+    enabled: canRequestDiagnostics,
     queryKey: ["product-access-diagnostics", diagnosticProductId, diagnosticUserId],
     queryFn: () =>
-      apiClient.diagnoseProductAccess(diagnosticProductId ?? "", diagnosticUserId ?? ""),
+      apiClient.diagnoseProductAccess(
+        diagnosticProductId ?? "",
+        diagnosticUserId ?? "",
+        csrfToken ?? "",
+      ),
   });
 
   return (
