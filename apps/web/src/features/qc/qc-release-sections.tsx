@@ -26,10 +26,12 @@ export function MetadataChecks({ acgId, product }: { acgId: string; product: QcP
 }
 
 export function ReleaseForm({
+  acgSelectDisabled = false,
   acgs,
   form,
   onChange,
 }: {
+  acgSelectDisabled?: boolean;
   acgs: AccessControlGroup[];
   form: QcReleaseFormState;
   onChange: (form: QcReleaseFormState) => void;
@@ -51,6 +53,7 @@ export function ReleaseForm({
         <label>
           ACG
           <select
+            disabled={acgSelectDisabled}
             onChange={(event) => onChange({ ...form, acgId: event.target.value })}
             value={form.acgId}
           >

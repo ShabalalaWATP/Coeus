@@ -5,6 +5,7 @@ import QcQueuePage from "./QcQueuePage";
 import {
   approvedProduct,
   baseProduct,
+  defaultAcgs,
   fetchByUrl,
   jsonResponse,
   renderQcRoutes,
@@ -139,6 +140,41 @@ test("keeps approval disabled until access control groups are available", async 
   await userEvent.click(screen.getByRole("button", { name: /Mark all complete/ }));
 
   expect(screen.getByRole("button", { name: /Approve and disseminate/ })).toBeDisabled();
+});
+
+test("shows a retryable error when QC access control groups cannot load", async () => {
+  let acgRequests = 0;
+  const fetchMock = vi.fn((url: string) => {
+    if (url.endsWith("/api/v1/acgs")) {
+      acgRequests += 1;
+      if (acgRequests === 1) {
+        return Promise.resolve({
+          ok: false,
+          status: 500,
+          json: () => Promise.resolve({ error: { code: "server_error", message: "Failed." } }),
+        });
+      }
+      return Promise.resolve(jsonResponse({ acgs: defaultAcgs }));
+    }
+    return fetchByUrl({})(url);
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<QcQueuePage />, "/qc/queue");
+
+  await screen.findByRole("link", { name: /TCK-0001/ });
+  expect(
+    await screen.findByText("Access groups could not be loaded. Refresh and try again."),
+  ).toBeVisible();
+  expect(screen.getByLabelText("ACG")).toBeDisabled();
+  await userEvent.click(screen.getByRole("button", { name: /Mark all complete/ }));
+  expect(screen.getByRole("button", { name: /Approve and disseminate/ })).toBeDisabled();
+
+  await userEvent.click(screen.getByRole("button", { name: "Retry access groups" }));
+
+  expect(await screen.findByRole("option", { name: "ACG-ALPHA-REGIONAL" })).toBeVisible();
+  await waitFor(() => expect(screen.getByLabelText("ACG")).not.toBeDisabled());
+  expect(screen.getByRole("button", { name: /Approve and disseminate/ })).not.toBeDisabled();
 });
 
 test("resets the checklist and release form when the selected product changes", async () => {
