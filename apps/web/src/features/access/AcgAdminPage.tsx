@@ -6,6 +6,7 @@ import { useParams } from "react-router-dom";
 import { ErrorState, LoadingState } from "../../components/ui/PageState";
 import { apiClient, type AccessControlGroup } from "../../lib/api-client/client";
 import { useAuth } from "../../lib/auth/auth-context";
+import { useActionError } from "../../lib/mutations/action-error";
 import { hasPermissions } from "../../lib/permissions/route-access";
 
 type AcgFormState = {
@@ -27,6 +28,7 @@ export default function AcgAdminPage() {
   const [editName, setEditName] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [memberUserId, setMemberUserId] = useState("");
+  const { actionError, clearActionError, failActionWith } = useActionError();
 
   const acgsQuery = useQuery({
     queryKey: ["acgs"],
@@ -65,6 +67,8 @@ export default function AcgAdminPage() {
       setSelectedId(created.id);
       await queryClient.invalidateQueries({ queryKey: ["acgs"] });
     },
+    onError: failActionWith("The access group could not be created. Try again."),
+    onMutate: clearActionError,
   });
   const updateAcg = useMutation({
     mutationFn: (acg: AccessControlGroup) =>
@@ -73,6 +77,8 @@ export default function AcgAdminPage() {
       setSelectedId(updated.id);
       await queryClient.invalidateQueries({ queryKey: ["acgs"] });
     },
+    onError: failActionWith("The access group could not be updated. Try again."),
+    onMutate: clearActionError,
   });
   const addMember = useMutation({
     mutationFn: (acg: AccessControlGroup) =>
@@ -81,6 +87,8 @@ export default function AcgAdminPage() {
       setMemberUserId("");
       await queryClient.invalidateQueries({ queryKey: ["acgs"] });
     },
+    onError: failActionWith("The member could not be added. Try again."),
+    onMutate: clearActionError,
   });
   const removeMember = useMutation({
     mutationFn: ({ acg, userId }: { acg: AccessControlGroup; userId: string }) =>
@@ -88,6 +96,8 @@ export default function AcgAdminPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["acgs"] });
     },
+    onError: failActionWith("The member could not be removed. Try again."),
+    onMutate: clearActionError,
   });
 
   function submitCreate(event: FormEvent<HTMLFormElement>) {
@@ -128,6 +138,12 @@ export default function AcgAdminPage() {
       {routedAcgMissing ? (
         <p className="workspace-alert" role="alert">
           The requested access group was not found. Showing the first available group instead.
+        </p>
+      ) : null}
+
+      {actionError ? (
+        <p className="auth-error" role="alert">
+          {actionError}
         </p>
       ) : null}
 
