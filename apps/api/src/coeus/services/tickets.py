@@ -341,5 +341,4 @@ class ConversationService:
                 timeline(ticket_id, actor.user_id, "ticket_created", "Draft intake started."),
             ),
         )
-        self._repository.save(ticket)
         return ticket
