@@ -25,7 +25,7 @@ export default function AnalystWorkbenchPage() {
   const requestedTask = tasks.find((task) => task.ticketId === taskId);
   const requestedMissing =
     taskId !== undefined && requestedTask === undefined && !tasksQuery.isFetching;
-  const selectedTask = requestedTask ?? tasks[0];
+  const selectedTask = requestedMissing ? undefined : (requestedTask ?? tasks[0]);
   const updateTask = (task: AnalystTask) => {
     queryClient.setQueryData<AnalystTaskList>(["analyst-tasks"], (current) => ({
       tasks: replaceTask(current?.tasks ?? [], task),
