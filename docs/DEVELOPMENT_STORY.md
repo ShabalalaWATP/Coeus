@@ -279,3 +279,17 @@ Sprint 1 to Sprint 13 entries live in
   and `ProjectPlanUpdate` missing from the persistence codec allowlist.
 - Checks: pytest (269 tests, 95.9% coverage), Vitest (280 tests, 99% lines),
   mypy, Ruff, tsc, ESLint, Prettier and the 350-line limit all pass.
+
+## 2026-07-08 Architecture documentation
+
+- Added a grounded architecture guide split by responsibility across three
+  cross-linked documents with ten validated Mermaid diagrams:
+  `docs/ARCHITECTURE.md` (system context, layered application, data and
+  persistence, security and need-to-know), `docs/ARCHITECTURE_WORKFLOW.md` (the
+  request journey state machine, the end-to-end sequence, the AI agents and
+  hybrid RFI search internals) and `docs/ARCHITECTURE_DEPLOYMENT.md` (local
+  runtime topology, the future Google Cloud Platform reference design, the
+  local-vs-GCP provider matrix and scaling notes).
+- Linked the guides from the root README and the documentation index, and
+  documented the embedding provider settings, the optional `embeddings` extra
+  and the backfill command in `docs/SETUP.md`.
