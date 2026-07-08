@@ -2,12 +2,26 @@ from uuid import uuid4
 
 from coeus.domain.enums import TicketState
 from coeus.domain.tickets import IntakeDetails, TicketRecord
+from coeus.services.rfi_ranking import lexical_score_for_product, lexical_text_score
 from coeus.services.similar_request_scoring import score_similar_requests
+from coeus.services.store_semantics import product_semantic_text
+from store_projection_helpers import seed_product
 
 
 class NoEmbeddingService:
     def embed(self, _text: str, *, purpose: str) -> None:
         return None
+
+
+def test_similar_and_rfi_paths_share_one_lexical_scorer() -> None:
+    # Part B (similar requests) must score equivalent text identically to Part A
+    # (RFI product ranking); both now route through the shared formula, so the
+    # floor stays calibrated and results cannot drift apart.
+    product = seed_product()
+    document = product_semantic_text(product)
+    query = "Baltic regional stability assessment ports"
+
+    assert lexical_score_for_product(product, query) == lexical_text_score(query, document)
 
 
 def test_score_similar_requests_returns_empty_when_no_open_candidates() -> None:

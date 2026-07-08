@@ -1,8 +1,7 @@
 from dataclasses import replace
 
-from coeus.domain.store import StoreHybridCandidate, StoreSearchHit
+from coeus.domain.store import StoreHybridCandidate, StoreProduct, StoreSearchHit
 from coeus.domain.tickets import IntakeDetails
-from coeus.services.embeddings import MockEmbeddingProvider, cosine_similarity
 from coeus.services.rfi_ranking import (
     LEXICAL_SCORE_FLOOR,
     lexical_score_for_product,
@@ -10,14 +9,12 @@ from coeus.services.rfi_ranking import (
     rank_hybrid_rfi_candidates,
     rank_rfi_hits,
 )
-from coeus.services.store_semantics import product_semantic_text
 from store_projection_helpers import seed_product
 
 
-def test_mock_semantic_leg_finds_different_vocabulary_when_lexical_does_not() -> None:
-    provider = MockEmbeddingProvider()
+def _vessel_product() -> StoreProduct:
     product = seed_product()
-    product = replace(
+    return replace(
         product,
         metadata=replace(
             product.metadata,
@@ -28,6 +25,13 @@ def test_mock_semantic_leg_finds_different_vocabulary_when_lexical_does_not() ->
             semantic_labels=frozenset(),
         ),
     )
+
+
+def test_strong_vector_score_surfaces_lexically_disjoint_product() -> None:
+    # Mechanism test: given a real provider that judges these two texts close
+    # (a vector score no lexical overlap could earn), the fusion and threshold
+    # logic must still promote the product to an offer with a vector reason.
+    product = _vessel_product()
     intake = IntakeDetails(
         title="Boat traffic near St Petersburg",
         operational_question="What boat traffic is near St Petersburg?",
@@ -35,11 +39,10 @@ def test_mock_semantic_leg_finds_different_vocabulary_when_lexical_does_not() ->
         required_output_format="traffic picture",
     )
     query = query_text(intake)
-    score = cosine_similarity(provider.embed(query), provider.embed(product_semantic_text(product)))
 
     lexical_offers = rank_rfi_hits((StoreSearchHit(product, 0.0, ()),), intake)
     semantic_offers = rank_hybrid_rfi_candidates(
-        (StoreHybridCandidate(product=product, vector_rank=1, vector_score=score),),
+        (StoreHybridCandidate(product=product, vector_rank=1, vector_score=0.9),),
         intake,
     )
 
@@ -49,6 +52,34 @@ def test_mock_semantic_leg_finds_different_vocabulary_when_lexical_does_not() ->
     assert any(
         reason.startswith("vector-similarity:") for reason in semantic_offers[0].match_reasons
     )
+
+
+def test_lexical_only_candidate_emits_retrieval_reason() -> None:
+    # A candidate flagged lexical-only (no usable semantic leg) still produces an
+    # offer, tagged so the caller can see retrieval degraded to lexical ranking.
+    product = _vessel_product()
+    intake = IntakeDetails(
+        title="Vessel movements Gulf of Finland",
+        operational_question="Report vessel movements in the Gulf of Finland.",
+        area_or_region="Gulf of Finland",
+    )
+    score = lexical_score_for_product(product, query_text(intake))
+
+    offers = rank_hybrid_rfi_candidates(
+        (
+            StoreHybridCandidate(
+                product=product,
+                lexical_rank=1,
+                lexical_score=score,
+                lexical_only=True,
+            ),
+        ),
+        intake,
+    )
+
+    assert score >= LEXICAL_SCORE_FLOOR
+    assert offers
+    assert "retrieval:lexical-only" in offers[0].match_reasons
 
 
 def test_synthetic_boilerplate_terms_do_not_create_lexical_offer() -> None:

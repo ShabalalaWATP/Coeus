@@ -231,6 +231,8 @@ lexical AS (
     FROM scoped
     WHERE CAST(:query AS text) IS NOT NULL
       AND search_document @@ websearch_to_tsquery('english', CAST(:query AS text))
+    ORDER BY ts_rank_cd(search_document, websearch_to_tsquery('english',
+        CAST(:query AS text))) DESC, title ASC
     LIMIT :leg_limit
 ),
 semantic AS (

@@ -1,8 +1,12 @@
+from dataclasses import replace
 from uuid import uuid4
 
+from coeus.domain.access import ProductStatus
 from coeus.domain.enums import TicketState
 from coeus.domain.events import DomainEvent
 from coeus.domain.state_machine import can_transition
+from coeus.domain.store import StoreVisibilityScope, product_in_scope
+from store_projection_helpers import seed_product
 
 
 def test_ticket_state_machine_allows_defined_transition() -> None:
@@ -17,6 +21,51 @@ def test_no_match_state_only_exits_to_route_assessment_or_cancelled() -> None:
 
 def test_ticket_state_machine_denies_undefined_transition() -> None:
     assert can_transition(TicketState.CANCELLED, TicketState.DRAFT_INTAKE) is False
+
+
+def _published(product: object) -> object:
+    base = seed_product()
+    metadata = replace(base.metadata, status=ProductStatus.PUBLISHED, classification_level=2)
+    return replace(base, metadata=metadata)
+
+
+def test_product_in_scope_allows_permitted_product() -> None:
+    product = _published(None)
+    scope = StoreVisibilityScope(
+        acg_ids=product.metadata.acg_ids, clearance_level=3, include_drafts=False
+    )
+
+    assert product_in_scope(product, scope) is True
+
+
+def test_product_in_scope_blocks_over_clearance_and_foreign_acg_and_archived() -> None:
+    product = _published(None)
+    over_clearance = StoreVisibilityScope(
+        acg_ids=product.metadata.acg_ids, clearance_level=1, include_drafts=False
+    )
+    foreign_acg = StoreVisibilityScope(
+        acg_ids=frozenset({uuid4()}), clearance_level=5, include_drafts=False
+    )
+    full_scope = StoreVisibilityScope(
+        acg_ids=product.metadata.acg_ids, clearance_level=5, include_drafts=True
+    )
+    archived = replace(product, metadata=replace(product.metadata, status=ProductStatus.ARCHIVED))
+
+    assert product_in_scope(product, over_clearance) is False
+    assert product_in_scope(product, foreign_acg) is False
+    assert product_in_scope(archived, full_scope) is False
+
+
+def test_product_in_scope_hides_drafts_unless_included() -> None:
+    product = _published(None)
+    draft = replace(product, metadata=replace(product.metadata, status=ProductStatus.DRAFT))
+    without_drafts = StoreVisibilityScope(
+        acg_ids=product.metadata.acg_ids, clearance_level=5, include_drafts=False
+    )
+    with_drafts = replace(without_drafts, include_drafts=True)
+
+    assert product_in_scope(draft, without_drafts) is False
+    assert product_in_scope(draft, with_drafts) is True
 
 
 def test_domain_event_factory_sets_event_fields() -> None:

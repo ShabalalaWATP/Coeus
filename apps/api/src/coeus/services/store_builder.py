@@ -26,7 +26,7 @@ def build_store_services(
         if isinstance(state_store, PostgresStateStore)
         else None
     )
-    repository = InMemoryStoreRepository(access_repository, state_store, projection)
+    repository = InMemoryStoreRepository(access_repository, state_store, projection, embeddings)
     policy = StoreProductAccessPolicy(access_repository)
     details = StoreDetailService(repository, policy, audit_log)
     return StoreServices(

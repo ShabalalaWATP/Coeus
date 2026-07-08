@@ -107,7 +107,8 @@ def query_text(intake: IntakeDetails) -> str:
     )
 
 
-def _tokens(text: str) -> tuple[str, ...]:
+def tokenize(text: str) -> tuple[str, ...]:
+    """Canonical retrieval tokeniser shared by every lexical scoring path."""
     return tuple(
         dict.fromkeys(
             token
@@ -117,14 +118,39 @@ def _tokens(text: str) -> tuple[str, ...]:
     )
 
 
+def token_overlap(left: str, right: str) -> bool:
+    return bool(set(tokenize(left)).intersection(tokenize(right)))
+
+
+def _tokens(text: str) -> tuple[str, ...]:
+    return tokenize(text)
+
+
+def _matched_tokens(query_tokens: tuple[str, ...], document: str) -> tuple[str, ...]:
+    document_text = document.casefold()
+    return tuple(token for token in query_tokens if token in document_text)
+
+
+def lexical_text_score(query: str, document: str) -> float:
+    """Fraction of distinct query tokens present in ``document``.
+
+    This is the single lexical scoring formula, calibrated against
+    ``LEXICAL_SCORE_FLOOR``. Both RFI product ranking and similar-request
+    ranking route through it so equivalent text scores identically.
+    """
+    query_tokens = tokenize(query)
+    if not query_tokens:
+        return 0.0
+    matches = _matched_tokens(query_tokens, document)
+    return min(len(matches) / len(query_tokens), 1.0)
+
+
 def _product_text(product: StoreProduct) -> str:
     return product_semantic_text(product)
 
 
 def lexical_score_for_product(product: StoreProduct, query: str) -> float:
-    query_tokens = _tokens(query)
-    score, _reasons = _full_text_score(product, query_tokens)
-    return score
+    return lexical_text_score(query, _product_text(product))
 
 
 def _full_text_score(
@@ -133,9 +159,8 @@ def _full_text_score(
 ) -> tuple[float, tuple[str, ...]]:
     if not query_tokens:
         return 0.0, ()
-    product_text = _product_text(product).casefold()
-    matches = tuple(token for token in query_tokens if token in product_text)
-    score = len(matches) / max(len(query_tokens), 1)
+    matches = _matched_tokens(query_tokens, _product_text(product))
+    score = len(matches) / len(query_tokens)
     return min(score, 1.0), tuple(f"full-text:{token}" for token in matches)
 
 
@@ -156,10 +181,10 @@ def _metadata_score(product: StoreProduct, intake: IntakeDetails) -> tuple[float
     metadata = product.metadata
     reasons: list[str] = []
     score = 0.0
-    if intake.area_or_region and _token_overlap(intake.area_or_region, metadata.area_or_region):
+    if intake.area_or_region and token_overlap(intake.area_or_region, metadata.area_or_region):
         score += 0.04
         reasons.append("metadata:region")
-    if intake.required_output_format and _token_overlap(
+    if intake.required_output_format and token_overlap(
         intake.required_output_format,
         metadata.product_type,
     ):
@@ -171,10 +196,6 @@ def _metadata_score(product: StoreProduct, intake: IntakeDetails) -> tuple[float
 def _semantic_label_score(product: StoreProduct, query: str) -> tuple[float, tuple[str, ...]]:
     reasons = semantic_label_reasons(product, query)
     return min(0.04, len(reasons) * 0.02), reasons
-
-
-def _token_overlap(left: str, right: str) -> bool:
-    return bool(set(_tokens(left)).intersection(_tokens(right)))
 
 
 def _available_legs(candidates: tuple[StoreHybridCandidate, ...]) -> int:
