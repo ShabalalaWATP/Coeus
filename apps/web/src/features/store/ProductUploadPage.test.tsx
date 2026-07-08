@@ -155,6 +155,47 @@ test("shows a generic error when metadata suggestions fail without a body", asyn
   ).toBeVisible();
 });
 
+test("shows a retryable error when visible ACGs cannot be loaded", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ error: { code: "server_error", message: "Failed." } }),
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          acgs: [
+            {
+              id: "acg-alpha",
+              code: "ACG-ALPHA-REGIONAL",
+              name: "Alpha Regional",
+              description: "Mock",
+              ownerUserId: null,
+              isActive: true,
+              memberUserIds: [],
+            },
+          ],
+        }),
+    });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<ProductUploadPage />, "/store/upload");
+
+  expect(
+    await screen.findByText("Access groups could not be loaded. Refresh and try again."),
+  ).toBeVisible();
+  expect(screen.getByLabelText("ACG")).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Register product" })).toBeDisabled();
+
+  await userEvent.click(screen.getByRole("button", { name: "Retry access groups" }));
+
+  expect(await screen.findByRole("option", { name: "ACG-ALPHA-REGIONAL" })).toBeVisible();
+  expect(screen.getByRole("button", { name: "Register product" })).not.toBeDisabled();
+});
+
 test("registers geographic products with the first visible ACG when none is selected", async () => {
   const fetchMock = vi
     .fn()

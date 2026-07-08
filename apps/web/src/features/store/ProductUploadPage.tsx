@@ -36,7 +36,11 @@ export default function ProductUploadPage() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState(initialForm);
   const [assetFile, setAssetFile] = useState<File | null>(null);
-  const acgsQuery = useQuery({ queryKey: ["acgs"], queryFn: () => apiClient.listAcgs() });
+  const acgsQuery = useQuery({
+    queryKey: ["acgs"],
+    queryFn: () => apiClient.listAcgs(),
+    retry: false,
+  });
   const csrfToken = session?.csrfToken ?? "";
   const { actionError, clearActionError, failActionWith } = useActionError();
   const createMutation = useMutation({
@@ -157,7 +161,12 @@ export default function ProductUploadPage() {
           </label>
           <label>
             ACG
-            <select name="acgId" onChange={handleChange(setForm)} value={form.acgId}>
+            <select
+              disabled={acgsQuery.isLoading || acgsQuery.isError}
+              name="acgId"
+              onChange={handleChange(setForm)}
+              value={form.acgId}
+            >
               <option value="">Select visible ACG</option>
               {(acgsQuery.data ?? []).map((acg) => (
                 <option key={acg.id} value={acg.id}>
@@ -202,6 +211,14 @@ export default function ProductUploadPage() {
             <input name="sha256" onChange={handleChange(setForm)} value={form.sha256} />
           </label>
         </section>
+        {acgsQuery.isError ? (
+          <div className="workspace-alert" role="alert">
+            <span>Access groups could not be loaded. Refresh and try again.</span>
+            <button onClick={() => void acgsQuery.refetch()} type="button">
+              Retry access groups
+            </button>
+          </div>
+        ) : null}
         <div className="store-actions">
           <button
             disabled={suggestMutation.isPending}
@@ -211,7 +228,10 @@ export default function ProductUploadPage() {
             <Lightbulb aria-hidden="true" size={18} />
             Suggest metadata
           </button>
-          <button disabled={createMutation.isPending} type="submit">
+          <button
+            disabled={createMutation.isPending || acgsQuery.isLoading || acgsQuery.isError}
+            type="submit"
+          >
             <Upload aria-hidden="true" size={18} />
             Register product
           </button>
