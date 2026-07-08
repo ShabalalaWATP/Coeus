@@ -151,7 +151,8 @@ class PostgresStoreProjection:
             return tuple(UUID(str(row["product_id"])) for row in result.mappings())
 
     def _backfill_product(self, connection: Connection, product: StoreProduct) -> bool:
-        assert self._embeddings is not None
+        if self._embeddings is None:
+            raise RuntimeError("embedding provider is required for store backfill")
         semantic_text = product_semantic_text(product)
         embedding = self._embeddings.embed(semantic_text, purpose="store-backfill")
         if embedding is None:
