@@ -150,11 +150,15 @@ class AuthService:
             password_reset_required=False,
         )
         self._users.save(updated)
-        # Invalidate every session for this user, then issue a fresh one for
-        # the caller so a stolen pre-change session cannot survive the change.
-        self._sessions.delete_for_user(user.user_id)
-        self._login_attempts.reset(user.username)
-        session_token, session = self._create_session(updated)
+        try:
+            # Invalidate every session for this user, then issue a fresh one for
+            # the caller so a stolen pre-change session cannot survive the change.
+            self._sessions.delete_for_user(user.user_id)
+            self._login_attempts.reset(user.username)
+            session_token, session = self._create_session(updated)
+        except Exception:
+            self._users.save(user)
+            raise
         self._audit_log.record("password_changed", str(user.user_id))
         from coeus.domain.rbac import default_route_for_roles
 

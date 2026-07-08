@@ -48,7 +48,7 @@ class UserAdminService:
             raise AppError(422, "roles_required", "At least one role is required.")
         user = self._target(actor, user_id)
         updated = replace(user, roles=roles, permissions=permissions_for_roles(roles))
-        self._apply(updated)
+        self._apply(user, updated)
         self._audit_log.record(
             "user_roles_changed",
             str(actor.user_id),
@@ -62,7 +62,7 @@ class UserAdminService:
             raise AppError(422, "clearance_invalid", "Clearance must be between 1 and 5.")
         user = self._target(actor, user_id)
         updated = replace(user, clearance_level=clearance)
-        self._apply(updated)
+        self._apply(user, updated)
         self._audit_log.record(
             "user_clearance_changed",
             str(actor.user_id),
@@ -74,7 +74,7 @@ class UserAdminService:
         self._require(actor, Permission.USER_DISABLE)
         user = self._target(actor, user_id)
         updated = replace(user, is_active=is_active)
-        self._apply(updated)
+        self._apply(user, updated)
         self._audit_log.record(
             "user_enabled" if is_active else "user_disabled",
             str(actor.user_id),
@@ -92,7 +92,7 @@ class UserAdminService:
             # A temporary credential must be rotated by the user at next login.
             password_reset_required=True,
         )
-        self._apply(updated)
+        self._apply(user, updated)
         self._login_attempts.reset(user.username)
         self._audit_log.record(
             "user_credential_reset",
@@ -113,10 +113,14 @@ class UserAdminService:
             raise AppError(404, "user_not_found", "User was not found.")
         return user
 
-    def _apply(self, user: UserAccount) -> None:
-        self._users.save(user)
+    def _apply(self, original: UserAccount, updated: UserAccount) -> None:
+        self._users.save(updated)
         # Privilege or status changes must not outlive existing sessions.
-        self._sessions.delete_for_user(user.user_id)
+        try:
+            self._sessions.delete_for_user(updated.user_id)
+        except Exception:
+            self._users.save(original)
+            raise
 
     @staticmethod
     def _require(actor: UserAccount, permission: Permission) -> None:
