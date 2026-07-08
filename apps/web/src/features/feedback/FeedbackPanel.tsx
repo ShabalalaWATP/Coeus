@@ -28,6 +28,7 @@ export function FeedbackPanel({ csrfToken }: FeedbackPanelProps) {
     queryFn: listFeedbackRequests,
     enabled: canSubmitFeedback,
     placeholderData: EMPTY_FEEDBACK,
+    retry: false,
   });
   const requests = feedbackQuery.data ?? EMPTY_FEEDBACK;
   const pendingRequest = requests.find((request) => request.status === "requested");
@@ -66,7 +67,15 @@ export function FeedbackPanel({ csrfToken }: FeedbackPanelProps) {
         <Star aria-hidden="true" size={20} />
         <h2 id="feedback-title">Feedback</h2>
       </div>
-      {requests.length === 0 ? <p>No feedback requests yet.</p> : null}
+      {feedbackQuery.isError ? (
+        <div className="workspace-alert" role="alert">
+          <span>Feedback requests could not be loaded.</span>
+          <button onClick={() => void feedbackQuery.refetch()} type="button">
+            Retry feedback
+          </button>
+        </div>
+      ) : null}
+      {!feedbackQuery.isError && requests.length === 0 ? <p>No feedback requests yet.</p> : null}
       <div className="feedback-list" aria-label="Feedback requests">
         {requests.map((request) => (
           <article className="feedback-row" key={request.id}>

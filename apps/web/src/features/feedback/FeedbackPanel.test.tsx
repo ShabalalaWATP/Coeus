@@ -119,6 +119,31 @@ test("renders empty feedback state for permitted users", async () => {
   expect(screen.queryByRole("button", { name: /Submit feedback/ })).not.toBeInTheDocument();
 });
 
+test("shows a retryable error when feedback requests cannot load", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ error: { code: "server_error", message: "Failed." } }),
+    })
+    .mockResolvedValueOnce(jsonResponse({ requests: [request] }));
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(
+    <FeedbackPanel csrfToken="test-csrf-token" />,
+    "/app/requests",
+    feedbackSession,
+  );
+
+  expect(await screen.findByText("Feedback requests could not be loaded.")).toBeVisible();
+  expect(screen.queryByText("No feedback requests yet.")).not.toBeInTheDocument();
+
+  await userEvent.click(screen.getByRole("button", { name: "Retry feedback" }));
+
+  expect(await screen.findByText("Arctic feedback product")).toBeVisible();
+});
+
 test("renders submitted feedback without the submission form", async () => {
   vi.stubGlobal(
     "fetch",
