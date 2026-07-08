@@ -96,6 +96,8 @@ export default function ProductUploadPage() {
       ),
     onSuccess: (suggestion) =>
       setForm((current) => ({ ...current, tags: suggestion.tags.join(", ") })),
+    onError: failActionWith("Metadata suggestions could not be generated. Try again."),
+    onMutate: clearActionError,
   });
   const created = createMutation.data;
 
@@ -201,7 +203,11 @@ export default function ProductUploadPage() {
           </label>
         </section>
         <div className="store-actions">
-          <button onClick={() => suggestMutation.mutate()} type="button">
+          <button
+            disabled={suggestMutation.isPending}
+            onClick={() => suggestMutation.mutate()}
+            type="button"
+          >
             <Lightbulb aria-hidden="true" size={18} />
             Suggest metadata
           </button>
