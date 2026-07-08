@@ -280,3 +280,25 @@ test("renders a QC queue error state", async () => {
   ).toBeVisible();
   await userEvent.click(screen.getByRole("button", { name: "Retry" }));
 });
+
+test("does not show a missing-product notice when a direct QC link fails to load", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ error: { code: "server_error", message: "Failed." } }),
+    }),
+  );
+
+  renderQcRoutes("/qc/products/ticket-1");
+
+  expect(
+    await screen.findByText("Unable to load data", undefined, { timeout: 5000 }),
+  ).toBeVisible();
+  expect(
+    screen.queryByText("The requested product was not found or is no longer in the QC queue.", {
+      exact: false,
+    }),
+  ).not.toBeInTheDocument();
+});

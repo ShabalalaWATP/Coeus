@@ -54,7 +54,10 @@ export default function QcQueuePage() {
   const routeProductMissingFromQueue =
     productId !== undefined && products.every((product) => product.ticketId !== productId);
   const requestedMissing =
-    productId !== undefined && detailQuery.isError && routeProductMissingFromQueue;
+    productId !== undefined &&
+    detailQuery.isError &&
+    routeProductMissingFromQueue &&
+    !queueQuery.isError;
   const requestedPending =
     productId !== undefined && detailQuery.isLoading && routeProductMissingFromQueue;
   const selectedProduct = useMemo(() => {
