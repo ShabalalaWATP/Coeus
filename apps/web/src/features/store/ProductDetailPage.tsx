@@ -35,15 +35,17 @@ export default function ProductDetailPage() {
       breakGlassStoreProduct(productId ?? "", reason, session?.csrfToken ?? ""),
     onSuccess: (_product, reason) => setBreakGlassReason(reason),
   });
+  const hasBreakGlassProduct = breakGlassMutation.data !== undefined && breakGlassReason !== null;
+  const canRequestAssetAccess = canDownload || hasBreakGlassProduct;
   const accessQuery = useQuery({
     enabled:
       productId !== undefined &&
       assetId !== undefined &&
-      (productQuery.data !== undefined ||
-        (breakGlassMutation.data !== undefined && breakGlassReason !== null)),
+      canRequestAssetAccess &&
+      (productQuery.data !== undefined || hasBreakGlassProduct),
     queryKey: ["store-asset-access", productId, assetId],
     queryFn: () =>
-      breakGlassMutation.data !== undefined && breakGlassReason !== null
+      hasBreakGlassProduct
         ? breakGlassAssetAccess(
             productId ?? "",
             assetId ?? "",
@@ -210,7 +212,7 @@ export default function ProductDetailPage() {
               );
             })}
           </div>
-          {assetId !== undefined ? (
+          {assetId !== undefined && canRequestAssetAccess ? (
             <AssetGrant
               assetId={assetId}
               assetName={

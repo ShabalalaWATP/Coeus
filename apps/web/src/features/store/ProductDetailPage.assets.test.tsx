@@ -107,6 +107,35 @@ test("renders assets without links for users who cannot download", async () => {
   expect(screen.queryByRole("link", { name: /regional-brief/ })).not.toBeInTheDocument();
 });
 
+test("does not request asset access from direct URLs without download permission", async () => {
+  const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(product) });
+  vi.stubGlobal("fetch", fetchMock);
+  const session = {
+    ...previewSession,
+    user: {
+      ...previewSession.user,
+      permissions: previewSession.user.permissions.filter(
+        (permission) => permission !== "product:download",
+      ),
+    },
+  };
+
+  renderWithProviders(
+    <ProductDetailPage />,
+    "/store/products/product-regional/assets/asset-brief",
+    session,
+  );
+
+  expect(await screen.findByText("regional-brief.pdf")).toBeVisible();
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+  expect(fetchMock).toHaveBeenCalledWith(
+    "http://127.0.0.1:8001/api/v1/store/products/product-regional",
+    { credentials: "include", method: "GET" },
+  );
+  expect(screen.queryByText("Preparing controlled access")).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Download asset" })).not.toBeInTheDocument();
+});
+
 test("keeps the originating workspace when opening an asset", async () => {
   vi.stubGlobal(
     "fetch",
