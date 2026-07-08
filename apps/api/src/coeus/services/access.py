@@ -61,11 +61,15 @@ class AccessControlGroupService:
             is_active=True,
         )
         self._repository.save_acg(acg)
-        self._audit_log.record(
-            "acg_created",
-            str(actor.user_id),
-            {"acg_id": str(acg.acg_id), "code": acg.code},
-        )
+        try:
+            self._audit_log.record(
+                "acg_created",
+                str(actor.user_id),
+                {"acg_id": str(acg.acg_id), "code": acg.code},
+            )
+        except Exception:
+            self._repository.delete_acg(acg.acg_id)
+            raise
         return acg
 
     def update_acg(
@@ -87,11 +91,15 @@ class AccessControlGroupService:
             is_active=is_active if is_active is not None else acg.is_active,
         )
         self._repository.save_acg(updated)
-        self._audit_log.record(
-            "acg_updated",
-            str(actor.user_id),
-            {"acg_id": str(acg_id)},
-        )
+        try:
+            self._audit_log.record(
+                "acg_updated",
+                str(actor.user_id),
+                {"acg_id": str(acg_id)},
+            )
+        except Exception:
+            self._repository.save_acg(acg)
+            raise
         return updated
 
     def add_user(self, actor: UserAccount, acg_id: UUID, user_id: UUID) -> None:
@@ -102,23 +110,35 @@ class AccessControlGroupService:
         if self._repository.get_user(user_id) is None:
             raise AppError(404, "user_not_found", "User was not found.")
         self._reject_non_admin_self_membership_change(actor, user_id)
+        had_membership = acg_id in self._repository.acg_ids_for_user(user_id)
         self._repository.add_membership(acg_id, user_id)
-        self._audit_log.record(
-            "acg_membership_added",
-            str(actor.user_id),
-            {"acg_id": str(acg_id), "user_id": str(user_id)},
-        )
+        try:
+            self._audit_log.record(
+                "acg_membership_added",
+                str(actor.user_id),
+                {"acg_id": str(acg_id), "user_id": str(user_id)},
+            )
+        except Exception:
+            if not had_membership:
+                self._repository.remove_membership(acg_id, user_id)
+            raise
 
     def remove_user(self, actor: UserAccount, acg_id: UUID, user_id: UUID) -> None:
         self._require(actor, Permission.ACG_ASSIGN_USER)
         self._get_acg(acg_id)
         self._reject_non_admin_self_membership_change(actor, user_id)
+        had_membership = acg_id in self._repository.acg_ids_for_user(user_id)
         self._repository.remove_membership(acg_id, user_id)
-        self._audit_log.record(
-            "acg_membership_removed",
-            str(actor.user_id),
-            {"acg_id": str(acg_id), "user_id": str(user_id)},
-        )
+        try:
+            self._audit_log.record(
+                "acg_membership_removed",
+                str(actor.user_id),
+                {"acg_id": str(acg_id), "user_id": str(user_id)},
+            )
+        except Exception:
+            if had_membership:
+                self._repository.add_membership(acg_id, user_id)
+            raise
 
     def list_member_ids(self, acg_id: UUID) -> tuple[UUID, ...]:
         self._get_acg(acg_id)

@@ -70,6 +70,11 @@ class SeedAccessRepository:
         self._acgs[acg.acg_id] = acg
         self._persist()
 
+    def delete_acg(self, acg_id: UUID) -> None:
+        self._acgs.pop(acg_id, None)
+        self._memberships = {item for item in self._memberships if item.acg_id != acg_id}
+        self._persist()
+
     def add_membership(self, acg_id: UUID, user_id: UUID) -> None:
         self._memberships.add(AccessControlGroupMembership(acg_id=acg_id, user_id=user_id))
         self._persist()
