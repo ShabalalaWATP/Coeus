@@ -47,21 +47,19 @@ afterEach(() => {
 });
 
 test("renders a visible project workspace with filtered products", async () => {
-  vi.stubGlobal(
-    "fetch",
-    vi
-      .fn()
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ projects: [project] }) })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            allowed: true,
-            reason: "Access granted",
-            checks: [{ name: "acg_membership", passed: true, reason: "Shared ACG" }],
-          }),
-      }),
-  );
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ projects: [project] }) })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          allowed: true,
+          reason: "Access granted",
+          checks: [{ name: "acg_membership", passed: true, reason: "Shared ACG" }],
+        }),
+    });
+  vi.stubGlobal("fetch", fetchMock);
 
   renderWithProviders(<ProjectWorkspacePage />, "/projects/project-northstar");
 
@@ -77,6 +75,15 @@ test("renders a visible project workspace with filtered products", async () => {
   );
   expect(await screen.findByRole("heading", { name: "Access Diagnostics" })).toBeVisible();
   expect(screen.getByText("Shared ACG")).toBeVisible();
+  expect(fetchMock).toHaveBeenLastCalledWith(
+    "http://127.0.0.1:8001/api/v1/store/products/product-alpha/access-diagnostics",
+    {
+      body: JSON.stringify({ userId: "preview-user" }),
+      credentials: "include",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": "test-csrf-token" },
+      method: "POST",
+    },
+  );
 });
 
 test("lists the user's projects as a picker with the active project marked", async () => {

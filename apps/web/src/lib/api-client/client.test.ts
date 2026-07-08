@@ -216,9 +216,9 @@ test("lists project workspaces and requests access diagnostics", async () => {
   const client = new ApiClient("http://api.test");
   await expect(client.listProjects()).resolves.toEqual([project]);
   await expect(client.getProject("project-1")).resolves.toMatchObject({ name: "Project One" });
-  await expect(client.diagnoseProductAccess("product-1", "user-1")).resolves.toMatchObject({
-    allowed: false,
-  });
+  await expect(
+    client.diagnoseProductAccess("product-1", "user-1", "csrf-token"),
+  ).resolves.toMatchObject({ allowed: false });
 
   expect(fetchMock).toHaveBeenNthCalledWith(1, "http://api.test/api/v1/projects", {
     credentials: "include",
@@ -234,7 +234,7 @@ test("lists project workspaces and requests access diagnostics", async () => {
     {
       body: JSON.stringify({ userId: "user-1" }),
       credentials: "include",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": "csrf-token" },
       method: "POST",
     },
   );
