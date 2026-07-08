@@ -68,14 +68,24 @@ def complete_agent_run(
 
 
 def accepted_metric(ticket: TicketRecord, product_id: UUID) -> RfiSearchMetrics:
-    return replace(ticket.search_metrics[-1], accepted_product_id=product_id)
+    return replace(_latest_metric(ticket), accepted_product_id=product_id)
 
 
 def rejected_metric(ticket: TicketRecord, offers: tuple[ProductOffer, ...]) -> RfiSearchMetrics:
     return replace(
-        ticket.search_metrics[-1],
+        _latest_metric(ticket),
         rejected_count=sum(offer.status == ProductOfferStatus.REJECTED for offer in offers),
     )
+
+
+def _latest_metric(ticket: TicketRecord) -> RfiSearchMetrics:
+    if not ticket.search_metrics:
+        raise AppError(
+            409,
+            "search_metrics_missing",
+            "Search results are unavailable. Run the search again.",
+        )
+    return ticket.search_metrics[-1]
 
 
 def timeline(

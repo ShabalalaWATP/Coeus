@@ -137,6 +137,39 @@ async def test_accepting_product_offer_closes_ticket_and_audits() -> None:
 
 
 @pytest.mark.asyncio
+async def test_offer_decisions_return_conflict_when_search_metrics_are_missing() -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        user = await login(client, "user@example.test")
+        ticket_id = await submitted_ticket(client, str(user["csrfToken"]))
+        run = await client.post(
+            f"/api/v1/rfi-search/{ticket_id}/run",
+            headers={"X-CSRF-Token": str(user["csrfToken"])},
+        )
+        product_id = run.json()["offers"][0]["productId"]
+        requester = app.state.access_services.repository.get_user_by_username("user@example.test")
+        assert requester is not None
+        ticket = app.state.ticket_services.tickets.get_visible_ticket(requester, UUID(ticket_id))
+        app.state.ticket_services.tickets.save_system_update(replace(ticket, search_metrics=()))
+        accepted = await client.post(
+            f"/api/v1/rfi-search/{ticket_id}/offers/{product_id}/accept",
+            headers={"X-CSRF-Token": str(user["csrfToken"])},
+        )
+        rejected = await client.post(
+            f"/api/v1/rfi-search/{ticket_id}/offers/{product_id}/reject",
+            headers={"X-CSRF-Token": str(user["csrfToken"])},
+            json={"reason": "Need fresher reporting."},
+        )
+
+    assert accepted.status_code == 409
+    assert accepted.json()["error"]["code"] == "search_metrics_missing"
+    assert rejected.status_code == 409
+    assert rejected.json()["error"]["code"] == "search_metrics_missing"
+
+
+@pytest.mark.asyncio
 async def test_rejecting_last_product_offer_routes_to_assessment() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     async with AsyncClient(
