@@ -62,7 +62,11 @@ class ProductReleaseService:
             raise AppError(409, "invalid_ticket_state", "Ticket is not awaiting final release.")
         if not can_transition(ticket.state, TicketState.DISSEMINATION_READY):
             raise AppError(409, "invalid_ticket_state", "Ticket cannot move to that state.")
-        product = self._publishable_product(ticket)
+        original_product = self._release_product(ticket)
+        product = replace(
+            original_product,
+            metadata=replace(original_product.metadata, status=ProductStatus.PUBLISHED),
+        )
         requester = self._access.get_user(ticket.requester_user_id)
         if requester is None or not requester.is_active:
             raise AppError(409, "requester_not_active", "Requester must be active.")
@@ -73,27 +77,37 @@ class ProductReleaseService:
             ticket.ticket_id, product.product_id, requester.user_id
         )
         feedback = feedback_request(ticket.ticket_id, product.product_id, requester.user_id)
-        self._notify_requester(requester, ticket, product)
-        updated = self._tickets.tickets.save_system_update(
-            replace(
-                ticket,
-                state=TicketState.DISSEMINATION_READY,
-                disseminations=(*ticket.disseminations, dissemination_record),
-                feedback_requests=(*ticket.feedback_requests, feedback),
-                timeline=(
-                    *ticket.timeline,
-                    timeline(
-                        ticket.ticket_id, actor.user_id, "manager_released", product.reference
-                    ),
-                    timeline(
-                        ticket.ticket_id, actor.user_id, "product_disseminated", product.reference
-                    ),
-                    timeline(
-                        ticket.ticket_id, actor.user_id, "customer_notified", requester.username
+        try:
+            updated = self._tickets.tickets.save_system_update(
+                replace(
+                    ticket,
+                    state=TicketState.DISSEMINATION_READY,
+                    disseminations=(*ticket.disseminations, dissemination_record),
+                    feedback_requests=(*ticket.feedback_requests, feedback),
+                    timeline=(
+                        *ticket.timeline,
+                        timeline(
+                            ticket.ticket_id,
+                            actor.user_id,
+                            "manager_released",
+                            product.reference,
+                        ),
+                        timeline(
+                            ticket.ticket_id,
+                            actor.user_id,
+                            "product_disseminated",
+                            product.reference,
+                        ),
+                        timeline(
+                            ticket.ticket_id, actor.user_id, "customer_notified", requester.username
+                        ),
                     ),
                 ),
             )
-        )
+        except Exception:
+            self._store.repository.save_product(original_product)
+            raise
+        self._notify_requester(requester, ticket, product)
         self._audit_log.record(
             "product_released",
             str(actor.user_id),
@@ -101,18 +115,14 @@ class ProductReleaseService:
         )
         return updated
 
-    def _publishable_product(self, ticket: TicketRecord) -> StoreProduct:
+    def _release_product(self, ticket: TicketRecord) -> StoreProduct:
         if not ticket.product_index_records:
             raise AppError(409, "product_not_ingested", "No QC-approved product to release.")
         product_id = ticket.product_index_records[-1].product_id
         product = self._store.repository.get_product(product_id)
         if product is None:
             raise AppError(409, "product_not_ingested", "No QC-approved product to release.")
-        published = replace(
-            product,
-            metadata=replace(product.metadata, status=ProductStatus.PUBLISHED),
-        )
-        return published
+        return product
 
     def _notify_requester(
         self, requester: UserAccount, ticket: TicketRecord, product: StoreProduct

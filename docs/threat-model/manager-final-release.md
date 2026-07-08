@@ -18,6 +18,8 @@ release endpoints and customer notifications.
   product in memory, validates that the requester would be able to read that
   published product, then saves it. A failed visibility check leaves the product
   in draft, with no dissemination record, ticket transition or release audit.
+  If the product is published but the ticket update fails, the previous draft
+  product record is restored and requester notification is not sent.
 - Separation of duties: QC quality approval and manager release remain
   distinct actions by distinct roles, both audit logged
   (`qc_approved`, `product_released`).

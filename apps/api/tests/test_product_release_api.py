@@ -172,6 +172,49 @@ async def test_failed_release_does_not_publish_product() -> None:
 
 
 @pytest.mark.asyncio
+async def test_release_ticket_update_failure_rolls_back_published_product(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        ticket_id = await _ticket_awaiting_release(client, app)
+        ticket = app.state.ticket_services.tickets._repository.get(UUID(ticket_id))
+        assert ticket is not None
+        product_id = ticket.product_index_records[-1].product_id
+        product = app.state.store_services.repository.get_product(product_id)
+        assert product is not None
+        assert product.metadata.status == ProductStatus.DRAFT
+        manager = await login(client, "rfa.manager@example.test")
+        tickets = app.state.ticket_services.tickets
+        original = tickets.save_system_update
+
+        def fail_save(_ticket):
+            raise RuntimeError("simulated release persistence failure")
+
+        monkeypatch.setattr(tickets, "save_system_update", fail_save)
+        with pytest.raises(RuntimeError, match="simulated release persistence failure"):
+            await client.post(
+                f"/api/v1/routing/{ticket_id}/release",
+                headers={"X-CSRF-Token": str(manager["csrfToken"])},
+                json={"route": "rfa"},
+            )
+        monkeypatch.setattr(tickets, "save_system_update", original)
+
+        rolled_back = app.state.store_services.repository.get_product(product_id)
+        current_ticket = app.state.ticket_services.tickets._repository.get(UUID(ticket_id))
+        notifications = await client.get("/api/v1/notifications")
+
+    assert rolled_back is not None
+    assert rolled_back.metadata.status == ProductStatus.DRAFT
+    assert current_ticket is not None
+    assert current_ticket.state == TicketState.MANAGER_RELEASE
+    assert current_ticket.disseminations == ()
+    assert notifications.json()["unread"] == 0
+
+
+@pytest.mark.asyncio
 async def test_release_rejects_tickets_still_in_qc() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     async with AsyncClient(
