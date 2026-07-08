@@ -137,3 +137,46 @@ async def test_failed_ticket_update_rolls_back_ingested_product(
     assert orphaned_objects == []
     assert retried.status_code == 200
     assert retried.json()["state"] == "MANAGER_RELEASE"
+
+
+@pytest.mark.asyncio
+async def test_failed_indexing_rolls_back_ingested_product(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _app(tmp_path)
+    acg_id = _acg_id(app, "ACG-EU-CYBER")
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        ticket_id = await _submitted_qc_ticket(client, app, "Index rollback QC product")
+        qc_manager = await login(client, "qc.manager@example.test")
+        indexing = app.state.quality_control_service._indexing
+        original = indexing.index_product
+
+        def boom(_ticket, _product):
+            raise RuntimeError("simulated indexing failure")
+
+        monkeypatch.setattr(indexing, "index_product", boom)
+        with pytest.raises(RuntimeError, match="simulated indexing failure"):
+            await client.post(
+                f"/api/v1/qc/products/{ticket_id}/approve",
+                headers={"X-CSRF-Token": str(qc_manager["csrfToken"])},
+                json=_approval_payload(acg_id),
+            )
+        monkeypatch.setattr(indexing, "index_product", original)
+        orphaned = [
+            product
+            for product in app.state.store_services.repository.list_products()
+            if "qc-approved" in product.metadata.tags
+        ]
+        orphaned_objects = list((tmp_path / "objects" / "store" / "qc" / ticket_id).rglob("*"))
+        retried = await client.post(
+            f"/api/v1/qc/products/{ticket_id}/approve",
+            headers={"X-CSRF-Token": str(qc_manager["csrfToken"])},
+            json=_approval_payload(acg_id),
+        )
+
+    assert orphaned == []
+    assert orphaned_objects == []
+    assert retried.status_code == 200
+    assert retried.json()["state"] == "MANAGER_RELEASE"
