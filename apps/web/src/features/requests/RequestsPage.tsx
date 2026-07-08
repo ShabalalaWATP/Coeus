@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { RequestDashboard } from "./RequestDashboard";
+import { RequestRouteMissingState } from "./RequestRouteMissingState";
 import { TicketWorkspace } from "./TicketWorkspace";
 import { SIMILAR_NOTICE_STATES } from "./request-state-sets";
 import { upsertTicket } from "./ticket-collection";
@@ -59,6 +60,11 @@ export default function RequestsPage() {
   const selectedTicket = isNewRequest
     ? undefined
     : tickets.find((ticket) => ticket.id === ticketId);
+  const requestedTicketMissing =
+    ticketId !== undefined &&
+    selectedTicket === undefined &&
+    !ticketsQuery.isFetching &&
+    !ticketsQuery.isError;
   const selectedTicketId = selectedTicket?.id ?? "";
   const similarNoticeDismissed = dismissedSimilarNoticeIds.includes(selectedTicketId);
   const similarNoticeEligible =
@@ -247,6 +253,8 @@ export default function RequestsPage() {
         <section className="surface">
           <ErrorState onRetry={() => void ticketsQuery.refetch()} />
         </section>
+      ) : requestedTicketMissing ? (
+        <RequestRouteMissingState onBack={() => void navigate("/app/requests")} />
       ) : showWorkspace ? (
         <TicketWorkspace
           actions={{
