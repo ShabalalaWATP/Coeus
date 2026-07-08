@@ -91,6 +91,30 @@ test("shows an inline error when marking a notification as read fails", async ()
   );
 });
 
+test("shows a retryable error when notifications cannot load", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ error: { code: "server_error", message: "Failed." } }),
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ notifications: [releaseNotification], unread: 1 }),
+    });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<NotificationsPopover onToggle={vi.fn()} open />, "/app/requests");
+
+  expect(await screen.findByText("Notifications could not be loaded.")).toBeVisible();
+  expect(screen.queryByText("No new notifications.")).not.toBeInTheDocument();
+
+  await userEvent.click(screen.getByRole("button", { name: "Retry notifications" }));
+
+  expect(await screen.findByRole("button", { name: /TCK-0001 released/ })).toBeVisible();
+});
+
 test("renders an empty notifications panel", async () => {
   vi.stubGlobal(
     "fetch",

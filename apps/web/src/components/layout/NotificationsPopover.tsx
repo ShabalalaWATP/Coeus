@@ -26,6 +26,7 @@ export function NotificationsPopover({ onToggle, open }: NotificationsPopoverPro
     queryKey: ["notifications"],
     queryFn: listNotifications,
     refetchInterval: 60_000,
+    retry: false,
   });
   const { actionError, clearActionError, failActionWith } = useActionError();
   const readMutation = useMutation({
@@ -81,7 +82,20 @@ export function NotificationsPopover({ onToggle, open }: NotificationsPopoverPro
               {actionError}
             </p>
           ) : null}
-          {notifications.length === 0 ? <p>No new notifications.</p> : null}
+          {notificationsQuery.isLoading ? <p>Loading notifications...</p> : null}
+          {notificationsQuery.isError ? (
+            <div className="auth-error" role="alert">
+              <span>Notifications could not be loaded.</span>
+              <button onClick={() => void notificationsQuery.refetch()} type="button">
+                Retry notifications
+              </button>
+            </div>
+          ) : null}
+          {!notificationsQuery.isLoading &&
+          !notificationsQuery.isError &&
+          notifications.length === 0 ? (
+            <p>No new notifications.</p>
+          ) : null}
           <ul>
             {notifications.slice(0, 8).map((notification) => (
               <li key={notification.id}>
