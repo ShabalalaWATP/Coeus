@@ -160,6 +160,42 @@ test("shows analyst mutation failures inline", async () => {
   expect(await screen.findByRole("alert")).toHaveTextContent("Task is no longer active.");
 });
 
+test("shows a retryable analyst product search failure", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ tasks: [baseTask] }) })
+    .mockResolvedValueOnce({
+      ok: false,
+      status: 503,
+      json: () =>
+        Promise.resolve({ error: { code: "store_unavailable", message: "Store unavailable." } }),
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          products: [linkedProduct],
+          total: 1,
+          facets: { productTypes: [], regions: [], tags: [] },
+        }),
+    });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<AnalystWorkbenchPage />, "/analyst/workbench");
+
+  expect(await screen.findByRole("link", { name: /TCK-0001/ })).toBeVisible();
+  await userEvent.click(screen.getByText(/Linked products/));
+  fireEvent.change(screen.getByLabelText("Product search"), { target: { value: "assessment" } });
+  await userEvent.click(screen.getByRole("button", { name: "Search products" }));
+
+  expect(await screen.findByText("Product search could not be loaded.")).toBeVisible();
+  expect(screen.queryByRole("button", { name: "Assessment Draft Pack" })).not.toBeInTheDocument();
+
+  await userEvent.click(screen.getByRole("button", { name: "Retry product search" }));
+
+  expect(await screen.findByRole("button", { name: "Assessment Draft Pack" })).toBeVisible();
+});
+
 test("works an assigned task through notes, products, draft and QC submission", async () => {
   const withNote = {
     ...baseTask,
