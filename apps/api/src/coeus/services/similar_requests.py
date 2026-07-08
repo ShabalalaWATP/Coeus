@@ -1,0 +1,219 @@
+from dataclasses import dataclass, replace
+from datetime import UTC, datetime
+from uuid import UUID
+
+from coeus.core.errors import AppError
+from coeus.domain.auth import UserAccount
+from coeus.domain.tickets import (
+    CollaboratorAccess,
+    TicketCollaborator,
+    TicketRecord,
+)
+from coeus.services.audit import AuditLog
+from coeus.services.embeddings import EmbeddingService
+from coeus.services.similar_request_scoring import (
+    CUSTOMER_SIMILARITY_THRESHOLD,
+    MANAGER_SIMILARITY_THRESHOLD,
+    OPEN_SIMILARITY_STATES,
+    ROUTING_READ_PERMISSIONS,
+    SimilarRequestMatch,
+    score_similar_requests,
+)
+from coeus.services.ticket_records import is_collaborator, is_owner, timeline
+from coeus.services.tickets import TicketServices
+
+
+@dataclass(frozen=True)
+class SimilarRequestNotice:
+    matches: tuple[SimilarRequestMatch, ...]
+    hidden_matches_present: bool
+
+
+class SimilarRequestService:
+    """Coordinates customer notices and manager links for similar open tickets."""
+
+    def __init__(
+        self,
+        tickets: TicketServices,
+        audit_log: AuditLog,
+        embeddings: EmbeddingService,
+    ) -> None:
+        self._tickets = tickets
+        self._audit_log = audit_log
+        self._embeddings = embeddings
+
+    def customer_notice(self, actor: UserAccount, ticket_id: UUID) -> SimilarRequestNotice:
+        source = self._tickets.tickets.get_visible_ticket(actor, ticket_id)
+        matches = self._score(source, CUSTOMER_SIMILARITY_THRESHOLD)
+        visible = []
+        hidden_count = 0
+        for match in matches:
+            if self._customer_can_see(actor, match.ticket_id):
+                visible.append(match)
+            else:
+                hidden_count += 1
+        notice = SimilarRequestNotice(tuple(visible), hidden_count > 0)
+        if notice.matches or notice.hidden_matches_present:
+            self._audit_log.record(
+                "similar_request_notified",
+                str(actor.user_id),
+                {
+                    "ticket_id": str(source.ticket_id),
+                    "visible_match_ids": ",".join(str(match.ticket_id) for match in visible),
+                    "hidden_matches": str(hidden_count),
+                },
+            )
+        return notice
+
+    def join_visible_match(
+        self, actor: UserAccount, ticket_id: UUID, related_ticket_id: UUID
+    ) -> TicketRecord:
+        source = self._tickets.tickets.get_visible_ticket(actor, ticket_id)
+        if not is_owner(actor, source):
+            raise AppError(404, "ticket_not_found", "Ticket was not found.")
+        match = self._find_match(source, related_ticket_id, CUSTOMER_SIMILARITY_THRESHOLD)
+        if match is None or not self._customer_can_see(actor, related_ticket_id):
+            raise AppError(404, "similar_request_not_found", "Similar request was not found.")
+        target = self._tickets.tickets.get_visible_ticket(actor, related_ticket_id)
+        if is_owner(actor, target) or is_collaborator(actor, target):
+            return target
+        collaborator = TicketCollaborator(
+            user_id=actor.user_id,
+            username=actor.username,
+            display_name=actor.display_name,
+            access=CollaboratorAccess.VIEWER,
+            added_by_user_id=actor.user_id,
+            created_at=datetime.now(UTC),
+        )
+        updated = self._tickets.tickets.save_system_update(
+            replace(
+                target,
+                collaborators=(*target.collaborators, collaborator),
+                timeline=(
+                    *target.timeline,
+                    timeline(
+                        target.ticket_id,
+                        actor.user_id,
+                        "similar_request_joined",
+                        f"{actor.display_name} joined from {source.reference}.",
+                    ),
+                ),
+            )
+        )
+        self._audit_log.record(
+            "ticket_collaborator_added",
+            str(actor.user_id),
+            {
+                "ticket_id": str(target.ticket_id),
+                "collaborator_user_id": str(actor.user_id),
+                "access": CollaboratorAccess.VIEWER.value,
+            },
+        )
+        self._audit_log.record(
+            "similar_request_joined",
+            str(actor.user_id),
+            {"ticket_id": str(source.ticket_id), "related_ticket_id": str(target.ticket_id)},
+        )
+        return updated
+
+    def manager_matches(
+        self, actor: UserAccount, ticket_id: UUID
+    ) -> tuple[SimilarRequestMatch, ...]:
+        source = self._tickets.tickets.get_workflow_ticket(
+            actor, ticket_id, ROUTING_READ_PERMISSIONS
+        )
+        return self._score(source, MANAGER_SIMILARITY_THRESHOLD)
+
+    def link_related(
+        self, actor: UserAccount, ticket_id: UUID, related_ticket_id: UUID
+    ) -> TicketRecord:
+        source = self._tickets.tickets.get_workflow_ticket(
+            actor, ticket_id, ROUTING_READ_PERMISSIONS
+        )
+        related = self._tickets.tickets.get_workflow_ticket(
+            actor, related_ticket_id, ROUTING_READ_PERMISSIONS
+        )
+        if source.ticket_id == related.ticket_id:
+            raise AppError(422, "related_ticket_invalid", "A ticket cannot link to itself.")
+        if not self._is_open(source) or not self._is_open(related):
+            raise AppError(409, "invalid_ticket_state", "Only open tickets can be linked.")
+        already = related.ticket_id in source.related_ticket_ids
+        if already:
+            self._audit_link(actor, source, related, already_linked=True)
+            return source
+        related_updated = self._save_related_link(related, source, actor)
+        source_updated = self._save_related_link(source, related, actor)
+        self._audit_link(actor, source_updated, related_updated, already_linked=False)
+        return source_updated
+
+    def _score(self, source: TicketRecord, threshold: float) -> tuple[SimilarRequestMatch, ...]:
+        return score_similar_requests(
+            source,
+            self._tickets.tickets.list_similarity_candidates(),
+            self._embeddings,
+            threshold,
+        )
+
+    def _find_match(
+        self, source: TicketRecord, related_ticket_id: UUID, threshold: float
+    ) -> SimilarRequestMatch | None:
+        return next(
+            (
+                match
+                for match in self._score(source, threshold)
+                if match.ticket_id == related_ticket_id
+            ),
+            None,
+        )
+
+    def _customer_can_see(self, actor: UserAccount, ticket_id: UUID) -> bool:
+        try:
+            self._tickets.tickets.get_visible_ticket(actor, ticket_id)
+        except AppError:
+            return False
+        return True
+
+    @staticmethod
+    def _is_open(ticket: TicketRecord) -> bool:
+        return ticket.state in OPEN_SIMILARITY_STATES
+
+    def _save_related_link(
+        self, target: TicketRecord, related: TicketRecord, actor: UserAccount
+    ) -> TicketRecord:
+        return self._tickets.tickets.save_system_update(
+            replace(
+                target,
+                related_ticket_ids=_append_uuid(target.related_ticket_ids, related.ticket_id),
+                timeline=(
+                    *target.timeline,
+                    timeline(
+                        target.ticket_id,
+                        actor.user_id,
+                        "related_ticket_linked",
+                        f"Linked as related to {related.reference}.",
+                    ),
+                ),
+            )
+        )
+
+    def _audit_link(
+        self,
+        actor: UserAccount,
+        source: TicketRecord,
+        related: TicketRecord,
+        *,
+        already_linked: bool,
+    ) -> None:
+        self._audit_log.record(
+            "tickets_linked",
+            str(actor.user_id),
+            {
+                "ticket_id": str(source.ticket_id),
+                "related_ticket_id": str(related.ticket_id),
+                "already_linked": str(already_linked).lower(),
+            },
+        )
+
+
+def _append_uuid(values: tuple[UUID, ...], value: UUID) -> tuple[UUID, ...]:
+    return values if value in values else (*values, value)
