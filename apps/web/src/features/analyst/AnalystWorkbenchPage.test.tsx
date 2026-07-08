@@ -134,8 +134,10 @@ test("notes when the requested task is not assigned to the analyst", async () =>
     "href",
     "/analyst/workbench",
   );
-  // The first assigned task still renders as the fallback selection.
-  expect(screen.getAllByText("Arctic Fisheries Assessment").length).toBeGreaterThan(0);
+  expect(
+    within(screen.getByLabelText("Analyst task detail")).getByText("No assigned task selected."),
+  ).toBeVisible();
+  expect(screen.getAllByText("Arctic Fisheries Assessment")).toHaveLength(1);
 });
 
 test("shows analyst mutation failures inline", async () => {
