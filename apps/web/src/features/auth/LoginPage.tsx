@@ -148,7 +148,7 @@ export default function LoginPage() {
                     {authError}
                   </p>
                 ) : null}
-                <button className="primary-button" disabled={isSubmitting || locked} type="submit">
+                <button className="primary-button" disabled={isSubmitting} type="submit">
                   <LogIn aria-hidden="true" size={17} />
                   {isSubmitting ? "Signing in" : "Sign in to Istari"}
                 </button>
