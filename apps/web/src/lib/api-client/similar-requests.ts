@@ -12,7 +12,6 @@ export type SimilarRequestMatch = {
 
 export type SimilarRequestNotice = {
   matches: SimilarRequestMatch[];
-  hiddenMatchesPresent: boolean;
 };
 
 export type SimilarRequestList = {

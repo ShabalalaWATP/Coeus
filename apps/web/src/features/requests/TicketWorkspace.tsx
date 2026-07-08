@@ -10,6 +10,7 @@ import { NoMatchConsentPanel } from "./NoMatchConsentPanel";
 import { ProductOffersPanel } from "./ProductOffersPanel";
 import { RequestJourney } from "./RequestJourney";
 import { SimilarRequestNoticePanel } from "./SimilarRequestNoticePanel";
+import { SIMILAR_NOTICE_STATES } from "./request-state-sets";
 import { TimelinePanel } from "./TimelinePanel";
 import { StatusPill } from "../../components/ui/StatusPill";
 import type { RfiSearchResults } from "../../lib/api-client/rfi-search";
@@ -163,7 +164,7 @@ export function TicketWorkspace({
               />
             </details>
           ) : null}
-          {ticket && isOwner && similarNotice ? (
+          {ticket && isOwner && similarNotice && SIMILAR_NOTICE_STATES.has(ticket.state) ? (
             <SimilarRequestNoticePanel
               isJoining={similarNotice.isJoining}
               isLoading={similarNotice.isLoading}

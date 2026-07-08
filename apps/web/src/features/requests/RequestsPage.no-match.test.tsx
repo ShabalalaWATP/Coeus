@@ -132,7 +132,7 @@ function _responseFor(url: string, init: RequestInit | undefined, consentTicket:
     return { ok: true, json: () => Promise.resolve(consentTicket) };
   }
   if (url.includes("/similar-requests")) {
-    return { ok: true, json: () => Promise.resolve({ hiddenMatchesPresent: false, matches: [] }) };
+    return { ok: true, json: () => Promise.resolve({ matches: [] }) };
   }
   if (url.includes("/users/directory")) {
     return { ok: true, json: () => Promise.resolve(directory) };

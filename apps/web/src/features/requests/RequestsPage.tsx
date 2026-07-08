@@ -286,8 +286,10 @@ export default function RequestsPage() {
           rfiLoading={rfiResultsQuery.isLoading}
           rfiResults={rfiResultsQuery.data}
           similarNotice={
-            !similarNoticeDismissed &&
-            (similarNoticeEligible || similarNoticeQuery.data !== undefined)
+            // Gate on the ticket's CURRENT eligible state, not on cached query data, so a
+            // ticket that has left the eligible states (cancelled, closed) never shows a stale
+            // notice or a live "Join as viewer" button from persisted react-query data.
+            similarNoticeEligible
               ? {
                   isJoining: joinSimilarMutation.isPending,
                   isLoading: similarNoticeQuery.isLoading,

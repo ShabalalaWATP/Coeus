@@ -45,6 +45,7 @@ Similarity checks include tickets in these active workflow states:
 
 - `RFI_SEARCHING`
 - `RFI_MATCH_OFFERED`
+- `RFI_NO_MATCH`
 - `ROUTE_ASSESSMENT`
 - `RFA_MANAGER_REVIEW`
 - `CM_MANAGER_REVIEW`
@@ -56,6 +57,13 @@ Similarity checks include tickets in these active workflow states:
   The source ticket itself is excluded. Draft, cancelled and closed states are
   excluded, including `DRAFT_INTAKE`, `INFO_REQUIRED`, `CANCELLED`,
   `CLOSED_EXISTING_PRODUCT_ACCEPTED` and `CLOSED_DELIVERED`.
+
+The customer notice also applies this same eligible-state set to the source
+ticket. It runs only for a source ticket that is already past free intake
+editing (that is, not `DRAFT_INTAKE` and not `INFO_REQUIRED`, where the intake
+stays user-editable). For a source ticket in any ineligible state the customer
+endpoint returns an empty result without scoring. This removes the ability to
+replay the check as a probe by repeatedly editing draft intake text.
 
 ## Scoring
 
@@ -103,13 +111,20 @@ For each above-threshold match:
 2. If visible, return ticket reference, title, state, score and reasons.
 3. If not visible, do not return any ticket-specific detail.
 
-When hidden matches exist but no visible match exists, the customer receives a
-neutral notice:
+Customers receive no signal at all about hidden tickets. The customer endpoint
+returns only the matches the requester already has need-to-know for. It carries
+no boolean, count, neutral notice or any other field derived from tickets the
+requester cannot see. When every match is hidden, the response is an empty match
+list that is byte-for-byte identical to the response when there is no overlap at
+all, so the presence or absence of an invisible request cannot be inferred.
 
-> The assessing team will check for overlapping work.
-
-That notice confirms only that the overlap check ran. It does not confirm the
-number, existence, reference, title, owner or state of hidden tickets.
+Hidden overlaps are caught on the manager routing panel, which is gated by
+workflow read permissions. They are never surfaced to the customer in any form.
+An earlier design returned a neutral "assessing team will check for overlapping
+work" notice whenever a hidden match existed. That was withdrawn: the notice
+only ever appeared because of state derived solely from an invisible ticket, so
+it was a replayable existence oracle. It is logically impossible to show a
+hidden-triggered notice without disclosing that a hidden ticket exists.
 
 ## Customer Actions
 
@@ -159,7 +174,11 @@ Customer workspace:
 - After submit, if visible matches exist, show a compact notice above the RFI
   search controls.
 - Provide "Join as viewer" and "Continue request" buttons.
-- If only hidden matches exist, show the neutral assessing-team notice.
+- If no visible match exists, show nothing. There is no hidden-match variant of
+  the notice.
+- Render the notice only while the ticket is in an eligible state. A ticket that
+  has moved to a cancelled or closed state never shows a stale notice or a live
+  "Join as viewer" button, even if earlier query data is still cached.
 - Use the shared mutation error helper for failed join actions.
 
 Routing queue:
@@ -172,9 +191,11 @@ Routing queue:
 
 ## Audit Events
 
-- `similar_request_notified`: recorded when customer-facing similarity is
-  surfaced. Metadata includes the source ticket ID and visible match IDs, or a
-  `hidden_matches` count with no ticket identifiers.
+- `similar_request_notified`: recorded only when at least one visible match is
+  actually surfaced to the customer. Metadata includes the source ticket ID and
+  the visible match IDs. It is never recorded for hidden-derived reasons, and it
+  is not recorded on a bare GET that surfaces nothing, so react-query refetches
+  and empty checks do not spam the audit log.
 - `tickets_linked`: recorded when a manager links two tickets. Metadata includes
   both ticket IDs and `already_linked` for idempotent repeats.
 
@@ -193,7 +214,12 @@ fields change. That is explicitly deferred until measured need exists.
 
 - Customer disclosure never bypasses `get_visible_ticket`.
 - Manager disclosure requires workflow read permissions.
-- Hidden customer matches never reveal ticket identifiers or counts in the UI.
+- The customer path carries zero hidden-ticket signal. No response field,
+  notice, count or audit event is derived from a ticket the requester cannot
+  see, so an empty result is indistinguishable whether or not a hidden overlap
+  exists.
+- The customer notice runs only for an eligible, submitted source ticket, so an
+  editable draft cannot be used as a replayable probe.
 - Embedding provider defaults remain offline and deterministic.
 - Gemini content is sent for ticket similarity only when
   `COEUS_EMBEDDING_PROVIDER=gemini_api` is explicitly selected.

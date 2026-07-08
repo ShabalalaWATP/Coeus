@@ -12,6 +12,11 @@ const submittedTicket: Ticket = {
   isReadyForSubmission: true,
 };
 
+const cancelledTicket: Ticket = {
+  ...submittedTicket,
+  state: "CANCELLED",
+};
+
 const similarNotice = {
   matches: [
     {
@@ -24,7 +29,6 @@ const similarNotice = {
       alreadyLinked: false,
     },
   ],
-  hiddenMatchesPresent: false,
 };
 
 beforeEach(() => {
@@ -80,7 +84,18 @@ test("posts a successful customer join request with CSRF protection", async () =
   );
 });
 
-function similarFetch(options: { joinFails?: boolean } = {}) {
+test("does not show the notice for a ticket outside the eligible states", async () => {
+  vi.stubGlobal("fetch", similarFetch({ ticket: cancelledTicket }));
+
+  renderRequests("/app/requests/ticket-1");
+
+  expect(await screen.findByText("TCK-0001")).toBeVisible();
+  expect(screen.queryByText("Similar request in progress")).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Join as viewer" })).not.toBeInTheDocument();
+});
+
+function similarFetch(options: { joinFails?: boolean; ticket?: Ticket } = {}) {
+  const ticket = options.ticket ?? submittedTicket;
   return vi.fn((url: string) => {
     if (url.includes("/similar-requests/tickets/ticket-1/join/related-1")) {
       return Promise.resolve(
@@ -106,7 +121,7 @@ function similarFetch(options: { joinFails?: boolean } = {}) {
     if (url.includes("/api/v1/tickets")) {
       return Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ tickets: [submittedTicket] }),
+        json: () => Promise.resolve({ tickets: [ticket] }),
       });
     }
     return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
