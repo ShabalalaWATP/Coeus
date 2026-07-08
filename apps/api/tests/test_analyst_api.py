@@ -144,7 +144,9 @@ async def test_draft_product_versions_and_submit_to_qc_transition() -> None:
     assert [draft["versionNumber"] for draft in second_draft.json()["drafts"]] == [1, 2]
     assert submitted.status_code == 200
     assert submitted.json()["state"] == "QC_REVIEW"
-    assert "submitted_to_qc" in [event["eventType"] for event in audit.json()["events"]]
+    audit_events = [event["eventType"] for event in audit.json()["events"]]
+    assert "work_package_updated" in audit_events
+    assert "submitted_to_qc" in audit_events
     assert admin["user"]["username"] == "admin@example.test"
 
 
