@@ -6,7 +6,7 @@ import { Link, useLocation, useParams } from "react-router-dom";
 import { AssetGrant } from "./AssetGrant";
 import { backNavigationFor } from "./store-navigation";
 import { productTypeLabel } from "./store-options";
-import { LoadingState } from "../../components/ui/PageState";
+import { ErrorState, LoadingState } from "../../components/ui/PageState";
 import { ApiError } from "../../lib/api-client/client";
 import {
   breakGlassAssetAccess,
@@ -68,6 +68,13 @@ export default function ProductDetailPage() {
         onBreakGlass={(reason) => breakGlassMutation.mutate(reason)}
         showError={breakGlassMutation.isError}
       />
+    );
+  }
+  if (productQuery.isError && emergencyProduct === undefined) {
+    return (
+      <section className="surface">
+        <ErrorState onRetry={() => void productQuery.refetch()} />
+      </section>
     );
   }
   if (productQuery.isLoading) {
