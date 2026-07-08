@@ -7,6 +7,7 @@ from sqlalchemy.engine import Connection, Engine, Result
 
 from coeus.domain.store import (
     BoundingBox,
+    StoreHybridCandidate,
     StoreProduct,
     StoreSearchFilters,
     StoreVisibilityScope,
@@ -25,13 +26,17 @@ from coeus.persistence.store_projection_sql import (
     SELECT_ASSETS_SQL,
     SELECT_LABELS_SQL,
     SELECT_PRODUCTS_SQL,
+    UPDATE_PRODUCT_EMBEDDING_SQL,
     UPSERT_PRODUCT_SQL,
 )
+from coeus.services.embeddings import EmbeddingService, vector_to_pg
+from coeus.services.store_semantics import product_semantic_text
 
 
 class PostgresStoreProjection:
-    def __init__(self, engine: Engine) -> None:
+    def __init__(self, engine: Engine, embeddings: EmbeddingService | None = None) -> None:
         self._engine = engine
+        self._embeddings = embeddings
 
     def list_products(self) -> tuple[StoreProduct, ...]:
         with self._engine.begin() as connection:
@@ -51,6 +56,25 @@ class PostgresStoreProjection:
             ensure_relational_schema(connection)
             return search_products(connection, filters, scope)
 
+    def hybrid_candidates(
+        self,
+        filters: StoreSearchFilters,
+        scope: StoreVisibilityScope,
+        query: str,
+        query_embedding: tuple[float, ...] | None,
+    ) -> tuple[StoreHybridCandidate, ...]:
+        from coeus.persistence.store_projection_search import hybrid_candidates
+
+        with self._engine.begin() as connection:
+            ensure_relational_schema(connection)
+            return hybrid_candidates(
+                connection,
+                filters,
+                scope,
+                query,
+                vector_to_pg(query_embedding),
+            )
+
     def get_visible_product(
         self, product_id: UUID, scope: StoreVisibilityScope
     ) -> StoreProduct | None:
@@ -63,22 +87,63 @@ class PostgresStoreProjection:
     def save_product(self, product: StoreProduct) -> None:
         with self._engine.begin() as connection:
             ensure_relational_schema(connection)
-            _save_product(connection, product)
+            _save_product(connection, product, self._embeddings)
 
     def save_products(self, products: tuple[StoreProduct, ...]) -> None:
         with self._engine.begin() as connection:
             ensure_relational_schema(connection)
             _delete_stale_products(connection, products)
             for product in products:
-                _save_product(connection, product)
+                _save_product(connection, product, self._embeddings)
+
+    def embedded_product_count(self) -> int:
+        with self._engine.begin() as connection:
+            ensure_relational_schema(connection)
+            row = connection.execute(
+                text(
+                    """
+                    SELECT count(*) AS count
+                    FROM intelligence_store_products
+                    WHERE embedding IS NOT NULL
+                    """
+                )
+            ).first()
+        return int(row[0]) if row is not None else 0
+
+    def backfill_missing_embeddings(self, batch_size: int = 500) -> int:
+        if self._embeddings is None:
+            return 0
+        products = self.list_products()
+        updated = 0
+        with self._engine.begin() as connection:
+            ensure_relational_schema(connection)
+            for product in products[:batch_size]:
+                embedding = self._embeddings.embed(
+                    product_semantic_text(product), purpose="store-backfill"
+                )
+                if embedding is None:
+                    continue
+                result = connection.execute(
+                    text(UPDATE_PRODUCT_EMBEDDING_SQL),
+                    {
+                        "product_id": str(product.product_id),
+                        "embedding": vector_to_pg(embedding),
+                    },
+                )
+                updated += int(result.rowcount or 0)
+        return updated
 
 
 def _mapping_rows(result: Result[Any]) -> tuple[dict[str, Any], ...]:
     return tuple(dict(row) for row in result.mappings())
 
 
-def _save_product(connection: Connection, product: StoreProduct) -> None:
-    connection.execute(text(UPSERT_PRODUCT_SQL), _product_params(product))
+def _save_product(
+    connection: Connection,
+    product: StoreProduct,
+    embeddings: EmbeddingService | None = None,
+) -> None:
+    connection.execute(text(UPSERT_PRODUCT_SQL), _product_params(product, embeddings))
     _replace_product_children(
         connection,
         DELETE_ASSETS_SQL,
@@ -129,8 +194,15 @@ def _replace_product_children(
         connection.execute(text(insert_sql), row)
 
 
-def _product_params(product: StoreProduct) -> dict[str, object]:
+def _product_params(
+    product: StoreProduct, embeddings: EmbeddingService | None = None
+) -> dict[str, object]:
     metadata = product.metadata
+    embedding = (
+        None
+        if embeddings is None
+        else embeddings.embed(product_semantic_text(product), purpose="store-product-write")
+    )
     return {
         "product_id": str(product.product_id),
         "reference": product.reference,
@@ -156,6 +228,7 @@ def _product_params(product: StoreProduct) -> dict[str, object]:
         "created_by_user_id": str(product.created_by_user_id),
         "created_at": product.created_at,
         "updated_at": product.updated_at,
+        "embedding": vector_to_pg(embedding),
     }
 
 

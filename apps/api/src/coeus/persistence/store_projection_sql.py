@@ -81,7 +81,8 @@ INSERT INTO intelligence_store_products (
     created_by_user_id,
     created_at,
     updated_at,
-    search_document
+    search_document,
+    embedding
 ) VALUES (
     CAST(:product_id AS uuid),
     :reference,
@@ -121,7 +122,8 @@ INSERT INTO intelligence_store_products (
             array_to_string(CAST(:tags AS text[]), ' '),
             array_to_string(CAST(:semantic_labels AS text[]), ' ')
         )
-    )
+    ),
+    CAST(:embedding AS vector)
 )
 ON CONFLICT (product_id)
 DO UPDATE SET
@@ -148,7 +150,15 @@ DO UPDATE SET
     created_by_user_id = EXCLUDED.created_by_user_id,
     created_at = EXCLUDED.created_at,
     updated_at = EXCLUDED.updated_at,
-    search_document = EXCLUDED.search_document
+    search_document = EXCLUDED.search_document,
+    embedding = EXCLUDED.embedding
+"""
+
+UPDATE_PRODUCT_EMBEDDING_SQL = """
+UPDATE intelligence_store_products
+SET embedding = CAST(:embedding AS vector)
+WHERE product_id = CAST(:product_id AS uuid)
+  AND embedding IS NULL
 """
 
 INSERT_ASSET_SQL = """

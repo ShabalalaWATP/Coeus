@@ -37,6 +37,8 @@ async def test_admin_reads_and_switches_the_active_gemini_model() -> None:
         assert payload["activeModel"] == "gemini-2.5-flash"
         assert "gemini-2.5-pro" in payload["availableModels"]
         assert payload["apiKeyConfigured"] is False
+        assert payload["embeddingProvider"] == "mock"
+        assert payload["embeddedProductCount"] == 0
         assert payload["changedBy"] is None
         assert payload["changedAt"] is None
 

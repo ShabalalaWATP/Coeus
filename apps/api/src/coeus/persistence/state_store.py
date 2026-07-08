@@ -1,13 +1,16 @@
 import json
 from pathlib import Path
 from threading import RLock
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
 from coeus.persistence.relational_schema import ensure_relational_schema
-from coeus.persistence.store_projection import PostgresStoreProjection
+
+if TYPE_CHECKING:
+    from coeus.persistence.store_projection import PostgresStoreProjection
+    from coeus.services.embeddings import EmbeddingService
 
 
 class StateStore(Protocol):
@@ -93,9 +96,13 @@ class PostgresStateStore:
                     {"namespace": namespace, "payload": json.dumps(payload)},
                 )
 
-    def store_projection(self) -> PostgresStoreProjection:
+    def store_projection(
+        self, embeddings: "EmbeddingService | None" = None
+    ) -> "PostgresStoreProjection":
+        from coeus.persistence.store_projection import PostgresStoreProjection
+
         self._ensure_schema()
-        return PostgresStoreProjection(self._engine)
+        return PostgresStoreProjection(self._engine, embeddings)
 
     def _ensure_schema(self) -> None:
         if self._schema_ready:

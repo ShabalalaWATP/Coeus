@@ -5,7 +5,12 @@ from typing import Any
 
 from coeus.core.config import Settings
 from coeus.domain.access import ProductStatus
-from coeus.domain.store import StoreProduct, StoreSearchFilters, StoreVisibilityScope
+from coeus.domain.store import (
+    StoreHybridCandidate,
+    StoreProduct,
+    StoreSearchFilters,
+    StoreVisibilityScope,
+)
 from coeus.main import create_app
 from coeus.repositories.access import SeedAccessRepository
 from coeus.repositories.store import InMemoryStoreRepository
@@ -22,6 +27,15 @@ class RecordingProjection:
     def search_products(self, _filters: object, _scope: object) -> tuple[StoreProduct, ...]:
         return self.products
 
+    def hybrid_candidates(
+        self,
+        _filters: object,
+        _scope: object,
+        _query: str,
+        _query_embedding: tuple[float, ...] | None,
+    ) -> tuple[StoreHybridCandidate, ...]:
+        return tuple(StoreHybridCandidate(product=product) for product in self.products)
+
     def get_visible_product(self, product_id: object, _scope: object) -> StoreProduct | None:
         for product in self.products:
             if str(product.product_id) == str(product_id):
@@ -34,6 +48,12 @@ class RecordingProjection:
     def save_products(self, products: tuple[StoreProduct, ...]) -> None:
         self.products = products
         self.saved_batches.append(products)
+
+    def embedded_product_count(self) -> int:
+        return len(self.products)
+
+    def backfill_missing_embeddings(self, batch_size: int = 500) -> int:
+        return min(len(self.products), batch_size)
 
 
 class FakeSqlEngine:
@@ -61,6 +81,23 @@ class FakeConnection:
         self._engine.statements.append(sql)
         if params is not None:
             self._engine.params.append(params)
+        if sql.startswith("SELECT count(*)"):
+            return FakeResult([{"count": len(self._engine.products)}])
+        if sql.startswith("UPDATE intelligence_store_products"):
+            return FakeResult([], rowcount=len(self._engine.products))
+        if sql.startswith("WITH scoped AS"):
+            return FakeResult(
+                [
+                    _product_row(product)
+                    | {
+                        "lexical_rank": index + 1,
+                        "lexical_score": 0.5,
+                        "vector_rank": index + 1,
+                        "vector_score": 0.8,
+                    }
+                    for index, product in enumerate(self._engine.products)
+                ]
+            )
         if sql.startswith("SELECT") and "intelligence_store_products" in sql:
             return FakeResult([_product_row(product) for product in self._engine.products])
         if sql.startswith("SELECT") and "intelligence_store_assets" in sql:
@@ -79,14 +116,20 @@ class FakeConnection:
 
 
 class FakeResult:
-    def __init__(self, rows: list[dict[str, Any]]) -> None:
+    def __init__(self, rows: list[dict[str, Any]], rowcount: int = 0) -> None:
         self._rows = rows
+        self.rowcount = rowcount
 
     def mappings(self) -> FakeResult:
         return self
 
     def __iter__(self) -> Iterator[dict[str, Any]]:
         return iter(self._rows)
+
+    def first(self) -> tuple[object, ...] | None:
+        if not self._rows:
+            return None
+        return tuple(self._rows[0].values())
 
 
 def access_repository() -> SeedAccessRepository:

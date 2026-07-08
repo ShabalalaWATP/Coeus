@@ -11,6 +11,8 @@ const modelState = {
   activeModel: "gemma-4-31b",
   availableModels: ["gemma-4-31b", "gemini-2.5-flash", "gemini-2.5-pro"],
   apiKeyConfigured: false,
+  embeddingProvider: "mock",
+  embeddedProductCount: 3,
   changedBy: null,
   changedAt: null,
 };
@@ -66,6 +68,8 @@ test("switches the active Gemini model from the card catalogue", async () => {
     ),
   );
   expect(await screen.findByText(/mock provider active/)).toBeVisible();
+  expect(screen.getByText(/embeddings: mock/)).toBeVisible();
+  expect(screen.getByText(/embedded products: 3/)).toBeVisible();
   expect(screen.getByText(/last changed by admin@example.test/)).toBeVisible();
   expect(screen.getByRole("button", { name: "Apply model" })).toBeDisabled();
 });

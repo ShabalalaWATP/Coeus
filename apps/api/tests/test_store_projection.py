@@ -112,6 +112,29 @@ def test_postgres_store_projection_searches_with_access_predicates() -> None:
     assert "websearch_to_tsquery" in sql
 
 
+def test_postgres_store_projection_hybrid_candidates_keep_access_predicates() -> None:
+    product = seed_product()
+    engine = FakeSqlEngine((product,))
+    projection = PostgresStoreProjection(cast(Engine, engine))
+
+    results = projection.hybrid_candidates(
+        filters(),
+        visibility_scope(product),
+        "boat traffic",
+        (0.01,) * 384,
+    )
+    blocked = projection.hybrid_candidates(filters(), empty_visibility_scope(), "boat", None)
+
+    assert len(results) == 1
+    assert blocked == ()
+    sql = "\n".join(engine.statements)
+    assert "WITH scoped AS" in sql
+    assert "p.classification_level <= :clearance_level" in sql
+    assert "product_acg.acg_id = ANY(CAST(:acg_ids AS uuid[]))" in sql
+    assert "websearch_to_tsquery" in sql
+    assert "embedding <=> CAST(:query_embedding AS vector)" in sql
+
+
 def test_postgres_store_projection_gets_visible_product_with_access_predicates() -> None:
     product = seed_product()
     engine = FakeSqlEngine((product,))
@@ -200,5 +223,7 @@ def test_postgres_store_projection_upserts_product_and_children() -> None:
     assert "intelligence_store_assets" in sql
     assert "intelligence_store_product_acgs" in sql
     assert "intelligence_store_semantic_labels" in sql
+    assert "embedding = EXCLUDED.embedding" in sql
     assert any(params.get("reference") == product.reference for params in engine.params)
+    assert any("embedding" in params for params in engine.params)
     assert any(params.get("label") == "assessment" for params in engine.params)

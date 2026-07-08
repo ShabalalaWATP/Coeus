@@ -5,6 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 EnvironmentName = Literal["local", "dev", "staging", "prod", "test"]
 EmailProviderName = Literal["outbox", "smtp"]
+EmbeddingProviderName = Literal["mock", "local", "gemini_api"]
 LlmProviderName = Literal["mock", "gemini_api"]
 ObjectStorageProviderName = Literal["local", "gcs"]
 PersistenceProviderName = Literal["memory", "file", "postgres"]
@@ -54,8 +55,11 @@ class Settings(BaseSettings):
     gcp_project_id: str | None = None
     gcp_region: str = "europe-west2"
     llm_provider: LlmProviderName = "mock"
+    embedding_provider: EmbeddingProviderName = "mock"
+    embedding_model_path: str = ".local-data/embedding-models"
     gemini_api_key: str | None = None
     gemini_api_model: str = "gemini-2.5-flash"
+    gemini_embedding_model: str = "gemini-embedding-001"
     gemini_api_timeout_seconds: int = Field(default=10, ge=1, le=60)
     available_gemini_models: list[str] = Field(
         default_factory=lambda: [

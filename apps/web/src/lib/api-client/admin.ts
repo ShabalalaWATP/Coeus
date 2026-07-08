@@ -5,6 +5,8 @@ export type AiModelState = {
   activeModel: string;
   availableModels: string[];
   apiKeyConfigured: boolean;
+  embeddingProvider: string;
+  embeddedProductCount: number;
   changedBy: string | null;
   changedAt: string | null;
 };
