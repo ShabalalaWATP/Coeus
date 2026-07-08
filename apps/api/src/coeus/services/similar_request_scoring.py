@@ -23,6 +23,7 @@ OPEN_SIMILARITY_STATES = frozenset(
     {
         TicketState.RFI_SEARCHING,
         TicketState.RFI_MATCH_OFFERED,
+        TicketState.RFI_NO_MATCH,
         TicketState.ROUTE_ASSESSMENT,
         TicketState.RFA_MANAGER_REVIEW,
         TicketState.CM_MANAGER_REVIEW,

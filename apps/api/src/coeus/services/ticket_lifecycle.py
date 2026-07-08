@@ -41,6 +41,45 @@ class TicketLifecycleService:
         )
         return updated
 
+    def no_match_consent(
+        self, actor: UserAccount, ticket_id: UUID, task_as_new_request: bool
+    ) -> TicketRecord:
+        """Record the requester decision after RFI search finds no product match."""
+        ticket = self._tickets.get_visible_ticket(actor, ticket_id)
+        if not is_owner(actor, ticket):
+            raise AppError(403, "forbidden", "Only the requester can decide new tasking.")
+        if ticket.state != TicketState.RFI_NO_MATCH:
+            raise AppError(
+                409, "invalid_ticket_state", "This request is not awaiting no-match consent."
+            )
+        target_state = (
+            TicketState.ROUTE_ASSESSMENT if task_as_new_request else TicketState.CANCELLED
+        )
+        if not can_transition(ticket.state, target_state):
+            raise AppError(409, "invalid_ticket_state", "This request cannot be updated.")
+        event_type = "tasking_confirmed" if task_as_new_request else "tasking_declined"
+        body = (
+            "Requester confirmed tasking as a new request."
+            if task_as_new_request
+            else "customer declined tasking after no-match"
+        )
+        updated = self._tickets.save_system_update(
+            replace(
+                ticket,
+                state=target_state,
+                timeline=(
+                    *ticket.timeline,
+                    timeline(ticket.ticket_id, actor.user_id, event_type, body),
+                ),
+            )
+        )
+        self._audit_log.record(
+            "no_match_tasking_confirmed" if task_as_new_request else "no_match_tasking_declined",
+            str(actor.user_id),
+            {"ticket_id": str(ticket.ticket_id)},
+        )
+        return updated
+
     def confirm_delivery(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         """Requester confirms receipt of the released product, closing the ticket."""
         ticket = self._tickets.get_visible_ticket(actor, ticket_id)

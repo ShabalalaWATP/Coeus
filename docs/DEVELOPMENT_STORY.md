@@ -3,6 +3,17 @@
 Sprint 1 to Sprint 13 entries live in
 [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVELOPMENT_STORY_SPRINTS_01-13.md).
 
+## 2026-07-08 No-match consent
+
+- Added Part C no-match consent. Zero-offer RFI searches now enter
+  `RFI_NO_MATCH` and record `rfi_no_match` on the ticket timeline instead of
+  tasking new work automatically.
+- Added an owner-only, CSRF-protected consent endpoint and customer workspace
+  prompt. Yes moves the ticket to `ROUTE_ASSESSMENT`; No moves it to
+  `CANCELLED` with the fixed reason `customer declined tasking after no-match`.
+- Updated journey mapping, dashboard search metrics, similar-request state scope,
+  audit coverage and documentation for the new state.
+
 ## 2026-07-08 Similar request detection
 
 - Added Part B similar-request detection for open tickets from `RFI_SEARCHING`

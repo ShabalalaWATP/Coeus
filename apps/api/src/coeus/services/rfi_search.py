@@ -34,7 +34,12 @@ from coeus.services.tickets import TicketService, TicketServices
 
 RFI_RESULTS_REVIEW_PERMISSIONS = frozenset({Permission.RFA_REVIEW, Permission.COLLECTION_REVIEW})
 RFI_RESULTS_REVIEW_STATES = frozenset(
-    {TicketState.ROUTE_ASSESSMENT, TicketState.RFA_MANAGER_REVIEW, TicketState.CM_MANAGER_REVIEW}
+    {
+        TicketState.RFI_NO_MATCH,
+        TicketState.ROUTE_ASSESSMENT,
+        TicketState.RFA_MANAGER_REVIEW,
+        TicketState.CM_MANAGER_REVIEW,
+    }
 )
 # Ranking must see every permitted PUBLISHED product, not the store-browse page
 # size, so the candidate search uses one large internal page.
@@ -90,10 +95,22 @@ class RfiSearchService:
             query_embedding,
         )
         offers = rank_hybrid_rfi_candidates(candidates, ticket.intake)
-        target_state = TicketState.RFI_MATCH_OFFERED if offers else TicketState.ROUTE_ASSESSMENT
+        target_state = TicketState.RFI_MATCH_OFFERED if offers else TicketState.RFI_NO_MATCH
         now = datetime.now(UTC)
         summary = run_summary(len(offers), search.total)
         agent_runs, run_id = complete_agent_run(ticket, summary, now)
+        search_timeline = [
+            timeline(ticket.ticket_id, actor.user_id, "search_completed", summary),
+        ]
+        if not offers:
+            search_timeline.append(
+                timeline(
+                    ticket.ticket_id,
+                    actor.user_id,
+                    "rfi_no_match",
+                    "No existing product matched this request.",
+                )
+            )
         metric = RfiSearchMetrics(
             run_id=run_id,
             query=query,
@@ -111,10 +128,7 @@ class RfiSearchService:
                 product_offers=offers,
                 search_metrics=(*ticket.search_metrics, metric),
                 visible_product_matches=tuple(offer.title for offer in offers),
-                timeline=(
-                    *ticket.timeline,
-                    timeline(ticket.ticket_id, actor.user_id, "search_completed", summary),
-                ),
+                timeline=(*ticket.timeline, *search_timeline),
             )
         )
         self._audit_log.record(

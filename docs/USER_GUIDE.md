@@ -73,6 +73,9 @@ From here a customer can:
 - Edit any detail directly in "Edit details manually".
 - Tag colleagues as editors or viewers.
 - Submit the request, then accept or reject any existing-product offers.
+- If no existing product matches, choose **Yes, task as new request** to continue
+  into route assessment, or **No, cancel request** to stop the ticket with a
+  recorded reason.
 
 After submission, Istari also checks open requests for likely overlap. If a
 visible similar request is already in progress, the workspace shows its

@@ -9,6 +9,12 @@ def test_ticket_state_machine_allows_defined_transition() -> None:
     assert can_transition(TicketState.DRAFT_INTAKE, TicketState.RFI_SEARCHING) is True
 
 
+def test_no_match_state_only_exits_to_route_assessment_or_cancelled() -> None:
+    allowed = {target for target in TicketState if can_transition(TicketState.RFI_NO_MATCH, target)}
+
+    assert allowed == {TicketState.ROUTE_ASSESSMENT, TicketState.CANCELLED}
+
+
 def test_ticket_state_machine_denies_undefined_transition() -> None:
     assert can_transition(TicketState.CANCELLED, TicketState.DRAFT_INTAKE) is False
 

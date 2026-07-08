@@ -5,6 +5,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { RequestDashboard } from "./RequestDashboard";
 import { TicketWorkspace } from "./TicketWorkspace";
+import { SIMILAR_NOTICE_STATES } from "./request-state-sets";
 import { upsertTicket } from "./ticket-collection";
 import { ErrorState } from "../../components/ui/PageState";
 import { FeedbackPanel } from "../feedback/FeedbackPanel";
@@ -20,6 +21,7 @@ import {
   addTicketCollaborator,
   addTicketInformation,
   cancelTicket,
+  consentNoMatch,
   confirmTicketDelivery,
   listTickets,
   removeTicketCollaborator,
@@ -29,7 +31,6 @@ import {
   type AttachmentMetadataInput,
   type IntakeUpdate,
   type Ticket,
-  type TicketState,
 } from "../../lib/api-client/tickets";
 import { getSimilarRequestNotice, joinSimilarRequest } from "../../lib/api-client/similar-requests";
 import { useAuth } from "../../lib/auth/auth-context";
@@ -37,19 +38,6 @@ import { actionErrorMessage } from "../../lib/mutations/action-error";
 import { hasPermissions } from "../../lib/permissions/route-access";
 
 const EMPTY_TICKETS: Ticket[] = [];
-const SIMILAR_NOTICE_STATES = new Set<TicketState>([
-  "RFI_SEARCHING",
-  "RFI_MATCH_OFFERED",
-  "ROUTE_ASSESSMENT",
-  "RFA_MANAGER_REVIEW",
-  "CM_MANAGER_REVIEW",
-  "ANALYST_ASSIGNMENT",
-  "ANALYST_IN_PROGRESS",
-  "QC_REVIEW",
-  "REWORK_REQUIRED",
-  "MANAGER_RELEASE",
-]);
-
 export default function RequestsPage() {
   const { session } = useAuth();
   const { ticketId } = useParams();
@@ -216,6 +204,13 @@ export default function RequestsPage() {
     onMutate: clearActionError,
     onSuccess: updateTicketCache,
   });
+  const noMatchConsentMutation = useMutation({
+    mutationFn: (taskAsNewRequest: boolean) =>
+      consentNoMatch(selectedTicketId, taskAsNewRequest, csrfToken),
+    onError: failAction("The tasking decision could not be recorded. Try again."),
+    onMutate: clearActionError,
+    onSuccess: updateTicketCache,
+  });
   const confirmDeliveryMutation = useMutation({
     mutationFn: (confirmTicketId: string) => confirmTicketDelivery(confirmTicketId, csrfToken),
     onError: failAction("Delivery could not be confirmed. Refresh and try again."),
@@ -261,6 +256,7 @@ export default function RequestsPage() {
               addCollaboratorMutation.mutate({ username, access }),
             onAddInformation: (body) => informationMutation.mutate(body),
             onCancel: (reason) => cancelMutation.mutate(reason),
+            onNoMatchConsent: (taskAsNewRequest) => noMatchConsentMutation.mutate(taskAsNewRequest),
             onReject: (productId, reason) => rejectOfferMutation.mutate({ productId, reason }),
             onRemoveCollaborator: (userId) => removeCollaboratorMutation.mutate(userId),
             onRun: () => runRfiMutation.mutate(),
@@ -279,6 +275,7 @@ export default function RequestsPage() {
             cancelling: cancelMutation.isPending,
             collaborating:
               addCollaboratorMutation.isPending || removeCollaboratorMutation.isPending,
+            consenting: noMatchConsentMutation.isPending,
             rejecting: rejectOfferMutation.isPending,
             running: runRfiMutation.isPending,
             saving: intakeMutation.isPending,

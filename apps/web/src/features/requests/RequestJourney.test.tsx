@@ -7,6 +7,7 @@ import { RequestJourney } from "./RequestJourney";
 
 test("maps workflow states onto journey stages with a safe fallback", () => {
   expect(stageIndexForState("DRAFT_INTAKE")).toBe(0);
+  expect(stageIndexForState("RFI_NO_MATCH")).toBe(1);
   expect(stageIndexForState("QC_REVIEW")).toBe(4);
   expect(stageIndexForState("MANAGER_RELEASE")).toBe(5);
   expect(stageIndexForState("CLOSED_DELIVERED")).toBe(6);

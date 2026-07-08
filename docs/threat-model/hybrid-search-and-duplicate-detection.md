@@ -3,7 +3,7 @@
 ## Scope
 
 Hybrid RFI search, product embeddings, similar-request detection and the
-future no-match consent journey.
+no-match consent journey.
 
 ## Assets
 
@@ -24,7 +24,8 @@ future no-match consent journey.
 | Similar-request notices reveal another customer's ticket.            | Customer-facing disclosure reuses `get_visible_ticket`. Hidden matches can only produce a neutral notice with no references, titles or counts. |
 | Manager duplicate panels create unaudited consolidation decisions.   | Link actions write reciprocal related-ticket IDs, timeline entries on both tickets and a `tickets_linked` audit event.                         |
 | Similarity scores reveal sensitive ticket text through explanations. | Customer explanations are returned only for tickets the requester can already read. Managers require workflow read permissions.                |
-| No-match automation tasks work without consent.                      | Part C introduces an explicit owner-only consent state before route assessment.                                                                |
+| No-match automation tasks work without consent.                      | Zero-offer searches enter `RFI_NO_MATCH`; only the requester can confirm route assessment or cancel.                                          |
+| No-match decline text becomes an injection or audit sink.             | The decline path records a fixed reason, `customer declined tasking after no-match`, instead of accepting free text.                           |
 
 ## Accepted Risks
 

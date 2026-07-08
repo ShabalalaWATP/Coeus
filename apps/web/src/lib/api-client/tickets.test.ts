@@ -1,6 +1,7 @@
 import { ApiError } from "./client";
 import {
   addTicketCollaborator,
+  consentNoMatch,
   confirmTicketDelivery,
   listTickets,
   listUserDirectory,
@@ -62,6 +63,28 @@ test("confirms delivery with a CSRF-protected mutation", async () => {
     {
       credentials: "include",
       headers: { "X-CSRF-Token": "csrf" },
+      method: "POST",
+    },
+  );
+});
+
+test("records no-match consent with a CSRF-protected payload", async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    json: () => Promise.resolve({ id: "ticket-1", state: "ROUTE_ASSESSMENT" }),
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  await expect(consentNoMatch("ticket-1", true, "csrf")).resolves.toMatchObject({
+    state: "ROUTE_ASSESSMENT",
+  });
+
+  expect(fetchMock).toHaveBeenCalledWith(
+    "http://127.0.0.1:8001/api/v1/tickets/ticket-1/no-match-consent",
+    {
+      body: JSON.stringify({ taskAsNewRequest: true }),
+      credentials: "include",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": "csrf" },
       method: "POST",
     },
   );

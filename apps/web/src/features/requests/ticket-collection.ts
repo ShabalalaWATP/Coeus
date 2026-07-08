@@ -9,7 +9,7 @@ export function upsertTicket(tickets: Ticket[] | undefined, nextTicket: Ticket):
 }
 
 export function ticketMetrics(tickets: Ticket[]) {
-  const searchingStates = new Set(["RFI_SEARCHING", "RFI_MATCH_OFFERED"]);
+  const searchingStates = new Set(["RFI_SEARCHING", "RFI_MATCH_OFFERED", "RFI_NO_MATCH"]);
   const draftStates = new Set(["DRAFT_INTAKE", "INFO_REQUIRED"]);
   return {
     total: tickets.length,
