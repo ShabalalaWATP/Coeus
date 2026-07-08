@@ -8,9 +8,11 @@ import { DetailsChecklist } from "./DetailsChecklist";
 import { IntakePanel } from "./IntakePanel";
 import { ProductOffersPanel } from "./ProductOffersPanel";
 import { RequestJourney } from "./RequestJourney";
+import { SimilarRequestNoticePanel } from "./SimilarRequestNoticePanel";
 import { TimelinePanel } from "./TimelinePanel";
 import { StatusPill } from "../../components/ui/StatusPill";
 import type { RfiSearchResults } from "../../lib/api-client/rfi-search";
+import type { SimilarRequestNotice } from "../../lib/api-client/similar-requests";
 import type { AttachmentMetadataInput, IntakeUpdate, Ticket } from "../../lib/api-client/tickets";
 
 const INTAKE_STATES = new Set(["DRAFT_INTAKE", "INFO_REQUIRED"]);
@@ -65,6 +67,15 @@ type TicketWorkspaceProps = {
   rfiError?: boolean;
   rfiLoading: boolean;
   rfiResults?: RfiSearchResults;
+  similarNotice?: {
+    isJoining: boolean;
+    isLoading: boolean;
+    isQueryError: boolean;
+    notice?: SimilarRequestNotice;
+    onContinue: () => void;
+    onJoin: (ticketId: string) => void;
+    onRetry: () => void;
+  };
   ticket?: Ticket;
 };
 
@@ -79,6 +90,7 @@ export function TicketWorkspace({
   rfiError = false,
   rfiLoading,
   rfiResults,
+  similarNotice,
   ticket,
 }: TicketWorkspaceProps) {
   const isOwner = ticket !== undefined && ticket.requesterUserId === currentUserId;
@@ -146,6 +158,17 @@ export function TicketWorkspace({
                 ticket={ticket}
               />
             </details>
+          ) : null}
+          {ticket && isOwner && similarNotice ? (
+            <SimilarRequestNoticePanel
+              isJoining={similarNotice.isJoining}
+              isLoading={similarNotice.isLoading}
+              isQueryError={similarNotice.isQueryError}
+              notice={similarNotice.notice}
+              onContinue={similarNotice.onContinue}
+              onJoin={similarNotice.onJoin}
+              onRetry={similarNotice.onRetry}
+            />
           ) : null}
           {showOffers ? (
             <ProductOffersPanel

@@ -29,12 +29,26 @@ import {
   type AttachmentMetadataInput,
   type IntakeUpdate,
   type Ticket,
+  type TicketState,
 } from "../../lib/api-client/tickets";
+import { getSimilarRequestNotice, joinSimilarRequest } from "../../lib/api-client/similar-requests";
 import { useAuth } from "../../lib/auth/auth-context";
 import { actionErrorMessage } from "../../lib/mutations/action-error";
 import { hasPermissions } from "../../lib/permissions/route-access";
 
 const EMPTY_TICKETS: Ticket[] = [];
+const SIMILAR_NOTICE_STATES = new Set<TicketState>([
+  "RFI_SEARCHING",
+  "RFI_MATCH_OFFERED",
+  "ROUTE_ASSESSMENT",
+  "RFA_MANAGER_REVIEW",
+  "CM_MANAGER_REVIEW",
+  "ANALYST_ASSIGNMENT",
+  "ANALYST_IN_PROGRESS",
+  "QC_REVIEW",
+  "REWORK_REQUIRED",
+  "MANAGER_RELEASE",
+]);
 
 export default function RequestsPage() {
   const { session } = useAuth();
@@ -45,6 +59,7 @@ export default function RequestsPage() {
   const isNewRequest = location.pathname.endsWith("/new");
   const [journeyOpen, setJourneyOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [dismissedSimilarNoticeIds, setDismissedSimilarNoticeIds] = useState<string[]>([]);
   const csrfToken = session?.csrfToken ?? "";
   const canCreate = session !== null && hasPermissions(session.user, ["chat:use"]);
   const ticketsQuery = useQuery({
@@ -57,6 +72,12 @@ export default function RequestsPage() {
     ? undefined
     : tickets.find((ticket) => ticket.id === ticketId);
   const selectedTicketId = selectedTicket?.id ?? "";
+  const similarNoticeDismissed = dismissedSimilarNoticeIds.includes(selectedTicketId);
+  const similarNoticeEligible =
+    selectedTicket !== undefined &&
+    selectedTicket.requesterUserId === session?.user.id &&
+    SIMILAR_NOTICE_STATES.has(selectedTicket.state) &&
+    !similarNoticeDismissed;
   const selectedRfiKey = ["rfi-search", selectedTicketId] as const;
   const hasCachedRfiResults =
     selectedTicket !== undefined && queryClient.getQueryData(selectedRfiKey) !== undefined;
@@ -69,6 +90,11 @@ export default function RequestsPage() {
       !hasCachedRfiResults,
     queryFn: () => getRfiSearchResults(selectedTicketId),
     queryKey: selectedRfiKey,
+  });
+  const similarNoticeQuery = useQuery({
+    enabled: similarNoticeEligible,
+    queryFn: () => getSimilarRequestNotice(selectedTicketId),
+    queryKey: ["similar-requests", "customer", selectedTicketId],
   });
   useEffect(() => setActionError(null), [selectedTicketId]);
 
@@ -119,9 +145,24 @@ export default function RequestsPage() {
     onError: failAction("The request could not be submitted. Check the details and try again."),
     onMutate: clearActionError,
     onSuccess: (ticket) => {
+      setDismissedSimilarNoticeIds((current) => current.filter((id) => id !== ticket.id));
       updateTicketCache(ticket);
+      void queryClient.invalidateQueries({
+        queryKey: ["similar-requests", "customer", ticket.id],
+      });
       // Transient roadmap popup so the requester sees where their request goes next.
       setJourneyOpen(true);
+    },
+  });
+  const joinSimilarMutation = useMutation({
+    mutationFn: (relatedTicketId: string) =>
+      joinSimilarRequest(selectedTicketId, relatedTicketId, csrfToken),
+    onError: failAction("The similar request could not be joined. Try again."),
+    onMutate: clearActionError,
+    onSuccess: (joined) => {
+      setDismissedSimilarNoticeIds((current) => [...new Set([...current, selectedTicketId])]);
+      void queryClient.invalidateQueries({ queryKey: ["tickets"] });
+      void navigate(`/app/requests/${encodeURIComponent(joined.joinedTicketId)}`);
     },
   });
   const attachmentMutation = useMutation({
@@ -247,6 +288,23 @@ export default function RequestsPage() {
           rfiError={rfiResultsQuery.isError}
           rfiLoading={rfiResultsQuery.isLoading}
           rfiResults={rfiResultsQuery.data}
+          similarNotice={
+            !similarNoticeDismissed &&
+            (similarNoticeEligible || similarNoticeQuery.data !== undefined)
+              ? {
+                  isJoining: joinSimilarMutation.isPending,
+                  isLoading: similarNoticeQuery.isLoading,
+                  isQueryError: similarNoticeQuery.isError,
+                  notice: similarNoticeQuery.data,
+                  onContinue: () =>
+                    setDismissedSimilarNoticeIds((current) => [
+                      ...new Set([...current, selectedTicketId]),
+                    ]),
+                  onJoin: (id) => joinSimilarMutation.mutate(id),
+                  onRetry: () => void similarNoticeQuery.refetch(),
+                }
+              : undefined
+          }
           ticket={selectedTicket}
         />
       ) : (

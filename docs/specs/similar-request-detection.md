@@ -53,11 +53,9 @@ Similarity checks include tickets in these active workflow states:
 - `QC_REVIEW`
 - `REWORK_REQUIRED`
 - `MANAGER_RELEASE`
-- `INFO_REQUIRED`
-
-The source ticket itself is excluded. Draft, cancelled and closed states are
-excluded, including `DRAFT_INTAKE`, `CANCELLED`,
-`CLOSED_EXISTING_PRODUCT_ACCEPTED` and `CLOSED_DELIVERED`.
+  The source ticket itself is excluded. Draft, cancelled and closed states are
+  excluded, including `DRAFT_INTAKE`, `INFO_REQUIRED`, `CANCELLED`,
+  `CLOSED_EXISTING_PRODUCT_ACCEPTED` and `CLOSED_DELIVERED`.
 
 ## Scoring
 
@@ -119,7 +117,7 @@ The notice gives the customer two actions:
 
 - Join a visible matching ticket as a viewer. This adds the customer to the
   matching ticket using the same collaborator model and records
-  `similar_request_notified` and `ticket_collaborator_added` audit events.
+  `ticket_collaborator_added` and `similar_request_joined` audit events.
 - Continue with the submitted request. This is advisory and is always allowed.
 
 Continuing does not need a backend state transition because submission has
@@ -129,8 +127,8 @@ notice in the UI.
 ## Manager Visibility
 
 RFA and CM managers already have workflow read permissions. The routing queue
-therefore includes a `similarRequests` section on each ticket response with
-matching open tickets regardless of whether the requester could see them.
+therefore calls a dedicated similar-request endpoint for the selected ticket and
+shows matching open tickets regardless of whether the requester could see them.
 
 Managers see:
 
@@ -149,7 +147,7 @@ Managers can link a queue ticket to a similar open ticket. The action:
 - is idempotent;
 - appends `related_ticket_linked` timeline entries to both tickets;
 - records a `tickets_linked` audit event;
-- returns the updated routing ticket response.
+- returns the refreshed similar-request list.
 
 The link is represented by reciprocal ticket IDs on each ticket record, not by
 free-text timeline parsing.

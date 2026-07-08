@@ -74,6 +74,13 @@ From here a customer can:
 - Tag colleagues as editors or viewers.
 - Submit the request, then accept or reject any existing-product offers.
 
+After submission, Istari also checks open requests for likely overlap. If a
+visible similar request is already in progress, the workspace shows its
+reference, title, score and reasons with **Join as viewer** and **Continue
+request** actions. If overlap exists but the customer has no need-to-know for
+the matching ticket, the workspace shows only a neutral note that the assessing
+team will check for overlapping work.
+
 ## Intelligence Store
 
 The Intelligence Store is a controlled search service. The collapsible
@@ -105,6 +112,8 @@ A manager can:
 
 - **Approve** the recommended route, or approve the other route with a written
   override reason.
+- **Review similar open requests** before deciding the route and link related
+  work so both ticket timelines show the relationship.
 - **Query or reject** the route (the form is tucked behind a disclosure to keep
   the screen focused).
 - **Assign an analyst** with a team name and work packages once a route is

@@ -9,6 +9,7 @@
 @import "./journey.css";
 @import "./routing.css";
 @import "./routing-override.css";
+@import "./similar-requests.css";
 @import "./analyst.css";
 @import "./qc.css";
 @import "./feedback.css";

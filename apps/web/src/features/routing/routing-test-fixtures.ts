@@ -122,6 +122,9 @@ export function stubRoutingFetch(
       if (url.includes("capability-catalogue")) {
         return Promise.resolve(jsonResponse(capabilityCatalogue));
       }
+      if (url.includes("similar-requests/routing") && !url.includes("/link/")) {
+        return Promise.resolve(jsonResponse({ matches: [] }));
+      }
       return sequential(url, init);
     }),
   );

@@ -16,13 +16,14 @@ stays in control.
 
 ## Agents at a glance
 
-| Agent | Stage | Trigger | Output | Human decision |
-| --- | --- | --- | --- | --- |
-| Customer Chatbot Agent | Describe the need | Customer chat message | Extracted requirement, completeness, safety flags | Customer confirms and submits |
-| RFI Search Agent | Search existing intelligence | Ticket submitted | Ranked existing-product offers | Customer accepts or rejects an offer |
-| RFA Capability Agent | Route review | Manager runs capability checks | Assessment-route feasibility review | RFA manager approves, rejects or queries |
-| CM Capability Agent | Route review | Manager runs capability checks | Collection-route feasibility review | CM manager approves, rejects or queries |
-| Orchestrator Agent | Route review | RFI search plus RFA and CM reviews | Recommended route and reasoning | Manager may follow or override with a reason |
+| Agent                  | Stage                        | Trigger                                 | Output                                            | Human decision                                  |
+| ---------------------- | ---------------------------- | --------------------------------------- | ------------------------------------------------- | ----------------------------------------------- |
+| Customer Chatbot Agent | Describe the need            | Customer chat message                   | Extracted requirement, completeness, safety flags | Customer confirms and submits                   |
+| RFI Search Agent       | Search existing intelligence | Ticket submitted                        | Ranked existing-product offers                    | Customer accepts or rejects an offer            |
+| Similar Request Check  | Search existing intelligence | Submitted request reaches open workflow | Similar open tickets and reasons                  | Customer may join or continue; manager may link |
+| RFA Capability Agent   | Route review                 | Manager runs capability checks          | Assessment-route feasibility review               | RFA manager approves, rejects or queries        |
+| CM Capability Agent    | Route review                 | Manager runs capability checks          | Collection-route feasibility review               | CM manager approves, rejects or queries         |
+| Orchestrator Agent     | Route review                 | RFI search plus RFA and CM reviews      | Recommended route and reasoning                   | Manager may follow or override with a reason    |
 
 The stages map one-to-one onto the customer-facing
 [request journey](USER_GUIDE.md#the-request-journey).
@@ -102,8 +103,9 @@ The customer owns the requirement. They can also edit any field directly in the
 
 ## 2. RFI Search Agent
 
-- **Lives in:** `apps/api/src/coeus/services/rfi_ranking.py` and `services/rfi_search.py`
-- **Entry point:** `rank_rfi_hits(hits, intake)`
+- **Lives in:** `apps/api/src/coeus/services/rfi_ranking.py`,
+  `services/rfi_search.py` and `services/embeddings.py`
+- **Entry point:** `RfiSearchService.run(ticket_id, actor)`
 
 ### Purpose
 
@@ -120,21 +122,29 @@ has no need-to-know for.
 
 ### How it scores
 
-For each candidate the query text (title, operational question, region, known
-context, output format, success criteria) is compared to the product:
+The agent builds query text from title, operational question, region, known
+context, output format and success criteria, then runs two retrieval legs over
+the access-filtered product set:
 
-| Signal | Weight | Basis |
-| --- | --- | --- |
-| Full-text overlap | 0.38 | Query tokens found in the product's text |
-| Semantic overlap | 0.34 | Cosine-style token overlap normalised by length |
-| Semantic label match | up to 0.12 | Controlled labels derived from product and request language |
-| Metadata match | up to 0.24 | Region match (+0.16), output-format/type match (+0.08) |
+| Signal          | Basis                                                                                                                    |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Lexical rank    | PostgreSQL full-text rank when relational search is available, with the deterministic token scorer as the local fallback |
+| Semantic rank   | Cosine similarity against 384-dimension product embeddings from the configured embedding provider                        |
+| Semantic labels | Controlled labels derived from product and request language                                                              |
+| Metadata        | Region and output-format or product-type overlap                                                                         |
 
-Scores are capped at 1.0. A product is only offered when its score is at or above
-the **offer threshold of 0.25**, and at most **five** offers are returned,
-highest score first. Each offer carries its `match_reasons` (for example
-`semantic-label:maritime`, `full-text:baltic`, `semantic:assessment`,
-`metadata:region`) so the customer can see why it was suggested.
+Lexical and semantic ranks are fused with Reciprocal Rank Fusion (`k = 60`).
+Metadata and semantic-label signals are deterministic tie-break bonuses on the
+fused score. Scores are normalised to 0..1, and a product is offered only when it
+is at or above the calibrated hybrid threshold. At most five offers are returned,
+highest score first. Each offer carries `match_reasons`, including legacy
+reasons such as `metadata:region` plus hybrid reasons such as `lexical-rank:2`,
+`vector-similarity:0.83` and `retrieval:lexical-only`.
+
+`COEUS_EMBEDDING_PROVIDER` is authoritative. The default `mock` provider is
+deterministic and offline. Optional `local` and `gemini_api` providers degrade to
+lexical-only retrieval if unavailable, and Gemini is never called unless the
+operator explicitly selects the Gemini embedding provider.
 
 ### Output
 
@@ -147,6 +157,43 @@ The customer accepts or rejects each offer. Accepting an offer closes the ticket
 as satisfied by an existing product (`CLOSED_EXISTING_PRODUCT_ACCEPTED`);
 rejecting all of them sends the ticket on to route assessment. The agent never
 closes a ticket by itself.
+
+---
+
+## 2a. Similar Request Check
+
+- **Lives in:** `apps/api/src/coeus/services/similar_requests.py` and
+  `services/similar_request_scoring.py`
+- **Entry points:** `/api/v1/similar-requests/tickets/{ticket_id}` and
+  `/api/v1/similar-requests/routing/{ticket_id}`
+
+### Purpose
+
+Warn humans when another open request appears to cover the same work, so teams
+can consolidate early without blocking a customer's submitted request.
+
+### What it reads
+
+Open tickets from `RFI_SEARCHING` through `MANAGER_RELEASE`. Draft,
+`INFO_REQUIRED`, cancelled and closed tickets are excluded, and the source ticket
+is never compared with itself.
+
+### How it scores
+
+The check reuses the hybrid retrieval approach over each ticket's intake text:
+lexical rank plus embedding similarity are fused with Reciprocal Rank Fusion
+(`k = 60`), then small region and output-format bonuses are applied. Customer
+notices use a higher threshold than manager panels because customer disclosure is
+more sensitive.
+
+### Human control and visibility
+
+Customers only see reference, title, score and reasons for matching tickets that
+the existing ticket visibility policy already lets them read. Hidden matches
+produce only a neutral notice. Customers can join a visible match as a viewer or
+continue their own request. RFA and Collection managers see matching open
+requests in the routing queue and can link them as related, which writes both
+ticket timelines and the audit log.
 
 ---
 
@@ -173,11 +220,11 @@ Both agents tokenise the intake on alphanumeric runs (so punctuation such as
 "assessment?" still matches) with simple plural folding, and look for domain
 signals:
 
-- **Assessment signal:** terms such as *assessment, assess, brief, report,
-  estimate, analysis*.
-- **Collection signal:** terms such as *collection, sensor, imagery, source,
-  monitor, surveillance*.
-- **Unsupported markers:** terms such as *mars, tbd, unbounded* raise a
+- **Assessment signal:** terms such as _assessment, assess, brief, report,
+  estimate, analysis_.
+- **Collection signal:** terms such as _collection, sensor, imagery, source,
+  monitor, surveillance_.
+- **Unsupported markers:** terms such as _mars, tbd, unbounded_ raise a
   clarification instead of a confident answer.
 
 From those signals each agent produces:

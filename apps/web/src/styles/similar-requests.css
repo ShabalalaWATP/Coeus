@@ -1,0 +1,112 @@
+.similar-panel,
+.routing-similar {
+  display: grid;
+  gap: 12px;
+  border: 1px solid color-mix(in srgb, var(--teal) 38%, var(--border));
+  border-radius: var(--radius-md);
+  padding: 12px;
+  background: color-mix(in srgb, var(--teal) 6%, var(--surface-muted));
+}
+
+.similar-panel p,
+.routing-similar p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.similar-panel__list,
+.routing-similar__list {
+  display: grid;
+  gap: 10px;
+}
+
+.similar-match,
+.routing-similar__item {
+  display: grid;
+  gap: 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+}
+
+.similar-match > div:first-child,
+.routing-similar__item > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.similar-match strong,
+.routing-similar__item strong {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+
+.similar-match span,
+.routing-similar__item span {
+  color: var(--text);
+  font-weight: 680;
+}
+
+.similar-score,
+.similar-match__reasons span {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  min-height: 26px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0 8px;
+  background: var(--surface-muted);
+  color: var(--teal);
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.similar-match__reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.similar-match__reasons span {
+  color: var(--muted);
+}
+
+.similar-panel__actions,
+.routing-similar__error {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.similar-panel button,
+.routing-similar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  border: 1px solid var(--teal);
+  border-radius: var(--radius-md);
+  padding: 0 12px;
+  background: color-mix(in srgb, var(--teal) 22%, var(--surface));
+  color: var(--text);
+  font-weight: 750;
+}
+
+.similar-panel button.store-action--secondary {
+  border-color: var(--border);
+  background: var(--surface);
+}
+
+.similar-panel button:disabled,
+.routing-similar button:disabled {
+  cursor: not-allowed;
+  border-color: var(--border);
+  background: var(--surface-muted);
+  color: var(--muted);
+}

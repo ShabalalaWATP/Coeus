@@ -31,7 +31,6 @@ OPEN_SIMILARITY_STATES = frozenset(
         TicketState.QC_REVIEW,
         TicketState.REWORK_REQUIRED,
         TicketState.MANAGER_RELEASE,
-        TicketState.INFO_REQUIRED,
     }
 )
 

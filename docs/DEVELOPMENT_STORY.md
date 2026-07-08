@@ -3,6 +3,21 @@
 Sprint 1 to Sprint 13 entries live in
 [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVELOPMENT_STORY_SPRINTS_01-13.md).
 
+## 2026-07-08 Similar request detection
+
+- Added Part B similar-request detection for open tickets from `RFI_SEARCHING`
+  through `MANAGER_RELEASE`, using deterministic lexical and embedding signals
+  with RRF scoring and region/output-format boosts.
+- Added customer-facing similar-request notices that reuse existing ticket
+  visibility before showing references or titles. Hidden matches produce only a
+  neutral assessing-team notice. Customers can join visible matches as viewers
+  or continue their own request.
+- Added manager routing-queue panels that show similar open requests before route
+  decisions. Managers can link tickets as related, with reciprocal ticket IDs,
+  timeline entries on both tickets and `tickets_linked` audit events.
+- Added backend API/scoring tests and frontend Vitest coverage for customer and
+  manager panels, including failed join/link actions.
+
 ## 2026-07-06 Frontend design and role-view polish
 
 - Reworked the frontend design system for a dark, operational look: expanded
