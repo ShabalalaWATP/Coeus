@@ -130,13 +130,15 @@ flowchart LR
     class HUMAN human
 ```
 
-### Hybrid RFI search internals
+### Hybrid Store and RFI search internals
 
-The RFI search agent answers "does an existing product already satisfy this?"
-before new work is raised. The candidate set is filtered by the requester's ACG,
-clearance and product status **first**, so the agent can never rank a product the
-requester has no need-to-know for. Two retrieval legs then run over that scoped
-set and are fused.
+The Store browse page and the RFI search agent share the same free-text
+retrieval boundary. RFI answers "does an existing product already satisfy this?"
+before new work is raised; Store browse uses the same engine when a user enters
+free text. The candidate set is filtered by the requester's ACG, clearance and
+product status **first**, so the engine can never rank a product the requester
+has no need-to-know for. Two retrieval legs then run over that scoped set and
+are fused.
 
 ```mermaid
 flowchart TB
@@ -165,5 +167,5 @@ flowchart TB
 The embedding provider is selectable (`mock` by default, `local` for an offline
 sentence model, `gemini_api` when explicitly enabled). If the provider is
 unavailable, search degrades to the lexical leg alone rather than failing, and
-the offer reasons record `retrieval:lexical-only`. The same hybrid scorer backs
+the reasons record `retrieval:lexical-only`. The same hybrid scorer also backs
 the similar-request check that flags overlapping in-progress work to managers.

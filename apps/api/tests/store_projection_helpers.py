@@ -19,6 +19,7 @@ from coeus.repositories.store import InMemoryStoreRepository
 class RecordingProjection:
     def __init__(self, products: tuple[StoreProduct, ...] = ()) -> None:
         self.products = products
+        self.leg_limits: list[int] = []
         self.saved_batches: list[tuple[StoreProduct, ...]] = []
 
     def list_products(self) -> tuple[StoreProduct, ...]:
@@ -33,7 +34,9 @@ class RecordingProjection:
         _scope: object,
         _query: str,
         _query_embedding: tuple[float, ...] | None,
+        _leg_limit: int = 50,
     ) -> tuple[StoreHybridCandidate, ...]:
+        self.leg_limits.append(_leg_limit)
         return tuple(StoreHybridCandidate(product=product) for product in self.products)
 
     def get_visible_product(self, product_id: object, _scope: object) -> StoreProduct | None:

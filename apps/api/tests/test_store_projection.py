@@ -142,6 +142,14 @@ def test_postgres_store_projection_hybrid_candidates_keep_access_predicates() ->
     assert "product_acg.acg_id = ANY(CAST(:acg_ids AS uuid[]))" in sql
     assert "websearch_to_tsquery" in sql
     assert "embedding <=> CAST(:query_embedding AS vector)" in sql
+    assert "embedding IS NOT NULL" in sql
+    assert ">= :vector_similarity_floor" in sql
+    assert "SELECT product_id FROM lexical" in sql
+    assert "UNION" in sql
+    assert "SELECT product_id FROM semantic" in sql
+    assert "JOIN selected ON selected.product_id = scoped.product_id" in sql
+    assert any(params.get("leg_limit") == 50 for params in engine.params)
+    assert any("vector_similarity_floor" in params for params in engine.params)
 
 
 def test_postgres_store_projection_gets_visible_product_with_access_predicates() -> None:

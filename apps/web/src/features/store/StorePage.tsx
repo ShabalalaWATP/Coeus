@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 
 import { PaginationControls, PaginationSummary } from "./StorePagination";
+import { StoreMatchReasons } from "./StoreMatchReasons";
 import { ProductTypeIcon } from "./ProductTypeIcon";
 import { productTypeLabel, productTypeOptions } from "./store-options";
 import { EmptyState, ErrorState } from "../../components/ui/PageState";
@@ -288,6 +289,10 @@ export default function StorePage({
                       </div>
                     </div>
                     <p>{product.summary}</p>
+                    <StoreMatchReasons
+                      reasons={product.matchReasons}
+                      show={Boolean(submittedFilters.query)}
+                    />
                     <div className="store-facets">
                       <span className="store-chip">{productTypeLabel(product.productType)}</span>
                       <span className="store-chip">Class {product.classificationLevel}</span>
@@ -317,7 +322,7 @@ export default function StorePage({
               ))}
               {visibleProducts.length === 0 ? (
                 <EmptyState
-                  hint="Adjust the filters or clear the search to see more of your authorised products."
+                  hint="Try related terms, fewer filters or a broader coverage date range."
                   title="No visible products match these filters"
                 />
               ) : null}

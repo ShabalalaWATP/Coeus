@@ -1,15 +1,21 @@
 from math import sqrt
 from re import findall
 
+from coeus.domain.search_relevance import (
+    LEXICAL_SCORE_FLOOR,
+    RRF_K,
+    VECTOR_SIMILARITY_FLOOR,
+    available_hybrid_legs,
+    hybrid_rrf_score,
+    matched_tokens,
+    token_sets_overlap,
+)
 from coeus.domain.store import StoreHybridCandidate, StoreProduct, StoreSearchHit
 from coeus.domain.tickets import IntakeDetails, ProductOffer, ProductOfferStatus
 from coeus.services.store_semantics import product_semantic_text, semantic_label_reasons
 
 RFI_OFFER_THRESHOLD = 0.34
 RFI_MAX_OFFERS = 5
-RRF_K = 60
-LEXICAL_SCORE_FLOOR = 0.12
-VECTOR_SIMILARITY_FLOOR = 0.18
 STOP_WORDS = frozenset(
     {
         "a",
@@ -29,6 +35,18 @@ STOP_WORDS = frozenset(
         "with",
     }
 )
+__all__ = [
+    "LEXICAL_SCORE_FLOOR",
+    "RRF_K",
+    "VECTOR_SIMILARITY_FLOOR",
+    "lexical_score_for_product",
+    "lexical_text_score",
+    "query_text",
+    "rank_hybrid_rfi_candidates",
+    "rank_rfi_hits",
+    "token_overlap",
+    "tokenize",
+]
 
 
 def rank_rfi_hits(
@@ -119,7 +137,7 @@ def tokenize(text: str) -> tuple[str, ...]:
 
 
 def token_overlap(left: str, right: str) -> bool:
-    return bool(set(tokenize(left)).intersection(tokenize(right)))
+    return token_sets_overlap(tokenize(left), tokenize(right))
 
 
 def _tokens(text: str) -> tuple[str, ...]:
@@ -127,8 +145,7 @@ def _tokens(text: str) -> tuple[str, ...]:
 
 
 def _matched_tokens(query_tokens: tuple[str, ...], document: str) -> tuple[str, ...]:
-    document_text = document.casefold()
-    return tuple(token for token in query_tokens if token in document_text)
+    return matched_tokens(query_tokens, tokenize(document))
 
 
 def lexical_text_score(query: str, document: str) -> float:
@@ -170,8 +187,8 @@ def _semantic_score(
 ) -> tuple[float, tuple[str, ...]]:
     if not query_tokens:
         return 0.0, ()
-    product_tokens = set(_tokens(_product_text(product)))
-    overlap = tuple(token for token in query_tokens if token in product_tokens)
+    product_tokens = _tokens(_product_text(product))
+    overlap = matched_tokens(query_tokens, product_tokens)
     denominator = sqrt(max(len(query_tokens), 1) * max(len(product_tokens), 1))
     score = len(overlap) / denominator
     return min(score, 1.0), tuple(f"semantic:{token}" for token in overlap)
@@ -199,25 +216,11 @@ def _semantic_label_score(product: StoreProduct, query: str) -> tuple[float, tup
 
 
 def _available_legs(candidates: tuple[StoreHybridCandidate, ...]) -> int:
-    lexical = any(
-        candidate.lexical_rank is not None and candidate.lexical_score >= LEXICAL_SCORE_FLOOR
-        for candidate in candidates
-    )
-    vector = any(
-        candidate.vector_rank is not None and candidate.vector_score >= VECTOR_SIMILARITY_FLOOR
-        for candidate in candidates
-    )
-    return max(1, int(lexical) + int(vector))
+    return available_hybrid_legs(candidates)
 
 
 def _rrf_score(candidate: StoreHybridCandidate, available_legs: int) -> float:
-    raw = 0.0
-    if candidate.lexical_rank is not None and candidate.lexical_score >= LEXICAL_SCORE_FLOOR:
-        raw += 1 / (RRF_K + candidate.lexical_rank)
-    if candidate.vector_rank is not None and candidate.vector_score >= VECTOR_SIMILARITY_FLOOR:
-        raw += 1 / (RRF_K + candidate.vector_rank)
-    max_possible = available_legs / (RRF_K + 1)
-    return raw / max_possible if max_possible else 0.0
+    return hybrid_rrf_score(candidate, available_legs)
 
 
 def _reasons(

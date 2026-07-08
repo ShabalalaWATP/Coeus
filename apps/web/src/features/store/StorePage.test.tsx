@@ -113,7 +113,12 @@ test("submits product search filters", async () => {
       ok: true,
       json: () =>
         Promise.resolve({
-          products: [visibleProduct],
+          products: [
+            {
+              ...visibleProduct,
+              matchReasons: ["lexical-rank:1", "vector-similarity:0.82", "full-text:harbour"],
+            },
+          ],
           total: 1,
           facets: { productTypes: [], regions: [], tags: [] },
         }),
@@ -143,6 +148,10 @@ test("submits product search filters", async () => {
   expect(url).toContain("page=1");
   expect(url).toContain("pageSize=6");
   expect(init.credentials).toBe("include");
+  expect(await screen.findByText("Why it matched")).toBeVisible();
+  expect(screen.getByText("Text rank 1")).toBeVisible();
+  expect(screen.getByText("Semantic 82%")).toBeVisible();
+  expect(screen.getByText("Term harbour")).toBeVisible();
 });
 
 test("requests the next store result page", async () => {

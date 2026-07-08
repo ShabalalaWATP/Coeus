@@ -66,6 +66,7 @@ class PostgresStoreProjection:
         scope: StoreVisibilityScope,
         query: str,
         query_embedding: tuple[float, ...] | None,
+        leg_limit: int = 50,
     ) -> tuple[StoreHybridCandidate, ...]:
         from coeus.persistence.store_projection_search import hybrid_candidates
 
@@ -77,6 +78,7 @@ class PostgresStoreProjection:
                 scope,
                 query,
                 vector_to_pg(query_embedding),
+                leg_limit,
             )
 
     def get_visible_product(

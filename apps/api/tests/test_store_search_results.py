@@ -1,0 +1,62 @@
+from coeus.domain.search_relevance import VECTOR_SIMILARITY_FLOOR
+from coeus.domain.store import StoreHybridCandidate
+from coeus.services.store_search_results import hybrid_hits
+from store_projection_helpers import seed_product
+
+
+def test_hybrid_hits_exclude_zero_signal_query_candidates() -> None:
+    product = seed_product()
+
+    hits = hybrid_hits((StoreHybridCandidate(product=product),), "assessment")
+
+    assert hits == ()
+
+
+def test_hybrid_hits_include_lexical_only_candidates_without_visible_fallback() -> None:
+    product = seed_product()
+
+    hits = hybrid_hits(
+        (
+            StoreHybridCandidate(
+                product=product,
+                lexical_rank=1,
+                lexical_score=0.5,
+                lexical_only=True,
+            ),
+        ),
+        "assessment",
+    )
+
+    assert len(hits) == 1
+    assert "lexical-rank:1" in hits[0].match_reasons
+    assert "retrieval:lexical-only" in hits[0].match_reasons
+    assert "visible" not in hits[0].match_reasons
+
+
+def test_hybrid_hits_apply_shared_vector_floor() -> None:
+    product = seed_product()
+
+    below = hybrid_hits(
+        (
+            StoreHybridCandidate(
+                product=product,
+                vector_rank=1,
+                vector_score=VECTOR_SIMILARITY_FLOOR - 0.01,
+            ),
+        ),
+        "assessment",
+    )
+    at_floor = hybrid_hits(
+        (
+            StoreHybridCandidate(
+                product=product,
+                vector_rank=1,
+                vector_score=VECTOR_SIMILARITY_FLOOR,
+            ),
+        ),
+        "assessment",
+    )
+
+    assert below == ()
+    assert len(at_floor) == 1
+    assert f"vector-similarity:{VECTOR_SIMILARITY_FLOOR:.2f}" in at_floor[0].match_reasons

@@ -5,7 +5,9 @@ from coeus.domain.store import StoreProduct
 SEMANTIC_LABEL_TERMS: dict[str, frozenset[str]] = {
     "assessment": frozenset({"assessment", "assess", "brief", "report", "analysis"}),
     "collection": frozenset({"collection", "collect", "tasking", "source"}),
-    "maritime": frozenset({"maritime", "port", "ports", "harbour", "vessel", "shipping"}),
+    "maritime": frozenset(
+        {"maritime", "port", "ports", "harbour", "vessel", "vessels", "shipping"}
+    ),
     "geospatial": frozenset({"geospatial", "geojson", "map", "imagery", "terrain"}),
     "cyber": frozenset({"cyber", "malware", "intrusion", "network", "credential"}),
     "sigint": frozenset({"sigint", "signals", "emitter", "radar", "sensor"}),

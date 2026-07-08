@@ -24,6 +24,7 @@ class StoreProjection(Protocol):
         scope: StoreVisibilityScope,
         query: str,
         query_embedding: tuple[float, ...] | None,
+        leg_limit: int = 50,
     ) -> tuple[StoreHybridCandidate, ...]:
         raise NotImplementedError
 

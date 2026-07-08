@@ -245,6 +245,7 @@ semantic AS (
     FROM scoped
     WHERE CAST(:query_embedding AS text) IS NOT NULL
       AND embedding IS NOT NULL
+      AND (1 - (embedding <=> CAST(:query_embedding AS vector))) >= :vector_similarity_floor
     ORDER BY embedding <=> CAST(:query_embedding AS vector), title ASC
     LIMIT :leg_limit
 ),

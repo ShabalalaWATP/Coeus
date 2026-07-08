@@ -20,6 +20,11 @@ with `vector_cosine_ops`. RFI search retrieves top-50 lexical and top-50 vector
 candidates inside the same status, clearance and ACG predicates, then fuses the
 ranked lists with Reciprocal Rank Fusion using `k = 60`.
 
+The vector leg applies the shared vector similarity floor before a product is
+eligible. Lexical matching uses whole-token matching with conservative singular
+and plural folding, not substring matching. Store browse reuses the same shared
+token and fusion helpers but opts into a wider browse candidate window.
+
 The embedding provider is selected by `COEUS_EMBEDDING_PROVIDER`:
 
 - `mock`, the default, hashes canonical tokens into a deterministic
@@ -38,6 +43,11 @@ Scores are normalised to `0..1` after RRF. Metadata and controlled semantic
 labels are retained as small tie-break bonuses. The offer threshold is `0.34`,
 which rejects weak single-leg tail matches but allows strong lexical or semantic
 matches to be offered.
+
+Product semantic text is built only from the product's own title, summary,
+description, metadata, tags, labels and asset types. Label vocabularies help
+derive labels and reasons, but they are not appended to the embedding or lexical
+document text.
 
 ## Rejected Alternatives
 

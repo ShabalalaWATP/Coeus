@@ -1,5 +1,5 @@
 from datetime import UTC, datetime
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from coeus.domain.access import AccessControlGroup, ProductStatus
 from coeus.domain.store import (
@@ -58,6 +58,7 @@ class InMemoryStoreRepository:
         scope: StoreVisibilityScope,
         query: str,
         query_embedding: tuple[float, ...] | None,
+        leg_limit: int = 50,
     ) -> tuple[StoreHybridCandidate, ...]:
         if self._projection is not None:
             candidates = self._projection.hybrid_candidates(
@@ -65,6 +66,7 @@ class InMemoryStoreRepository:
                 scope,
                 query,
                 query_embedding,
+                leg_limit,
             )
             self._products.update(
                 {candidate.product.product_id: candidate.product for candidate in candidates}
@@ -75,7 +77,14 @@ class InMemoryStoreRepository:
             for product in self.search_products(filters, scope)
             if product_in_scope(product, scope)
         )
-        return memory_hybrid_candidates(scoped, query, query_embedding, self._embeddings)
+        return memory_hybrid_candidates(
+            scoped,
+            query,
+            query_embedding,
+            self._embeddings,
+            filters,
+            leg_limit,
+        )
 
     def get_visible_product(
         self, product_id: UUID, scope: StoreVisibilityScope
@@ -329,10 +338,6 @@ class InMemoryStoreRepository:
             if acg.code == code:
                 return acg
         raise RuntimeError(f"Missing required seed ACG {code}.")
-
-
-def new_store_product_id() -> UUID:
-    return uuid4()
 
 
 def _max_reference_counter(products: tuple[StoreProduct, ...], default: int) -> int:
