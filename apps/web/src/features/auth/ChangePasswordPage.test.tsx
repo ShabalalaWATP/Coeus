@@ -42,7 +42,10 @@ test("keeps the submit disabled and hints while the form is invalid", async () =
 test("changes the password and refreshes the session", async () => {
   const fetchMock = vi
     .fn()
-    .mockResolvedValueOnce({ ok: true, status: 204 })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ ...previewSession, csrfToken: "rotated-csrf-token" }),
+    })
     .mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({ ...previewSession, passwordResetRequired: false }),

@@ -6,13 +6,29 @@ afterEach(() => {
 });
 
 test("posts password changes with CSRF protection", async () => {
-  const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 204 });
+  const changedSession = {
+    csrfToken: "csrf-after-change",
+    user: {
+      defaultRoute: "/app/requests",
+      displayName: "Customer User",
+      id: "user-1",
+      permissions: ["ticket:read_own"],
+      roles: ["User"],
+      username: "user@example.test",
+    },
+  };
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    json: () => Promise.resolve(changedSession),
+  });
   vi.stubGlobal("fetch", fetchMock);
 
-  await new ApiClient("http://api.test").changePassword(
-    { currentPassword: "OldPassword123!", newPassword: "NewPassword123!" },
-    "csrf-token",
-  );
+  await expect(
+    new ApiClient("http://api.test").changePassword(
+      { currentPassword: "OldPassword123!", newPassword: "NewPassword123!" },
+      "csrf-token",
+    ),
+  ).resolves.toEqual(changedSession);
 
   expect(fetchMock).toHaveBeenCalledWith("http://api.test/api/v1/auth/password", {
     body: JSON.stringify({ currentPassword: "OldPassword123!", newPassword: "NewPassword123!" }),
@@ -20,6 +36,29 @@ test("posts password changes with CSRF protection", async () => {
     headers: { "Content-Type": "application/json", "X-CSRF-Token": "csrf-token" },
     method: "POST",
   });
+});
+
+test("throws parsed API errors on password-change failures", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      json: () =>
+        Promise.resolve({
+          error: { code: "invalid_current_password", message: "Current password is incorrect." },
+        }),
+    }),
+  );
+
+  await expect(
+    new ApiClient("http://api.test").changePassword(
+      { currentPassword: "OldPassword123!", newPassword: "NewPassword123!" },
+      "csrf-token",
+    ),
+  ).rejects.toEqual(
+    new ApiError(403, "invalid_current_password", "Current password is incorrect."),
+  );
 });
 
 test("notifies the unauthorized handler for 401s outside auth endpoints", async () => {

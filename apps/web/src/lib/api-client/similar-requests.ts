@@ -1,6 +1,6 @@
 import { apiRequestJson, pathSegment } from "./client";
 
-export type SimilarRequestMatch = {
+type SimilarRequestMatch = {
   ticketId: string;
   reference: string;
   title: string;
