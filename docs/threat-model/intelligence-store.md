@@ -35,5 +35,6 @@ and controlled asset access.
 - Database-level row security and immutable audit constraints are still deferred.
   Store search, detail and asset grants now apply PostgreSQL-side visibility
   predicates and still recheck API authorisation before returning results.
-- Vector-search leakage and embedding privacy need a dedicated review before
-  non-null embeddings are populated and queried in production.
+- Vector-search leakage and embedding privacy are covered in
+  `hybrid-search-and-duplicate-detection.md`; production deployments still need
+  to classify embeddings as sensitive derived data.

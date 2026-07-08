@@ -32,7 +32,7 @@ def build_store_services(
     return StoreServices(
         repository=repository,
         ingestion=StoreIngestionService(repository, access_repository, audit_log),
-        search=StoreSearchService(repository, policy),
+        search=StoreSearchService(repository, policy, embeddings),
         details=details,
         assets=StoreAssetService(details, asset_tokens, audit_log),
         suggestions=MetadataSuggestionService(),

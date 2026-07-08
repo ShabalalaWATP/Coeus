@@ -75,7 +75,7 @@ class InMemoryStoreRepository:
             for product in self.search_products(filters, scope)
             if product_in_scope(product, scope)
         )
-        return memory_hybrid_candidates(scoped, query, query_embedding, self._embeddings)
+        return memory_hybrid_candidates(scoped, query, query_embedding, self._embeddings, filters)
 
     def get_visible_product(
         self, product_id: UUID, scope: StoreVisibilityScope

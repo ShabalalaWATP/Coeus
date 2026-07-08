@@ -20,6 +20,8 @@ from coeus.persistence.store_projection_search_sql import (
     VISIBLE_PRODUCT_SQL,
 )
 
+STORE_BROWSE_HYBRID_LEG_LIMIT = 500
+
 
 def get_visible_product(
     connection: Connection,
@@ -70,7 +72,9 @@ def hybrid_candidates(
     params = _search_params(filters, scope) | {
         "query": _blank_to_none(query),
         "query_embedding": query_embedding,
-        "leg_limit": 50,
+        # Store browse pagination needs a full realistic candidate window, not
+        # the public page size. This matches the current local Store scale.
+        "leg_limit": STORE_BROWSE_HYBRID_LEG_LIMIT,
     }
     product_rows = _mapping_rows(connection.execute(text(HYBRID_PRODUCTS_SQL), params))
     if not product_rows:

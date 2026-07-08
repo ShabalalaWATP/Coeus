@@ -1,0 +1,23 @@
+.store-match-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.store-match-reasons span {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.store-match-reasons small {
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  border-radius: var(--radius-sm);
+  padding: 3px 7px;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--text);
+  font-size: 0.76rem;
+}

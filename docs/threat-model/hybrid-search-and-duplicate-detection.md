@@ -2,8 +2,8 @@
 
 ## Scope
 
-Hybrid RFI search, product embeddings, similar-request detection and the
-no-match consent journey.
+Hybrid Store browse search, RFI search, product embeddings, similar-request
+detection and the no-match consent journey.
 
 ## Assets
 
@@ -18,9 +18,9 @@ no-match consent journey.
 | Threat                                                               | Control                                                                                                                                        |
 | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | Vector search reveals products outside a requester's ACG.            | Both lexical and vector SQL legs apply status, clearance and ACG predicates before ranking. The ranking layer never sees hidden products.      |
-| Product counts reveal hidden products.                               | Candidate totals come from the scoped Store query only. Offers and reasons are built after scope filtering.                                    |
+| Product counts or facets reveal hidden products.                     | Store browse totals, facets, offers and reasons are built only after access scoping and the API-level `can_read` recheck.                     |
 | A configured Gemini key silently exfiltrates Store text.             | `COEUS_EMBEDDING_PROVIDER` is authoritative. `gemini_api` is the only provider that can call Gemini, and keys are never logged or returned.    |
-| Local model or package is missing and breaks RFI search.             | Non-mock provider failures log once and degrade to lexical-only retrieval.                                                                     |
+| Local model or package is missing and breaks product search.         | Non-mock provider failures log once and degrade to lexical-only retrieval.                                                                     |
 | Similar-request notices reveal another customer's ticket.            | Customer-facing disclosure reuses `get_visible_ticket`. The customer path carries zero hidden-ticket signal: hidden matches produce an empty result identical to no overlap, with no boolean, count, notice or audit event derived from an invisible ticket. |
 | A customer replays the notice as a hidden-match existence oracle.     | The customer notice runs only for an eligible, submitted source ticket, not for editable `DRAFT_INTAKE` or `INFO_REQUIRED` intake, and `similar_request_notified` is recorded only when a visible match is surfaced. A customer cannot loop probe text through an editable draft to confirm an invisible request. |
 | Manager duplicate panels create unaudited consolidation decisions.   | Link actions write reciprocal related-ticket IDs, timeline entries on both tickets and a `tickets_linked` audit event.                         |

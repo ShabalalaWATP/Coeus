@@ -127,8 +127,8 @@ def _tokens(text: str) -> tuple[str, ...]:
 
 
 def _matched_tokens(query_tokens: tuple[str, ...], document: str) -> tuple[str, ...]:
-    document_text = document.casefold()
-    return tuple(token for token in query_tokens if token in document_text)
+    document_tokens = set(tokenize(document))
+    return tuple(token for token in query_tokens if token in document_tokens)
 
 
 def lexical_text_score(query: str, document: str) -> float:

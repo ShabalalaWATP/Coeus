@@ -11,12 +11,10 @@ from coeus.domain.store import (
     BoundingBox,
     MetadataSuggestion,
     StoreAsset,
-    StoreFacets,
     StoreHybridCandidate,
     StoreProduct,
     StoreProductMetadata,
     StoreSearchFilters,
-    StoreSearchHit,
     StoreSearchResult,
     StoreVisibilityScope,
     object_key_segment,
@@ -24,10 +22,20 @@ from coeus.domain.store import (
 from coeus.repositories.access import SeedAccessRepository
 from coeus.repositories.store import InMemoryStoreRepository, new_store_product_id
 from coeus.services.audit import AuditLog
+from coeus.services.embeddings import EmbeddingService
 from coeus.services.store_access import StoreAssetService, StoreDetailService
 from coeus.services.store_owner_policy import normalise_owner_team, require_owner_permission
-from coeus.services.store_search_dates import within_dates
-from coeus.services.store_semantics import derive_semantic_labels, product_semantic_text
+from coeus.services.store_search_results import (
+    exact_text_hit,
+    facets_for,
+    has_text_query,
+    hybrid_hits,
+    paged_result,
+    sort_hits_by_relevance,
+    structured_filter_match,
+    without_text_query,
+)
+from coeus.services.store_semantics import derive_semantic_labels
 
 HASH_PATTERN = r"[a-fA-F0-9]{64}"
 
@@ -207,34 +215,42 @@ class StoreIngestionService:
 
 class StoreSearchService:
     def __init__(
-        self, repository: InMemoryStoreRepository, policy: StoreProductAccessPolicy
+        self,
+        repository: InMemoryStoreRepository,
+        policy: StoreProductAccessPolicy,
+        embeddings: EmbeddingService | None = None,
     ) -> None:
         self._repository = repository
         self._policy = policy
+        self._embeddings = embeddings
 
     def search(self, actor: UserAccount, filters: StoreSearchFilters) -> StoreSearchResult:
         if Permission.PRODUCT_SEARCH not in actor.permissions:
             raise AppError(403, "forbidden", "Permission denied.")
-        candidates = self._repository.search_products(filters, self._policy.visibility_scope(actor))
+        scope = self._policy.visibility_scope(actor)
+        structured_filters = without_text_query(filters)
+        candidates = self._repository.search_products(structured_filters, scope)
         visible = tuple(product for product in candidates if self._policy.can_read(actor, product))
-        filtered = tuple(product for product in visible if self._matches_filters(product, filters))
-        hits = tuple(
-            sorted(
-                (self._score(product, filters.query) for product in filtered),
-                key=lambda hit: (-hit.match_score, hit.product.metadata.title),
+        filtered = tuple(
+            product for product in visible if structured_filter_match(product, structured_filters)
+        )
+        facets = facets_for(filtered)
+        if has_text_query(filters):
+            query = filters.query.strip() if filters.query else ""
+            query_embedding = (
+                self._embeddings.embed(query, purpose="store-browse-query")
+                if self._embeddings is not None
+                else None
             )
-        )
-        offset = (filters.page - 1) * filters.page_size
-        page_hits = hits[offset : offset + filters.page_size]
-        total_pages = (len(hits) + filters.page_size - 1) // filters.page_size
-        return StoreSearchResult(
-            hits=page_hits,
-            total=len(hits),
-            page=filters.page,
-            page_size=filters.page_size,
-            total_pages=total_pages,
-            facets=self._facets(filtered),
-        )
+            hits = hybrid_hits(
+                self.hybrid_candidates(actor, filters, query, query_embedding),
+                query,
+            )
+        else:
+            hits = sort_hits_by_relevance(
+                tuple(exact_text_hit(product, None) for product in filtered)
+            )
+        return paged_result(hits, filters, facets)
 
     def hybrid_candidates(
         self,
@@ -253,45 +269,6 @@ class StoreSearchService:
         )
         return tuple(
             candidate for candidate in candidates if self._policy.can_read(actor, candidate.product)
-        )
-
-    @staticmethod
-    def _matches_filters(product: StoreProduct, filters: StoreSearchFilters) -> bool:
-        metadata = product.metadata
-        return all(
-            (
-                _contains(_search_blob(product), filters.query),
-                filters.product_type is None or metadata.product_type == filters.product_type,
-                _contains(metadata.area_or_region, filters.region),
-                filters.tag is None
-                or filters.tag.casefold() in {tag.casefold() for tag in metadata.tags},
-                filters.source_type is None or metadata.source_type == filters.source_type,
-                filters.status is None or metadata.status == filters.status,
-                filters.project_id is None or metadata.project_id == filters.project_id,
-                within_dates(metadata, filters.date_from, filters.date_to),
-                filters.owner_team is None
-                or metadata.owner_team.casefold() == filters.owner_team.casefold(),
-            )
-        )
-
-    @staticmethod
-    def _score(product: StoreProduct, query: str | None) -> StoreSearchHit:
-        if query is None or query.strip() == "":
-            return StoreSearchHit(product=product, match_score=1.0, match_reasons=("visible",))
-        terms = [term for term in query.casefold().split() if term]
-        blob = _search_blob(product).casefold()
-        matches = tuple(term for term in terms if term in blob)
-        score = len(matches) / max(len(terms), 1)
-        return StoreSearchHit(
-            product=product, match_score=score, match_reasons=matches or ("visible",)
-        )
-
-    @staticmethod
-    def _facets(products: tuple[StoreProduct, ...]) -> StoreFacets:
-        return StoreFacets(
-            product_types=tuple(sorted({product.metadata.product_type for product in products})),
-            regions=tuple(sorted({product.metadata.area_or_region for product in products})),
-            tags=tuple(sorted({tag for product in products for tag in product.metadata.tags})),
         )
 
 
@@ -325,11 +302,3 @@ class StoreServices:
     details: StoreDetailService
     assets: StoreAssetService
     suggestions: MetadataSuggestionService
-
-
-def _search_blob(product: StoreProduct) -> str:
-    return product_semantic_text(product)
-
-
-def _contains(value: str, needle: str | None) -> bool:
-    return needle is None or needle.casefold() in value.casefold()
