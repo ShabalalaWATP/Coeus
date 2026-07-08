@@ -200,8 +200,8 @@ export class ApiClient {
     });
   }
 
-  async changePassword(payload: ChangePasswordRequest, csrfToken: string): Promise<void> {
-    await this.requestNoContent("/api/v1/auth/password", {
+  async changePassword(payload: ChangePasswordRequest, csrfToken: string): Promise<AuthSession> {
+    return this.requestJson<AuthSession>("/api/v1/auth/password", {
       body: JSON.stringify(payload),
       headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
       method: "POST",
