@@ -313,6 +313,7 @@ class TicketRecord:
     agent_runs: tuple[AgentRun, ...] = field(default_factory=tuple)
     timeline: tuple[TicketTimelineEntry, ...] = field(default_factory=tuple)
     suggested_project_name: str | None = None
+    related_ticket_ids: tuple[UUID, ...] = field(default_factory=tuple)
     visible_product_matches: tuple[str, ...] = field(default_factory=tuple)
     product_offers: tuple[ProductOffer, ...] = field(default_factory=tuple)
     disseminations: tuple[ProductDissemination, ...] = field(default_factory=tuple)

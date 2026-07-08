@@ -5,6 +5,8 @@ import { useMemo, useState } from "react";
 import { AssignAnalystPanel } from "./AssignAnalystPanel";
 import { CapabilityCataloguePanel } from "./CapabilityCataloguePanel";
 import { ReleaseQueuePanel } from "./ReleaseQueuePanel";
+import { RoutingTicketList } from "./RoutingTicketList";
+import { SimilarRequestsPanel } from "./SimilarRequestsPanel";
 import {
   canApprove,
   canApproveWithOverride,
@@ -16,7 +18,6 @@ import {
 import { PlanUpdates, Recommendation, Review, RoutingStats } from "./routing-sections";
 import { EmptyState, ErrorState } from "../../components/ui/PageState";
 import { StatusPill } from "../../components/ui/StatusPill";
-import { formatWorkflowState } from "../../lib/workflow/state-format";
 import {
   approveRoute,
   listRoutingQueue,
@@ -27,6 +28,10 @@ import {
   type RoutingRoute,
   type RoutingTicket,
 } from "../../lib/api-client/routing";
+import {
+  linkRoutingSimilarRequest,
+  listRoutingSimilarRequests,
+} from "../../lib/api-client/similar-requests";
 import { useAuth } from "../../lib/auth/auth-context";
 import { useActionError } from "../../lib/mutations/action-error";
 
@@ -68,6 +73,12 @@ export default function RoutingQueuePage({ route }: RoutingQueuePageProps) {
     () => queue.tickets.find((ticket) => ticket.ticketId === selectedTicketId) ?? queue.tickets[0],
     [queue.tickets, selectedTicketId],
   );
+  const selectedSimilarKey = ["similar-requests", "routing", selectedTicket?.ticketId] as const;
+  const similarRequestsQuery = useQuery({
+    enabled: selectedTicket !== undefined,
+    queryFn: () => listRoutingSimilarRequests(selectedTicket?.ticketId ?? ""),
+    queryKey: selectedSimilarKey,
+  });
   const updateQueue = (ticket: RoutingTicket) => {
     const nextTickets = upsertRoutingTicket(queue.tickets, ticket, route);
     queryClient.setQueryData<RoutingQueue>(["routing-queue", route], {
@@ -134,6 +145,17 @@ export default function RoutingQueuePage({ route }: RoutingQueuePageProps) {
       updateQueue(ticket);
     },
   });
+  const linkSimilarMutation = useMutation({
+    mutationFn: (relatedTicketId: string) => {
+      if (selectedTicket === undefined) {
+        throw new Error("No ticket selected.");
+      }
+      return linkRoutingSimilarRequest(selectedTicket.ticketId, relatedTicketId, csrfToken);
+    },
+    onError: failActionWith("The related request could not be linked. Try again."),
+    onMutate: clearActionError,
+    onSuccess: (matches) => queryClient.setQueryData(selectedSimilarKey, matches),
+  });
   const labels = route === "rfa" ? rfaLabels : cmLabels;
 
   return (
@@ -156,7 +178,7 @@ export default function RoutingQueuePage({ route }: RoutingQueuePageProps) {
           {queueQuery.isError ? (
             <ErrorState onRetry={() => void queueQuery.refetch()} />
           ) : (
-            <TicketList onSelect={setSelectedTicketId} tickets={queue.tickets} />
+            <RoutingTicketList onSelect={setSelectedTicketId} tickets={queue.tickets} />
           )}
         </aside>
         <section className="surface routing-detail" aria-label="Route recommendation">
@@ -171,6 +193,14 @@ export default function RoutingQueuePage({ route }: RoutingQueuePageProps) {
               <Review title="RFA recommendation" review={selectedTicket.rfaReview} />
               <Review title="CM recommendation" review={selectedTicket.cmReview} />
               <PlanUpdates ticket={selectedTicket} />
+              <SimilarRequestsPanel
+                isLinking={linkSimilarMutation.isPending}
+                isLoading={similarRequestsQuery.isLoading}
+                isQueryError={similarRequestsQuery.isError}
+                matches={similarRequestsQuery.data}
+                onLink={(id) => linkSimilarMutation.mutate(id)}
+                onRetry={() => void similarRequestsQuery.refetch()}
+              />
               {canApprove(selectedTicket, route) && isRouteOverride(selectedTicket, route) ? (
                 <div className="routing-override">
                   <label htmlFor="routing-override-reason">Override reason</label>
@@ -282,34 +312,6 @@ export default function RoutingQueuePage({ route }: RoutingQueuePageProps) {
       </section>
       <ReleaseQueuePanel csrfToken={csrfToken} route={route} />
     </div>
-  );
-}
-
-function TicketList({
-  onSelect,
-  tickets,
-}: {
-  onSelect: (ticketId: string) => void;
-  tickets: RoutingTicket[];
-}) {
-  if (tickets.length === 0) {
-    return <p>No tickets in this queue.</p>;
-  }
-  return (
-    <>
-      {tickets.map((ticket) => (
-        <button
-          className="request-row"
-          key={ticket.ticketId}
-          onClick={() => onSelect(ticket.ticketId)}
-          type="button"
-        >
-          <strong>{ticket.reference}</strong>
-          <span>{ticket.title}</span>
-          <small>{formatWorkflowState(ticket.state)}</small>
-        </button>
-      ))}
-    </>
   );
 }
 

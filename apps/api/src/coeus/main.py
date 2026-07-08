@@ -17,6 +17,7 @@ from coeus.api.routes.notifications import router as notifications_router
 from coeus.api.routes.qc import router as qc_router
 from coeus.api.routes.rfi_search import router as rfi_search_router
 from coeus.api.routes.routing import router as routing_router
+from coeus.api.routes.similar_requests import router as similar_requests_router
 from coeus.api.routes.store import router as store_router
 from coeus.api.routes.store_files import router as store_files_router
 from coeus.api.routes.tickets import router as tickets_router
@@ -47,6 +48,7 @@ from coeus.services.quality_control import build_quality_control_service
 from coeus.services.registration import RegistrationService
 from coeus.services.rfi_search import build_rfi_search_service
 from coeus.services.routing import build_routing_service
+from coeus.services.similar_requests import SimilarRequestService
 from coeus.services.store_builder import build_store_services
 from coeus.services.ticket_builder import build_ticket_services
 from coeus.services.ticket_collaborators import TicketCollaboratorService
@@ -143,6 +145,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         tickets=app.state.ticket_services.tickets,
         audit_log=audit_log,
     )
+    app.state.similar_request_service = SimilarRequestService(
+        app.state.ticket_services,
+        audit_log,
+        app.state.embedding_service,
+    )
     app.state.user_admin_service = UserAdminService(
         users=user_repository,
         sessions=session_repository,
@@ -227,6 +234,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(store_files_router, prefix="/api/v1")
     app.include_router(tickets_router, prefix="/api/v1")
     app.include_router(rfi_search_router, prefix="/api/v1")
+    app.include_router(similar_requests_router, prefix="/api/v1")
     app.include_router(routing_router, prefix="/api/v1")
     app.include_router(analyst_router, prefix="/api/v1")
     app.include_router(qc_router, prefix="/api/v1")

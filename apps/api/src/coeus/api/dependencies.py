@@ -21,6 +21,7 @@ from coeus.services.quality_control import QualityControlService
 from coeus.services.registration import RegistrationService
 from coeus.services.rfi_search import RfiSearchService
 from coeus.services.routing import RoutingService
+from coeus.services.similar_requests import SimilarRequestService
 from coeus.services.store import StoreServices
 from coeus.services.ticket_collaborators import TicketCollaboratorService
 from coeus.services.ticket_lifecycle import TicketLifecycleService
@@ -150,6 +151,15 @@ def get_routing_service(request: Request) -> RoutingService:
     if not isinstance(routing_service, RoutingService):
         raise AppError(500, "routing_not_configured", "Routing is not configured.")
     return routing_service
+
+
+def get_similar_request_service(request: Request) -> SimilarRequestService:
+    service = getattr(request.app.state, "similar_request_service", None)
+    if not isinstance(service, SimilarRequestService):
+        raise AppError(
+            500, "similar_requests_not_configured", "Similar requests are not configured."
+        )
+    return service
 
 
 def get_analyst_workflow_service(request: Request) -> AnalystWorkflowService:

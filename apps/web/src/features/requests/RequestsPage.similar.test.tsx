@@ -1,0 +1,114 @@
+import { screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+
+import { resetQueryClientForTests } from "../../app/query-client";
+import type { Ticket } from "../../lib/api-client/tickets";
+import { baseTicket, directory, renderRequests } from "../../test/requests-fixtures";
+
+const submittedTicket: Ticket = {
+  ...baseTicket,
+  state: "RFI_SEARCHING",
+  intake: { ...baseTicket.intake, missingInformation: [] },
+  isReadyForSubmission: true,
+};
+
+const similarNotice = {
+  matches: [
+    {
+      ticketId: "related-1",
+      reference: "TCK-0002",
+      title: "Vessel movements Gulf of Finland",
+      state: "RFI_SEARCHING",
+      score: 0.72,
+      reasons: ["similarity:vector:0.83", "similarity:metadata-region"],
+      alreadyLinked: false,
+    },
+  ],
+  hiddenMatchesPresent: false,
+};
+
+beforeEach(() => {
+  resetQueryClientForTests();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+test("shows a customer similar-request notice and lets the requester continue", async () => {
+  vi.stubGlobal("fetch", similarFetch());
+
+  renderRequests("/app/requests/ticket-1");
+
+  expect(await screen.findByText("Similar request in progress")).toBeVisible();
+  expect(screen.getByText("TCK-0002")).toBeVisible();
+  expect(screen.getByText("Vessel movements Gulf of Finland")).toBeVisible();
+
+  await userEvent.click(screen.getByRole("button", { name: "Continue request" }));
+
+  await waitFor(() =>
+    expect(screen.queryByText("Similar request in progress")).not.toBeInTheDocument(),
+  );
+});
+
+test("surfaces customer join failures through the workspace action error", async () => {
+  vi.stubGlobal("fetch", similarFetch({ joinFails: true }));
+
+  renderRequests("/app/requests/ticket-1");
+
+  await userEvent.click(await screen.findByRole("button", { name: "Join as viewer" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("Join failed.");
+});
+
+test("posts a successful customer join request with CSRF protection", async () => {
+  const fetchMock = similarFetch();
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderRequests("/app/requests/ticket-1");
+
+  await userEvent.click(await screen.findByRole("button", { name: "Join as viewer" }));
+
+  await waitFor(() =>
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8001/api/v1/similar-requests/tickets/ticket-1/join/related-1",
+      expect.objectContaining({
+        headers: { "X-CSRF-Token": "test-csrf-token" },
+        method: "POST",
+      }),
+    ),
+  );
+});
+
+function similarFetch(options: { joinFails?: boolean } = {}) {
+  return vi.fn((url: string) => {
+    if (url.includes("/similar-requests/tickets/ticket-1/join/related-1")) {
+      return Promise.resolve(
+        options.joinFails
+          ? {
+              ok: false,
+              status: 500,
+              json: () =>
+                Promise.resolve({ error: { code: "join_failed", message: "Join failed." } }),
+            }
+          : {
+              ok: true,
+              json: () => Promise.resolve({ joinedTicketId: "related-1", reference: "TCK-0002" }),
+            },
+      );
+    }
+    if (url.includes("/similar-requests/tickets/ticket-1")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(similarNotice) });
+    }
+    if (url.includes("/users/directory")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(directory) });
+    }
+    if (url.includes("/api/v1/tickets")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ tickets: [submittedTicket] }),
+      });
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+  });
+}
