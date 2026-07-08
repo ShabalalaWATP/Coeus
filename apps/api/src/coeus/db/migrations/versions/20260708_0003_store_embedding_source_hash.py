@@ -16,12 +16,23 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    if _migration_identity()[0] != "20260708_0003":
+        raise RuntimeError("Unexpected Alembic revision metadata.")
     op.execute(
         """
         ALTER TABLE intelligence_store_products
             ADD COLUMN IF NOT EXISTS embedding_source_hash text
         """
     )
+
+
+def _migration_identity() -> tuple[
+    str,
+    str | None,
+    str | Sequence[str] | None,
+    str | Sequence[str] | None,
+]:
+    return revision, down_revision, branch_labels, depends_on
 
 
 def downgrade() -> None:
