@@ -55,7 +55,13 @@ configured.
 Each search run builds two top-50 ranked lists:
 
 - lexical: `ts_rank_cd(search_document, websearch_to_tsquery(...))`;
-- semantic: cosine ANN over `embedding` using pgvector.
+- semantic: cosine ANN over `embedding` using pgvector, filtered by the shared
+  vector similarity floor.
+
+The lexical scorer uses whole retrieval tokens and conservative singular or
+plural folding. Two tokens match when they are equal, or when stripping a
+trailing `s` or `es` from either token yields the other and the resulting stem
+is at least three characters. Substrings spanning word boundaries do not match.
 
 The lists are fused with Reciprocal Rank Fusion:
 
@@ -109,6 +115,10 @@ Reasons preserve the existing transparent strings and add hybrid signals:
 - Different vocabulary can match through the mock semantic leg, for example
   "boat traffic near St Petersburg" ranking a permitted "vessel movements,
   Gulf of Finland" product above the old lexical-only scorer.
+- Inflected lexical variants such as `sensor`/`sensors`, `radar`/`radars` and
+  `vessel`/`vessels` score consistently across RFI and similar-request checks.
+- Products below the vector similarity floor are not candidates unless the
+  lexical leg also selected them.
 - Removing the access predicate from the vector leg would fail a test.
 - Empty or failed embeddings still produce lexical results with
   `retrieval:lexical-only`.

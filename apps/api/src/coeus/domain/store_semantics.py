@@ -48,7 +48,6 @@ def product_semantic_text(product: StoreProduct) -> str:
             metadata.area_or_region,
             " ".join(metadata.tags),
             " ".join(effective_semantic_labels(product)),
-            " ".join(_label_terms(effective_semantic_labels(product))),
             " ".join(asset.asset_type for asset in product.assets),
         )
     )
@@ -78,7 +77,3 @@ def semantic_label_reasons(product: StoreProduct, query_text: str) -> tuple[str,
 
 def _tokens(value: str) -> frozenset[str]:
     return frozenset(findall(r"[a-z0-9-]+", value.casefold()))
-
-
-def _label_terms(labels: frozenset[str]) -> tuple[str, ...]:
-    return tuple(sorted({term for label in labels for term in SEMANTIC_LABEL_TERMS.get(label, ())}))

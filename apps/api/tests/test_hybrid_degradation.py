@@ -117,7 +117,7 @@ def test_memory_uses_supplied_provider_for_product_vectors() -> None:
 
     candidates = memory_hybrid_candidates((product,), "query", _UNIT_VECTOR, StubService())
 
-    assert calls == ["rfi-memory-candidate"]
+    assert calls == ["memory-candidate"]
     assert candidates
     assert any(candidate.vector_rank is not None for candidate in candidates)
     assert all(not candidate.lexical_only for candidate in candidates)

@@ -30,6 +30,8 @@ applied.
 and text-matched result set, not only the returned page. The implementation may
 use a large internal candidate cap for the current local Store size, but the
 cap must not be the public page size and must be documented in code.
+The Store browse path uses a 500-candidate cap per lexical or vector leg. RFI
+search keeps its stricter 50-candidate leg cap.
 
 ## Relevance And Reasons
 
@@ -43,6 +45,18 @@ Default query order is server relevance order. Hybrid candidates expose:
 
 `match_score` and `match_reasons` are returned on every Store search hit. The
 frontend shows a compact reason hint when a text query is active.
+
+Free-text query hits require a real retrieval signal: lexical membership or a
+vector score at or above the shared similarity floor. Metadata and semantic
+label explanations can explain an already-selected hit, but they do not create
+a hit on their own. The `visible` reason is reserved for no-query catalogue
+browse results.
+
+Lexical matching is token-boundary based. It allows conservative singular and
+plural folding by stripping trailing `s` or `es` only when the resulting stem is
+at least three characters. It does not use substring matching across words.
+Product semantic text contains product-owned fields, product labels and asset
+types only. It does not append the entire vocabulary for a derived label.
 
 ## Degradation
 
@@ -65,11 +79,13 @@ search must not fail. It falls back to lexical retrieval and records
 
 - Word-order queries such as `vessel port` and `baltic maritime` can return a
   product whose metadata contains both terms non-contiguously.
-- Stemmed or related terms can match through PostgreSQL full text, semantic
-  labels or the configured embedding provider.
-- A cross-word-boundary substring such as `port vessel` does not match only
-  because it appears inside adjacent words.
+- Stem-folded terms such as `vessel` and `vessels` can match through the shared
+  lexical scorer, PostgreSQL full text or the configured embedding provider.
+- A cross-word-boundary substring such as `port engin` does not match only
+  because it appears inside `report engine`.
 - Facets remain populated from the structurally-filtered scoped set, not only
   the text-matched subset.
 - Pagination and totals are exact for the returned query result set.
 - Provider-degraded browse search returns lexical results rather than an error.
+- Gibberish queries with no lexical or vector signal return zero hits, even
+  when every scoped product has an embedding.

@@ -26,9 +26,27 @@ The backend keeps one public response shape. Query results are converted into
 Facets are computed from the access-scoped set after structured filters only,
 so users can still see useful refinement options after a narrow query.
 
+Browse uses the same token-boundary lexical scorer as RFI and similar-request
+matching, including conservative singular and plural folding. It does not use
+cross-word substring matching. A query result must be present in the lexical
+leg or meet the shared vector similarity floor before it is returned. Semantic
+label and metadata reasons explain selected hits only; they are not membership
+signals.
+
+The browse candidate window is intentionally larger than RFI search: 500
+candidates per lexical or vector leg for Store browse, and 50 per leg for RFI
+offer generation. The larger Store window supports exact browse totals and
+pagination for the current local catalogue size without changing RFI scoring.
+
 Provider selection remains explicit. The default mock embedding provider stays
 offline and deterministic. If the configured provider cannot return a vector,
 the Store search degrades to lexical-only retrieval rather than failing.
+
+The in-memory fallback computes product vectors on demand using the configured
+embedding provider and purpose `memory-candidate`. That cost is accepted for
+local development and CI, where the default mock provider is offline and cheap.
+Non-mock providers should use the PostgreSQL projection path so product
+embeddings are stored and reused.
 
 ## Rejected Alternatives
 
@@ -48,3 +66,6 @@ the Store search degrades to lexical-only retrieval rather than failing.
   searches, but still works when embeddings are unavailable.
 - Facet semantics are explicit: they describe structured availability, not only
   the current text-matched subset.
+- Existing product semantic hashes do not change because label vocabularies are
+  not injected into product semantic text. Re-embedding is not required for this
+  browse change.

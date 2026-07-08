@@ -14,7 +14,7 @@ from coeus.domain.store import (
 )
 from coeus.domain.tickets import DraftProductAsset, DraftProductVersion, TicketRecord
 from coeus.repositories.access import SeedAccessRepository
-from coeus.repositories.store import new_store_product_id
+from coeus.repositories.store_ids import new_store_product_id
 from coeus.services.analyst_records import approved_route
 from coeus.services.object_storage import LocalObjectStorage
 from coeus.services.qc_acg_policy import validate_qc_acg_assignment

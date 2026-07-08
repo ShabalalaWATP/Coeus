@@ -4,6 +4,7 @@ from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
 from coeus.domain.access import ProductStatus
+from coeus.domain.search_relevance import VECTOR_SIMILARITY_FLOOR
 from coeus.domain.store import (
     StoreHybridCandidate,
     StoreProduct,
@@ -19,8 +20,6 @@ from coeus.persistence.store_projection_search_sql import (
     SEARCH_PRODUCTS_SQL,
     VISIBLE_PRODUCT_SQL,
 )
-
-STORE_BROWSE_HYBRID_LEG_LIMIT = 500
 
 
 def get_visible_product(
@@ -66,15 +65,15 @@ def hybrid_candidates(
     scope: StoreVisibilityScope,
     query: str,
     query_embedding: str | None,
+    leg_limit: int = 50,
 ) -> tuple[StoreHybridCandidate, ...]:
     if not scope.acg_ids:
         return ()
     params = _search_params(filters, scope) | {
         "query": _blank_to_none(query),
         "query_embedding": query_embedding,
-        # Store browse pagination needs a full realistic candidate window, not
-        # the public page size. This matches the current local Store scale.
-        "leg_limit": STORE_BROWSE_HYBRID_LEG_LIMIT,
+        "leg_limit": leg_limit,
+        "vector_similarity_floor": VECTOR_SIMILARITY_FLOOR,
     }
     product_rows = _mapping_rows(connection.execute(text(HYBRID_PRODUCTS_SQL), params))
     if not product_rows:

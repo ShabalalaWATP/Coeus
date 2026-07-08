@@ -6,12 +6,6 @@ from coeus.main import create_app
 from store_api_helpers import login
 
 
-class NullEmbeddingService:
-    def embed(self, _text: str, *, purpose: str) -> None:
-        assert purpose == "store-browse-query"
-        return None
-
-
 def _payload(
     acg_id: str,
     *,
@@ -62,7 +56,7 @@ async def _create_product(
 
 
 @pytest.mark.asyncio
-async def test_store_browse_query_uses_hybrid_token_ranking_and_label_terms() -> None:
+async def test_store_browse_query_uses_hybrid_token_ranking_and_stemming() -> None:
     app = create_app(
         Settings(environment="test", argon2_memory_cost=8_192, persistence_provider="memory")
     )
@@ -84,9 +78,13 @@ async def test_store_browse_query_uses_hybrid_token_ranking_and_label_terms() ->
             "/api/v1/store/products",
             params={"query": "vessel port", "productType": "maritime_fixture"},
         )
-        label_term = await client.get(
+        stemmed = await client.get(
             "/api/v1/store/products",
-            params={"query": "shipping", "productType": "maritime_fixture"},
+            params={"query": "vessels", "productType": "maritime_fixture"},
+        )
+        scattered = await client.get(
+            "/api/v1/store/products",
+            params={"query": "baltic maritime", "productType": "maritime_fixture"},
         )
 
     assert word_order.status_code == 200
@@ -96,15 +94,20 @@ async def test_store_browse_query_uses_hybrid_token_ranking_and_label_terms() ->
         reason.startswith(("lexical-rank:", "vector-similarity:"))
         for reason in word_order.json()["products"][0]["matchReasons"]
     )
-    assert label_term.json()["total"] == 1
+    assert stemmed.json()["total"] == 1
+    assert scattered.json()["total"] == 1
 
 
 @pytest.mark.asyncio
 async def test_store_browse_query_does_not_match_cross_word_substrings() -> None:
     app = create_app(
-        Settings(environment="test", argon2_memory_cost=8_192, persistence_provider="memory")
+        Settings(
+            environment="test",
+            argon2_memory_cost=8_192,
+            embedding_provider="gemini_api",
+            persistence_provider="memory",
+        )
     )
-    app.state.store_services.search._embeddings = NullEmbeddingService()
     acg_id = str(app.state.access_services.repository.list_acgs()[0].acg_id)
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
@@ -175,9 +178,13 @@ async def test_store_browse_facets_and_pagination_use_full_structured_set() -> N
 @pytest.mark.asyncio
 async def test_store_browse_applies_structured_filters_and_degrades_to_lexical() -> None:
     app = create_app(
-        Settings(environment="test", argon2_memory_cost=8_192, persistence_provider="memory")
+        Settings(
+            environment="test",
+            argon2_memory_cost=8_192,
+            embedding_provider="gemini_api",
+            persistence_provider="memory",
+        )
     )
-    app.state.store_services.search._embeddings = NullEmbeddingService()
     acg_id = str(app.state.access_services.repository.list_acgs()[0].acg_id)
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
@@ -205,3 +212,19 @@ async def test_store_browse_applies_structured_filters_and_degrades_to_lexical()
     assert allowed.json()["total"] == 1
     assert "retrieval:lexical-only" in allowed.json()["products"][0]["matchReasons"]
     assert blocked.json()["total"] == 0
+
+
+@pytest.mark.asyncio
+async def test_store_browse_gibberish_query_returns_no_mock_embedding_hits() -> None:
+    app = create_app(
+        Settings(environment="test", argon2_memory_cost=8_192, persistence_provider="memory")
+    )
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        await login(client, "admin@example.test")
+        response = await client.get("/api/v1/store/products", params={"query": "zzzz"})
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 0
+    assert response.json()["products"] == []

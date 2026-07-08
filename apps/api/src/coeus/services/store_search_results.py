@@ -1,6 +1,12 @@
 from dataclasses import replace
 from math import ceil
 
+from coeus.domain.search_relevance import (
+    VECTOR_SIMILARITY_FLOOR,
+    available_hybrid_legs,
+    hybrid_rrf_score,
+    matched_tokens,
+)
 from coeus.domain.store import (
     StoreFacets,
     StoreHybridCandidate,
@@ -9,14 +15,10 @@ from coeus.domain.store import (
     StoreSearchHit,
     StoreSearchResult,
 )
-from coeus.services.rfi_ranking import (
-    LEXICAL_SCORE_FLOOR,
-    RRF_K,
-    VECTOR_SIMILARITY_FLOOR,
-    tokenize,
-)
-from coeus.services.store_search_dates import within_dates
+from coeus.services.rfi_ranking import tokenize
 from coeus.services.store_semantics import product_semantic_text, semantic_label_reasons
+
+STORE_LEXICAL_SCORE_FLOOR = 1e-12
 
 
 def has_text_query(filters: StoreSearchFilters) -> bool:
@@ -27,44 +29,21 @@ def without_text_query(filters: StoreSearchFilters) -> StoreSearchFilters:
     return replace(filters, query=None)
 
 
-def structured_filter_match(product: StoreProduct, filters: StoreSearchFilters) -> bool:
-    metadata = product.metadata
-    return all(
-        (
-            filters.product_type is None or metadata.product_type == filters.product_type,
-            _contains(metadata.area_or_region, filters.region),
-            filters.tag is None
-            or filters.tag.casefold() in {tag.casefold() for tag in metadata.tags},
-            filters.source_type is None or metadata.source_type == filters.source_type,
-            filters.status is None or metadata.status == filters.status,
-            filters.project_id is None or metadata.project_id == filters.project_id,
-            within_dates(metadata, filters.date_from, filters.date_to),
-            filters.owner_team is None
-            or metadata.owner_team.casefold() == filters.owner_team.casefold(),
-        )
-    )
-
-
-def exact_text_hit(product: StoreProduct, query: str | None) -> StoreSearchHit:
-    if query is None or query.strip() == "":
-        return StoreSearchHit(product=product, match_score=1.0, match_reasons=("visible",))
-    query_tokens = tokenize(query)
-    document_tokens = set(tokenize(product_semantic_text(product)))
-    matches = tuple(token for token in query_tokens if token in document_tokens)
-    score = len(matches) / max(len(query_tokens), 1)
-    return StoreSearchHit(
-        product=product,
-        match_score=score,
-        match_reasons=tuple(f"full-text:{token}" for token in matches) or ("visible",),
-    )
+def exact_text_hit(product: StoreProduct) -> StoreSearchHit:
+    return StoreSearchHit(product=product, match_score=1.0, match_reasons=("visible",))
 
 
 def hybrid_hits(
     candidates: tuple[StoreHybridCandidate, ...],
     query: str,
 ) -> tuple[StoreSearchHit, ...]:
-    available_legs = _available_legs(candidates)
-    hits = tuple(_hybrid_hit(candidate, query, available_legs) for candidate in candidates)
+    eligible = tuple(candidate for candidate in candidates if _has_query_signal(candidate))
+    available_legs = available_hybrid_legs(
+        eligible,
+        lexical_floor=STORE_LEXICAL_SCORE_FLOOR,
+        vector_floor=VECTOR_SIMILARITY_FLOOR,
+    )
+    hits = tuple(_hybrid_hit(candidate, query, available_legs) for candidate in eligible)
     return tuple(sorted(hits, key=lambda hit: (-hit.match_score, hit.product.metadata.title)))
 
 
@@ -105,16 +84,24 @@ def _hybrid_hit(
     reasons = _hybrid_reasons(candidate, query)
     return StoreSearchHit(
         product=candidate.product,
-        match_score=round(_rrf_score(candidate, available_legs), 4),
-        match_reasons=tuple(dict.fromkeys(reasons)) or ("visible",),
+        match_score=round(
+            hybrid_rrf_score(
+                candidate,
+                available_legs,
+                lexical_floor=STORE_LEXICAL_SCORE_FLOOR,
+                vector_floor=VECTOR_SIMILARITY_FLOOR,
+            ),
+            4,
+        ),
+        match_reasons=tuple(dict.fromkeys(reasons)),
     )
 
 
 def _hybrid_reasons(candidate: StoreHybridCandidate, query: str) -> tuple[str, ...]:
     reasons: list[str] = []
-    if candidate.lexical_rank is not None and candidate.lexical_score >= LEXICAL_SCORE_FLOOR:
+    if _has_lexical_signal(candidate):
         reasons.append(f"lexical-rank:{candidate.lexical_rank}")
-    if candidate.vector_rank is not None and candidate.vector_score >= VECTOR_SIMILARITY_FLOOR:
+    if _has_vector_signal(candidate):
         reasons.append(f"vector-similarity:{candidate.vector_score:.2f}")
     if candidate.lexical_only:
         reasons.append("retrieval:lexical-only")
@@ -124,31 +111,21 @@ def _hybrid_reasons(candidate: StoreHybridCandidate, query: str) -> tuple[str, .
 
 
 def _matched_text_reasons(product: StoreProduct, query: str) -> tuple[str, ...]:
-    document_tokens = set(tokenize(product_semantic_text(product)))
-    return tuple(f"full-text:{token}" for token in tokenize(query) if token in document_tokens)
-
-
-def _available_legs(candidates: tuple[StoreHybridCandidate, ...]) -> int:
-    lexical = any(
-        candidate.lexical_rank is not None and candidate.lexical_score >= LEXICAL_SCORE_FLOOR
-        for candidate in candidates
+    return tuple(
+        f"full-text:{token}"
+        for token in matched_tokens(tokenize(query), tokenize(product_semantic_text(product)))
     )
-    vector = any(
-        candidate.vector_rank is not None and candidate.vector_score >= VECTOR_SIMILARITY_FLOOR
-        for candidate in candidates
+
+
+def _has_query_signal(candidate: StoreHybridCandidate) -> bool:
+    return _has_lexical_signal(candidate) or _has_vector_signal(candidate)
+
+
+def _has_lexical_signal(candidate: StoreHybridCandidate) -> bool:
+    return (
+        candidate.lexical_rank is not None and candidate.lexical_score >= STORE_LEXICAL_SCORE_FLOOR
     )
-    return max(1, int(lexical) + int(vector))
 
 
-def _rrf_score(candidate: StoreHybridCandidate, available_legs: int) -> float:
-    raw = 0.0
-    if candidate.lexical_rank is not None and candidate.lexical_score >= LEXICAL_SCORE_FLOOR:
-        raw += 1 / (RRF_K + candidate.lexical_rank)
-    if candidate.vector_rank is not None and candidate.vector_score >= VECTOR_SIMILARITY_FLOOR:
-        raw += 1 / (RRF_K + candidate.vector_rank)
-    max_possible = available_legs / (RRF_K + 1)
-    return raw / max_possible if max_possible else 0.0
-
-
-def _contains(value: str, needle: str | None) -> bool:
-    return needle is None or needle.casefold() in value.casefold()
+def _has_vector_signal(candidate: StoreHybridCandidate) -> bool:
+    return candidate.vector_rank is not None and candidate.vector_score >= VECTOR_SIMILARITY_FLOOR

@@ -13,6 +13,19 @@
   text-transform: uppercase;
 }
 
+.store-match-reasons ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.store-match-reasons li {
+  display: flex;
+}
+
 .store-match-reasons small {
   border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
   border-radius: var(--radius-sm);

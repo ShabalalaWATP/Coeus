@@ -53,6 +53,23 @@ def test_score_similar_requests_degrades_to_lexical_only_when_embeddings_are_una
     assert "similarity:metadata-format" in matches[0].reasons
 
 
+def test_plural_variant_duplicate_crosses_manager_similarity_threshold() -> None:
+    source = _ticket(
+        "Sensor radar deployment",
+        question="Assess sensor and radar deployment near the port.",
+    )
+    candidate = _ticket(
+        "Sensors radars deployment",
+        question="Assess sensors and radars deployments near the ports.",
+    )
+
+    matches = score_similar_requests(source, (candidate,), NoEmbeddingService(), 0.50)
+
+    assert matches[0].ticket_id == candidate.ticket_id
+    assert matches[0].score >= 0.50
+    assert "similarity:lexical-rank:1" in matches[0].reasons
+
+
 def test_no_match_tickets_are_still_open_similarity_candidates() -> None:
     source = _ticket("Gulf of Finland vessel activity")
     candidate = _ticket(

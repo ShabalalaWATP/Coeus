@@ -19,8 +19,10 @@ from coeus.domain.store import (
     StoreVisibilityScope,
     object_key_segment,
 )
+from coeus.domain.store_filters import structured_filter_match
 from coeus.repositories.access import SeedAccessRepository
-from coeus.repositories.store import InMemoryStoreRepository, new_store_product_id
+from coeus.repositories.store import InMemoryStoreRepository
+from coeus.repositories.store_ids import new_store_product_id
 from coeus.services.audit import AuditLog
 from coeus.services.embeddings import EmbeddingService
 from coeus.services.store_access import StoreAssetService, StoreDetailService
@@ -32,12 +34,12 @@ from coeus.services.store_search_results import (
     hybrid_hits,
     paged_result,
     sort_hits_by_relevance,
-    structured_filter_match,
     without_text_query,
 )
 from coeus.services.store_semantics import derive_semantic_labels
 
 HASH_PATTERN = r"[a-fA-F0-9]{64}"
+STORE_BROWSE_HYBRID_LEG_LIMIT = 500
 
 
 @dataclass(frozen=True)
@@ -243,13 +245,17 @@ class StoreSearchService:
                 else None
             )
             hits = hybrid_hits(
-                self.hybrid_candidates(actor, filters, query, query_embedding),
+                self.hybrid_candidates(
+                    actor,
+                    filters,
+                    query,
+                    query_embedding,
+                    leg_limit=STORE_BROWSE_HYBRID_LEG_LIMIT,
+                ),
                 query,
             )
         else:
-            hits = sort_hits_by_relevance(
-                tuple(exact_text_hit(product, None) for product in filtered)
-            )
+            hits = sort_hits_by_relevance(tuple(exact_text_hit(product) for product in filtered))
         return paged_result(hits, filters, facets)
 
     def hybrid_candidates(
@@ -258,6 +264,7 @@ class StoreSearchService:
         filters: StoreSearchFilters,
         query: str,
         query_embedding: tuple[float, ...] | None,
+        leg_limit: int = 50,
     ) -> tuple[StoreHybridCandidate, ...]:
         if Permission.PRODUCT_SEARCH not in actor.permissions:
             raise AppError(403, "forbidden", "Permission denied.")
@@ -266,6 +273,7 @@ class StoreSearchService:
             self._policy.visibility_scope(actor),
             query,
             query_embedding,
+            leg_limit,
         )
         return tuple(
             candidate for candidate in candidates if self._policy.can_read(actor, candidate.product)

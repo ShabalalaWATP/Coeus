@@ -10,7 +10,7 @@ test("renders compact formatted store match reasons", () => {
     />,
   );
 
-  expect(screen.getByLabelText("Why this matched")).toBeVisible();
+  expect(screen.getByRole("list", { name: "Why it matched" })).toBeVisible();
   expect(screen.getByText("Text rank 2")).toBeVisible();
   expect(screen.getByText("Semantic 81%")).toBeVisible();
   expect(screen.getByText("Label maritime")).toBeVisible();
@@ -19,7 +19,7 @@ test("renders compact formatted store match reasons", () => {
 test("hides visible-only reasons and formats fallback reasons", () => {
   const { rerender } = render(<StoreMatchReasons reasons={["visible"]} show />);
 
-  expect(screen.queryByLabelText("Why this matched")).not.toBeInTheDocument();
+  expect(screen.queryByRole("list", { name: "Why it matched" })).not.toBeInTheDocument();
 
   rerender(
     <StoreMatchReasons
@@ -34,8 +34,14 @@ test("hides visible-only reasons and formats fallback reasons", () => {
   expect(screen.queryByText("custom")).not.toBeInTheDocument();
 });
 
+test("renders unknown reasons when inside the visible truncation window", () => {
+  render(<StoreMatchReasons reasons={["custom", "metadata:region", "full-text:harbour"]} show />);
+
+  expect(screen.getByText("custom")).toBeVisible();
+});
+
 test("does not render reasons before a query is submitted", () => {
   render(<StoreMatchReasons reasons={["lexical-rank:1"]} show={false} />);
 
-  expect(screen.queryByLabelText("Why this matched")).not.toBeInTheDocument();
+  expect(screen.queryByRole("list", { name: "Why it matched" })).not.toBeInTheDocument();
 });

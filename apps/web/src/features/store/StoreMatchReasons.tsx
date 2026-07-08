@@ -1,3 +1,5 @@
+import { useId } from "react";
+
 type StoreMatchReasonsProps = {
   reasons: string[];
   show: boolean;
@@ -5,15 +7,20 @@ type StoreMatchReasonsProps = {
 
 export function StoreMatchReasons({ reasons, show }: StoreMatchReasonsProps) {
   const visibleReasons = reasons.filter((reason) => reason !== "visible").slice(0, 3);
+  const headingId = useId();
   if (!show || visibleReasons.length === 0) {
     return null;
   }
   return (
-    <div aria-label="Why this matched" className="store-match-reasons">
-      <span>Why it matched</span>
-      {visibleReasons.map((reason) => (
-        <small key={reason}>{formatReason(reason)}</small>
-      ))}
+    <div className="store-match-reasons">
+      <span id={headingId}>Why it matched</span>
+      <ul aria-labelledby={headingId}>
+        {visibleReasons.map((reason, index) => (
+          <li key={`${reason}-${index}`}>
+            <small>{formatReason(reason)}</small>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
