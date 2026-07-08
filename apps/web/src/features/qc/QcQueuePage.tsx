@@ -47,20 +47,25 @@ export default function QcQueuePage() {
     enabled: productId !== undefined,
   });
   const products = queueQuery.data.products;
-  const selectedProduct = useMemo(
-    () =>
+  const routeProductMissingFromQueue =
+    productId !== undefined && products.every((product) => product.ticketId !== productId);
+  const requestedMissing =
+    productId !== undefined && detailQuery.isError && routeProductMissingFromQueue;
+  const requestedPending =
+    productId !== undefined && detailQuery.isLoading && routeProductMissingFromQueue;
+  const selectedProduct = useMemo(() => {
+    if (requestedMissing || requestedPending) {
+      return undefined;
+    }
+    return (
       actionResult ??
       detailQuery.data ??
       products.find((product) => product.ticketId === productId) ??
-      products[0],
-    [actionResult, detailQuery.data, productId, products],
-  );
+      products[0]
+    );
+  }, [actionResult, detailQuery.data, productId, products, requestedMissing, requestedPending]);
   const selectedProductId = selectedProduct?.ticketId;
   const { actionError, clearActionError, failActionWith } = useActionError();
-  const requestedMissing =
-    productId !== undefined &&
-    detailQuery.isError &&
-    products.every((product) => product.ticketId !== productId);
 
   // Checklist ticks and release metadata belong to one product. Reset both
   // whenever the reviewer moves to a different product so state cannot leak.
@@ -70,8 +75,11 @@ export default function QcQueuePage() {
   }, [selectedProductId]);
 
   const approveMutation = useMutation({
-    mutationFn: () =>
-      approveQcProduct(
+    mutationFn: () => {
+      if (selectedProduct === undefined) {
+        throw new Error("No QC product selected.");
+      }
+      return approveQcProduct(
         selectedProduct.ticketId,
         {
           checklist,
@@ -82,7 +90,8 @@ export default function QcQueuePage() {
           reason: releaseForm.reason,
         },
         csrfToken,
-      ),
+      );
+    },
     onError: failActionWith("The product could not be approved. Try again."),
     onMutate: clearActionError,
     onSuccess: (product) => {
@@ -91,8 +100,12 @@ export default function QcQueuePage() {
     },
   });
   const rejectMutation = useMutation({
-    mutationFn: () =>
-      rejectQcProduct(selectedProduct.ticketId, releaseForm.rejectionReason, csrfToken),
+    mutationFn: () => {
+      if (selectedProduct === undefined) {
+        throw new Error("No QC product selected.");
+      }
+      return rejectQcProduct(selectedProduct.ticketId, releaseForm.rejectionReason, csrfToken);
+    },
     onError: failActionWith("The product could not be returned to the analyst. Try again."),
     onMutate: clearActionError,
     onSuccess: (product) => {
