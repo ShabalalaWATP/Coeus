@@ -186,10 +186,10 @@ test("notes when the requested QC product cannot be found", async () => {
     "href",
     "/qc/queue",
   );
-  // The first queue product still renders below the notice.
   expect(
-    within(screen.getByLabelText("QC product detail")).getByText("Arctic QC product"),
+    within(screen.getByLabelText("QC product detail")).getByText("No QC product selected."),
   ).toBeVisible();
+  expect(screen.getAllByText("Arctic QC product")).toHaveLength(1);
 });
 
 test("shows QC action failures inline", async () => {
