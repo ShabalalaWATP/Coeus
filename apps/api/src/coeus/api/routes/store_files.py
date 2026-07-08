@@ -47,7 +47,15 @@ async def upload_product(
         authenticated.user,
         _to_product_draft(request),
     )
-    storage.write_bytes(product.assets[0].object_key, content)
+    try:
+        storage.write_bytes(product.assets[0].object_key, content)
+    except OSError as exc:
+        store_services.repository.delete_product(product.product_id)
+        raise AppError(
+            500,
+            "asset_storage_failed",
+            "Asset bytes could not be persisted.",
+        ) from exc
     return _to_product_response(product)
 
 
