@@ -54,6 +54,28 @@ test("shows the dashboard and opens the new request workspace", async () => {
   expect(screen.getByText("No chat transcript")).toBeVisible();
 });
 
+test("shows a missing state for an unknown direct request URL", async () => {
+  vi.stubGlobal(
+    "fetch",
+    fetchByUrl([
+      ["/api/v1/tickets", { tickets: [baseTicket] }],
+      ["/feedback/requests", { requests: [] }],
+    ]),
+  );
+
+  renderRequests("/app/requests/missing-ticket");
+
+  expect(await screen.findByText("Request not found")).toBeVisible();
+  expect(
+    screen.getByText("This request is not visible to your account or no longer exists."),
+  ).toBeVisible();
+  expect(screen.queryByLabelText("Message")).not.toBeInTheDocument();
+
+  await userEvent.click(screen.getByRole("button", { name: "Back to my requests" }));
+
+  expect(await screen.findByRole("heading", { name: "My Requests" })).toBeVisible();
+});
+
 test("creates a ticket from chat and shows the captured details checklist", async () => {
   const createdTicket = { ...baseTicket, messages: baseTicket.messages.slice(0, 2) };
   const fetchMock = vi.fn((url: string, init?: RequestInit) => {
