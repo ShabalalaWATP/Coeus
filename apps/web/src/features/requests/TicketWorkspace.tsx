@@ -36,7 +36,7 @@ const CANCELABLE_STATES = new Set([
   "MANAGER_RELEASE",
 ]);
 
-type TicketWorkspaceActions = {
+export type TicketWorkspaceActions = {
   onAccept: (productId: string) => void;
   onAddAttachment: (payload: AttachmentMetadataInput) => void;
   onAddCollaborator: (username: string, access: "editor" | "viewer") => void;
@@ -51,6 +51,20 @@ type TicketWorkspaceActions = {
   onSubmit: () => void;
 };
 
+export type TicketWorkspacePending = Record<
+  | "accepting"
+  | "collaborating"
+  | "cancelling"
+  | "consenting"
+  | "adding"
+  | "rejecting"
+  | "running"
+  | "saving"
+  | "sending"
+  | "submitting",
+  boolean
+>;
+
 type TicketWorkspaceProps = {
   actions: TicketWorkspaceActions;
   actionError: string | null;
@@ -58,19 +72,7 @@ type TicketWorkspaceProps = {
   journeyOpen: boolean;
   onClearActionError: () => void;
   onJourneyToggle: (open: boolean) => void;
-  pending: Record<
-    | "accepting"
-    | "collaborating"
-    | "cancelling"
-    | "consenting"
-    | "adding"
-    | "rejecting"
-    | "running"
-    | "saving"
-    | "sending"
-    | "submitting",
-    boolean
-  >;
+  pending: TicketWorkspacePending;
   rfiError?: boolean;
   rfiLoading: boolean;
   rfiResults?: RfiSearchResults;

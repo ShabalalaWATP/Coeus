@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { MessageSquarePlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -7,35 +7,13 @@ import { RequestDashboard } from "./RequestDashboard";
 import { RequestRouteMissingState } from "./RequestRouteMissingState";
 import { TicketWorkspace } from "./TicketWorkspace";
 import { SIMILAR_NOTICE_STATES } from "./request-state-sets";
-import { upsertTicket } from "./ticket-collection";
+import { useRequestWorkspaceMutations } from "./useRequestWorkspaceMutations";
 import { ErrorState } from "../../components/ui/PageState";
 import { FeedbackPanel } from "../feedback/FeedbackPanel";
-import {
-  acceptProductOffer,
-  getRfiSearchResults,
-  rejectProductOffer,
-  runRfiSearch,
-  type RfiSearchResults,
-} from "../../lib/api-client/rfi-search";
-import {
-  addTicketAttachment,
-  addTicketCollaborator,
-  addTicketInformation,
-  cancelTicket,
-  consentNoMatch,
-  confirmTicketDelivery,
-  listTickets,
-  removeTicketCollaborator,
-  sendChatMessage,
-  submitTicket,
-  updateTicketIntake,
-  type AttachmentMetadataInput,
-  type IntakeUpdate,
-  type Ticket,
-} from "../../lib/api-client/tickets";
-import { getSimilarRequestNotice, joinSimilarRequest } from "../../lib/api-client/similar-requests";
+import { getRfiSearchResults } from "../../lib/api-client/rfi-search";
+import { getSimilarRequestNotice } from "../../lib/api-client/similar-requests";
+import { listTickets, type Ticket } from "../../lib/api-client/tickets";
 import { useAuth } from "../../lib/auth/auth-context";
-import { actionErrorMessage } from "../../lib/mutations/action-error";
 import { hasPermissions } from "../../lib/permissions/route-access";
 
 const EMPTY_TICKETS: Ticket[] = [];
@@ -91,140 +69,14 @@ export default function RequestsPage() {
     queryKey: ["similar-requests", "customer", selectedTicketId],
   });
   useEffect(() => setActionError(null), [selectedTicketId]);
-
-  const updateTicketCache = (ticket: Ticket) => {
-    setActionError(null);
-    queryClient.setQueryData<Ticket[]>(["tickets"], (current) => upsertTicket(current, ticket));
-    if (ticket.id !== ticketId) {
-      void navigate(`/app/requests/${encodeURIComponent(ticket.id)}`, { replace: true });
-    }
-  };
-  const updateRfiCache = (result: RfiSearchResults) => {
-    setActionError(null);
-    queryClient.setQueryData(["rfi-search", result.ticketId], result);
-    queryClient.setQueryData<Ticket[]>(["tickets"], (current) =>
-      (current ?? EMPTY_TICKETS).map((ticket) =>
-        ticket.id === result.ticketId
-          ? {
-              ...ticket,
-              state: result.ticketState,
-              visibleProductMatches: result.offers.map((offer) => offer.title),
-              releasedProductIds: withAcceptedProduct(
-                ticket.releasedProductIds,
-                result.metrics?.acceptedProductId ?? null,
-              ),
-            }
-          : ticket,
-      ),
-    );
-  };
-  const failAction = (message: string) => (error: unknown) =>
-    setActionError(actionErrorMessage(error, message));
-  const clearActionError = () => setActionError(null);
-  const chatMutation = useMutation({
-    mutationFn: (message: string) =>
-      sendChatMessage({ ticketId: selectedTicket?.id, message }, csrfToken),
-    onError: failAction("The message could not be sent. Try again."),
-    onMutate: clearActionError,
-    onSuccess: updateTicketCache,
-  });
-  const intakeMutation = useMutation({
-    mutationFn: (payload: IntakeUpdate) => updateTicketIntake(selectedTicketId, payload, csrfToken),
-    onError: failAction("The request details could not be saved. Refresh and try again."),
-    onMutate: clearActionError,
-    onSuccess: updateTicketCache,
-  });
-  const submitMutation = useMutation({
-    mutationFn: () => submitTicket(selectedTicketId, csrfToken),
-    onError: failAction("The request could not be submitted. Check the details and try again."),
-    onMutate: clearActionError,
-    onSuccess: (ticket) => {
-      setDismissedSimilarNoticeIds((current) => current.filter((id) => id !== ticket.id));
-      updateTicketCache(ticket);
-      void queryClient.invalidateQueries({
-        queryKey: ["similar-requests", "customer", ticket.id],
-      });
-      // Transient roadmap popup so the requester sees where their request goes next.
-      setJourneyOpen(true);
-    },
-  });
-  const joinSimilarMutation = useMutation({
-    mutationFn: (relatedTicketId: string) =>
-      joinSimilarRequest(selectedTicketId, relatedTicketId, csrfToken),
-    onError: failAction("The similar request could not be joined. Try again."),
-    onMutate: clearActionError,
-    onSuccess: (joined) => {
-      setDismissedSimilarNoticeIds((current) => [...new Set([...current, selectedTicketId])]);
-      void queryClient.invalidateQueries({ queryKey: ["tickets"] });
-      void navigate(`/app/requests/${encodeURIComponent(joined.joinedTicketId)}`);
-    },
-  });
-  const attachmentMutation = useMutation({
-    mutationFn: (payload: AttachmentMetadataInput) =>
-      addTicketAttachment(selectedTicketId, payload, csrfToken),
-    onError: failAction("Attachment metadata could not be added. Try again."),
-    onMutate: clearActionError,
-    onSuccess: updateTicketCache,
-  });
-  const informationMutation = useMutation({
-    mutationFn: (body: string) => addTicketInformation(selectedTicketId, body, csrfToken),
-    onError: failAction("Additional information could not be added. Try again."),
-    onMutate: clearActionError,
-    onSuccess: updateTicketCache,
-  });
-  const runRfiMutation = useMutation({
-    mutationFn: () => runRfiSearch(selectedTicketId, csrfToken),
-    onError: failAction("The product search could not be started. Try again."),
-    onMutate: clearActionError,
-    onSuccess: updateRfiCache,
-  });
-  const acceptOfferMutation = useMutation({
-    mutationFn: (productId: string) => acceptProductOffer(selectedTicketId, productId, csrfToken),
-    onError: failAction("The product offer could not be accepted. Try again."),
-    onMutate: clearActionError,
-    onSuccess: updateRfiCache,
-  });
-  const rejectOfferMutation = useMutation({
-    mutationFn: ({ productId, reason }: { productId: string; reason: string }) =>
-      rejectProductOffer(selectedTicketId, productId, reason, csrfToken),
-    onError: failAction("The product offer could not be rejected. Try again."),
-    onMutate: clearActionError,
-    onSuccess: updateRfiCache,
-  });
-  const addCollaboratorMutation = useMutation({
-    mutationFn: ({ username, access }: { username: string; access: "editor" | "viewer" }) =>
-      addTicketCollaborator(selectedTicketId, username, access, csrfToken),
-    onError: failAction("The user could not be tagged on this request. Try again."),
-    onMutate: clearActionError,
-    onSuccess: updateTicketCache,
-  });
-  const removeCollaboratorMutation = useMutation({
-    mutationFn: (userId: string) => removeTicketCollaborator(selectedTicketId, userId, csrfToken),
-    onError: failAction("The tagged user could not be removed. Try again."),
-    onMutate: clearActionError,
-    onSuccess: updateTicketCache,
-  });
-  const cancelMutation = useMutation({
-    mutationFn: (reason: string) => cancelTicket(selectedTicketId, reason, csrfToken),
-    onError: failAction("The request could not be cancelled. Refresh and try again."),
-    onMutate: clearActionError,
-    onSuccess: updateTicketCache,
-  });
-  const noMatchConsentMutation = useMutation({
-    mutationFn: (taskAsNewRequest: boolean) =>
-      consentNoMatch(selectedTicketId, taskAsNewRequest, csrfToken),
-    onError: failAction("The tasking decision could not be recorded. Try again."),
-    onMutate: clearActionError,
-    onSuccess: updateTicketCache,
-  });
-  const confirmDeliveryMutation = useMutation({
-    mutationFn: (confirmTicketId: string) => confirmTicketDelivery(confirmTicketId, csrfToken),
-    onError: failAction("Delivery could not be confirmed. Refresh and try again."),
-    onMutate: clearActionError,
-    onSuccess: (ticket) => {
-      setActionError(null);
-      queryClient.setQueryData<Ticket[]>(["tickets"], (current) => upsertTicket(current, ticket));
-    },
+  const mutations = useRequestWorkspaceMutations({
+    csrfToken,
+    currentRouteTicketId: ticketId,
+    selectedTicket,
+    selectedTicketId,
+    setActionError,
+    setDismissedSimilarNoticeIds,
+    setJourneyOpen,
   });
   const showWorkspace = isNewRequest || ticketId !== undefined;
 
@@ -259,39 +111,13 @@ export default function RequestsPage() {
         <RequestRouteMissingState onBack={() => void navigate("/app/requests")} />
       ) : showWorkspace ? (
         <TicketWorkspace
-          actions={{
-            onAccept: (productId) => acceptOfferMutation.mutate(productId),
-            onAddAttachment: (payload) => attachmentMutation.mutate(payload),
-            onAddCollaborator: (username, access) =>
-              addCollaboratorMutation.mutate({ username, access }),
-            onAddInformation: (body) => informationMutation.mutate(body),
-            onCancel: (reason) => cancelMutation.mutate(reason),
-            onNoMatchConsent: (taskAsNewRequest) => noMatchConsentMutation.mutate(taskAsNewRequest),
-            onReject: (productId, reason) => rejectOfferMutation.mutate({ productId, reason }),
-            onRemoveCollaborator: (userId) => removeCollaboratorMutation.mutate(userId),
-            onRun: () => runRfiMutation.mutate(),
-            onSave: (payload) => intakeMutation.mutate(payload),
-            onSend: (message) => chatMutation.mutate(message),
-            onSubmit: () => submitMutation.mutate(),
-          }}
+          actions={mutations.actions}
           actionError={actionError}
           currentUserId={session?.user.id ?? ""}
           journeyOpen={journeyOpen}
-          onClearActionError={clearActionError}
+          onClearActionError={mutations.clearActionError}
           onJourneyToggle={setJourneyOpen}
-          pending={{
-            accepting: acceptOfferMutation.isPending,
-            adding: informationMutation.isPending,
-            cancelling: cancelMutation.isPending,
-            collaborating:
-              addCollaboratorMutation.isPending || removeCollaboratorMutation.isPending,
-            consenting: noMatchConsentMutation.isPending,
-            rejecting: rejectOfferMutation.isPending,
-            running: runRfiMutation.isPending,
-            saving: intakeMutation.isPending,
-            sending: chatMutation.isPending,
-            submitting: submitMutation.isPending,
-          }}
+          pending={mutations.pending}
           rfiError={rfiResultsQuery.isError}
           rfiLoading={rfiResultsQuery.isLoading}
           rfiResults={rfiResultsQuery.data}
@@ -301,7 +127,7 @@ export default function RequestsPage() {
             // notice or a live "Join as viewer" button from persisted react-query data.
             similarNoticeEligible
               ? {
-                  isJoining: joinSimilarMutation.isPending,
+                  isJoining: mutations.isJoiningSimilarRequest,
                   isLoading: similarNoticeQuery.isLoading,
                   isQueryError: similarNoticeQuery.isError,
                   notice: similarNoticeQuery.data,
@@ -309,7 +135,7 @@ export default function RequestsPage() {
                     setDismissedSimilarNoticeIds((current) => [
                       ...new Set([...current, selectedTicketId]),
                     ]),
-                  onJoin: (id) => joinSimilarMutation.mutate(id),
+                  onJoin: mutations.joinSimilarRequest,
                   onRetry: () => void similarNoticeQuery.refetch(),
                 }
               : undefined
@@ -321,7 +147,7 @@ export default function RequestsPage() {
           {actionError ? (
             <div className="workspace-alert" role="alert">
               <span>{actionError}</span>
-              <button onClick={clearActionError} type="button">
+              <button onClick={mutations.clearActionError} type="button">
                 Dismiss
               </button>
             </div>
@@ -329,8 +155,8 @@ export default function RequestsPage() {
           <RequestDashboard
             canCreate={canCreate}
             currentUserId={session?.user.id ?? ""}
-            isConfirming={confirmDeliveryMutation.isPending}
-            onConfirmDelivery={(id) => confirmDeliveryMutation.mutate(id)}
+            isConfirming={mutations.isConfirmingDelivery}
+            onConfirmDelivery={mutations.confirmDelivery}
             onOpen={(id) => void navigate(`/app/requests/${encodeURIComponent(id)}`)}
             tickets={tickets}
           />
@@ -339,11 +165,4 @@ export default function RequestsPage() {
       )}
     </div>
   );
-}
-
-function withAcceptedProduct(current: string[], acceptedProductId: string | null) {
-  if (acceptedProductId === null || current.includes(acceptedProductId)) {
-    return current;
-  }
-  return [...current, acceptedProductId];
 }
