@@ -1,23 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { MessageCircleQuestion } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { AssignAnalystPanel } from "./AssignAnalystPanel";
 import { CapabilityCataloguePanel } from "./CapabilityCataloguePanel";
 import { ReleaseQueuePanel } from "./ReleaseQueuePanel";
+import { RoutingDetailPanel } from "./RoutingDetailPanel";
 import { RoutingTicketList } from "./RoutingTicketList";
-import { SimilarRequestsPanel } from "./SimilarRequestsPanel";
-import {
-  canApprove,
-  canApproveWithOverride,
-  canReject,
-  canSubmitClarification,
-  isRouteOverride,
-  upsertRoutingTicket,
-} from "./routing-model";
-import { PlanUpdates, Recommendation, Review, RoutingStats } from "./routing-sections";
-import { EmptyState, ErrorState } from "../../components/ui/PageState";
-import { StatusPill } from "../../components/ui/StatusPill";
+import { isRouteOverride, upsertRoutingTicket } from "./routing-model";
+import { RoutingStats } from "./routing-sections";
+import { ErrorState } from "../../components/ui/PageState";
 import {
   approveRoute,
   listRoutingQueue,
@@ -181,134 +171,33 @@ export default function RoutingQueuePage({ route }: RoutingQueuePageProps) {
             <RoutingTicketList onSelect={setSelectedTicketId} tickets={queue.tickets} />
           )}
         </aside>
-        <section className="surface routing-detail" aria-label="Route recommendation">
-          {selectedTicket ? (
-            <>
-              <div className="section-heading">
-                <h2>{selectedTicket.reference}</h2>
-                <p>{selectedTicket.title}</p>
-              </div>
-              <StatusPill state={selectedTicket.state} />
-              <Recommendation ticket={selectedTicket} />
-              <Review title="RFA recommendation" review={selectedTicket.rfaReview} />
-              <Review title="CM recommendation" review={selectedTicket.cmReview} />
-              <PlanUpdates ticket={selectedTicket} />
-              <SimilarRequestsPanel
-                isLinking={linkSimilarMutation.isPending}
-                isLoading={similarRequestsQuery.isLoading}
-                isQueryError={similarRequestsQuery.isError}
-                matches={similarRequestsQuery.data}
-                onLink={(id) => linkSimilarMutation.mutate(id)}
-                onRetry={() => void similarRequestsQuery.refetch()}
-              />
-              {canApprove(selectedTicket, route) && isRouteOverride(selectedTicket, route) ? (
-                <div className="routing-override">
-                  <label htmlFor="routing-override-reason">Override reason</label>
-                  <textarea
-                    id="routing-override-reason"
-                    onChange={(event) => setOverrideReason(event.target.value)}
-                    placeholder="Explain why this queue should take the request instead."
-                    value={overrideReason}
-                  />
-                  <small>
-                    The orchestrator recommended a different route. An override reason of at least 3
-                    characters is required.
-                  </small>
-                </div>
-              ) : null}
-              <div className="routing-actions">
-                {selectedTicket.state === "ROUTE_ASSESSMENT" ? (
-                  <button
-                    disabled={runMutation.isPending}
-                    onClick={() => runMutation.mutate()}
-                    type="button"
-                  >
-                    Run capability checks
-                  </button>
-                ) : null}
-                <button
-                  disabled={
-                    !canApproveWithOverride(selectedTicket, route, overrideReason) ||
-                    approveMutation.isPending
-                  }
-                  onClick={() => approveMutation.mutate()}
-                  type="button"
-                >
-                  Approve route
-                </button>
-              </div>
-              {actionError ? (
-                <p className="auth-error" role="alert">
-                  {actionError}
-                </p>
-              ) : null}
-              {selectedTicket.state === "ANALYST_ASSIGNMENT" ? (
-                <AssignAnalystPanel
-                  csrfToken={csrfToken}
-                  onAssigned={(task) => removeTicket(task.ticketId)}
-                  suggestedTeamName={teamNameForAssignment(selectedTicket, route)}
-                  ticketId={selectedTicket.ticketId}
-                />
-              ) : (
-                <details className="workspace-details">
-                  <summary>
-                    <MessageCircleQuestion aria-hidden="true" size={16} />
-                    Query or reject this route
-                  </summary>
-                  <div className="routing-forms">
-                    <label>
-                      Clarification reason
-                      <textarea
-                        onChange={(event) => setClarificationReason(event.target.value)}
-                        value={clarificationReason}
-                      />
-                    </label>
-                    <label>
-                      Clarification question
-                      <input
-                        onChange={(event) => setClarificationQuestion(event.target.value)}
-                        value={clarificationQuestion}
-                      />
-                    </label>
-                    <button
-                      disabled={
-                        !canSubmitClarification(
-                          selectedTicket,
-                          route,
-                          clarificationReason,
-                          clarificationQuestion,
-                        )
-                      }
-                      onClick={() => clarificationMutation.mutate()}
-                      type="button"
-                    >
-                      Request clarification
-                    </button>
-                    <label>
-                      Rejection reason
-                      <textarea
-                        onChange={(event) => setRejectReason(event.target.value)}
-                        value={rejectReason}
-                      />
-                    </label>
-                    <button
-                      disabled={!canReject(selectedTicket, route, rejectReason)}
-                      onClick={() => rejectMutation.mutate()}
-                      type="button"
-                    >
-                      Reject route
-                    </button>
-                  </div>
-                </details>
-              )}
-            </>
-          ) : (
-            <EmptyState
-              hint="Approved and routed tickets leave this queue automatically."
-              title="No ticket selected"
-            />
-          )}
-        </section>
+        <RoutingDetailPanel
+          actionError={actionError}
+          clarificationQuestion={clarificationQuestion}
+          clarificationReason={clarificationReason}
+          csrfToken={csrfToken}
+          isApprovePending={approveMutation.isPending}
+          isLinkingSimilar={linkSimilarMutation.isPending}
+          isRunningReviews={runMutation.isPending}
+          isSimilarLoading={similarRequestsQuery.isLoading}
+          isSimilarQueryError={similarRequestsQuery.isError}
+          onApprove={() => approveMutation.mutate()}
+          onAssigned={(task) => removeTicket(task.ticketId)}
+          onClarificationQuestionChange={setClarificationQuestion}
+          onClarificationReasonChange={setClarificationReason}
+          onLinkSimilar={(id) => linkSimilarMutation.mutate(id)}
+          onOverrideReasonChange={setOverrideReason}
+          onReject={() => rejectMutation.mutate()}
+          onRejectReasonChange={setRejectReason}
+          onRequestClarification={() => clarificationMutation.mutate()}
+          onRetrySimilar={() => void similarRequestsQuery.refetch()}
+          onRunReviews={() => runMutation.mutate()}
+          overrideReason={overrideReason}
+          rejectReason={rejectReason}
+          route={route}
+          selectedTicket={selectedTicket}
+          similarMatches={similarRequestsQuery.data}
+        />
       </section>
       <ReleaseQueuePanel csrfToken={csrfToken} route={route} />
     </div>
@@ -326,10 +215,3 @@ const cmLabels = {
   shortName: "Collection",
   description: "Review CM capability decisions and approve collection-backed routes.",
 };
-
-function teamNameForAssignment(ticket: RoutingTicket, route: RoutingRoute) {
-  if (route === "rfa") {
-    return ticket.rfaReview?.suggestedTeamName ?? "";
-  }
-  return ticket.cmReview?.suggestedCollectionTeamName ?? "";
-}
