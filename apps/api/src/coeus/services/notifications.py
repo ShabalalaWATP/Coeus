@@ -47,13 +47,19 @@ class NotificationService:
             read=False,
             created_at=datetime.now(UTC),
         )
-        existing = self._notifications.setdefault(user.user_id, [])
-        existing.append(record)
-        del existing[:-MAX_NOTIFICATIONS_PER_USER]
-        self._persist()
+        snapshot = tuple(self._notifications.get(user.user_id, ()))
+        try:
+            existing = self._notifications.setdefault(user.user_id, [])
+            existing.append(record)
+            del existing[:-MAX_NOTIFICATIONS_PER_USER]
+            self._persist()
+        except Exception:
+            self._restore_user_notifications(user.user_id, snapshot)
+            raise
         return record
 
     def record_email(self, user: UserAccount, subject: str, body: str) -> EmailRecord:
+        outbox_snapshot = tuple(self._outbox)
         email = EmailRecord(
             email_id=uuid4(),
             to_username=user.username,
@@ -61,14 +67,19 @@ class NotificationService:
             body=body,
             created_at=datetime.now(UTC),
         )
-        self._outbox.append(email)
-        del self._outbox[:-MAX_NOTIFICATIONS_PER_USER]
-        self._persist()
-        self._audit_log.record(
-            "email_recorded",
-            None,
-            {"to_user_id": str(user.user_id), "subject": subject},
-        )
+        try:
+            self._outbox.append(email)
+            del self._outbox[:-MAX_NOTIFICATIONS_PER_USER]
+            self._persist()
+            self._audit_log.record(
+                "email_recorded",
+                None,
+                {"to_user_id": str(user.user_id), "subject": subject},
+            )
+        except Exception:
+            self._outbox = list(outbox_snapshot)
+            self._persist()
+            raise
         try:
             self._email_provider.send(email)
         except EmailDeliveryError:
@@ -87,8 +98,13 @@ class NotificationService:
         for index, record in enumerate(records):
             if record.notification_id == notification_id:
                 updated = replace(record, read=True)
-                records[index] = updated
-                self._persist()
+                snapshot = tuple(records)
+                try:
+                    records[index] = updated
+                    self._persist()
+                except Exception:
+                    self._restore_user_notifications(actor.user_id, snapshot)
+                    raise
                 return updated
         raise AppError(404, "notification_not_found", "Notification was not found.")
 
@@ -123,3 +139,11 @@ class NotificationService:
                 "outbox": [encode_value(email) for email in self._outbox],
             },
         )
+
+    def _restore_user_notifications(
+        self, user_id: UUID, snapshot: tuple[NotificationRecord, ...]
+    ) -> None:
+        if snapshot:
+            self._notifications[user_id] = list(snapshot)
+        else:
+            self._notifications.pop(user_id, None)

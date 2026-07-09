@@ -26,6 +26,30 @@ class FailingEmailProvider:
         raise EmailDeliveryError("SMTP failed.")
 
 
+class ToggleStateStore:
+    def __init__(self) -> None:
+        self.fail_saves = False
+        self.payloads: dict[str, dict[str, object]] = {}
+
+    def load(self, namespace: str) -> dict[str, object] | None:
+        return self.payloads.get(namespace)
+
+    def save(self, namespace: str, payload: dict[str, object]) -> None:
+        if self.fail_saves:
+            raise RuntimeError("state store unavailable")
+        self.payloads[namespace] = payload
+
+
+class FailingAuditLog(AuditLog):
+    def record(
+        self,
+        event_type: str,
+        actor_user_id: str | None = None,
+        metadata: dict[str, str] | None = None,
+    ):
+        raise RuntimeError("audit unavailable")
+
+
 def test_notification_service_delivers_email_to_configured_provider() -> None:
     audit_log = AuditLog()
     provider = RecordingEmailProvider()
@@ -45,6 +69,40 @@ def test_notification_service_audits_email_delivery_failure() -> None:
     service.record_email(_user(), "Release ready", "Open Istari.")
 
     assert _event_types(audit_log) == ["email_recorded", "email_delivery_failed"]
+
+
+def test_notification_creation_rolls_back_when_persistence_fails() -> None:
+    state_store = ToggleStateStore()
+    service = NotificationService(AuditLog(), state_store=state_store)
+    user = _user()
+
+    state_store.fail_saves = True
+    with pytest.raises(RuntimeError, match="state store unavailable"):
+        service.notify(user, "release", "Release ready", "Open Istari.")
+
+    assert service.list_for_user(user) == ()
+
+
+def test_notification_mark_read_rolls_back_when_persistence_fails() -> None:
+    state_store = ToggleStateStore()
+    service = NotificationService(AuditLog(), state_store=state_store)
+    user = _user()
+    notification = service.notify(user, "release", "Release ready", "Open Istari.")
+
+    state_store.fail_saves = True
+    with pytest.raises(RuntimeError, match="state store unavailable"):
+        service.mark_read(user, notification.notification_id)
+
+    assert service.list_for_user(user)[0].read is False
+
+
+def test_email_outbox_rolls_back_when_audit_fails() -> None:
+    service = NotificationService(FailingAuditLog())
+
+    with pytest.raises(RuntimeError, match="audit unavailable"):
+        service.record_email(_user(), "Release ready", "Open Istari.")
+
+    assert service.outbox_size() == 0
 
 
 def test_smtp_runtime_config_requires_host_and_sender() -> None:

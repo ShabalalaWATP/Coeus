@@ -27,6 +27,9 @@ release endpoints and customer notifications.
   returned to their owner; marking read requires the session CSRF token.
   Recorded emails contain only the ticket reference, product reference,
   title and an application link path, never product content.
+- Notification state consistency: notification creation, mark-read and
+  email outbox operations restore their previous state if persistence or
+  audit recording fails.
 - Notification flooding: per-user notifications and the email outbox are
   bounded in memory.
 - CSRF: release and mark-read mutations require the session-bound CSRF

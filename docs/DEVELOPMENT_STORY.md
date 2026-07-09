@@ -9,6 +9,10 @@ Sprint 1 to Sprint 13 entries live in
   membership-remove operations restore the previous repository state if audit
   recording fails. Added regression coverage for all four mutation paths and
   updated the ACG project-access threat model.
+- Hardened notification and email side effects so notification creation,
+  mark-read and email outbox writes restore previous state if persistence or
+  audit recording fails. Added regression coverage and updated the manager
+  final-release threat model.
 
 ## 2026-07-08 No-match consent
 
