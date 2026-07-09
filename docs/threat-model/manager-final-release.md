@@ -20,6 +20,10 @@ release endpoints and customer notifications.
   in draft, with no dissemination record, ticket transition or release audit.
   If the product is published but the ticket update fails, the previous draft
   product record is restored and requester notification is not sent.
+- Partial publication on failed audit: if `product_released` audit recording
+  fails after the ticket update, the ticket is restored to `MANAGER_RELEASE`,
+  the product is restored to draft status and requester notification is not
+  sent.
 - Separation of duties: QC quality approval and manager release remain
   distinct actions by distinct roles, both audit logged
   (`qc_approved`, `product_released`).
