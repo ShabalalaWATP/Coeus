@@ -46,6 +46,7 @@ async def upload_product(
     product = store_services.ingestion.create_existing_product(
         authenticated.user,
         _to_product_draft(request),
+        audit=False,
     )
     try:
         storage.write_bytes(product.assets[0].object_key, content)
@@ -56,6 +57,12 @@ async def upload_product(
             "asset_storage_failed",
             "Asset bytes could not be persisted.",
         ) from exc
+    try:
+        store_services.ingestion.audit_product_created(authenticated.user, product)
+    except Exception:
+        store_services.repository.delete_product(product.product_id)
+        storage.delete_bytes(product.assets[0].object_key)
+        raise
     return _to_product_response(product)
 
 

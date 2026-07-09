@@ -5,14 +5,12 @@ Sprint 1 to Sprint 13 entries live in
 
 ## 2026-07-09 Access-control audit rollback
 
-- Hardened ACG administration so create, update, membership-add and
-  membership-remove operations restore the previous repository state if audit
-  recording fails. Added regression coverage for all four mutation paths and
-  updated the ACG project-access threat model.
-- Hardened notification and email side effects so notification creation,
-  mark-read and email outbox writes restore previous state if persistence or
-  audit recording fails. Added regression coverage and updated the manager
-  final-release threat model.
+- Hardened ACG administration so create, update and membership changes restore
+  previous repository state if audit recording fails. Added regression coverage
+  and updated the ACG project-access threat model.
+- Hardened notification and email side effects so creation, mark-read and
+  email outbox writes restore previous state if persistence or audit recording
+  fails. Updated the manager final-release threat model.
 - Hardened admin AI model configuration so failed model selection or Gemini API
   key configuration restores the previous provider, model, key and change
   metadata. Added persistence and audit-failure regression coverage.
@@ -41,9 +39,11 @@ Sprint 1 to Sprint 13 entries live in
 - Hardened analyst assignment, notes, product links, work-package updates,
   draft saves and QC submission so failed audit recording restores the original
   ticket state.
+- Hardened Store product ingestion so `product_created` audit failure restores
+  product metadata and uploaded bytes, and storage failure does not leave a
+  false product-created audit event.
 - Hardened auth session lifecycle changes so failed `login_success`, `logout`
-  or `password_changed` audit recording restores previous sessions,
-  credentials and username login-attempt state.
+  or `password_changed` audit restores sessions, credentials and login attempts.
 
 ## 2026-07-08 No-match consent
 

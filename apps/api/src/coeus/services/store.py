@@ -104,7 +104,13 @@ class StoreIngestionService:
         self._access_repository = access_repository
         self._audit_log = audit_log
 
-    def create_existing_product(self, actor: UserAccount, draft: StoreProductDraft) -> StoreProduct:
+    def create_existing_product(
+        self,
+        actor: UserAccount,
+        draft: StoreProductDraft,
+        *,
+        audit: bool = True,
+    ) -> StoreProduct:
         self._require(actor, Permission.PRODUCT_CREATE_EXISTING)
         owner_team = normalise_owner_team(draft.owner_team)
         require_owner_permission(actor, owner_team)
@@ -159,12 +165,20 @@ class StoreIngestionService:
             updated_at=now,
         )
         self._repository.save_product(product)
+        if audit:
+            try:
+                self.audit_product_created(actor, product)
+            except Exception:
+                self._repository.delete_product(product.product_id)
+                raise
+        return product
+
+    def audit_product_created(self, actor: UserAccount, product: StoreProduct) -> None:
         self._audit_log.record(
             "product_created",
             str(actor.user_id),
             {"product_id": str(product.product_id), "reference": product.reference},
         )
-        return product
 
     def _validate_acgs(self, actor: UserAccount, acg_ids: frozenset[UUID]) -> None:
         if not acg_ids:
