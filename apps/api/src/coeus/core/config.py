@@ -119,6 +119,8 @@ class Settings(BaseSettings):
             and self.environment in {"dev", "staging", "prod"}
         ):
             errors.append("COEUS_GEMINI_API_KEY is required when COEUS_LLM_PROVIDER=gemini_api.")
+        if self.csrf_header_name != "X-CSRF-Token":
+            errors.append("COEUS_CSRF_HEADER_NAME must remain X-CSRF-Token.")
         if self.email_provider == "smtp":
             if not self.smtp_host:
                 errors.append("COEUS_SMTP_HOST is required when COEUS_EMAIL_PROVIDER=smtp.")

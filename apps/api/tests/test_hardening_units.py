@@ -61,6 +61,11 @@ def test_removed_gemma_providers_are_rejected() -> None:
     assert _settings(llm_provider="gemini_api").llm_provider == "gemini_api"
 
 
+def test_unsupported_csrf_header_name_fails_at_startup() -> None:
+    with pytest.raises(ValueError, match="COEUS_CSRF_HEADER_NAME"):
+        create_app(_settings(csrf_header_name="X-Other-CSRF"))
+
+
 def test_escape_like_neutralises_wildcards() -> None:
     assert _escape_like(None) is None
     assert _escape_like("100% baltic_ports\\x") == "100\\% baltic\\_ports\\\\x"
