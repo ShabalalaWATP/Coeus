@@ -9,14 +9,12 @@ from coeus.domain.access import ProductStatus
 from coeus.domain.auth import UserAccount
 from coeus.domain.store import (
     BoundingBox,
-    MetadataSuggestion,
     StoreAsset,
     StoreHybridCandidate,
     StoreProduct,
     StoreProductMetadata,
     StoreSearchFilters,
     StoreSearchResult,
-    StoreVisibilityScope,
     object_key_segment,
 )
 from coeus.domain.store_filters import structured_filter_match
@@ -26,7 +24,9 @@ from coeus.repositories.store_ids import new_store_product_id
 from coeus.services.audit import AuditLog
 from coeus.services.embeddings import EmbeddingService
 from coeus.services.store_access import StoreAssetService, StoreDetailService
+from coeus.services.store_metadata_suggestions import MetadataSuggestionService
 from coeus.services.store_owner_policy import normalise_owner_team, require_owner_permission
+from coeus.services.store_product_policy import StoreProductAccessPolicy
 from coeus.services.store_search_results import (
     exact_text_hit,
     facets_for,
@@ -63,34 +63,6 @@ class StoreProductDraft:
     bounding_box: BoundingBox | None
     assets: tuple[StoreAsset, ...]
     semantic_labels: frozenset[str] = field(default_factory=frozenset)
-
-
-class StoreProductAccessPolicy:
-    def __init__(self, access_repository: SeedAccessRepository) -> None:
-        self._access_repository = access_repository
-
-    def can_read(self, user: UserAccount, product: StoreProduct) -> bool:
-        metadata = product.metadata
-        if Permission.PRODUCT_READ not in user.permissions or not user.is_active:
-            return False
-        if metadata.status == ProductStatus.ARCHIVED:
-            return False
-        if user.clearance_level < metadata.classification_level:
-            return False
-        if (
-            metadata.status == ProductStatus.DRAFT
-            and Permission.PRODUCT_MANAGE_ASSETS not in user.permissions
-        ):
-            return False
-        user_acg_ids = self._access_repository.active_acg_ids_for_user(user.user_id)
-        return bool(user_acg_ids.intersection(metadata.acg_ids))
-
-    def visibility_scope(self, user: UserAccount) -> StoreVisibilityScope:
-        return StoreVisibilityScope(
-            acg_ids=self._access_repository.active_acg_ids_for_user(user.user_id),
-            clearance_level=user.clearance_level,
-            include_drafts=Permission.PRODUCT_MANAGE_ASSETS in user.permissions,
-        )
 
 
 class StoreIngestionService:
@@ -289,28 +261,6 @@ class StoreSearchService:
         )
         return tuple(
             candidate for candidate in candidates if self._policy.can_read(actor, candidate.product)
-        )
-
-
-class MetadataSuggestionService:
-    def suggest(
-        self, title: str, summary: str, product_type: str, area_or_region: str
-    ) -> MetadataSuggestion:
-        text = f"{title} {summary} {product_type} {area_or_region}".casefold()
-        tags = []
-        if "baltic" in text:
-            tags.append("baltic")
-        if product_type == "geographic_product":
-            tags.append("geographic")
-        tags.append("mock")
-        entities = (area_or_region, "MOCK DATA ONLY")
-        labels = derive_semantic_labels(title, summary, product_type, area_or_region)
-        return MetadataSuggestion(
-            tags=tuple(dict.fromkeys(tags)),
-            entities=entities,
-            source_type="synthetic",
-            acg_ids=(),
-            semantic_labels=tuple(labels),
         )
 
 
