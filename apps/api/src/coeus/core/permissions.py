@@ -64,4 +64,16 @@ class Permission(StrEnum):
     SYSTEM_CONFIGURE = "system:configure"
 
 
-ALL_PERMISSIONS = frozenset(Permission)
+RETIRED_PERMISSIONS = frozenset(
+    {
+        Permission.PROJECT_CREATE,
+        Permission.PROJECT_READ,
+        Permission.PROJECT_UPDATE,
+        Permission.PROJECT_ADD_MEMBER,
+        Permission.PROJECT_REMOVE_MEMBER,
+    }
+)
+
+ALL_PERMISSIONS = frozenset(
+    permission for permission in Permission if permission not in RETIRED_PERMISSIONS
+)
