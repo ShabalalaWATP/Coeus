@@ -10,7 +10,7 @@ import {
   ScrollText,
   ShieldCheck,
 } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 import { groupedNavigationItems, type NavigationItem } from "../../lib/permissions/route-access";
 
@@ -66,9 +66,9 @@ function NavGroup({ activePath, group }: NavGroupProps) {
       </p>
       {group.items.map((item) => {
         const Icon = icons[item.icon];
-        const active = activePath === item.path || activePath.startsWith(`${item.path}/`);
+        const active = isActiveNavigationItem(activePath, item, group.items);
         return (
-          <NavLink
+          <Link
             aria-current={active ? "page" : undefined}
             className={active ? "nav-link nav-link--active" : "nav-link"}
             key={item.path}
@@ -76,9 +76,29 @@ function NavGroup({ activePath, group }: NavGroupProps) {
           >
             <Icon aria-hidden="true" size={18} strokeWidth={1.9} />
             <span>{item.label}</span>
-          </NavLink>
+          </Link>
         );
       })}
     </>
   );
+}
+
+function isActiveNavigationItem(
+  activePath: string,
+  item: NavigationItem,
+  groupItems: readonly NavigationItem[],
+) {
+  if (!pathMatches(activePath, item.path)) {
+    return false;
+  }
+  return !groupItems.some(
+    (candidate) =>
+      candidate.path !== item.path &&
+      candidate.path.length > item.path.length &&
+      pathMatches(activePath, candidate.path),
+  );
+}
+
+function pathMatches(activePath: string, itemPath: string) {
+  return activePath === itemPath || activePath.startsWith(`${itemPath}/`);
 }

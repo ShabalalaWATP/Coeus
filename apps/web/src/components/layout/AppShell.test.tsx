@@ -32,6 +32,15 @@ test("renders the expected shell landmarks and navigation", () => {
   expect(screen.getByRole("button", { name: "Profile" })).toBeVisible();
 });
 
+test("marks only the most specific navigation item active", () => {
+  renderWithProviders(<AppShell profile={previewProfile} />, "/store/my-products");
+
+  expect(screen.getByRole("link", { name: "Intelligence Store" })).not.toHaveAttribute(
+    "aria-current",
+  );
+  expect(screen.getByRole("link", { name: "My Products" })).toHaveAttribute("aria-current", "page");
+});
+
 test("has no automated accessibility violations in the shell", async () => {
   vi.stubGlobal(
     "fetch",
