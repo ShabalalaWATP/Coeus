@@ -189,58 +189,24 @@ test("updates ACG metadata and membership through protected endpoints", async ()
   );
 });
 
-test("lists project workspaces and requests access diagnostics", async () => {
-  const project = {
-    id: "project-1",
-    reference: "PRJ-1",
-    name: "Project One",
-    summary: "Workspace summary",
-    requesterUserId: "user-1",
-    acgIds: ["acg-1"],
-    ticketIds: ["ticket-1"],
-    members: [],
-    milestones: [],
-    planItems: [],
-    visibleProducts: [],
-  };
-  const fetchMock = vi
-    .fn()
-    .mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({ projects: [project] }),
-    })
-    .mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(project),
-    })
-    .mockResolvedValueOnce({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          allowed: false,
-          reason: "Denied",
-          checks: [{ name: "acg_membership", passed: false, reason: "Missing ACG" }],
-        }),
-    });
+test("requests product access diagnostics", async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    json: () =>
+      Promise.resolve({
+        allowed: false,
+        reason: "Denied",
+        checks: [{ name: "acg_membership", passed: false, reason: "Missing ACG" }],
+      }),
+  });
   vi.stubGlobal("fetch", fetchMock);
 
   const client = new ApiClient("http://api.test");
-  await expect(client.listProjects()).resolves.toEqual([project]);
-  await expect(client.getProject("project-1")).resolves.toMatchObject({ name: "Project One" });
   await expect(
     client.diagnoseProductAccess("product-1", "user-1", "csrf-token"),
   ).resolves.toMatchObject({ allowed: false });
 
-  expect(fetchMock).toHaveBeenNthCalledWith(1, "http://api.test/api/v1/projects", {
-    credentials: "include",
-    method: "GET",
-  });
-  expect(fetchMock).toHaveBeenNthCalledWith(2, "http://api.test/api/v1/projects/project-1", {
-    credentials: "include",
-    method: "GET",
-  });
-  expect(fetchMock).toHaveBeenNthCalledWith(
-    3,
+  expect(fetchMock).toHaveBeenCalledWith(
     "http://api.test/api/v1/store/products/product-1/access-diagnostics",
     {
       body: JSON.stringify({ userId: "user-1" }),

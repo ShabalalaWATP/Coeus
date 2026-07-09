@@ -12,7 +12,7 @@ export default function AuditPage() {
   const events = auditQuery.data ?? [];
 
   return (
-    <div className="project-page">
+    <div className="workspace-page">
       <section className="overview-hero" aria-labelledby="audit-title">
         <div>
           <h1 id="audit-title">Audit</h1>

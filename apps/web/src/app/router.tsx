@@ -17,7 +17,6 @@ import {
   LoginPage,
   ProductDetailPage,
   ProductUploadPage,
-  ProjectWorkspacePage,
   QcQueuePage,
   RequestsPage,
   RoutingQueuePage,
@@ -91,26 +90,6 @@ export function createAppRouter() {
         {
           path: "store/products/:productId/assets/:assetId",
           element: protectedPage(<ProductDetailPage />, ["product:read", "product:download"]),
-        },
-        {
-          path: "projects",
-          element: protectedPage(<ProjectWorkspacePage />, ["project:read"]),
-        },
-        {
-          path: "projects/:projectId",
-          element: protectedPage(<ProjectWorkspacePage />, ["project:read"]),
-        },
-        {
-          path: "projects/:projectId/plan",
-          element: protectedPage(<ProjectWorkspacePage view="plan" />, ["project:read"]),
-        },
-        {
-          path: "projects/:projectId/members",
-          element: protectedPage(<ProjectWorkspacePage view="members" />, ["project:read"]),
-        },
-        {
-          path: "projects/:projectId/products",
-          element: protectedPage(<ProjectWorkspacePage view="products" />, ["project:read"]),
         },
         {
           path: "rfa/queue",

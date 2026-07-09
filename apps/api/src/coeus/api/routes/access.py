@@ -10,13 +10,7 @@ from coeus.api.dependencies import (
     require_permission,
 )
 from coeus.core.permissions import Permission
-from coeus.domain.access import (
-    AccessControlGroup,
-    ProductRecord,
-    ProjectMember,
-    ProjectMilestone,
-    ProjectPlanItem,
-)
+from coeus.domain.access import AccessControlGroup
 from coeus.domain.auth import AuthenticatedSession
 from coeus.schemas.access import (
     AccessCheckResponse,
@@ -26,15 +20,9 @@ from coeus.schemas.access import (
     AccessDiagnosticsResponse,
     AddAccessControlGroupMemberRequest,
     CreateAccessControlGroupRequest,
-    ProductSummaryResponse,
-    ProjectMemberResponse,
-    ProjectMilestoneResponse,
-    ProjectPlanItemResponse,
-    ProjectWorkspaceListResponse,
-    ProjectWorkspaceResponse,
     UpdateAccessControlGroupRequest,
 )
-from coeus.services.access import AccessServices, ProjectWorkspaceView
+from coeus.services.access import AccessServices
 
 router = APIRouter(tags=["access-control"])
 
@@ -115,74 +103,6 @@ async def remove_acg_member(
     access_services.acgs.remove_user(authenticated.user, acg_id, user_id)
 
 
-@router.get("/projects", response_model=ProjectWorkspaceListResponse)
-async def list_projects(
-    authenticated: Annotated[
-        AuthenticatedSession,
-        Depends(require_permission(Permission.PROJECT_READ)),
-    ],
-    access_services: Annotated[AccessServices, Depends(get_access_services)],
-) -> ProjectWorkspaceListResponse:
-    return ProjectWorkspaceListResponse(
-        projects=[
-            _to_project_response(view)
-            for view in access_services.projects.list_visible_workspaces(authenticated.user)
-        ]
-    )
-
-
-@router.get("/projects/{project_id}", response_model=ProjectWorkspaceResponse)
-async def get_project(
-    project_id: UUID,
-    authenticated: Annotated[
-        AuthenticatedSession,
-        Depends(require_permission(Permission.PROJECT_READ)),
-    ],
-    access_services: Annotated[AccessServices, Depends(get_access_services)],
-) -> ProjectWorkspaceResponse:
-    view = access_services.projects.get_visible_workspace(authenticated.user, project_id)
-    return _to_project_response(view)
-
-
-@router.get("/projects/{project_id}/plan", response_model=list[ProjectPlanItemResponse])
-async def get_project_plan(
-    project_id: UUID,
-    authenticated: Annotated[
-        AuthenticatedSession,
-        Depends(require_permission(Permission.PROJECT_READ)),
-    ],
-    access_services: Annotated[AccessServices, Depends(get_access_services)],
-) -> list[ProjectPlanItemResponse]:
-    view = access_services.projects.get_visible_workspace(authenticated.user, project_id)
-    return [_to_plan_item_response(item) for item in view.project.plan_items]
-
-
-@router.get("/projects/{project_id}/members", response_model=list[ProjectMemberResponse])
-async def get_project_members(
-    project_id: UUID,
-    authenticated: Annotated[
-        AuthenticatedSession,
-        Depends(require_permission(Permission.PROJECT_READ)),
-    ],
-    access_services: Annotated[AccessServices, Depends(get_access_services)],
-) -> list[ProjectMemberResponse]:
-    view = access_services.projects.get_visible_workspace(authenticated.user, project_id)
-    return [_to_member_response(member) for member in view.project.members]
-
-
-@router.get("/projects/{project_id}/products", response_model=list[ProductSummaryResponse])
-async def get_project_products(
-    project_id: UUID,
-    authenticated: Annotated[
-        AuthenticatedSession,
-        Depends(require_permission(Permission.PROJECT_READ)),
-    ],
-    access_services: Annotated[AccessServices, Depends(get_access_services)],
-) -> list[ProductSummaryResponse]:
-    view = access_services.projects.get_visible_workspace(authenticated.user, project_id)
-    return [_to_product_response(product) for product in view.visible_products]
-
-
 @router.post(
     "/store/products/{product_id}/access-diagnostics",
     response_model=AccessDiagnosticsResponse,
@@ -219,56 +139,4 @@ def _to_acg_response(
         owner_user_id=acg.owner_user_id,
         is_active=acg.is_active,
         member_user_ids=list(access_services.acgs.list_member_ids(acg.acg_id)),
-    )
-
-
-def _to_project_response(view: ProjectWorkspaceView) -> ProjectWorkspaceResponse:
-    project = view.project
-    return ProjectWorkspaceResponse(
-        project_id=project.project_id,
-        reference=project.reference,
-        name=project.name,
-        summary=project.summary,
-        requester_user_id=project.requester_user_id,
-        acg_ids=list(project.acg_ids),
-        ticket_ids=list(project.ticket_ids),
-        members=[_to_member_response(member) for member in project.members],
-        milestones=[_to_milestone_response(milestone) for milestone in project.milestones],
-        plan_items=[_to_plan_item_response(item) for item in project.plan_items],
-        visible_products=[_to_product_response(product) for product in view.visible_products],
-    )
-
-
-def _to_product_response(product: ProductRecord) -> ProductSummaryResponse:
-    return ProductSummaryResponse(
-        product_id=product.product_id,
-        title=product.title,
-        summary=product.summary,
-        product_type=product.product_type,
-        status=product.status.value,
-        classification_level=product.classification_level,
-        handling_caveats=sorted(product.handling_caveats),
-        acg_ids=list(product.acg_ids),
-        owner_team=product.owner_team,
-    )
-
-
-def _to_member_response(member: ProjectMember) -> ProjectMemberResponse:
-    return ProjectMemberResponse(user_id=member.user_id, role=member.role)
-
-
-def _to_milestone_response(milestone: ProjectMilestone) -> ProjectMilestoneResponse:
-    return ProjectMilestoneResponse(
-        milestone_id=milestone.milestone_id,
-        title=milestone.title,
-        status=milestone.status,
-    )
-
-
-def _to_plan_item_response(item: ProjectPlanItem) -> ProjectPlanItemResponse:
-    return ProjectPlanItemResponse(
-        plan_item_id=item.plan_item_id,
-        title=item.title,
-        owner_role=item.owner_role,
-        status=item.status,
     )

@@ -121,7 +121,7 @@ async def test_qc_blocks_incomplete_checklist_and_self_approval() -> None:
 
 
 @pytest.mark.asyncio
-async def test_qc_approval_rejects_acg_outside_actor_and_project_scope() -> None:
+async def test_qc_approval_rejects_acg_outside_actor_scope() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     collection_acg_id = _acg_id(app, "ACG-BRAVO-COLLECTION")
 
@@ -141,14 +141,14 @@ async def test_qc_approval_rejects_acg_outside_actor_and_project_scope() -> None
 
 
 @pytest.mark.asyncio
-async def test_qc_ingestion_does_not_inherit_unlinked_requester_project_acgs() -> None:
+async def test_qc_ingestion_does_not_attach_project_metadata() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     acg_id = _acg_id(app, "ACG-EU-CYBER")
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
-        ticket_id = await _submitted_qc_ticket(client, app, "Unlinked project product")
+        ticket_id = await _submitted_qc_ticket(client, app, "Standalone QC product")
         qc_manager = await login(client, "qc.manager@example.test")
         approved = await client.post(
             f"/api/v1/qc/products/{ticket_id}/approve",

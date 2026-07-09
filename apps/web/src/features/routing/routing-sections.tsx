@@ -105,7 +105,7 @@ function reviewTeamName(review: CmCapabilityReview | RfaCapabilityReview) {
 export function PlanUpdates({ ticket }: { ticket: RoutingTicket }) {
   return ticket.projectPlanUpdates.length ? (
     <article className="routing-plan">
-      <h3>Project plan updates</h3>
+      <h3>Workflow plan updates</h3>
       <ul>
         {ticket.projectPlanUpdates.map((item) => (
           <li key={item.id}>

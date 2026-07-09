@@ -10,7 +10,7 @@ def validate_qc_acg_assignment(
     access: SeedAccessRepository,
     actor: UserAccount,
     approval_acg_ids: frozenset[UUID],
-    project_acg_ids: frozenset[UUID],
+    inherited_acg_ids: frozenset[UUID],
 ) -> None:
     actor_acgs = access.active_acg_ids_for_user(actor.user_id)
     for acg_id in approval_acg_ids:
@@ -20,6 +20,6 @@ def validate_qc_acg_assignment(
         if (
             Permission.PRODUCT_READ_RESTRICTED not in actor.permissions
             and acg_id not in actor_acgs
-            and acg_id not in project_acg_ids
+            and acg_id not in inherited_acg_ids
         ):
             raise AppError(403, "acg_not_authorised", "User cannot assign that ACG.")

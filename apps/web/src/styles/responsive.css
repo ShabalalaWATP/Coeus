@@ -56,7 +56,6 @@
   .request-workspace,
   .status-strip,
   .access-grid,
-  .project-grid,
   .store-layout,
   .store-detail-grid,
   .store-filter-grid,
@@ -65,13 +64,13 @@
     grid-template-columns: 1fr;
   }
 
-  .project-summary,
+  .workspace-summary,
   .stack-row {
     align-items: stretch;
     grid-template-columns: 1fr;
   }
 
-  .project-summary {
+  .workspace-summary {
     flex-direction: column;
   }
 

@@ -17,7 +17,6 @@ export type NavigationItem = {
   icon:
     | "requests"
     | "store"
-    | "projects"
     | "rfa"
     | "collection"
     | "analyst"
@@ -50,13 +49,6 @@ export const navigationItems: readonly NavigationItem[] = [
     group: "operations",
     icon: "store",
     requiredPermissions: ["product:read", "product:search"],
-  },
-  {
-    label: "Projects",
-    path: "/projects",
-    group: "operations",
-    icon: "projects",
-    requiredPermissions: ["project:read"],
   },
   {
     label: "RFA Queue",

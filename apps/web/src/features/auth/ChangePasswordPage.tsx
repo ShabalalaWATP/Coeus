@@ -44,7 +44,7 @@ export default function ChangePasswordPage() {
   }
 
   return (
-    <div className="project-page">
+    <div className="workspace-page">
       <section className="overview-hero" aria-labelledby="change-password-title">
         <div>
           <h1 id="change-password-title">Change Password</h1>

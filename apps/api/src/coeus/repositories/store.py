@@ -194,7 +194,6 @@ class InMemoryStoreRepository:
         regional = self._acg_by_code("ACG-ALPHA-REGIONAL")
         collection = self._acg_by_code("ACG-BRAVO-COLLECTION")
         assessment = self._acg_by_code("ACG-CHARLIE-ASSESSMENT")
-        project = self._access_repository.list_projects()[0]
         admin = self._access_repository.get_user_by_username("admin@example.test")
         if admin is None:
             raise RuntimeError("Missing required seed user admin@example.test.")
@@ -215,7 +214,7 @@ class InMemoryStoreRepository:
                 tags=frozenset({"regional", "ports", "baltic"}),
                 semantic_labels=frozenset({"assessment", "maritime"}),
                 acg_ids=frozenset({regional.acg_id}),
-                project_id=project.project_id,
+                project_id=None,
                 status=ProductStatus.PUBLISHED,
                 created_by_user_id=admin.user_id,
                 created_at=now,
@@ -235,7 +234,7 @@ class InMemoryStoreRepository:
                 tags=frozenset({"collection", "sensor", "mock"}),
                 semantic_labels=frozenset({"collection", "sigint"}),
                 acg_ids=frozenset({collection.acg_id}),
-                project_id=project.project_id,
+                project_id=None,
                 status=ProductStatus.PUBLISHED,
                 created_by_user_id=admin.user_id,
                 created_at=now,
@@ -255,7 +254,7 @@ class InMemoryStoreRepository:
                 tags=frozenset({"draft", "assessment", "mock"}),
                 semantic_labels=frozenset({"assessment"}),
                 acg_ids=frozenset({assessment.acg_id}),
-                project_id=project.project_id,
+                project_id=None,
                 status=ProductStatus.DRAFT,
                 created_by_user_id=admin.user_id,
                 created_at=now,
@@ -280,7 +279,7 @@ class InMemoryStoreRepository:
         tags: frozenset[str],
         semantic_labels: frozenset[str],
         acg_ids: frozenset[UUID],
-        project_id: UUID,
+        project_id: UUID | None,
         status: ProductStatus,
         created_by_user_id: UUID,
         created_at: datetime,

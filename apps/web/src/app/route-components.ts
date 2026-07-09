@@ -17,5 +17,4 @@ export const RequestsPage = lazy(() => import("../features/requests/RequestsPage
 export const RoutingQueuePage = lazy(() => import("../features/routing/RoutingQueuePage"));
 export const ProductDetailPage = lazy(() => import("../features/store/ProductDetailPage"));
 export const ProductUploadPage = lazy(() => import("../features/store/ProductUploadPage"));
-export const ProjectWorkspacePage = lazy(() => import("../features/projects/ProjectWorkspacePage"));
 export const StorePage = lazy(() => import("../features/store/StorePage"));

@@ -42,8 +42,7 @@ LLM provider is deterministic and must not require network access.
 - Missing intake fields produce targeted assistant follow-up questions.
 - Extracted intake fields are shown in an editable panel.
 - Submit stays blocked until minimum required fields are present.
-- Submission moves the ticket to `RFI_SEARCHING`, suggests a project workspace
-  name and records a search agent run.
+- Submission moves the ticket to `RFI_SEARCHING` and records a search agent run.
 - Additional information after submission appears in the ticket timeline.
 - Attachment metadata placeholders can be added without storing file bytes.
 - Prompt-injection tests prove user text cannot bypass RBAC, reveal hidden

@@ -13,10 +13,6 @@ from coeus.domain.access import (
     AccessDecision,
     ProductRecord,
     ProductStatus,
-    ProjectMember,
-    ProjectMilestone,
-    ProjectPlanItem,
-    ProjectWorkspace,
 )
 from coeus.domain.auth import RoleName, SessionRecord, UserAccount
 from coeus.domain.enums import TicketState
@@ -92,11 +88,7 @@ _ALLOWED_TYPES = (
     ProductIndexRecord,
     ProductOffer,
     ProductRecord,
-    ProjectMember,
-    ProjectMilestone,
-    ProjectPlanItem,
     ProjectPlanUpdate,
-    ProjectWorkspace,
     QcChecklistItem,
     QcDecision,
     RegistrationRequest,

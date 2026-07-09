@@ -1,13 +1,6 @@
-.project-page {
+.workspace-page {
   display: grid;
   gap: 20px;
-}
-
-.project-grid {
-  display: grid;
-  grid-template-columns: minmax(260px, 0.75fr) minmax(0, 1.5fr);
-  gap: 20px;
-  align-items: start;
 }
 
 .eyebrow {
@@ -17,29 +10,23 @@
   text-transform: uppercase;
 }
 
-.project-summary {
+.workspace-summary {
   display: flex;
   justify-content: space-between;
   gap: 20px;
   align-items: start;
 }
 
-.project-summary h2 {
+.workspace-summary h2 {
   margin: 5px 0 8px;
   font-size: 1.42rem;
 }
 
-.project-summary p {
+.workspace-summary p {
   max-width: 760px;
   margin: 0;
   color: var(--muted);
   line-height: 1.55;
-}
-
-.project-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
 }
 
 .admin-action-grid {
@@ -185,24 +172,4 @@
   .approvals-row {
     grid-template-columns: 1fr;
   }
-}
-
-.project-picker {
-  display: grid;
-  gap: 10px;
-  padding: 14px;
-}
-
-.project-picker ul {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.project-picker__active {
-  border-color: var(--accent);
-  color: var(--text);
 }

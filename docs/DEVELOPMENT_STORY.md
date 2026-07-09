@@ -332,3 +332,11 @@ Sprint 1 to Sprint 13 entries live in
 - Linked the guides from the root README and the documentation index, and
   documented the embedding provider settings, the optional `embeddings` extra
   and the backfill command in `docs/SETUP.md`.
+
+## 2026-07-09 Project workspace retirement
+
+- Removed the Projects workspace feature from backend routes, services, seed
+  data, frontend navigation, admin shortcuts and client methods. Product/store
+  `projectId` remains optional catalogue metadata only.
+- Added ADR 0018 and refreshed the ACG/product access threat model and Sprint 3
+  spec to record the retirement decision.

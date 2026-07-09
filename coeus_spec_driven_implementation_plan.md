@@ -203,11 +203,6 @@ acg:update
 acg:assign_user
 acg:assign_product
 acg:view
-project:create
-project:read
-project:update
-project:add_member
-project:remove_member
 ticket:create
 ticket:read_own
 ticket:read_assigned
@@ -300,7 +295,6 @@ Every transition must be performed by the backend state machine. Every transitio
 | `ROUTE_ASSESSMENT` | Orchestration Agent | RFA and CM capability checks are requested. | Capability responses received. |
 | `RFA_MANAGER_REVIEW` | RFA Manager | RFA route needs human approval. | Approved, rejected, or clarification requested. |
 | `CM_MANAGER_REVIEW` | Collection Manager | CM route needs human approval. | Approved, rejected, or clarification requested. |
-| `PROJECT_WORKSPACE_CREATED` | System | Project workspace and ACG links are created or confirmed. | Plan accepted and tasks created. |
 | `ANALYST_ASSIGNMENT` | RFA or CM Manager | Work is assigned to analysts. | Analyst accepts assignment. |
 | `ANALYST_IN_PROGRESS` | Intelligence Analyst | Product is being produced. | Product submitted to QC. |
 | `QC_REVIEW` | QC Manager | Product is checked. | Approved or returned for rework. |
@@ -318,7 +312,7 @@ The Intelligence Store is a core part of Coeus, not a later add-on.
 
 ### 9.1 Purpose
 
-The Intelligence Store must allow authorised teams to store, tag, search, retrieve, and reuse intelligence products. It supports the RFI Search Agent, analyst workflows, product dissemination, project workspaces, and trend analysis.
+The Intelligence Store must allow authorised teams to store, tag, search, retrieve, and reuse intelligence products. It supports the RFI Search Agent, analyst workflows, product dissemination and trend analysis.
 
 ### 9.2 Product types
 
@@ -555,7 +549,7 @@ Use these as the first backlog. Each story should become one or more tickets wit
 | AUTH-009 | Administrator | As an administrator, I want login failures rate-limited so that brute-force attacks are slowed. | Repeated failures trigger lockout or cooldown and audit events. |
 | AUTH-010 | User | As a user, I want theme preference saved so that my preferred display mode persists. | Dark is default, light toggle persists locally and later in profile. |
 
-### 12.2 Access Control Groups and project workspaces
+### 12.2 Access Control Groups and product access
 
 | ID | Actor | User story | Acceptance criteria |
 |---|---|---|---|
@@ -565,10 +559,8 @@ Use these as the first backlog. Each story should become one or more tickets wit
 | ACG-004 | Product owner | As a product owner, I want to attach ACGs to products so that only permitted users can see them. | Product requires at least one ACG before publication. |
 | ACG-005 | User | As a user, I want search results filtered by my ACGs so that I only see products I am allowed to access. | Unauthorised products do not appear in search results or counts. |
 | ACG-006 | Administrator | As an administrator, I want to see why a product is or is not visible to a user so that access issues can be resolved. | Access diagnostic page explains RBAC, ACG, clearance, caveat, and product status outcomes. |
-| ACG-007 | Manager | As a manager, I want to create a Project Workspace for an RFI so that tasks, products and people are linked. | Workspace links ticket, requester, teams, ACGs, tasks and products. |
-| ACG-008 | User | As a user, I want to be included in the project plan when appropriate so that I can track progress and receive outputs. | User is visible as project stakeholder but product access still requires ACG membership. |
 | ACG-009 | Administrator | As an administrator, I want ACG changes to be auditable so that access decisions are traceable. | Every membership and product ACG change creates immutable audit entries. |
-| ACG-010 | Security reviewer | As a security reviewer, I want object-level tests so that IDOR issues are caught. | Tests prove users cannot fetch unauthorised products, assets, projects, or tickets by ID. |
+| ACG-010 | Security reviewer | As a security reviewer, I want object-level tests so that IDOR issues are caught. | Tests prove users cannot fetch unauthorised products, assets or tickets by ID. |
 
 ### 12.3 Chatbot intake and ticket creation
 
@@ -803,18 +795,13 @@ Tests:
 - Session expiry redirect works.
 - No token stored in local storage.
 
-### Frontend phase 3: ACG and project workspace UI
+### Frontend phase 3: ACG and product access UI
 
 Routes:
 
 ```text
 /admin/acgs
 /admin/acgs/:acgId
-/projects
-/projects/:projectId
-/projects/:projectId/plan
-/projects/:projectId/members
-/projects/:projectId/products
 ```
 
 Requirements:
@@ -822,9 +809,7 @@ Requirements:
 - Admins can create and edit ACGs.
 - Admins can assign users to ACGs.
 - Managers can view relevant ACGs.
-- Project Workspace view links user, ticket, products, team, tasks, milestones and plan.
 - Product access diagnostics for admins.
-- Users can see projects they are linked to, but only permitted products.
 
 Tests:
 
@@ -1105,7 +1090,6 @@ Routes:
 /admin/teams
 /admin/roles
 /admin/acgs
-/admin/projects
 /admin/products
 /admin/audit
 /admin/agents
@@ -1300,13 +1284,6 @@ Tables:
 access_control_groups
 access_control_group_memberships
 access_control_group_product_links
-access_control_group_project_links
-projects
-project_memberships
-project_milestones
-project_plan_items
-project_product_links
-project_ticket_links
 ```
 
 Services:
@@ -1314,8 +1291,6 @@ Services:
 ```text
 AccessControlGroupService
 ProductAccessPolicy
-ProjectAccessPolicy
-ProjectWorkspaceService
 AccessDiagnosticsService
 ```
 
@@ -1323,7 +1298,6 @@ Acceptance criteria:
 
 - Users can belong to many ACGs.
 - Products can belong to many ACGs.
-- Projects can be linked to many ACGs.
 - Access diagnostics explain allow or deny.
 - All changes audited.
 
@@ -1331,7 +1305,6 @@ Tests:
 
 - ACG membership tests.
 - Product access policy tests.
-- Project membership tests.
 - Clearance and caveat tests.
 - Deny-by-default tests.
 
@@ -1503,7 +1476,6 @@ Acceptance criteria:
 
 - Chat creates or resumes ticket.
 - Intake fields are extracted and editable.
-- Project workspace is created or suggested after submission.
 - Search begins only when intake is complete enough.
 - Agent runs are recorded.
 - Prompt injection tests pass.
@@ -1908,7 +1880,7 @@ Database responsibilities:
 ```text
 Users, roles and permissions
 ACGs and memberships
-Projects and project plans
+Ticket workflow plans
 Tickets and state machine
 Messages and comments
 Agent runs
@@ -2193,15 +2165,6 @@ GET    /acgs/{acg_id}
 PATCH  /acgs/{acg_id}
 POST   /acgs/{acg_id}/members
 DELETE /acgs/{acg_id}/members/{user_id}
-
-GET    /projects
-POST   /projects
-GET    /projects/{project_id}
-PATCH  /projects/{project_id}
-POST   /projects/{project_id}/members
-POST   /projects/{project_id}/products
-GET    /projects/{project_id}/plan
-PATCH  /projects/{project_id}/plan
 
 GET    /tickets
 POST   /tickets
