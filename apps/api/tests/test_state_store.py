@@ -87,6 +87,7 @@ def test_store_relational_schema_has_access_and_search_indexes() -> None:
     assert "USING gin(semantic_labels)" in statements
     assert "intelligence_store_product_acgs" in statements
     assert "idx_store_product_acgs_acg" in statements
+    assert "project_id" not in statements
 
 
 def test_sync_database_url_leaves_non_asyncpg_urls() -> None:

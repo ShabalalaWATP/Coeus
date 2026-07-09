@@ -1,6 +1,8 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
+import pytest
+
 from coeus.core.permissions import Permission
 from coeus.domain.auth import RoleName, UserAccount
 from coeus.domain.tickets import WorkflowPlanUpdate
@@ -23,7 +25,7 @@ def test_workflow_plan_update_round_trips() -> None:
     assert decoded == update
 
 
-def test_retired_workspace_permissions_are_removed_from_snapshots() -> None:
+def test_retired_workspace_permissions_are_rejected_from_snapshots() -> None:
     user = UserAccount(
         user_id=uuid4(),
         username="admin@example.test",
@@ -42,12 +44,11 @@ def test_retired_workspace_permissions_are_removed_from_snapshots() -> None:
         }
     )
 
-    decoded = decode_value(payload)
+    with pytest.raises(ValueError, match="project:add_member"):
+        decode_value(payload)
 
-    assert decoded.permissions == frozenset({Permission.SYSTEM_CONFIGURE})
 
-
-def test_retired_workspace_records_are_skipped_from_collections() -> None:
+def test_retired_workspace_records_are_rejected_from_collections() -> None:
     update = WorkflowPlanUpdate(
         update_id=uuid4(),
         ticket_id=uuid4(),
@@ -67,4 +68,5 @@ def test_retired_workspace_records_are_skipped_from_collections() -> None:
         ]
     }
 
-    assert decode_value(payload) == (update,)
+    with pytest.raises(KeyError, match="ProjectPlanUpdate"):
+        decode_value(payload)

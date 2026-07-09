@@ -28,9 +28,8 @@ Remove the legacy planning workspace feature:
 - Rename ticket-level routing plan updates to workflow plan updates.
 - Remove retired workspace permission enum strings from the active permission
   contract.
-- Keep no active feature shims for retired workspace fields. Persistence may
-  apply one-way sanitisation that drops retired workspace records and
-  permissions from older local snapshots during decode.
+- Keep no active feature shims or retired workspace sanitisation in runtime
+  persistence. Unknown retired records or permissions fail closed during decode.
 
 ## Consequences
 
@@ -38,10 +37,7 @@ Remove the legacy planning workspace feature:
   without a separate workspace area.
 - Product visibility remains enforced by product RBAC, clearance, product
   status, draft rules and active ACG overlap.
-- Existing local PostgreSQL schemas are cleaned by a migration that drops the
-  old Store metadata column.
-- Existing local snapshots that still contain retired workspace payloads,
-  permission values or ticket field names are sanitised on decode and then
-  saved back through the current product contract on the next write.
+- Existing PostgreSQL schemas and JSONB snapshots are cleaned by one-way
+  migrations that drop old Store metadata and retired workspace payloads.
 - Future work can reintroduce a planning workspace only with a new spec, ADR,
   tests and clear user workflow.

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -15,17 +16,28 @@ CONTRACT_PATH = ROOT / "packages" / "contracts" / "openapi.json"
 if str(API_SRC) not in sys.path:
     sys.path.insert(0, str(API_SRC))
 
-from coeus.core.config import Settings  # noqa: E402
-from coeus.main import create_app  # noqa: E402
+
+def _configure_contract_environment(temp_dir: Path) -> None:
+    os.environ["COEUS_ENVIRONMENT"] = "test"
+    os.environ["COEUS_PERSISTENCE_PROVIDER"] = "memory"
+    os.environ["COEUS_LOCAL_OBJECT_STORAGE_PATH"] = str(temp_dir / "objects")
+    os.environ["COEUS_ARGON2_MEMORY_COST"] = "8192"
+    os.environ["COEUS_CSRF_HEADER_NAME"] = "X-CSRF-Token"
 
 
 def generate_contract() -> str:
     with TemporaryDirectory() as temp_dir:
+        temp_path = Path(temp_dir)
+        _configure_contract_environment(temp_path)
+
+        from coeus.core.config import Settings
+        from coeus.main import create_app
+
         settings = Settings(
             environment="test",
             persistence_provider="memory",
             argon2_memory_cost=8_192,
-            local_object_storage_path=str(Path(temp_dir) / "objects"),
+            local_object_storage_path=str(temp_path / "objects"),
         )
         schema = create_app(settings).openapi()
     return json.dumps(schema, indent=2, sort_keys=True) + "\n"

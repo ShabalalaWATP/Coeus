@@ -43,8 +43,8 @@ Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVEL
   false product-created audit event.
 - Hardened auth session lifecycle changes so failed `login_success`, `logout`
   or `password_changed` audit restores sessions, credentials and login attempts.
-- Added one-way persistence sanitisation so retired workspace permissions and
-  records are dropped during decode instead of breaking local PostgreSQL startup.
+- Removed retired workspace sanitisation so old Project permissions and records
+  fail closed instead of being accepted by the runtime persistence codec.
 
 ## 2026-07-08 No-match consent
 
@@ -345,6 +345,6 @@ Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVEL
 - Removed the remaining ticket-level suggested workspace field and renamed
   routing plan records to workflow plan updates.
 - Removed active runtime shims for retired workspace state. The persistence
-  decoder now strips older retired workspace payloads during local startup.
+  decoder rejects older retired workspace payloads during local startup.
 - Added ADR 0018 and refreshed the ACG/product access threat model and Sprint 3
   spec to record the retirement decision.

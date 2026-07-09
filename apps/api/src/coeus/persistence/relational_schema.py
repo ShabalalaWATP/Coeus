@@ -42,10 +42,6 @@ def store_schema_statements() -> Sequence[str]:
             ADD COLUMN IF NOT EXISTS embedding_source_hash text
         """,
         """
-        ALTER TABLE intelligence_store_products
-            DROP COLUMN IF EXISTS project_id
-        """,
-        """
         CREATE TABLE IF NOT EXISTS intelligence_store_assets (
             asset_id uuid PRIMARY KEY,
             product_id uuid NOT NULL REFERENCES intelligence_store_products(product_id)

@@ -125,27 +125,6 @@ _ALLOWED_ENUMS = (
 
 _TYPE_REGISTRY = {f"{item.__module__}.{item.__name__}": item for item in _ALLOWED_TYPES}
 _ENUM_REGISTRY = {f"{item.__module__}.{item.__name__}": item for item in _ALLOWED_ENUMS}
-_RETIRED_ENUM_VALUES = {
-    "coeus.core.permissions.Permission": frozenset(
-        {
-            "project:add_member",
-            "project:create",
-            "project:read",
-            "project:remove_member",
-            "project:update",
-        }
-    )
-}
-_RETIRED_TYPES = frozenset(
-    {
-        "coeus.domain.access.ProjectMember",
-        "coeus.domain.access.ProjectMilestone",
-        "coeus.domain.access.ProjectPlanItem",
-        "coeus.domain.access.ProjectWorkspace",
-        "coeus.domain.tickets.ProjectPlanUpdate",
-    }
-)
-_SKIP_DECODE = object()
 
 
 def encode_value(value: Any) -> Any:
@@ -183,8 +162,6 @@ def decode_value(value: Any) -> Any:
         return _decode_items(value)
     if not isinstance(value, dict):
         return value
-    if _is_retired_payload(value):
-        return _SKIP_DECODE
     if "__uuid__" in value:
         return UUID(value["__uuid__"])
     if "__datetime__" in value:
@@ -210,27 +187,8 @@ def decode_value(value: Any) -> Any:
 
 
 def _decode_items(values: list[Any]) -> list[Any]:
-    decoded: list[Any] = []
-    for item in values:
-        value = decode_value(item)
-        if value is not _SKIP_DECODE:
-            decoded.append(value)
-    return decoded
+    return [decode_value(item) for item in values]
 
 
 def _decode_mapping(value: dict[Any, Any]) -> dict[str, Any]:
-    decoded: dict[str, Any] = {}
-    for key, item in value.items():
-        item_value = decode_value(item)
-        if item_value is not _SKIP_DECODE:
-            decoded[str(key)] = item_value
-    return decoded
-
-
-def _is_retired_payload(value: dict[str, Any]) -> bool:
-    if "__type__" in value:
-        return str(value["__type__"]) in _RETIRED_TYPES
-    if "__enum__" in value:
-        retired_values = _RETIRED_ENUM_VALUES.get(str(value["__enum__"]))
-        return str(value.get("value")) in retired_values if retired_values is not None else False
-    return False
+    return {str(key): decode_value(item) for key, item in value.items()}
