@@ -131,9 +131,10 @@ class RfiSearchService:
                 timeline=(*ticket.timeline, *search_timeline),
             )
         )
-        self._audit_log.record(
+        self._record_audit_or_rollback(
+            ticket,
             "rfi_search_completed",
-            str(actor.user_id),
+            actor,
             {"ticket_id": str(ticket.ticket_id), "offered_count": str(len(offers))},
         )
         return self._results_for(actor, updated)
@@ -173,9 +174,10 @@ class RfiSearchService:
                 ),
             )
         )
-        self._audit_log.record(
+        self._record_audit_or_rollback(
+            ticket,
             "product_offer_accepted",
-            str(actor.user_id),
+            actor,
             {"ticket_id": str(ticket.ticket_id), "product_id": str(product_id)},
         )
         return self._results_for(actor, updated)
@@ -210,9 +212,10 @@ class RfiSearchService:
                 ),
             )
         )
-        self._audit_log.record(
+        self._record_audit_or_rollback(
+            ticket,
             "product_offer_rejected",
-            str(actor.user_id),
+            actor,
             {"ticket_id": str(ticket.ticket_id), "product_id": str(product_id)},
         )
         return self._results_for(actor, updated)
@@ -265,6 +268,19 @@ class RfiSearchService:
         except AppError:
             return False
         return True
+
+    def _record_audit_or_rollback(
+        self,
+        original_ticket: TicketRecord,
+        event_type: str,
+        actor: UserAccount,
+        details: dict[str, str],
+    ) -> None:
+        try:
+            self._audit_log.record(event_type, str(actor.user_id), details)
+        except Exception:
+            self._tickets.save_system_update(original_ticket)
+            raise
 
     @staticmethod
     def _require(actor: UserAccount, permission: Permission) -> None:
