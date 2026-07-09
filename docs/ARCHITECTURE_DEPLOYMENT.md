@@ -27,7 +27,7 @@ flowchart TB
             PG[("pgvector/pgvector:pg16<br/>PostgreSQL")]
             MINIO[["MinIO<br/>optional bucket storage"]]
         end
-        FS[["Local filesystem<br/>object bytes + JSON state"]]
+        FS[["Local filesystem<br/>object bytes + email outbox"]]
     end
 
     BROWSER --> VITE --> UVICORN
@@ -144,11 +144,12 @@ selected explicitly. This keeps a machine configured for offline use offline.
 ## Scaling and known constraints
 
 - **Single-writer state.** Repositories are in-memory aggregates serialised as
-  whole-namespace JSON and mirrored to the relational projection. This is
-  correct and simple for one API instance. Running multiple writers safely is a
-  planned redesign toward row-level relational persistence; until then the API
-  runs as a single writer. The Cloud Run reference would pin one writable
-  instance or adopt that redesign before scaling out.
+  whole-namespace JSONB snapshots in PostgreSQL and mirrored to the relational
+  Store projection. This is correct and simple for one API instance. Running
+  multiple writers safely is a planned redesign toward row-level relational
+  persistence; until then the API runs as a single writer. The Cloud Run
+  reference would pin one writable instance or adopt that redesign before
+  scaling out.
 - **Audit log.** The audit trail is a bounded ring buffer today; a durable,
   append-only audit store is future work and pairs naturally with the
   persistence redesign. On GCP, audit exports have a dedicated bucket.

@@ -64,6 +64,6 @@ document text.
 - Local and CI runs remain offline by default.
 - PostgreSQL remains the only production search and access-control boundary.
 - Store projection writes now depend on an embedding service, but product domain
-  records and JSON state do not store vectors.
+  records and compatibility state payloads do not store vectors.
 - Gemini embedding quality can be enabled explicitly later without changing the
   workflow contract.
