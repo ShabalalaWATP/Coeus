@@ -29,6 +29,9 @@ Sprint 1 to Sprint 13 entries live in
 - Hardened similar-request customer join and manager link actions so audit
   recording failure restores the affected ticket records instead of leaving
   unaudited collaborator grants or related-ticket links.
+- Hardened direct ticket collaborator add and remove actions so audit
+  recording failure restores the original ticket, preventing unaudited access
+  changes.
 
 ## 2026-07-08 No-match consent
 

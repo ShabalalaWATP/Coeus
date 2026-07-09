@@ -80,15 +80,19 @@ class TicketCollaboratorService:
                 ),
             )
         )
-        self._audit_log.record(
-            "ticket_collaborator_added",
-            str(actor.user_id),
-            {
-                "ticket_id": str(ticket.ticket_id),
-                "collaborator_user_id": str(user.user_id),
-                "access": access.value,
-            },
-        )
+        try:
+            self._audit_log.record(
+                "ticket_collaborator_added",
+                str(actor.user_id),
+                {
+                    "ticket_id": str(ticket.ticket_id),
+                    "collaborator_user_id": str(user.user_id),
+                    "access": access.value,
+                },
+            )
+        except Exception:
+            self._tickets.save_system_update(ticket)
+            raise
         return updated
 
     def remove(self, actor: UserAccount, ticket_id: UUID, user_id: UUID) -> TicketRecord:
@@ -116,11 +120,15 @@ class TicketCollaboratorService:
                 ),
             )
         )
-        self._audit_log.record(
-            "ticket_collaborator_removed",
-            str(actor.user_id),
-            {"ticket_id": str(ticket.ticket_id), "collaborator_user_id": str(user_id)},
-        )
+        try:
+            self._audit_log.record(
+                "ticket_collaborator_removed",
+                str(actor.user_id),
+                {"ticket_id": str(ticket.ticket_id), "collaborator_user_id": str(user_id)},
+            )
+        except Exception:
+            self._tickets.save_system_update(ticket)
+            raise
         return updated
 
     def _owned_ticket(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
