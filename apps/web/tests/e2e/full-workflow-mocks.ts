@@ -138,7 +138,6 @@ function ticket(
     releasedProductIds: [],
     requesterUserId: "e2e-user",
     state,
-    suggestedProjectName: "North Atlantic Workspace",
     timeline: [],
     updatedAt: now,
     visibleProductMatches: [],
@@ -159,7 +158,6 @@ function intake() {
     requiredOutputFormat: "Assessment",
     restrictionsOrCaveats: null,
     suggestedAcgContext: null,
-    suggestedProjectName: null,
     timePeriodEnd: null,
     timePeriodStart: null,
     title: "North Atlantic Activity",
@@ -204,7 +202,7 @@ function routingTicket(flow: FlowState, overrideState?: string) {
     cmReview: null,
     managerDecisions: [],
     priority: "routine",
-    projectPlanUpdates:
+    workflowPlanUpdates:
       flow.stage === "assignment"
         ? [
             {

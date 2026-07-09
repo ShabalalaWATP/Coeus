@@ -22,11 +22,11 @@ that file within the repository line limit.
 
 ## 2026-07-04 Sprint 3
 
-- Added local-first ACG, product and project workspace domain records plus a seed access repository. Project workspaces were later retired by ADR 0018.
-- Added ACG, product access, project access, project workspace and access diagnostics services. The project access slice was later removed.
-- Added backend routes for ACG administration, project workspaces, project slices and administrator product diagnostics. The `/projects` routes were later removed.
+- Added local-first ACG, product and project workspace domain records plus a seed access repository. Project workspaces were later retired by ADR 0018 and removed from the live app.
+- Added ACG, product access, project access, project workspace and access diagnostics services. The project access slice was later removed from the live app.
+- Added backend routes for ACG administration, project workspaces, project slices and administrator product diagnostics. The `/projects` routes were later removed from the live app.
 - Added ACG audit events for group creation, group update, membership addition and membership removal.
-- Added `/admin/acgs` and `/projects` frontend workspaces with ACG management, project plan, member, product and diagnostic views. The `/projects` workspace was later retired.
+- Added `/admin/acgs` and `/projects` frontend workspaces with ACG management, plan, member, product and diagnostic views. The `/projects` workspace was later retired and removed from the live app.
 - Added Sprint 3 access-policy, API, client and UI tests.
 
 ## 2026-07-05 Sprint 4

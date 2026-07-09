@@ -16,11 +16,11 @@ from coeus.domain.tickets import (
     ClarificationRequest,
     CmCapabilityReview,
     ManagerRoutingDecision,
-    ProjectPlanUpdate,
     RfaCapabilityReview,
     RouteRecommendation,
     RoutingRoute,
     TicketRecord,
+    WorkflowPlanUpdate,
 )
 from coeus.schemas.routing import (
     CapabilityCatalogueResponse,
@@ -28,7 +28,6 @@ from coeus.schemas.routing import (
     ClarificationRequestResponse,
     CmCapabilityReviewResponse,
     ManagerDecisionResponse,
-    ProjectPlanUpdateResponse,
     RfaCapabilityReviewResponse,
     RouteApprovalRequest,
     RouteClarificationRequest,
@@ -37,6 +36,7 @@ from coeus.schemas.routing import (
     RoutingQueueResponse,
     RoutingStatsResponse,
     RoutingTicketResponse,
+    WorkflowPlanUpdateResponse,
 )
 from coeus.services.product_release import ProductReleaseService
 from coeus.services.routing import RoutingService
@@ -204,8 +204,8 @@ def _ticket_response(ticket: TicketRecord) -> RoutingTicketResponse:
         clarifications=[_clarification_response(item) for item in ticket.clarification_requests],
         agent_runs=[run.agent_name for run in ticket.agent_runs],
         manager_decisions=[_decision_response(item) for item in ticket.manager_decisions],
-        project_plan_updates=[
-            _project_update_response(item) for item in ticket.project_plan_updates
+        workflow_plan_updates=[
+            _workflow_update_response(item) for item in ticket.workflow_plan_updates
         ],
     )
 
@@ -292,8 +292,8 @@ def _decision_response(decision: ManagerRoutingDecision) -> ManagerDecisionRespo
     )
 
 
-def _project_update_response(update: ProjectPlanUpdate) -> ProjectPlanUpdateResponse:
-    return ProjectPlanUpdateResponse(
+def _workflow_update_response(update: WorkflowPlanUpdate) -> WorkflowPlanUpdateResponse:
+    return WorkflowPlanUpdateResponse(
         update_id=update.update_id,
         title=update.title,
         owner_role=update.owner_role,

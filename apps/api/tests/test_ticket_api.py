@@ -84,7 +84,8 @@ async def test_intake_can_be_edited_and_submitted_when_complete() -> None:
     assert submitted.status_code == 200
     payload = submitted.json()
     assert payload["state"] == TicketState.RFI_SEARCHING
-    assert payload["suggestedProjectName"] == "Regional Port Activity Workspace"
+    assert "suggestedProjectName" not in payload
+    assert "suggestedProjectName" not in payload["intake"]
     assert [run["agentName"] for run in payload["agentRuns"]] == [
         "customer-chatbot-agent",
         "rfi-search-agent",

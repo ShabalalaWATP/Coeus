@@ -50,7 +50,6 @@ from coeus.domain.tickets import (
     ProductDissemination,
     ProductOffer,
     ProductOfferStatus,
-    ProjectPlanUpdate,
     RfaCapabilityReview,
     RfiSearchMetrics,
     RouteRecommendation,
@@ -58,6 +57,7 @@ from coeus.domain.tickets import (
     TicketCollaborator,
     TicketRecord,
     TicketTimelineEntry,
+    WorkflowPlanUpdate,
     WorkPackageStatus,
 )
 
@@ -88,7 +88,6 @@ _ALLOWED_TYPES = (
     ProductIndexRecord,
     ProductOffer,
     ProductRecord,
-    ProjectPlanUpdate,
     QcChecklistItem,
     QcDecision,
     RegistrationRequest,
@@ -103,6 +102,7 @@ _ALLOWED_TYPES = (
     TicketRecord,
     TicketTimelineEntry,
     UserAccount,
+    WorkflowPlanUpdate,
 )
 
 _ALLOWED_ENUMS = (
@@ -125,6 +125,7 @@ _ALLOWED_ENUMS = (
 
 _TYPE_REGISTRY = {f"{item.__module__}.{item.__name__}": item for item in _ALLOWED_TYPES}
 _ENUM_REGISTRY = {f"{item.__module__}.{item.__name__}": item for item in _ALLOWED_ENUMS}
+_TYPE_REGISTRY["coeus.domain.tickets.ProjectPlanUpdate"] = WorkflowPlanUpdate
 
 
 def encode_value(value: Any) -> Any:
@@ -180,8 +181,15 @@ def decode_value(value: Any) -> Any:
     if "__type__" in value:
         data_type = _TYPE_REGISTRY[value["__type__"]]
         field_names = {field.name for field in fields(data_type)}
+        raw_fields = dict(value["fields"])
+        if (
+            data_type is TicketRecord
+            and "project_plan_updates" in raw_fields
+            and "workflow_plan_updates" not in raw_fields
+        ):
+            raw_fields["workflow_plan_updates"] = raw_fields["project_plan_updates"]
         decoded = {
-            key: decode_value(item) for key, item in value["fields"].items() if key in field_names
+            key: decode_value(item) for key, item in raw_fields.items() if key in field_names
         }
         return data_type(**decoded)
     return {str(key): decode_value(item) for key, item in value.items()}

@@ -69,7 +69,6 @@ class IntakeDetails:
     known_context: str | None = None
     restrictions_or_caveats: str | None = None
     customer_success_criteria: str | None = None
-    suggested_project_name: str | None = None
     suggested_acg_context: str | None = None
     missing_information: tuple[str, ...] = ()
     confidence: float = 0.0
@@ -224,7 +223,7 @@ class ManagerRoutingDecision:
 
 
 @dataclass(frozen=True)
-class ProjectPlanUpdate:
+class WorkflowPlanUpdate:
     update_id: UUID
     ticket_id: UUID
     title: str
@@ -312,7 +311,6 @@ class TicketRecord:
     attachments: tuple[AttachmentMetadata, ...] = field(default_factory=tuple)
     agent_runs: tuple[AgentRun, ...] = field(default_factory=tuple)
     timeline: tuple[TicketTimelineEntry, ...] = field(default_factory=tuple)
-    suggested_project_name: str | None = None
     related_ticket_ids: tuple[UUID, ...] = field(default_factory=tuple)
     visible_product_matches: tuple[str, ...] = field(default_factory=tuple)
     product_offers: tuple[ProductOffer, ...] = field(default_factory=tuple)
@@ -323,7 +321,7 @@ class TicketRecord:
     route_recommendations: tuple[RouteRecommendation, ...] = field(default_factory=tuple)
     clarification_requests: tuple[ClarificationRequest, ...] = field(default_factory=tuple)
     manager_decisions: tuple[ManagerRoutingDecision, ...] = field(default_factory=tuple)
-    project_plan_updates: tuple[ProjectPlanUpdate, ...] = field(default_factory=tuple)
+    workflow_plan_updates: tuple[WorkflowPlanUpdate, ...] = field(default_factory=tuple)
     analyst_assignments: tuple[AnalystAssignment, ...] = field(default_factory=tuple)
     work_packages: tuple[AnalystWorkPackage, ...] = field(default_factory=tuple)
     analyst_notes: tuple[AnalystNote, ...] = field(default_factory=tuple)

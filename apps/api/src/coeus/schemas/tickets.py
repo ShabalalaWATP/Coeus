@@ -98,7 +98,6 @@ class IntakeDetailsResponse(BaseModel):
     known_context: str | None = Field(serialization_alias="knownContext")
     restrictions_or_caveats: str | None = Field(serialization_alias="restrictionsOrCaveats")
     customer_success_criteria: str | None = Field(serialization_alias="customerSuccessCriteria")
-    suggested_project_name: str | None = Field(serialization_alias="suggestedProjectName")
     suggested_acg_context: str | None = Field(serialization_alias="suggestedAcgContext")
     missing_information: list[str] = Field(serialization_alias="missingInformation")
     confidence: float
@@ -171,7 +170,6 @@ class TicketResponse(BaseModel):
     state: str
     intake: IntakeDetailsResponse
     is_ready_for_submission: bool = Field(serialization_alias="isReadyForSubmission")
-    suggested_project_name: str | None = Field(serialization_alias="suggestedProjectName")
     visible_product_matches: list[str] = Field(serialization_alias="visibleProductMatches")
     released_product_ids: list[UUID] = Field(serialization_alias="releasedProductIds")
     collaborators: list[CollaboratorResponse]

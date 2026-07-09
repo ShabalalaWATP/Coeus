@@ -236,7 +236,6 @@ def _to_ticket_response(ticket: TicketRecord, actor: UserAccount) -> TicketRespo
         state=ticket.state.value,
         intake=_to_intake_response(ticket.intake),
         is_ready_for_submission=not ticket.intake.missing_information,
-        suggested_project_name=ticket.suggested_project_name,
         visible_product_matches=_visible_product_matches(ticket, actor),
         released_product_ids=[dissemination.product_id for dissemination in ticket.disseminations],
         collaborators=[
@@ -274,7 +273,6 @@ def _to_intake_response(intake: IntakeDetails) -> IntakeDetailsResponse:
         known_context=intake.known_context,
         restrictions_or_caveats=intake.restrictions_or_caveats,
         customer_success_criteria=intake.customer_success_criteria,
-        suggested_project_name=intake.suggested_project_name,
         suggested_acg_context=intake.suggested_acg_context,
         missing_information=list(intake.missing_information),
         confidence=intake.confidence,

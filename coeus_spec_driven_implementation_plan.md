@@ -796,7 +796,7 @@ Requirements:
 Tests:
 
 - ACG membership UI tests.
-- Project membership UI tests.
+- ACG product visibility UI tests.
 - Access denied and partial visibility tests.
 
 ### Frontend phase 4: Customer chatbot intake
@@ -831,7 +831,6 @@ required_output_format
 known_context
 restrictions_or_caveats
 customer_success_criteria
-suggested_project_name
 ```
 
 Tests:
@@ -1086,7 +1085,7 @@ Requirements:
 - ACG management.
 - Team management.
 - Product administration.
-- Project administration.
+- ACG administration.
 - Audit search.
 - Agent run review.
 - Global dashboards.
@@ -1424,7 +1423,7 @@ IntakeExtractionService
 RequirementCompletenessService
 TicketOrchestrationService
 AgentRunService
-ProjectBootstrapService
+WorkflowPlanningService
 ```
 
 Structured intake schema:
@@ -1442,7 +1441,6 @@ required_output_format
 known_context
 restrictions_or_caveats
 customer_success_criteria
-suggested_project_name
 suggested_acg_context
 missing_information
 confidence
@@ -2312,7 +2310,7 @@ RBAC matrix test
 ACG deny-by-default test
 Product IDOR test
 Asset IDOR test
-Project IDOR test
+ACG membership IDOR test
 Search leakage test
 Prompt injection test
 File upload type validation test
@@ -2419,7 +2417,7 @@ Deliver:
 - Manager queues.
 - Human approval.
 - Clarification flow.
-- Project plan update.
+- Workflow plan update.
 - RFA-first and CM-fallback routing.
 
 ### Sprint 9: Analyst workflow

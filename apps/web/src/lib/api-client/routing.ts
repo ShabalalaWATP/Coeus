@@ -76,7 +76,7 @@ export type RoutingTicket = {
     actorUserId: string;
     createdAt: string;
   }[];
-  projectPlanUpdates: {
+  workflowPlanUpdates: {
     id: string;
     title: string;
     ownerRole: string;

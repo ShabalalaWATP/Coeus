@@ -235,7 +235,7 @@ async def test_rfa_manager_approval_updates_project_plan_and_audit_log() -> None
     assert approved.status_code == 200
     assert approved.json()["state"] == "ANALYST_ASSIGNMENT"
     assert approved.json()["managerDecisions"][0]["status"] == "approved"
-    assert approved.json()["projectPlanUpdates"][-1]["title"] == "Prepare analyst assignment"
+    assert approved.json()["workflowPlanUpdates"][-1]["title"] == "Prepare analyst assignment"
     assert "route_approved" in [event["eventType"] for event in audit.json()["events"]]
     assert admin["user"]["username"] == "admin@example.test"
 

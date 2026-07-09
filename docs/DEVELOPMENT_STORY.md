@@ -315,7 +315,8 @@ Sprint 1 to Sprint 13 entries live in
   delivery confirmation and a header-token asset download. The live run
   surfaced and fixed three integration gaps: `X-Asset-Token` missing from the
   CORS allow list, cacheable grant/download responses replaying stale tokens,
-  and `ProjectPlanUpdate` missing from the persistence codec allowlist.
+  and the routing plan update record missing from the persistence codec
+  allowlist.
 - Checks: pytest (269 tests, 95.9% coverage), Vitest (280 tests, 99% lines),
   mypy, Ruff, tsc, ESLint, Prettier and the 350-line limit all pass.
 
@@ -338,5 +339,8 @@ Sprint 1 to Sprint 13 entries live in
 - Removed the Projects workspace feature from backend routes, services, seed
   data, frontend navigation, admin shortcuts, client methods and Store
   `projectId` metadata/filtering.
+- Removed the remaining ticket-level suggested workspace field and renamed
+  routing plan records to workflow plan updates, with local-state compatibility
+  for older snapshots.
 - Added ADR 0018 and refreshed the ACG/product access threat model and Sprint 3
   spec to record the retirement decision.

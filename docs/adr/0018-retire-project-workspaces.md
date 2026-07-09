@@ -23,10 +23,13 @@ Retire the project workspace feature:
   schemas.
 - Remove Store `projectId` metadata and search filters so the retired Projects
   concept does not remain in the product contract.
+- Remove the ticket-level suggested workspace name from intake and ticket
+  responses.
+- Rename ticket-level routing plan updates to workflow plan updates.
 - Keep retired project permission enum strings only so older local state
   snapshots can decode safely.
-- Keep ticket-level routing plan updates as workflow artefacts, not workspace
-  records.
+- Keep legacy local-state decoding for old plan-update and Store metadata
+  fields.
 
 ## Consequences
 
@@ -39,5 +42,8 @@ Retire the project workspace feature:
 - Existing local Store snapshots that contain product `project_id` metadata are
   decoded with that field ignored; local PostgreSQL migrations drop the old
   Store column.
+- Existing local ticket snapshots that contain `suggested_project_name`,
+  `project_plan_updates` or the old `ProjectPlanUpdate` type decode without
+  reintroducing those fields into the public API.
 - Future work can reintroduce a planning workspace only with a new spec, ADR,
   tests and clear user workflow.

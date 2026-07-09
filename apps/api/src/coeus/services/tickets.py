@@ -28,7 +28,6 @@ from coeus.services.ticket_records import (
     is_collaborator,
     is_editor,
     is_owner,
-    suggest_project_name,
     timeline,
 )
 from coeus.services.ticket_records import (
@@ -153,7 +152,6 @@ class TicketService:
             raise AppError(
                 409, "invalid_ticket_state", "Ticket cannot be submitted from this state."
             )
-        project_name = suggest_project_name(ticket)
         search_run = AgentRun(
             run_id=uuid4(),
             ticket_id=ticket.ticket_id,
@@ -167,7 +165,6 @@ class TicketService:
             replace(
                 ticket,
                 state=TicketState.RFI_SEARCHING,
-                suggested_project_name=project_name,
                 agent_runs=(*ticket.agent_runs, search_run),
                 timeline=(
                     *ticket.timeline,

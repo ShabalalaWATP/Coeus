@@ -14,7 +14,7 @@ Start here. This index links the guides and the deeper design records.
 | [Roles and User Stories](ROLES_AND_USER_STORIES.md) | Roles, permissions, need-to-know groups and user stories |
 | [AI Agents](AI_AGENTS.md) | Exactly what each agent reads, decides and returns |
 
-## Project records
+## Repository records
 
 | Record | Contents |
 | --- | --- |

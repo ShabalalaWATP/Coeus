@@ -26,18 +26,18 @@ from coeus.services.routing_records import (
     count_state,
     current_queue_permission,
     decision,
-    decision_project_update,
+    decision_workflow_update,
     ensure_manager_state,
     ensure_override,
     fallback_state,
     latest_cm_review,
     latest_recommendation,
-    project_update,
     rate,
     recommend_route,
     review_agent_runs,
     state_for_recommendation,
     timeline,
+    workflow_update,
 )
 from coeus.services.routing_stats import RoutingStats
 from coeus.services.tickets import TicketServices
@@ -123,9 +123,9 @@ class RoutingService:
                     *ticket.agent_runs,
                     *review_agent_runs(ticket.ticket_id, rfa_review, cm_review, recommendation),
                 ),
-                project_plan_updates=(
-                    *ticket.project_plan_updates,
-                    project_update(ticket.ticket_id, target_state, recommendation),
+                workflow_plan_updates=(
+                    *ticket.workflow_plan_updates,
+                    workflow_update(ticket.ticket_id, target_state, recommendation),
                 ),
                 timeline=(
                     *ticket.timeline,
@@ -287,9 +287,9 @@ class RoutingService:
             ticket,
             state=state,
             manager_decisions=(*ticket.manager_decisions, decision),
-            project_plan_updates=(
-                *ticket.project_plan_updates,
-                decision_project_update(ticket.ticket_id, decision, state),
+            workflow_plan_updates=(
+                *ticket.workflow_plan_updates,
+                decision_workflow_update(ticket.ticket_id, decision, state),
             ),
             timeline=(
                 *ticket.timeline,

@@ -11,12 +11,12 @@ from coeus.domain.tickets import (
     CmCapabilityReview,
     ManagerRoutingDecision,
     ManagerRoutingDecisionStatus,
-    ProjectPlanUpdate,
     RfaCapabilityReview,
     RouteRecommendation,
     RoutingRoute,
     TicketRecord,
     TicketTimelineEntry,
+    WorkflowPlanUpdate,
 )
 
 
@@ -168,12 +168,12 @@ def review_agent_runs(
     )
 
 
-def project_update(
+def workflow_update(
     ticket_id: UUID,
     state: TicketState,
     recommendation: RouteRecommendation,
-) -> ProjectPlanUpdate:
-    return ProjectPlanUpdate(
+) -> WorkflowPlanUpdate:
+    return WorkflowPlanUpdate(
         update_id=uuid4(),
         ticket_id=ticket_id,
         title=_plan_title_for_state(state),
@@ -184,12 +184,12 @@ def project_update(
     )
 
 
-def decision_project_update(
+def decision_workflow_update(
     ticket_id: UUID,
     manager_decision: ManagerRoutingDecision,
     state: TicketState,
-) -> ProjectPlanUpdate:
-    return ProjectPlanUpdate(
+) -> WorkflowPlanUpdate:
+    return WorkflowPlanUpdate(
         update_id=uuid4(),
         ticket_id=ticket_id,
         title=_plan_title_for_state(state),
