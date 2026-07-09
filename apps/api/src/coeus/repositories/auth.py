@@ -201,6 +201,12 @@ class LoginAttemptRepository:
     def reset(self, username: str) -> None:
         self._attempts.pop(username.casefold(), None)
 
+    def snapshot(self) -> dict[str, tuple[tuple[datetime, ...], datetime | None]]:
+        return dict(self._attempts)
+
+    def restore(self, attempts: dict[str, tuple[tuple[datetime, ...], datetime | None]]) -> None:
+        self._attempts = dict(attempts)
+
     @property
     def entry_count(self) -> int:
         return len(self._attempts)

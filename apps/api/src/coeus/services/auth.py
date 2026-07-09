@@ -149,17 +149,26 @@ class AuthService:
             password_hash=self._password_hasher.hash(new_password),
             password_reset_required=False,
         )
+        attempts = self._login_attempts.snapshot()
+        revoked_sessions: tuple[SessionRecord, ...] = ()
+        new_session: SessionRecord | None = None
         self._users.save(updated)
         try:
             # Invalidate every session for this user, then issue a fresh one for
             # the caller so a stolen pre-change session cannot survive the change.
-            self._sessions.delete_for_user(user.user_id)
+            revoked_sessions = self._sessions.delete_for_user(user.user_id)
             self._login_attempts.reset(user.username)
             session_token, session = self._create_session(updated)
+            new_session = session
+            self._audit_log.record("password_changed", str(user.user_id))
         except Exception:
             self._users.save(user)
+            if new_session is not None:
+                self._sessions.delete(new_session.session_id)
+            for revoked_session in revoked_sessions:
+                self._sessions.save(revoked_session)
+            self._login_attempts.restore(attempts)
             raise
-        self._audit_log.record("password_changed", str(user.user_id))
         from coeus.domain.rbac import default_route_for_roles
 
         return LoginResult(

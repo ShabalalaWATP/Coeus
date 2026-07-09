@@ -47,6 +47,36 @@ def test_password_change_rolls_back_user_when_session_revocation_fails(
     assert "password_changed" not in [event.event_type for event in service.audit_log.list_events()]
 
 
+def test_password_change_rolls_back_user_sessions_and_attempts_when_audit_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = _service()
+    result = service.login("user@example.test", SEED_CREDENTIAL)
+    original = service._users.get_by_username("user@example.test")
+    assert original is not None
+    service._login_attempts.record_failure("user@example.test", threshold=3, lockout_seconds=300)
+    original_record = service.audit_log.record
+
+    def fail_password_changed(event_type: str, *_args: object, **_kwargs: object) -> None:
+        if event_type == "password_changed":
+            raise RuntimeError("simulated audit failure")
+        original_record(event_type, *_args, **_kwargs)
+
+    monkeypatch.setattr(service.audit_log, "record", fail_password_changed)
+
+    with pytest.raises(RuntimeError, match="simulated audit failure"):
+        service.change_password(result.session_token, SEED_CREDENTIAL, "ReplacementPass1!")
+
+    current = service._users.get_by_username("user@example.test")
+    assert current == original
+    assert service.require_session(result.session_token).session == result.session
+    assert service._sessions._sessions == {result.session.session_id: result.session}
+    assert service._login_attempts.entry_count == 1
+    assert service._password_hasher.verify(current.password_hash, SEED_CREDENTIAL)
+    assert not service._password_hasher.verify(current.password_hash, "ReplacementPass1!")
+    assert "password_changed" not in [event.event_type for event in service.audit_log.list_events()]
+
+
 def test_logout_keeps_session_when_session_persistence_fails(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
