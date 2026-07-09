@@ -19,6 +19,10 @@ Sprint 1 to Sprint 13 entries live in
 - Hardened RFA and CM routing so route reviews, approvals, rejections and
   clarification requests restore the original ticket if audit recording fails
   after the ticket update. Added rollback regression coverage for each path.
+- Hardened QC approval and rejection so audit recording failure restores the
+  original ticket state. Approval also discards the ingested Store product and
+  local placeholder asset bytes so a failed request does not leave an orphaned
+  draft product.
 
 ## 2026-07-08 No-match consent
 

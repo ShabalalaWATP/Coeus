@@ -115,6 +115,7 @@ class QualityControlService:
         self._release_checks.validate_release_metadata(approval)
         self._ensure_transition(ticket.state, TicketState.MANAGER_RELEASE)
         product = self._ingestion.ingest(actor, ticket, approval)
+        ticket_updated = False
         try:
             index_records = self._indexing.index_product(ticket, product)
             decision = qc_decision(
@@ -148,16 +149,20 @@ class QualityControlService:
                     ),
                 )
             )
+            ticket_updated = True
+            self._audit_log.record(
+                "qc_approved",
+                str(actor.user_id),
+                {"ticket_id": str(ticket_id), "product_id": str(product.product_id)},
+            )
         except Exception:
-            # The ticket update failed after ingestion; remove the product so
-            # the approval can be retried without an orphaned DRAFT product.
+            # The ticket update or audit failed after ingestion; restore the
+            # original workflow state and remove the product so approval can be
+            # retried without an orphaned DRAFT product.
+            if ticket_updated:
+                self._tickets.tickets.save_system_update(ticket)
             self._ingestion.discard(product.product_id)
             raise
-        self._audit_log.record(
-            "qc_approved",
-            str(actor.user_id),
-            {"ticket_id": str(ticket_id), "product_id": str(product.product_id)},
-        )
         return updated
 
     def reject(self, actor: UserAccount, ticket_id: UUID, reason: str) -> TicketRecord:
@@ -180,7 +185,11 @@ class QualityControlService:
                 ),
             )
         )
-        self._audit_log.record("qc_rejected", str(actor.user_id), {"ticket_id": str(ticket_id)})
+        try:
+            self._audit_log.record("qc_rejected", str(actor.user_id), {"ticket_id": str(ticket_id)})
+        except Exception:
+            self._tickets.tickets.save_system_update(ticket)
+            raise
         return updated
 
     @staticmethod

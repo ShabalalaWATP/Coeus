@@ -6,6 +6,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from coeus.core.config import Settings
+from coeus.domain.enums import TicketState
 from coeus.main import create_app
 from coeus.services.qc_ingestion import iso_date_or_none
 from rfi_search_helpers import login
@@ -180,3 +181,75 @@ async def test_failed_indexing_rolls_back_ingested_product(
     assert orphaned_objects == []
     assert retried.status_code == 200
     assert retried.json()["state"] == "MANAGER_RELEASE"
+
+
+@pytest.mark.asyncio
+async def test_failed_qc_approval_audit_rolls_back_ticket_and_product(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _app(tmp_path)
+    acg_id = _acg_id(app, "ACG-EU-CYBER")
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        ticket_id = await _submitted_qc_ticket(client, app, "Audit rollback QC product")
+        qc_manager = await login(client, "qc.manager@example.test")
+        monkeypatch.setattr(app.state.quality_control_service._audit_log, "record", _fail_audit)
+
+        with pytest.raises(RuntimeError, match="audit unavailable"):
+            await client.post(
+                f"/api/v1/qc/products/{ticket_id}/approve",
+                headers={"X-CSRF-Token": str(qc_manager["csrfToken"])},
+                json=_approval_payload(acg_id),
+            )
+
+    ticket = _stored_ticket(app, ticket_id)
+    orphaned = [
+        product
+        for product in app.state.store_services.repository.list_products()
+        if "qc-approved" in product.metadata.tags
+    ]
+    orphaned_objects = list((tmp_path / "objects" / "store" / "qc" / ticket_id).rglob("*"))
+
+    assert ticket.state == TicketState.QC_REVIEW
+    assert ticket.qc_decisions == ()
+    assert ticket.product_index_records == ()
+    assert orphaned == []
+    assert orphaned_objects == []
+
+
+@pytest.mark.asyncio
+async def test_failed_qc_rejection_audit_rolls_back_ticket(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _app(tmp_path)
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        ticket_id = await _submitted_qc_ticket(client, app, "Rejection audit rollback product")
+        qc_manager = await login(client, "qc.manager@example.test")
+        original = _stored_ticket(app, ticket_id)
+        monkeypatch.setattr(app.state.quality_control_service._audit_log, "record", _fail_audit)
+
+        with pytest.raises(RuntimeError, match="audit unavailable"):
+            await client.post(
+                f"/api/v1/qc/products/{ticket_id}/reject",
+                headers={"X-CSRF-Token": str(qc_manager["csrfToken"])},
+                json={"reason": "Audit rollback should keep QC pending."},
+            )
+
+    ticket = _stored_ticket(app, ticket_id)
+
+    assert ticket.state == TicketState.QC_REVIEW
+    assert ticket.qc_decisions == original.qc_decisions
+    assert ticket.timeline == original.timeline
+
+
+def _fail_audit(*_args: object, **_kwargs: object) -> None:
+    raise RuntimeError("audit unavailable")
+
+
+def _stored_ticket(app: object, ticket_id: str):
+    ticket = app.state.ticket_services.tickets._repository.get(UUID(ticket_id))
+    assert ticket is not None
+    return ticket
