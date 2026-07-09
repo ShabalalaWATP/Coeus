@@ -28,6 +28,7 @@ upload/download, Gemini API integration and optional SMTP delivery.
 | Client-provided file metadata lies about size or hash. | Upload computes size, MIME fallback and SHA-256 server-side after enforcing `COEUS_LOCAL_UPLOAD_MAX_BYTES`. |
 | Gemini prompts leak hidden state or grant authority. | The provider sends only extracted intake fields and safety flags, asks for one concise requester-facing sentence and keeps mock as the offline default. |
 | Gemini credentials leak through admin reads, audit records or database backups. | The admin API accepts the key but returns only `apiKeyConfigured`; audit records only provider/model metadata. Persistent Gemini credentials must come from environment configuration or a future secret manager, not generic app state. |
+| Failed model configuration leaves Gemini enabled after a rejected admin request. | Model selection and API key configuration restore the previous runtime provider, model, key and change metadata if persistence or audit recording fails. |
 | SMTP credentials are logged or committed. | `.env` is ignored, `.env.example` contains names only, and delivery audits record user ID and subject only, not passwords or message bodies. |
 | SMTP outage breaks the release workflow after partial state changes. | Email delivery failures are audited as `email_delivery_failed`; in-app notifications and the outbox remain the durable record. |
 

@@ -25,6 +25,30 @@ async def _login(client: AsyncClient, username: str) -> str:
     return str(response.json()["csrfToken"])
 
 
+class ToggleStateStore:
+    def __init__(self) -> None:
+        self.fail_saves = False
+        self.payloads: dict[str, dict[str, object]] = {}
+
+    def load(self, namespace: str) -> dict[str, object] | None:
+        return self.payloads.get(namespace)
+
+    def save(self, namespace: str, payload: dict[str, object]) -> None:
+        if self.fail_saves:
+            raise RuntimeError("state store unavailable")
+        self.payloads[namespace] = payload
+
+
+class FailingAuditLog(AuditLog):
+    def record(
+        self,
+        event_type: str,
+        actor_user_id: str | None = None,
+        metadata: dict[str, str] | None = None,
+    ):
+        raise RuntimeError("audit unavailable")
+
+
 @pytest.mark.asyncio
 async def test_admin_reads_and_switches_the_active_gemini_model() -> None:
     async with _client() as client:
@@ -114,6 +138,60 @@ def test_legacy_persisted_gemini_key_is_scrubbed() -> None:
     assert service.active_model() == "gemini-2.5-pro"
     assert "api_key" not in payload
     assert "legacy-secret" not in str(payload)
+
+
+def test_model_selection_rolls_back_when_audit_fails() -> None:
+    state_store = MemoryStateStore()
+    service = AiModelService(Settings(environment="test"), FailingAuditLog(), state_store)
+
+    with pytest.raises(RuntimeError, match="audit unavailable"):
+        service.select("admin-id", "admin@example.test", "gemini-2.5-pro")
+
+    payload = state_store.load(AI_MODEL_NAMESPACE)
+    assert payload is not None
+    assert service.active_model() == "gemini-2.5-flash"
+    assert service.state().changed_by is None
+    assert payload["active_model"] == "gemini-2.5-flash"
+
+
+def test_model_selection_rolls_back_when_persistence_fails() -> None:
+    state_store = ToggleStateStore()
+    service = AiModelService(Settings(environment="test"), AuditLog(), state_store)
+
+    state_store.fail_saves = True
+    with pytest.raises(RuntimeError, match="state store unavailable"):
+        service.select("admin-id", "admin@example.test", "gemini-2.5-pro")
+
+    assert service.active_model() == "gemini-2.5-flash"
+    assert service.state().changed_by is None
+
+
+def test_api_key_configuration_rolls_back_when_audit_fails() -> None:
+    state_store = MemoryStateStore()
+    service = AiModelService(Settings(environment="test"), FailingAuditLog(), state_store)
+
+    with pytest.raises(RuntimeError, match="audit unavailable"):
+        service.configure_api_key("admin-id", "admin@example.test", "runtime-secret")
+
+    payload = state_store.load(AI_MODEL_NAMESPACE)
+    assert payload is not None
+    assert service.provider() == "mock"
+    assert service.api_key() is None
+    assert service.state().api_key_configured is False
+    assert "runtime-secret" not in str(payload)
+
+
+def test_api_key_configuration_rolls_back_when_persistence_fails() -> None:
+    state_store = ToggleStateStore()
+    service = AiModelService(Settings(environment="test"), AuditLog(), state_store)
+
+    state_store.fail_saves = True
+    with pytest.raises(RuntimeError, match="state store unavailable"):
+        service.configure_api_key("admin-id", "admin@example.test", "runtime-secret")
+
+    assert service.provider() == "mock"
+    assert service.api_key() is None
+    assert service.state().api_key_configured is False
 
 
 @pytest.mark.asyncio

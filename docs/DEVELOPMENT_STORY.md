@@ -13,6 +13,9 @@ Sprint 1 to Sprint 13 entries live in
   mark-read and email outbox writes restore previous state if persistence or
   audit recording fails. Added regression coverage and updated the manager
   final-release threat model.
+- Hardened admin AI model configuration so failed model selection or Gemini API
+  key configuration restores the previous provider, model, key and change
+  metadata. Added persistence and audit-failure regression coverage.
 
 ## 2026-07-08 No-match consent
 
