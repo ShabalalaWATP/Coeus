@@ -58,11 +58,15 @@ class RegistrationService:
             decided_by_user_id=None,
         )
         self._registrations.save(registration)
-        self._audit_log.record(
-            "registration_submitted",
-            None,
-            {"registration_id": str(registration.registration_id)},
-        )
+        try:
+            self._audit_log.record(
+                "registration_submitted",
+                None,
+                {"registration_id": str(registration.registration_id)},
+            )
+        except Exception:
+            self._registrations.delete(registration.registration_id)
+            raise
 
     def list_pending(self, actor: UserAccount) -> tuple[RegistrationRequest, ...]:
         self._require_reviewer(actor)
@@ -73,12 +77,13 @@ class RegistrationService:
         registration = self._pending_registration(registration_id)
         if self._users.get_by_username(registration.username) is not None:
             decided = self._decide(registration, RegistrationStatus.REJECTED, actor)
-            self._audit_log.record(
+            self._save_decision_and_audit(
+                registration,
+                decided,
                 "registration_rejected",
                 str(actor.user_id),
                 {"registration_id": str(registration_id), "reason": "username_taken"},
             )
-            self._registrations.save(decided)
             raise AppError(409, "username_taken", "An account already uses this username.")
         account = UserAccount(
             user_id=uuid4(),
@@ -93,23 +98,25 @@ class RegistrationService:
         self._users.save(account)
         decided = self._decide(registration, RegistrationStatus.APPROVED, actor)
         try:
-            self._registrations.save(decided)
+            self._save_decision_and_audit(
+                registration,
+                decided,
+                "registration_approved",
+                str(actor.user_id),
+                {"registration_id": str(registration_id), "user_id": str(account.user_id)},
+            )
         except Exception:
             self._users.delete(account.user_id)
             raise
-        self._audit_log.record(
-            "registration_approved",
-            str(actor.user_id),
-            {"registration_id": str(registration_id), "user_id": str(account.user_id)},
-        )
         return decided
 
     def reject(self, actor: UserAccount, registration_id: UUID, reason: str) -> RegistrationRequest:
         self._require_reviewer(actor)
         registration = self._pending_registration(registration_id)
         decided = self._decide(registration, RegistrationStatus.REJECTED, actor)
-        self._registrations.save(decided)
-        self._audit_log.record(
+        self._save_decision_and_audit(
+            registration,
+            decided,
             "registration_rejected",
             str(actor.user_id),
             {"registration_id": str(registration_id), "reason": reason},
@@ -136,6 +143,21 @@ class RegistrationService:
             decided_at=datetime.now(UTC),
             decided_by_user_id=actor.user_id,
         )
+
+    def _save_decision_and_audit(
+        self,
+        original: RegistrationRequest,
+        decided: RegistrationRequest,
+        event_type: str,
+        actor_user_id: str,
+        metadata: dict[str, str],
+    ) -> None:
+        self._registrations.save(decided)
+        try:
+            self._audit_log.record(event_type, actor_user_id, metadata)
+        except Exception:
+            self._registrations.save(original)
+            raise
 
     @staticmethod
     def _require_reviewer(actor: UserAccount) -> None:

@@ -15,6 +15,10 @@ class RegistrationRepository:
         self._registrations[registration.registration_id] = registration
         self._persist()
 
+    def delete(self, registration_id: UUID) -> None:
+        self._registrations.pop(registration_id, None)
+        self._persist()
+
     def get(self, registration_id: UUID) -> RegistrationRequest | None:
         return self._registrations.get(registration_id)
 
