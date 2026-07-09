@@ -23,7 +23,6 @@ from coeus.services.orchestration_handoff import (
 from coeus.services.routing_agents import CmCapabilityAgent, RfaCapabilityAgent
 from coeus.services.routing_records import (
     can_review_route,
-    count_state,
     current_queue_permission,
     decision,
     decision_workflow_update,
@@ -32,14 +31,13 @@ from coeus.services.routing_records import (
     fallback_state,
     latest_cm_review,
     latest_recommendation,
-    rate,
     recommend_route,
     review_agent_runs,
     state_for_recommendation,
     timeline,
     workflow_update,
 )
-from coeus.services.routing_stats import RoutingStats
+from coeus.services.routing_stats import RoutingStats, routing_stats_from_tickets
 from coeus.services.tickets import TicketServices
 
 ROUTING_READ_PERMISSIONS = frozenset({Permission.RFA_REVIEW, Permission.COLLECTION_REVIEW})
@@ -253,24 +251,7 @@ class RoutingService:
         ):
             raise AppError(403, "forbidden", "Permission denied.")
         tickets = self._tickets.tickets.list_workflow_tickets(actor, ROUTING_READ_PERMISSIONS)
-        decisions = [decision for ticket in tickets for decision in ticket.manager_decisions]
-        recommendations = [rec for ticket in tickets for rec in ticket.route_recommendations]
-        approved = [
-            item for item in decisions if item.status == ManagerRoutingDecisionStatus.APPROVED
-        ]
-        rfa_approved = [item for item in approved if item.route == RoutingRoute.RFA]
-        cm_fallbacks = [
-            item for item in recommendations if item.recommended_route == RoutingRoute.CM
-        ]
-        return RoutingStats(
-            route_assessment_count=count_state(tickets, TicketState.ROUTE_ASSESSMENT),
-            rfa_review_count=count_state(tickets, TicketState.RFA_MANAGER_REVIEW),
-            cm_review_count=count_state(tickets, TicketState.CM_MANAGER_REVIEW),
-            clarification_count=count_state(tickets, TicketState.INFO_REQUIRED),
-            analyst_assignment_count=count_state(tickets, TicketState.ANALYST_ASSIGNMENT),
-            rfa_acceptance_rate=rate(len(rfa_approved), len(approved)),
-            cm_fallback_rate=rate(len(cm_fallbacks), len(recommendations)),
-        )
+        return routing_stats_from_tickets(tickets)
 
     def _queue_for(self, actor: UserAccount, states: set[TicketState]) -> tuple[TicketRecord, ...]:
         tickets = self._tickets.tickets.list_workflow_tickets(actor, ROUTING_READ_PERMISSIONS)
