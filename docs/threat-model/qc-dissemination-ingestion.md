@@ -25,6 +25,7 @@ feedback request creation.
 | Product is indexed with incomplete or inactive ACG metadata. | Release metadata requires at least one active ACG, then merges QC-confirmed ACGs with project ACGs. |
 | Rejection loses reviewer rationale. | Rejection creates an immutable ticket-level QC decision and timeline event before moving to `REWORK_REQUIRED`. |
 | Draft-only product appears in Store search. | Only approval writes a published Store product. Drafts remain ticket-local before QC approval. |
+| QC approval or rejection is saved even though the audit event failed. | Approval and rejection restore the original ticket state if audit recording fails. Approval also discards the ingested Store product and local placeholder asset bytes so the operation can be retried cleanly. |
 | Real intelligence or real asset bytes enter the repo. | Sprint 10 stores synthetic metadata only. Tests and docs continue to use `MOCK DATA ONLY` examples. |
 
 ## Residual Risks
