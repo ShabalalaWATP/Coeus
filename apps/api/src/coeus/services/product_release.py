@@ -77,6 +77,7 @@ class ProductReleaseService:
             ticket.ticket_id, product.product_id, requester.user_id
         )
         feedback = feedback_request(ticket.ticket_id, product.product_id, requester.user_id)
+        ticket_updated = False
         try:
             updated = self._tickets.tickets.save_system_update(
                 replace(
@@ -104,15 +105,18 @@ class ProductReleaseService:
                     ),
                 ),
             )
+            ticket_updated = True
+            self._audit_log.record(
+                "product_released",
+                str(actor.user_id),
+                {"ticket_id": str(ticket_id), "product_id": str(product.product_id)},
+            )
         except Exception:
+            if ticket_updated:
+                self._tickets.tickets.save_system_update(ticket)
             self._store.repository.save_product(original_product)
             raise
         self._notify_requester_best_effort(actor, requester, ticket, product)
-        self._audit_log.record(
-            "product_released",
-            str(actor.user_id),
-            {"ticket_id": str(ticket_id), "product_id": str(product.product_id)},
-        )
         return updated
 
     def _release_product(self, ticket: TicketRecord) -> StoreProduct:

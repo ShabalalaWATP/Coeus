@@ -23,6 +23,9 @@ Sprint 1 to Sprint 13 entries live in
   original ticket state. Approval also discards the ingested Store product and
   local placeholder asset bytes so a failed request does not leave an orphaned
   draft product.
+- Hardened final product release so `product_released` audit failure restores
+  the ticket to `MANAGER_RELEASE`, returns the Store product to draft status
+  and suppresses requester notification.
 
 ## 2026-07-08 No-match consent
 

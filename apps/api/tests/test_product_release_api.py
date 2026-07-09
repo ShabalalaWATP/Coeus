@@ -215,6 +215,53 @@ async def test_release_ticket_update_failure_rolls_back_published_product(
 
 
 @pytest.mark.asyncio
+async def test_release_audit_failure_rolls_back_ticket_and_product(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        ticket_id = await _ticket_awaiting_release(client, app)
+        ticket = app.state.ticket_services.tickets._repository.get(UUID(ticket_id))
+        assert ticket is not None
+        product_id = ticket.product_index_records[-1].product_id
+        product = app.state.store_services.repository.get_product(product_id)
+        assert product is not None
+        assert product.metadata.status == ProductStatus.DRAFT
+        manager = await login(client, "rfa.manager@example.test")
+        audit_log = app.state.product_release_service._audit_log
+        original_audit_record = audit_log.record
+
+        def fail_audit(*_args: object, **_kwargs: object) -> None:
+            raise RuntimeError("release audit unavailable")
+
+        monkeypatch.setattr(audit_log, "record", fail_audit)
+        with pytest.raises(RuntimeError, match="release audit unavailable"):
+            await client.post(
+                f"/api/v1/routing/{ticket_id}/release",
+                headers={"X-CSRF-Token": str(manager["csrfToken"])},
+                json={"route": "rfa"},
+            )
+        monkeypatch.setattr(audit_log, "record", original_audit_record)
+
+        rolled_back = app.state.store_services.repository.get_product(product_id)
+        current_ticket = app.state.ticket_services.tickets._repository.get(UUID(ticket_id))
+        await login(client, "user@example.test")
+        notifications = await client.get("/api/v1/notifications")
+        search = await client.get("/api/v1/store/products?query=Release%20Arctic")
+
+    assert rolled_back is not None
+    assert rolled_back.metadata.status == ProductStatus.DRAFT
+    assert current_ticket is not None
+    assert current_ticket.state == TicketState.MANAGER_RELEASE
+    assert current_ticket.disseminations == ()
+    assert current_ticket.feedback_requests == ()
+    assert notifications.json()["unread"] == 0
+    assert str(product_id) not in {product["id"] for product in search.json()["products"]}
+
+
+@pytest.mark.asyncio
 async def test_release_succeeds_when_notification_side_effect_fails(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
