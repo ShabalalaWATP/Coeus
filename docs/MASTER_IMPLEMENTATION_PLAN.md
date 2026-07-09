@@ -14,7 +14,7 @@ Sprint 13: Security hardening.
 | --- | --- | --- | --- |
 | 1 | Skeleton, monorepo, API/web shells, Compose and quality gates. | Complete | Local backend/frontend/security gates passed on 2026-07-04. |
 | 2 | Auth, sessions, RBAC, role navigation, seed users and branch protection docs. | Complete | Local auth, CI and browser gates passed on 2026-07-04. |
-| 3 | ACGs, product access diagnostics and product access policy. | Complete | Local access-control gates passed on 2026-07-04; project workspaces retired by ADR 0018. |
+| 3 | ACGs, product access diagnostics and product access policy. | Complete | Local access-control gates passed on 2026-07-04; legacy workspace surface retired by ADR 0018. |
 | 4 | Ticket intake, mock chatbot, editable intake, attachments, timeline and customer dashboard. | Complete | Local ticket-intake gates passed on 2026-07-05. |
 | 5 | Intelligence Store metadata, search, detail, upload and controlled asset access. | Complete | Local store and access-regression gates passed on 2026-07-05. |
 | 6 | Deterministic synthetic product generation and seed manifests. | Complete | Local generator, security and file-line gates passed on 2026-07-05. |

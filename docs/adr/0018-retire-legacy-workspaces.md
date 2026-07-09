@@ -1,4 +1,4 @@
-# ADR 0018: Retire Project Workspaces
+# ADR 0018: Retire Legacy Workspaces
 
 ## Status
 
@@ -6,27 +6,27 @@ Accepted.
 
 ## Context
 
-The project workspace feature added an extra `/projects` navigation area, seed
-workspace data, project-specific access policy and project detail routes. The
-current product direction centres on requests, team queues, analyst/QC
-workflow, ACG-governed Store access and search. Maintaining project workspaces
-created duplicated navigation and extra access-control paths without a current
-owner workflow.
+A former workspace feature added a separate navigation area, seed workspace
+data, workspace-specific access policy and workspace detail routes. The current
+product direction centres on requests, team queues, analyst/QC workflow,
+ACG-governed Store access and search. Maintaining that separate workspace
+surface created duplicated navigation and extra access-control paths without a
+current owner workflow.
 
 ## Decision
 
-Retire the project workspace feature:
+Retire the legacy workspace feature:
 
-- Remove `/projects` API routes, frontend routes, navigation items and admin
+- Remove legacy workspace API routes, frontend routes, navigation items and admin
   shortcuts.
-- Remove project workspace domain records, seed data, services and response
+- Remove workspace domain records, seed data, services and response
   schemas.
-- Remove Store `projectId` metadata and search filters so the retired Projects
-  concept does not remain in the product contract.
+- Remove old Store workspace metadata and search filters so the retired concept
+  does not remain in the product contract.
 - Remove the ticket-level suggested workspace name from intake and ticket
   responses.
 - Rename ticket-level routing plan updates to workflow plan updates.
-- Remove retired project permission enum strings from the active permission
+- Remove retired workspace permission enum strings from the active permission
   contract.
 - Do not keep active decoder shims for retired workspace fields. Local snapshots
   from earlier workspace builds must be reset or migrated outside the runtime.
@@ -34,7 +34,7 @@ Retire the project workspace feature:
 ## Consequences
 
 - Users move between requests, queues, analyst/QC workspaces and the Store
-  without a separate Projects area.
+  without a separate workspace area.
 - Product visibility remains enforced by product RBAC, clearance, product
   status, draft rules and active ACG overlap.
 - Existing local PostgreSQL schemas are cleaned by a migration that drops the

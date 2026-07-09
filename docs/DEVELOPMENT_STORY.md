@@ -307,8 +307,7 @@ Sprint 1 to Sprint 13 entries live in
   across routing, analyst, QC, feedback, notifications and upload; global 401
   handling routes to the session-expired page; partial intake saves omit blank
   fields; the QC checklist resets between products; unreachable pages gained
-  navigation, deep-link handling and a project picker; dead components were
-  removed.
+  navigation and deep-link handling; dead components were removed.
 - Verified the whole lifecycle in the running app: chat intake with injection
   refusal, RFI search and offer rejection, capability review, same-queue
   approval, analyst production, QC approval, release with notification,
@@ -334,11 +333,11 @@ Sprint 1 to Sprint 13 entries live in
   documented the embedding provider settings, the optional `embeddings` extra
   and the backfill command in `docs/SETUP.md`.
 
-## 2026-07-09 Project workspace retirement
+## 2026-07-09 Legacy workspace removal
 
-- Removed the Projects workspace feature from backend routes, services, seed
+- Removed the legacy workspace feature from backend routes, services, seed
   data, frontend navigation, admin shortcuts, client methods and Store
-  `projectId` metadata/filtering.
+  workspace metadata/filtering.
 - Removed the remaining ticket-level suggested workspace field and renamed
   routing plan records to workflow plan updates.
 - Removed the remaining runtime shims for retired workspace state. Older local

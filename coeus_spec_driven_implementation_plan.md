@@ -2049,7 +2049,7 @@ Requirements:
 - Structured JSON logs.
 - Request ID on every request.
 - User ID when authenticated.
-- Ticket ID, product ID and project ID where relevant.
+- Ticket ID and product ID where relevant.
 - Agent run ID for agent operations.
 - No secrets, passwords, session tokens or unnecessary prompt content in logs.
 - Metrics for API latency, errors, auth failures, access denials, agent failures, search hit rate, product ingestion, QC rejection and feedback.
