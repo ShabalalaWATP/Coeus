@@ -24,6 +24,7 @@ to QC review.
 | Draft product data leaks through published store search. | Sprint 9 draft products remain ticket-local and are not indexed or published. |
 | Incomplete work reaches QC. | QC submission requires at least one draft and all work packages marked complete. |
 | Notes or drafts are modified after QC submission. | Analyst mutations require `ANALYST_IN_PROGRESS`; submitted tasks enter `QC_REVIEW`. |
+| Analyst workflow state changes persist without audit evidence. | Assignment, notes, product links, work-package updates, draft saves and QC submission restore the original ticket if audit recording fails after the ticket update. |
 
 ## Residual Risk
 

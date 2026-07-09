@@ -33,6 +33,7 @@ from coeus.services.analyst_records import (
     work_package_records,
 )
 from coeus.services.audit import AuditLog
+from coeus.services.audit_rollback import record_ticket_audit_or_rollback
 from coeus.services.store import StoreServices
 from coeus.services.ticket_records import timeline
 from coeus.services.tickets import TicketServices
@@ -126,7 +127,7 @@ class AnalystWorkflowService:
         }
         if assignment_team:
             metadata["team_name"] = assignment_team
-        self._audit_log.record(event_type, str(actor.user_id), metadata)
+        self._record_audit_or_rollback(ticket, event_type, actor, metadata)
         return updated
 
     def list_tasks(self, actor: UserAccount) -> tuple[TicketRecord, ...]:
@@ -168,9 +169,10 @@ class AnalystWorkflowService:
                 ),
             )
         )
-        self._audit_log.record(
+        self._record_audit_or_rollback(
+            ticket,
             "analyst_note_added",
-            str(actor.user_id),
+            actor,
             {"ticket_id": str(ticket_id)},
         )
         return updated
@@ -198,9 +200,10 @@ class AnalystWorkflowService:
                 ),
             )
         )
-        self._audit_log.record(
+        self._record_audit_or_rollback(
+            ticket,
             "analyst_product_linked",
-            str(actor.user_id),
+            actor,
             {"ticket_id": str(ticket_id), "product_id": str(product_id)},
         )
         return updated
@@ -232,9 +235,10 @@ class AnalystWorkflowService:
                 ),
             )
         )
-        self._audit_log.record(
+        self._record_audit_or_rollback(
+            ticket,
             "work_package_updated",
-            str(actor.user_id),
+            actor,
             {
                 "ticket_id": str(ticket_id),
                 "package_id": str(package_id),
@@ -268,9 +272,10 @@ class AnalystWorkflowService:
                 ),
             )
         )
-        self._audit_log.record(
+        self._record_audit_or_rollback(
+            ticket,
             "draft_product_saved",
-            str(actor.user_id),
+            actor,
             {"ticket_id": str(ticket_id)},
         )
         return updated
@@ -298,7 +303,9 @@ class AnalystWorkflowService:
                 ),
             )
         )
-        self._audit_log.record("submitted_to_qc", str(actor.user_id), {"ticket_id": str(ticket_id)})
+        self._record_audit_or_rollback(
+            ticket, "submitted_to_qc", actor, {"ticket_id": str(ticket_id)}
+        )
         return updated
 
     def _active_task(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
@@ -323,16 +330,18 @@ class AnalystWorkflowService:
         )
         self._require(actor, permission)
 
+    def _record_audit_or_rollback(
+        self,
+        original_ticket: TicketRecord,
+        event_type: str,
+        actor: UserAccount,
+        details: dict[str, str],
+    ) -> None:
+        record_ticket_audit_or_rollback(
+            self._tickets.tickets, self._audit_log, original_ticket, event_type, actor, details
+        )
+
     @staticmethod
     def _ensure_transition(current: TicketState, target: TicketState) -> None:
         if not can_transition(current, target):
             raise AppError(409, "invalid_ticket_state", "Ticket cannot move to that state.")
-
-
-def build_analyst_workflow_service(
-    tickets: TicketServices,
-    store: StoreServices,
-    access_repository: SeedAccessRepository,
-    audit_log: AuditLog,
-) -> AnalystWorkflowService:
-    return AnalystWorkflowService(tickets, store, access_repository, audit_log)

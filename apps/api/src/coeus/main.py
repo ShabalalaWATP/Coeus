@@ -33,7 +33,7 @@ from coeus.repositories.auth import LoginAttemptRepository, SeedUserRepository, 
 from coeus.repositories.registration import RegistrationRepository
 from coeus.services.access import build_access_services
 from coeus.services.ai_models import AiModelService
-from coeus.services.analyst_workflow import build_analyst_workflow_service
+from coeus.services.analyst_workflow import AnalystWorkflowService
 from coeus.services.asset_tokens import AssetTokenService
 from coeus.services.audit import AuditLog
 from coeus.services.auth import AuthService
@@ -165,7 +165,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.embedding_service,
     )
     app.state.routing_service = build_routing_service(app.state.ticket_services, audit_log)
-    app.state.analyst_workflow_service = build_analyst_workflow_service(
+    app.state.analyst_workflow_service = AnalystWorkflowService(
         app.state.ticket_services,
         app.state.store_services,
         access_repository,
