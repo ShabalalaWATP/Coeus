@@ -41,6 +41,9 @@ export default function ProductUploadPage() {
     queryFn: () => apiClient.listAcgs(),
     retry: false,
   });
+  const acgs = acgsQuery.data ?? [];
+  const hasVisibleAcgs = acgs.length > 0;
+  const hasSelectedVisibleAcg = acgs.some((acg) => acg.id === form.acgId);
   const csrfToken = session?.csrfToken ?? "";
   const { actionError, clearActionError, failActionWith } = useActionError();
   const createMutation = useMutation({
@@ -63,7 +66,7 @@ export default function ProductUploadPage() {
         releasability: ["MOCK"],
         handlingCaveats: ["MOCK DATA ONLY"],
         tags: csvToValues(form.tags),
-        acgIds: [selectedAcgId(form, acgsQuery.data)],
+        acgIds: [form.acgId],
         status: "published",
         geojsonRef: form.productType === "geographic_product" ? "mock://geojson/layer" : null,
       };
@@ -122,6 +125,9 @@ export default function ProductUploadPage() {
         className="surface upload-form"
         onSubmit={(event) => {
           event.preventDefault();
+          if (!hasSelectedVisibleAcg) {
+            return;
+          }
           createMutation.mutate();
         }}
       >
@@ -159,22 +165,39 @@ export default function ProductUploadPage() {
               <option value="Collection">Collection</option>
             </select>
           </label>
-          <label>
-            ACG
+          <div className="upload-field">
+            <label htmlFor="product-acg">ACG</label>
             <select
+              aria-describedby={
+                !acgsQuery.isLoading &&
+                !acgsQuery.isError &&
+                hasVisibleAcgs &&
+                !hasSelectedVisibleAcg
+                  ? "product-acg-hint"
+                  : undefined
+              }
               disabled={acgsQuery.isLoading || acgsQuery.isError}
+              id="product-acg"
               name="acgId"
               onChange={handleChange(setForm)}
               value={form.acgId}
             >
               <option value="">Select visible ACG</option>
-              {(acgsQuery.data ?? []).map((acg) => (
+              {acgs.map((acg) => (
                 <option key={acg.id} value={acg.id}>
                   {acg.code}
                 </option>
               ))}
             </select>
-          </label>
+            {!acgsQuery.isLoading &&
+            !acgsQuery.isError &&
+            hasVisibleAcgs &&
+            !hasSelectedVisibleAcg ? (
+              <small className="field-hint" id="product-acg-hint">
+                Select an ACG before registering.
+              </small>
+            ) : null}
+          </div>
           <label>
             Region
             <input name="areaOrRegion" onChange={handleChange(setForm)} value={form.areaOrRegion} />
@@ -219,6 +242,14 @@ export default function ProductUploadPage() {
             </button>
           </div>
         ) : null}
+        {!acgsQuery.isLoading && !acgsQuery.isError && !hasVisibleAcgs ? (
+          <div className="workspace-alert" role="alert">
+            <span>
+              No visible access groups are available. Ask an administrator to add you to an active
+              ACG before registering products.
+            </span>
+          </div>
+        ) : null}
         <div className="store-actions">
           <button
             disabled={suggestMutation.isPending}
@@ -229,7 +260,12 @@ export default function ProductUploadPage() {
             Suggest metadata
           </button>
           <button
-            disabled={createMutation.isPending || acgsQuery.isLoading || acgsQuery.isError}
+            disabled={
+              createMutation.isPending ||
+              acgsQuery.isLoading ||
+              acgsQuery.isError ||
+              !hasSelectedVisibleAcg
+            }
             type="submit"
           >
             <Upload aria-hidden="true" size={18} />
@@ -285,8 +321,4 @@ function handleFile(
       sizeBytes: String(file.size),
     }));
   };
-}
-
-function selectedAcgId(form: typeof initialForm, acgs?: { id: string }[]) {
-  return form.acgId || acgs?.[0]?.id || "";
 }

@@ -80,7 +80,7 @@ test("suggests metadata and submits a controlled product registration", async ()
 test("shows the API validation message when product registration fails", async () => {
   const fetchMock = vi
     .fn()
-    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ acgs: [] }) })
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(acgResponse()) })
     .mockResolvedValue({
       ok: false,
       status: 422,
@@ -90,16 +90,51 @@ test("shows the API validation message when product registration fails", async (
   vi.stubGlobal("fetch", fetchMock);
 
   renderWithProviders(<ProductUploadPage />, "/store/upload");
-  await screen.findByLabelText("ACG");
+  await screen.findByRole("option", { name: "ACG-ALPHA-REGIONAL" });
+  await userEvent.selectOptions(screen.getByLabelText("ACG"), "acg-alpha");
   await userEvent.click(screen.getByRole("button", { name: "Register product" }));
 
   expect(await screen.findByText("Invalid metadata.")).toBeVisible();
 });
 
+test("requires an explicit visible ACG before product registration", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(acgResponse()) });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<ProductUploadPage />, "/store/upload");
+
+  await screen.findByRole("option", { name: "ACG-ALPHA-REGIONAL" });
+  expect(screen.getByText("Select an ACG before registering.")).toBeVisible();
+  expect(screen.getByRole("button", { name: "Register product" })).toBeDisabled();
+  await userEvent.selectOptions(screen.getByLabelText("ACG"), "acg-alpha");
+
+  expect(screen.queryByText("Select an ACG before registering.")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Register product" })).not.toBeDisabled();
+});
+
+test("disables product registration when no visible ACGs are available", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ acgs: [] }) });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<ProductUploadPage />, "/store/upload");
+
+  expect(
+    await screen.findByText(
+      "No visible access groups are available. Ask an administrator to add you to an active ACG before registering products.",
+    ),
+  ).toBeVisible();
+  expect(screen.getByRole("button", { name: "Register product" })).toBeDisabled();
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+});
+
 test("shows a generic error when product registration fails without a body", async () => {
   const fetchMock = vi
     .fn()
-    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ acgs: [] }) })
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(acgResponse()) })
     .mockResolvedValue({
       ok: false,
       status: 500,
@@ -108,7 +143,8 @@ test("shows a generic error when product registration fails without a body", asy
   vi.stubGlobal("fetch", fetchMock);
 
   renderWithProviders(<ProductUploadPage />, "/store/upload");
-  await screen.findByLabelText("ACG");
+  await screen.findByRole("option", { name: "ACG-ALPHA-REGIONAL" });
+  await userEvent.selectOptions(screen.getByLabelText("ACG"), "acg-alpha");
   await userEvent.click(screen.getByRole("button", { name: "Register product" }));
 
   expect(
@@ -193,29 +229,15 @@ test("shows a retryable error when visible ACGs cannot be loaded", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Retry access groups" }));
 
   expect(await screen.findByRole("option", { name: "ACG-ALPHA-REGIONAL" })).toBeVisible();
+  expect(screen.getByRole("button", { name: "Register product" })).toBeDisabled();
+  await userEvent.selectOptions(screen.getByLabelText("ACG"), "acg-alpha");
   expect(screen.getByRole("button", { name: "Register product" })).not.toBeDisabled();
 });
 
-test("registers geographic products with the first visible ACG when none is selected", async () => {
+test("registers geographic products with the selected visible ACG", async () => {
   const fetchMock = vi
     .fn()
-    .mockResolvedValueOnce({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          acgs: [
-            {
-              id: "acg-alpha",
-              code: "ACG-ALPHA-REGIONAL",
-              name: "Alpha Regional",
-              description: "Mock",
-              ownerUserId: null,
-              isActive: true,
-              memberUserIds: [],
-            },
-          ],
-        }),
-    })
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(acgResponse()) })
     .mockResolvedValueOnce({
       ok: true,
       json: () =>
@@ -229,6 +251,7 @@ test("registers geographic products with the first visible ACG when none is sele
 
   renderWithProviders(<ProductUploadPage />, "/store/upload");
   await screen.findByRole("option", { name: "ACG-ALPHA-REGIONAL" });
+  await userEvent.selectOptions(screen.getByLabelText("ACG"), "acg-alpha");
   await userEvent.selectOptions(screen.getByLabelText("Product type"), "geographic_product");
   await userEvent.click(screen.getByRole("button", { name: "Register product" }));
 
@@ -241,3 +264,19 @@ test("registers geographic products with the first visible ACG when none is sele
   expect(init.body).toContain('"geojsonRef":"mock://geojson/layer"');
   expect(init.body).toContain('"acgIds":["acg-alpha"]');
 });
+
+function acgResponse() {
+  return {
+    acgs: [
+      {
+        id: "acg-alpha",
+        code: "ACG-ALPHA-REGIONAL",
+        name: "Alpha Regional",
+        description: "Mock",
+        ownerUserId: null,
+        isActive: true,
+        memberUserIds: [],
+      },
+    ],
+  };
+}
