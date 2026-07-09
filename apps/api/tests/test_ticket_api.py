@@ -200,6 +200,39 @@ async def test_cancel_audit_failure_rolls_back_ticket(monkeypatch: pytest.Monkey
 
 
 @pytest.mark.asyncio
+async def test_cancel_persistence_failure_rolls_back_ticket(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        session = await login(client)
+        created = await client.post(
+            "/api/v1/chat/messages",
+            headers={"X-CSRF-Token": str(session["csrfToken"])},
+            json={"message": "Need a routine brief on port activity."},
+        )
+        ticket_id = created.json()["id"]
+        original = _stored_ticket(app, ticket_id)
+
+        def fail_persist() -> None:
+            raise RuntimeError("simulated ticket persistence failure")
+
+        monkeypatch.setattr(app.state.ticket_services.tickets._repository, "_persist", fail_persist)
+
+        with pytest.raises(RuntimeError, match="simulated ticket persistence failure"):
+            await client.post(
+                f"/api/v1/tickets/{ticket_id}/cancel",
+                headers={"X-CSRF-Token": str(session["csrfToken"])},
+                json={"reason": "Requirement no longer needed."},
+            )
+
+    assert _stored_ticket(app, ticket_id) == original
+
+
+@pytest.mark.asyncio
 async def test_product_team_ticket_list_excludes_unrelated_submitted_tickets() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
 

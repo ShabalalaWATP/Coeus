@@ -44,15 +44,29 @@ class SeedUserRepository:
             self.save(account)
 
     def save(self, user: UserAccount) -> None:
+        usernames = dict(self._users_by_username)
+        users = dict(self._users_by_id)
         self._users_by_username[user.username.casefold()] = user
         self._users_by_id[user.user_id] = user
-        self._persist()
+        try:
+            self._persist()
+        except Exception:
+            self._users_by_username = usernames
+            self._users_by_id = users
+            raise
 
     def delete(self, user_id: UUID) -> None:
+        usernames = dict(self._users_by_username)
+        users = dict(self._users_by_id)
         user = self._users_by_id.pop(user_id, None)
         if user is not None:
             self._users_by_username.pop(user.username.casefold(), None)
-            self._persist()
+            try:
+                self._persist()
+            except Exception:
+                self._users_by_username = usernames
+                self._users_by_id = users
+                raise
 
     def get_by_username(self, username: str) -> UserAccount | None:
         return self._users_by_username.get(username.casefold())
@@ -92,17 +106,28 @@ class SessionRepository:
         self._restore_or_persist()
 
     def save(self, session: SessionRecord) -> None:
+        sessions = dict(self._sessions)
         self._sessions[session.session_id] = session
-        self._persist()
+        try:
+            self._persist()
+        except Exception:
+            self._sessions = sessions
+            raise
 
     def get(self, session_id: str) -> SessionRecord | None:
         return self._sessions.get(session_id)
 
     def delete(self, session_id: str) -> None:
+        sessions = dict(self._sessions)
         self._sessions.pop(session_id, None)
-        self._persist()
+        try:
+            self._persist()
+        except Exception:
+            self._sessions = sessions
+            raise
 
     def delete_for_user(self, user_id: UUID) -> tuple[SessionRecord, ...]:
+        sessions = dict(self._sessions)
         deleted = tuple(
             session for session in self._sessions.values() if session.user_id == user_id
         )
@@ -113,8 +138,7 @@ class SessionRepository:
         try:
             self._persist()
         except Exception:
-            for session in deleted:
-                self._sessions[session.session_id] = session
+            self._sessions = sessions
             raise
         return deleted
 

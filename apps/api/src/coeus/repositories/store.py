@@ -16,6 +16,7 @@ from coeus.persistence.codec import decode_value, encode_value
 from coeus.persistence.state_store import StateStore
 from coeus.repositories.access import SeedAccessRepository, stable_seed_id
 from coeus.repositories.store_hybrid import memory_hybrid_candidates
+from coeus.repositories.store_ids import max_store_reference_counter
 from coeus.repositories.store_projection import StoreProjection
 from coeus.services.embeddings import EmbeddingService
 
@@ -102,14 +103,28 @@ class InMemoryStoreRepository:
 
     def save_product(self, product: StoreProduct) -> None:
         self._refresh_from_projection(allow_empty=True)
+        products = dict(self._products)
+        reference_counter = self._reference_counter
         self._products[product.product_id] = product
-        self._persist()
+        try:
+            self._persist()
+        except Exception:
+            self._products = products
+            self._reference_counter = reference_counter
+            raise
 
     def delete_product(self, product_id: UUID) -> None:
         """Remove a product, e.g. rolling back a failed QC approval."""
         self._refresh_from_projection(allow_empty=True)
+        products = dict(self._products)
+        reference_counter = self._reference_counter
         if self._products.pop(product_id, None) is not None:
-            self._persist()
+            try:
+                self._persist()
+            except Exception:
+                self._products = products
+                self._reference_counter = reference_counter
+                raise
 
     def embedded_product_count(self) -> int:
         if self._projection is None:
@@ -147,7 +162,7 @@ class InMemoryStoreRepository:
         # Never let a regressed persisted counter re-issue an existing reference.
         self._reference_counter = max(
             int(payload.get("reference_counter", 1000)),
-            _max_reference_counter(products, 1000),
+            max_store_reference_counter(products, 1000),
         )
         self._persist_projection()
 
@@ -187,7 +202,7 @@ class InMemoryStoreRepository:
         if not products and not allow_empty:
             return False
         self._products = {product.product_id: product for product in products}
-        self._reference_counter = _max_reference_counter(products, self._reference_counter)
+        self._reference_counter = max_store_reference_counter(products, self._reference_counter)
         return True
 
     def _seed_products(self) -> None:
@@ -332,12 +347,3 @@ class InMemoryStoreRepository:
             if acg.code == code:
                 return acg
         raise RuntimeError(f"Missing required seed ACG {code}.")
-
-
-def _max_reference_counter(products: tuple[StoreProduct, ...], default: int) -> int:
-    counter = default
-    for product in products:
-        prefix, _, suffix = product.reference.partition("-")
-        if prefix == "PROD" and suffix.isdigit():
-            counter = max(counter, int(suffix))
-    return counter

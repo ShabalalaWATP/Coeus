@@ -160,6 +160,23 @@ def test_acg_update_rolls_back_when_audit_fails() -> None:
     assert services.repository.get_acg(acg.acg_id) == acg
 
 
+def test_acg_update_rolls_back_when_persistence_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    services = build_seed_access_services()
+    admin = services.repository.get_user_by_username("admin@example.test")
+    assert admin is not None
+    acg = services.repository.list_acgs()[0]
+
+    def fail_persist() -> None:
+        raise RuntimeError("simulated access persistence failure")
+
+    monkeypatch.setattr(services.repository, "_persist", fail_persist)
+
+    with pytest.raises(RuntimeError, match="simulated access persistence failure"):
+        services.acgs.update_acg(admin, acg.acg_id, name="Changed after failed persistence")
+
+    assert services.repository.get_acg(acg.acg_id) == acg
+
+
 def test_acg_membership_add_rolls_back_when_audit_fails() -> None:
     services = build_seed_access_services_with_failing_audit()
     admin = services.repository.get_user_by_username("admin@example.test")

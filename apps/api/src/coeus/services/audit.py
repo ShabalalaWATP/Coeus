@@ -37,11 +37,16 @@ class AuditLog:
             actor_user_id=actor_user_id,
             metadata=MappingProxyType(metadata or {}),
         )
+        events = list(self._events)
         self._events.append(event)
         overflow = len(self._events) - self._max_events
         if overflow > 0:
             del self._events[:overflow]
-        self._persist()
+        try:
+            self._persist()
+        except Exception:
+            self._events = events
+            raise
         return event
 
     def list_events(self) -> tuple[AuditEvent, ...]:

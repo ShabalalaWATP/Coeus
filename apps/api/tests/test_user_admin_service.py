@@ -61,6 +61,27 @@ def test_role_change_rolls_back_user_when_session_revocation_fails(
     assert audit_log.list_events() == ()
 
 
+def test_role_change_rolls_back_user_when_user_persistence_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service, users, _sessions, audit_log = _service()
+    admin = users.get_by_username("admin@example.test")
+    target = users.get_by_username("user@example.test")
+    assert admin is not None
+    assert target is not None
+
+    def fail_persist() -> None:
+        raise RuntimeError("simulated user persistence failure")
+
+    monkeypatch.setattr(users, "_persist", fail_persist)
+
+    with pytest.raises(RuntimeError, match="simulated user persistence failure"):
+        service.set_roles(admin, target.user_id, frozenset({RoleName.INTELLIGENCE_ANALYST}))
+
+    assert users.get_by_id(target.user_id) == target
+    assert audit_log.list_events() == ()
+
+
 def test_role_change_rolls_back_user_and_sessions_when_audit_fails(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -108,6 +108,27 @@ def test_submission_rolls_back_registration_when_audit_fails(
     assert registrations.list_pending() == ()
 
 
+def test_submission_rolls_back_registration_when_persistence_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service, _users, registrations, _audit_log = _service()
+
+    def fail_persist() -> None:
+        raise RuntimeError("simulated registration persistence failure")
+
+    monkeypatch.setattr(registrations, "_persist", fail_persist)
+
+    with pytest.raises(RuntimeError, match="simulated registration persistence failure"):
+        service.submit(
+            "new.operator@example.test",
+            "New Operator",
+            "Mock duties.",
+            "NewOperator1!x",
+        )
+
+    assert registrations.list_pending() == ()
+
+
 def test_approval_rolls_back_account_and_decision_when_audit_fails(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

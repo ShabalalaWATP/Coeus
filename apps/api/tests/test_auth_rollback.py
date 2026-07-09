@@ -45,3 +45,20 @@ def test_password_change_rolls_back_user_when_session_revocation_fails(
     assert service._password_hasher.verify(current.password_hash, SEED_CREDENTIAL)
     assert not service._password_hasher.verify(current.password_hash, "ReplacementPass1!")
     assert "password_changed" not in [event.event_type for event in service.audit_log.list_events()]
+
+
+def test_logout_keeps_session_when_session_persistence_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = _service()
+    result = service.login("user@example.test", SEED_CREDENTIAL)
+
+    def fail_persist() -> None:
+        raise RuntimeError("simulated session persistence failure")
+
+    monkeypatch.setattr(service._sessions, "_persist", fail_persist)
+
+    with pytest.raises(RuntimeError, match="simulated session persistence failure"):
+        service.logout(result.session_token)
+
+    assert service.require_session(result.session_token).session == result.session
