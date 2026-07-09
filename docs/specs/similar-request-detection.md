@@ -133,6 +133,8 @@ The notice gives the customer two actions:
 - Join a visible matching ticket as a viewer. This adds the customer to the
   matching ticket using the same collaborator model and records
   `ticket_collaborator_added` and `similar_request_joined` audit events.
+  If audit recording fails, the target ticket is restored and the join must be
+  retried rather than leaving a silent collaborator grant.
 - Continue with the submitted request. This is advisory and is always allowed.
 
 Continuing does not need a backend state transition because submission has
@@ -163,6 +165,10 @@ Managers can link a queue ticket to a similar open ticket. The action:
 - appends `related_ticket_linked` timeline entries to both tickets;
 - records a `tickets_linked` audit event;
 - returns the refreshed similar-request list.
+
+If the `tickets_linked` audit event fails after either ticket has been saved,
+both tickets are restored to their pre-link state. Linking must be durable and
+audited together.
 
 The link is represented by reciprocal ticket IDs on each ticket record, not by
 free-text timeline parsing.
