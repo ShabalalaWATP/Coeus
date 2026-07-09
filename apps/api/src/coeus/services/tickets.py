@@ -1,10 +1,11 @@
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
-from coeus.domain.agent_names import CUSTOMER_CHATBOT_AGENT, RFI_SEARCH_AGENT
+from coeus.domain.agent_names import RFI_SEARCH_AGENT
 from coeus.domain.auth import UserAccount
 from coeus.domain.enums import TicketState
 from coeus.domain.state_machine import can_transition
@@ -13,14 +14,11 @@ from coeus.domain.tickets import (
     AgentRunStatus,
     AttachmentMetadata,
     IntakeDetails,
-    MessageAuthor,
     TicketRecord,
 )
 from coeus.repositories.tickets import InMemoryTicketRepository
 from coeus.services.audit import AuditLog
 from coeus.services.intake import (
-    IntakeAssistantProvider,
-    IntakeExtractionService,
     RequirementCompletenessService,
     merge_intake,
 )
@@ -30,9 +28,9 @@ from coeus.services.ticket_records import (
     is_owner,
     timeline,
 )
-from coeus.services.ticket_records import (
-    message as message_record,
-)
+
+if TYPE_CHECKING:
+    from coeus.services.ticket_conversations import ConversationService
 
 
 @dataclass(frozen=True)
@@ -97,7 +95,7 @@ class TicketService:
         ticket = self.get_editable_ticket(actor, ticket_id)
         intake = merge_intake(ticket.intake, updates)
         intake = self._completeness.with_completeness(intake)
-        state = self._state_for_intake(ticket.state, intake)
+        state = self.state_for_intake(ticket.state, intake)
         updated = self._save(
             replace(
                 ticket,
@@ -234,19 +232,7 @@ class TicketService:
     def save_system_update(self, ticket: TicketRecord) -> TicketRecord:
         return self._save(ticket)
 
-    def _save(self, ticket: TicketRecord) -> TicketRecord:
-        updated = replace(ticket, updated_at=datetime.now(UTC))
-        self._repository.save(updated)
-        return updated
-
-    def _can_read(self, actor: UserAccount, ticket: TicketRecord) -> bool:
-        return (
-            is_owner(actor, ticket)
-            or is_collaborator(actor, ticket)
-            or Permission.TICKET_READ_ALL in actor.permissions
-        )
-
-    def _state_for_intake(self, current: TicketState, intake: IntakeDetails) -> TicketState:
+    def state_for_intake(self, current: TicketState, intake: IntakeDetails) -> TicketState:
         target = (
             TicketState.DRAFT_INTAKE
             if self._completeness.is_complete_enough(intake)
@@ -258,86 +244,14 @@ class TicketService:
             return target
         return current
 
-
-class ConversationService:
-    def __init__(
-        self,
-        repository: InMemoryTicketRepository,
-        tickets: TicketService,
-        extractor: IntakeExtractionService,
-        llm_provider: IntakeAssistantProvider,
-        audit_log: AuditLog,
-    ) -> None:
-        self._repository = repository
-        self._tickets = tickets
-        self._extractor = extractor
-        self._llm_provider = llm_provider
-        self._audit_log = audit_log
-
-    def send_message(
-        self, actor: UserAccount, message: str, ticket_id: UUID | None = None
-    ) -> TicketRecord:
-        ticket = (
-            self._tickets.get_editable_ticket(actor, ticket_id)
-            if ticket_id
-            else self._create(actor)
-        )
-        user_message = message_record(ticket.ticket_id, MessageAuthor.USER, message)
-        safety_flags = self._extractor.safety_flags_for(message)
-        # Flagged messages are never extracted, so injected text cannot land
-        # in intake fields; the message, flags and refusal are still recorded.
-        intake = ticket.intake if safety_flags else self._extractor.extract(message, ticket.intake)
-        assistant_message = message_record(
-            ticket.ticket_id,
-            MessageAuthor.ASSISTANT,
-            self._llm_provider.build_assistant_message(intake, safety_flags),
-        )
-        agent_run = AgentRun(
-            run_id=uuid4(),
-            ticket_id=ticket.ticket_id,
-            agent_name=CUSTOMER_CHATBOT_AGENT,
-            status=AgentRunStatus.COMPLETED,
-            summary=(
-                "Message flagged; intake extraction skipped."
-                if safety_flags
-                else "Structured intake fields extracted from user chat."
-            ),
-            safety_flags=safety_flags,
-            created_at=datetime.now(UTC),
-        )
-        state = self._tickets._state_for_intake(ticket.state, intake)
-        updated = self._tickets._save(
-            replace(
-                ticket,
-                state=state,
-                intake=intake,
-                messages=(*ticket.messages, user_message, assistant_message),
-                agent_runs=(*ticket.agent_runs, agent_run),
-                timeline=(
-                    *ticket.timeline,
-                    timeline(
-                        ticket.ticket_id, actor.user_id, "chat_message", "User chat received."
-                    ),
-                ),
-            )
-        )
-        self._audit_log.record(
-            "ticket_chat_message_received",
-            actor_user_id=str(actor.user_id),
-            metadata={"ticket_id": str(ticket.ticket_id)},
-        )
+    def _save(self, ticket: TicketRecord) -> TicketRecord:
+        updated = replace(ticket, updated_at=datetime.now(UTC))
+        self._repository.save(updated)
         return updated
 
-    def _create(self, actor: UserAccount) -> TicketRecord:
-        ticket_id = uuid4()
-        ticket = TicketRecord(
-            ticket_id=ticket_id,
-            reference=self._repository.next_reference(),
-            requester_user_id=actor.user_id,
-            state=TicketState.DRAFT_INTAKE,
-            intake=IntakeDetails(),
-            timeline=(
-                timeline(ticket_id, actor.user_id, "ticket_created", "Draft intake started."),
-            ),
+    def _can_read(self, actor: UserAccount, ticket: TicketRecord) -> bool:
+        return (
+            is_owner(actor, ticket)
+            or is_collaborator(actor, ticket)
+            or Permission.TICKET_READ_ALL in actor.permissions
         )
-        return ticket

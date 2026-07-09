@@ -7,7 +7,8 @@ from coeus.repositories.tickets import InMemoryTicketRepository
 from coeus.services.audit import AuditLog
 from coeus.services.intake import IntakeExtractionService, RequirementCompletenessService
 from coeus.services.passwords import PasswordHasher
-from coeus.services.tickets import ConversationService, TicketService
+from coeus.services.ticket_conversations import ConversationService
+from coeus.services.tickets import TicketService
 
 
 class FailingAssistantProvider:
