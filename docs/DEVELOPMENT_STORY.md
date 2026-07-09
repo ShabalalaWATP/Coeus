@@ -336,7 +336,7 @@ Sprint 1 to Sprint 13 entries live in
 ## 2026-07-09 Project workspace retirement
 
 - Removed the Projects workspace feature from backend routes, services, seed
-  data, frontend navigation, admin shortcuts and client methods. Product/store
-  `projectId` remains optional catalogue metadata only.
+  data, frontend navigation, admin shortcuts, client methods and Store
+  `projectId` metadata/filtering.
 - Added ADR 0018 and refreshed the ACG/product access threat model and Sprint 3
   spec to record the retirement decision.

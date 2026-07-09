@@ -21,7 +21,6 @@ const visibleProduct = {
   handlingCaveats: ["MOCK DATA ONLY"],
   tags: ["regional"],
   acgIds: ["acg-alpha"],
-  projectId: "project-northstar",
   status: "published",
   timePeriodStart: null,
   timePeriodEnd: null,

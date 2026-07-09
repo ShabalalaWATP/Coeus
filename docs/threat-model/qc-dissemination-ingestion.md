@@ -22,7 +22,7 @@ feedback request creation.
 | Non-QC user approves or disseminates a product. | QC approval, rejection, product creation and dissemination each check explicit permissions. |
 | Product is released without complete QC checks. | `ReleaseCheckService` requires all nine checklist keys to pass before approval. |
 | Product is disseminated but the requester cannot read it. | `DisseminationService` calls Store visibility checks for the requester before recording dissemination. |
-| Product is indexed with incomplete or inactive ACG metadata. | Release metadata requires at least one active ACG, then merges QC-confirmed ACGs with project ACGs. |
+| Product is indexed with incomplete or inactive ACG metadata. | Release metadata requires at least one active ACG and accepts only QC-confirmed active ACGs the reviewer is allowed to use. |
 | Rejection loses reviewer rationale. | Rejection creates an immutable ticket-level QC decision and timeline event before moving to `REWORK_REQUIRED`. |
 | Draft-only product appears in Store search. | Only approval writes a published Store product. Drafts remain ticket-local before QC approval. |
 | QC approval or rejection is saved even though the audit event failed. | Approval and rejection restore the original ticket state if audit recording fails. Approval also discards the ingested Store product and local placeholder asset bytes so the operation can be retried cleanly. |

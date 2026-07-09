@@ -50,7 +50,6 @@ class StoreProductCreateRequest(BaseModel):
         validation_alias="semanticLabels",
     )
     acg_ids: list[UUID] = Field(default_factory=list, validation_alias="acgIds")
-    project_id: UUID | None = Field(default=None, validation_alias="projectId")
     status: str = "published"
     time_period_start: str | None = Field(
         default=None,
@@ -108,7 +107,6 @@ class StoreProductResponse(BaseModel):
     tags: list[str]
     semantic_labels: list[str] = Field(serialization_alias="semanticLabels")
     acg_ids: list[UUID] = Field(serialization_alias="acgIds")
-    project_id: UUID | None = Field(serialization_alias="projectId")
     status: str
     time_period_start: str | None = Field(serialization_alias="timePeriodStart")
     time_period_end: str | None = Field(serialization_alias="timePeriodEnd")

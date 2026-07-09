@@ -53,7 +53,6 @@ async def search_products(
         str | None, Query(alias="sourceType", max_length=SEARCH_FIELD_MAX_LENGTH)
     ] = None,
     status: ProductStatus | None = None,
-    project_id: Annotated[UUID | None, Query(alias="projectId")] = None,
     date_from: Annotated[
         str | None, Query(alias="dateFrom", pattern=r"^\d{4}-\d{2}-\d{2}$")
     ] = None,
@@ -65,18 +64,17 @@ async def search_products(
     result = store_services.search.search(
         authenticated.user,
         StoreSearchFilters(
-            query,
-            product_type,
-            region,
-            tag,
-            source_type,
-            status,
-            project_id,
-            date_from,
-            date_to,
-            owner_team,
-            page,
-            page_size,
+            query=query,
+            product_type=product_type,
+            region=region,
+            tag=tag,
+            source_type=source_type,
+            status=status,
+            date_from=date_from,
+            date_to=date_to,
+            owner_team=owner_team,
+            page=page,
+            page_size=page_size,
         ),
     )
     return StoreSearchResponse(
@@ -217,7 +215,6 @@ def _to_product_draft(payload: StoreProductCreateRequest) -> StoreProductDraft:
         tags=frozenset(payload.tags),
         semantic_labels=frozenset(payload.semantic_labels),
         acg_ids=frozenset(payload.acg_ids),
-        project_id=payload.project_id,
         status=status,
         time_period_start=payload.time_period_start,
         time_period_end=payload.time_period_end,
@@ -276,7 +273,6 @@ def _product_payload(product: StoreProduct) -> dict[str, object]:
         "tags": sorted(metadata.tags),
         "semantic_labels": sorted(effective_semantic_labels(product)),
         "acg_ids": list(metadata.acg_ids),
-        "project_id": metadata.project_id,
         "status": metadata.status.value,
         "time_period_start": metadata.time_period_start,
         "time_period_end": metadata.time_period_end,

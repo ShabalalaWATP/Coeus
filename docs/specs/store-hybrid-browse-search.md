@@ -19,10 +19,9 @@ Store search has two paths:
   hits, scores and match reasons.
 
 The free-text path must continue to apply `product_type`, `source_type`,
-`status`, `project_id`, `owner_team`, `region`, `tag` and coverage date filters
-before ranking. The query itself narrows the result set, but structured facets
-are computed from the access-scoped set after only structured filters are
-applied.
+`status`, `owner_team`, `region`, `tag` and coverage date filters before
+ranking. The query itself narrows the result set, but structured facets are
+computed from the access-scoped set after only structured filters are applied.
 
 ## Pagination And Totals
 

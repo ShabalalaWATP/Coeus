@@ -56,7 +56,6 @@ const linkedProduct = {
   handlingCaveats: ["MOCK DATA ONLY"],
   tags: ["mock"],
   acgIds: ["acg-1"],
-  projectId: null,
   status: "draft",
   timePeriodStart: null,
   timePeriodEnd: null,

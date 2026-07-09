@@ -102,7 +102,6 @@ coeus/
 | Intelligence Product | A stored report, assessment, imagery product, SIGINT-style mock product, geospatial layer, structured dataset, or finished output. |
 | Intelligence Store | The searchable, access-controlled repository of intelligence products and supporting assets. |
 | ACG | Access Control Group. Product visibility is governed by ACG membership as well as RBAC. |
-| Project Workspace | A controlled work area linking the customer, ticket, tasks, products, participants, ACGs, milestones, and project plan. |
 | Orchestration Agent | The agent that manages intake, routing, agent coordination, and customer-facing status. |
 | Existing Product | A product already present in the Intelligence Store before the current RFI was raised. |
 | New Product | A product produced by analysts during the workflow and automatically ingested into the Intelligence Store after QC approval. |
@@ -249,20 +248,19 @@ system:configure
 ### 7.3 Access Control Groups
 
 RBAC answers: **what can this user do?**  
-ACGs answer: **what products and projects can this user see?**
+ACGs answer: **what products can this user see?**
 
 Rules:
 
 1. Default deny.
 2. A user must be active.
 3. The user must have a role permission that allows the action.
-4. The user must be a member of at least one ACG attached to the product, project, or ticket unless the user has a specific administrative override permission.
+4. The user must be a member of at least one ACG attached to the product or ticket unless the user has a specific administrative override permission.
 5. The product classification level must be less than or equal to the user's clearance level.
 6. Product caveats and releasability rules must pass.
 7. Draft products must be visible only to assigned analysts, relevant managers, QC, and administrators.
 8. QC-approved products become searchable, but search results must still be filtered by ACG and clearance.
-9. Users can be explicitly linked to Project Workspaces. Product visibility inside a project is still controlled by ACG membership.
-10. ACG membership changes must be audited.
+9. ACG membership changes must be audited.
 
 Example access check:
 
@@ -353,7 +351,7 @@ Use rich metadata from the start. Search quality will depend on this.
 | Source and collection | `source_type`, `collection_method`, `source_reliability`, `information_credibility`, `collector_team`, `sensor_type`, `source_ids`. |
 | Entities | `people`, `organisations`, `locations`, `equipment`, `facilities`, `networks`, `keywords`. Use synthetic entities in seed data. |
 | Analytical | `themes`, `threat_categories`, `confidence`, `assessment_type`, `key_judgements`, `assumptions`, `intelligence_gaps`. |
-| Workflow | `linked_ticket_ids`, `linked_project_ids`, `linked_task_ids`, `qc_review_id`, `dissemination_ids`, `feedback_ids`. |
+| Workflow | `linked_ticket_ids`, `linked_task_ids`, `qc_review_id`, `dissemination_ids`, `feedback_ids`. |
 | Assets | `asset_count`, `primary_asset_id`, `asset_types`, `file_hashes`, `mime_types`, `object_storage_keys`. |
 | Search | `tags`, `aliases`, `full_text`, `embedding_model`, `embedding`, `search_boost`, `last_indexed_at`. |
 | Quality | `qc_status`, `qc_reviewer_id`, `release_manager_id`, `review_notes`, `expiry_review_date`, `superseded_by_product_id`. |
@@ -370,31 +368,16 @@ The Intelligence Store must provide:
 - Date and geography filtering.
 - Product type filtering.
 - Team and source filtering.
-- Linked ticket and project search.
+- Linked ticket search.
 - Search explanations for RFI Search Agent results.
 - Search result snippets with no leakage of unauthorised content.
 
 ### 9.6 Project Workspaces
 
-Every RFI can be linked to a Project Workspace.
-
-A Project Workspace contains:
-
-- Project name and reference.
-- Customer requester.
-- Linked users and their project roles.
-- Linked ACGs.
-- Linked tickets.
-- Linked products.
-- Assigned teams.
-- Milestones.
-- Work packages.
-- Comments.
-- Dissemination records.
-- Feedback records.
-- Project plan summary.
-
-Users must be explicitly included in a project plan before seeing project-level product collections. Inclusion does not bypass ACG checks.
+Project Workspaces are retired. Requests, tickets, team queues, analyst work,
+QC, dissemination and Store product access are handled without a separate
+Projects feature. Product visibility remains controlled by RBAC, clearance,
+status and active ACG membership.
 
 ## 10. Mock product seed strategy
 
@@ -600,7 +583,7 @@ Use these as the first backlog. Each story should become one or more tickets wit
 | STORE-005 | Product creator | As a product creator, I want to attach ACGs so that product access is controlled. | Product cannot be published with zero ACGs. |
 | STORE-006 | Product creator | As a product creator, I want metadata suggestions so that tagging is faster. | Metadata agent suggests tags but human confirms before save. |
 | STORE-007 | User | As a user, I want to search permitted products so that I can self-serve knowledge. | User sees only permitted products and safe previews. |
-| STORE-008 | User | As a user, I want to filter products by type, date, region, tag and project so that I can find relevant products quickly. | Search filters work and update result counts after access filtering. |
+| STORE-008 | User | As a user, I want to filter products by type, date, region and tag so that I can find relevant products quickly. | Search filters work and update result counts after access filtering. |
 | STORE-009 | Analyst | As an analyst, I want to link store products to my task so that evidence and context are traceable. | Analyst can attach permitted products to task notes. |
 | STORE-010 | QC Manager | As a QC manager, I want approved products automatically stored so that finished outputs are reusable. | QC approval triggers product creation, asset storage, embeddings and indexing. |
 | STORE-011 | Product owner | As a product owner, I want to supersede old products so that users find the latest version. | Product can link to replacement and search can prioritise latest. |
@@ -718,7 +701,6 @@ apps/web/src/
     chatbot/
     tickets/
     intelligence-store/
-    projects/
     dashboards/
     admin/
     rfa/
@@ -874,7 +856,7 @@ Dashboard:
 - Closed RFIs.
 - Current stage.
 - Required user action.
-- Linked project.
+- Linked products.
 - Timeline.
 - Product offers.
 - Feedback status.
@@ -885,7 +867,7 @@ Ticket detail:
 - Requirement summary.
 - Chat history.
 - Extracted fields.
-- Linked Project Workspace.
+- Linked ticket context and plan updates.
 - Offered products.
 - Disseminated products.
 - Feedback panel.
@@ -912,7 +894,7 @@ Requirements:
 
 - Advanced search page.
 - Full-text search input.
-- Filters for product type, region, time period, tags, source type, team, ACG, project and status.
+- Filters for product type, region, time period, tags, source type, team, ACG and status.
 - Product detail page.
 - Metadata panel.
 - Asset list.
@@ -1037,7 +1019,7 @@ Requirements:
 
 - Assigned tasks.
 - Requirement context.
-- Project Workspace context.
+- Ticket and routing-plan context.
 - Linked products.
 - Search permitted store products.
 - Notes.
@@ -1201,7 +1183,6 @@ apps/api/src/coeus/
       users.py
       roles.py
       acgs.py
-      projects.py
       tickets.py
       chat.py
       rfi_search.py
@@ -1276,7 +1257,7 @@ Tests:
 - RBAC matrix tests.
 - IDOR tests.
 
-### Backend phase 3: ACG and project access model
+### Backend phase 3: ACG and product access model
 
 Tables:
 
@@ -1321,9 +1302,6 @@ teams
 team_memberships
 access_control_groups
 access_control_group_memberships
-projects
-project_memberships
-project_plan_items
 tickets
 ticket_intake_fields
 ticket_messages
@@ -1342,7 +1320,6 @@ intelligence_product_entities
 intelligence_product_geo
 intelligence_product_versions
 product_acg_links
-project_product_links
 rfa_capability_reviews
 cm_capability_reviews
 analyst_tasks
@@ -1362,7 +1339,6 @@ Ticket fields:
 id
 reference
 created_by_user_id
-project_id
 title
 description
 state
@@ -1602,7 +1578,7 @@ Routing rules:
 - Use CM when RFA cannot satisfy and CM can.
 - Allow manager override with reason.
 - Ask user for clarification when required.
-- Create or update Project Workspace before analyst assignment.
+- Record ticket-level routing plan updates before analyst assignment.
 
 Tests:
 
@@ -1671,7 +1647,7 @@ Requirements:
 
 - QC approval cannot be performed by the analyst who drafted the product.
 - Approval triggers automatic Intelligence Store ingestion.
-- Approval applies product ACGs from project and QC-confirmed access metadata.
+- Approval applies QC-confirmed active product ACG metadata.
 - Embedding and search indexing run asynchronously.
 - Dissemination creates controlled user-visible product access.
 - Feedback request is created.
@@ -2373,14 +2349,13 @@ Deliver:
 - Auth audit.
 - Branch protection documentation.
 
-### Sprint 3: ACGs and Project Workspaces
+### Sprint 3: ACGs and Product Access
 
 Deliver:
 
 - ACG model.
 - ACG admin UI.
-- Product and project access policy.
-- Project Workspace basics.
+- Product access policy.
 - Access diagnostics.
 - ACG tests.
 
@@ -2518,8 +2493,8 @@ The MVP is done when:
 - A user can log in securely.
 - A user can raise an RFI through the Coeus chatbot.
 - The chatbot extracts and validates structured requirement details.
-- A Project Workspace can link the user, ticket, teams, plan and products.
-- ACGs control project and product visibility.
+- Tickets can link the user, teams, plan updates and products without a separate Projects feature.
+- ACGs control product visibility.
 - The Intelligence Store can hold existing products with rich metadata and assets.
 - Administrators, RFA Team Members and Collection Team Members can add existing products, subject to permissions.
 - Seed scripts create mock PDF, DOCX, image, geographic, CSV and JSON products.

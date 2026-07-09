@@ -110,7 +110,6 @@ def _search_params(filters: StoreSearchFilters, scope: StoreVisibilityScope) -> 
         "tag": _blank_to_none(filters.tag),
         "source_type": filters.source_type,
         "status": filters.status.value if filters.status else None,
-        "project_id": str(filters.project_id) if filters.project_id else None,
         "date_from": filters.date_from,
         "date_to": filters.date_to,
         "owner_team": _blank_to_none(filters.owner_team),

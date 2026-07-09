@@ -27,7 +27,6 @@ class StoreProductMetadata:
     handling_caveats: frozenset[str]
     tags: frozenset[str]
     acg_ids: frozenset[UUID]
-    project_id: UUID | None
     status: ProductStatus
     time_period_start: str | None
     time_period_end: str | None
@@ -81,7 +80,6 @@ class StoreSearchFilters:
     tag: str | None = None
     source_type: str | None = None
     status: ProductStatus | None = None
-    project_id: UUID | None = None
     date_from: str | None = None
     date_to: str | None = None
     owner_team: str | None = None

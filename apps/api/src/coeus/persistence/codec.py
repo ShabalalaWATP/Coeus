@@ -179,6 +179,9 @@ def decode_value(value: Any) -> Any:
         return enum_type(value["value"])
     if "__type__" in value:
         data_type = _TYPE_REGISTRY[value["__type__"]]
-        decoded = {key: decode_value(item) for key, item in value["fields"].items()}
+        field_names = {field.name for field in fields(data_type)}
+        decoded = {
+            key: decode_value(item) for key, item in value["fields"].items() if key in field_names
+        }
         return data_type(**decoded)
     return {str(key): decode_value(item) for key, item in value.items()}

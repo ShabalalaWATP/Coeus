@@ -56,7 +56,6 @@ class StoreProductDraft:
     handling_caveats: frozenset[str]
     tags: frozenset[str]
     acg_ids: frozenset[UUID]
-    project_id: UUID | None
     status: ProductStatus
     time_period_start: str | None
     time_period_end: str | None
@@ -147,7 +146,6 @@ class StoreIngestionService:
                 handling_caveats=draft.handling_caveats,
                 tags=draft.tags,
                 acg_ids=draft.acg_ids,
-                project_id=draft.project_id,
                 status=draft.status,
                 time_period_start=draft.time_period_start,
                 time_period_end=draft.time_period_end,

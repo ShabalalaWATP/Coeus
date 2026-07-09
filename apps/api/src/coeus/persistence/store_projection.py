@@ -264,7 +264,6 @@ def _product_params(
         "tags": sorted(metadata.tags),
         "semantic_labels": sorted(effective_semantic_labels(product)),
         "acg_ids": [str(acg_id) for acg_id in sorted(metadata.acg_ids, key=str)],
-        "project_id": str(metadata.project_id) if metadata.project_id else None,
         "status": metadata.status.value,
         "time_period_start": metadata.time_period_start,
         "time_period_end": metadata.time_period_end,

@@ -21,8 +21,8 @@ Retire the project workspace feature:
   shortcuts.
 - Remove project workspace domain records, seed data, services and response
   schemas.
-- Keep optional Store `projectId` metadata as catalogue metadata for imported
-  records and search filters.
+- Remove Store `projectId` metadata and search filters so the retired Projects
+  concept does not remain in the product contract.
 - Keep retired project permission enum strings only so older local state
   snapshots can decode safely.
 - Keep ticket-level routing plan updates as workflow artefacts, not workspace
@@ -36,5 +36,8 @@ Retire the project workspace feature:
   status, draft rules and active ACG overlap.
 - Existing local state files that still contain `projects` payloads are ignored
   by the access snapshot loader.
+- Existing local Store snapshots that contain product `project_id` metadata are
+  decoded with that field ignored; local PostgreSQL migrations drop the old
+  Store column.
 - Future work can reintroduce a planning workspace only with a new spec, ADR,
   tests and clear user workflow.

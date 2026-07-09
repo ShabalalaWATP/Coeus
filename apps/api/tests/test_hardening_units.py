@@ -81,7 +81,6 @@ def _metadata(start: str | None, end: str | None) -> StoreProductMetadata:
         handling_caveats=frozenset({"MOCK DATA ONLY"}),
         tags=frozenset(),
         acg_ids=frozenset(),
-        project_id=None,
         status=ProductStatus.PUBLISHED,
         time_period_start=start,
         time_period_end=end,

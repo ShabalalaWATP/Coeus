@@ -24,7 +24,6 @@ def store_schema_statements() -> Sequence[str]:
             tags text[] NOT NULL DEFAULT '{}',
             semantic_labels text[] NOT NULL DEFAULT '{}',
             acg_ids uuid[] NOT NULL DEFAULT '{}',
-            project_id uuid,
             status text NOT NULL,
             time_period_start date,
             time_period_end date,
@@ -41,6 +40,10 @@ def store_schema_statements() -> Sequence[str]:
         """
         ALTER TABLE intelligence_store_products
             ADD COLUMN IF NOT EXISTS embedding_source_hash text
+        """,
+        """
+        ALTER TABLE intelligence_store_products
+            DROP COLUMN IF EXISTS project_id
         """,
         """
         CREATE TABLE IF NOT EXISTS intelligence_store_assets (

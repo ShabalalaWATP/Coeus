@@ -141,7 +141,7 @@ async def test_qc_approval_rejects_acg_outside_actor_scope() -> None:
 
 
 @pytest.mark.asyncio
-async def test_qc_ingestion_does_not_attach_project_metadata() -> None:
+async def test_qc_ingestion_uses_only_qc_confirmed_access_metadata() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     acg_id = _acg_id(app, "ACG-EU-CYBER")
 
@@ -161,7 +161,6 @@ async def test_qc_ingestion_does_not_attach_project_metadata() -> None:
     product = app.state.store_services.repository.get_product(UUID(product_id))
     assert product is not None
     assert approved.json()["ingestedProduct"]["acgIds"] == [acg_id]
-    assert product.metadata.project_id is None
     assert product.metadata.acg_ids == frozenset({UUID(acg_id)})
 
 

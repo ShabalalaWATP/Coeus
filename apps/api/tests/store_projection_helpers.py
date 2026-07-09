@@ -232,7 +232,6 @@ def _product_row(product: StoreProduct) -> dict[str, Any]:
         "tags": sorted(metadata.tags),
         "semantic_labels": sorted(metadata.semantic_labels),
         "acg_ids": sorted(metadata.acg_ids, key=str),
-        "project_id": metadata.project_id,
         "status": metadata.status.value,
         "time_period_start": metadata.time_period_start,
         "time_period_end": metadata.time_period_end,

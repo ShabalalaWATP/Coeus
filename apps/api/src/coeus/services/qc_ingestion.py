@@ -97,7 +97,6 @@ class ProductAutoIngestionService:
                 tags=frozenset({"mock", "qc-approved", ticket.reference.casefold()}),
                 semantic_labels=semantic_labels,
                 acg_ids=approval.acg_ids,
-                project_id=None,
                 # Held as draft until the owning manager performs final release.
                 status=ProductStatus.DRAFT,
                 time_period_start=iso_date_or_none(ticket.intake.time_period_start),
