@@ -25,9 +25,4 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute(
-        """
-        ALTER TABLE intelligence_store_products
-            ADD COLUMN IF NOT EXISTS project_id uuid
-        """
-    )
+    """Keep the retired workspace column removed on downgrade."""

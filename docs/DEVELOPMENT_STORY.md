@@ -344,7 +344,7 @@ Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVEL
   workspace metadata/filtering.
 - Removed the remaining ticket-level suggested workspace field and renamed
   routing plan records to workflow plan updates.
-- Removed the remaining runtime shims for retired workspace state. Older local
-  snapshots that contain those fields should be reset before use.
+- Removed active runtime shims for retired workspace state. The persistence
+  decoder now strips older retired workspace payloads during local startup.
 - Added ADR 0018 and refreshed the ACG/product access threat model and Sprint 3
   spec to record the retirement decision.

@@ -50,3 +50,14 @@ def test_retired_workspace_api_route_is_not_registered() -> None:
 
     assert "/api/v1/projects" not in paths
     assert not any(path.startswith("/api/v1/projects/") for path in paths)
+
+
+def test_retired_workspace_schema_migration_is_removal_only() -> None:
+    migration = next(
+        (ROOT / "apps" / "api" / "src" / "coeus" / "db" / "migrations" / "versions").glob(
+            "20260709_0004_*.py"
+        )
+    )
+    text = migration.read_text(encoding="utf-8")
+
+    assert "ADD COLUMN IF NOT EXISTS project_id" not in text
