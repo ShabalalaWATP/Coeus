@@ -102,10 +102,21 @@ class SessionRepository:
         self._sessions.pop(session_id, None)
         self._persist()
 
-    def delete_for_user(self, user_id: UUID) -> None:
-        for session_id, session in list(self._sessions.items()):
-            if session.user_id == user_id:
-                self.delete(session_id)
+    def delete_for_user(self, user_id: UUID) -> tuple[SessionRecord, ...]:
+        deleted = tuple(
+            session for session in self._sessions.values() if session.user_id == user_id
+        )
+        if not deleted:
+            return ()
+        for session in deleted:
+            self._sessions.pop(session.session_id, None)
+        try:
+            self._persist()
+        except Exception:
+            for session in deleted:
+                self._sessions[session.session_id] = session
+            raise
+        return deleted
 
     def _restore_or_persist(self) -> None:
         if self._state_store is None:
