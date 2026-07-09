@@ -58,6 +58,9 @@ async def test_login_sets_secure_session_cookie_and_returns_current_user() -> No
     assert "samesite=strict" in response.headers["set-cookie"].lower()
     assert response.json()["user"]["defaultRoute"] == "/admin/overview"
     assert "system:configure" in response.json()["user"]["permissions"]
+    assert not any(
+        permission.startswith("project:") for permission in response.json()["user"]["permissions"]
+    )
     assert response.json()["csrfToken"]
     assert me_response.status_code == 200
     assert me_response.json()["user"]["username"] == "admin@example.test"
