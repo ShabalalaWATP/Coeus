@@ -1,3 +1,5 @@
+from uuid import UUID
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
@@ -197,3 +199,60 @@ async def test_collaborator_mutations_require_csrf() -> None:
         )
         assert response.status_code == 403
         assert response.json()["error"]["code"] == "csrf_failed"
+
+
+@pytest.mark.asyncio
+async def test_add_collaborator_audit_failure_rolls_back_ticket(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        owner_csrf = await _login(client, "user@example.test")
+        ticket_id = await _create_ticket(client, owner_csrf)
+        original = _stored_ticket(app, ticket_id)
+        monkeypatch.setattr(app.state.ticket_collaborator_service._audit_log, "record", _fail_audit)
+
+        with pytest.raises(RuntimeError, match="audit unavailable"):
+            await _tag(client, owner_csrf, ticket_id, "colleague@example.test", "editor")
+
+    ticket = _stored_ticket(app, ticket_id)
+    assert ticket.collaborators == original.collaborators
+    assert ticket.timeline == original.timeline
+
+
+@pytest.mark.asyncio
+async def test_remove_collaborator_audit_failure_rolls_back_ticket(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        owner_csrf = await _login(client, "user@example.test")
+        ticket_id = await _create_ticket(client, owner_csrf)
+        tagged = await _tag(client, owner_csrf, ticket_id, "colleague@example.test", "viewer")
+        collaborator_id = tagged.json()["collaborators"][0]["userId"]
+        original = _stored_ticket(app, ticket_id)
+        monkeypatch.setattr(app.state.ticket_collaborator_service._audit_log, "record", _fail_audit)
+
+        with pytest.raises(RuntimeError, match="audit unavailable"):
+            await client.delete(
+                f"/api/v1/tickets/{ticket_id}/collaborators/{collaborator_id}",
+                headers={"X-CSRF-Token": owner_csrf},
+            )
+
+    ticket = _stored_ticket(app, ticket_id)
+    assert ticket.collaborators == original.collaborators
+    assert ticket.timeline == original.timeline
+
+
+def _fail_audit(*_args: object, **_kwargs: object) -> None:
+    raise RuntimeError("audit unavailable")
+
+
+def _stored_ticket(app: object, ticket_id: str):
+    ticket = app.state.ticket_services.tickets._repository.get(UUID(ticket_id))
+    assert ticket is not None
+    return ticket

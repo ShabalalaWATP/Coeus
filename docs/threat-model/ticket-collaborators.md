@@ -21,6 +21,9 @@ Scope: the user directory endpoint and collaborator management on tickets.
   this closed system and keeps tagging deterministic.
 - Repudiation: tagging and untagging write timeline entries and audit
   events that record the acting user and target.
+- Unaudited access changes: if audit recording fails after a collaborator
+  add or remove, the original ticket record is restored so access grants
+  and revocations do not silently diverge from the audit trail.
 - CSRF: all collaborator mutations require the session-bound CSRF header.
 
 ## Residual risks

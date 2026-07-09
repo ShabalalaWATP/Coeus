@@ -22,6 +22,8 @@ users can either edit the request alongside them or follow it read-only.
   information, still subject to their own permissions (for example chat
   requires `chat:use`). Viewers can only read.
 - Tagging and untagging create timeline entries and audit events.
+- If collaborator add or remove audit recording fails after the ticket is
+  saved, the original ticket record is restored and the caller must retry.
 
 ## Out of scope
 
