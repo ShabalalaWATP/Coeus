@@ -112,34 +112,32 @@ class RoutingService:
         )
         target_state = state_for_recommendation(recommendation)
         self._ensure_transition(ticket.state, target_state)
-        updated = self._tickets.tickets.save_system_update(
-            append_handoff(
-                replace(
-                    ticket,
-                    state=target_state,
-                    rfa_reviews=(*ticket.rfa_reviews, rfa_review),
-                    cm_reviews=(*ticket.cm_reviews, cm_review),
-                    route_recommendations=(*ticket.route_recommendations, recommendation),
-                    agent_runs=(
-                        *ticket.agent_runs,
-                        *review_agent_runs(ticket.ticket_id, rfa_review, cm_review, recommendation),
-                    ),
-                    project_plan_updates=(
-                        *ticket.project_plan_updates,
-                        project_update(ticket.ticket_id, target_state, recommendation),
-                    ),
-                    timeline=(
-                        *ticket.timeline,
-                        timeline(
-                            ticket.ticket_id,
-                            actor.user_id,
-                            "route_reviews_completed",
-                            recommendation.reasoning_summary,
-                        ),
+        proposed = append_handoff(
+            replace(
+                ticket,
+                state=target_state,
+                rfa_reviews=(*ticket.rfa_reviews, rfa_review),
+                cm_reviews=(*ticket.cm_reviews, cm_review),
+                route_recommendations=(*ticket.route_recommendations, recommendation),
+                agent_runs=(
+                    *ticket.agent_runs,
+                    *review_agent_runs(ticket.ticket_id, rfa_review, cm_review, recommendation),
+                ),
+                project_plan_updates=(
+                    *ticket.project_plan_updates,
+                    project_update(ticket.ticket_id, target_state, recommendation),
+                ),
+                timeline=(
+                    *ticket.timeline,
+                    timeline(
+                        ticket.ticket_id,
+                        actor.user_id,
+                        "route_reviews_completed",
+                        recommendation.reasoning_summary,
                     ),
                 ),
-                handoff,
-            )
+            ),
+            handoff,
         )
         metadata = {
             "ticket_id": str(ticket.ticket_id),
@@ -149,8 +147,9 @@ class RoutingService:
             metadata["rfa_team"] = rfa_review.suggested_team_name
         if cm_review.suggested_collection_team_name:
             metadata["cm_team"] = cm_review.suggested_collection_team_name
-        self._audit_log.record("route_reviews_completed", str(actor.user_id), metadata)
-        return updated
+        return self._save_with_audit(
+            ticket, proposed, "route_reviews_completed", actor.user_id, metadata
+        )
 
     def approve(
         self,
@@ -178,13 +177,9 @@ class RoutingService:
             override_reason,
         )
         event_type = "manager_override" if override_reason else "route_approved"
-        updated = self._save_decision(ticket, manager_decision, TicketState.ANALYST_ASSIGNMENT)
-        self._audit_log.record(
-            event_type,
-            str(actor.user_id),
-            {"ticket_id": str(ticket.ticket_id), "route": route.value},
+        return self._save_decision(
+            ticket, manager_decision, TicketState.ANALYST_ASSIGNMENT, event_type
         )
-        return updated
 
     def reject(
         self,
@@ -206,13 +201,7 @@ class RoutingService:
             reason,
             None,
         )
-        updated = self._save_decision(ticket, manager_decision, target_state)
-        self._audit_log.record(
-            "route_rejected",
-            str(actor.user_id),
-            {"ticket_id": str(ticket.ticket_id), "route": route.value},
-        )
-        return updated
+        return self._save_decision(ticket, manager_decision, target_state, "route_rejected")
 
     def request_clarification(
         self,
@@ -237,28 +226,25 @@ class RoutingService:
             reason,
             None,
         )
-        updated = self._tickets.tickets.save_system_update(
-            append_handoff(
-                replace(
-                    ticket,
-                    state=TicketState.INFO_REQUIRED,
-                    manager_decisions=(*ticket.manager_decisions, manager_decision),
-                    timeline=(
-                        *ticket.timeline,
-                        timeline(
-                            ticket.ticket_id, actor.user_id, "clarification_requested", reason
-                        ),
-                    ),
+        proposed = append_handoff(
+            replace(
+                ticket,
+                state=TicketState.INFO_REQUIRED,
+                manager_decisions=(*ticket.manager_decisions, manager_decision),
+                timeline=(
+                    *ticket.timeline,
+                    timeline(ticket.ticket_id, actor.user_id, "clarification_requested", reason),
                 ),
-                handoff,
-            )
+            ),
+            handoff,
         )
-        self._audit_log.record(
+        return self._save_with_audit(
+            ticket,
+            proposed,
             "route_clarification_requested",
-            str(actor.user_id),
+            actor.user_id,
             {"ticket_id": str(ticket.ticket_id), "route": route.value},
         )
-        return updated
 
     def stats(self, actor: UserAccount) -> RoutingStats:
         if (
@@ -295,27 +281,49 @@ class RoutingService:
         ticket: TicketRecord,
         decision: ManagerRoutingDecision,
         state: TicketState,
+        event_type: str,
     ) -> TicketRecord:
-        return self._tickets.tickets.save_system_update(
-            replace(
-                ticket,
-                state=state,
-                manager_decisions=(*ticket.manager_decisions, decision),
-                project_plan_updates=(
-                    *ticket.project_plan_updates,
-                    decision_project_update(ticket.ticket_id, decision, state),
+        proposed = replace(
+            ticket,
+            state=state,
+            manager_decisions=(*ticket.manager_decisions, decision),
+            project_plan_updates=(
+                *ticket.project_plan_updates,
+                decision_project_update(ticket.ticket_id, decision, state),
+            ),
+            timeline=(
+                *ticket.timeline,
+                timeline(
+                    ticket.ticket_id,
+                    decision.actor_user_id,
+                    f"route_{decision.status.value}",
+                    decision.reason,
                 ),
-                timeline=(
-                    *ticket.timeline,
-                    timeline(
-                        ticket.ticket_id,
-                        decision.actor_user_id,
-                        f"route_{decision.status.value}",
-                        decision.reason,
-                    ),
-                ),
-            )
+            ),
         )
+        return self._save_with_audit(
+            ticket,
+            proposed,
+            event_type,
+            decision.actor_user_id,
+            {"ticket_id": str(ticket.ticket_id), "route": decision.route.value},
+        )
+
+    def _save_with_audit(
+        self,
+        original: TicketRecord,
+        proposed: TicketRecord,
+        event_type: str,
+        actor_user_id: UUID,
+        metadata: dict[str, str],
+    ) -> TicketRecord:
+        updated = self._tickets.tickets.save_system_update(proposed)
+        try:
+            self._audit_log.record(event_type, str(actor_user_id), metadata)
+        except Exception:
+            self._tickets.tickets.save_system_update(original)
+            raise
+        return updated
 
     @staticmethod
     def _require(actor: UserAccount, permission: Permission) -> None:

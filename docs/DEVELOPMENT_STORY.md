@@ -16,6 +16,9 @@ Sprint 1 to Sprint 13 entries live in
 - Hardened admin AI model configuration so failed model selection or Gemini API
   key configuration restores the previous provider, model, key and change
   metadata. Added persistence and audit-failure regression coverage.
+- Hardened RFA and CM routing so route reviews, approvals, rejections and
+  clarification requests restore the original ticket if audit recording fails
+  after the ticket update. Added rollback regression coverage for each path.
 
 ## 2026-07-08 No-match consent
 

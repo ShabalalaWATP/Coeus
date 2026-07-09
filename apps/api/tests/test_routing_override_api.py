@@ -8,6 +8,7 @@ from httpx import ASGITransport, AsyncClient
 from coeus.core.config import Settings
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
+from coeus.domain.enums import TicketState
 from coeus.domain.tickets import CmCapabilityReview, RfaCapabilityReview, RoutingRoute
 from coeus.main import create_app
 from coeus.services.routing_records import recommend_route
@@ -97,6 +98,120 @@ async def test_same_queue_manager_can_override_to_other_route_with_reason() -> N
     assert override.json()["managerDecisions"][-1]["route"] == "cm"
 
 
+@pytest.mark.asyncio
+async def test_route_reviews_roll_back_when_audit_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        user = await login(client, "user@example.test")
+        ticket_id = await _route_assessment_ticket(client, str(user["csrfToken"]))
+        manager = await login(client, "rfa.manager@example.test")
+        monkeypatch.setattr(app.state.routing_service._audit_log, "record", _fail_audit)
+        with pytest.raises(RuntimeError, match="audit unavailable"):
+            await client.post(
+                f"/api/v1/routing/{ticket_id}/run",
+                headers={"X-CSRF-Token": str(manager["csrfToken"])},
+            )
+
+    ticket = _stored_ticket(app, ticket_id)
+    assert ticket.state == TicketState.ROUTE_ASSESSMENT
+    assert ticket.rfa_reviews == ()
+    assert ticket.cm_reviews == ()
+    assert ticket.route_recommendations == ()
+
+
+@pytest.mark.asyncio
+async def test_route_approval_rolls_back_when_audit_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        user = await login(client, "user@example.test")
+        ticket_id = await _route_assessment_ticket(client, str(user["csrfToken"]))
+        manager = await login(client, "rfa.manager@example.test")
+        await client.post(
+            f"/api/v1/routing/{ticket_id}/run",
+            headers={"X-CSRF-Token": str(manager["csrfToken"])},
+        )
+        monkeypatch.setattr(app.state.routing_service._audit_log, "record", _fail_audit)
+        with pytest.raises(RuntimeError, match="audit unavailable"):
+            await client.post(
+                f"/api/v1/routing/{ticket_id}/approve",
+                headers={"X-CSRF-Token": str(manager["csrfToken"])},
+                json={"route": "rfa"},
+            )
+
+    ticket = _stored_ticket(app, ticket_id)
+    assert ticket.state == TicketState.RFA_MANAGER_REVIEW
+    assert ticket.manager_decisions == ()
+
+
+@pytest.mark.asyncio
+async def test_route_rejection_rolls_back_when_audit_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        user = await login(client, "user@example.test")
+        ticket_id = await _route_assessment_ticket(client, str(user["csrfToken"]))
+        manager = await login(client, "rfa.manager@example.test")
+        await client.post(
+            f"/api/v1/routing/{ticket_id}/run",
+            headers={"X-CSRF-Token": str(manager["csrfToken"])},
+        )
+        monkeypatch.setattr(app.state.routing_service._audit_log, "record", _fail_audit)
+        with pytest.raises(RuntimeError, match="audit unavailable"):
+            await client.post(
+                f"/api/v1/routing/{ticket_id}/reject",
+                headers={"X-CSRF-Token": str(manager["csrfToken"])},
+                json={"route": "rfa", "reason": "Not enough scope."},
+            )
+
+    ticket = _stored_ticket(app, ticket_id)
+    assert ticket.state == TicketState.RFA_MANAGER_REVIEW
+    assert ticket.manager_decisions == ()
+
+
+@pytest.mark.asyncio
+async def test_route_clarification_rolls_back_when_audit_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        user = await login(client, "user@example.test")
+        ticket_id = await _route_assessment_ticket(client, str(user["csrfToken"]))
+        manager = await login(client, "rfa.manager@example.test")
+        await client.post(
+            f"/api/v1/routing/{ticket_id}/run",
+            headers={"X-CSRF-Token": str(manager["csrfToken"])},
+        )
+        monkeypatch.setattr(app.state.routing_service._audit_log, "record", _fail_audit)
+        with pytest.raises(RuntimeError, match="audit unavailable"):
+            await client.post(
+                f"/api/v1/routing/{ticket_id}/clarification",
+                headers={"X-CSRF-Token": str(manager["csrfToken"])},
+                json={
+                    "route": "rfa",
+                    "reason": "Need clearer scope.",
+                    "questions": ["Which mock port should take priority?"],
+                },
+            )
+
+    ticket = _stored_ticket(app, ticket_id)
+    assert ticket.state == TicketState.RFA_MANAGER_REVIEW
+    assert ticket.manager_decisions == ()
+    assert ticket.clarification_requests == ()
+
+
 def test_recommendation_follows_can_satisfy_without_confidence_gate() -> None:
     ticket_id = uuid4()
     rfa_review = RfaCapabilityReview(
@@ -131,3 +246,13 @@ def test_recommendation_follows_can_satisfy_without_confidence_gate() -> None:
     recommendation = recommend_route(ticket_id, rfa_review, cm_review)
 
     assert recommendation.recommended_route == RoutingRoute.RFA
+
+
+def _fail_audit(*_args: object, **_kwargs: object) -> None:
+    raise RuntimeError("audit unavailable")
+
+
+def _stored_ticket(app: object, ticket_id: str):
+    ticket = app.state.ticket_services.tickets._repository.get(UUID(ticket_id))
+    assert ticket is not None
+    return ticket

@@ -21,6 +21,7 @@ clarification, override decisions and ticket-level project-plan updates.
 | RFA failure drops a viable collection task. | Routing runs both reviews and explicitly falls back to CM when RFA cannot satisfy and CM can. |
 | Manager override hides why the recommendation was bypassed. | Override approval requires a reason and records a `manager_override` audit event. |
 | Ambiguous requirements reach analysts. | Neither-capable or manager clarification paths move the ticket to `INFO_REQUIRED` with focused questions. |
+| Failed audit persistence leaves a hidden route transition behind. | Route review, approval, rejection and clarification restore the original ticket state if audit recording fails after the proposed ticket update. |
 | Route reviews leak unauthorised product details. | Sprint 8 routing operates on ticket intake and prior RFI search outcomes, not product detail payloads. |
 
 ## Residual Risk
