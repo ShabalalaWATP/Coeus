@@ -76,11 +76,25 @@ class AuthService:
         if not user.is_active:
             self._audit_log.record("login_failure", str(user.user_id), {"reason": "user_disabled"})
             raise self._auth_failed()
+        attempts = self._login_attempts.snapshot()
+        replaced_session: SessionRecord | None = None
         if replace_session_id is not None:
-            self._sessions.delete(hash_session_id(replace_session_id))
-        self._login_attempts.reset(username)
-        session_token, session = self._create_session(user)
-        self._audit_log.record("login_success", str(user.user_id))
+            replaced_session = self._sessions.get(hash_session_id(replace_session_id))
+        new_session: SessionRecord | None = None
+        try:
+            if replace_session_id is not None:
+                self._sessions.delete(hash_session_id(replace_session_id))
+            self._login_attempts.reset(username)
+            session_token, session = self._create_session(user)
+            new_session = session
+            self._audit_log.record("login_success", str(user.user_id))
+        except Exception:
+            if new_session is not None:
+                self._sessions.delete(new_session.session_id)
+            if replaced_session is not None:
+                self._sessions.save(replaced_session)
+            self._login_attempts.restore(attempts)
+            raise
         from coeus.domain.rbac import default_route_for_roles
 
         return LoginResult(
@@ -93,7 +107,11 @@ class AuthService:
     def logout(self, session_id: str) -> None:
         authenticated = self.require_session(session_id)
         self._sessions.delete(authenticated.session.session_id)
-        self._audit_log.record("logout", str(authenticated.user.user_id))
+        try:
+            self._audit_log.record("logout", str(authenticated.user.user_id))
+        except Exception:
+            self._sessions.save(authenticated.session)
+            raise
 
     def require_session(self, session_id: str | None) -> AuthenticatedSession:
         if session_id is None or session_id == "":

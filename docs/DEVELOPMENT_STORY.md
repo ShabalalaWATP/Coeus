@@ -41,10 +41,9 @@ Sprint 1 to Sprint 13 entries live in
 - Hardened analyst assignment, notes, product links, work-package updates,
   draft saves and QC submission so failed audit recording restores the original
   ticket state.
-- Hardened self-service password changes so failed `password_changed` audit
-  recording restores the previous password hash, previous sessions and
-  username login-attempt state instead of leaving an unaudited credential
-  change.
+- Hardened auth session lifecycle changes so failed `login_success`, `logout`
+  or `password_changed` audit recording restores previous sessions,
+  credentials and username login-attempt state.
 
 ## 2026-07-08 No-match consent
 

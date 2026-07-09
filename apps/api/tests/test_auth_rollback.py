@@ -47,6 +47,33 @@ def test_password_change_rolls_back_user_when_session_revocation_fails(
     assert "password_changed" not in [event.event_type for event in service.audit_log.list_events()]
 
 
+def test_login_rolls_back_session_and_attempts_when_audit_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = _service()
+    first = service.login("user@example.test", SEED_CREDENTIAL)
+    service._login_attempts.record_failure("user@example.test", threshold=3, lockout_seconds=300)
+    original_record = service.audit_log.record
+
+    def fail_login_success(event_type: str, *_args: object, **_kwargs: object) -> None:
+        if event_type == "login_success":
+            raise RuntimeError("simulated audit failure")
+        original_record(event_type, *_args, **_kwargs)
+
+    monkeypatch.setattr(service.audit_log, "record", fail_login_success)
+
+    with pytest.raises(RuntimeError, match="simulated audit failure"):
+        service.login(
+            "user@example.test",
+            SEED_CREDENTIAL,
+            replace_session_id=first.session_token,
+        )
+
+    assert service.require_session(first.session_token).session == first.session
+    assert service._sessions._sessions == {first.session.session_id: first.session}
+    assert service._login_attempts.entry_count == 1
+
+
 def test_password_change_rolls_back_user_sessions_and_attempts_when_audit_fails(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -75,6 +102,22 @@ def test_password_change_rolls_back_user_sessions_and_attempts_when_audit_fails(
     assert service._password_hasher.verify(current.password_hash, SEED_CREDENTIAL)
     assert not service._password_hasher.verify(current.password_hash, "ReplacementPass1!")
     assert "password_changed" not in [event.event_type for event in service.audit_log.list_events()]
+
+
+def test_logout_keeps_session_when_audit_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _service()
+    result = service.login("user@example.test", SEED_CREDENTIAL)
+
+    def fail_logout(event_type: str, *_args: object, **_kwargs: object) -> None:
+        if event_type == "logout":
+            raise RuntimeError("simulated audit failure")
+
+    monkeypatch.setattr(service.audit_log, "record", fail_logout)
+
+    with pytest.raises(RuntimeError, match="simulated audit failure"):
+        service.logout(result.session_token)
+
+    assert service.require_session(result.session_token).session == result.session
 
 
 def test_logout_keeps_session_when_session_persistence_fails(
