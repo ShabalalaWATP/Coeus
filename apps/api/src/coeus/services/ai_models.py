@@ -2,7 +2,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from coeus.core.config import Settings
+from coeus.core.config import LlmProviderName, Settings
 from coeus.core.errors import AppError
 from coeus.persistence.state_store import StateStore
 from coeus.services.audit import AuditLog
@@ -18,6 +18,15 @@ class AiModelState:
     api_key_configured: bool
     embedding_provider: str
     embedded_product_count: int
+    changed_by: str | None
+    changed_at: datetime | None
+
+
+@dataclass(frozen=True)
+class _AiModelSnapshot:
+    provider: LlmProviderName
+    active_model: str
+    api_key: str | None
     changed_by: str | None
     changed_at: datetime | None
 
@@ -78,16 +87,22 @@ class AiModelService:
     def select(self, actor_user_id: str, actor_username: str, model: str) -> AiModelState:
         if model not in self._available_models:
             raise AppError(422, "model_not_available", "The requested model is not available.")
-        previous = self._active_model
-        self._active_model = model
-        self._changed_by = actor_username
-        self._changed_at = datetime.now(UTC)
-        self._audit_log.record(
-            "ai_model_changed",
-            actor_user_id,
-            {"previous_model": previous, "active_model": model},
-        )
-        self._persist()
+        snapshot = self._snapshot()
+        try:
+            previous = self._active_model
+            self._active_model = model
+            self._changed_by = actor_username
+            self._changed_at = datetime.now(UTC)
+            self._persist()
+            self._audit_log.record(
+                "ai_model_changed",
+                actor_user_id,
+                {"previous_model": previous, "active_model": model},
+            )
+        except Exception:
+            self._restore(snapshot)
+            self._persist()
+            raise
         return self.state()
 
     def configure_api_key(
@@ -99,12 +114,20 @@ class AiModelService:
         # Configuring a key through the admin API is an explicit opt-in to the
         # Gemini provider. A key supplied only through the environment never
         # overrides COEUS_LLM_PROVIDER.
-        self._api_key = api_key
-        self._provider = "gemini_api"
-        self._changed_by = actor_username
-        self._changed_at = datetime.now(UTC)
-        self._audit_log.record("ai_api_key_configured", actor_user_id, {"provider": "gemini_api"})
-        self._persist()
+        snapshot = self._snapshot()
+        try:
+            self._api_key = api_key
+            self._provider = "gemini_api"
+            self._changed_by = actor_username
+            self._changed_at = datetime.now(UTC)
+            self._persist()
+            self._audit_log.record(
+                "ai_api_key_configured", actor_user_id, {"provider": "gemini_api"}
+            )
+        except Exception:
+            self._restore(snapshot)
+            self._persist()
+            raise
         return self.state()
 
     def _restore_or_persist(self, settings: Settings) -> None:
@@ -135,3 +158,19 @@ class AiModelService:
                 "changed_at": self._changed_at.isoformat() if self._changed_at else None,
             },
         )
+
+    def _snapshot(self) -> _AiModelSnapshot:
+        return _AiModelSnapshot(
+            provider=self._provider,
+            active_model=self._active_model,
+            api_key=self._api_key,
+            changed_by=self._changed_by,
+            changed_at=self._changed_at,
+        )
+
+    def _restore(self, snapshot: _AiModelSnapshot) -> None:
+        self._provider = snapshot.provider
+        self._active_model = snapshot.active_model
+        self._api_key = snapshot.api_key
+        self._changed_by = snapshot.changed_by
+        self._changed_at = snapshot.changed_at
