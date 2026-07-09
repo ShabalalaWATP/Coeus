@@ -11,11 +11,9 @@ from coeus.services.audit import AuditLog
 
 
 class StoreReadPolicy(Protocol):
-    def can_read(self, user: UserAccount, product: StoreProduct) -> bool:
-        raise NotImplementedError
+    def can_read(self, user: UserAccount, product: StoreProduct) -> bool: ...
 
-    def visibility_scope(self, user: UserAccount) -> StoreVisibilityScope:
-        raise NotImplementedError
+    def visibility_scope(self, user: UserAccount) -> StoreVisibilityScope: ...
 
 
 class StoreDetailService:

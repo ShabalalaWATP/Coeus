@@ -10,13 +10,11 @@ from coeus.domain.store import (
 
 
 class StoreProjection(Protocol):
-    def list_products(self) -> tuple[StoreProduct, ...]:
-        raise NotImplementedError
+    def list_products(self) -> tuple[StoreProduct, ...]: ...
 
     def search_products(
         self, filters: StoreSearchFilters, scope: StoreVisibilityScope
-    ) -> tuple[StoreProduct, ...]:
-        raise NotImplementedError
+    ) -> tuple[StoreProduct, ...]: ...
 
     def hybrid_candidates(
         self,
@@ -25,22 +23,16 @@ class StoreProjection(Protocol):
         query: str,
         query_embedding: tuple[float, ...] | None,
         leg_limit: int = 50,
-    ) -> tuple[StoreHybridCandidate, ...]:
-        raise NotImplementedError
+    ) -> tuple[StoreHybridCandidate, ...]: ...
 
     def get_visible_product(
         self, product_id: UUID, scope: StoreVisibilityScope
-    ) -> StoreProduct | None:
-        raise NotImplementedError
+    ) -> StoreProduct | None: ...
 
-    def save_product(self, product: StoreProduct) -> None:
-        raise NotImplementedError
+    def save_product(self, product: StoreProduct) -> None: ...
 
-    def save_products(self, products: tuple[StoreProduct, ...]) -> None:
-        raise NotImplementedError
+    def save_products(self, products: tuple[StoreProduct, ...]) -> None: ...
 
-    def embedded_product_count(self) -> int:
-        raise NotImplementedError
+    def embedded_product_count(self) -> int: ...
 
-    def backfill_missing_embeddings(self, batch_size: int = 500) -> int:
-        raise NotImplementedError
+    def backfill_missing_embeddings(self, batch_size: int = 500) -> int: ...
