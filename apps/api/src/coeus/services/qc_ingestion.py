@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
-from coeus.domain.access import ProductStatus, ProjectWorkspace
+from coeus.domain.access import ProductStatus
 from coeus.domain.auth import UserAccount
 from coeus.domain.store import (
     StoreAsset,
@@ -70,10 +70,7 @@ class ProductAutoIngestionService:
     ) -> StoreProduct:
         self._require(actor, Permission.PRODUCT_CREATE_FROM_QC)
         draft = latest_draft(ticket)
-        project = self._project_for_ticket(ticket)
-        project_acg_ids: frozenset[UUID] = project.acg_ids if project else frozenset()
-        validate_qc_acg_assignment(self._access, actor, approval.acg_ids, project_acg_ids)
-        acg_ids = approval.acg_ids | project_acg_ids
+        validate_qc_acg_assignment(self._access, actor, approval.acg_ids, frozenset())
         now = datetime.now(UTC)
         semantic_labels = derive_semantic_labels(
             draft.title,
@@ -99,8 +96,8 @@ class ProductAutoIngestionService:
                 handling_caveats=frozenset(approval.handling_caveats),
                 tags=frozenset({"mock", "qc-approved", ticket.reference.casefold()}),
                 semantic_labels=semantic_labels,
-                acg_ids=acg_ids,
-                project_id=project.project_id if project else None,
+                acg_ids=approval.acg_ids,
+                project_id=None,
                 # Held as draft until the owning manager performs final release.
                 status=ProductStatus.DRAFT,
                 time_period_start=iso_date_or_none(ticket.intake.time_period_start),
@@ -129,12 +126,6 @@ class ProductAutoIngestionService:
             for asset in product.assets:
                 self._storage.delete_bytes(asset.object_key)
         self._store.repository.delete_product(product_id)
-
-    def _project_for_ticket(self, ticket: TicketRecord) -> ProjectWorkspace | None:
-        for project in self._access.list_projects():
-            if ticket.ticket_id in project.ticket_ids:
-                return project
-        return None
 
     @staticmethod
     def _require(actor: UserAccount, permission: Permission) -> None:

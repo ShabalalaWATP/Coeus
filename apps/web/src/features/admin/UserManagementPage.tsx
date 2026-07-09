@@ -63,7 +63,7 @@ export default function UserManagementPage() {
   const isSaving = updateMutation.isPending || resetMutation.isPending;
 
   return (
-    <div className="project-page">
+    <div className="workspace-page">
       <section className="overview-hero" aria-labelledby="users-title">
         <div>
           <h1 id="users-title">Users</h1>

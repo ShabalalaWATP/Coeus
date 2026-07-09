@@ -39,42 +39,6 @@ class ProductRecord:
 
 
 @dataclass(frozen=True)
-class ProjectMember:
-    user_id: UUID
-    role: str
-
-
-@dataclass(frozen=True)
-class ProjectMilestone:
-    milestone_id: UUID
-    title: str
-    status: str
-
-
-@dataclass(frozen=True)
-class ProjectPlanItem:
-    plan_item_id: UUID
-    title: str
-    owner_role: str
-    status: str
-
-
-@dataclass(frozen=True)
-class ProjectWorkspace:
-    project_id: UUID
-    reference: str
-    name: str
-    summary: str
-    requester_user_id: UUID
-    acg_ids: frozenset[UUID]
-    product_ids: frozenset[UUID]
-    ticket_ids: frozenset[UUID]
-    members: tuple[ProjectMember, ...]
-    milestones: tuple[ProjectMilestone, ...]
-    plan_items: tuple[ProjectPlanItem, ...]
-
-
-@dataclass(frozen=True)
 class AccessCheck:
     name: str
     passed: bool

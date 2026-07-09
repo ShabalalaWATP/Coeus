@@ -4,7 +4,6 @@ import {
   ClipboardList,
   Database,
   FileCheck2,
-  FolderKanban,
   LayoutDashboard,
   ListChecks,
   RadioTower,
@@ -18,7 +17,6 @@ import { groupedNavigationItems, type NavigationItem } from "../../lib/permissio
 const icons = {
   requests: ClipboardList,
   store: Database,
-  projects: FolderKanban,
   rfa: ListChecks,
   collection: RadioTower,
   analyst: LayoutDashboard,

@@ -23,11 +23,6 @@ export type Permission =
   | "acg:assign_user"
   | "acg:assign_product"
   | "acg:view"
-  | "project:create"
-  | "project:read"
-  | "project:update"
-  | "project:add_member"
-  | "project:remove_member"
   | "ticket:create"
   | "ticket:read_own"
   | "ticket:read_all"
@@ -102,50 +97,6 @@ export type AccessControlGroup = {
   ownerUserId: string | null;
   isActive: boolean;
   memberUserIds: string[];
-};
-
-type ProductSummary = {
-  id: string;
-  title: string;
-  summary: string;
-  productType: string;
-  status: string;
-  classificationLevel: number;
-  handlingCaveats: string[];
-  acgIds: string[];
-  ownerTeam: string;
-};
-
-type ProjectMember = {
-  userId: string;
-  role: string;
-};
-
-type ProjectMilestone = {
-  id: string;
-  title: string;
-  status: string;
-};
-
-type ProjectPlanItem = {
-  id: string;
-  title: string;
-  ownerRole: string;
-  status: string;
-};
-
-export type ProjectWorkspace = {
-  id: string;
-  reference: string;
-  name: string;
-  summary: string;
-  requesterUserId: string;
-  acgIds: string[];
-  ticketIds: string[];
-  members: ProjectMember[];
-  milestones: ProjectMilestone[];
-  planItems: ProjectPlanItem[];
-  visibleProducts: ProductSummary[];
 };
 
 export type AccessDiagnostics = {
@@ -258,19 +209,6 @@ export class ApiClient {
         method: "DELETE",
       },
     );
-  }
-
-  async listProjects(): Promise<ProjectWorkspace[]> {
-    const response = await this.requestJson<{ projects: ProjectWorkspace[] }>("/api/v1/projects", {
-      method: "GET",
-    });
-    return response.projects;
-  }
-
-  async getProject(projectId: string): Promise<ProjectWorkspace> {
-    return this.requestJson<ProjectWorkspace>(`/api/v1/projects/${pathSegment(projectId)}`, {
-      method: "GET",
-    });
   }
 
   async diagnoseProductAccess(

@@ -46,7 +46,7 @@ async def test_admin_lists_acgs_and_customer_is_denied() -> None:
 
 
 @pytest.mark.asyncio
-async def test_customer_project_products_are_acg_filtered() -> None:
+async def test_project_workspace_routes_are_removed() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
 
     async with AsyncClient(
@@ -55,44 +55,7 @@ async def test_customer_project_products_are_acg_filtered() -> None:
         await login(client, "user@example.test")
         response = await client.get("/api/v1/projects")
 
-    assert response.status_code == 200
-    projects = response.json()["projects"]
-    assert len(projects) == 1
-    assert projects[0]["reference"] == "PRJ-NORTHSTAR"
-    assert [product["title"] for product in projects[0]["visibleProducts"]] == [
-        "Regional Stability Brief"
-    ]
-
-
-@pytest.mark.asyncio
-async def test_project_detail_plan_members_and_products_routes_are_filtered() -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
-
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://testserver"
-    ) as client:
-        await login(client, "user@example.test")
-        projects_response = await client.get("/api/v1/projects")
-        project_id = projects_response.json()["projects"][0]["id"]
-        detail_response = await client.get(f"/api/v1/projects/{project_id}")
-        plan_response = await client.get(f"/api/v1/projects/{project_id}/plan")
-        members_response = await client.get(f"/api/v1/projects/{project_id}/members")
-        products_response = await client.get(f"/api/v1/projects/{project_id}/products")
-
-    assert detail_response.status_code == 200
-    assert detail_response.json()["name"] == "Northstar RFI Workspace"
-    assert [item["title"] for item in plan_response.json()] == [
-        "Validate requirement and access groups",
-        "Draft assessment product",
-    ]
-    assert [member["role"] for member in members_response.json()] == [
-        "Requester",
-        "RFA Manager",
-        "Analyst",
-    ]
-    assert [product["title"] for product in products_response.json()] == [
-        "Regional Stability Brief"
-    ]
+    assert response.status_code == 404
 
 
 @pytest.mark.asyncio
@@ -207,7 +170,7 @@ async def test_store_manager_can_assign_acg_membership_without_global_admin() ->
 
 
 @pytest.mark.asyncio
-async def test_store_manager_cannot_self_grant_project_acg_membership() -> None:
+async def test_store_manager_cannot_self_grant_acg_membership() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     store_manager = app.state.access_services.repository.get_user_by_username(
         "store.manager@example.test"
@@ -223,18 +186,13 @@ async def test_store_manager_cannot_self_grant_project_acg_membership() -> None:
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
         session = await login(client, "store.manager@example.test")
-        before = await client.get("/api/v1/projects")
         self_grant = await client.post(
             f"/api/v1/acgs/{assessment_acg.acg_id}/members",
             headers={"X-CSRF-Token": str(session["csrfToken"])},
             json={"userId": str(store_manager.user_id)},
         )
-        after = await client.get("/api/v1/projects")
 
-    assert before.status_code == 200
-    assert before.json()["projects"] == []
     assert self_grant.status_code == 403
-    assert after.json()["projects"] == []
     assert store_manager.user_id not in [
         membership.user_id
         for membership in app.state.access_services.repository.list_memberships_for_acg(
@@ -248,19 +206,18 @@ async def test_access_diagnostics_explain_customer_denial() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     customer = app.state.access_services.repository.get_user_by_username("user@example.test")
     assert customer is not None
+    collection_product = next(
+        product
+        for product in app.state.access_services.repository.list_products()
+        if product.title == "Collection Sensor Summary"
+    )
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
         admin_session = await login(client, "admin@example.test")
-        projects_response = await client.get("/api/v1/projects")
-        product_id = next(
-            product["id"]
-            for product in projects_response.json()["projects"][0]["visibleProducts"]
-            if product["title"] == "Collection Sensor Summary"
-        )
         diagnostic_response = await client.post(
-            f"/api/v1/store/products/{product_id}/access-diagnostics",
+            f"/api/v1/store/products/{collection_product.product_id}/access-diagnostics",
             headers={"X-CSRF-Token": str(admin_session["csrfToken"])},
             json={"userId": str(customer.user_id)},
         )

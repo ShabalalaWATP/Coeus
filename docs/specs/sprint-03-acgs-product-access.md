@@ -1,26 +1,25 @@
-# Sprint 3 Spec: ACGs And Project Workspaces
+# Sprint 3 Spec: ACGs And Product Access
 
 ## Purpose
 
-Add the first project and product visibility layer on top of Sprint 2 RBAC. RBAC decides what a user can do; ACG membership decides what products and project workspaces the user can see.
+Add the first product visibility layer on top of Sprint 2 RBAC. RBAC decides what a user can do; ACG membership decides what products the user can see.
+
+Project workspaces from the original Sprint 3 scope were retired by ADR 0018.
 
 ## Scope
 
-- Local seed models for Access Control Groups, ACG memberships, product summaries and project workspaces.
-- Backend services for ACG administration, product access policy, project access policy, project workspace views and access diagnostics.
+- Local seed models for Access Control Groups, ACG memberships and product summaries.
+- Backend services for ACG administration, product access policy and access diagnostics.
 - API routes for listing, creating, editing, assigning and removing ACG members.
-- API routes for listing project workspaces and reading project plan, member and product slices.
 - Product access diagnostics for administrators.
-- Frontend routes for `/admin/acgs`, `/admin/acgs/:acgId`, `/projects`, `/projects/:projectId`, `/projects/:projectId/plan`, `/projects/:projectId/members` and `/projects/:projectId/products`.
+- Frontend routes for `/admin/acgs` and `/admin/acgs/:acgId`.
 - ACG administration UI for group creation, status updates, user assignment and member removal.
-- Project workspace UI showing linked ACGs, members, plan items and only permitted products.
 - Audit events for ACG creation, update, membership addition and membership removal.
 
 ## Non-goals
 
-- Persistent database-backed ACG, product and project tables. These are part of the later database and migration phase.
+- Persistent database-backed ACG and product tables. These are part of the later database and migration phase.
 - Product upload, asset access, search indexing and product detail pages. Those remain Sprint 5 and later.
-- Full project creation and edit flows. Sprint 3 exposes project workspace basics and access-filtered reads.
 - Real intelligence data. All seeded records are synthetic mock data.
 
 ## Access Rules
@@ -30,21 +29,18 @@ Add the first project and product visibility layer on top of Sprint 2 RBAC. RBAC
 - Product reads require `product:read`.
 - Draft product visibility additionally requires product management permission.
 - Product visibility requires shared ACG membership unless the user has `product:read_restricted`.
-- Project visibility requires project membership, shared project ACG membership or an administrator override.
 - ACG list visibility requires `acg:view`; administrators see all ACGs and product-team roles see only their relevant ACGs.
-- Missing or unauthorised project and ACG detail reads return not-found style errors to avoid confirming inaccessible IDs.
+- Missing or unauthorised ACG detail reads return not-found style errors to avoid confirming inaccessible IDs.
 
 ## Acceptance Criteria
 
 - Users can belong to many ACGs.
 - Products can belong to many ACGs.
-- Projects can be linked to many ACGs.
-- Project workspaces return only products the current user can access.
 - Managers can view relevant ACGs without seeing unrelated ACG detail.
 - Administrators can create and update ACGs and add or remove ACG members.
 - Access diagnostics explain allow and deny outcomes.
 - ACG administration changes create audit events.
-- Backend and frontend tests cover ACG membership, product policy, project visibility and UI workflows.
+- Backend and frontend tests cover ACG membership, product policy and UI workflows.
 
 ## Verification
 

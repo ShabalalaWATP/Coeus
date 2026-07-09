@@ -5,10 +5,6 @@ from coeus.domain.access import (
     AccessControlGroupMembership,
     ProductRecord,
     ProductStatus,
-    ProjectMember,
-    ProjectMilestone,
-    ProjectPlanItem,
-    ProjectWorkspace,
 )
 from coeus.domain.auth import UserAccount
 from coeus.persistence.state_store import StateStore
@@ -46,7 +42,6 @@ class SeedAccessRepository:
         self._acgs: dict[UUID, AccessControlGroup] = {}
         self._memberships: set[AccessControlGroupMembership] = set()
         self._products: dict[UUID, ProductRecord] = {}
-        self._projects: dict[UUID, ProjectWorkspace] = {}
         self._seed_access_data()
         self._initialising = False
         self._restore_or_persist()
@@ -111,12 +106,6 @@ class SeedAccessRepository:
     def get_product(self, product_id: UUID) -> ProductRecord | None:
         return self._products.get(product_id)
 
-    def list_projects(self) -> tuple[ProjectWorkspace, ...]:
-        return tuple(sorted(self._projects.values(), key=lambda project: project.reference))
-
-    def get_project(self, project_id: UUID) -> ProjectWorkspace | None:
-        return self._projects.get(project_id)
-
     def _restore_or_persist(self) -> None:
         if self._state_store is None:
             return
@@ -127,7 +116,6 @@ class SeedAccessRepository:
         self._acgs = snapshot.acgs
         self._memberships = snapshot.memberships
         self._products = snapshot.products
-        self._projects = snapshot.projects
 
     def _persist(self) -> None:
         if self._state_store is None or self._initialising:
@@ -137,7 +125,6 @@ class SeedAccessRepository:
             self.list_acgs(),
             self._memberships,
             self._products,
-            self._projects,
         )
 
     def _seed_access_data(self) -> None:
@@ -229,58 +216,6 @@ class SeedAccessRepository:
         self._products = {
             product.product_id: product
             for product in (regional_product, collection_product, assessment_draft)
-        }
-        self._projects = {
-            stable_seed_id("project-northstar"): ProjectWorkspace(
-                project_id=stable_seed_id("project-northstar"),
-                reference="PRJ-NORTHSTAR",
-                name="Northstar RFI Workspace",
-                summary=(
-                    "MOCK DATA ONLY workspace linking the customer, assessment team, "
-                    "ACGs and permitted products."
-                ),
-                requester_user_id=customer.user_id,
-                acg_ids=frozenset({regional.acg_id, assessment.acg_id}),
-                product_ids=frozenset(
-                    {
-                        regional_product.product_id,
-                        collection_product.product_id,
-                        assessment_draft.product_id,
-                    }
-                ),
-                ticket_ids=frozenset({stable_seed_id("ticket-northstar")}),
-                members=(
-                    ProjectMember(user_id=customer.user_id, role="Requester"),
-                    ProjectMember(user_id=rfa_manager.user_id, role="RFA Manager"),
-                    ProjectMember(user_id=analyst.user_id, role="Analyst"),
-                ),
-                milestones=(
-                    ProjectMilestone(
-                        milestone_id=stable_seed_id("milestone-intake"),
-                        title="Intake confirmed",
-                        status="complete",
-                    ),
-                    ProjectMilestone(
-                        milestone_id=stable_seed_id("milestone-review"),
-                        title="Assessment review",
-                        status="in_progress",
-                    ),
-                ),
-                plan_items=(
-                    ProjectPlanItem(
-                        plan_item_id=stable_seed_id("plan-validate-requirement"),
-                        title="Validate requirement and access groups",
-                        owner_role="RFA Manager",
-                        status="complete",
-                    ),
-                    ProjectPlanItem(
-                        plan_item_id=stable_seed_id("plan-draft-product"),
-                        title="Draft assessment product",
-                        owner_role="Analyst",
-                        status="pending",
-                    ),
-                ),
-            )
         }
 
     def _seed_themed_acgs(self, admin: UserAccount) -> dict[str, AccessControlGroup]:

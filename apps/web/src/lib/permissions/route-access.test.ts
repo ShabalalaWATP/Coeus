@@ -72,10 +72,10 @@ test("groups navigation items and omits empty groups", () => {
   expect(allGroups.map((group) => group.label)).toEqual(["Operations", "Teams", "Governance"]);
 });
 
-test("route metadata includes sprint three access paths", () => {
+test("route metadata includes active access paths", () => {
   expect(navigationItems.map((item) => item.path)).toContain("/admin/overview");
   expect(navigationItems.map((item) => item.path)).toContain("/admin/acgs");
-  expect(navigationItems.map((item) => item.path)).toContain("/projects");
+  expect(navigationItems.map((item) => item.path)).not.toContain("/projects");
   expect(navigationItems.map((item) => item.path)).toContain("/rfa/queue");
   expect(navigationItems.map((item) => item.path)).toContain("/analyst/workbench");
   expect(routeByPath("/admin/overview")?.label).toBe("Admin");

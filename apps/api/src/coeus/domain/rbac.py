@@ -7,7 +7,6 @@ SELF_SERVICE = frozenset(
         Permission.AUTH_LOGOUT,
         Permission.USER_READ_SELF,
         Permission.USER_UPDATE_SELF,
-        Permission.PROJECT_READ,
     }
 )
 
@@ -31,7 +30,6 @@ CUSTOMER_PERMISSIONS = SELF_SERVICE | frozenset(
 
 PRODUCT_TEAM_PERMISSIONS = SELF_SERVICE | frozenset(
     {
-        Permission.PROJECT_READ,
         Permission.TICKET_ADD_COMMENT,
         Permission.ACG_VIEW,
         Permission.PRODUCT_READ,

@@ -15,6 +15,7 @@ class Permission(StrEnum):
     ACG_ASSIGN_USER = "acg:assign_user"
     ACG_ASSIGN_PRODUCT = "acg:assign_product"
     ACG_VIEW = "acg:view"
+    # Retired project workspace permissions are kept so older local state snapshots decode.
     PROJECT_CREATE = "project:create"
     PROJECT_READ = "project:read"
     PROJECT_UPDATE = "project:update"

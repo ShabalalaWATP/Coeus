@@ -75,16 +75,7 @@ def test_draft_products_require_product_management_permission() -> None:
     assert any(check.name == "draft_visibility" and not check.passed for check in decision.checks)
 
 
-def test_project_workspace_filters_visible_products() -> None:
-    services = build_seed_access_services()
-    customer = services.repository.list_users()[1]
-    project = services.projects.list_visible_workspaces(customer)[0]
-
-    assert project.project.reference == "PRJ-NORTHSTAR"
-    assert [product.title for product in project.visible_products] == ["Regional Stability Brief"]
-
-
-def test_inactive_acg_no_longer_grants_project_or_product_access() -> None:
+def test_inactive_acg_no_longer_grants_product_access() -> None:
     services = build_seed_access_services()
     admin = services.repository.get_user_by_username("admin@example.test")
     rfa_team = services.repository.get_user_by_username("rfa.team@example.test")
@@ -96,23 +87,16 @@ def test_inactive_acg_no_longer_grants_project_or_product_access() -> None:
     assessment_product = next(
         product for product in services.repository.list_products() if "Draft Pack" in product.title
     )
-    project = services.repository.list_projects()[0]
 
     assert services.product_policy.evaluate(rfa_team, assessment_product).allowed is True
-    assert services.project_policy.evaluate(rfa_team, project).allowed is True
 
     services.acgs.update_acg(admin, assessment_acg.acg_id, is_active=False)
 
     product_decision = services.product_policy.evaluate(rfa_team, assessment_product)
-    project_decision = services.project_policy.evaluate(rfa_team, project)
 
     assert product_decision.allowed is False
-    assert project_decision.allowed is False
     assert any(
         check.name == "acg_membership" and not check.passed for check in product_decision.checks
-    )
-    assert any(
-        check.name == "project_membership" and not check.passed for check in project_decision.checks
     )
 
 
@@ -130,19 +114,15 @@ def test_administrator_access_diagnostics_follow_acg_membership() -> None:
     assert any(check.name == "acg_membership" and check.passed for check in decision.checks)
 
 
-def test_disabled_user_is_denied_project_and_product_access() -> None:
+def test_disabled_user_is_denied_product_access() -> None:
     services = build_seed_access_services()
     disabled = services.repository.get_user_by_username("disabled@example.test")
     assert disabled is not None
-    project = services.repository.list_projects()[0]
     product = services.repository.list_products()[0]
 
-    project_decision = services.project_policy.evaluate(disabled, project)
     product_decision = services.product_policy.evaluate(disabled, product)
 
-    assert project_decision.allowed is False
     assert product_decision.allowed is False
-    assert services.projects.list_visible_workspaces(disabled) == ()
 
 
 def test_acg_member_assignment_rejects_missing_user() -> None:

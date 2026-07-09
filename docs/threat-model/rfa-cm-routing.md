@@ -3,14 +3,14 @@
 ## Scope
 
 Sprint 8 RFA and CM capability reviews, manager queues, approval, rejection,
-clarification, override decisions and ticket-level project-plan updates.
+clarification, override decisions and ticket-level workflow-plan updates.
 
 ## Assets
 
 - Customer ticket intake and timeline.
 - RFA and CM capability-review outputs.
 - Manager decisions and audit events.
-- Project-plan update records.
+- Workflow-plan update records.
 
 ## Threats And Controls
 
@@ -28,6 +28,6 @@ clarification, override decisions and ticket-level project-plan updates.
 
 - The deterministic agents are synthetic heuristics for local development. They
   are not a real capability model.
-- Ticket-level project-plan updates are not yet persisted to a database-backed
-  project workspace.
+- Ticket-level workflow-plan updates are stored with the ticket until a
+  dedicated planning workspace is specified.
 - Analyst assignment itself is deferred to Sprint 9.

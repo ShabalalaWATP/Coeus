@@ -1,13 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import {
-  Activity,
-  BarChart3,
-  ClipboardList,
-  Database,
-  FolderKanban,
-  ShieldCheck,
-  UserCog,
-} from "lucide-react";
+import { Activity, BarChart3, ClipboardList, Database, ShieldCheck, UserCog } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { AiModelPanel } from "./AiModelPanel";
@@ -52,12 +44,6 @@ const adminActions = [
     label: "Store",
     to: "/store",
   },
-  {
-    description: "Review project workspaces and access diagnostics.",
-    icon: FolderKanban,
-    label: "Projects",
-    to: "/projects",
-  },
 ];
 
 export default function AdminOverviewPage() {
@@ -68,7 +54,7 @@ export default function AdminOverviewPage() {
   });
 
   return (
-    <div className="project-page">
+    <div className="workspace-page">
       <section className="overview-hero" aria-labelledby="admin-title">
         <div>
           <h1 id="admin-title">Admin</h1>
@@ -77,7 +63,7 @@ export default function AdminOverviewPage() {
         <div className="classification-note">MOCK DATA ONLY</div>
       </section>
 
-      <section className="surface project-summary" aria-label="Admin service status">
+      <section className="surface workspace-summary" aria-label="Admin service status">
         <div>
           <span className="eyebrow">Control plane</span>
           <h2>{overviewQuery.data?.status === "available" ? "Available" : "Checking status"}</h2>

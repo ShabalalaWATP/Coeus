@@ -68,10 +68,6 @@ test("uses the originating workspace for back navigation", async () => {
 test("maps back navigation targets from the originating workspace", () => {
   expect(backNavigationFor(undefined)).toEqual({ path: "/store", label: "Back to store" });
   expect(backNavigationFor("/store")).toEqual({ path: "/store", label: "Back to store" });
-  expect(backNavigationFor("/projects/project-1/products")).toEqual({
-    path: "/projects/project-1/products",
-    label: "Back to project",
-  });
   expect(backNavigationFor("/rfa/products")).toEqual({
     path: "/rfa/products",
     label: "Back to products",

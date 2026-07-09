@@ -22,11 +22,11 @@ that file within the repository line limit.
 
 ## 2026-07-04 Sprint 3
 
-- Added local-first ACG, product and project workspace domain records plus a seed access repository.
-- Added ACG, product access, project access, project workspace and access diagnostics services.
-- Added backend routes for ACG administration, project workspaces, project slices and administrator product diagnostics.
+- Added local-first ACG, product and project workspace domain records plus a seed access repository. Project workspaces were later retired by ADR 0018.
+- Added ACG, product access, project access, project workspace and access diagnostics services. The project access slice was later removed.
+- Added backend routes for ACG administration, project workspaces, project slices and administrator product diagnostics. The `/projects` routes were later removed.
 - Added ACG audit events for group creation, group update, membership addition and membership removal.
-- Added `/admin/acgs` and `/projects` frontend workspaces with ACG management, project plan, member, product and diagnostic views.
+- Added `/admin/acgs` and `/projects` frontend workspaces with ACG management, project plan, member, product and diagnostic views. The `/projects` workspace was later retired.
 - Added Sprint 3 access-policy, API, client and UI tests.
 
 ## 2026-07-05 Sprint 4
@@ -40,7 +40,7 @@ that file within the repository line limit.
 ## 2026-07-05 Sprint 5
 
 - Added local-first Intelligence Store product, asset and metadata domain records.
-- Added an in-memory store repository seeded from the existing ACG/project context.
+- Added an in-memory store repository seeded from the existing ACG context.
 - Added store services for product registration, access-filtered search, detail retrieval, controlled asset grants and metadata suggestions.
 - Added `/api/v1/store` routes for search, create, detail, asset access and suggestions.
 - Added frontend Store search, My Products, Product Detail and Upload Product routes.
@@ -68,7 +68,7 @@ that file within the repository line limit.
 ## 2026-07-05 Sprint 8
 
 - Added local-first RFA and CM capability agents for deterministic route assessment.
-- Added ticket-level RFA reviews, CM reviews, route recommendations, clarification requests, manager decisions and project-plan updates.
+- Added ticket-level RFA reviews, CM reviews, route recommendations, clarification requests, manager decisions and workflow-plan updates.
 - Added `/api/v1/routing` endpoints for RFA queue, CM queue, route checks, approval, rejection, clarification and statistics.
 - Added RFA-first routing, CM fallback and neither-capable clarification behaviour.
 - Added human approval and manager override audit coverage before analyst assignment.
@@ -90,7 +90,7 @@ that file within the repository line limit.
 - Added `QualityControlService` plus release-check, auto-ingestion, indexing, dissemination and feedback-request services.
 - Added `REWORK_REQUIRED` and `DISSEMINATION_READY` states for QC rejection, analyst rework and approved dissemination.
 - Added `/api/v1/qc` endpoints for queue, product detail, approval and rejection.
-- Added automatic published Store product creation from approved analyst drafts with project and QC-confirmed ACG assignment.
+- Added automatic published Store product creation from approved analyst drafts with QC-confirmed ACG assignment.
 - Added requester dissemination only after Store visibility validation, plus local queued and indexed records.
 - Added a real `/qc/queue` and `/qc/products/:productId` frontend with product preview, checklist, metadata checks, approve and return-to-analyst actions.
 - Added Sprint 10 API, service, client and UI tests for approval, rejection, separation of duties, auto-ingestion, dissemination, feedback requests and search visibility.
@@ -145,4 +145,3 @@ that file within the repository line limit.
   and pip-audit; frontend Prettier, ESLint, TypeScript, Vitest coverage, build,
   Playwright e2e and production dependency audit; Terraform fmt, init and
   validate; Checkov, Semgrep, Gitleaks, file line limit and Compose config.
-
