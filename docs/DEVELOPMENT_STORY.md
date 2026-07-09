@@ -1,7 +1,6 @@
 # Coeus Development Story
 
-Sprint 1 to Sprint 13 entries live in
-[DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVELOPMENT_STORY_SPRINTS_01-13.md).
+Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVELOPMENT_STORY_SPRINTS_01-13.md).
 
 ## 2026-07-09 Access-control audit rollback
 
@@ -44,6 +43,8 @@ Sprint 1 to Sprint 13 entries live in
   false product-created audit event.
 - Hardened auth session lifecycle changes so failed `login_success`, `logout`
   or `password_changed` audit restores sessions, credentials and login attempts.
+- Added one-way persistence sanitisation so retired workspace permissions and
+  records are dropped during decode instead of breaking local PostgreSQL startup.
 
 ## 2026-07-08 No-match consent
 

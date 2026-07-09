@@ -125,6 +125,27 @@ _ALLOWED_ENUMS = (
 
 _TYPE_REGISTRY = {f"{item.__module__}.{item.__name__}": item for item in _ALLOWED_TYPES}
 _ENUM_REGISTRY = {f"{item.__module__}.{item.__name__}": item for item in _ALLOWED_ENUMS}
+_RETIRED_ENUM_VALUES = {
+    "coeus.core.permissions.Permission": frozenset(
+        {
+            "project:add_member",
+            "project:create",
+            "project:read",
+            "project:remove_member",
+            "project:update",
+        }
+    )
+}
+_RETIRED_TYPES = frozenset(
+    {
+        "coeus.domain.access.ProjectMember",
+        "coeus.domain.access.ProjectMilestone",
+        "coeus.domain.access.ProjectPlanItem",
+        "coeus.domain.access.ProjectWorkspace",
+        "coeus.domain.tickets.ProjectPlanUpdate",
+    }
+)
+_SKIP_DECODE = object()
 
 
 def encode_value(value: Any) -> Any:
@@ -159,21 +180,21 @@ def encode_value(value: Any) -> Any:
 
 def decode_value(value: Any) -> Any:
     if isinstance(value, list):
-        return [decode_value(item) for item in value]
+        return _decode_items(value)
     if not isinstance(value, dict):
         return value
+    if _is_retired_payload(value):
+        return _SKIP_DECODE
     if "__uuid__" in value:
         return UUID(value["__uuid__"])
     if "__datetime__" in value:
         return datetime.fromisoformat(value["__datetime__"])
     if "__frozenset__" in value:
-        return frozenset(decode_value(item) for item in value["__frozenset__"])
+        return frozenset(_decode_items(value["__frozenset__"]))
     if "__tuple__" in value:
-        return tuple(decode_value(item) for item in value["__tuple__"])
+        return tuple(_decode_items(value["__tuple__"]))
     if "__mapping__" in value:
-        return MappingProxyType(
-            {str(key): decode_value(item) for key, item in value["__mapping__"].items()}
-        )
+        return MappingProxyType(_decode_mapping(value["__mapping__"]))
     if "__enum__" in value:
         enum_type = _ENUM_REGISTRY[value["__enum__"]]
         return enum_type(value["value"])
@@ -181,8 +202,35 @@ def decode_value(value: Any) -> Any:
         data_type = _TYPE_REGISTRY[value["__type__"]]
         field_names = {field.name for field in fields(data_type)}
         raw_fields = dict(value["fields"])
-        decoded = {
-            key: decode_value(item) for key, item in raw_fields.items() if key in field_names
-        }
+        decoded = _decode_mapping(
+            {key: item for key, item in raw_fields.items() if key in field_names}
+        )
         return data_type(**decoded)
-    return {str(key): decode_value(item) for key, item in value.items()}
+    return _decode_mapping(value)
+
+
+def _decode_items(values: list[Any]) -> list[Any]:
+    decoded: list[Any] = []
+    for item in values:
+        value = decode_value(item)
+        if value is not _SKIP_DECODE:
+            decoded.append(value)
+    return decoded
+
+
+def _decode_mapping(value: dict[Any, Any]) -> dict[str, Any]:
+    decoded: dict[str, Any] = {}
+    for key, item in value.items():
+        item_value = decode_value(item)
+        if item_value is not _SKIP_DECODE:
+            decoded[str(key)] = item_value
+    return decoded
+
+
+def _is_retired_payload(value: dict[str, Any]) -> bool:
+    if "__type__" in value:
+        return str(value["__type__"]) in _RETIRED_TYPES
+    if "__enum__" in value:
+        retired_values = _RETIRED_ENUM_VALUES.get(str(value["__enum__"]))
+        return str(value.get("value")) in retired_values if retired_values is not None else False
+    return False
