@@ -6,6 +6,16 @@ from coeus.domain.access import ProductStatus
 
 _UNSAFE_OBJECT_KEY_CHARS = frozenset('<>:"/\\|?*')
 _MAX_OBJECT_KEY_SEGMENT_LENGTH = 180
+_WINDOWS_RESERVED_BASENAMES = frozenset(
+    {
+        "CON",
+        "PRN",
+        "AUX",
+        "NUL",
+        *(f"COM{index}" for index in range(1, 10)),
+        *(f"LPT{index}" for index in range(1, 10)),
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -60,14 +70,20 @@ def object_key_segment(name: str) -> str:
     """
     segment = name.replace("\\", "/").rsplit("/", 1)[-1].strip()
     segment = "".join("_" if _is_unsafe_object_key_character(char) else char for char in segment)
-    segment = segment.lstrip(".").strip()[:_MAX_OBJECT_KEY_SEGMENT_LENGTH]
+    segment = segment.lstrip(".").rstrip(" .").strip()[:_MAX_OBJECT_KEY_SEGMENT_LENGTH]
     if segment in {"", ".", ".."} or segment.replace("_", "").replace("-", "").strip() == "":
         return "asset"
+    if _has_windows_reserved_basename(segment):
+        return f"asset-{segment}"[:_MAX_OBJECT_KEY_SEGMENT_LENGTH]
     return segment
 
 
 def _is_unsafe_object_key_character(character: str) -> bool:
     return ord(character) < 32 or ord(character) == 127 or character in _UNSAFE_OBJECT_KEY_CHARS
+
+
+def _has_windows_reserved_basename(segment: str) -> bool:
+    return segment.split(".", 1)[0].upper() in _WINDOWS_RESERVED_BASENAMES
 
 
 @dataclass(frozen=True)

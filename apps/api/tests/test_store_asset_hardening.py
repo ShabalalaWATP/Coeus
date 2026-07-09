@@ -22,6 +22,13 @@ def test_object_key_segment_removes_platform_unsafe_characters() -> None:
     assert len(object_key_segment(f"{'a' * 240}.pdf")) == 180
 
 
+def test_object_key_segment_avoids_windows_reserved_filenames() -> None:
+    assert object_key_segment("CON") == "asset-CON"
+    assert object_key_segment("nul.txt") == "asset-nul.txt"
+    assert object_key_segment("COM1") == "asset-COM1"
+    assert object_key_segment("report.") == "report"
+
+
 @pytest.mark.asyncio
 async def test_asset_size_over_the_ceiling_is_rejected_at_the_boundary() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
