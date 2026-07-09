@@ -1,4 +1,7 @@
 # Coeus Contracts
 
-Shared API contracts will live here. Sprint 1 relies on the FastAPI-generated OpenAPI schema. Future contract generation should write generated artefacts here without mixing them into business logic.
+Shared API contracts live here, outside backend and frontend business logic.
 
+- `openapi.json` is generated from the FastAPI application.
+- Run `pnpm contracts:generate` after API route or schema changes.
+- Run `pnpm contracts:check` to fail when the committed contract is stale.
