@@ -114,7 +114,7 @@ that file within the repository line limit.
 - Added a manual-first `Deploy Dev` GitHub Actions workflow that builds API and
   web images, pushes them to Artifact Registry and deploys to Cloud Run through
   GitHub OIDC.
-- Added GCP, GCS, Pub/Sub and Gemma Vertex runtime settings without importing
+- Added GCP, GCS, Pub/Sub and AI provider runtime settings without importing
   cloud SDKs into domain services.
 - Added a production web container image for Cloud Run.
 - Added the Sprint 12 spec, GCP deployment ADR, threat model and deployment

@@ -30,4 +30,4 @@ Persistence, object storage, email transport and Gemini API work are covered by
 - Database-backed user storage.
 - Real file byte upload or download.
 - Production email provider integration.
-- Cloud Run, Cloud SQL, GCS or Vertex AI changes.
+- Cloud Run, Cloud SQL, GCS or cloud AI changes.

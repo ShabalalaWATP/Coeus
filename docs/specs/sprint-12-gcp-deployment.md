@@ -13,7 +13,7 @@ domain code.
   Cloud SQL, Cloud Storage, Secret Manager and Pub/Sub.
 - Cloud Run API and web deployment workflow.
 - Production web container image for Cloud Run.
-- API runtime configuration for GCP, GCS, Pub/Sub and Gemma Vertex settings.
+- API runtime configuration for GCP, GCS, Pub/Sub and supported AI provider settings.
 - GitHub Actions Terraform validation.
 - Deployment runbook updates.
 

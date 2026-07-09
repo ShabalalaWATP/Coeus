@@ -24,7 +24,7 @@ Use Terraform modules under `infra/gcp` for the dev resource baseline:
 GitHub Actions deploys to dev with OIDC-backed Workload Identity Federation
 through a deployer service account. Secret values are created as Secret Manager
 versions outside Terraform. Terraform creates only secret placeholders and IAM
-bindings. The app exposes GCP, Gemma Vertex, GCS and Pub/Sub runtime settings
+bindings. The app exposes GCP, Gemini API, GCS and Pub/Sub runtime settings
 without importing GCP SDKs into domain services.
 
 ## Consequences

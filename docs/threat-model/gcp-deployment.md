@@ -4,7 +4,7 @@
 
 Sprint 12 GCP dev deployment scaffolding, Terraform, GitHub Actions deployment,
 Cloud Run API/web services, Cloud SQL, Cloud Storage, Secret Manager, Pub/Sub,
-Artifact Registry and Gemma Vertex configuration.
+Artifact Registry and supported AI provider configuration.
 
 ## Assets
 
@@ -24,7 +24,7 @@ Artifact Registry and Gemma Vertex configuration.
 | Long-lived GCP key leaks from GitHub or local machines. | Deployment uses Workload Identity Federation and GitHub OIDC, not service account key JSON. |
 | Secrets enter the public repository or Terraform state. | Terraform creates secret placeholders only; values are added as Secret Manager versions outside Terraform. |
 | GitHub OIDC token is accepted from another repository or branch. | Workload Identity Provider condition restricts `assertion.sub`, repository and repository owner to the configured `main` branch. |
-| Runtime service account has broad cloud access. | API service account receives scoped Cloud SQL, Secret Manager, bucket, Pub/Sub and Vertex roles needed for dev. |
+| Runtime service account has broad cloud access. | API service account receives scoped Cloud SQL, Secret Manager, bucket and Pub/Sub roles needed for dev. AI providers use explicit application configuration rather than broad cloud IAM by default. |
 | Public Cloud Run API bypasses app authorisation. | Cloud Run is publicly invokable for browser access, but backend RBAC and CSRF checks still protect application actions. |
 | Product assets become public. | Buckets enforce public access prevention and uniform bucket-level access. |
 | Bucket access is not auditable. | Cloud Storage buckets write access logs to a dedicated dev access-log bucket. |

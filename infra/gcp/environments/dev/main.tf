@@ -19,7 +19,6 @@ locals {
     "sqladmin.googleapis.com",
     "storage.googleapis.com",
     "pubsub.googleapis.com",
-    "aiplatform.googleapis.com",
   ])
 
   secret_ids = toset([
@@ -149,12 +148,6 @@ resource "google_project_iam_member" "api_cloud_sql_client" {
   member  = "serviceAccount:${module.iam.api_service_account_email}"
 }
 
-resource "google_project_iam_member" "api_vertex_user" {
-  project = var.project_id
-  role    = "roles/aiplatform.user"
-  member  = "serviceAccount:${module.iam.api_service_account_email}"
-}
-
 resource "google_secret_manager_secret_iam_member" "api_secret_access" {
   for_each = local.secret_ids
 
@@ -211,10 +204,8 @@ module "api" {
     COEUS_GCS_GENERATED_PREVIEWS_BUCKET = "${local.name_prefix}-generated-previews"
     COEUS_PUBSUB_ENABLED                = "true"
     COEUS_PUBSUB_TOPIC_PREFIX           = local.name_prefix
-    COEUS_LLM_PROVIDER                  = "gemma_vertex"
-    COEUS_GEMMA_VERTEX_PROJECT_ID       = var.project_id
-    COEUS_GEMMA_VERTEX_LOCATION         = var.region
-    COEUS_GEMMA_VERTEX_MODEL            = "gemma-4-31b"
+    COEUS_LLM_PROVIDER                  = "mock"
+    COEUS_EMBEDDING_PROVIDER            = "mock"
   }
 
   secret_environment_variables = {
@@ -226,7 +217,6 @@ module "api" {
 
   depends_on = [
     google_project_iam_member.api_cloud_sql_client,
-    google_project_iam_member.api_vertex_user,
     google_secret_manager_secret_iam_member.api_secret_access,
     google_storage_bucket_iam_member.api_bucket_access,
     google_pubsub_topic_iam_member.api_topic_publisher,

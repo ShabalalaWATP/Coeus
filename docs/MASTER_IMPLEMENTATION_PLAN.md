@@ -23,7 +23,7 @@ Sprint 13: Security hardening.
 | 9 | Analyst workbench, assignment, work packages, notes, linked products, drafts and QC submission. | Complete | Local analyst, Semgrep and UI gates passed on 2026-07-05. |
 | 10 | QC queue, checklist, rejection, auto-ingestion, indexing, dissemination and feedback requests. | Complete | Local and GitHub backend, frontend, Semgrep and CodeQL gates passed on 2026-07-05. |
 | 11 | Feedback submission, admin/RFA/CM dashboards, product reuse analytics and Trends Analysis Agent. | Complete | Local backend, frontend, Semgrep and security gates passed on 2026-07-05. |
-| 12 | GCP dev deployment, Terraform baseline, Cloud Run, Cloud SQL, Cloud Storage, Secret Manager, Pub/Sub, Artifact Registry and Gemma config. | Complete | Local backend, frontend, Terraform, Semgrep and security gates passed on 2026-07-05. |
+| 12 | GCP dev deployment, Terraform baseline, Cloud Run, Cloud SQL, Cloud Storage, Secret Manager, Pub/Sub, Artifact Registry and AI provider config. | Complete | Local backend, frontend, Terraform, Semgrep and security gates passed on 2026-07-05. |
 | 13 | Security hardening, container scans, SBOM, DAST, Terraform scanning, prompt-injection suite and air-gapped notes. | Complete | Local backend, frontend, Semgrep, Checkov and Gitleaks gates passed on 2026-07-05; Docker-backed checks run in GitHub Actions. |
 
 ## Sprint 11 Delivered Scope
@@ -59,7 +59,7 @@ Sprint 13: Security hardening.
 - GitHub OIDC Workload Identity Federation without service account keys.
 - Manual-first `Deploy Dev` workflow for API and web Cloud Run deployment.
 - Production web container image for Cloud Run.
-- Runtime settings for GCP, GCS, Pub/Sub and Gemma Vertex configuration.
+- Runtime settings for GCP, GCS, Pub/Sub and supported AI provider configuration.
 - Sprint 12 spec, ADR, threat model and GCP dev deployment runbook.
 
 ## Sprint 12 Verification

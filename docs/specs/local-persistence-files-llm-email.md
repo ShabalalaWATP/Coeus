@@ -3,7 +3,7 @@
 ## Goal
 
 Make the app locally durable and integration-ready without requiring GCP
-hosting, GCS, Pub/Sub or Vertex AI.
+hosting, GCS, Pub/Sub or a cloud-hosted AI platform.
 
 ## Scope
 
@@ -49,7 +49,7 @@ hosting, GCS, Pub/Sub or Vertex AI.
 
 ## Non-Goals
 
-- Cloud SQL, GCS, Pub/Sub, Cloud Run or Vertex AI deployment.
+- Cloud SQL, GCS, Pub/Sub, Cloud Run or cloud-hosted AI deployment.
 - Malware scanning of uploaded files.
 - Multi-file upload batches.
 - Production email bounce handling or unsubscribe workflows.

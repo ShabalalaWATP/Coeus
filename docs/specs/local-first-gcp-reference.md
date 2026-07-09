@@ -19,7 +19,7 @@ generic instructions for a future work-owned GCP deployment.
 
 - Applying Terraform against a live GCP project.
 - Hosting persistent database repositories in GCP.
-- Adding real GCS, Pub/Sub or Vertex AI adapters beyond existing configuration.
+- Adding real GCS, Pub/Sub or cloud AI adapters beyond existing configuration.
 
 ## Acceptance Criteria
 
