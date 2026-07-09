@@ -26,6 +26,9 @@ Sprint 1 to Sprint 13 entries live in
 - Hardened final product release so `product_released` audit failure restores
   the ticket to `MANAGER_RELEASE`, returns the Store product to draft status
   and suppresses requester notification.
+- Hardened similar-request customer join and manager link actions so audit
+  recording failure restores the affected ticket records instead of leaving
+  unaudited collaborator grants or related-ticket links.
 
 ## 2026-07-08 No-match consent
 

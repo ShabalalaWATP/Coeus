@@ -100,20 +100,24 @@ class SimilarRequestService:
                 ),
             )
         )
-        self._audit_log.record(
-            "ticket_collaborator_added",
-            str(actor.user_id),
-            {
-                "ticket_id": str(target.ticket_id),
-                "collaborator_user_id": str(actor.user_id),
-                "access": CollaboratorAccess.VIEWER.value,
-            },
-        )
-        self._audit_log.record(
-            "similar_request_joined",
-            str(actor.user_id),
-            {"ticket_id": str(source.ticket_id), "related_ticket_id": str(target.ticket_id)},
-        )
+        try:
+            self._audit_log.record(
+                "ticket_collaborator_added",
+                str(actor.user_id),
+                {
+                    "ticket_id": str(target.ticket_id),
+                    "collaborator_user_id": str(actor.user_id),
+                    "access": CollaboratorAccess.VIEWER.value,
+                },
+            )
+            self._audit_log.record(
+                "similar_request_joined",
+                str(actor.user_id),
+                {"ticket_id": str(source.ticket_id), "related_ticket_id": str(target.ticket_id)},
+            )
+        except Exception:
+            self._tickets.tickets.save_system_update(target)
+            raise
         return updated
 
     def manager_matches(
@@ -147,7 +151,12 @@ class SimilarRequestService:
         except Exception:
             self._tickets.tickets.save_system_update(related)
             raise
-        self._audit_link(actor, source_updated, related_updated, already_linked=False)
+        try:
+            self._audit_link(actor, source_updated, related_updated, already_linked=False)
+        except Exception:
+            self._tickets.tickets.save_system_update(source)
+            self._tickets.tickets.save_system_update(related)
+            raise
         return source_updated
 
     def _score(self, source: TicketRecord, threshold: float) -> tuple[SimilarRequestMatch, ...]:
