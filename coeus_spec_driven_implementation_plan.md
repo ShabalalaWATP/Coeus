@@ -372,13 +372,6 @@ The Intelligence Store must provide:
 - Search explanations for RFI Search Agent results.
 - Search result snippets with no leakage of unauthorised content.
 
-### 9.6 Project Workspaces
-
-Project Workspaces are retired. Requests, tickets, team queues, analyst work,
-QC, dissemination and Store product access are handled without a separate
-Projects feature. Product visibility remains controlled by RBAC, clearance,
-status and active ACG membership.
-
 ## 10. Mock product seed strategy
 
 The seed data must be synthetic, deterministic, and safe for a public repository.
@@ -415,7 +408,6 @@ Create:
 ```text
 scripts/seed/seed_users.py
 scripts/seed/seed_acgs.py
-scripts/seed/seed_projects.py
 scripts/seed/seed_mock_products.py
 scripts/seed/seed_mock_tickets.py
 scripts/seed/seed_mock_feedback.py
@@ -1790,7 +1782,7 @@ Seed scripts
 Acceptance criteria:
 
 - `make dev` or equivalent starts API, web, DB and object store.
-- Seed scripts create users, ACGs, projects, tickets and products.
+- Seed scripts create users, ACGs, tickets and products.
 - Local tests run without GCP access.
 
 ### Cloud phase 2: Terraform foundation

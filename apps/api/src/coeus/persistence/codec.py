@@ -126,6 +126,8 @@ _ALLOWED_ENUMS = (
 _TYPE_REGISTRY = {f"{item.__module__}.{item.__name__}": item for item in _ALLOWED_TYPES}
 _ENUM_REGISTRY = {f"{item.__module__}.{item.__name__}": item for item in _ALLOWED_ENUMS}
 _TYPE_REGISTRY["coeus.domain.tickets.ProjectPlanUpdate"] = WorkflowPlanUpdate
+_DROP_DECODED_VALUE = object()
+_LEGACY_PROJECT_PERMISSION_PREFIX = "project:"
 
 
 def encode_value(value: Any) -> Any:
@@ -168,7 +170,8 @@ def decode_value(value: Any) -> Any:
     if "__datetime__" in value:
         return datetime.fromisoformat(value["__datetime__"])
     if "__frozenset__" in value:
-        return frozenset(decode_value(item) for item in value["__frozenset__"])
+        decoded_items = (decode_value(item) for item in value["__frozenset__"])
+        return frozenset(item for item in decoded_items if item is not _DROP_DECODED_VALUE)
     if "__tuple__" in value:
         return tuple(decode_value(item) for item in value["__tuple__"])
     if "__mapping__" in value:
@@ -177,7 +180,14 @@ def decode_value(value: Any) -> Any:
         )
     if "__enum__" in value:
         enum_type = _ENUM_REGISTRY[value["__enum__"]]
-        return enum_type(value["value"])
+        try:
+            return enum_type(value["value"])
+        except ValueError:
+            if enum_type is Permission and str(value["value"]).startswith(
+                _LEGACY_PROJECT_PERMISSION_PREFIX
+            ):
+                return _DROP_DECODED_VALUE
+            raise
     if "__type__" in value:
         data_type = _TYPE_REGISTRY[value["__type__"]]
         field_names = {field.name for field in fields(data_type)}

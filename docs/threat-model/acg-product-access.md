@@ -3,7 +3,6 @@
 ## Scope
 
 ACG membership, product access filtering, ACG administration and access diagnostics.
-Project workspaces were retired by ADR 0018.
 
 ## Assets
 

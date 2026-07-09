@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
+from coeus.core.permissions import Permission
 from coeus.domain.access import ProductStatus
 from coeus.domain.enums import TicketState
 from coeus.domain.store import StoreProductMetadata
@@ -22,6 +23,25 @@ def test_workflow_plan_update_round_trips() -> None:
     decoded = decode_value(encode_value(update))
 
     assert decoded == update
+
+
+def test_legacy_project_permissions_are_dropped_from_decoded_sets() -> None:
+    encoded = {
+        "__frozenset__": [
+            {
+                "__enum__": "coeus.core.permissions.Permission",
+                "value": "project:read",
+            },
+            {
+                "__enum__": "coeus.core.permissions.Permission",
+                "value": Permission.TICKET_CREATE.value,
+            },
+        ]
+    }
+
+    decoded = decode_value(encoded)
+
+    assert decoded == frozenset({Permission.TICKET_CREATE})
 
 
 def test_legacy_project_plan_update_decodes_as_workflow_plan_update() -> None:

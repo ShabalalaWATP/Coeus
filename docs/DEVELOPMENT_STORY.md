@@ -87,10 +87,10 @@ Sprint 1 to Sprint 13 entries live in
 - Added shared `LoadingState`, `ErrorState`, `EmptyState` and `StatusPill`
   components with styles for the previously unstyled `request-row` and
   `status-pill` classes, and wired loading, error, empty and success states
-  into the store, projects, analytics, audit, requests, routing, analyst, QC
+  into the store, analytics, audit, requests, routing, analyst, QC
   and ACG pages.
-- Preserved product back-navigation context from team workspaces and project
-  pages, and relabelled the controlled asset grant with token expiry.
+- Preserved product back-navigation context from team workspaces, and relabelled
+  the controlled asset grant with token expiry.
 - Verified all eight role views end to end in the browser, including the full
   intake, RFI search, routing, assignment, analyst production and QC
   dissemination pipeline, auth negative states and responsive layouts at

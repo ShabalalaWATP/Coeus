@@ -26,8 +26,8 @@ Retire the project workspace feature:
 - Remove the ticket-level suggested workspace name from intake and ticket
   responses.
 - Rename ticket-level routing plan updates to workflow plan updates.
-- Keep retired project permission enum strings only so older local state
-  snapshots can decode safely.
+- Remove retired project permission enum strings from the active permission
+  contract.
 - Keep legacy local-state decoding for old plan-update and Store metadata
   fields.
 
@@ -39,6 +39,8 @@ Retire the project workspace feature:
   status, draft rules and active ACG overlap.
 - Existing local state files that still contain `projects` payloads are ignored
   by the access snapshot loader.
+- Existing local user snapshots that contain retired project permission values
+  decode with those values dropped.
 - Existing local Store snapshots that contain product `project_id` metadata are
   decoded with that field ignored; local PostgreSQL migrations drop the old
   Store column.
