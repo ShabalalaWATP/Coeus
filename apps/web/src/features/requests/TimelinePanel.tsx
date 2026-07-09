@@ -6,10 +6,16 @@ import type { Ticket } from "../../lib/api-client/tickets";
 type TimelinePanelProps = {
   isAdding: boolean;
   onAddInformation: (body: string) => void;
+  readOnly?: boolean;
   ticket?: Ticket;
 };
 
-export function TimelinePanel({ isAdding, onAddInformation, ticket }: TimelinePanelProps) {
+export function TimelinePanel({
+  isAdding,
+  onAddInformation,
+  readOnly = false,
+  ticket,
+}: TimelinePanelProps) {
   const [body, setBody] = useState("");
   const trimmedBody = body.trim();
   const bodyTooShort = trimmedBody.length > 0 && trimmedBody.length < 3;
@@ -41,7 +47,10 @@ export function TimelinePanel({ isAdding, onAddInformation, ticket }: TimelinePa
           <p>No timeline events</p>
         )}
       </div>
-      {ticket !== undefined ? (
+      {ticket !== undefined && readOnly ? (
+        <p className="chat-readonly">The timeline is read-only for this request.</p>
+      ) : null}
+      {ticket !== undefined && !readOnly ? (
         <form className="timeline-form" onSubmit={handleSubmit}>
           <label htmlFor="timeline-note">Additional information</label>
           <textarea

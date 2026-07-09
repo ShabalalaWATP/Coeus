@@ -145,6 +145,14 @@ test("disables short timeline information and shows a hint", async () => {
   expect(onAddInformation).toHaveBeenCalledWith("notes added");
 });
 
+test("renders the timeline as read-only when the viewer cannot write", () => {
+  render(<TimelinePanel isAdding={false} onAddInformation={vi.fn()} readOnly ticket={ticket} />);
+
+  expect(screen.getByText("The timeline is read-only for this request.")).toBeVisible();
+  expect(screen.queryByLabelText("Additional information")).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Add information" })).not.toBeInTheDocument();
+});
+
 test("omits blank intake fields from the saved payload", async () => {
   const onSave = vi.fn();
   render(

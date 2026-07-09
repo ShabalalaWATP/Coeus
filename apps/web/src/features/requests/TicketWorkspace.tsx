@@ -16,6 +16,8 @@ import { StatusPill } from "../../components/ui/StatusPill";
 import type { RfiSearchResults } from "../../lib/api-client/rfi-search";
 import type { SimilarRequestNotice } from "../../lib/api-client/similar-requests";
 import type { AttachmentMetadataInput, IntakeUpdate, Ticket } from "../../lib/api-client/tickets";
+import { useAuth } from "../../lib/auth/auth-context";
+import { hasPermissions } from "../../lib/permissions/route-access";
 
 const INTAKE_STATES = new Set(["DRAFT_INTAKE", "INFO_REQUIRED"]);
 const CANCELABLE_STATES = new Set([
@@ -98,13 +100,19 @@ export function TicketWorkspace({
   similarNotice,
   ticket,
 }: TicketWorkspaceProps) {
+  const { session } = useAuth();
   const isOwner = ticket !== undefined && ticket.requesterUserId === currentUserId;
   const isEditor =
     ticket !== undefined &&
     ticket.collaborators.some(
       (collaborator) => collaborator.userId === currentUserId && collaborator.access === "editor",
     );
-  const canEdit = ticket === undefined || isOwner || isEditor;
+  const canWriteAll = session !== null && hasPermissions(session.user, ["ticket:write_all"]);
+  const canEdit = ticket === undefined || isOwner || isEditor || canWriteAll;
+  const canAddInformation =
+    canEdit && session !== null && hasPermissions(session.user, ["ticket:add_information"]);
+  const canRunRfiSearch =
+    canEdit && session !== null && hasPermissions(session.user, ["rfi:search"]);
   const showIntakeTools = ticket === undefined || INTAKE_STATES.has(ticket.state);
   const showOffers = ticket !== undefined && !INTAKE_STATES.has(ticket.state);
   const canCancel = ticket !== undefined && isOwner && CANCELABLE_STATES.has(ticket.state);
@@ -183,6 +191,8 @@ export function TicketWorkspace({
           ) : null}
           {showOffers ? (
             <ProductOffersPanel
+              canManageOffers={isOwner}
+              canRunSearch={canRunRfiSearch}
               isAccepting={pending.accepting}
               isError={rfiError}
               isLoading={rfiLoading}
@@ -197,7 +207,7 @@ export function TicketWorkspace({
           ) : null}
           {ticket ? (
             <CollaboratorsPanel
-              isOwner={isOwner}
+              isOwner={isOwner || canWriteAll}
               isPending={pending.collaborating}
               onAdd={actions.onAddCollaborator}
               onRemove={actions.onRemoveCollaborator}
@@ -219,6 +229,7 @@ export function TicketWorkspace({
           <TimelinePanel
             isAdding={pending.adding}
             onAddInformation={actions.onAddInformation}
+            readOnly={!canAddInformation}
             ticket={ticket}
           />
         </details>

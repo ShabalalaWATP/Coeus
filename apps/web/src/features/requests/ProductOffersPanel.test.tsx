@@ -8,6 +8,8 @@ test("runs RFI search from the product offer panel", async () => {
   const onRun = vi.fn();
   render(
     <ProductOffersPanel
+      canManageOffers
+      canRunSearch
       isAccepting={false}
       isLoading={false}
       isRejecting={false}
@@ -30,6 +32,8 @@ test("accepts and rejects RFI product offers", async () => {
   const onReject = vi.fn();
   render(
     <ProductOffersPanel
+      canManageOffers
+      canRunSearch
       isAccepting={false}
       isLoading={false}
       isRejecting={false}
@@ -54,6 +58,8 @@ test("accepts and rejects RFI product offers", async () => {
 test("does not render RFI metrics when metrics are unavailable", () => {
   render(
     <ProductOffersPanel
+      canManageOffers
+      canRunSearch
       isAccepting={false}
       isLoading={false}
       isRejecting={false}
@@ -72,6 +78,8 @@ test("does not render RFI metrics when metrics are unavailable", () => {
 test("surfaces offer loading failures instead of an empty offers message", () => {
   render(
     <ProductOffersPanel
+      canManageOffers
+      canRunSearch
       isAccepting={false}
       isError
       isLoading={false}
@@ -88,4 +96,35 @@ test("surfaces offer loading failures instead of an empty offers message", () =>
     "Product offers could not be loaded. Refresh and try again.",
   );
   expect(screen.queryByText("No product offers")).not.toBeInTheDocument();
+});
+
+test("keeps RFI actions read-only for viewers", async () => {
+  const onRun = vi.fn();
+  const onAccept = vi.fn();
+  const onReject = vi.fn();
+  render(
+    <ProductOffersPanel
+      canManageOffers={false}
+      canRunSearch={false}
+      isAccepting={false}
+      isLoading={false}
+      isRejecting={false}
+      isRunning={false}
+      onAccept={onAccept}
+      onReject={onReject}
+      onRun={onRun}
+      results={rfiResults}
+      ticket={{ ...ticket, state: "RFI_MATCH_OFFERED" }}
+    />,
+  );
+
+  expect(screen.getByRole("button", { name: "Run search" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Accept" })).toBeDisabled();
+  expect(screen.getByLabelText("Rejection reason")).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Reject" })).toBeDisabled();
+  await userEvent.click(screen.getByRole("button", { name: "Accept" }));
+
+  expect(onRun).not.toHaveBeenCalled();
+  expect(onAccept).not.toHaveBeenCalled();
+  expect(onReject).not.toHaveBeenCalled();
 });
