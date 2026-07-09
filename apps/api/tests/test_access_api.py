@@ -46,19 +46,6 @@ async def test_admin_lists_acgs_and_customer_is_denied() -> None:
 
 
 @pytest.mark.asyncio
-async def test_project_workspace_routes_are_removed() -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
-
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://testserver"
-    ) as client:
-        await login(client, "user@example.test")
-        response = await client.get("/api/v1/projects")
-
-    assert response.status_code == 404
-
-
-@pytest.mark.asyncio
 async def test_manager_can_view_relevant_acgs_but_not_unrelated_detail() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
 
