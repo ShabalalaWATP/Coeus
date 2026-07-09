@@ -23,6 +23,7 @@ metadata placeholders, agent-run records and ticket timeline.
 | Incomplete requirements trigger downstream search too early. | Submission is blocked until required intake fields meet the completeness gate. |
 | Real file upload risks malware or data leakage. | Sprint 4 supports metadata placeholders only. File bytes and object storage are out of scope. |
 | Timeline tampering hides post-submission context. | Timeline entries are append-only in the service surface for Sprint 4 and include actor IDs and timestamps. |
+| Requester lifecycle actions change state without audit evidence. | Cancellation and delivery confirmation restore the original ticket if audit recording fails after the proposed state update. |
 
 ## Deferred Risks
 

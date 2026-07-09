@@ -1,3 +1,5 @@
+from uuid import UUID
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
@@ -170,6 +172,35 @@ async def test_non_owner_cannot_cancel_visible_ticket() -> None:
 
 
 @pytest.mark.asyncio
+async def test_cancel_audit_failure_rolls_back_ticket(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        session = await login(client)
+        created = await client.post(
+            "/api/v1/chat/messages",
+            headers={"X-CSRF-Token": str(session["csrfToken"])},
+            json={"message": "Need a routine brief on port activity."},
+        )
+        ticket_id = created.json()["id"]
+        original = _stored_ticket(app, ticket_id)
+        monkeypatch.setattr(app.state.ticket_lifecycle_service._audit_log, "record", _fail_audit)
+
+        with pytest.raises(RuntimeError, match="audit unavailable"):
+            await client.post(
+                f"/api/v1/tickets/{ticket_id}/cancel",
+                headers={"X-CSRF-Token": str(session["csrfToken"])},
+                json={"reason": "Requirement no longer needed."},
+            )
+
+    ticket = _stored_ticket(app, ticket_id)
+    assert ticket.state == original.state
+    assert ticket.timeline == original.timeline
+
+
+@pytest.mark.asyncio
 async def test_product_team_ticket_list_excludes_unrelated_submitted_tickets() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
 
@@ -270,3 +301,13 @@ async def test_prompt_injection_is_flagged_without_escalation_or_fabricated_prod
     assert "hidden prompt" not in ticket["messages"][-1]["body"].casefold()
     assert ticket["visibleProductMatches"] == []
     assert "prompt_injection_attempt" in ticket["agentRuns"][0]["safetyFlags"]
+
+
+def _fail_audit(*_args: object, **_kwargs: object) -> None:
+    raise RuntimeError("audit unavailable")
+
+
+def _stored_ticket(app: object, ticket_id: str):
+    ticket = app.state.ticket_services.tickets._repository.get(UUID(ticket_id))
+    assert ticket is not None
+    return ticket

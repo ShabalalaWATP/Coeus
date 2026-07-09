@@ -1,3 +1,5 @@
+from uuid import UUID
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
@@ -64,6 +66,33 @@ async def test_no_match_decline_cancels_with_fixed_reason() -> None:
         "customer declined tasking after no-match"
     ]
     assert "no_match_tasking_declined" in _audit_types(app)
+
+
+@pytest.mark.parametrize("task_as_new_request", [True, False])
+@pytest.mark.asyncio
+async def test_no_match_consent_audit_failure_rolls_back_ticket(
+    monkeypatch: pytest.MonkeyPatch, task_as_new_request: bool
+) -> None:
+    app = create_app(_settings())
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        user = await login(client, "user@example.test")
+        ticket_id = await _no_match_ticket(client, str(user["csrfToken"]))
+        await _run_no_match_search(client, ticket_id, str(user["csrfToken"]))
+        original = _stored_ticket(app, ticket_id)
+        monkeypatch.setattr(app.state.ticket_lifecycle_service._audit_log, "record", _fail_audit)
+
+        with pytest.raises(RuntimeError, match="audit unavailable"):
+            await client.post(
+                f"/api/v1/tickets/{ticket_id}/no-match-consent",
+                headers={"X-CSRF-Token": str(user["csrfToken"])},
+                json={"taskAsNewRequest": task_as_new_request},
+            )
+
+    ticket = _stored_ticket(app, ticket_id)
+    assert ticket.state == original.state
+    assert ticket.timeline == original.timeline
 
 
 @pytest.mark.asyncio
@@ -162,3 +191,13 @@ def _timeline_bodies(ticket: dict[str, object], event_type: str) -> list[str]:
 
 def _audit_types(app: object) -> list[str]:
     return [event.event_type for event in app.state.auth_service.audit_log.list_events()]
+
+
+def _fail_audit(*_args: object, **_kwargs: object) -> None:
+    raise RuntimeError("audit unavailable")
+
+
+def _stored_ticket(app: object, ticket_id: str):
+    ticket = app.state.ticket_services.tickets._repository.get(UUID(ticket_id))
+    assert ticket is not None
+    return ticket

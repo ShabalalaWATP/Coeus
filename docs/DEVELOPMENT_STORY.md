@@ -32,6 +32,9 @@ Sprint 1 to Sprint 13 entries live in
 - Hardened direct ticket collaborator add and remove actions so audit
   recording failure restores the original ticket, preventing unaudited access
   changes.
+- Hardened requester lifecycle actions so cancellation, no-match consent and
+  delivery confirmation restore the original ticket if audit recording fails
+  after the proposed state update.
 
 ## 2026-07-08 No-match consent
 
