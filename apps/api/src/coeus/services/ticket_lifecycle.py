@@ -34,11 +34,7 @@ class TicketLifecycleService:
                 ),
             )
         )
-        self._audit_log.record(
-            "ticket_cancelled",
-            str(actor.user_id),
-            {"ticket_id": str(ticket.ticket_id)},
-        )
+        self._record_ticket_audit_or_rollback(ticket, "ticket_cancelled", actor)
         return updated
 
     def no_match_consent(
@@ -73,10 +69,10 @@ class TicketLifecycleService:
                 ),
             )
         )
-        self._audit_log.record(
+        self._record_ticket_audit_or_rollback(
+            ticket,
             "no_match_tasking_confirmed" if task_as_new_request else "no_match_tasking_declined",
-            str(actor.user_id),
-            {"ticket_id": str(ticket.ticket_id)},
+            actor,
         )
         return updated
 
@@ -106,9 +102,18 @@ class TicketLifecycleService:
                 ),
             )
         )
-        self._audit_log.record(
-            "ticket_delivery_confirmed",
-            str(actor.user_id),
-            {"ticket_id": str(ticket.ticket_id)},
-        )
+        self._record_ticket_audit_or_rollback(ticket, "ticket_delivery_confirmed", actor)
         return updated
+
+    def _record_ticket_audit_or_rollback(
+        self, original_ticket: TicketRecord, event_type: str, actor: UserAccount
+    ) -> None:
+        try:
+            self._audit_log.record(
+                event_type,
+                str(actor.user_id),
+                {"ticket_id": str(original_ticket.ticket_id)},
+            )
+        except Exception:
+            self._tickets.save_system_update(original_ticket)
+            raise

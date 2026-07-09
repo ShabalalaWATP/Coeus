@@ -30,6 +30,7 @@ detection and the no-match consent journey.
 | Similarity scores reveal sensitive ticket text through explanations. | Customer explanations are returned only for tickets the requester can already read. Managers require workflow read permissions.                |
 | No-match automation tasks work without consent.                      | Zero-offer searches enter `RFI_NO_MATCH`; only the requester can confirm route assessment or cancel.                                          |
 | No-match decline text becomes an injection or audit sink.             | The decline path records a fixed reason, `customer declined tasking after no-match`, instead of accepting free text.                           |
+| No-match consent updates a ticket without audit evidence.             | Confirm and decline both restore the original `RFI_NO_MATCH` ticket state if consent audit recording fails.                                   |
 
 ## Closed Residuals
 
