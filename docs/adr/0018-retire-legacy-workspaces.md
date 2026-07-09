@@ -1,4 +1,4 @@
-# ADR 0018: Retire Legacy Workspaces
+# ADR 0018: Retire Legacy Projects Workspaces
 
 ## Status
 
@@ -6,16 +6,16 @@ Accepted.
 
 ## Context
 
-A former workspace feature added a separate navigation area, seed workspace
-data, workspace-specific access policy and workspace detail routes. The current
-product direction centres on requests, team queues, analyst/QC workflow,
-ACG-governed Store access and search. Maintaining that separate workspace
-surface created duplicated navigation and extra access-control paths without a
-current owner workflow.
+A former Projects/workspace feature added a separate navigation area, seed
+workspace data, workspace-specific access policy and workspace detail routes.
+The current product direction centres on requests, team queues, analyst/QC
+workflow, ACG-governed Store access and search. Maintaining that separate
+Projects surface created duplicated navigation and extra access-control paths
+without a current owner workflow.
 
 ## Decision
 
-Retire the legacy workspace feature:
+Retire the legacy Projects feature:
 
 - Remove legacy workspace API routes, frontend routes, navigation items and admin
   shortcuts.
