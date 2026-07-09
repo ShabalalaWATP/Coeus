@@ -54,6 +54,32 @@ async def test_customer_submits_feedback_and_admin_dashboard_tracks_reuse() -> N
 
 
 @pytest.mark.asyncio
+async def test_feedback_submission_audit_failure_rolls_back_ticket(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    acg_id = _acg_id(app, "ACG-EU-CYBER")
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        request_id = await _approved_feedback_request(client, app, acg_id)
+        original = _ticket_for_feedback_request(app, request_id)
+        user = await login(client, "user@example.test")
+        monkeypatch.setattr(app.state.feedback_analytics_service._audit_log, "record", _fail_audit)
+        with pytest.raises(RuntimeError, match="audit unavailable"):
+            await client.post(
+                f"/api/v1/feedback/requests/{request_id}/submit",
+                headers={"X-CSRF-Token": str(user["csrfToken"])},
+                json={"rating": 5, "comment": "Audit should roll back."},
+            )
+
+    ticket = _ticket_for_feedback_request(app, request_id)
+    assert ticket.feedback_requests == original.feedback_requests
+    assert ticket.feedback_submissions == original.feedback_submissions
+    assert ticket.timeline == original.timeline
+
+
+@pytest.mark.asyncio
 async def test_team_dashboards_are_route_scoped_and_protected() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     async with AsyncClient(
@@ -278,3 +304,15 @@ def _acg_id(app: object, code: str) -> str:
         if acg.code == code:
             return str(acg.acg_id)
     raise AssertionError(f"Missing seed ACG {code}")
+
+
+def _ticket_for_feedback_request(app: object, request_id: str):
+    parsed_request_id = UUID(request_id)
+    for ticket in app.state.ticket_services.tickets._repository.list_tickets():
+        if any(request.request_id == parsed_request_id for request in ticket.feedback_requests):
+            return ticket
+    raise AssertionError(f"Missing feedback request {request_id}")
+
+
+def _fail_audit(*_args: object, **_kwargs: object) -> None:
+    raise RuntimeError("audit unavailable")
