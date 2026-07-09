@@ -1,12 +1,12 @@
-from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 from coeus.core.config import Settings
-from coeus.domain.auth import RoleName, SessionRecord, UserAccount
+from coeus.domain.auth import SessionRecord, UserAccount
 from coeus.domain.rbac import permissions_for_roles
 from coeus.persistence.codec import decode_value, encode_value
 from coeus.persistence.state_store import StateStore
+from coeus.repositories.auth_seed import seed_user_specs
 from coeus.services.passwords import PasswordHasher
 
 
@@ -30,7 +30,7 @@ class SeedUserRepository:
         self._restore_or_persist()
 
     def _seed_users(self, seed_credential: str, password_hasher: PasswordHasher) -> None:
-        for username, display_name, roles, is_active in _seed_user_specs():
+        for username, display_name, roles, is_active in seed_user_specs():
             account = UserAccount(
                 user_id=uuid4(),
                 username=username,
@@ -258,82 +258,3 @@ class IpAttemptRepository:
                 self._attempts.pop(source)
                 return True
         return False
-
-
-def _seed_user_specs() -> Iterable[tuple[str, str, frozenset[RoleName], bool]]:
-    return (
-        (
-            "admin@example.test",
-            "Admin Operator",
-            frozenset({RoleName.ADMINISTRATOR}),
-            True,
-        ),
-        ("user@example.test", "Customer User", frozenset({RoleName.USER}), True),
-        (
-            "colleague@example.test",
-            "Customer Colleague",
-            frozenset({RoleName.USER}),
-            True,
-        ),
-        (
-            "rfa.manager@example.test",
-            "RFA Manager",
-            frozenset({RoleName.RFA_MANAGER}),
-            True,
-        ),
-        (
-            "rfa.team@example.test",
-            "RFA Team Member",
-            frozenset({RoleName.RFA_TEAM_MEMBER}),
-            True,
-        ),
-        (
-            "collection.manager@example.test",
-            "Collection Manager",
-            frozenset({RoleName.COLLECTION_MANAGER}),
-            True,
-        ),
-        (
-            "collection.team@example.test",
-            "Collection Team Member",
-            frozenset({RoleName.COLLECTION_TEAM_MEMBER}),
-            True,
-        ),
-        (
-            "store.manager@example.test",
-            "Intelligence Store Manager",
-            frozenset({RoleName.INTELLIGENCE_STORE_MANAGER}),
-            True,
-        ),
-        (
-            "analyst@example.test",
-            "Intelligence Analyst",
-            frozenset({RoleName.INTELLIGENCE_ANALYST}),
-            True,
-        ),
-        (
-            "analyst.maritime@example.test",
-            "Maritime Assessment Analyst",
-            frozenset({RoleName.INTELLIGENCE_ANALYST}),
-            True,
-        ),
-        (
-            "analyst.cyber@example.test",
-            "Cyber Threat Analyst",
-            frozenset({RoleName.INTELLIGENCE_ANALYST}),
-            True,
-        ),
-        (
-            "analyst.geo@example.test",
-            "Geospatial Assessment Analyst",
-            frozenset({RoleName.INTELLIGENCE_ANALYST}),
-            True,
-        ),
-        (
-            "qc.manager@example.test",
-            "QC Manager",
-            frozenset({RoleName.QUALITY_CONTROL_MANAGER}),
-            True,
-        ),
-        ("disabled@example.test", "Disabled User", frozenset({RoleName.USER}), False),
-    )
