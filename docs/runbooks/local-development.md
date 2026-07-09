@@ -62,11 +62,13 @@ uv run --directory apps/api ruff format --check src tests
 uv run --directory apps/api ruff check src tests
 uv run --directory apps/api mypy src
 uv run --directory apps/api pytest
+corepack pnpm contracts:check
 corepack pnpm line-limit
 corepack pnpm dead-code
 ```
 
 Backend and frontend application code each maintain at least 95% line and branch
 coverage. Hand-written files changed during normal work must stay within the
-350-line limit. The dead-code check uses Knip for the TypeScript workspace and
+350-line limit. The OpenAPI contract check protects the committed API contract
+from drift. The dead-code check uses Knip for the TypeScript workspace and
 should stay clean before merging frontend changes.
