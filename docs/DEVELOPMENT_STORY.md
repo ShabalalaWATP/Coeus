@@ -38,6 +38,9 @@ Sprint 1 to Sprint 13 entries live in
 - Hardened RFI search run, offer acceptance and offer rejection so audit
   recording failure restores the original ticket, preventing unaudited search
   outcomes or product decisions.
+- Hardened analyst assignment, notes, product links, work-package updates,
+  draft saves and QC submission so failed audit recording restores the original
+  ticket state.
 
 ## 2026-07-08 No-match consent
 
