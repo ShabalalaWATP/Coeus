@@ -15,6 +15,13 @@ def test_object_key_segment_strips_directory_traversal() -> None:
     assert object_key_segment("   ") == "asset"
 
 
+def test_object_key_segment_removes_platform_unsafe_characters() -> None:
+    assert object_key_segment("../draft:brief?.pdf") == "draft_brief_.pdf"
+    assert object_key_segment("line\nbreak.pdf") == "line_break.pdf"
+    assert object_key_segment("../<>") == "asset"
+    assert len(object_key_segment(f"{'a' * 240}.pdf")) == 180
+
+
 @pytest.mark.asyncio
 async def test_asset_size_over_the_ceiling_is_rejected_at_the_boundary() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))

@@ -4,6 +4,9 @@ from uuid import UUID
 
 from coeus.domain.access import ProductStatus
 
+_UNSAFE_OBJECT_KEY_CHARS = frozenset('<>:"/\\|?*')
+_MAX_OBJECT_KEY_SEGMENT_LENGTH = 180
+
 
 @dataclass(frozen=True)
 class BoundingBox:
@@ -51,14 +54,20 @@ def object_key_segment(name: str) -> str:
     """Reduce a client-supplied asset name to a single safe path segment.
 
     Object keys are built from a server-generated UUID plus the asset name.
-    Stripping any directory components (``/`` or ``\\``) and parent references
-    keeps a malicious name from escaping its key prefix once a real object
-    store is wired in. The display name on the asset is left untouched.
+    Stripping directory components, parent references and unsafe filename
+    characters keeps a malicious or platform-invalid name from escaping its key
+    prefix once a real object store is wired in.
     """
     segment = name.replace("\\", "/").rsplit("/", 1)[-1].strip()
-    if segment in {"", ".", ".."}:
+    segment = "".join("_" if _is_unsafe_object_key_character(char) else char for char in segment)
+    segment = segment.lstrip(".").strip()[:_MAX_OBJECT_KEY_SEGMENT_LENGTH]
+    if segment in {"", ".", ".."} or segment.replace("_", "").replace("-", "").strip() == "":
         return "asset"
     return segment
+
+
+def _is_unsafe_object_key_character(character: str) -> bool:
+    return ord(character) < 32 or ord(character) == 127 or character in _UNSAFE_OBJECT_KEY_CHARS
 
 
 @dataclass(frozen=True)
