@@ -1,4 +1,4 @@
-"""drop store project metadata column
+"""drop retired store workspace metadata column
 
 Revision ID: 20260709_0004
 Revises: 20260708_0003

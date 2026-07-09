@@ -44,7 +44,7 @@ def test_retired_workspace_contract_is_not_reintroduced() -> None:
     assert matches == []
 
 
-def test_retired_projects_api_route_is_not_registered() -> None:
+def test_retired_workspace_api_route_is_not_registered() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     paths = {getattr(route, "path", "") for route in app.routes}
 

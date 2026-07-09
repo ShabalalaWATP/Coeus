@@ -7,7 +7,7 @@ Sprint 1 to Sprint 13 entries live in
 
 - Hardened ACG administration so create, update and membership changes restore
   previous repository state if audit recording fails. Added regression coverage
-  and updated the ACG project-access threat model.
+  and updated the ACG product-access threat model.
 - Hardened notification and email side effects so creation, mark-read and
   email outbox writes restore previous state if persistence or audit recording
   fails. Updated the manager final-release threat model.

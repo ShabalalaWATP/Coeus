@@ -60,7 +60,7 @@ test("my products is reachable from the navigation", () => {
   ]);
 });
 
-test("retired projects feature is not exposed in navigation", () => {
+test("retired workspace feature is not exposed in navigation", () => {
   const labels = visibleNavigationItems(previewProfile).map((item) => item.label);
 
   expect(routeByPath("/projects")).toBeUndefined();

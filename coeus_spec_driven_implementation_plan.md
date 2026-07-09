@@ -2483,7 +2483,8 @@ The MVP is done when:
 - A user can log in securely.
 - A user can raise an RFI through the Coeus chatbot.
 - The chatbot extracts and validates structured requirement details.
-- Tickets can link the user, teams, plan updates and products without a separate Projects feature.
+- Tickets can link the user, teams, plan updates and products without a separate
+  planning workspace feature.
 - ACGs control product visibility.
 - The Intelligence Store can hold existing products with rich metadata and assets.
 - Administrators, RFA Team Members and Collection Team Members can add existing products, subject to permissions.
