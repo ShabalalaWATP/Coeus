@@ -134,6 +134,13 @@ async def test_viewer_can_read_but_not_edit_or_manage() -> None:
         )
         assert intake.status_code == 404
 
+        information = await client.post(
+            f"/api/v1/tickets/{ticket_id}/timeline",
+            headers={"X-CSRF-Token": viewer_csrf},
+            json={"body": "Trying to add information as a viewer."},
+        )
+        assert information.status_code == 404
+
         manage = await _tag(client, viewer_csrf, ticket_id, "qc.manager@example.test", "viewer")
         assert manage.status_code == 404
 

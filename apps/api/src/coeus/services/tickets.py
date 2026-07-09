@@ -185,7 +185,9 @@ class TicketService:
     def add_information(self, actor: UserAccount, ticket_id: UUID, body: str) -> TicketRecord:
         ticket = self.get_visible_ticket(actor, ticket_id)
         if (
-            not is_owner(actor, ticket) and not is_editor(actor, ticket)
+            not is_owner(actor, ticket)
+            and not is_editor(actor, ticket)
+            and Permission.TICKET_WRITE_ALL not in actor.permissions
         ) or Permission.TICKET_ADD_INFORMATION not in actor.permissions:
             raise AppError(404, "ticket_not_found", "Ticket was not found.")
         state = (
