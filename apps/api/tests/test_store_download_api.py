@@ -157,6 +157,7 @@ async def test_break_glass_asset_access_is_audited_and_downloadable(tmp_path: Pa
     assert created.status_code == 201
     assert normal_grant.status_code == 404
     assert break_glass_grant.status_code == 200
+    assert break_glass_grant.headers["Cache-Control"] == "no-store"
     assert break_glass_grant.json()["downloadToken"].startswith("asset-token-")
     assert downloaded.status_code == 200
     assert downloaded.content == content

@@ -157,10 +157,12 @@ async def get_break_glass_asset_access(
     payload: BreakGlassProductAccessRequest,
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
     store_services: Annotated[StoreServices, Depends(get_store_services)],
+    response: Response,
 ) -> AssetAccessResponse:
     grant = store_services.assets.grant_break_glass_access(
         authenticated.user, product_id, asset_id, payload.reason
     )
+    response.headers["Cache-Control"] = "no-store"
     return AssetAccessResponse(
         asset_id=grant.asset.asset_id,
         download_token=grant.download_token,
