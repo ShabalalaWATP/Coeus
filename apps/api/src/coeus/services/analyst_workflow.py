@@ -8,11 +8,12 @@ from coeus.domain.enums import TicketState
 from coeus.domain.state_machine import can_transition
 from coeus.domain.tickets import (
     AnalystNote,
+    LinkedAnalystProduct,
     RoutingRoute,
     TicketRecord,
     WorkPackageStatus,
 )
-from coeus.repositories.access import SeedAccessRepository
+from coeus.repositories.access import AccessRepository
 from coeus.services.analyst_assignment import assignment_change
 from coeus.services.analyst_drafts import DraftProductInput, draft_asset, new_uuid, now
 from coeus.services.analyst_records import (
@@ -32,6 +33,8 @@ from coeus.services.tickets import TicketServices
 
 ACTIVE_ANALYST_STATES = {TicketState.ANALYST_IN_PROGRESS, TicketState.REWORK_REQUIRED}
 ANALYST_READ_PERMISSIONS = frozenset({Permission.ANALYST_WORK})
+ANALYST_TASK_LIST_LIMIT = 100
+ANALYST_LINKED_PRODUCT_LIMIT = 25
 ASSIGNMENT_READ_PERMISSIONS = frozenset({Permission.RFA_ASSIGN, Permission.COLLECTION_ASSIGN})
 
 
@@ -40,7 +43,7 @@ class AnalystWorkflowService:
         self,
         tickets: TicketServices,
         store: StoreServices,
-        access_repository: SeedAccessRepository,
+        access_repository: AccessRepository,
         audit_log: AuditLog,
     ) -> None:
         self._tickets = tickets
@@ -104,7 +107,7 @@ class AnalystWorkflowService:
 
     def list_tasks(self, actor: UserAccount) -> tuple[TicketRecord, ...]:
         self._require(actor, Permission.ANALYST_WORK)
-        return tuple(
+        tasks = tuple(
             ticket
             for ticket in self._tickets.tickets.list_workflow_tickets(
                 actor, ANALYST_READ_PERMISSIONS
@@ -112,6 +115,7 @@ class AnalystWorkflowService:
             if assigned_to(ticket, actor.user_id)
             and ticket.state in {*ACTIVE_ANALYST_STATES, TicketState.QC_REVIEW}
         )
+        return tasks[:ANALYST_TASK_LIST_LIMIT]
 
     def task_details(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         self._require(actor, Permission.ANALYST_WORK)
@@ -121,6 +125,19 @@ class AnalystWorkflowService:
         if not assigned_to(ticket, actor.user_id):
             raise AppError(404, "task_not_found", "Analyst task was not found.")
         return ticket
+
+    def visible_linked_products(
+        self, actor: UserAccount, ticket: TicketRecord
+    ) -> tuple[LinkedAnalystProduct, ...]:
+        """Return only links whose product is readable under the actor's current policy."""
+        visible: list[LinkedAnalystProduct] = []
+        for link in ticket.linked_products[:ANALYST_LINKED_PRODUCT_LIMIT]:
+            try:
+                self._store.details.get_visible_product(actor, link.product_id)
+            except AppError:
+                continue
+            visible.append(link)
+        return tuple(visible)
 
     def add_note(self, actor: UserAccount, ticket_id: UUID, body: str) -> TicketRecord:
         ticket = self._active_task(actor, ticket_id)
@@ -151,6 +168,12 @@ class AnalystWorkflowService:
 
     def link_product(self, actor: UserAccount, ticket_id: UUID, product_id: UUID) -> TicketRecord:
         ticket = self._active_task(actor, ticket_id)
+        if len(ticket.linked_products) >= ANALYST_LINKED_PRODUCT_LIMIT:
+            raise AppError(
+                409,
+                "linked_product_limit_reached",
+                "The analyst task has reached its linked-product limit.",
+            )
         if any(link.product_id == product_id for link in ticket.linked_products):
             raise AppError(409, "product_already_linked", "Product is already linked.")
         product = self._store.details.get_visible_product(actor, product_id)

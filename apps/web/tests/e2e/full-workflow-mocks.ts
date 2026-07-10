@@ -1,6 +1,6 @@
 import type { Page, Route } from "@playwright/test";
 
-const API = "http://127.0.0.1:8001/api/v1";
+const API = "http://127.0.0.1:8011/api/v1";
 const now = "2026-07-06T12:00:00Z";
 const acg = {
   code: "ACG-ALPHA",

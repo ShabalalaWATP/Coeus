@@ -5,7 +5,7 @@ import { DefaultRouteRedirect } from "../components/auth/DefaultRouteRedirect";
 import { ProtectedRoute } from "../components/auth/ProtectedRoute";
 import { AuthenticatedShell } from "../components/layout/AuthenticatedShell";
 import { RouteFallback } from "../components/layout/RouteFallback";
-import type { Permission } from "../lib/api-client/client";
+import type { Permission } from "../lib/api-client/auth";
 import {
   AcgAdminPage,
   AdminOverviewPage,

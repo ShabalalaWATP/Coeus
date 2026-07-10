@@ -60,9 +60,6 @@ class TicketService:
             if (owns and is_owner(actor, ticket)) or is_collaborator(actor, ticket)
         )
 
-    def list_similarity_candidates(self) -> tuple[TicketRecord, ...]:
-        return self._repository.list_tickets()
-
     def get_visible_ticket(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         ticket = self._repository.get(ticket_id)
         if ticket is None or not self._can_read(actor, ticket):

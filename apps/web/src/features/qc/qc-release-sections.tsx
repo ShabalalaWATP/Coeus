@@ -1,4 +1,4 @@
-import type { AccessControlGroup } from "../../lib/api-client/client";
+import type { AccessControlGroup } from "../../lib/api-client/access";
 import type { QcProduct } from "../../lib/api-client/qc";
 import type { QcReleaseFormState } from "./qc-release-model";
 

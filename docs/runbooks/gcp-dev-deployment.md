@@ -18,6 +18,8 @@ personal project IDs or personal billing accounts in committed files.
 Current limitation: the local app now has file and PostgreSQL state-store
 adapters, but this runbook remains a reference path. GCS, Pub/Sub and production
 worker adapters still need implementation before a full hosted deployment.
+Do not execute this runbook until ADR 0019's migration readiness gates pass.
+The reference API is intentionally limited to one instance.
 
 ## Values You Need
 
@@ -210,25 +212,18 @@ terraform plan -out coeus-dev-cors.tfplan
 terraform apply coeus-dev-cors.tfplan
 ```
 
-## Configure GitHub Actions
+## Validate The Dormant Reference In GitHub Actions
 
-Create a protected GitHub Environment named `dev`.
+Run **Actions > Future GCP Migration Reference > Run workflow** only for an
+authorised migration exercise, and select the required confirmation input.
+The workflow validates Terraform, runs its migration-gate and single-writer
+tests, and builds API and web images locally. It has no GCP authentication,
+registry push, infrastructure mutation or deployment step. There is no
+push-triggered or scheduled deployment path.
 
-Add these environment variables:
-
-```text
-GCP_PROJECT_ID=<PROJECT_ID>
-GCP_REGION=europe-west2
-GCP_ARTIFACT_REPOSITORY=coeus
-GCP_API_SERVICE=coeus-dev-api
-GCP_WEB_SERVICE=coeus-dev-web
-GCP_WORKLOAD_IDENTITY_PROVIDER=<terraform output workload_identity_provider>
-GCP_DEPLOY_SERVICE_ACCOUNT=<terraform output deployer_service_account_email>
-GCP_DEPLOY_DEV_ENABLED=false
-```
-
-Run **Actions > Deploy Dev > Run workflow** manually first. Set
-`GCP_DEPLOY_DEV_ENABLED=true` only after a manual deployment succeeds.
+Do not create deployment variables or enable a protected deployment environment
+until every ADR 0019 readiness gate passes and a separate supported deployment
+workflow has been reviewed and authorised.
 
 ## Verify
 

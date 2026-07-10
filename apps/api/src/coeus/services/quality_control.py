@@ -9,9 +9,9 @@ from coeus.domain.qc import ProductIndexRecord, QcChecklistItem, QcDecisionStatu
 from coeus.domain.state_machine import can_transition
 from coeus.domain.store import StoreProduct
 from coeus.domain.tickets import TicketRecord
-from coeus.repositories.access import SeedAccessRepository
+from coeus.repositories.access import AccessRepository
 from coeus.services.audit import AuditLog
-from coeus.services.object_storage import LocalObjectStorage
+from coeus.services.object_storage import ObjectStorage
 from coeus.services.qc_ingestion import (
     ProductAutoIngestionService,
     QcApprovalInput,
@@ -33,7 +33,7 @@ QC_READ_PERMISSIONS = frozenset({Permission.QC_REVIEW})
 
 
 class ReleaseCheckService:
-    def __init__(self, access_repository: SeedAccessRepository) -> None:
+    def __init__(self, access_repository: AccessRepository) -> None:
         self._access = access_repository
 
     def approval_checklist(self, answers: dict[str, bool]) -> tuple[QcChecklistItem, ...]:
@@ -211,9 +211,9 @@ class QualityControlService:
 def build_quality_control_service(
     tickets: TicketServices,
     store: StoreServices,
-    access_repository: SeedAccessRepository,
+    access_repository: AccessRepository,
     audit_log: AuditLog,
-    storage: LocalObjectStorage,
+    storage: ObjectStorage,
 ) -> QualityControlService:
     return QualityControlService(
         tickets,

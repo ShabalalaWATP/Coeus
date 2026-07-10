@@ -59,8 +59,11 @@ docker compose up -d postgres
 **Terminal 2: API on port 8001**
 
 ```bash
-uv run --directory apps/api uvicorn coeus.main:app --host 127.0.0.1 --port 8001
+uv run --directory apps/api uvicorn coeus.main:app --host 127.0.0.1 --port 8001 --workers 1
 ```
+
+Run one API process only. The current local repositories are deliberately
+single-writer; ADR 0019 defines the future scale-out prerequisites.
 
 **Terminal 3: web app on port 5173**
 
@@ -135,7 +138,8 @@ corepack pnpm --filter @coeus/web test
 uv run --directory apps/api ruff format --check src tests
 uv run --directory apps/api ruff check src tests
 uv run --directory apps/api mypy src
-uv run --directory apps/api pytest
+uv run --directory apps/api pytest --cov-report=json:coverage.json
+uv run --project apps/api python scripts/check_backend_coverage.py apps/api/coverage.json
 
 # API contract: fail if packages/contracts/openapi.json is stale
 corepack pnpm contracts:check

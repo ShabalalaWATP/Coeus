@@ -23,6 +23,16 @@ async def test_customer_submits_feedback_and_admin_dashboard_tracks_reuse() -> N
         request_id = await _approved_feedback_request(client, app, acg_id)
         user = await login(client, "user@example.test")
         requests = await client.get("/api/v1/feedback/requests")
+        short_comment = await client.post(
+            f"/api/v1/feedback/requests/{request_id}/submit",
+            headers={"X-CSRF-Token": str(user["csrfToken"])},
+            json={"rating": 5, "comment": "x"},
+        )
+        missing_request = await client.post(
+            f"/api/v1/feedback/requests/{uuid4()}/submit",
+            headers={"X-CSRF-Token": str(user["csrfToken"])},
+            json={"rating": 5, "comment": "Valid but unknown request."},
+        )
         submitted = await client.post(
             f"/api/v1/feedback/requests/{request_id}/submit",
             headers={"X-CSRF-Token": str(user["csrfToken"])},
@@ -42,6 +52,8 @@ async def test_customer_submits_feedback_and_admin_dashboard_tracks_reuse() -> N
 
     assert requests.status_code == 200
     assert requests.json()["requests"][0]["id"] == request_id
+    assert short_comment.status_code == 422
+    assert missing_request.status_code == 404
     assert submitted.status_code == 200
     assert submitted.json()["status"] == "submitted"
     assert submitted.json()["submission"]["rating"] == 5

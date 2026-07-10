@@ -4,7 +4,14 @@ import { KeyRound, Plus, Save, UserMinus, UserPlus, UsersRound } from "lucide-re
 import { useParams } from "react-router-dom";
 
 import { ErrorState, LoadingState } from "../../components/ui/PageState";
-import { apiClient, type AccessControlGroup } from "../../lib/api-client/client";
+import {
+  addAcgMember,
+  createAcg as createAccessControlGroup,
+  listAcgs,
+  removeAcgMember,
+  updateAcg as updateAccessControlGroup,
+  type AccessControlGroup,
+} from "../../lib/api-client/access";
 import { useAuth } from "../../lib/auth/auth-context";
 import { useActionError } from "../../lib/mutations/action-error";
 import { hasPermissions } from "../../lib/permissions/route-access";
@@ -32,7 +39,7 @@ export default function AcgAdminPage() {
 
   const acgsQuery = useQuery({
     queryKey: ["acgs"],
-    queryFn: () => apiClient.listAcgs(),
+    queryFn: listAcgs,
   });
   const acgs = useMemo(() => acgsQuery.data ?? [], [acgsQuery.data]);
   // Honour the :acgId route parameter until the user picks a group manually.
@@ -61,7 +68,7 @@ export default function AcgAdminPage() {
   const canCreate = session !== null && hasPermissions(session.user, ["acg:create"]);
 
   const createAcg = useMutation({
-    mutationFn: () => apiClient.createAcg(createForm, csrfToken),
+    mutationFn: () => createAccessControlGroup(createForm, csrfToken),
     onSuccess: async (created) => {
       setCreateForm({ code: "", name: "", description: "" });
       setSelectedId(created.id);
@@ -72,7 +79,7 @@ export default function AcgAdminPage() {
   });
   const updateAcg = useMutation({
     mutationFn: (acg: AccessControlGroup) =>
-      apiClient.updateAcg(acg.id, { name: editName || acg.name, isActive }, csrfToken),
+      updateAccessControlGroup(acg.id, { name: editName || acg.name, isActive }, csrfToken),
     onSuccess: async (updated) => {
       setSelectedId(updated.id);
       await queryClient.invalidateQueries({ queryKey: ["acgs"] });
@@ -81,8 +88,7 @@ export default function AcgAdminPage() {
     onMutate: clearActionError,
   });
   const addMember = useMutation({
-    mutationFn: (acg: AccessControlGroup) =>
-      apiClient.addAcgMember(acg.id, memberUserId, csrfToken),
+    mutationFn: (acg: AccessControlGroup) => addAcgMember(acg.id, memberUserId, csrfToken),
     onSuccess: async () => {
       setMemberUserId("");
       await queryClient.invalidateQueries({ queryKey: ["acgs"] });
@@ -92,7 +98,7 @@ export default function AcgAdminPage() {
   });
   const removeMember = useMutation({
     mutationFn: ({ acg, userId }: { acg: AccessControlGroup; userId: string }) =>
-      apiClient.removeAcgMember(acg.id, userId, csrfToken),
+      removeAcgMember(acg.id, userId, csrfToken),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["acgs"] });
     },

@@ -62,7 +62,10 @@ async def analyst_tasks(
     analyst: Annotated[AnalystWorkflowService, Depends(get_analyst_workflow_service)],
 ) -> AnalystTaskListResponse:
     return AnalystTaskListResponse(
-        tasks=[_task_response(ticket) for ticket in analyst.list_tasks(authenticated.user)]
+        tasks=[
+            _task_response(ticket, authenticated.user, analyst)
+            for ticket in analyst.list_tasks(authenticated.user)
+        ]
     )
 
 
@@ -72,7 +75,9 @@ async def analyst_task_details(
     authenticated: Annotated[AuthenticatedSession, Depends(get_current_session)],
     analyst: Annotated[AnalystWorkflowService, Depends(get_analyst_workflow_service)],
 ) -> AnalystTaskResponse:
-    return _task_response(analyst.task_details(authenticated.user, ticket_id))
+    return _task_response(
+        analyst.task_details(authenticated.user, ticket_id), authenticated.user, analyst
+    )
 
 
 @router.post("/tasks/{ticket_id}/assign", response_model=AnalystTaskResponse)
@@ -89,7 +94,9 @@ async def assign_analyst(
             payload.analyst_user_id,
             tuple(payload.work_packages),
             payload.team_name,
-        )
+        ),
+        authenticated.user,
+        analyst,
     )
 
 
@@ -100,7 +107,11 @@ async def add_note(
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
     analyst: Annotated[AnalystWorkflowService, Depends(get_analyst_workflow_service)],
 ) -> AnalystTaskResponse:
-    return _task_response(analyst.add_note(authenticated.user, ticket_id, payload.body))
+    return _task_response(
+        analyst.add_note(authenticated.user, ticket_id, payload.body),
+        authenticated.user,
+        analyst,
+    )
 
 
 @router.post("/tasks/{ticket_id}/products", response_model=AnalystTaskResponse)
@@ -110,7 +121,11 @@ async def link_product(
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
     analyst: Annotated[AnalystWorkflowService, Depends(get_analyst_workflow_service)],
 ) -> AnalystTaskResponse:
-    return _task_response(analyst.link_product(authenticated.user, ticket_id, payload.product_id))
+    return _task_response(
+        analyst.link_product(authenticated.user, ticket_id, payload.product_id),
+        authenticated.user,
+        analyst,
+    )
 
 
 @router.patch("/tasks/{ticket_id}/work-packages/{package_id}", response_model=AnalystTaskResponse)
@@ -127,7 +142,9 @@ async def update_work_package(
             ticket_id,
             package_id,
             WorkPackageStatus(payload.status),
-        )
+        ),
+        authenticated.user,
+        analyst,
     )
 
 
@@ -139,7 +156,9 @@ async def save_draft(
     analyst: Annotated[AnalystWorkflowService, Depends(get_analyst_workflow_service)],
 ) -> AnalystTaskResponse:
     return _task_response(
-        analyst.create_draft(authenticated.user, ticket_id, _draft_input(payload))
+        analyst.create_draft(authenticated.user, ticket_id, _draft_input(payload)),
+        authenticated.user,
+        analyst,
     )
 
 
@@ -149,7 +168,9 @@ async def submit_to_qc(
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
     analyst: Annotated[AnalystWorkflowService, Depends(get_analyst_workflow_service)],
 ) -> AnalystTaskResponse:
-    return _task_response(analyst.submit_to_qc(authenticated.user, ticket_id))
+    return _task_response(
+        analyst.submit_to_qc(authenticated.user, ticket_id), authenticated.user, analyst
+    )
 
 
 def _candidate_response(user: UserAccount) -> AnalystCandidateResponse:
@@ -160,7 +181,9 @@ def _candidate_response(user: UserAccount) -> AnalystCandidateResponse:
     )
 
 
-def _task_response(ticket: TicketRecord) -> AnalystTaskResponse:
+def _task_response(
+    ticket: TicketRecord, actor: UserAccount, analyst: AnalystWorkflowService
+) -> AnalystTaskResponse:
     intake = ticket.intake
     return AnalystTaskResponse(
         ticket_id=ticket.ticket_id,
@@ -177,7 +200,10 @@ def _task_response(ticket: TicketRecord) -> AnalystTaskResponse:
         assignment=_assignment_response(latest_assignment(ticket)),
         work_packages=[_work_package_response(package) for package in ticket.work_packages],
         notes=[_note_response(note) for note in ticket.analyst_notes],
-        linked_products=[_linked_product_response(link) for link in ticket.linked_products],
+        linked_products=[
+            _linked_product_response(link)
+            for link in analyst.visible_linked_products(actor, ticket)
+        ],
         drafts=[_draft_response(draft) for draft in ticket.draft_products],
     )
 

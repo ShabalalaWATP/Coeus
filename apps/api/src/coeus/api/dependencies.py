@@ -15,7 +15,7 @@ from coeus.services.asset_tokens import AssetTokenService
 from coeus.services.auth import AuthService
 from coeus.services.feedback_analytics import FeedbackAnalyticsService
 from coeus.services.notifications import NotificationService
-from coeus.services.object_storage import LocalObjectStorage
+from coeus.services.object_storage import ObjectStorage
 from coeus.services.product_release import ProductReleaseService
 from coeus.services.quality_control import QualityControlService
 from coeus.services.registration import RegistrationService
@@ -125,9 +125,9 @@ def get_store_services(request: Request) -> StoreServices:
     return store_services
 
 
-def get_object_storage(request: Request) -> LocalObjectStorage:
+def get_object_storage(request: Request) -> ObjectStorage:
     storage = getattr(request.app.state, "object_storage", None)
-    if not isinstance(storage, LocalObjectStorage):
+    if not isinstance(storage, ObjectStorage):
         raise AppError(500, "object_storage_not_configured", "Object storage is not configured.")
     return storage
 

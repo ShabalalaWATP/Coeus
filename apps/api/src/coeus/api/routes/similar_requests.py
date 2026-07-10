@@ -22,7 +22,7 @@ router = APIRouter(prefix="/similar-requests", tags=["similar requests"])
 
 
 @router.get("/tickets/{ticket_id}", response_model=SimilarRequestNoticeResponse)
-async def customer_notice(
+def customer_notice(
     ticket_id: UUID,
     authenticated: Annotated[AuthenticatedSession, Depends(get_current_session)],
     service: Annotated[SimilarRequestService, Depends(get_similar_request_service)],
@@ -36,7 +36,7 @@ async def customer_notice(
 @router.post(
     "/tickets/{ticket_id}/join/{related_ticket_id}", response_model=SimilarRequestJoinResponse
 )
-async def join_customer_match(
+def join_customer_match(
     ticket_id: UUID,
     related_ticket_id: UUID,
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
@@ -47,7 +47,7 @@ async def join_customer_match(
 
 
 @router.get("/routing/{ticket_id}", response_model=SimilarRequestListResponse)
-async def manager_matches(
+def manager_matches(
     ticket_id: UUID,
     authenticated: Annotated[AuthenticatedSession, Depends(get_current_session)],
     service: Annotated[SimilarRequestService, Depends(get_similar_request_service)],
@@ -63,19 +63,15 @@ async def manager_matches(
 @router.post(
     "/routing/{ticket_id}/link/{related_ticket_id}", response_model=SimilarRequestListResponse
 )
-async def link_related_ticket(
+def link_related_ticket(
     ticket_id: UUID,
     related_ticket_id: UUID,
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
     service: Annotated[SimilarRequestService, Depends(get_similar_request_service)],
 ) -> SimilarRequestListResponse:
     service.link_related(authenticated.user, ticket_id, related_ticket_id)
-    return SimilarRequestListResponse(
-        matches=[
-            _match_response(match)
-            for match in service.manager_matches(authenticated.user, ticket_id)
-        ]
-    )
+    match = service.manager_match(authenticated.user, ticket_id, related_ticket_id)
+    return SimilarRequestListResponse(matches=[] if match is None else [_match_response(match)])
 
 
 def _match_response(match: SimilarRequestMatch) -> SimilarRequestResponse:

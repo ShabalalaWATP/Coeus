@@ -1,8 +1,17 @@
 from uuid import uuid4
 
+import pytest
+
+from coeus.core.errors import AppError
 from coeus.domain.enums import TicketState
-from coeus.domain.tickets import IntakeDetails, TicketRecord
+from coeus.domain.tickets import IntakeDetails, RoutingRoute, TicketRecord
 from coeus.services.routing_agents import CmCapabilityAgent, RfaCapabilityAgent
+from coeus.services.routing_records import (
+    current_queue_permission,
+    ensure_manager_state,
+    fallback_state,
+    latest_recommendation,
+)
 
 
 def _ticket(intake: IntakeDetails) -> TicketRecord:
@@ -112,3 +121,18 @@ def test_terms_match_through_punctuation_and_plurals() -> None:
 
     assert review.can_satisfy is True
     assert "mock sensor reporting" in review.suggested_collection_sources
+
+
+def test_routing_record_guards_reject_missing_or_wrong_queue_state() -> None:
+    ticket = _ticket(_complete_intake())
+    cm_review = CmCapabilityAgent().review(
+        _ticket(_complete_intake(description="Monitor the mock area daily."))
+    )
+
+    with pytest.raises(AppError, match="Run capability reviews first"):
+        latest_recommendation(ticket)
+    assert fallback_state(RoutingRoute.RFA, cm_review) == TicketState.CM_MANAGER_REVIEW
+    with pytest.raises(AppError, match="not in manager review"):
+        current_queue_permission(ticket)
+    with pytest.raises(AppError, match="not in that manager queue"):
+        ensure_manager_state(ticket, RoutingRoute.RFA)

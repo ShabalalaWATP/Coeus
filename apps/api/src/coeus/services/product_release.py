@@ -9,7 +9,7 @@ from coeus.domain.enums import TicketState
 from coeus.domain.state_machine import can_transition
 from coeus.domain.store import StoreProduct
 from coeus.domain.tickets import RoutingRoute, TicketRecord
-from coeus.repositories.access import SeedAccessRepository
+from coeus.repositories.access import AccessRepository
 from coeus.services.analyst_records import approved_route
 from coeus.services.audit import AuditLog
 from coeus.services.notifications import NotificationService
@@ -32,7 +32,7 @@ class ProductReleaseService:
         self,
         tickets: TicketServices,
         store: StoreServices,
-        access: SeedAccessRepository,
+        access: AccessRepository,
         notifications: NotificationService,
         audit_log: AuditLog,
     ) -> None:

@@ -6,7 +6,7 @@ the concise delivery tracker and must stay within the repository line limit.
 
 ## Current Stage
 
-Sprint 13: Security hardening.
+Sprint 14: Local-first security and quality remediation.
 
 ## Delivery Ledger
 
@@ -23,8 +23,9 @@ Sprint 13: Security hardening.
 | 9 | Analyst workbench, assignment, work packages, notes, linked products, drafts and QC submission. | Complete | Local analyst, Semgrep and UI gates passed on 2026-07-05. |
 | 10 | QC queue, checklist, rejection, auto-ingestion, indexing, dissemination and feedback requests. | Complete | Local and GitHub backend, frontend, Semgrep and CodeQL gates passed on 2026-07-05. |
 | 11 | Feedback submission, admin/RFA/CM dashboards, product reuse analytics and Trends Analysis Agent. | Complete | Local backend, frontend, Semgrep and security gates passed on 2026-07-05. |
-| 12 | GCP dev deployment, Terraform baseline, Cloud Run, Cloud SQL, Cloud Storage, Secret Manager, Pub/Sub, Artifact Registry and AI provider config. | Complete | Local backend, frontend, Terraform, Semgrep and security gates passed on 2026-07-05. |
+| 12 | Inactive future GCP migration reference: Terraform, Cloud Run, Cloud SQL, Cloud Storage, Secret Manager, Pub/Sub, Artifact Registry and AI provider configuration. | Reference complete, inactive | Reference validation passed on 2026-07-05; no live GCP runtime is supported or required. |
 | 13 | Security hardening, container scans, SBOM, DAST, Terraform scanning, prompt-injection suite and air-gapped notes. | Complete | Local backend, frontend, Semgrep, Checkov and Gitleaks gates passed on 2026-07-05; Docker-backed checks run in GitHub Actions. |
+| 14 | Close the 2026-07-10 security findings and improve SOLID boundaries, maintainability, independent coverage gates and real integration testing. | Implementation complete, seal pending | All local quality and security gates pass; final Codex Security seal is pending. |
 
 ## Sprint 11 Delivered Scope
 
@@ -51,16 +52,20 @@ Sprint 13: Security hardening.
 - Semgrep full-repository and Sprint 11 targeted scans: 0 findings.
 - pnpm supply-chain policy, file line limit and Compose config: passed.
 
-## Sprint 12 Delivered Scope
+## Sprint 12 Future Reference Scope
 
 - Terraform dev baseline under `infra/gcp/environments/dev`.
 - Modular Terraform for GCP services, IAM, Artifact Registry, Cloud Run, Cloud
   SQL, Cloud Storage, Secret Manager and Pub/Sub.
 - GitHub OIDC Workload Identity Federation without service account keys.
-- Manual-first `Deploy Dev` workflow for API and web Cloud Run deployment.
+- Manual migration-reference workflow for Terraform validation and local image
+  builds only; no active cloud deployment path.
 - Production web container image for Cloud Run.
 - Runtime settings for GCP, GCS, Pub/Sub and supported AI provider configuration.
 - Sprint 12 spec, ADR, threat model and GCP dev deployment runbook.
+
+This material is not a supported current deployment target. Coeus remains a
+local, single-instance application until the readiness gates in ADR 0019 pass.
 
 ## Sprint 12 Verification
 
@@ -76,6 +81,39 @@ Sprint 13: Security hardening.
   7.39.0.
 - Semgrep full-repository scan: 0 findings.
 - File line limit and Compose config: passed.
+
+## Sprint 14 Delivered Scope
+
+- Closed 16 original exploit paths and contained the unsupported multi-replica
+  session primitive behind local, runtime, IaC and migration-readiness gates.
+- Centralised actor-scoped linked-product response policy and bounded analyst
+  task, linked-product, similarity and Store projection work.
+- Added append-only audit stores, per-username compare-and-restore lockout
+  state, atomic registration capacity and decisions, and exact-byte QC assets.
+- Split application composition, introduced narrow access, Store and object
+  storage protocols, decomposed analyst UI orchestration, and consolidated the
+  frontend request transport.
+- Replaced the dormant cloud deploy workflow with validation and local image
+  builds only, plus a default-deny Terraform migration gate.
+- Added separate backend line and branch gates and a real local-stack browser
+  flow.
+
+## Sprint 14 Verification Before Security Seal
+
+- Backend Ruff, mypy and pytest: 490 passed, 98.28 percent line coverage and
+  95.05 percent branch coverage.
+- Frontend Prettier, ESLint, TypeScript and Vitest: 322 passed, 98.77 percent
+  line coverage and 95.54 percent branch coverage.
+- Frontend Knip, production build, pnpm production audit and the 350-line gate:
+  passed.
+- Playwright Chromium: 3 passed, including a real Vite-to-FastAPI login and
+  request-creation flow without API interception.
+- Bandit, pip-audit, Semgrep tracked and untracked scans, Gitleaks changed
+  content, Actionlint and Checkov: passed with no reportable finding.
+- Terraform 1.10.5: format and validate passed; migration gate 1 of 1 and
+  single-writer module tests 3 of 3 passed.
+- API container rebuilt; Trivy found zero high or critical vulnerabilities
+  when ignoring unfixed issues.
 
 ## Sprint 13 Delivered Scope
 

@@ -1,4 +1,4 @@
-import type { AuthUser, Permission } from "../api-client/client";
+import type { AuthUser, Permission } from "../api-client/auth";
 
 export type UserProfile = AuthUser;
 

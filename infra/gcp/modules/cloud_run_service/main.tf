@@ -8,8 +8,8 @@ resource "google_cloud_run_v2_service" "service" {
     service_account = var.service_account_email
 
     scaling {
-      min_instance_count = 0
-      max_instance_count = 3
+      min_instance_count = var.min_instance_count
+      max_instance_count = var.max_instance_count
     }
 
     containers {
@@ -77,6 +77,13 @@ resource "google_cloud_run_v2_service" "service" {
   traffic {
     percent = 100
     type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+  }
+
+  lifecycle {
+    precondition {
+      condition     = !var.single_writer || var.max_instance_count == 1
+      error_message = "Single-writer services must set max_instance_count to one."
+    }
   }
 }
 

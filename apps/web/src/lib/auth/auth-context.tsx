@@ -11,13 +11,12 @@ import {
 } from "react";
 
 import {
-  ApiClient,
-  ApiError,
-  apiClient,
-  setAuthEventHandlers,
+  defaultAuthApi,
+  type AuthApi,
   type AuthSession,
   type LoginRequest,
-} from "../api-client/client";
+} from "../api-client/auth";
+import { ApiError, setAuthEventHandlers } from "../api-client/client";
 
 type AuthStatus = "loading" | "authenticated" | "anonymous" | "expired";
 
@@ -30,7 +29,7 @@ type AuthContextValue = {
 };
 
 type AuthProviderProps = PropsWithChildren<{
-  client?: ApiClient;
+  authApi?: AuthApi;
   clearSensitiveCache?: () => void;
   initialSession?: AuthSession | null;
 }>;
@@ -40,7 +39,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({
   children,
   clearSensitiveCache = () => undefined,
-  client = apiClient,
+  authApi = defaultAuthApi,
   initialSession,
 }: AuthProviderProps) {
   const [session, setSession] = useState<AuthSession | null>(initialSession ?? null);
@@ -61,7 +60,7 @@ export function AuthProvider({
     let active = true;
     async function loadCurrentUser() {
       try {
-        const currentSession = await client.getCurrentUser();
+        const currentSession = await authApi.getCurrentUser();
         if (active) {
           setSession(currentSession);
           setStatus("authenticated");
@@ -80,7 +79,7 @@ export function AuthProvider({
     return () => {
       active = false;
     };
-  }, [clearSensitiveCache, client, initialSession]);
+  }, [authApi, clearSensitiveCache, initialSession]);
 
   // Mirror the initial-load handling for calls made after login: a 401 from
   // any endpoint means the backend session is gone, and a password-change
@@ -108,34 +107,34 @@ export function AuthProvider({
 
   const login = useCallback(
     async (request: LoginRequest) => {
-      const nextSession = await client.login(request);
+      const nextSession = await authApi.login(request);
       clearSensitiveCache();
       setSession(nextSession);
       setStatus("authenticated");
       return nextSession;
     },
-    [clearSensitiveCache, client],
+    [authApi, clearSensitiveCache],
   );
 
   const logout = useCallback(async () => {
     const csrfToken = session?.csrfToken;
     try {
       if (csrfToken !== undefined) {
-        await client.logout(csrfToken);
+        await authApi.logout(csrfToken);
       }
     } finally {
       clearSensitiveCache();
       setSession(null);
       setStatus("anonymous");
     }
-  }, [clearSensitiveCache, client, session?.csrfToken]);
+  }, [authApi, clearSensitiveCache, session?.csrfToken]);
 
   const refreshSession = useCallback(async () => {
-    const currentSession = await client.getCurrentUser();
+    const currentSession = await authApi.getCurrentUser();
     setSession(currentSession);
     setStatus("authenticated");
     return currentSession;
-  }, [client]);
+  }, [authApi]);
 
   const value = useMemo(
     () => ({

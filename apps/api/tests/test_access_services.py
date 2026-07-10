@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 import pytest
 
 from coeus.core.config import Settings
@@ -201,3 +203,26 @@ def test_acg_membership_remove_rolls_back_when_audit_fails() -> None:
         services.acgs.remove_user(admin, acg.acg_id, admin.user_id)
 
     assert acg.acg_id in services.repository.acg_ids_for_user(admin.user_id)
+
+
+def test_access_services_handle_idempotent_rollbacks_and_missing_records() -> None:
+    services = build_seed_access_services_with_failing_audit()
+    admin = services.repository.get_user_by_username("admin@example.test")
+    disabled = services.repository.get_user_by_username("disabled@example.test")
+    assert admin is not None
+    assert disabled is not None
+    acg = next(acg for acg in services.repository.list_acgs() if acg.code == "ACG-ALPHA-REGIONAL")
+
+    with pytest.raises(RuntimeError, match="audit unavailable"):
+        services.acgs.add_user(admin, acg.acg_id, admin.user_id)
+    assert acg.acg_id in services.repository.acg_ids_for_user(admin.user_id)
+
+    assert acg.acg_id not in services.repository.acg_ids_for_user(disabled.user_id)
+    with pytest.raises(RuntimeError, match="audit unavailable"):
+        services.acgs.remove_user(admin, acg.acg_id, disabled.user_id)
+    assert acg.acg_id not in services.repository.acg_ids_for_user(disabled.user_id)
+
+    with pytest.raises(AppError, match="Access control group was not found"):
+        services.acgs.list_member_ids(uuid4())
+    with pytest.raises(AppError, match="Product was not found"):
+        services.diagnostics.diagnose_product(uuid4(), admin.user_id)

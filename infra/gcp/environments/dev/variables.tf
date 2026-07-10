@@ -26,12 +26,12 @@ variable "github_repository" {
 }
 
 variable "api_image" {
-  description = "Initial API image. The deploy workflow replaces this by SHA."
+  description = "Future migration API image reference. No deployment workflow is active."
   type        = string
 }
 
 variable "web_image" {
-  description = "Initial web image. The deploy workflow replaces this by SHA."
+  description = "Future migration web image reference. No deployment workflow is active."
   type        = string
 }
 
@@ -43,6 +43,12 @@ variable "allowed_cors_origins" {
 
 variable "cloud_sql_deletion_protection" {
   description = "Enable Cloud SQL deletion protection."
+  type        = bool
+  default     = false
+}
+
+variable "migration_adapters_ready" {
+  description = "Hard gate for future GCP apply. Keep false until GCS, Pub/Sub and distributed state are implemented and verified."
   type        = bool
   default     = false
 }

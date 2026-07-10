@@ -5,6 +5,7 @@ from uuid import UUID
 import pytest
 
 from coeus.core.config import Settings
+from coeus.core.errors import AppError
 from coeus.domain.auth import RoleName, SessionRecord
 from coeus.repositories.auth import LoginAttemptRepository, SeedUserRepository, SessionRepository
 from coeus.services.audit import AuditLog
@@ -103,3 +104,20 @@ def test_role_change_rolls_back_user_and_sessions_when_audit_fails(
 
     assert users.get_by_id(target.user_id) == target
     assert sessions.get(session.session_id) == session
+
+
+def test_user_admin_rejects_invalid_targets_values_and_permissions() -> None:
+    service, users, _sessions, _audit = _service()
+    admin = users.get_by_username("admin@example.test")
+    target = users.get_by_username("user@example.test")
+    assert admin is not None
+    assert target is not None
+
+    with pytest.raises(AppError, match="At least one role"):
+        service.set_roles(admin, target.user_id, frozenset())
+    with pytest.raises(AppError, match="Clearance must be between"):
+        service.set_clearance(admin, target.user_id, 0)
+    with pytest.raises(AppError, match="User was not found"):
+        service.set_active(admin, UUID(int=0), True)
+    with pytest.raises(AppError, match="Permission denied"):
+        service.set_active(target, admin.user_id, False)

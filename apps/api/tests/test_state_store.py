@@ -5,7 +5,8 @@ import pytest
 
 from coeus.core.config import Settings
 from coeus.persistence import state_store
-from coeus.persistence.factory import build_state_store
+from coeus.persistence.audit_store import PostgresAuditEventStore
+from coeus.persistence.factory import build_audit_event_store, build_state_store
 from coeus.persistence.relational_schema import store_schema_statements
 from coeus.persistence.state_store import (
     FileStateStore,
@@ -76,6 +77,10 @@ def test_postgres_state_store_saves_and_loads_json(
     assert "intelligence_store_semantic_labels" in executed_sql
     assert "embedding vector(384)" in executed_sql
     assert "vector_cosine_ops" in executed_sql
+    assert isinstance(
+        build_audit_event_store(Settings(environment="test"), store),
+        PostgresAuditEventStore,
+    )
 
 
 def test_store_relational_schema_has_access_and_search_indexes() -> None:

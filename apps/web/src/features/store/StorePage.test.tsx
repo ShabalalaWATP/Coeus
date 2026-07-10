@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 
 import StorePage from "./StorePage";
 import { resetQueryClientForTests } from "../../app/query-client";
-import type { AuthSession } from "../../lib/api-client/client";
+import type { AuthSession } from "../../lib/api-client/auth";
 import { renderWithProviders } from "../../test/test-utils";
 
 const visibleProduct = {

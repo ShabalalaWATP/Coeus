@@ -1,4 +1,4 @@
-import type { AccessControlGroup } from "../../lib/api-client/client";
+import type { AccessControlGroup } from "../../lib/api-client/access";
 
 export const initialReleaseForm = {
   classificationLevel: "2",

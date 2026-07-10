@@ -2,7 +2,7 @@ import { CheckCircle2, RotateCcw } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { formatWorkflowState } from "../../lib/workflow/state-format";
-import type { AccessControlGroup } from "../../lib/api-client/client";
+import type { AccessControlGroup } from "../../lib/api-client/access";
 import type { QcProduct } from "../../lib/api-client/qc";
 import { selectedAcgId, type QcReleaseFormState } from "./qc-release-model";
 import { MetadataChecks, PostReleaseStatus, ReleaseForm } from "./qc-release-sections";

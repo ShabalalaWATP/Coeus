@@ -15,6 +15,16 @@ class NoEmbeddingService:
         return None
 
 
+class FixedEmbeddingService:
+    def __init__(self, candidate_vector: tuple[float, ...] | None = (0.2, 0.4)) -> None:
+        self.calls = 0
+        self.candidate_vector = candidate_vector
+
+    def embed(self, _text: str, *, purpose: str) -> tuple[float, ...] | None:
+        self.calls += 1
+        return (0.2, 0.4) if self.calls == 1 else self.candidate_vector
+
+
 def test_similar_and_rfi_paths_share_one_lexical_scorer() -> None:
     # Part B (similar requests) must score equivalent text identically to Part A
     # (RFI product ranking); both now route through the shared formula, so the
@@ -93,6 +103,29 @@ def test_no_match_tickets_are_still_open_similarity_candidates() -> None:
 
     assert matches[0].ticket_id == candidate.ticket_id
     assert matches[0].state == TicketState.RFI_NO_MATCH
+
+
+def test_similarity_scoring_supports_vector_only_and_missing_candidate_vectors() -> None:
+    source = _ticket("Unrelated source words")
+    vector_candidate = _ticket("Distinct candidate vocabulary")
+    vector_matches = score_similar_requests(
+        source,
+        (vector_candidate,),
+        cast(EmbeddingService, FixedEmbeddingService()),
+        0.0,
+    )
+
+    assert vector_matches[0].reasons[0].startswith("similarity:vector:")
+    assert not any("lexical" in reason for reason in vector_matches[0].reasons)
+
+    lexical_candidate = _ticket("Unrelated source words")
+    lexical_matches = score_similar_requests(
+        source,
+        (lexical_candidate,),
+        cast(EmbeddingService, FixedEmbeddingService(candidate_vector=None)),
+        0.0,
+    )
+    assert "similarity:lexical-only" in lexical_matches[0].reasons
 
 
 def _ticket(

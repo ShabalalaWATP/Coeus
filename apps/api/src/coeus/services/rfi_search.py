@@ -15,7 +15,7 @@ from coeus.domain.tickets import (
     RfiSearchMetrics,
     TicketRecord,
 )
-from coeus.repositories.access import SeedAccessRepository
+from coeus.repositories.access import AccessRepository
 from coeus.services.audit import AuditLog
 from coeus.services.embeddings import EmbeddingService
 from coeus.services.rfi_ranking import query_text, rank_hybrid_rfi_candidates
@@ -60,7 +60,7 @@ class RfiSearchService:
         tickets: TicketService,
         store_search: StoreSearchService,
         store_details: StoreDetailService,
-        access_repository: SeedAccessRepository,
+        access_repository: AccessRepository,
         audit_log: AuditLog,
         embeddings: EmbeddingService,
     ) -> None:
@@ -302,7 +302,7 @@ class RfiSearchService:
 def build_rfi_search_service(
     ticket_services: TicketServices,
     store_services: StoreServices,
-    access_repository: SeedAccessRepository,
+    access_repository: AccessRepository,
     audit_log: AuditLog,
     embeddings: EmbeddingService,
 ) -> RfiSearchService:

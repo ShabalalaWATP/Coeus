@@ -6,8 +6,10 @@ from sqlalchemy.engine import Connection
 from coeus.domain.access import ProductStatus
 from coeus.domain.search_relevance import VECTOR_SIMILARITY_FLOOR
 from coeus.domain.store import (
+    StoreFacets,
     StoreHybridCandidate,
     StoreProduct,
+    StoreProductSearchPage,
     StoreSearchFilters,
     StoreVisibilityScope,
 )
@@ -18,6 +20,7 @@ from coeus.persistence.store_projection_search_sql import (
     SEARCH_ASSETS_SQL,
     SEARCH_LABELS_SQL,
     SEARCH_PRODUCTS_SQL,
+    SEARCH_SUMMARY_SQL,
     VISIBLE_PRODUCT_SQL,
 )
 
@@ -40,23 +43,37 @@ def get_visible_product(
     return _decode_product(product_rows[0], asset_rows, acg_rows, label_rows)
 
 
-def search_products(
+def search_product_page(
     connection: Connection,
     filters: StoreSearchFilters,
     scope: StoreVisibilityScope,
-) -> tuple[StoreProduct, ...]:
+) -> StoreProductSearchPage:
     if not scope.acg_ids:
-        return ()
-    params = _search_params(filters, scope)
+        return StoreProductSearchPage((), 0, StoreFacets((), (), ()))
+    params = _search_params(filters, scope) | {
+        "page_size": filters.page_size,
+        "offset": (filters.page - 1) * filters.page_size,
+    }
+    summary_rows = _mapping_rows(connection.execute(text(SEARCH_SUMMARY_SQL), params))
+    summary = summary_rows[0] if summary_rows else {}
     product_rows = _mapping_rows(connection.execute(text(SEARCH_PRODUCTS_SQL), params))
     if not product_rows:
-        return ()
+        return StoreProductSearchPage(
+            (),
+            int(summary.get("total") or 0),
+            _facets_from_summary(summary),
+        )
     product_ids = [str(row["product_id"]) for row in product_rows]
     child_params = {"product_ids": product_ids}
     asset_rows = _mapping_rows(connection.execute(text(SEARCH_ASSETS_SQL), child_params))
     acg_rows = _mapping_rows(connection.execute(text(SEARCH_ACGS_SQL), child_params))
     label_rows = _mapping_rows(connection.execute(text(SEARCH_LABELS_SQL), child_params))
-    return tuple(_decode_product(row, asset_rows, acg_rows, label_rows) for row in product_rows)
+    products = tuple(_decode_product(row, asset_rows, acg_rows, label_rows) for row in product_rows)
+    return StoreProductSearchPage(
+        products,
+        int(summary.get("total") or 0),
+        _facets_from_summary(summary),
+    )
 
 
 def hybrid_candidates(
@@ -145,6 +162,14 @@ def _mapping_rows(result: Any) -> tuple[dict[str, Any], ...]:
 
 def _optional_int(value: object) -> int | None:
     return None if value is None else int(str(value))
+
+
+def _facets_from_summary(summary: dict[str, Any]) -> StoreFacets:
+    return StoreFacets(
+        product_types=tuple(str(value) for value in summary.get("product_types") or ()),
+        regions=tuple(str(value) for value in summary.get("regions") or ()),
+        tags=tuple(str(value) for value in summary.get("tags") or ()),
+    )
 
 
 def _decode_product(

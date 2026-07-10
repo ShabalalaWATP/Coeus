@@ -2446,9 +2446,9 @@ Deliver:
 - Product reuse analytics.
 - Trends Analysis Agent.
 
-### Sprint 12: GCP deployment
+### Sprint 12: Future GCP migration reference
 
-Deliver:
+Deliver as inactive reference material only:
 
 - Terraform dev.
 - Cloud Run API.
@@ -2459,7 +2459,8 @@ Deliver:
 - Pub/Sub.
 - Artifact Registry.
 - Gemma provider configuration.
-- Deploy pipeline.
+- Manual validation pipeline with local image builds and no cloud deployment.
+- Explicit migration readiness gates; no supported current cloud runtime.
 
 ### Sprint 13: Security hardening
 
@@ -2475,6 +2476,20 @@ Deliver:
 - Prompt injection suite.
 - Full threat model pass.
 - Air-gapped deployment notes.
+
+### Sprint 14: Local-first security and quality remediation
+
+Deliver:
+
+- Actor-scoped linked-product response authorisation.
+- Bounded similarity scoring and relational Store pagination.
+- Append-only local audit evidence and safe login-attempt retention.
+- Atomic local registration capacity and byte-derived QC integrity metadata.
+- Current and reference single-writer enforcement.
+- Local-first composition and provider-boundary improvements.
+- Independent 95 percent backend line and branch coverage gates.
+- Real browser-to-FastAPI Playwright verification.
+- Fresh sealed repository-wide security scan.
 
 ## 20. Definition of done for MVP
 
@@ -2501,9 +2516,12 @@ The MVP is done when:
 - Users can provide feedback.
 - Admins and managers can view statistics, trends and audit logs.
 - All important actions are audited.
-- Backend and frontend coverage are at least 95%.
+- Backend and frontend line and branch coverage are each at least 95%.
 - CI/CD blocks unsafe merges.
 - No sensitive data exists in the public repository.
+- The supported current runtime is local and single-instance.
+- GCP remains an inactive future migration path until its documented readiness
+  gates pass.
 
 ## 21. Future enhancements
 

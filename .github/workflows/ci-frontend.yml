@@ -20,12 +20,24 @@ jobs:
         with:
           node-version: "22"
           cache: "pnpm"
+      - name: Install uv
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.13"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Install backend dependencies for real Playwright integration
+        run: uv sync --project apps/api --frozen --all-groups
+      - name: Formatting
+        run: pnpm --filter @coeus/web format:check
       - name: Lint
         run: pnpm --filter @coeus/web lint
       - name: Typecheck
         run: pnpm --filter @coeus/web typecheck
+      - name: Dead code
+        run: pnpm dead-code
       - name: Unit tests and coverage
         run: pnpm --filter @coeus/web test
       - name: Production dependency audit
@@ -34,5 +46,5 @@ jobs:
         run: pnpm --filter @coeus/web build
       - name: Install Playwright browser
         run: pnpm --filter @coeus/web exec playwright install --with-deps chromium
-      - name: Playwright smoke
+      - name: Playwright real-stack and UI smoke
         run: pnpm --filter @coeus/web test:e2e

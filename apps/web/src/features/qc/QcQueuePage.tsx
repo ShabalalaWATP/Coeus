@@ -4,7 +4,7 @@ import { Link, useParams } from "react-router-dom";
 
 import { ErrorState } from "../../components/ui/PageState";
 import { formatWorkflowState } from "../../lib/workflow/state-format";
-import { apiClient } from "../../lib/api-client/client";
+import { listAcgs } from "../../lib/api-client/access";
 import {
   approveQcProduct,
   getQcProduct,
@@ -36,7 +36,7 @@ export default function QcQueuePage() {
   });
   const acgsQuery = useQuery({
     queryKey: ["acgs"],
-    queryFn: () => apiClient.listAcgs(),
+    queryFn: listAcgs,
     retry: false,
   });
   const detailQuery = useQuery({

@@ -59,3 +59,4 @@ class AuditLogResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     events: list[AuditEventResponse]
+    next_cursor: str | None = Field(default=None, serialization_alias="nextCursor")

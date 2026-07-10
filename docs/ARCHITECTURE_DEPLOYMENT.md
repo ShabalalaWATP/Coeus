@@ -53,7 +53,7 @@ object storage, Postgres persistence and an on-disk email outbox. See
 
 GCP hosting is a reference target, not a requirement, and the Terraform in
 `infra/gcp` builds the resource shell without storing secret values in state.
-The API and web run on Cloud Run, state moves to Cloud SQL for PostgreSQL (with
+In the target design, the API and web run on Cloud Run, state moves to Cloud SQL (with
 pgvector), product bytes move to Cloud Storage buckets, and the language and
 embedding providers remain explicit application settings such as `mock` or
 `gemini_api`. Deployments authenticate from GitHub Actions through Workload
@@ -62,7 +62,7 @@ Identity Federation, with no long-lived keys.
 ```mermaid
 flowchart TB
     subgraph gh["GitHub"]
-        GHA["GitHub Actions<br/>build, test, deploy"]
+        GHA["GitHub Actions<br/>validate and build locally"]
     end
 
     subgraph gcp["Google Cloud Platform (project)"]
@@ -112,19 +112,23 @@ flowchart TB
     class WIF,SM,KMS sec
 ```
 
-The Terraform modules under `infra/gcp` provision exactly these pieces: project
+The Terraform modules under `infra/gcp` describe these future pieces: project
 services, IAM with Workload Identity Federation and runtime and deployer service
 accounts, Artifact Registry, Cloud KMS, Secret Manager placeholders, Cloud
 Storage buckets, Pub/Sub topics with worker subscriptions and dead-letter
 topics, a Cloud SQL PostgreSQL instance, and the two Cloud Run services. Secret
-values are never stored in Terraform state. See the
+values are never stored in Terraform state. Terraform apply is blocked by the
+default-deny ADR 0019 readiness gate, and GitHub Actions has no cloud deployment
+step. See the
 [GCP Reference Deployment Runbook](runbooks/gcp-dev-deployment.md).
 
 ---
 
 ## 3. Provider configuration: local vs GCP
 
-The same binary runs in both places; these settings select the backing service.
+The table records the target provider mapping. Only the local column is
+currently supported; the GCP column remains a migration contract until its
+adapters and readiness gates pass.
 
 | Concern | Setting | Local default | GCP reference |
 | --- | --- | --- | --- |
@@ -149,11 +153,11 @@ selected explicitly. This keeps a machine configured for offline use offline.
   Store projection. This is correct and simple for one API instance. Running
   multiple writers safely is a planned redesign toward row-level relational
   persistence; until then the API runs as a single writer. The Cloud Run
-  reference would pin one writable instance or adopt that redesign before
-  scaling out.
-- **Audit log.** The audit trail is a bounded ring buffer today; a durable,
-  append-only audit store is future work and pairs naturally with the
-  persistence redesign. On GCP, audit exports have a dedicated bucket.
+  reference is pinned to one writable instance and Terraform rejects a larger
+  value while its single-writer flag is active.
+- **Audit log.** Local audit evidence is append-only in memory, JSONL or a
+  PostgreSQL event table. The configured limit bounds recent reads, not durable
+  retention. A future hosted design must add externally retained audit export.
 - **Search scale.** The pgvector HNSW index and Postgres full text serve the
   expected product volumes comfortably. Very large corpora would tune HNSW
   `ef_search` and consider iterative scan; the access pre-filter stays the outer

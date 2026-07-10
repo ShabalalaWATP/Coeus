@@ -5,7 +5,7 @@ import ProductDetailPage from "./ProductDetailPage";
 import { backNavigationFor } from "./store-navigation";
 import { productFixture as product } from "./store-test-fixtures";
 import { resetQueryClientForTests } from "../../app/query-client";
-import type { Permission } from "../../lib/api-client/client";
+import type { Permission } from "../../lib/api-client/auth";
 import { previewSession, renderWithProviders } from "../../test/test-utils";
 
 beforeEach(() => {

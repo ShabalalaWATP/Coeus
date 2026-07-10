@@ -22,6 +22,8 @@ from coeus.services.similar_request_scoring import (
 from coeus.services.ticket_records import is_collaborator, is_owner, timeline
 from coeus.services.tickets import TicketServices
 
+SIMILARITY_CANDIDATE_LIMIT = 100
+
 
 class SimilarRequestService:
     """Coordinates customer notices and manager links for similar open tickets."""
@@ -49,9 +51,13 @@ class SimilarRequestService:
         # Customers only ever see matches they already have need-to-know for. Hidden overlaps
         # are the manager panel's job to catch; nothing derived from invisible tickets (counts,
         # booleans, audit fields) is computed or returned on the customer path.
+        candidates = self._bounded_candidates(
+            source,
+            self._tickets.tickets.list_visible_tickets(actor),
+        )
         visible = tuple(
             match
-            for match in self._score(source, CUSTOMER_SIMILARITY_THRESHOLD)
+            for match in self._score(source, candidates, CUSTOMER_SIMILARITY_THRESHOLD)
             if self._customer_can_see(actor, match.ticket_id)
         )
         if visible:
@@ -71,10 +77,10 @@ class SimilarRequestService:
         source = self._tickets.tickets.get_visible_ticket(actor, ticket_id)
         if not is_owner(actor, source):
             raise AppError(404, "ticket_not_found", "Ticket was not found.")
-        match = self._find_match(source, related_ticket_id, CUSTOMER_SIMILARITY_THRESHOLD)
-        if match is None or not self._customer_can_see(actor, related_ticket_id):
-            raise AppError(404, "similar_request_not_found", "Similar request was not found.")
         target = self._tickets.tickets.get_visible_ticket(actor, related_ticket_id)
+        match = self._find_match(source, target, CUSTOMER_SIMILARITY_THRESHOLD)
+        if match is None:
+            raise AppError(404, "similar_request_not_found", "Similar request was not found.")
         if is_owner(actor, target) or is_collaborator(actor, target):
             return target
         collaborator = TicketCollaborator(
@@ -126,7 +132,23 @@ class SimilarRequestService:
         source = self._tickets.tickets.get_workflow_ticket(
             actor, ticket_id, ROUTING_READ_PERMISSIONS
         )
-        return self._score(source, MANAGER_SIMILARITY_THRESHOLD)
+        candidates = self._bounded_candidates(
+            source,
+            self._tickets.tickets.list_workflow_tickets(actor, ROUTING_READ_PERMISSIONS),
+        )
+        return self._score(source, candidates, MANAGER_SIMILARITY_THRESHOLD)
+
+    def manager_match(
+        self, actor: UserAccount, ticket_id: UUID, related_ticket_id: UUID
+    ) -> SimilarRequestMatch | None:
+        """Return one authorised pair result without rescanning the ticket corpus."""
+        source = self._tickets.tickets.get_workflow_ticket(
+            actor, ticket_id, ROUTING_READ_PERMISSIONS
+        )
+        related = self._tickets.tickets.get_workflow_ticket(
+            actor, related_ticket_id, ROUTING_READ_PERMISSIONS
+        )
+        return self._find_match(source, related, MANAGER_SIMILARITY_THRESHOLD)
 
     def link_related(
         self, actor: UserAccount, ticket_id: UUID, related_ticket_id: UUID
@@ -159,25 +181,34 @@ class SimilarRequestService:
             raise
         return source_updated
 
-    def _score(self, source: TicketRecord, threshold: float) -> tuple[SimilarRequestMatch, ...]:
+    def _score(
+        self,
+        source: TicketRecord,
+        candidates: tuple[TicketRecord, ...],
+        threshold: float,
+    ) -> tuple[SimilarRequestMatch, ...]:
         return score_similar_requests(
             source,
-            self._tickets.tickets.list_similarity_candidates(),
+            candidates,
             self._embeddings,
             threshold,
         )
 
     def _find_match(
-        self, source: TicketRecord, related_ticket_id: UUID, threshold: float
+        self, source: TicketRecord, related: TicketRecord, threshold: float
     ) -> SimilarRequestMatch | None:
-        return next(
-            (
-                match
-                for match in self._score(source, threshold)
-                if match.ticket_id == related_ticket_id
-            ),
-            None,
+        return next(iter(self._score(source, (related,), threshold)), None)
+
+    @staticmethod
+    def _bounded_candidates(
+        source: TicketRecord, candidates: tuple[TicketRecord, ...]
+    ) -> tuple[TicketRecord, ...]:
+        eligible = (
+            ticket
+            for ticket in candidates
+            if ticket.ticket_id != source.ticket_id and ticket.state in OPEN_SIMILARITY_STATES
         )
+        return tuple(eligible)[:SIMILARITY_CANDIDATE_LIMIT]
 
     def _customer_can_see(self, actor: UserAccount, ticket_id: UUID) -> bool:
         try:

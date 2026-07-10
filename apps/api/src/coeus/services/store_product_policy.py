@@ -2,11 +2,11 @@ from coeus.core.permissions import Permission
 from coeus.domain.access import ProductStatus
 from coeus.domain.auth import UserAccount
 from coeus.domain.store import StoreProduct, StoreVisibilityScope
-from coeus.repositories.access import SeedAccessRepository
+from coeus.repositories.access import AccessRepository
 
 
 class StoreProductAccessPolicy:
-    def __init__(self, access_repository: SeedAccessRepository) -> None:
+    def __init__(self, access_repository: AccessRepository) -> None:
         self._access_repository = access_repository
 
     def can_read(self, user: UserAccount, product: StoreProduct) -> bool:

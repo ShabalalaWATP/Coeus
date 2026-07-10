@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from types import MappingProxyType
 from uuid import uuid4
 
 import pytest
@@ -70,3 +71,20 @@ def test_retired_workspace_records_are_rejected_from_collections() -> None:
 
     with pytest.raises(KeyError, match="ProjectPlanUpdate"):
         decode_value(payload)
+
+
+def test_container_and_scalar_codec_branches_round_trip() -> None:
+    payload = MappingProxyType(
+        {
+            "items": [uuid4(), "plain"],
+            "nested": {"when": datetime.now(UTC)},
+        }
+    )
+
+    encoded = encode_value(payload)
+    decoded = decode_value(encoded)
+
+    assert isinstance(decoded, MappingProxyType)
+    assert decoded["items"][1] == "plain"
+    assert decode_value([{"value": 1}]) == [{"value": 1}]
+    assert encode_value({"list": ["value"]}) == {"list": ["value"]}

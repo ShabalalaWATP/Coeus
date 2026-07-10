@@ -26,3 +26,9 @@ jobs:
         run: terraform init -backend=false
       - name: Terraform validate
         run: terraform validate
+      - name: Future migration gate tests
+        run: terraform test
+      - name: Initialise single-writer module tests
+        run: terraform -chdir=../../modules/cloud_run_service init -backend=false
+      - name: Single-writer module tests
+        run: terraform -chdir=../../modules/cloud_run_service test

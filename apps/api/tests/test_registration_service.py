@@ -1,3 +1,5 @@
+import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -168,3 +170,41 @@ def test_rejection_rolls_back_decision_when_audit_fails(
         service.reject(admin, registration.registration_id, "Not enough detail.")
 
     assert registrations.get(registration.registration_id) == registration
+
+
+def test_concurrent_approval_creates_only_one_account(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service, users, registrations, _audit_log = _service()
+    admin = users.get_by_username("admin@example.test")
+    assert admin is not None
+    registration = _pending("concurrent.operator@example.test")
+    registrations.save(registration)
+    original_get = users.get_by_username
+
+    def slow_absent_lookup(username: str):  # type: ignore[no-untyped-def]
+        result = original_get(username)
+        if username.casefold() == registration.username.casefold() and result is None:
+            time.sleep(0.02)
+        return result
+
+    monkeypatch.setattr(users, "get_by_username", slow_absent_lookup)
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [
+            executor.submit(service.approve, admin, registration.registration_id)
+            for _index in range(2)
+        ]
+        outcomes: list[RegistrationRequest | AppError] = []
+        for future in futures:
+            try:
+                outcomes.append(future.result(timeout=5))
+            except AppError as exc:
+                outcomes.append(exc)
+
+    assert sum(isinstance(outcome, RegistrationRequest) for outcome in outcomes) == 1
+    assert [outcome.code for outcome in outcomes if isinstance(outcome, AppError)] == [
+        "registration_decided"
+    ]
+    matching_users = [user for user in users.list_users() if user.username == registration.username]
+    assert len(matching_users) == 1

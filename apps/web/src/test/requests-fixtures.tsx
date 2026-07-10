@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { previewSession } from "./test-utils";
 import { AppProviders } from "../app/providers";
 import RequestsPage from "../features/requests/RequestsPage";
-import type { AuthSession } from "../lib/api-client/client";
+import type { AuthSession } from "../lib/api-client/auth";
 import type { Ticket } from "../lib/api-client/tickets";
 
 export const baseTicket: Ticket = {

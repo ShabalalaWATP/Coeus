@@ -2,7 +2,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { resetQueryClientForTests } from "../../app/query-client";
-import type { AuthSession } from "../../lib/api-client/client";
+import type { AuthSession } from "../../lib/api-client/auth";
 import type { Ticket } from "../../lib/api-client/tickets";
 import { baseTicket, fetchByUrl, renderRequests } from "../../test/requests-fixtures";
 import { previewSession } from "../../test/test-utils";

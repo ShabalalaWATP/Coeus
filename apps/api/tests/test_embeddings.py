@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import os
+import sys
 from dataclasses import replace
+from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -14,6 +18,8 @@ from coeus.services.embeddings import (
     GeminiApiEmbeddingProvider,
     LocalFastEmbedProvider,
     MockEmbeddingProvider,
+    _coerce_vector,
+    _offline_hf_call,
     build_embedding_service,
     cosine_similarity,
     vector_to_pg,
@@ -199,3 +205,33 @@ def test_vector_serialisation_and_empty_similarity() -> None:
     assert vector_to_pg((1.0, -0.5)) == "[1.00000000,-0.50000000]"
     assert vector_to_pg(None) is None
     assert cosine_similarity((), (1.0,)) == 0.0
+
+
+def test_local_model_loader_uses_offline_mode_and_rejects_non_vectors(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class FakeTextEmbedding:
+        def __init__(self, **_kwargs: object) -> None:
+            return None
+
+        def embed(self, _texts: list[str]) -> list[list[float]]:
+            return [[1.0]]
+
+    monkeypatch.setitem(sys.modules, "fastembed", SimpleNamespace(TextEmbedding=FakeTextEmbedding))
+    provider = LocalFastEmbedProvider(str(tmp_path / "model"))
+
+    assert provider._load_model() is provider._model
+    with pytest.raises(EmbeddingUnavailable, match="not iterable"):
+        _coerce_vector(1)
+
+
+def test_offline_model_boundary_restores_absent_and_existing_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("HF_HUB_OFFLINE", raising=False)
+    assert _offline_hf_call(lambda: "loaded") == "loaded"
+    assert "HF_HUB_OFFLINE" not in os.environ
+
+    monkeypatch.setenv("HF_HUB_OFFLINE", "custom")
+    assert _offline_hf_call(lambda: "loaded") == "loaded"
+    assert os.environ["HF_HUB_OFFLINE"] == "custom"

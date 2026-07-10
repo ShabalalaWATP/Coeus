@@ -5,7 +5,7 @@ import { AppProviders } from "./providers";
 import { resetQueryClientForTests } from "./query-client";
 import { createAppRouter } from "./router";
 import { productFixture } from "../features/store/store-test-fixtures";
-import type { AuthSession } from "../lib/api-client/client";
+import type { AuthSession } from "../lib/api-client/auth";
 import { previewSession } from "../test/test-utils";
 
 beforeEach(() => {

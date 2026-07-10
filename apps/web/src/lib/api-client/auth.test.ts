@@ -1,28 +1,48 @@
-import {
-  ApiClient,
-  ApiError,
-  apiRequestJson,
-  type AuthSession,
-  setAuthEventHandlers,
-} from "./client";
+import { changePassword, getCurrentUser, login, logout, type AuthSession } from "./auth";
+import { ApiError, apiRequestJson, setAuthEventHandlers } from "./client";
+import { previewSession } from "../../test/test-utils";
 
 afterEach(() => {
   setAuthEventHandlers({});
   vi.unstubAllGlobals();
 });
 
+test("posts login payloads with credentials included", async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    json: () => Promise.resolve(previewSession),
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  await login({ username: "admin@example.test", password: "CoeusLocal1!" });
+
+  expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8001/api/v1/auth/login", {
+    body: JSON.stringify({ username: "admin@example.test", password: "CoeusLocal1!" }),
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    method: "POST",
+  });
+});
+
+test("reads the current user and sends csrf for logout", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(previewSession) })
+    .mockResolvedValueOnce({ ok: true });
+  vi.stubGlobal("fetch", fetchMock);
+
+  await expect(getCurrentUser()).resolves.toEqual(previewSession);
+  await logout("csrf-token");
+
+  expect(fetchMock).toHaveBeenNthCalledWith(2, "http://127.0.0.1:8001/api/v1/auth/logout", {
+    credentials: "include",
+    headers: { "X-CSRF-Token": "csrf-token" },
+    method: "POST",
+  });
+});
+
 test("posts password changes with CSRF protection", async () => {
-  const changedSession: AuthSession = {
-    csrfToken: "csrf-after-change",
-    user: {
-      defaultRoute: "/app/requests",
-      displayName: "Customer User",
-      id: "user-1",
-      permissions: ["ticket:read_own", "ticket:write_all"],
-      roles: ["User"],
-      username: "user@example.test",
-    },
-  };
+  const changedSession: AuthSession = { ...previewSession, csrfToken: "csrf-after-change" };
   const fetchMock = vi.fn().mockResolvedValue({
     ok: true,
     json: () => Promise.resolve(changedSession),
@@ -30,13 +50,13 @@ test("posts password changes with CSRF protection", async () => {
   vi.stubGlobal("fetch", fetchMock);
 
   await expect(
-    new ApiClient("http://api.test").changePassword(
+    changePassword(
       { currentPassword: "OldPassword123!", newPassword: "NewPassword123!" },
       "csrf-token",
     ),
   ).resolves.toEqual(changedSession);
 
-  expect(fetchMock).toHaveBeenCalledWith("http://api.test/api/v1/auth/password", {
+  expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8001/api/v1/auth/password", {
     body: JSON.stringify({ currentPassword: "OldPassword123!", newPassword: "NewPassword123!" }),
     credentials: "include",
     headers: { "Content-Type": "application/json", "X-CSRF-Token": "csrf-token" },
@@ -58,7 +78,7 @@ test("throws parsed API errors on password-change failures", async () => {
   );
 
   await expect(
-    new ApiClient("http://api.test").changePassword(
+    changePassword(
       { currentPassword: "OldPassword123!", newPassword: "NewPassword123!" },
       "csrf-token",
     ),
@@ -83,12 +103,11 @@ test("notifies the unauthorized handler for 401s outside auth endpoints", async 
   await expect(apiRequestJson("/api/v1/tickets", { method: "GET" })).rejects.toBeInstanceOf(
     ApiError,
   );
-
   expect(onUnauthorized).toHaveBeenCalledTimes(1);
   expect(onPasswordChangeRequired).not.toHaveBeenCalled();
 });
 
-test("notifies the password-change handler for 403 password_change_required", async () => {
+test("notifies the password-change handler for its protected-endpoint error", async () => {
   const onUnauthorized = vi.fn();
   const onPasswordChangeRequired = vi.fn();
   setAuthEventHandlers({ onUnauthorized, onPasswordChangeRequired });
@@ -107,7 +126,6 @@ test("notifies the password-change handler for 403 password_change_required", as
   await expect(apiRequestJson("/api/v1/tickets", { method: "GET" })).rejects.toBeInstanceOf(
     ApiError,
   );
-
   expect(onPasswordChangeRequired).toHaveBeenCalledTimes(1);
   expect(onUnauthorized).not.toHaveBeenCalled();
 });
@@ -124,9 +142,8 @@ test("does not notify auth handlers for auth endpoint failures", async () => {
     }),
   );
 
-  await expect(
-    new ApiClient("http://api.test").login({ username: "user@example.test", password: "bad" }),
-  ).rejects.toBeInstanceOf(ApiError);
-
+  await expect(login({ username: "user@example.test", password: "bad" })).rejects.toBeInstanceOf(
+    ApiError,
+  );
   expect(onUnauthorized).not.toHaveBeenCalled();
 });

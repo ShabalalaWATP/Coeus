@@ -5,7 +5,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import AcgAdminPage from "./AcgAdminPage";
 import { AppProviders } from "../../app/providers";
 import { resetQueryClientForTests } from "../../app/query-client";
-import type { AuthSession } from "../../lib/api-client/client";
+import type { AuthSession } from "../../lib/api-client/auth";
 import { previewSession, renderWithProviders } from "../../test/test-utils";
 
 function renderAcgRoute(initialPath: string) {

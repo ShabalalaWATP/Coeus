@@ -2,17 +2,17 @@ import type { PropsWithChildren } from "react";
 import { useCallback } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 
-import type { ApiClient, AuthSession } from "../lib/api-client/client";
+import type { AuthApi, AuthSession } from "../lib/api-client/auth";
 import { getQueryClient } from "./query-client";
 import { AuthProvider } from "../lib/auth/auth-context";
 import { ThemeProvider } from "../lib/theme/theme-context";
 
 type AppProvidersProps = PropsWithChildren<{
-  apiClient?: ApiClient;
+  authApi?: AuthApi;
   initialAuthSession?: AuthSession | null;
 }>;
 
-export function AppProviders({ apiClient, children, initialAuthSession }: AppProvidersProps) {
+export function AppProviders({ authApi, children, initialAuthSession }: AppProvidersProps) {
   const queryClient = getQueryClient();
   const clearSensitiveCache = useCallback(() => queryClient.clear(), [queryClient]);
   return (
@@ -20,7 +20,7 @@ export function AppProviders({ apiClient, children, initialAuthSession }: AppPro
       <ThemeProvider>
         <AuthProvider
           clearSensitiveCache={clearSensitiveCache}
-          client={apiClient}
+          authApi={authApi}
           initialSession={initialAuthSession}
         >
           {children}

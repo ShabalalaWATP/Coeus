@@ -2,7 +2,8 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { AuthProvider, useAuth } from "./auth-context";
-import { ApiError, apiRequestJson, type ApiClient, type AuthSession } from "../api-client/client";
+import type { AuthApi, AuthSession } from "../api-client/auth";
+import { ApiError, apiRequestJson } from "../api-client/client";
 import { previewSession } from "../../test/test-utils";
 
 afterEach(() => {
@@ -32,8 +33,8 @@ function AuthProbe() {
   );
 }
 
-function fakeClient(overrides: Partial<ApiClient>): ApiClient {
-  return overrides as ApiClient;
+function fakeClient(overrides: Partial<AuthApi>): AuthApi {
+  return overrides as AuthApi;
 }
 
 test("loads the current user from the backend", async () => {
@@ -42,7 +43,7 @@ test("loads the current user from the backend", async () => {
   });
 
   render(
-    <AuthProvider client={client}>
+    <AuthProvider authApi={client}>
       <AuthProbe />
     </AuthProvider>,
   );
@@ -59,7 +60,7 @@ test("marks expired backend sessions distinctly", async () => {
   });
 
   render(
-    <AuthProvider client={client}>
+    <AuthProvider authApi={client}>
       <AuthProbe />
     </AuthProvider>,
   );
@@ -81,7 +82,7 @@ test("login and logout update session state without local storage tokens", async
   });
 
   render(
-    <AuthProvider client={client} initialSession={null}>
+    <AuthProvider authApi={client} initialSession={null}>
       <AuthProbe />
     </AuthProvider>,
   );
@@ -110,7 +111,7 @@ test("moves an authenticated session to expired when any API call returns 401", 
   render(
     <AuthProvider
       clearSensitiveCache={clearSensitiveCache}
-      client={client}
+      authApi={client}
       initialSession={previewSession}
     >
       <AuthProbe />
@@ -144,7 +145,7 @@ test("flags the session for a forced password change on 403 password_change_requ
   );
 
   render(
-    <AuthProvider client={client} initialSession={previewSession}>
+    <AuthProvider authApi={client} initialSession={previewSession}>
       <AuthProbe />
     </AuthProvider>,
   );
@@ -171,7 +172,7 @@ test("refreshes the session from the backend on demand", async () => {
   });
 
   render(
-    <AuthProvider client={client} initialSession={previewSession}>
+    <AuthProvider authApi={client} initialSession={previewSession}>
       <AuthProbe />
     </AuthProvider>,
   );

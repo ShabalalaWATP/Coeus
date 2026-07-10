@@ -4,7 +4,7 @@ from uuid import UUID
 
 from coeus.domain.access import AccessControlGroup, ProductStatus
 from coeus.domain.store import BoundingBox, StoreAsset, StoreProduct, StoreProductMetadata
-from coeus.repositories.access import SeedAccessRepository, stable_seed_id
+from coeus.repositories.access import AccessRepository, stable_seed_id
 
 STORE_SEED_REFERENCE_COUNTER = 1003
 
@@ -28,7 +28,7 @@ class SeedProductInput:
     time_period: tuple[str, str] | None = None
 
 
-def seed_store_products(access_repository: SeedAccessRepository) -> tuple[StoreProduct, ...]:
+def seed_store_products(access_repository: AccessRepository) -> tuple[StoreProduct, ...]:
     regional = _acg_by_code(access_repository, "ACG-ALPHA-REGIONAL")
     collection = _acg_by_code(access_repository, "ACG-BRAVO-COLLECTION")
     assessment = _acg_by_code(access_repository, "ACG-CHARLIE-ASSESSMENT")
@@ -144,7 +144,7 @@ def _seed_asset(seed_name: str, product_id: UUID) -> StoreAsset:
     )
 
 
-def _acg_by_code(access_repository: SeedAccessRepository, code: str) -> AccessControlGroup:
+def _acg_by_code(access_repository: AccessRepository, code: str) -> AccessControlGroup:
     for acg in access_repository.list_acgs():
         if acg.code == code:
             return acg

@@ -4,6 +4,8 @@ from coeus.domain.store import StoreHybridCandidate, StoreProduct, StoreSearchHi
 from coeus.domain.tickets import IntakeDetails
 from coeus.services.rfi_ranking import (
     LEXICAL_SCORE_FLOOR,
+    _full_text_score,
+    _semantic_score,
     lexical_score_for_product,
     query_text,
     rank_hybrid_rfi_candidates,
@@ -107,3 +109,10 @@ def test_synthetic_boilerplate_terms_do_not_create_lexical_offer() -> None:
 
     assert lexical_score < LEXICAL_SCORE_FLOOR
     assert offers == ()
+
+
+def test_empty_query_tokens_have_no_lexical_or_semantic_score() -> None:
+    product = seed_product()
+
+    assert _full_text_score(product, ()) == (0.0, ())
+    assert _semantic_score(product, ()) == (0.0, ())

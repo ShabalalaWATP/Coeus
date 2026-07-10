@@ -162,6 +162,13 @@ class StoreFacets:
 
 
 @dataclass(frozen=True)
+class StoreProductSearchPage:
+    products: tuple[StoreProduct, ...]
+    total: int
+    facets: StoreFacets
+
+
+@dataclass(frozen=True)
 class StoreSearchResult:
     hits: tuple[StoreSearchHit, ...]
     total: int

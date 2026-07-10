@@ -1,9 +1,10 @@
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from threading import RLock
 from types import MappingProxyType
 from uuid import uuid4
 
-from coeus.persistence.state_store import StateStore
+from coeus.persistence.audit_store import AuditEventStore, MemoryAuditEventStore
 
 
 @dataclass(frozen=True)
@@ -15,14 +16,24 @@ class AuditEvent:
     metadata: MappingProxyType[str, str]
 
 
+@dataclass(frozen=True)
+class AuditEventPage:
+    events: tuple[AuditEvent, ...]
+    next_cursor: str | None
+
+
 class AuditLog:
-    def __init__(self, max_events: int = 10_000, state_store: StateStore | None = None) -> None:
+    def __init__(
+        self,
+        max_events: int = 10_000,
+        event_store: AuditEventStore | None = None,
+    ) -> None:
         if max_events < 1:
             raise ValueError("Audit log max_events must be at least 1.")
         self._max_events = max_events
-        self._state_store = state_store
-        self._events: list[AuditEvent] = []
-        self._restore_or_persist()
+        self._event_store = event_store or MemoryAuditEventStore()
+        self._lock = RLock()
+        self._events = list(self.list_page(max_events).events)
 
     def record(
         self,
@@ -30,44 +41,32 @@ class AuditLog:
         actor_user_id: str | None = None,
         metadata: dict[str, str] | None = None,
     ) -> AuditEvent:
-        event = AuditEvent(
-            event_id=str(uuid4()),
-            event_type=event_type,
-            occurred_at=datetime.now(UTC),
-            actor_user_id=actor_user_id,
-            metadata=MappingProxyType(metadata or {}),
-        )
-        events = list(self._events)
-        self._events.append(event)
-        overflow = len(self._events) - self._max_events
-        if overflow > 0:
-            del self._events[:overflow]
-        try:
-            self._persist()
-        except Exception:
-            self._events = events
-            raise
-        return event
+        with self._lock:
+            event = AuditEvent(
+                event_id=str(uuid4()),
+                event_type=event_type,
+                occurred_at=datetime.now(UTC),
+                actor_user_id=actor_user_id,
+                metadata=MappingProxyType(metadata or {}),
+            )
+            self._event_store.append(_event_payload(event))
+            self._events.append(event)
+            self._events = self._events[-self._max_events :]
+            return event
 
     def list_events(self) -> tuple[AuditEvent, ...]:
-        return tuple(self._events)
+        with self._lock:
+            return tuple(self._events)
 
-    def _restore_or_persist(self) -> None:
-        if self._state_store is None:
-            return
-        payload = self._state_store.load("audit")
-        if payload is None:
-            self._persist()
-            return
-        self._events = [_event_from_payload(item) for item in payload.get("events", [])]
-
-    def _persist(self) -> None:
-        if self._state_store is None:
-            return
-        self._state_store.save(
-            "audit",
-            {"events": [_event_payload(event) for event in self._events[-self._max_events :]]},
-        )
+    def list_page(self, limit: int, before_event_id: str | None = None) -> AuditEventPage:
+        if limit < 1:
+            raise ValueError("Audit page limit must be at least 1.")
+        with self._lock:
+            stored = self._event_store.list_page(limit, before_event_id)
+            return AuditEventPage(
+                events=tuple(_event_from_payload(item) for item in stored.events),
+                next_cursor=stored.next_cursor,
+            )
 
 
 def _event_payload(event: AuditEvent) -> dict[str, object]:
