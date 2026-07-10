@@ -1,4 +1,5 @@
 from dataclasses import replace
+from typing import cast
 from uuid import uuid4
 
 import pytest
@@ -21,7 +22,9 @@ async def login(client: AsyncClient, username: str) -> dict[str, object]:
         json={"username": username, "password": SEED_CREDENTIAL},
     )
     assert response.status_code == 200
-    return response.json()
+    payload = response.json()
+    assert isinstance(payload, dict)
+    return cast(dict[str, object], payload)
 
 
 def product_payload(acg_id: str) -> dict[str, object]:

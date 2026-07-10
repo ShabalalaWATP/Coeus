@@ -5,7 +5,7 @@ from coeus.domain.access import ProductStatus
 from coeus.domain.enums import TicketState
 from coeus.domain.events import DomainEvent
 from coeus.domain.state_machine import can_transition
-from coeus.domain.store import StoreVisibilityScope, product_in_scope
+from coeus.domain.store import StoreProduct, StoreVisibilityScope, product_in_scope
 from store_projection_helpers import seed_product
 
 
@@ -23,14 +23,14 @@ def test_ticket_state_machine_denies_undefined_transition() -> None:
     assert can_transition(TicketState.CANCELLED, TicketState.DRAFT_INTAKE) is False
 
 
-def _published(product: object) -> object:
+def _published() -> StoreProduct:
     base = seed_product()
     metadata = replace(base.metadata, status=ProductStatus.PUBLISHED, classification_level=2)
     return replace(base, metadata=metadata)
 
 
 def test_product_in_scope_allows_permitted_product() -> None:
-    product = _published(None)
+    product = _published()
     scope = StoreVisibilityScope(
         acg_ids=product.metadata.acg_ids, clearance_level=3, include_drafts=False
     )
@@ -39,7 +39,7 @@ def test_product_in_scope_allows_permitted_product() -> None:
 
 
 def test_product_in_scope_blocks_over_clearance_and_foreign_acg_and_archived() -> None:
-    product = _published(None)
+    product = _published()
     over_clearance = StoreVisibilityScope(
         acg_ids=product.metadata.acg_ids, clearance_level=1, include_drafts=False
     )
@@ -57,7 +57,7 @@ def test_product_in_scope_blocks_over_clearance_and_foreign_acg_and_archived() -
 
 
 def test_product_in_scope_hides_drafts_unless_included() -> None:
-    product = _published(None)
+    product = _published()
     draft = replace(product, metadata=replace(product.metadata, status=ProductStatus.DRAFT))
     without_drafts = StoreVisibilityScope(
         acg_ids=product.metadata.acg_ids, clearance_level=5, include_drafts=False

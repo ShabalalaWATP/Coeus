@@ -1,3 +1,5 @@
+from typing import Literal
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
@@ -12,7 +14,9 @@ def test_login_page_seed_credential_constant_is_mock_only() -> None:
 
 
 @pytest.mark.parametrize("environment", ["dev", "staging", "prod"])
-def test_seed_users_are_rejected_outside_local_and_test(environment: str) -> None:
+def test_seed_users_are_rejected_outside_local_and_test(
+    environment: Literal["dev", "staging", "prod"],
+) -> None:
     with pytest.raises(ValueError, match="Seed users are local/test only"):
         create_app(
             Settings(

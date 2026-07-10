@@ -1,3 +1,4 @@
+from typing import cast
 from uuid import UUID
 
 import pytest
@@ -15,7 +16,9 @@ async def login(client: AsyncClient, username: str) -> dict[str, object]:
         json={"username": username, "password": SEED_CREDENTIAL},
     )
     assert response.status_code == 200
-    return response.json()
+    payload = response.json()
+    assert isinstance(payload, dict)
+    return cast(dict[str, object], payload)
 
 
 @pytest.mark.asyncio

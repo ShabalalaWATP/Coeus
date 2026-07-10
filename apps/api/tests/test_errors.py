@@ -1,6 +1,7 @@
 import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
+from starlette.requests import Request
 
 from coeus.core.errors import AppError, app_error_handler
 from coeus.main import create_app
@@ -56,7 +57,15 @@ async def test_app_error_handler_rejects_unexpected_exception_type() -> None:
         transport=ASGITransport(app=app),
         base_url="http://testserver",
     ) as client:
-        request = client.build_request("GET", "/")
+        httpx_request = client.build_request("GET", "/")
+        request = Request(
+            {
+                "type": "http",
+                "method": httpx_request.method,
+                "path": str(httpx_request.url.path),
+                "headers": list(httpx_request.headers.raw),
+            }
+        )
 
     with pytest.raises(RuntimeError, match="wrong handler"):
         await app_error_handler(request, RuntimeError("wrong handler"))

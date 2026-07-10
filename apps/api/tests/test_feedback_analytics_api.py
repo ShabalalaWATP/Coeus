@@ -1,12 +1,14 @@
 from dataclasses import replace
 from datetime import UTC, datetime
+from typing import cast
 from uuid import UUID, uuid4
 
 import pytest
+from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from coeus.core.config import Settings
-from coeus.domain.tickets import ProductDissemination
+from coeus.domain.tickets import ProductDissemination, TicketRecord
 from coeus.main import create_app
 from rfi_search_helpers import login, submitted_ticket
 
@@ -162,7 +164,7 @@ async def test_team_dashboard_excludes_product_reuse_rows_without_store_access()
     }
 
 
-async def _approved_feedback_request(client: AsyncClient, app: object, acg_id: str) -> str:
+async def _approved_feedback_request(client: AsyncClient, app: FastAPI, acg_id: str) -> str:
     ticket_id = await _approved_route_ticket(client, "", "rfa")
     analyst_user = app.state.access_services.repository.get_user_by_username("analyst@example.test")
     assert analyst_user is not None
@@ -299,18 +301,18 @@ def _draft_payload() -> dict[str, object]:
     }
 
 
-def _acg_id(app: object, code: str) -> str:
+def _acg_id(app: FastAPI, code: str) -> str:
     for acg in app.state.access_services.repository.list_acgs():
         if acg.code == code:
             return str(acg.acg_id)
     raise AssertionError(f"Missing seed ACG {code}")
 
 
-def _ticket_for_feedback_request(app: object, request_id: str):
+def _ticket_for_feedback_request(app: FastAPI, request_id: str) -> TicketRecord:
     parsed_request_id = UUID(request_id)
     for ticket in app.state.ticket_services.tickets._repository.list_tickets():
         if any(request.request_id == parsed_request_id for request in ticket.feedback_requests):
-            return ticket
+            return cast(TicketRecord, ticket)
     raise AssertionError(f"Missing feedback request {request_id}")
 
 

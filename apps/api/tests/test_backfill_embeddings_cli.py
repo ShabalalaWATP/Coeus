@@ -1,11 +1,13 @@
 from types import SimpleNamespace
 
+import pytest
+
 from coeus.tools import backfill_embeddings
 
 
 def test_backfill_embeddings_cli_reports_updated_count(
-    monkeypatch,
-    capsys,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     class Repository:
         def backfill_missing_embeddings(self) -> int:

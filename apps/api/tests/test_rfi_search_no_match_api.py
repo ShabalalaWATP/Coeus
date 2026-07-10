@@ -1,9 +1,12 @@
+from typing import cast
 from uuid import UUID
 
 import pytest
-from httpx import ASGITransport, AsyncClient
+from fastapi import FastAPI
+from httpx import ASGITransport, AsyncClient, Response
 
 from coeus.core.config import Settings
+from coeus.domain.tickets import TicketRecord
 from coeus.main import create_app
 from rfi_search_helpers import login
 
@@ -168,7 +171,7 @@ async def _no_match_ticket(client: AsyncClient, csrf_token: str) -> str:
     return str(ticket_id)
 
 
-async def _run_no_match_search(client: AsyncClient, ticket_id: str, csrf_token: str):
+async def _run_no_match_search(client: AsyncClient, ticket_id: str, csrf_token: str) -> Response:
     response = await client.post(
         f"/api/v1/rfi-search/{ticket_id}/run",
         headers={"X-CSRF-Token": csrf_token},
@@ -189,7 +192,7 @@ def _timeline_bodies(ticket: dict[str, object], event_type: str) -> list[str]:
     return [item["body"] for item in timeline if item["eventType"] == event_type]
 
 
-def _audit_types(app: object) -> list[str]:
+def _audit_types(app: FastAPI) -> list[str]:
     return [event.event_type for event in app.state.auth_service.audit_log.list_events()]
 
 
@@ -197,7 +200,7 @@ def _fail_audit(*_args: object, **_kwargs: object) -> None:
     raise RuntimeError("audit unavailable")
 
 
-def _stored_ticket(app: object, ticket_id: str):
+def _stored_ticket(app: FastAPI, ticket_id: str) -> TicketRecord:
     ticket = app.state.ticket_services.tickets._repository.get(UUID(ticket_id))
     assert ticket is not None
-    return ticket
+    return cast(TicketRecord, ticket)

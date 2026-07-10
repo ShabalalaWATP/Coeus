@@ -1,4 +1,5 @@
 import pytest
+from httpx import AsyncClient
 
 from coeus.api.dependencies import get_readiness_checker
 from coeus.db.session import ReadinessCheckResult
@@ -16,7 +17,7 @@ class NotReadyChecker:
 
 
 @pytest.mark.asyncio
-async def test_liveness_returns_request_id(api_client) -> None:
+async def test_liveness_returns_request_id(api_client: AsyncClient) -> None:
     response = await api_client.get("/api/v1/health/live", headers={"X-Request-ID": "req-live"})
 
     assert response.status_code == 200

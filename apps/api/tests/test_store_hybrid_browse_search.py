@@ -1,3 +1,5 @@
+from typing import cast
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
@@ -46,13 +48,23 @@ async def _create_product(
     acg_id: str,
     **overrides: object,
 ) -> dict[str, object]:
+    payload = _payload(
+        acg_id,
+        title=cast(str, overrides.pop("title")),
+        summary=cast(str, overrides.pop("summary")),
+        product_type=cast(str, overrides.pop("product_type")),
+        tags=cast(list[str] | None, overrides.pop("tags", None)),
+    )
+    payload.update(overrides)
     response = await client.post(
         "/api/v1/store/products",
         headers={"X-CSRF-Token": csrf_token},
-        json=_payload(acg_id, **overrides),
+        json=payload,
     )
     assert response.status_code == 201
-    return response.json()
+    response_payload = response.json()
+    assert isinstance(response_payload, dict)
+    return cast(dict[str, object], response_payload)
 
 
 @pytest.mark.asyncio

@@ -1,19 +1,23 @@
 from dataclasses import replace
 from pathlib import Path
+from typing import cast
 from uuid import UUID
 
 import pytest
+from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from coeus.core.config import Settings
 from coeus.domain.enums import TicketState
+from coeus.domain.store import StoreProduct
+from coeus.domain.tickets import TicketRecord
 from coeus.main import create_app
 from coeus.services.qc_ingestion import iso_date_or_none
 from rfi_search_helpers import login
 from test_qc_api import _acg_id, _approval_payload, _submitted_qc_ticket
 
 
-def _app(tmp_path: Path):
+def _app(tmp_path: Path) -> FastAPI:
     return create_app(
         Settings(
             environment="test",
@@ -110,7 +114,7 @@ async def test_failed_ticket_update_rolls_back_ingested_product(
         tickets = app.state.ticket_services.tickets
         original = tickets.save_system_update
 
-        def boom(_ticket):
+        def boom(_ticket: TicketRecord) -> TicketRecord:
             raise RuntimeError("simulated persistence failure")
 
         monkeypatch.setattr(tickets, "save_system_update", boom)
@@ -154,7 +158,7 @@ async def test_failed_indexing_rolls_back_ingested_product(
         indexing = app.state.quality_control_service._indexing
         original = indexing.index_product
 
-        def boom(_ticket, _product):
+        def boom(_ticket: TicketRecord, _product: StoreProduct) -> None:
             raise RuntimeError("simulated indexing failure")
 
         monkeypatch.setattr(indexing, "index_product", boom)
@@ -249,7 +253,7 @@ def _fail_audit(*_args: object, **_kwargs: object) -> None:
     raise RuntimeError("audit unavailable")
 
 
-def _stored_ticket(app: object, ticket_id: str):
+def _stored_ticket(app: FastAPI, ticket_id: str) -> TicketRecord:
     ticket = app.state.ticket_services.tickets._repository.get(UUID(ticket_id))
     assert ticket is not None
-    return ticket
+    return cast(TicketRecord, ticket)

@@ -1,17 +1,19 @@
 from uuid import UUID
 
 import pytest
+from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from coeus.core.config import Settings
 from coeus.domain.access import ProductStatus
 from coeus.domain.enums import TicketState
+from coeus.domain.tickets import TicketRecord
 from coeus.main import create_app
 from rfi_search_helpers import login
 from test_qc_api import _acg_id, _approval_payload, _submitted_qc_ticket
 
 
-async def _ticket_awaiting_release(client: AsyncClient, app: object) -> str:
+async def _ticket_awaiting_release(client: AsyncClient, app: FastAPI) -> str:
     ticket_id = await _submitted_qc_ticket(client, app, "Release Arctic product")
     qc_manager = await login(client, "qc.manager@example.test")
     approved = await client.post(
@@ -190,7 +192,7 @@ async def test_release_ticket_update_failure_rolls_back_published_product(
         tickets = app.state.ticket_services.tickets
         original = tickets.save_system_update
 
-        def fail_save(_ticket):
+        def fail_save(_ticket: TicketRecord) -> TicketRecord:
             raise RuntimeError("simulated release persistence failure")
 
         monkeypatch.setattr(tickets, "save_system_update", fail_save)

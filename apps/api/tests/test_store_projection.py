@@ -15,8 +15,9 @@ from coeus.repositories.store import InMemoryStoreRepository
 from coeus.services.asset_tokens import AssetTokenService
 from coeus.services.audit import AuditLog
 from coeus.services.embeddings import EmbeddingService
-from coeus.services.store import StoreProductAccessPolicy, StoreSearchService
+from coeus.services.store import StoreSearchService
 from coeus.services.store_access import StoreAssetService, StoreDetailService
+from coeus.services.store_product_policy import StoreProductAccessPolicy
 from coeus.services.store_semantics import product_semantic_text
 from store_projection_helpers import (
     FakeEmbeddingService,

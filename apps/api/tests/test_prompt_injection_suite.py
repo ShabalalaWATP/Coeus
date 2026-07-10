@@ -1,3 +1,5 @@
+from typing import cast
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
@@ -14,7 +16,9 @@ async def _login(client: AsyncClient) -> dict[str, object]:
         json={"username": "user@example.test", "password": SEED_CREDENTIAL},
     )
     assert response.status_code == 200
-    return response.json()
+    payload = response.json()
+    assert isinstance(payload, dict)
+    return cast(dict[str, object], payload)
 
 
 @pytest.mark.parametrize(

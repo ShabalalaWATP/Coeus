@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from typing import Any
+from typing import Any, cast
 
 from coeus.core.config import Settings
 from coeus.domain.access import ProductStatus
@@ -190,7 +190,7 @@ class FakeResult:
 
 def access_repository() -> SeedAccessRepository:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
-    return app.state.access_services.repository
+    return cast(SeedAccessRepository, app.state.access_services.repository)
 
 
 def seed_product() -> StoreProduct:

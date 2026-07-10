@@ -2,12 +2,14 @@ import json
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from hmac import new as hmac_new
+from typing import cast
 from uuid import uuid4
 
 import pytest
 
 from coeus.core.config import Settings
 from coeus.core.errors import AppError
+from coeus.domain.auth import UserAccount
 from coeus.main import create_app
 from coeus.services.asset_tokens import TOKEN_PREFIX, AssetTokenService, _b64
 
@@ -29,11 +31,11 @@ def test_asset_token_service_rejects_malformed_signed_claims() -> None:
         service.verify(_signed_payload(service, payload | {"break_glass": "false"}))
 
 
-def _admin_user():
+def _admin_user() -> UserAccount:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     user = app.state.access_services.repository.get_user_by_username("admin@example.test")
     assert user is not None
-    return user
+    return cast(UserAccount, user)
 
 
 def _signed_payload(service: AssetTokenService, payload: dict[str, object]) -> str:

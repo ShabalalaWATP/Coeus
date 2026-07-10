@@ -1,6 +1,8 @@
+from typing import Any
 from uuid import uuid4
 
 import pytest
+from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from coeus.core.config import Settings
@@ -267,7 +269,7 @@ async def test_analyst_workflow_rejects_invalid_inputs_and_duplicate_actions() -
     assert note_after_qc.json()["error"]["code"] == "invalid_ticket_state"
 
 
-async def _assigned_ticket(client: AsyncClient, app: object) -> str:
+async def _assigned_ticket(client: AsyncClient, app: FastAPI) -> str:
     ticket_id = await _approved_ticket(client)
     analyst_user = app.state.access_services.repository.get_user_by_username("analyst@example.test")
     assert analyst_user is not None
@@ -319,7 +321,7 @@ async def _approved_ticket(client: AsyncClient) -> str:
     return ticket_id
 
 
-def _draft_payload(title: str) -> dict[str, object]:
+def _draft_payload(title: str) -> dict[str, Any]:
     return {
         "title": title,
         "summary": "MOCK DATA ONLY analyst product draft.",

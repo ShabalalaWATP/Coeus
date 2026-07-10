@@ -2,13 +2,16 @@ import json
 from hashlib import sha256
 from hmac import new as hmac_new
 from pathlib import Path
+from typing import cast
 from uuid import uuid4
 
 import pytest
-from httpx import ASGITransport, AsyncClient
+from fastapi import FastAPI
+from httpx import ASGITransport, AsyncClient, Response
 
 from coeus.core.config import Settings
 from coeus.core.errors import AppError
+from coeus.domain.auth import UserAccount
 from coeus.main import create_app
 from coeus.services.asset_tokens import TOKEN_PREFIX, AssetTokenService, _b64
 from store_api_helpers import product_payload
@@ -22,13 +25,15 @@ async def login(client: AsyncClient, username: str) -> dict[str, object]:
         json={"username": username, "password": SEED_CREDENTIAL},
     )
     assert response.status_code == 200
-    return response.json()
+    payload = response.json()
+    assert isinstance(payload, dict)
+    return cast(dict[str, object], payload)
 
 
-def _admin_user(app: object):
+def _admin_user(app: FastAPI) -> UserAccount:
     user = app.state.access_services.repository.get_user_by_username("admin@example.test")
     assert user is not None
-    return user
+    return cast(UserAccount, user)
 
 
 @pytest.mark.asyncio
@@ -218,7 +223,7 @@ async def _upload(
     metadata: str,
     content: bytes,
     session: dict[str, object] | None = None,
-):
+) -> Response:
     csrf_token = str((session or await login(client, "admin@example.test"))["csrfToken"])
     return await client.post(
         "/api/v1/store/products/upload",

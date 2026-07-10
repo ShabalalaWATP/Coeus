@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
 from fastapi import Request
@@ -10,13 +11,14 @@ from coeus.core.config import Settings
 from coeus.domain.access import ProductStatus
 from coeus.domain.store import StoreProductMetadata
 from coeus.main import create_app
-from coeus.persistence.store_projection_search import SEARCH_PRODUCTS_SQL, _escape_like
+from coeus.persistence.store_projection_search import _escape_like
+from coeus.persistence.store_projection_search_sql import SEARCH_PRODUCTS_SQL
 from coeus.repositories.tickets import _max_reference_counter
 from coeus.services.store_search_dates import within_dates
 from rfi_search_helpers import login, product_payload
 
 
-def _settings(**overrides) -> Settings:
+def _settings(**overrides: Any) -> Settings:
     return Settings(environment="test", argon2_memory_cost=8_192, **overrides)
 
 

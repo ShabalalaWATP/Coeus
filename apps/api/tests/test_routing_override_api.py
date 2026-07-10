@@ -1,15 +1,17 @@
 from dataclasses import replace
 from datetime import UTC, datetime
+from typing import cast
 from uuid import UUID, uuid4
 
 import pytest
+from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from coeus.core.config import Settings
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
 from coeus.domain.enums import TicketState
-from coeus.domain.tickets import CmCapabilityReview, RfaCapabilityReview, RoutingRoute
+from coeus.domain.tickets import CmCapabilityReview, RfaCapabilityReview, RoutingRoute, TicketRecord
 from coeus.main import create_app
 from coeus.services.routing_records import recommend_route
 from rfi_search_helpers import login
@@ -252,7 +254,7 @@ def _fail_audit(*_args: object, **_kwargs: object) -> None:
     raise RuntimeError("audit unavailable")
 
 
-def _stored_ticket(app: object, ticket_id: str):
+def _stored_ticket(app: FastAPI, ticket_id: str) -> TicketRecord:
     ticket = app.state.ticket_services.tickets._repository.get(UUID(ticket_id))
     assert ticket is not None
-    return ticket
+    return cast(TicketRecord, ticket)
