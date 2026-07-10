@@ -1,5 +1,6 @@
 from dataclasses import replace
 from datetime import UTC, datetime
+from typing import Protocol
 from uuid import UUID, uuid4
 
 from coeus.domain.agent_names import CUSTOMER_CHATBOT_AGENT
@@ -17,14 +18,24 @@ from coeus.services.audit import AuditLog
 from coeus.services.intake import IntakeAssistantProvider, IntakeExtractionService
 from coeus.services.ticket_records import message as message_record
 from coeus.services.ticket_records import timeline
-from coeus.services.tickets import TicketService
+
+
+class ConversationTicketService(Protocol):
+    def get_editable_ticket(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
+        pass
+
+    def state_for_intake(self, current_state: TicketState, intake: IntakeDetails) -> TicketState:
+        pass
+
+    def save_system_update(self, ticket: TicketRecord) -> TicketRecord:
+        pass
 
 
 class ConversationService:
     def __init__(
         self,
         repository: InMemoryTicketRepository,
-        tickets: TicketService,
+        tickets: ConversationTicketService,
         extractor: IntakeExtractionService,
         llm_provider: IntakeAssistantProvider,
         audit_log: AuditLog,

@@ -14,9 +14,11 @@ GEMINI_GENERATE_CONTENT_URL = (
 
 
 class GeminiRuntimeConfig(Protocol):
-    def active_model(self) -> str: ...
+    def active_model(self) -> str:
+        pass
 
-    def api_key(self) -> str | None: ...
+    def api_key(self) -> str | None:
+        pass
 
 
 class GeminiApiLlmProvider:

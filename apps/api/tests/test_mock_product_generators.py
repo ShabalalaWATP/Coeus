@@ -18,7 +18,8 @@ class _CatalogModule(Protocol):
         counts: dict[str, int] | None = None,
         *,
         write_assets: bool = True,
-    ) -> dict[str, Any]: ...
+    ) -> dict[str, Any]:
+        pass
 
 
 def test_mock_catalog_default_counts_are_public_safe() -> None:

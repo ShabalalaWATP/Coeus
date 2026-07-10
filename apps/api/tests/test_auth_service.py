@@ -19,6 +19,7 @@ SEED_CREDENTIAL = "CoeusLocal1!"
 
 class RecordingPasswordHasher(PasswordHasher):
     def __init__(self) -> None:
+        super().__init__(Settings(environment="test", argon2_memory_cost=8_192))
         self.verified_hashes: list[str] = []
 
     def hash(self, credential: str) -> str:

@@ -33,11 +33,13 @@ class EmbeddingProvider(Protocol):
 
 
 class ApiKeyProvider(Protocol):
-    def api_key(self) -> str | None: ...
+    def api_key(self) -> str | None:
+        pass
 
 
 class _FastEmbedModel(Protocol):
-    def embed(self, texts: list[str]) -> Iterable[object]: ...
+    def embed(self, texts: list[str]) -> Iterable[object]:
+        pass
 
 
 class EmbeddingService:
