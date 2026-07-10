@@ -4,7 +4,8 @@ from uuid import uuid4
 from coeus.domain.store import StoreProduct
 from coeus.repositories.store import InMemoryStoreRepository
 from coeus.repositories.store_hybrid import memory_hybrid_candidates
-from coeus.services.store import StoreProductAccessPolicy, StoreSearchService
+from coeus.services.store import StoreSearchService
+from coeus.services.store_product_policy import StoreProductAccessPolicy
 from store_projection_helpers import (
     RecordingProjection,
     access_repository,

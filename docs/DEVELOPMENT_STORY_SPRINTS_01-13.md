@@ -22,11 +22,11 @@ that file within the repository line limit.
 
 ## 2026-07-04 Sprint 3
 
-- Added local-first ACG, product and project workspace domain records plus a seed access repository. Project workspaces were later retired by ADR 0018.
-- Added ACG, product access, project access, project workspace and access diagnostics services. The project access slice was later removed.
-- Added backend routes for ACG administration, project workspaces, project slices and administrator product diagnostics. The `/projects` routes were later removed.
+- Added local-first ACG and product access domain records plus a seed access repository.
+- Added ACG, product access and access diagnostics services.
+- Added backend routes for ACG administration and administrator product diagnostics.
 - Added ACG audit events for group creation, group update, membership addition and membership removal.
-- Added `/admin/acgs` and `/projects` frontend workspaces with ACG management, project plan, member, product and diagnostic views. The `/projects` workspace was later retired.
+- Added `/admin/acgs` frontend workspaces with ACG management, member, product and diagnostic views.
 - Added Sprint 3 access-policy, API, client and UI tests.
 
 ## 2026-07-05 Sprint 4
@@ -114,7 +114,7 @@ that file within the repository line limit.
 - Added a manual-first `Deploy Dev` GitHub Actions workflow that builds API and
   web images, pushes them to Artifact Registry and deploys to Cloud Run through
   GitHub OIDC.
-- Added GCP, GCS, Pub/Sub and Gemma Vertex runtime settings without importing
+- Added GCP, GCS, Pub/Sub and AI provider runtime settings without importing
   cloud SDKs into domain services.
 - Added a production web container image for Cloud Run.
 - Added the Sprint 12 spec, GCP deployment ADR, threat model and deployment

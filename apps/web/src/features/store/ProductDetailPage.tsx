@@ -178,7 +178,7 @@ export default function ProductDetailPage() {
 
         <aside className="surface product-assets" aria-labelledby="assets-title">
           <h2 id="assets-title">Assets</h2>
-          {canDownload ? null : (
+          {canRequestAssetAccess ? null : (
             <p className="store-asset-hint">
               You do not have permission to download assets. Metadata remains visible.
             </p>
@@ -198,7 +198,7 @@ export default function ProductDetailPage() {
                   <small>{asset.previewKind.replaceAll("_", " ")}</small>
                 </>
               );
-              if (!canDownload) {
+              if (!canRequestAssetAccess) {
                 return (
                   <div className="stack-row store-asset-row" key={asset.id}>
                     {row}

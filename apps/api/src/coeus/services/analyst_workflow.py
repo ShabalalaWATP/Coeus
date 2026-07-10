@@ -13,24 +13,16 @@ from coeus.domain.tickets import (
     WorkPackageStatus,
 )
 from coeus.repositories.access import SeedAccessRepository
-from coeus.services.analyst_assignment import (
-    assignment_summary,
-    normalise_team_name,
-    normalise_titles,
-    suggested_team_name,
-)
+from coeus.services.analyst_assignment import assignment_change
 from coeus.services.analyst_drafts import DraftProductInput, draft_asset, new_uuid, now
 from coeus.services.analyst_records import (
     all_work_packages_complete,
     approved_route,
     assigned_to,
-    assignment_record,
-    default_work_package_titles,
     draft_version,
     latest_assignment,
     linked_product_record,
     next_draft_version,
-    work_package_records,
 )
 from coeus.services.audit import AuditLog
 from coeus.services.audit_rollback import record_ticket_audit_or_rollback
@@ -94,40 +86,20 @@ class AnalystWorkflowService:
             or RoleName.INTELLIGENCE_ANALYST not in analyst.roles
         ):
             raise AppError(422, "invalid_analyst", "Assigned user must be an active analyst.")
-        titles = normalise_titles(work_package_titles) or default_work_package_titles(ticket, route)
-        assignment_team = normalise_team_name(team_name) or suggested_team_name(ticket, route)
         target_state = TicketState.ANALYST_IN_PROGRESS
         if not reassignment:
             self._ensure_transition(ticket.state, target_state)
-        assignment = assignment_record(
-            ticket.ticket_id, analyst.user_id, actor.user_id, route, assignment_team
+        change = assignment_change(
+            ticket,
+            actor,
+            analyst,
+            route,
+            work_package_titles,
+            team_name,
+            reassignment=reassignment,
         )
-        packages = () if reassignment else work_package_records(ticket.ticket_id, titles)
-        event_type = "analyst_reassigned" if reassignment else "analyst_assigned"
-        updated = self._tickets.tickets.save_system_update(
-            replace(
-                ticket,
-                state=target_state,
-                analyst_assignments=(*ticket.analyst_assignments, assignment),
-                work_packages=(*ticket.work_packages, *packages),
-                timeline=(
-                    *ticket.timeline,
-                    timeline(
-                        ticket.ticket_id,
-                        actor.user_id,
-                        event_type,
-                        assignment_summary(analyst.username, assignment_team),
-                    ),
-                ),
-            )
-        )
-        metadata = {
-            "ticket_id": str(ticket.ticket_id),
-            "analyst_user_id": str(analyst.user_id),
-        }
-        if assignment_team:
-            metadata["team_name"] = assignment_team
-        self._record_audit_or_rollback(ticket, event_type, actor, metadata)
+        updated = self._tickets.tickets.save_system_update(change.ticket)
+        self._record_audit_or_rollback(ticket, change.event_type, actor, change.audit_metadata)
         return updated
 
     def list_tasks(self, actor: UserAccount) -> tuple[TicketRecord, ...]:

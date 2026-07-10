@@ -16,7 +16,7 @@ download tokens only, not real product bytes.
 - API routes for product search, product detail, product creation, metadata
   suggestions and controlled asset access.
 - Access filtering by RBAC, active ACG membership, clearance, status, product
-  type, region, tags, project and source type.
+  type, region, tags and source type.
 - Product upload wizard UI with ACG assignment and asset metadata entry.
 - Store search page with filters, safe result counts and product detail view.
 - Regression tests for unauthorised search/detail/asset access and count leakage.
@@ -54,6 +54,6 @@ download tokens only, not real product bytes.
 - Metadata suggestions propose tags and entities but never auto-assign ACGs.
 - Search returns only authorised products and does not leak unauthorised counts
   or facets.
-- Filters work for product type, region, tags, project, source type and status.
+- Filters work for product type, region, tags, source type and status.
 - Product detail shows metadata and asset previews for authorised users.
 - Controlled asset access succeeds only for authorised users.

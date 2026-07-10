@@ -16,30 +16,24 @@ from coeus.domain.tickets import (
 from coeus.services.audit import AuditLog
 from coeus.services.capability_catalogue import CapabilityCatalogue
 from coeus.services.orchestration_handoff import (
-    agent_clarification_handoff,
     append_handoff,
     manager_clarification_handoff,
 )
 from coeus.services.routing_agents import CmCapabilityAgent, RfaCapabilityAgent
 from coeus.services.routing_records import (
     can_review_route,
-    count_state,
     current_queue_permission,
     decision,
-    decision_project_update,
+    decision_workflow_update,
     ensure_manager_state,
     ensure_override,
     fallback_state,
     latest_cm_review,
     latest_recommendation,
-    project_update,
-    rate,
-    recommend_route,
-    review_agent_runs,
-    state_for_recommendation,
     timeline,
 )
-from coeus.services.routing_stats import RoutingStats
+from coeus.services.routing_review_updates import build_routing_review_update
+from coeus.services.routing_stats import RoutingStats, routing_stats_from_tickets
 from coeus.services.tickets import TicketServices
 
 ROUTING_READ_PERMISSIONS = frozenset({Permission.RFA_REVIEW, Permission.COLLECTION_REVIEW})
@@ -99,56 +93,14 @@ class RoutingService:
             raise AppError(409, "invalid_ticket_state", "Ticket is not awaiting route assessment.")
         rfa_review = self._rfa_agent.review(ticket)
         cm_review = self._cm_agent.review(ticket)
-        recommendation = recommend_route(ticket.ticket_id, rfa_review, cm_review)
-        handoff = (
-            agent_clarification_handoff(
-                ticket.ticket_id,
-                actor.user_id,
-                recommendation.reasoning_summary,
-                (*rfa_review.required_clarifications, *cm_review.required_clarifications),
-            )
-            if recommendation.recommended_route == RoutingRoute.CLARIFICATION
-            else None
-        )
-        target_state = state_for_recommendation(recommendation)
-        self._ensure_transition(ticket.state, target_state)
-        proposed = append_handoff(
-            replace(
-                ticket,
-                state=target_state,
-                rfa_reviews=(*ticket.rfa_reviews, rfa_review),
-                cm_reviews=(*ticket.cm_reviews, cm_review),
-                route_recommendations=(*ticket.route_recommendations, recommendation),
-                agent_runs=(
-                    *ticket.agent_runs,
-                    *review_agent_runs(ticket.ticket_id, rfa_review, cm_review, recommendation),
-                ),
-                project_plan_updates=(
-                    *ticket.project_plan_updates,
-                    project_update(ticket.ticket_id, target_state, recommendation),
-                ),
-                timeline=(
-                    *ticket.timeline,
-                    timeline(
-                        ticket.ticket_id,
-                        actor.user_id,
-                        "route_reviews_completed",
-                        recommendation.reasoning_summary,
-                    ),
-                ),
-            ),
-            handoff,
-        )
-        metadata = {
-            "ticket_id": str(ticket.ticket_id),
-            "recommended_route": recommendation.recommended_route.value,
-        }
-        if rfa_review.suggested_team_name:
-            metadata["rfa_team"] = rfa_review.suggested_team_name
-        if cm_review.suggested_collection_team_name:
-            metadata["cm_team"] = cm_review.suggested_collection_team_name
+        review_update = build_routing_review_update(ticket, actor.user_id, rfa_review, cm_review)
+        self._ensure_transition(ticket.state, review_update.target_state)
         return self._save_with_audit(
-            ticket, proposed, "route_reviews_completed", actor.user_id, metadata
+            ticket,
+            review_update.proposed,
+            "route_reviews_completed",
+            actor.user_id,
+            review_update.metadata,
         )
 
     def approve(
@@ -253,24 +205,7 @@ class RoutingService:
         ):
             raise AppError(403, "forbidden", "Permission denied.")
         tickets = self._tickets.tickets.list_workflow_tickets(actor, ROUTING_READ_PERMISSIONS)
-        decisions = [decision for ticket in tickets for decision in ticket.manager_decisions]
-        recommendations = [rec for ticket in tickets for rec in ticket.route_recommendations]
-        approved = [
-            item for item in decisions if item.status == ManagerRoutingDecisionStatus.APPROVED
-        ]
-        rfa_approved = [item for item in approved if item.route == RoutingRoute.RFA]
-        cm_fallbacks = [
-            item for item in recommendations if item.recommended_route == RoutingRoute.CM
-        ]
-        return RoutingStats(
-            route_assessment_count=count_state(tickets, TicketState.ROUTE_ASSESSMENT),
-            rfa_review_count=count_state(tickets, TicketState.RFA_MANAGER_REVIEW),
-            cm_review_count=count_state(tickets, TicketState.CM_MANAGER_REVIEW),
-            clarification_count=count_state(tickets, TicketState.INFO_REQUIRED),
-            analyst_assignment_count=count_state(tickets, TicketState.ANALYST_ASSIGNMENT),
-            rfa_acceptance_rate=rate(len(rfa_approved), len(approved)),
-            cm_fallback_rate=rate(len(cm_fallbacks), len(recommendations)),
-        )
+        return routing_stats_from_tickets(tickets)
 
     def _queue_for(self, actor: UserAccount, states: set[TicketState]) -> tuple[TicketRecord, ...]:
         tickets = self._tickets.tickets.list_workflow_tickets(actor, ROUTING_READ_PERMISSIONS)
@@ -287,9 +222,9 @@ class RoutingService:
             ticket,
             state=state,
             manager_decisions=(*ticket.manager_decisions, decision),
-            project_plan_updates=(
-                *ticket.project_plan_updates,
-                decision_project_update(ticket.ticket_id, decision, state),
+            workflow_plan_updates=(
+                *ticket.workflow_plan_updates,
+                decision_workflow_update(ticket.ticket_id, decision, state),
             ),
             timeline=(
                 *ticket.timeline,

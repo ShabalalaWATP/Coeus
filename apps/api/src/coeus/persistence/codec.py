@@ -50,7 +50,6 @@ from coeus.domain.tickets import (
     ProductDissemination,
     ProductOffer,
     ProductOfferStatus,
-    ProjectPlanUpdate,
     RfaCapabilityReview,
     RfiSearchMetrics,
     RouteRecommendation,
@@ -58,6 +57,7 @@ from coeus.domain.tickets import (
     TicketCollaborator,
     TicketRecord,
     TicketTimelineEntry,
+    WorkflowPlanUpdate,
     WorkPackageStatus,
 )
 
@@ -88,7 +88,6 @@ _ALLOWED_TYPES = (
     ProductIndexRecord,
     ProductOffer,
     ProductRecord,
-    ProjectPlanUpdate,
     QcChecklistItem,
     QcDecision,
     RegistrationRequest,
@@ -103,6 +102,7 @@ _ALLOWED_TYPES = (
     TicketRecord,
     TicketTimelineEntry,
     UserAccount,
+    WorkflowPlanUpdate,
 )
 
 _ALLOWED_ENUMS = (
@@ -159,7 +159,7 @@ def encode_value(value: Any) -> Any:
 
 def decode_value(value: Any) -> Any:
     if isinstance(value, list):
-        return [decode_value(item) for item in value]
+        return _decode_items(value)
     if not isinstance(value, dict):
         return value
     if "__uuid__" in value:
@@ -167,18 +167,28 @@ def decode_value(value: Any) -> Any:
     if "__datetime__" in value:
         return datetime.fromisoformat(value["__datetime__"])
     if "__frozenset__" in value:
-        return frozenset(decode_value(item) for item in value["__frozenset__"])
+        return frozenset(_decode_items(value["__frozenset__"]))
     if "__tuple__" in value:
-        return tuple(decode_value(item) for item in value["__tuple__"])
+        return tuple(_decode_items(value["__tuple__"]))
     if "__mapping__" in value:
-        return MappingProxyType(
-            {str(key): decode_value(item) for key, item in value["__mapping__"].items()}
-        )
+        return MappingProxyType(_decode_mapping(value["__mapping__"]))
     if "__enum__" in value:
         enum_type = _ENUM_REGISTRY[value["__enum__"]]
         return enum_type(value["value"])
     if "__type__" in value:
         data_type = _TYPE_REGISTRY[value["__type__"]]
-        decoded = {key: decode_value(item) for key, item in value["fields"].items()}
+        field_names = {field.name for field in fields(data_type)}
+        raw_fields = dict(value["fields"])
+        decoded = _decode_mapping(
+            {key: item for key, item in raw_fields.items() if key in field_names}
+        )
         return data_type(**decoded)
+    return _decode_mapping(value)
+
+
+def _decode_items(values: list[Any]) -> list[Any]:
+    return [decode_value(item) for item in values]
+
+
+def _decode_mapping(value: dict[Any, Any]) -> dict[str, Any]:
     return {str(key): decode_value(item) for key, item in value.items()}

@@ -4,14 +4,10 @@ from coeus.repositories.store import InMemoryStoreRepository
 from coeus.services.asset_tokens import AssetTokenService
 from coeus.services.audit import AuditLog
 from coeus.services.embeddings import EmbeddingService
-from coeus.services.store import (
-    MetadataSuggestionService,
-    StoreIngestionService,
-    StoreProductAccessPolicy,
-    StoreSearchService,
-    StoreServices,
-)
+from coeus.services.store import StoreIngestionService, StoreSearchService, StoreServices
 from coeus.services.store_access import StoreAssetService, StoreDetailService
+from coeus.services.store_metadata_suggestions import MetadataSuggestionService
+from coeus.services.store_product_policy import StoreProductAccessPolicy
 
 
 def build_store_services(

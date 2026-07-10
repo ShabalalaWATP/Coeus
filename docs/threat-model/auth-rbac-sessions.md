@@ -28,7 +28,8 @@ Sprint 2 authentication, sessions, RBAC, audit events and frontend auth routes.
 | Brute-force login attempts | Username-level lockout after repeated failures, source-level throttling, bounded attempt tracking and bounded audit retention. Saturated attempt stores fail closed instead of permitting new sources or usernames to bypass throttling. |
 | Disabled user access | Disabled seed accounts are blocked before session creation. |
 | Frontend-only access control bypass | Backend `require_permission` dependency protects administrative and audit endpoints. |
-| Missing auth accountability | Login success, login failure and logout create audit events. |
+| Missing auth accountability | Login success, login failure and logout create audit events. Successful login and logout restore their previous session and login-attempt state if the corresponding audit event cannot be recorded. |
+| Password changes persist without audit evidence | Successful self-service password changes invalidate existing sessions, issue a fresh session and create `password_changed`. If that audit event cannot be recorded, the previous password, sessions and login-attempt state are restored. |
 | Token persistence in browser local storage | Auth session and CSRF token are kept in React state; tests assert no token-like local storage entry. |
 | Local seed user exposure | Application startup rejects the seed user repository outside `local` and `test` environments. |
 | Privileged account change abuse | The admin user-management API requires `user:assign_role`, `user:disable` or `user:clearance` permissions per action, blocks self-modification and records audit events. |

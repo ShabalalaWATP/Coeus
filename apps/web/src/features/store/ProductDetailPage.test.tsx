@@ -151,6 +151,45 @@ test("allows audited break-glass access for restricted-read administrators", asy
   );
 });
 
+test("makes assets selectable after audited break-glass product access", async () => {
+  const hiddenProduct = { ...product, id: "product-hidden" };
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      json: () => Promise.resolve({ error: { code: "product_not_found", message: "Not found." } }),
+    })
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(hiddenProduct) });
+  vi.stubGlobal("fetch", fetchMock);
+  const session = {
+    ...previewSession,
+    user: {
+      ...previewSession.user,
+      permissions: [
+        ...previewSession.user.permissions.filter(
+          (permission) => permission !== "product:download",
+        ),
+        "product:read_restricted",
+      ] satisfies Permission[],
+    },
+  };
+
+  renderWithProviders(<ProductDetailPage />, "/store/products/product-hidden", session);
+
+  await userEvent.type(
+    await screen.findByLabelText("Emergency support reason"),
+    "Synthetic support incident requiring audited access.",
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Access with audit log" }));
+
+  const assetLink = await screen.findByRole("link", { name: /regional-brief\.pdf/ });
+  expect(assetLink).toHaveAttribute("href", "/store/products/product-hidden/assets/asset-brief");
+  expect(
+    screen.queryByText("You do not have permission to download assets. Metadata remains visible."),
+  ).not.toBeInTheDocument();
+});
+
 test("uses audited break-glass grants for hidden asset downloads", async () => {
   const fetchMock = vi
     .fn()

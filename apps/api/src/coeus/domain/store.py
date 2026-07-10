@@ -4,6 +4,19 @@ from uuid import UUID
 
 from coeus.domain.access import ProductStatus
 
+_UNSAFE_OBJECT_KEY_CHARS = frozenset('<>:"/\\|?*')
+_MAX_OBJECT_KEY_SEGMENT_LENGTH = 180
+_WINDOWS_RESERVED_BASENAMES = frozenset(
+    {
+        "CON",
+        "PRN",
+        "AUX",
+        "NUL",
+        *(f"COM{index}" for index in range(1, 10)),
+        *(f"LPT{index}" for index in range(1, 10)),
+    }
+)
+
 
 @dataclass(frozen=True)
 class BoundingBox:
@@ -27,7 +40,6 @@ class StoreProductMetadata:
     handling_caveats: frozenset[str]
     tags: frozenset[str]
     acg_ids: frozenset[UUID]
-    project_id: UUID | None
     status: ProductStatus
     time_period_start: str | None
     time_period_end: str | None
@@ -52,14 +64,26 @@ def object_key_segment(name: str) -> str:
     """Reduce a client-supplied asset name to a single safe path segment.
 
     Object keys are built from a server-generated UUID plus the asset name.
-    Stripping any directory components (``/`` or ``\\``) and parent references
-    keeps a malicious name from escaping its key prefix once a real object
-    store is wired in. The display name on the asset is left untouched.
+    Stripping directory components, parent references and unsafe filename
+    characters keeps a malicious or platform-invalid name from escaping its key
+    prefix once a real object store is wired in.
     """
     segment = name.replace("\\", "/").rsplit("/", 1)[-1].strip()
-    if segment in {"", ".", ".."}:
+    segment = "".join("_" if _is_unsafe_object_key_character(char) else char for char in segment)
+    segment = segment.lstrip(".").rstrip(" .").strip()[:_MAX_OBJECT_KEY_SEGMENT_LENGTH]
+    if segment in {"", ".", ".."} or segment.replace("_", "").replace("-", "").strip() == "":
         return "asset"
+    if _has_windows_reserved_basename(segment):
+        return f"asset-{segment}"[:_MAX_OBJECT_KEY_SEGMENT_LENGTH]
     return segment
+
+
+def _is_unsafe_object_key_character(character: str) -> bool:
+    return ord(character) < 32 or ord(character) == 127 or character in _UNSAFE_OBJECT_KEY_CHARS
+
+
+def _has_windows_reserved_basename(segment: str) -> bool:
+    return segment.split(".", 1)[0].upper() in _WINDOWS_RESERVED_BASENAMES
 
 
 @dataclass(frozen=True)
@@ -81,7 +105,6 @@ class StoreSearchFilters:
     tag: str | None = None
     source_type: str | None = None
     status: ProductStatus | None = None
-    project_id: UUID | None = None
     date_from: str | None = None
     date_to: str | None = None
     owner_team: str | None = None

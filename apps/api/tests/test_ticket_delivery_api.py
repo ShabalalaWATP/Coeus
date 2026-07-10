@@ -1,16 +1,20 @@
 from dataclasses import replace
+from typing import cast
 from uuid import UUID
 
 import pytest
+from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from coeus.core.config import Settings
 from coeus.domain.enums import TicketState
+from coeus.domain.tickets import TicketRecord
 from coeus.main import create_app
+from coeus.services.audit import AuditEvent
 from rfi_search_helpers import login
 
 
-def _app_and_client() -> tuple[object, AsyncClient]:
+def _app_and_client() -> tuple[FastAPI, AsyncClient]:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     return app, AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver")
 
@@ -25,8 +29,8 @@ async def _draft_ticket(client: AsyncClient, csrf: str) -> str:
     return str(response.json()["id"])
 
 
-def _force_state(app: object, ticket_id: str, state: TicketState) -> None:
-    repository = app.state.ticket_services.tickets._repository  # type: ignore[attr-defined]
+def _force_state(app: FastAPI, ticket_id: str, state: TicketState) -> None:
+    repository = app.state.ticket_services.tickets._repository
     ticket = repository.get(UUID(ticket_id))
     assert ticket is not None
     repository.save(replace(ticket, state=state))
@@ -112,11 +116,15 @@ async def test_confirm_delivery_rejects_non_owner_and_wrong_state() -> None:
         assert missing_csrf.json()["error"]["code"] == "csrf_failed"
 
 
-def _fail_audit(*_args: object, **_kwargs: object) -> None:
+def _fail_audit(
+    event_type: str,
+    actor_user_id: str | None = None,
+    metadata: dict[str, str] | None = None,
+) -> AuditEvent:
     raise RuntimeError("audit unavailable")
 
 
-def _stored_ticket(app: object, ticket_id: str):
+def _stored_ticket(app: FastAPI, ticket_id: str) -> TicketRecord:
     ticket = app.state.ticket_services.tickets._repository.get(UUID(ticket_id))
     assert ticket is not None
-    return ticket
+    return cast(TicketRecord, ticket)

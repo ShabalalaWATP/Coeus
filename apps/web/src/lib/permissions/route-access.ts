@@ -158,6 +158,11 @@ export const previewProfile: UserProfile = {
     "acg:assign_user",
     "chat:use",
     "ticket:create",
+    "ticket:add_information",
+    "ticket:add_comment",
+    "rfi:search",
+    "rfi:accept_product",
+    "rfi:reject_product",
   ],
 };
 

@@ -60,6 +60,14 @@ test("my products is reachable from the navigation", () => {
   ]);
 });
 
+test("retired workspace feature is not exposed in navigation", () => {
+  const labels = visibleNavigationItems(previewProfile).map((item) => item.label);
+
+  expect(routeByPath("/projects")).toBeUndefined();
+  expect(labels).not.toContain("Projects");
+  expect(navigationItems.map((item) => item.path)).not.toContain("/projects");
+});
+
 test("groups navigation items and omits empty groups", () => {
   const operationsOnly = navigationItems.filter((item) => item.group === "operations");
   const groups = groupedNavigationItems(operationsOnly);
@@ -72,10 +80,9 @@ test("groups navigation items and omits empty groups", () => {
   expect(allGroups.map((group) => group.label)).toEqual(["Operations", "Teams", "Governance"]);
 });
 
-test("route metadata includes active access paths", () => {
+test("route metadata includes active navigation paths", () => {
   expect(navigationItems.map((item) => item.path)).toContain("/admin/overview");
   expect(navigationItems.map((item) => item.path)).toContain("/admin/acgs");
-  expect(navigationItems.map((item) => item.path)).not.toContain("/projects");
   expect(navigationItems.map((item) => item.path)).toContain("/rfa/queue");
   expect(navigationItems.map((item) => item.path)).toContain("/analyst/workbench");
   expect(routeByPath("/admin/overview")?.label).toBe("Admin");

@@ -1,3 +1,4 @@
+from typing import cast
 from uuid import UUID
 
 import pytest
@@ -15,7 +16,9 @@ async def login(client: AsyncClient, username: str) -> dict[str, object]:
         json={"username": username, "password": SEED_CREDENTIAL},
     )
     assert response.status_code == 200
-    return response.json()
+    payload = response.json()
+    assert isinstance(payload, dict)
+    return cast(dict[str, object], payload)
 
 
 @pytest.mark.asyncio
@@ -43,19 +46,6 @@ async def test_admin_lists_acgs_and_customer_is_denied() -> None:
         "ACG-MAR-GEOINT",
     } <= admin_codes
     assert len(admin_codes) >= 43
-
-
-@pytest.mark.asyncio
-async def test_project_workspace_routes_are_removed() -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
-
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://testserver"
-    ) as client:
-        await login(client, "user@example.test")
-        response = await client.get("/api/v1/projects")
-
-    assert response.status_code == 404
 
 
 @pytest.mark.asyncio

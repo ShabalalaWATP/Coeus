@@ -1,4 +1,5 @@
 import pytest
+from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from coeus.core.config import Settings
@@ -6,7 +7,7 @@ from coeus.main import create_app
 from rfi_search_helpers import login
 
 
-def _client(app: object) -> AsyncClient:
+def _client(app: FastAPI) -> AsyncClient:
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver")
 
 
@@ -74,7 +75,7 @@ async def test_submitted_ticket_intake_is_no_longer_editable() -> None:
 
 
 @pytest.mark.asyncio
-async def test_non_owner_cannot_add_information_to_visible_ticket() -> None:
+async def test_admin_write_all_permission_allows_information_on_visible_ticket() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
 
     async with _client(app) as user, _client(app) as admin:
@@ -84,8 +85,8 @@ async def test_non_owner_cannot_add_information_to_visible_ticket() -> None:
         response = await admin.post(
             f"/api/v1/tickets/{ticket_id}/timeline",
             headers={"X-CSRF-Token": str(admin_session["csrfToken"])},
-            json={"body": "Admin attempting to add requester information."},
+            json={"body": "Admin adds operational context."},
         )
 
-    assert response.status_code == 404
-    assert response.json()["error"]["code"] == "ticket_not_found"
+    assert response.status_code == 200
+    assert response.json()["timeline"][-1]["body"] == "Admin adds operational context."

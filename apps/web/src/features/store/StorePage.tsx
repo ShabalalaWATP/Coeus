@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import { Search, SlidersHorizontal, Upload } from "lucide-react";
+import { Upload } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 
 import { PaginationControls, PaginationSummary } from "./StorePagination";
 import { StoreMatchReasons } from "./StoreMatchReasons";
 import { ProductTypeIcon } from "./ProductTypeIcon";
-import { productTypeLabel, productTypeOptions } from "./store-options";
+import { StoreSearchFiltersPanel, type StoreFilterDraft } from "./StoreSearchFiltersPanel";
+import { productTypeLabel } from "./store-options";
 import { EmptyState, ErrorState } from "../../components/ui/PageState";
 import { searchStoreProducts, type StoreSearchFilters } from "../../lib/api-client/store";
 import { useAuth } from "../../lib/auth/auth-context";
@@ -72,7 +73,7 @@ export default function StorePage({
   const location = useLocation();
   const [sort, setSort] = useState<StoreSort>("relevance");
   const [page, setPage] = useState(1);
-  const [draftFilters, setDraftFilters] = useState({
+  const [draftFilters, setDraftFilters] = useState<StoreFilterDraft>({
     query: "",
     productType: "",
     region: "",
@@ -137,103 +138,14 @@ export default function StorePage({
       </section>
 
       <section className="store-layout">
-        <details className="workspace-details store-search" open>
-          <summary>
-            <SlidersHorizontal aria-hidden="true" size={16} />
-            Search and filters
-          </summary>
-          <form
-            className="surface store-filters"
-            onSubmit={(event) => {
-              event.preventDefault();
-              setSubmittedFilters(cleanFilters(draftFilters));
-              setPage(1);
-            }}
-          >
-            <p className="store-filters__note">Filters run after ACG and classification checks.</p>
-            <label>
-              Full text
-              <input
-                onChange={(event) =>
-                  setDraftFilters((current) => ({ ...current, query: event.target.value }))
-                }
-                placeholder="Search title, summary, tags"
-                value={draftFilters.query}
-              />
-            </label>
-            <label>
-              Product type
-              <select
-                onChange={(event) =>
-                  setDraftFilters((current) => ({ ...current, productType: event.target.value }))
-                }
-                value={draftFilters.productType}
-              >
-                <option value="">Any type</option>
-                {productTypeOptions.map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="store-filter-grid">
-              <label>
-                Region
-                <input
-                  onChange={(event) =>
-                    setDraftFilters((current) => ({ ...current, region: event.target.value }))
-                  }
-                  value={draftFilters.region}
-                />
-              </label>
-              <label>
-                Tag
-                <input
-                  onChange={(event) =>
-                    setDraftFilters((current) => ({ ...current, tag: event.target.value }))
-                  }
-                  value={draftFilters.tag}
-                />
-              </label>
-            </div>
-            <label>
-              Source type
-              <input
-                onChange={(event) =>
-                  setDraftFilters((current) => ({ ...current, sourceType: event.target.value }))
-                }
-                value={draftFilters.sourceType}
-              />
-            </label>
-            <div className="store-filter-grid">
-              <label>
-                Coverage from
-                <input
-                  onChange={(event) =>
-                    setDraftFilters((current) => ({ ...current, dateFrom: event.target.value }))
-                  }
-                  type="date"
-                  value={draftFilters.dateFrom}
-                />
-              </label>
-              <label>
-                Coverage to
-                <input
-                  onChange={(event) =>
-                    setDraftFilters((current) => ({ ...current, dateTo: event.target.value }))
-                  }
-                  type="date"
-                  value={draftFilters.dateTo}
-                />
-              </label>
-            </div>
-            <button type="submit">
-              <Search aria-hidden="true" size={18} />
-              Search products
-            </button>
-          </form>
-        </details>
+        <StoreSearchFiltersPanel
+          filters={draftFilters}
+          onFiltersChange={setDraftFilters}
+          onSubmit={(filters) => {
+            setSubmittedFilters(cleanFilters(filters));
+            setPage(1);
+          }}
+        />
 
         <section className="surface store-results" aria-live="polite">
           <div className="store-results__header">
@@ -340,7 +252,7 @@ export default function StorePage({
   );
 }
 
-function cleanFilters(filters: Record<string, string>) {
+function cleanFilters(filters: StoreFilterDraft) {
   return Object.fromEntries(
     Object.entries(filters)
       .map(([key, value]) => [key, value.trim()])

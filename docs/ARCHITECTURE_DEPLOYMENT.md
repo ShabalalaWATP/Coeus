@@ -27,7 +27,7 @@ flowchart TB
             PG[("pgvector/pgvector:pg16<br/>PostgreSQL")]
             MINIO[["MinIO<br/>optional bucket storage"]]
         end
-        FS[["Local filesystem<br/>object bytes + JSON state"]]
+        FS[["Local filesystem<br/>object bytes + email outbox"]]
     end
 
     BROWSER --> VITE --> UVICORN
@@ -55,8 +55,9 @@ GCP hosting is a reference target, not a requirement, and the Terraform in
 `infra/gcp` builds the resource shell without storing secret values in state.
 The API and web run on Cloud Run, state moves to Cloud SQL for PostgreSQL (with
 pgvector), product bytes move to Cloud Storage buckets, and the language and
-embedding providers can point at Vertex AI. Deployments authenticate from GitHub
-Actions through Workload Identity Federation, with no long-lived keys.
+embedding providers remain explicit application settings such as `mock` or
+`gemini_api`. Deployments authenticate from GitHub Actions through Workload
+Identity Federation, with no long-lived keys.
 
 ```mermaid
 flowchart TB
@@ -86,7 +87,7 @@ flowchart TB
         end
         SM["Secret Manager<br/>db url, session, csrf, keys"]
         KMS["Cloud KMS<br/>encryption keys"]
-        VERTEX["Vertex AI<br/>chat + embeddings (optional)"]
+        GEMINI["Gemini API<br/>chat + embeddings (optional)"]
     end
 
     USERS["Users"] --> WEBSVC --> APISVC
@@ -97,7 +98,7 @@ flowchart TB
     APISVC --> TOPIC
     TOPIC --> DLQ
     APISVC --> SM
-    APISVC -.optional.-> VERTEX
+    APISVC -.optional.-> GEMINI
     SQL --- KMS
     buckets --- KMS
 
@@ -106,7 +107,7 @@ flowchart TB
     classDef data fill:#b45309,stroke:#7c2d12,color:#fff,stroke-width:1px
     classDef sec fill:#dc2626,stroke:#991b1b,color:#fff,stroke-width:1px
     class USERS actor
-    class WEBSVC,APISVC,AR,TOPIC,DLQ,VERTEX,GHA gcp
+    class WEBSVC,APISVC,AR,TOPIC,DLQ,GEMINI,GHA gcp
     class SQL,BPROD,BPREV,BAUD data
     class WIF,SM,KMS sec
 ```
@@ -129,7 +130,7 @@ The same binary runs in both places; these settings select the backing service.
 | --- | --- | --- | --- |
 | Persistence | `COEUS_PERSISTENCE_PROVIDER` | `postgres` (local container) | `postgres` (Cloud SQL) |
 | Object storage | `COEUS_OBJECT_STORAGE_PROVIDER` | `local` (filesystem) | `gcs` (Cloud Storage) |
-| Language model | `COEUS_LLM_PROVIDER` | `mock` | `mock` or `gemini_api` (Vertex) |
+| Language model | `COEUS_LLM_PROVIDER` | `mock` | `mock` or `gemini_api` |
 | Embeddings | `COEUS_EMBEDDING_PROVIDER` | `mock` | `mock`, `local` or `gemini_api` |
 | Email | `COEUS_EMAIL_PROVIDER` | `outbox` (on disk) | `smtp` |
 | Secrets | environment / `.env` | local file | Secret Manager |
@@ -144,11 +145,12 @@ selected explicitly. This keeps a machine configured for offline use offline.
 ## Scaling and known constraints
 
 - **Single-writer state.** Repositories are in-memory aggregates serialised as
-  whole-namespace JSON and mirrored to the relational projection. This is
-  correct and simple for one API instance. Running multiple writers safely is a
-  planned redesign toward row-level relational persistence; until then the API
-  runs as a single writer. The Cloud Run reference would pin one writable
-  instance or adopt that redesign before scaling out.
+  whole-namespace JSONB snapshots in PostgreSQL and mirrored to the relational
+  Store projection. This is correct and simple for one API instance. Running
+  multiple writers safely is a planned redesign toward row-level relational
+  persistence; until then the API runs as a single writer. The Cloud Run
+  reference would pin one writable instance or adopt that redesign before
+  scaling out.
 - **Audit log.** The audit trail is a bounded ring buffer today; a durable,
   append-only audit store is future work and pairs naturally with the
   persistence redesign. On GCP, audit exports have a dedicated bucket.

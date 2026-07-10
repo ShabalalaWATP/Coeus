@@ -1,12 +1,12 @@
-from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 from coeus.core.config import Settings
-from coeus.domain.auth import RoleName, SessionRecord, UserAccount
+from coeus.domain.auth import SessionRecord, UserAccount
 from coeus.domain.rbac import permissions_for_roles
 from coeus.persistence.codec import decode_value, encode_value
 from coeus.persistence.state_store import StateStore
+from coeus.repositories.auth_seed import seed_user_specs
 from coeus.services.passwords import PasswordHasher
 
 
@@ -30,7 +30,7 @@ class SeedUserRepository:
         self._restore_or_persist()
 
     def _seed_users(self, seed_credential: str, password_hasher: PasswordHasher) -> None:
-        for username, display_name, roles, is_active in _seed_user_specs():
+        for username, display_name, roles, is_active in seed_user_specs():
             account = UserAccount(
                 user_id=uuid4(),
                 username=username,
@@ -44,15 +44,29 @@ class SeedUserRepository:
             self.save(account)
 
     def save(self, user: UserAccount) -> None:
+        usernames = dict(self._users_by_username)
+        users = dict(self._users_by_id)
         self._users_by_username[user.username.casefold()] = user
         self._users_by_id[user.user_id] = user
-        self._persist()
+        try:
+            self._persist()
+        except Exception:
+            self._users_by_username = usernames
+            self._users_by_id = users
+            raise
 
     def delete(self, user_id: UUID) -> None:
+        usernames = dict(self._users_by_username)
+        users = dict(self._users_by_id)
         user = self._users_by_id.pop(user_id, None)
         if user is not None:
             self._users_by_username.pop(user.username.casefold(), None)
-            self._persist()
+            try:
+                self._persist()
+            except Exception:
+                self._users_by_username = usernames
+                self._users_by_id = users
+                raise
 
     def get_by_username(self, username: str) -> UserAccount | None:
         return self._users_by_username.get(username.casefold())
@@ -92,20 +106,41 @@ class SessionRepository:
         self._restore_or_persist()
 
     def save(self, session: SessionRecord) -> None:
+        sessions = dict(self._sessions)
         self._sessions[session.session_id] = session
-        self._persist()
+        try:
+            self._persist()
+        except Exception:
+            self._sessions = sessions
+            raise
 
     def get(self, session_id: str) -> SessionRecord | None:
         return self._sessions.get(session_id)
 
     def delete(self, session_id: str) -> None:
+        sessions = dict(self._sessions)
         self._sessions.pop(session_id, None)
-        self._persist()
+        try:
+            self._persist()
+        except Exception:
+            self._sessions = sessions
+            raise
 
-    def delete_for_user(self, user_id: UUID) -> None:
-        for session_id, session in list(self._sessions.items()):
-            if session.user_id == user_id:
-                self.delete(session_id)
+    def delete_for_user(self, user_id: UUID) -> tuple[SessionRecord, ...]:
+        sessions = dict(self._sessions)
+        deleted = tuple(
+            session for session in self._sessions.values() if session.user_id == user_id
+        )
+        if not deleted:
+            return ()
+        for session in deleted:
+            self._sessions.pop(session.session_id, None)
+        try:
+            self._persist()
+        except Exception:
+            self._sessions = sessions
+            raise
+        return deleted
 
     def _restore_or_persist(self) -> None:
         if self._state_store is None:
@@ -166,6 +201,12 @@ class LoginAttemptRepository:
     def reset(self, username: str) -> None:
         self._attempts.pop(username.casefold(), None)
 
+    def snapshot(self) -> dict[str, tuple[tuple[datetime, ...], datetime | None]]:
+        return dict(self._attempts)
+
+    def restore(self, attempts: dict[str, tuple[tuple[datetime, ...], datetime | None]]) -> None:
+        self._attempts = dict(attempts)
+
     @property
     def entry_count(self) -> int:
         return len(self._attempts)
@@ -217,82 +258,3 @@ class IpAttemptRepository:
                 self._attempts.pop(source)
                 return True
         return False
-
-
-def _seed_user_specs() -> Iterable[tuple[str, str, frozenset[RoleName], bool]]:
-    return (
-        (
-            "admin@example.test",
-            "Admin Operator",
-            frozenset({RoleName.ADMINISTRATOR}),
-            True,
-        ),
-        ("user@example.test", "Customer User", frozenset({RoleName.USER}), True),
-        (
-            "colleague@example.test",
-            "Customer Colleague",
-            frozenset({RoleName.USER}),
-            True,
-        ),
-        (
-            "rfa.manager@example.test",
-            "RFA Manager",
-            frozenset({RoleName.RFA_MANAGER}),
-            True,
-        ),
-        (
-            "rfa.team@example.test",
-            "RFA Team Member",
-            frozenset({RoleName.RFA_TEAM_MEMBER}),
-            True,
-        ),
-        (
-            "collection.manager@example.test",
-            "Collection Manager",
-            frozenset({RoleName.COLLECTION_MANAGER}),
-            True,
-        ),
-        (
-            "collection.team@example.test",
-            "Collection Team Member",
-            frozenset({RoleName.COLLECTION_TEAM_MEMBER}),
-            True,
-        ),
-        (
-            "store.manager@example.test",
-            "Intelligence Store Manager",
-            frozenset({RoleName.INTELLIGENCE_STORE_MANAGER}),
-            True,
-        ),
-        (
-            "analyst@example.test",
-            "Intelligence Analyst",
-            frozenset({RoleName.INTELLIGENCE_ANALYST}),
-            True,
-        ),
-        (
-            "analyst.maritime@example.test",
-            "Maritime Assessment Analyst",
-            frozenset({RoleName.INTELLIGENCE_ANALYST}),
-            True,
-        ),
-        (
-            "analyst.cyber@example.test",
-            "Cyber Threat Analyst",
-            frozenset({RoleName.INTELLIGENCE_ANALYST}),
-            True,
-        ),
-        (
-            "analyst.geo@example.test",
-            "Geospatial Assessment Analyst",
-            frozenset({RoleName.INTELLIGENCE_ANALYST}),
-            True,
-        ),
-        (
-            "qc.manager@example.test",
-            "QC Manager",
-            frozenset({RoleName.QUALITY_CONTROL_MANAGER}),
-            True,
-        ),
-        ("disabled@example.test", "Disabled User", frozenset({RoleName.USER}), False),
-    )

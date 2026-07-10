@@ -10,6 +10,7 @@ from coeus.domain.enums import TicketState
 from coeus.domain.qc import FeedbackRequest, FeedbackRequestStatus, FeedbackSubmission
 from coeus.domain.tickets import ManagerRoutingDecisionStatus, RoutingRoute, TicketRecord
 from coeus.services.audit import AuditLog
+from coeus.services.audit_rollback import record_ticket_audit_or_rollback
 from coeus.services.store import StoreServices
 from coeus.services.ticket_records import timeline
 from coeus.services.tickets import TicketServices
@@ -120,9 +121,12 @@ class FeedbackAnalyticsService:
                 ),
             )
         )
-        self._audit_log.record(
+        record_ticket_audit_or_rollback(
+            self._tickets.tickets,
+            self._audit_log,
+            ticket,
             "feedback_submitted",
-            str(actor.user_id),
+            actor,
             {"ticket_id": str(ticket.ticket_id), "request_id": str(request_id)},
         )
         return self._feedback_view(actor, updated, updated_request)

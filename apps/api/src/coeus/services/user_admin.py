@@ -4,7 +4,7 @@ from uuid import UUID
 
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
-from coeus.domain.auth import RoleName, UserAccount
+from coeus.domain.auth import RoleName, SessionRecord, UserAccount
 from coeus.domain.rbac import permissions_for_roles
 from coeus.repositories.auth import LoginAttemptRepository, SeedUserRepository, SessionRepository
 from coeus.services.audit import AuditLog
@@ -48,8 +48,9 @@ class UserAdminService:
             raise AppError(422, "roles_required", "At least one role is required.")
         user = self._target(actor, user_id)
         updated = replace(user, roles=roles, permissions=permissions_for_roles(roles))
-        self._apply(user, updated)
-        self._audit_log.record(
+        self._apply_and_audit(
+            user,
+            updated,
             "user_roles_changed",
             str(actor.user_id),
             {"user_id": str(user_id), "roles": ",".join(sorted(role.value for role in roles))},
@@ -62,8 +63,9 @@ class UserAdminService:
             raise AppError(422, "clearance_invalid", "Clearance must be between 1 and 5.")
         user = self._target(actor, user_id)
         updated = replace(user, clearance_level=clearance)
-        self._apply(user, updated)
-        self._audit_log.record(
+        self._apply_and_audit(
+            user,
+            updated,
             "user_clearance_changed",
             str(actor.user_id),
             {"user_id": str(user_id), "clearance_level": str(clearance)},
@@ -74,8 +76,9 @@ class UserAdminService:
         self._require(actor, Permission.USER_DISABLE)
         user = self._target(actor, user_id)
         updated = replace(user, is_active=is_active)
-        self._apply(user, updated)
-        self._audit_log.record(
+        self._apply_and_audit(
+            user,
+            updated,
             "user_enabled" if is_active else "user_disabled",
             str(actor.user_id),
             {"user_id": str(user_id)},
@@ -92,13 +95,14 @@ class UserAdminService:
             # A temporary credential must be rotated by the user at next login.
             password_reset_required=True,
         )
-        self._apply(user, updated)
-        self._login_attempts.reset(user.username)
-        self._audit_log.record(
+        self._apply_and_audit(
+            user,
+            updated,
             "user_credential_reset",
             str(actor.user_id),
             {"user_id": str(user_id)},
         )
+        self._login_attempts.reset(user.username)
         return temporary_credential
 
     def _target(self, actor: UserAccount, user_id: UUID) -> UserAccount:
@@ -113,13 +117,24 @@ class UserAdminService:
             raise AppError(404, "user_not_found", "User was not found.")
         return user
 
-    def _apply(self, original: UserAccount, updated: UserAccount) -> None:
+    def _apply_and_audit(
+        self,
+        original: UserAccount,
+        updated: UserAccount,
+        event_type: str,
+        actor_user_id: str,
+        metadata: dict[str, str],
+    ) -> None:
         self._users.save(updated)
         # Privilege or status changes must not outlive existing sessions.
+        revoked_sessions: tuple[SessionRecord, ...] = ()
         try:
-            self._sessions.delete_for_user(updated.user_id)
+            revoked_sessions = self._sessions.delete_for_user(updated.user_id)
+            self._audit_log.record(event_type, actor_user_id, metadata)
         except Exception:
             self._users.save(original)
+            for session in revoked_sessions:
+                self._sessions.save(session)
             raise
 
     @staticmethod

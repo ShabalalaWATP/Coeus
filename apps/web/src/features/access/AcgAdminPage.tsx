@@ -130,7 +130,7 @@ export default function AcgAdminPage() {
       <section className="overview-hero" aria-labelledby="acg-title">
         <div>
           <h1 id="acg-title">Access Control Groups</h1>
-          <p>MOCK DATA ONLY access groups for Sprint 3 project and product filtering.</p>
+          <p>MOCK DATA ONLY access groups for product visibility and team access.</p>
         </div>
         <div className="classification-note">MOCK DATA ONLY</div>
       </section>

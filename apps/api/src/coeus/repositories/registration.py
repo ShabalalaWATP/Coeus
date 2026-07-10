@@ -12,8 +12,22 @@ class RegistrationRepository:
         self._restore_or_persist()
 
     def save(self, registration: RegistrationRequest) -> None:
+        registrations = dict(self._registrations)
         self._registrations[registration.registration_id] = registration
-        self._persist()
+        try:
+            self._persist()
+        except Exception:
+            self._registrations = registrations
+            raise
+
+    def delete(self, registration_id: UUID) -> None:
+        registrations = dict(self._registrations)
+        self._registrations.pop(registration_id, None)
+        try:
+            self._persist()
+        except Exception:
+            self._registrations = registrations
+            raise
 
     def get(self, registration_id: UUID) -> RegistrationRequest | None:
         return self._registrations.get(registration_id)

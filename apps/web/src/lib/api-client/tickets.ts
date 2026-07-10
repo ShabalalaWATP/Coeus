@@ -13,7 +13,6 @@ type IntakeDetails = {
   knownContext: string | null;
   restrictionsOrCaveats: string | null;
   customerSuccessCriteria: string | null;
-  suggestedProjectName: string | null;
   suggestedAcgContext: string | null;
   missingInformation: string[];
   confidence: number;
@@ -81,7 +80,6 @@ export type Ticket = {
   state: TicketState;
   intake: IntakeDetails;
   isReadyForSubmission: boolean;
-  suggestedProjectName: string | null;
   visibleProductMatches: string[];
   releasedProductIds: string[];
   collaborators: TicketCollaborator[];

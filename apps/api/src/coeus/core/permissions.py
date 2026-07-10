@@ -15,12 +15,6 @@ class Permission(StrEnum):
     ACG_ASSIGN_USER = "acg:assign_user"
     ACG_ASSIGN_PRODUCT = "acg:assign_product"
     ACG_VIEW = "acg:view"
-    # Retired project workspace permissions are kept so older local state snapshots decode.
-    PROJECT_CREATE = "project:create"
-    PROJECT_READ = "project:read"
-    PROJECT_UPDATE = "project:update"
-    PROJECT_ADD_MEMBER = "project:add_member"
-    PROJECT_REMOVE_MEMBER = "project:remove_member"
     TICKET_CREATE = "ticket:create"
     TICKET_READ_OWN = "ticket:read_own"
     TICKET_READ_ALL = "ticket:read_all"
@@ -64,16 +58,4 @@ class Permission(StrEnum):
     SYSTEM_CONFIGURE = "system:configure"
 
 
-RETIRED_PERMISSIONS = frozenset(
-    {
-        Permission.PROJECT_CREATE,
-        Permission.PROJECT_READ,
-        Permission.PROJECT_UPDATE,
-        Permission.PROJECT_ADD_MEMBER,
-        Permission.PROJECT_REMOVE_MEMBER,
-    }
-)
-
-ALL_PERMISSIONS = frozenset(
-    permission for permission in Permission if permission not in RETIRED_PERMISSIONS
-)
+ALL_PERMISSIONS = frozenset(Permission)

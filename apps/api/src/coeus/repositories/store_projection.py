@@ -11,12 +11,12 @@ from coeus.domain.store import (
 
 class StoreProjection(Protocol):
     def list_products(self) -> tuple[StoreProduct, ...]:
-        raise NotImplementedError
+        pass
 
     def search_products(
         self, filters: StoreSearchFilters, scope: StoreVisibilityScope
     ) -> tuple[StoreProduct, ...]:
-        raise NotImplementedError
+        pass
 
     def hybrid_candidates(
         self,
@@ -26,21 +26,21 @@ class StoreProjection(Protocol):
         query_embedding: tuple[float, ...] | None,
         leg_limit: int = 50,
     ) -> tuple[StoreHybridCandidate, ...]:
-        raise NotImplementedError
+        pass
 
     def get_visible_product(
         self, product_id: UUID, scope: StoreVisibilityScope
     ) -> StoreProduct | None:
-        raise NotImplementedError
+        pass
 
     def save_product(self, product: StoreProduct) -> None:
-        raise NotImplementedError
+        pass
 
     def save_products(self, products: tuple[StoreProduct, ...]) -> None:
-        raise NotImplementedError
+        pass
 
     def embedded_product_count(self) -> int:
-        raise NotImplementedError
+        pass
 
     def backfill_missing_embeddings(self, batch_size: int = 500) -> int:
-        raise NotImplementedError
+        pass

@@ -137,8 +137,12 @@ uv run --directory apps/api ruff check src tests
 uv run --directory apps/api mypy src
 uv run --directory apps/api pytest
 
-# Repository: hand-written files must stay within the 350-line limit
+# API contract: fail if packages/contracts/openapi.json is stale
+corepack pnpm contracts:check
+
+# Repository: hand-written files must stay within the 350-line limit and dead code checks
 corepack pnpm line-limit
+corepack pnpm dead-code
 ```
 
 Backend and frontend application code each hold at least 95% line and branch

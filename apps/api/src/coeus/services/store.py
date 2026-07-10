@@ -9,14 +9,12 @@ from coeus.domain.access import ProductStatus
 from coeus.domain.auth import UserAccount
 from coeus.domain.store import (
     BoundingBox,
-    MetadataSuggestion,
     StoreAsset,
     StoreHybridCandidate,
     StoreProduct,
     StoreProductMetadata,
     StoreSearchFilters,
     StoreSearchResult,
-    StoreVisibilityScope,
     object_key_segment,
 )
 from coeus.domain.store_filters import structured_filter_match
@@ -26,7 +24,9 @@ from coeus.repositories.store_ids import new_store_product_id
 from coeus.services.audit import AuditLog
 from coeus.services.embeddings import EmbeddingService
 from coeus.services.store_access import StoreAssetService, StoreDetailService
+from coeus.services.store_metadata_suggestions import MetadataSuggestionService
 from coeus.services.store_owner_policy import normalise_owner_team, require_owner_permission
+from coeus.services.store_product_policy import StoreProductAccessPolicy
 from coeus.services.store_search_results import (
     exact_text_hit,
     facets_for,
@@ -56,7 +56,6 @@ class StoreProductDraft:
     handling_caveats: frozenset[str]
     tags: frozenset[str]
     acg_ids: frozenset[UUID]
-    project_id: UUID | None
     status: ProductStatus
     time_period_start: str | None
     time_period_end: str | None
@@ -64,34 +63,6 @@ class StoreProductDraft:
     bounding_box: BoundingBox | None
     assets: tuple[StoreAsset, ...]
     semantic_labels: frozenset[str] = field(default_factory=frozenset)
-
-
-class StoreProductAccessPolicy:
-    def __init__(self, access_repository: SeedAccessRepository) -> None:
-        self._access_repository = access_repository
-
-    def can_read(self, user: UserAccount, product: StoreProduct) -> bool:
-        metadata = product.metadata
-        if Permission.PRODUCT_READ not in user.permissions or not user.is_active:
-            return False
-        if metadata.status == ProductStatus.ARCHIVED:
-            return False
-        if user.clearance_level < metadata.classification_level:
-            return False
-        if (
-            metadata.status == ProductStatus.DRAFT
-            and Permission.PRODUCT_MANAGE_ASSETS not in user.permissions
-        ):
-            return False
-        user_acg_ids = self._access_repository.active_acg_ids_for_user(user.user_id)
-        return bool(user_acg_ids.intersection(metadata.acg_ids))
-
-    def visibility_scope(self, user: UserAccount) -> StoreVisibilityScope:
-        return StoreVisibilityScope(
-            acg_ids=self._access_repository.active_acg_ids_for_user(user.user_id),
-            clearance_level=user.clearance_level,
-            include_drafts=Permission.PRODUCT_MANAGE_ASSETS in user.permissions,
-        )
 
 
 class StoreIngestionService:
@@ -105,7 +76,13 @@ class StoreIngestionService:
         self._access_repository = access_repository
         self._audit_log = audit_log
 
-    def create_existing_product(self, actor: UserAccount, draft: StoreProductDraft) -> StoreProduct:
+    def create_existing_product(
+        self,
+        actor: UserAccount,
+        draft: StoreProductDraft,
+        *,
+        audit: bool = True,
+    ) -> StoreProduct:
         self._require(actor, Permission.PRODUCT_CREATE_EXISTING)
         owner_team = normalise_owner_team(draft.owner_team)
         require_owner_permission(actor, owner_team)
@@ -147,7 +124,6 @@ class StoreIngestionService:
                 handling_caveats=draft.handling_caveats,
                 tags=draft.tags,
                 acg_ids=draft.acg_ids,
-                project_id=draft.project_id,
                 status=draft.status,
                 time_period_start=draft.time_period_start,
                 time_period_end=draft.time_period_end,
@@ -161,12 +137,20 @@ class StoreIngestionService:
             updated_at=now,
         )
         self._repository.save_product(product)
+        if audit:
+            try:
+                self.audit_product_created(actor, product)
+            except Exception:
+                self._repository.delete_product(product.product_id)
+                raise
+        return product
+
+    def audit_product_created(self, actor: UserAccount, product: StoreProduct) -> None:
         self._audit_log.record(
             "product_created",
             str(actor.user_id),
             {"product_id": str(product.product_id), "reference": product.reference},
         )
-        return product
 
     def _validate_acgs(self, actor: UserAccount, acg_ids: frozenset[UUID]) -> None:
         if not acg_ids:
@@ -277,28 +261,6 @@ class StoreSearchService:
         )
         return tuple(
             candidate for candidate in candidates if self._policy.can_read(actor, candidate.product)
-        )
-
-
-class MetadataSuggestionService:
-    def suggest(
-        self, title: str, summary: str, product_type: str, area_or_region: str
-    ) -> MetadataSuggestion:
-        text = f"{title} {summary} {product_type} {area_or_region}".casefold()
-        tags = []
-        if "baltic" in text:
-            tags.append("baltic")
-        if product_type == "geographic_product":
-            tags.append("geographic")
-        tags.append("mock")
-        entities = (area_or_region, "MOCK DATA ONLY")
-        labels = derive_semantic_labels(title, summary, product_type, area_or_region)
-        return MetadataSuggestion(
-            tags=tuple(dict.fromkeys(tags)),
-            entities=entities,
-            source_type="synthetic",
-            acg_ids=(),
-            semantic_labels=tuple(labels),
         )
 
 

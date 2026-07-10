@@ -1,4 +1,10 @@
-import { ApiClient, ApiError, apiRequestJson, setAuthEventHandlers } from "./client";
+import {
+  ApiClient,
+  ApiError,
+  apiRequestJson,
+  type AuthSession,
+  setAuthEventHandlers,
+} from "./client";
 
 afterEach(() => {
   setAuthEventHandlers({});
@@ -6,13 +12,13 @@ afterEach(() => {
 });
 
 test("posts password changes with CSRF protection", async () => {
-  const changedSession = {
+  const changedSession: AuthSession = {
     csrfToken: "csrf-after-change",
     user: {
       defaultRoute: "/app/requests",
       displayName: "Customer User",
       id: "user-1",
-      permissions: ["ticket:read_own"],
+      permissions: ["ticket:read_own", "ticket:write_all"],
       roles: ["User"],
       username: "user@example.test",
     },

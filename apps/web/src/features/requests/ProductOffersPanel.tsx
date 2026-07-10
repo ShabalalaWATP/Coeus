@@ -9,6 +9,8 @@ import type {
 import type { Ticket } from "../../lib/api-client/tickets";
 
 type ProductOffersPanelProps = {
+  canManageOffers: boolean;
+  canRunSearch: boolean;
   isAccepting: boolean;
   isError?: boolean;
   isLoading: boolean;
@@ -22,6 +24,8 @@ type ProductOffersPanelProps = {
 };
 
 export function ProductOffersPanel({
+  canManageOffers,
+  canRunSearch,
   isAccepting,
   isError = false,
   isLoading,
@@ -35,7 +39,7 @@ export function ProductOffersPanel({
 }: ProductOffersPanelProps) {
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const offers = results?.offers ?? [];
-  const canRun = ticket?.state === "RFI_SEARCHING";
+  const canRun = canRunSearch && ticket?.state === "RFI_SEARCHING";
 
   return (
     <section className="surface product-offers-panel" aria-labelledby="product-offers-title">
@@ -69,6 +73,7 @@ export function ProductOffersPanel({
                 <OfferCard
                   isAccepting={isAccepting}
                   isRejecting={isRejecting}
+                  canManageOffers={canManageOffers}
                   key={offer.productId}
                   offer={offer}
                   onAccept={onAccept}
@@ -110,6 +115,7 @@ function SearchMetrics({ metrics }: { metrics: RfiSearchMetrics }) {
 }
 
 type OfferCardProps = {
+  canManageOffers: boolean;
   isAccepting: boolean;
   isRejecting: boolean;
   offer: RfiProductOffer;
@@ -121,6 +127,7 @@ type OfferCardProps = {
 };
 
 function OfferCard({
+  canManageOffers,
   isAccepting,
   isRejecting,
   offer,
@@ -130,7 +137,8 @@ function OfferCard({
   reason,
   ticket,
 }: OfferCardProps) {
-  const canAct = ticket.state === "RFI_MATCH_OFFERED" && offer.status === "offered";
+  const canAct =
+    canManageOffers && ticket.state === "RFI_MATCH_OFFERED" && offer.status === "offered";
   const rejectId = `reject-${offer.productId}`;
   return (
     <article className="offer-card">

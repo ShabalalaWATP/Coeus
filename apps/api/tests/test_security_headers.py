@@ -1,11 +1,12 @@
 import pytest
+from httpx import AsyncClient
 from starlette.responses import Response
 
 from coeus.core.security import HSTS_HEADER, SECURITY_HEADERS, apply_security_headers
 
 
 @pytest.mark.asyncio
-async def test_security_headers_are_applied(api_client) -> None:
+async def test_security_headers_are_applied(api_client: AsyncClient) -> None:
     response = await api_client.get("/api/v1/health/live")
 
     for header, expected_value in SECURITY_HEADERS.items():
@@ -13,7 +14,7 @@ async def test_security_headers_are_applied(api_client) -> None:
 
 
 @pytest.mark.asyncio
-async def test_hsts_is_absent_over_plain_http(api_client) -> None:
+async def test_hsts_is_absent_over_plain_http(api_client: AsyncClient) -> None:
     response = await api_client.get("/api/v1/health/live")
 
     assert HSTS_HEADER not in response.headers

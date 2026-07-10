@@ -87,6 +87,8 @@ class AiModelService:
     def select(self, actor_user_id: str, actor_username: str, model: str) -> AiModelState:
         if model not in self._available_models:
             raise AppError(422, "model_not_available", "The requested model is not available.")
+        if model == self._active_model:
+            return self.state()
         snapshot = self._snapshot()
         try:
             previous = self._active_model

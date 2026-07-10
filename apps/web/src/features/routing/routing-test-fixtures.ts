@@ -15,7 +15,7 @@ export const baseTicket: RoutingTicket = {
   clarifications: [],
   agentRuns: [],
   managerDecisions: [],
-  projectPlanUpdates: [],
+  workflowPlanUpdates: [],
 };
 
 export const reviewedTicket: RoutingTicket = {
@@ -56,7 +56,7 @@ export const reviewedTicket: RoutingTicket = {
     reasoningSummary: "No strong collection signal was found in the intake.",
     createdAt: "2026-07-05T00:00:00Z",
   },
-  projectPlanUpdates: [
+  workflowPlanUpdates: [
     {
       id: "plan-1",
       title: "RFA manager route review",

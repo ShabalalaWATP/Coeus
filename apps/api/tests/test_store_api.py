@@ -32,7 +32,10 @@ async def test_admin_can_create_existing_product_and_search_metadata() -> None:
     assert payload["assets"][0]["sha256"] == "a" * 64
     assert "objectKey" not in payload["assets"][0]
     assert search.status_code == 200
-    assert any(item["title"] == "Mock Harbour Activity Brief" for item in search.json()["products"])
+    search_product = next(
+        item for item in search.json()["products"] if item["title"] == "Mock Harbour Activity Brief"
+    )
+    assert search_product["title"] == "Mock Harbour Activity Brief"
     assert "product_created" in [event["eventType"] for event in audit.json()["events"]]
 
 

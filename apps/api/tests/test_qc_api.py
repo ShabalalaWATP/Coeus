@@ -1,7 +1,9 @@
 from dataclasses import replace
+from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
+from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from coeus.core.config import Settings
@@ -141,7 +143,7 @@ async def test_qc_approval_rejects_acg_outside_actor_scope() -> None:
 
 
 @pytest.mark.asyncio
-async def test_qc_ingestion_does_not_attach_project_metadata() -> None:
+async def test_qc_ingestion_uses_only_qc_confirmed_access_metadata() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     acg_id = _acg_id(app, "ACG-EU-CYBER")
 
@@ -161,7 +163,6 @@ async def test_qc_ingestion_does_not_attach_project_metadata() -> None:
     product = app.state.store_services.repository.get_product(UUID(product_id))
     assert product is not None
     assert approved.json()["ingestedProduct"]["acgIds"] == [acg_id]
-    assert product.metadata.project_id is None
     assert product.metadata.acg_ids == frozenset({UUID(acg_id)})
 
 
@@ -192,7 +193,7 @@ def test_release_checks_validate_metadata_and_preview_kinds() -> None:
     assert preview_kind("text/plain", "text") == "text_metadata"
 
 
-async def _submitted_qc_ticket(client: AsyncClient, app: object, draft_title: str) -> str:
+async def _submitted_qc_ticket(client: AsyncClient, app: FastAPI, draft_title: str) -> str:
     ticket_id = await _assigned_ticket(client, app)
     analyst = await login(client, "analyst@example.test")
     draft = await client.post(
@@ -217,7 +218,7 @@ async def _submitted_qc_ticket(client: AsyncClient, app: object, draft_title: st
     return ticket_id
 
 
-async def _assigned_ticket(client: AsyncClient, app: object) -> str:
+async def _assigned_ticket(client: AsyncClient, app: FastAPI) -> str:
     ticket_id = await _approved_ticket(client)
     analyst_user = app.state.access_services.repository.get_user_by_username("analyst@example.test")
     assert analyst_user is not None
@@ -268,7 +269,7 @@ async def _approved_ticket(client: AsyncClient) -> str:
     return ticket_id
 
 
-def _approval_payload(acg_id: str) -> dict[str, object]:
+def _approval_payload(acg_id: str) -> dict[str, Any]:
     return {
         "checklist": {
             "answers_customer_question": True,
@@ -289,7 +290,7 @@ def _approval_payload(acg_id: str) -> dict[str, object]:
     }
 
 
-def _draft_payload(title: str) -> dict[str, object]:
+def _draft_payload(title: str) -> dict[str, Any]:
     return {
         "title": title,
         "summary": "MOCK DATA ONLY analyst product draft.",
@@ -307,14 +308,14 @@ def _draft_payload(title: str) -> dict[str, object]:
     }
 
 
-def _acg_id(app: object, code: str) -> str:
+def _acg_id(app: FastAPI, code: str) -> str:
     for acg in app.state.access_services.repository.list_acgs():
         if acg.code == code:
             return str(acg.acg_id)
     raise AssertionError(f"Missing seed ACG {code}")
 
 
-def _make_qc_manager_latest_drafter(app: object, ticket_id: str) -> None:
+def _make_qc_manager_latest_drafter(app: FastAPI, ticket_id: str) -> None:
     manager = app.state.access_services.repository.get_user_by_username("qc.manager@example.test")
     assert manager is not None
     repository = app.state.ticket_services.tickets._repository

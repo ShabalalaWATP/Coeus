@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from email.message import EmailMessage
 from uuid import uuid4
 
 import pytest
@@ -8,7 +9,7 @@ from coeus.core.permissions import Permission
 from coeus.domain.auth import RoleName, UserAccount
 from coeus.domain.notifications import EmailRecord
 from coeus.services import email_delivery
-from coeus.services.audit import AuditLog
+from coeus.services.audit import AuditEvent, AuditLog
 from coeus.services.email_delivery import EmailDeliveryError, build_email_provider
 from coeus.services.notifications import NotificationService
 
@@ -46,7 +47,7 @@ class FailingAuditLog(AuditLog):
         event_type: str,
         actor_user_id: str | None = None,
         metadata: dict[str, str] | None = None,
-    ):
+    ) -> AuditEvent:
         raise RuntimeError("audit unavailable")
 
 
@@ -141,7 +142,7 @@ def test_smtp_provider_sends_message(monkeypatch: pytest.MonkeyPatch) -> None:
         def login(self, username: str, password: str) -> None:
             captured["login"] = (username, password)
 
-        def send_message(self, message: object) -> None:
+        def send_message(self, message: EmailMessage) -> None:
             captured["subject"] = message["Subject"]
 
     monkeypatch.setattr(email_delivery, "SMTP", FakeSmtp)

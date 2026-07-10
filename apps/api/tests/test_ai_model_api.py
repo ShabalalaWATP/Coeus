@@ -1,12 +1,13 @@
+from typing import Any
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from coeus.core.config import Settings
-from coeus.integrations import gemini_api
 from coeus.main import create_app
 from coeus.persistence.state_store import MemoryStateStore
 from coeus.services.ai_models import AI_MODEL_NAMESPACE, AiModelService
-from coeus.services.audit import AuditLog
+from coeus.services.audit import AuditEvent, AuditLog
 
 SEED_CREDENTIAL = "CoeusLocal1!"
 
@@ -45,7 +46,7 @@ class FailingAuditLog(AuditLog):
         event_type: str,
         actor_user_id: str | None = None,
         metadata: dict[str, str] | None = None,
-    ):
+    ) -> AuditEvent:
         raise RuntimeError("audit unavailable")
 
 
@@ -140,6 +141,17 @@ def test_legacy_persisted_gemini_key_is_scrubbed() -> None:
     assert "legacy-secret" not in str(payload)
 
 
+def test_selecting_active_model_is_a_noop() -> None:
+    audit_log = AuditLog()
+    service = AiModelService(Settings(environment="test"), audit_log, MemoryStateStore())
+
+    state = service.select("admin-id", "admin@example.test", "gemini-2.5-flash")
+
+    assert state.changed_by is None
+    assert service.active_model() == "gemini-2.5-flash"
+    assert audit_log.list_events() == ()
+
+
 def test_model_selection_rolls_back_when_audit_fails() -> None:
     state_store = MemoryStateStore()
     service = AiModelService(Settings(environment="test"), FailingAuditLog(), state_store)
@@ -198,7 +210,7 @@ def test_api_key_configuration_rolls_back_when_persistence_fails() -> None:
 async def test_admin_gemini_settings_drive_ticket_assistant(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    captured: dict[str, object] = {}
+    captured: dict[str, Any] = {}
 
     class FakeResponse:
         def raise_for_status(self) -> None:
@@ -229,7 +241,7 @@ async def test_admin_gemini_settings_drive_ticket_assistant(
             captured["body"] = json
             return FakeResponse()
 
-    monkeypatch.setattr(gemini_api.httpx, "Client", FakeClient)
+    monkeypatch.setattr("coeus.integrations.gemini_api.httpx.Client", FakeClient)
 
     async with _client() as client:
         csrf = await _login(client, "admin@example.test")
@@ -265,7 +277,7 @@ async def test_env_key_alone_does_not_override_the_configured_provider(
         def __init__(self, *, timeout: int) -> None:
             raise AssertionError("Gemini API must not be called when the provider is mock.")
 
-    monkeypatch.setattr(gemini_api.httpx, "Client", ForbiddenClient)
+    monkeypatch.setattr("coeus.integrations.gemini_api.httpx.Client", ForbiddenClient)
     app = create_app(
         Settings(environment="test", argon2_memory_cost=8_192, gemini_api_key="env-secret")
     )

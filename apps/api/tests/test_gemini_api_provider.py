@@ -5,7 +5,6 @@ import pytest
 from coeus.core.config import Settings
 from coeus.core.errors import AppError
 from coeus.domain.tickets import IntakeDetails
-from coeus.integrations import gemini_api
 from coeus.integrations.gemini_api import GeminiApiLlmProvider
 
 
@@ -42,7 +41,7 @@ def test_gemini_provider_calls_generate_content(monkeypatch: pytest.MonkeyPatch)
             captured["body"] = json
             return FakeResponse()
 
-    monkeypatch.setattr(gemini_api.httpx, "Client", FakeClient)
+    monkeypatch.setattr("coeus.integrations.gemini_api.httpx.Client", FakeClient)
     provider = GeminiApiLlmProvider(
         Settings(
             gemini_api_key="test-key",

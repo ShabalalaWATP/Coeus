@@ -1,3 +1,6 @@
+from collections.abc import AsyncIterator
+from types import TracebackType
+
 import pytest
 
 from coeus.db import session
@@ -8,10 +11,15 @@ class FakeConnection:
     async def __aenter__(self) -> "FakeConnection":
         return self
 
-    async def __aexit__(self, _exc_type, _exc, _traceback) -> None:
+    async def __aexit__(
+        self,
+        _exc_type: type[BaseException] | None,
+        _exc: BaseException | None,
+        _traceback: TracebackType | None,
+    ) -> None:
         return None
 
-    async def execute(self, statement) -> None:
+    async def execute(self, statement: object) -> None:
         self.statement = statement
 
 
@@ -29,7 +37,7 @@ class FakeEngine:
 
 
 @pytest.fixture(autouse=True)
-async def _reset_engine_cache():
+async def _reset_engine_cache() -> AsyncIterator[None]:
     await dispose_readiness_engines()
     yield
     await dispose_readiness_engines()
@@ -65,7 +73,7 @@ async def test_database_readiness_checker_reuses_cached_engine(
     fake_engine = FakeEngine()
     created = []
 
-    def build(*_args, **_kwargs) -> FakeEngine:
+    def build(*_args: object, **_kwargs: object) -> FakeEngine:
         created.append(1)
         return fake_engine
 
@@ -89,7 +97,7 @@ async def test_database_readiness_checker_reuses_cached_engine(
 async def test_database_readiness_checker_handles_unexpected_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def raise_unexpected_error(*_args, **_kwargs) -> None:
+    def raise_unexpected_error(*_args: object, **_kwargs: object) -> None:
         raise RuntimeError("driver unavailable")
 
     monkeypatch.setattr(session, "create_async_engine", raise_unexpected_error)

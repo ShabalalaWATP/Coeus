@@ -106,7 +106,7 @@ flowchart TB
         AGENTS["agents (in services)<br/>chatbot, RFI, capability, orchestrator"]
         REPOS["repositories<br/>in-memory aggregates"]
         DOMAIN["domain<br/>dataclasses, enums, state machine"]
-        PERSIST["persistence<br/>JSON state store + Postgres projection + codec"]
+        PERSIST["persistence<br/>PostgreSQL state + projection + codec"]
         INTEG["integrations<br/>gemini_api, gcp adapters"]
         ROUTES --> SERVICES
         SERVICES --> AGENTS
@@ -144,10 +144,11 @@ layer handles the relational projection and the pgvector index underneath.
 ## 3. Data and persistence
 
 Application state lives in in-memory aggregate repositories that are serialised
-as JSON for durability and mirrored into a relational projection. The relational
-projection is what powers store search: full-text via `tsvector` and semantic
-via a pgvector `vector(384)` column with an HNSW cosine index. Uploaded and
-released product bytes live in object storage.
+through an allow-listed codec into the PostgreSQL `coeus_state` JSONB table and
+mirrored into a relational Store projection. The relational projection powers
+Store search: full-text via `tsvector` and semantic via a pgvector `vector(384)`
+column with an HNSW cosine index. Uploaded and released product bytes live in
+object storage.
 
 ```mermaid
 flowchart TB
@@ -156,7 +157,7 @@ flowchart TB
         R["tickets, store, users,<br/>access, audit, notifications"]
     end
     subgraph persist["Persistence"]
-        JSON["JSON state store<br/>durable snapshot per namespace"]
+        STATE["PostgreSQL state<br/>coeus_state JSONB snapshots"]
         CODEC["Codec<br/>allowlisted encode/decode"]
         PROJ["Store projection<br/>relational mirror"]
     end
@@ -165,7 +166,7 @@ flowchart TB
     OBJ[["Object storage<br/>product + preview bytes"]]
 
     SVC --> R
-    R --> JSON --> CODEC
+    R --> STATE --> CODEC
     R --> PROJ
     PROJ --> DBREL
     PROJ --> DBSEARCH
@@ -173,7 +174,7 @@ flowchart TB
 
     classDef be fill:#4f46e5,stroke:#3730a3,color:#fff,stroke-width:1px
     classDef data fill:#b45309,stroke:#7c2d12,color:#fff,stroke-width:1px
-    class SVC,R,JSON,CODEC,PROJ be
+    class SVC,R,STATE,CODEC,PROJ be
     class DBREL,DBSEARCH,OBJ data
 ```
 

@@ -1,7 +1,9 @@
+from typing import cast
 from uuid import uuid4
 
 from coeus.domain.enums import TicketState
 from coeus.domain.tickets import IntakeDetails, TicketRecord
+from coeus.services.embeddings import EmbeddingService
 from coeus.services.rfi_ranking import lexical_score_for_product, lexical_text_score
 from coeus.services.similar_request_scoring import score_similar_requests
 from coeus.services.store_semantics import product_semantic_text
@@ -28,7 +30,9 @@ def test_score_similar_requests_returns_empty_when_no_open_candidates() -> None:
     source = _ticket("Maritime source", state=TicketState.RFI_SEARCHING)
     closed = _ticket("Maritime closed", state=TicketState.CLOSED_DELIVERED)
 
-    assert score_similar_requests(source, (source, closed), NoEmbeddingService(), 0.0) == ()
+    embeddings = cast(EmbeddingService, NoEmbeddingService())
+
+    assert score_similar_requests(source, (source, closed), embeddings, 0.0) == ()
 
 
 def test_score_similar_requests_degrades_to_lexical_only_when_embeddings_are_unavailable() -> None:
@@ -44,7 +48,9 @@ def test_score_similar_requests_degrades_to_lexical_only_when_embeddings_are_una
         output_format="movement report",
     )
 
-    matches = score_similar_requests(source, (candidate,), NoEmbeddingService(), 0.0)
+    matches = score_similar_requests(
+        source, (candidate,), cast(EmbeddingService, NoEmbeddingService()), 0.0
+    )
 
     assert matches[0].ticket_id == candidate.ticket_id
     assert matches[0].title == "Untitled requirement"
@@ -65,7 +71,9 @@ def test_plural_variant_duplicate_crosses_manager_similarity_threshold() -> None
         question="Sensors and radars deployments coverings ports approaches.",
     )
 
-    matches = score_similar_requests(source, (candidate,), NoEmbeddingService(), 0.50)
+    matches = score_similar_requests(
+        source, (candidate,), cast(EmbeddingService, NoEmbeddingService()), 0.50
+    )
 
     assert matches[0].ticket_id == candidate.ticket_id
     assert matches[0].score >= 0.50
@@ -79,7 +87,9 @@ def test_no_match_tickets_are_still_open_similarity_candidates() -> None:
         state=TicketState.RFI_NO_MATCH,
     )
 
-    matches = score_similar_requests(source, (candidate,), NoEmbeddingService(), 0.0)
+    matches = score_similar_requests(
+        source, (candidate,), cast(EmbeddingService, NoEmbeddingService()), 0.0
+    )
 
     assert matches[0].ticket_id == candidate.ticket_id
     assert matches[0].state == TicketState.RFI_NO_MATCH

@@ -20,7 +20,6 @@ const baseProduct = {
   handlingCaveats: ["MOCK DATA ONLY"],
   tags: ["vessel"],
   acgIds: ["acg-alpha"],
-  projectId: "project-northstar",
   status: "published",
   timePeriodStart: null,
   timePeriodEnd: null,

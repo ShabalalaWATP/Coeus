@@ -30,6 +30,7 @@ from coeus.services.rfi_records import (
 )
 from coeus.services.store import StoreSearchService, StoreServices
 from coeus.services.store_access import StoreDetailService
+from coeus.services.ticket_records import is_editor, is_owner
 from coeus.services.tickets import TicketService, TicketServices
 
 RFI_RESULTS_REVIEW_PERMISSIONS = frozenset({Permission.RFA_REVIEW, Permission.COLLECTION_REVIEW})
@@ -73,6 +74,8 @@ class RfiSearchService:
     def run(self, actor: UserAccount, ticket_id: UUID) -> RfiSearchResults:
         self._require(actor, Permission.RFI_SEARCH)
         ticket = self._tickets.get_visible_ticket(actor, ticket_id)
+        if not self._can_run_search(actor, ticket):
+            raise AppError(404, "ticket_not_found", "Ticket was not found.")
         if ticket.state != TicketState.RFI_SEARCHING:
             raise AppError(409, "invalid_ticket_state", "Ticket is not awaiting RFI search.")
         requester = self._requester(ticket)
@@ -227,6 +230,14 @@ class RfiSearchService:
         if ticket.state != TicketState.RFI_MATCH_OFFERED:
             raise AppError(409, "invalid_ticket_state", "Ticket has no active product offers.")
         return ticket
+
+    @staticmethod
+    def _can_run_search(actor: UserAccount, ticket: TicketRecord) -> bool:
+        return (
+            is_owner(actor, ticket)
+            or is_editor(actor, ticket)
+            or Permission.TICKET_WRITE_ALL in actor.permissions
+        )
 
     def _results_ticket(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         try:

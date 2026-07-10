@@ -10,7 +10,7 @@
   `422 model_not_available`; changes are audit logged with the previous and
   new model.
 - Locally the provider remains `mock`; the selection records which Gemini
-  model deployed environments call through Vertex AI.
+  model is used when `COEUS_LLM_PROVIDER=gemini_api` is explicitly enabled.
 
 ## Store date search
 

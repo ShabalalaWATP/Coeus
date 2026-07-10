@@ -3,9 +3,23 @@ import subprocess
 import sys
 from importlib import import_module
 from pathlib import Path
+from typing import Any, Protocol, cast
 from zipfile import ZipFile
 
 GENERATOR_ROOT = Path(__file__).resolve().parents[3] / "packages" / "mock-product-generators"
+
+
+class _CatalogModule(Protocol):
+    DEFAULT_PRODUCT_COUNTS: dict[str, int]
+
+    def write_mock_catalog(
+        self,
+        output_dir: Path,
+        counts: dict[str, int] | None = None,
+        *,
+        write_assets: bool = True,
+    ) -> dict[str, Any]:
+        pass
 
 
 def test_mock_catalog_default_counts_are_public_safe() -> None:
@@ -88,7 +102,7 @@ def test_seed_mock_products_script_writes_manifest(tmp_path: Path) -> None:
     assert manifest["banner"] == "MOCK DATA ONLY"
 
 
-def _catalog():
+def _catalog() -> _CatalogModule:
     if str(GENERATOR_ROOT) not in sys.path:
         sys.path.insert(0, str(GENERATOR_ROOT))
-    return import_module("mock_product_generators")
+    return cast(_CatalogModule, import_module("mock_product_generators"))

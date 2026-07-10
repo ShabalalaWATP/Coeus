@@ -21,8 +21,8 @@ Implement deterministic local capability agents behind service boundaries:
   aggregate and chooses the route.
 - Manager approvals, rejections, clarifications and overrides are explicit
   service actions with audit events.
-- Project-plan updates are ticket-level records until persistent project
-  mutations are introduced.
+- Workflow plan updates are ticket-level records used to explain routing and
+  assignment state changes.
 
 ## Consequences
 

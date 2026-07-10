@@ -62,21 +62,43 @@ class SeedAccessRepository:
         return self._acgs.get(acg_id)
 
     def save_acg(self, acg: AccessControlGroup) -> None:
+        acgs = dict(self._acgs)
         self._acgs[acg.acg_id] = acg
-        self._persist()
+        try:
+            self._persist()
+        except Exception:
+            self._acgs = acgs
+            raise
 
     def delete_acg(self, acg_id: UUID) -> None:
+        acgs = dict(self._acgs)
+        memberships = set(self._memberships)
         self._acgs.pop(acg_id, None)
         self._memberships = {item for item in self._memberships if item.acg_id != acg_id}
-        self._persist()
+        try:
+            self._persist()
+        except Exception:
+            self._acgs = acgs
+            self._memberships = memberships
+            raise
 
     def add_membership(self, acg_id: UUID, user_id: UUID) -> None:
+        memberships = set(self._memberships)
         self._memberships.add(AccessControlGroupMembership(acg_id=acg_id, user_id=user_id))
-        self._persist()
+        try:
+            self._persist()
+        except Exception:
+            self._memberships = memberships
+            raise
 
     def remove_membership(self, acg_id: UUID, user_id: UUID) -> None:
+        memberships = set(self._memberships)
         self._memberships.discard(AccessControlGroupMembership(acg_id=acg_id, user_id=user_id))
-        self._persist()
+        try:
+            self._persist()
+        except Exception:
+            self._memberships = memberships
+            raise
 
     def list_memberships_for_acg(self, acg_id: UUID) -> tuple[AccessControlGroupMembership, ...]:
         return tuple(

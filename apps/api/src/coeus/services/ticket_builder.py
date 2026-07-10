@@ -12,11 +12,8 @@ from coeus.services.intake import (
     MockLlmProvider,
     RequirementCompletenessService,
 )
-from coeus.services.tickets import (
-    ConversationService,
-    TicketService,
-    TicketServices,
-)
+from coeus.services.ticket_conversations import ConversationService
+from coeus.services.tickets import TicketService, TicketServices
 
 
 def build_ticket_services(

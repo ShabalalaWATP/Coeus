@@ -20,7 +20,6 @@ def build_seed_manifest() -> dict[str, object]:
             "disabled@example.test",
         ],
         "acgs": ["mock-regional-acg", "mock-product-review-acg"],
-        "projects": ["mock-project-workspace"],
         "tickets": ["mock-rfi-ticket"],
         "products": ["mock-assessment-report", "mock-geographic-layer"],
         "note": "Database insertion starts when Sprint 3 to Sprint 5 schemas exist.",

@@ -10,7 +10,7 @@ The repository uses GitHub Actions for pull-request and `main` branch checks.
 
 | Workflow | Trigger | Purpose |
 |---|---|---|
-| `Backend CI` | pull request, push to `main` | Ruff format, Ruff lint, mypy, pytest coverage, Bandit and pip-audit. |
+| `Backend CI` | pull request, push to `main` | Ruff format, Ruff lint, mypy, OpenAPI contract drift, pytest coverage, Bandit and pip-audit. |
 | `Frontend CI` | pull request, push to `main` | ESLint, TypeScript, Vitest coverage, Vite build and Playwright Chromium smoke. |
 | `CodeQL` | pull request, push to `main`, weekly schedule | GitHub CodeQL analysis for Python and JavaScript/TypeScript. |
 | `Semgrep` | pull request, push to `main`, weekly schedule | Semgrep SAST over application source, Dockerfiles and GitHub config, with SARIF upload. |

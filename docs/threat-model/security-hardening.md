@@ -30,7 +30,7 @@ injection regression coverage.
 | Scanner reports are ignored because they are out of band. | SARIF uploads make CodeQL, Semgrep, Trivy and Checkov visible in GitHub code scanning where event permissions allow. |
 | Generic workflow permissions expose unrelated tickets. | Customer ticket listing is owner/admin scoped; routing, analyst and QC services use workflow-specific reads plus route, assignment or QC-state predicates. |
 | Product metadata bypasses store object policy. | Feedback analytics resolves reuse and feedback product titles through store detail policy before returning metadata. |
-| QC approval assigns arbitrary active ACGs. | Auto-ingestion accepts only active ACGs that are already in the ticket project scope, the QC actor's active ACG memberships or a restricted-read role. |
+| QC approval assigns arbitrary active ACGs. | Auto-ingestion accepts only active ACGs that the QC actor can legitimately use, either through active ACG membership or a restricted-read role. |
 | Non-canonical owner-team input bypasses team permissions. | Product creation normalises managed owner teams and rejects unknown owner-team values before permission checks. |
 | Username spraying clears active lockouts. | Bounded login-attempt eviction skips unexpired lockout records and drops only unlocked or expired entries. |
 | Shared browser sessions expose cached protected data. | The app-level auth provider clears the React Query cache on login, logout and session expiry transitions. |
@@ -53,7 +53,7 @@ were added and are covered by tests.
 | A client-supplied asset name escapes its object-key prefix once real storage is wired in. | Asset object keys reduce the name to a single safe path segment via `object_key_segment`, stripping directory components and parent references (`domain/store.py`, used by store and QC ingestion). |
 | A client declares an implausible asset size to bypass future quota logic. | `StoreAssetRequest.size_bytes` now has an upper bound at the schema boundary in addition to the service-layer positive-size check. |
 | Long list item strings amplify request size or get persisted into workflow records. | Store metadata arrays, routing clarification questions, analyst assignment work-package titles and admin role names now bound each item as well as list length. |
-| Reserved characters in browser route IDs or API path IDs cause path confusion. | Frontend API clients encode dynamic path segments, and local navigation links encode request, project, task, QC, product and asset IDs before constructing routes. |
+| Reserved characters in browser route IDs or API path IDs cause path confusion. | Frontend API clients encode dynamic path segments, and local navigation links encode request, task, QC, product and asset IDs before constructing routes. |
 | Cross-task data association in the analyst workbench, or a stale routing selection after a ticket leaves the queue. | Frontend state is reset on selection change (analyst detail keyed by task; routing selection cleared when a ticket is routed away), preventing one task's draft being submitted against another. |
 
 ## Open Risks

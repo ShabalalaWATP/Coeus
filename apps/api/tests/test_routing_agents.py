@@ -24,9 +24,29 @@ def _complete_intake(**overrides: str | None) -> IntakeDetails:
         "priority": "routine",
         "required_output_format": "Report",
         "customer_success_criteria": "Give the duty officer a clear picture.",
+        "deadline": None,
+        "known_context": None,
+        "restrictions_or_caveats": None,
+        "suggested_acg_context": None,
+        "time_period_end": None,
+        "time_period_start": None,
     }
     values.update(overrides)
-    return IntakeDetails(**values, missing_information=())  # type: ignore[arg-type]
+    return IntakeDetails(
+        title=values["title"],
+        description=values["description"],
+        operational_question=values["operational_question"],
+        area_or_region=values["area_or_region"],
+        priority=values["priority"],
+        deadline=values["deadline"],
+        required_output_format=values["required_output_format"],
+        known_context=values["known_context"],
+        restrictions_or_caveats=values["restrictions_or_caveats"],
+        customer_success_criteria=values["customer_success_criteria"],
+        suggested_acg_context=values["suggested_acg_context"],
+        time_period_end=values["time_period_end"],
+        time_period_start=values["time_period_start"],
+    )
 
 
 def test_cm_agent_confirms_collection_terms_even_without_a_team_keyword() -> None:

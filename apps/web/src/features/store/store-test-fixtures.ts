@@ -16,7 +16,6 @@ export const productFixture = {
   tags: ["regional", "ports"],
   semanticLabels: ["assessment", "maritime"],
   acgIds: ["acg-alpha"],
-  projectId: "project-northstar",
   status: "published",
   timePeriodStart: null,
   timePeriodEnd: null,

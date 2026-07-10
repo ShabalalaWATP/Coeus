@@ -15,7 +15,6 @@ SELECT
     p.tags,
     p.semantic_labels,
     p.acg_ids,
-    p.project_id,
     p.status,
     p.time_period_start,
     p.time_period_end,
@@ -54,7 +53,6 @@ SELECT
     p.tags,
     p.semantic_labels,
     p.acg_ids,
-    p.project_id,
     p.status,
     p.time_period_start,
     p.time_period_end,
@@ -76,7 +74,6 @@ WHERE p.status <> :archived_status
   AND (CAST(:product_type AS text) IS NULL OR p.product_type = CAST(:product_type AS text))
   AND (CAST(:source_type AS text) IS NULL OR p.source_type = CAST(:source_type AS text))
   AND (CAST(:status AS text) IS NULL OR p.status = CAST(:status AS text))
-  AND (CAST(:project_id AS uuid) IS NULL OR p.project_id = CAST(:project_id AS uuid))
   AND (
       CAST(:owner_team AS text) IS NULL
       OR lower(p.owner_team) = lower(CAST(:owner_team AS text))
@@ -168,7 +165,6 @@ WITH scoped AS (
         p.tags,
         p.semantic_labels,
         p.acg_ids,
-        p.project_id,
         p.status,
         p.time_period_start,
         p.time_period_end,
@@ -192,7 +188,6 @@ WITH scoped AS (
       AND (CAST(:product_type AS text) IS NULL OR p.product_type = CAST(:product_type AS text))
       AND (CAST(:source_type AS text) IS NULL OR p.source_type = CAST(:source_type AS text))
       AND (CAST(:status AS text) IS NULL OR p.status = CAST(:status AS text))
-      AND (CAST(:project_id AS uuid) IS NULL OR p.project_id = CAST(:project_id AS uuid))
       AND (
           CAST(:owner_team AS text) IS NULL
           OR lower(p.owner_team) = lower(CAST(:owner_team AS text))

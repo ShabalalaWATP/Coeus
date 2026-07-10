@@ -89,7 +89,7 @@ export function createAppRouter() {
         },
         {
           path: "store/products/:productId/assets/:assetId",
-          element: protectedPage(<ProductDetailPage />, ["product:read", "product:download"]),
+          element: protectedPage(<ProductDetailPage />, ["product:read"]),
         },
         {
           path: "rfa/queue",

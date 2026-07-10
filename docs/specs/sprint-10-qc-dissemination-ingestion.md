@@ -39,7 +39,8 @@ approves and releases the generated product, or rejects it for analyst rework.
 - Rejection records a QC decision and moves the ticket to `REWORK_REQUIRED`.
 - Assigned analysts can update a rejected task and resubmit it to QC.
 - Approval creates a published Intelligence Store product from the latest draft.
-- Approval applies QC-confirmed ACG metadata plus project ACG metadata.
+- Approval applies QC-confirmed active ACG metadata that the reviewer is
+  allowed to use.
 - Approval records queued and indexed product index states.
 - Dissemination is recorded only after the requester can read the product.
 - A feedback request is created for the requester.

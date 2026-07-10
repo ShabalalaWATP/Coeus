@@ -26,6 +26,7 @@ export type Permission =
   | "ticket:create"
   | "ticket:read_own"
   | "ticket:read_all"
+  | "ticket:write_all"
   | "ticket:add_information"
   | "ticket:add_comment"
   | "ticket:transition"

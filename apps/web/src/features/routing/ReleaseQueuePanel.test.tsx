@@ -17,7 +17,7 @@ const releaseTicket = {
   recommendation: null,
   clarifications: [],
   managerDecisions: [],
-  projectPlanUpdates: [],
+  workflowPlanUpdates: [],
 };
 
 const queue = {

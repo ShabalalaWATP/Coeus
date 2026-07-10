@@ -68,8 +68,9 @@ credential `CoeusLocal1!`. The full list of seed accounts is in the
   pgvector-ready Store schema, local object storage, managed with `uv`.
 - **Frontend:** React 19, Vite, TypeScript, React Router, TanStack Query,
   react-hook-form, Zod; tested with Vitest and Playwright.
-- **Quality gates:** ruff, mypy, ESLint, Prettier, tsc, a 350-line file limit,
-  and at least 95% line and branch coverage on both backend and frontend.
+- **Quality gates:** ruff, mypy, ESLint, Prettier, tsc, OpenAPI contract drift,
+  a 350-line file limit, and at least 95% line and branch coverage on both
+  backend and frontend.
 
 ## Project structure
 

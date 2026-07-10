@@ -37,7 +37,6 @@ def decode_product(
             tags=_text_set(row["tags"]),
             semantic_labels=_semantic_labels(product_id, row, label_rows),
             acg_ids=_acg_ids(product_id, row, acg_rows),
-            project_id=_optional_uuid(row["project_id"]),
             status=ProductStatus(str(row["status"])),
             time_period_start=_date_text(row["time_period_start"]),
             time_period_end=_date_text(row["time_period_end"]),
@@ -122,10 +121,6 @@ def _iter_values(values: object) -> tuple[object, ...]:
 
 def _uuid(value: object) -> UUID:
     return value if isinstance(value, UUID) else UUID(str(value))
-
-
-def _optional_uuid(value: object) -> UUID | None:
-    return None if value is None else _uuid(value)
 
 
 def _optional_text(value: object) -> str | None:

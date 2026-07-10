@@ -1,12 +1,14 @@
 from dataclasses import replace
 from datetime import UTC, datetime
+from typing import cast
 from uuid import UUID, uuid4
 
 import pytest
+from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from coeus.core.config import Settings
-from coeus.domain.tickets import ProductDissemination
+from coeus.domain.tickets import ProductDissemination, TicketRecord
 from coeus.main import create_app
 from rfi_search_helpers import login, submitted_ticket
 
@@ -51,6 +53,32 @@ async def test_customer_submits_feedback_and_admin_dashboard_tracks_reuse() -> N
     assert dashboard.json()["productReuse"][0]["feedbackCount"] == 1
     assert "Requester satisfaction" in [item["title"] for item in dashboard.json()["trends"]]
     assert admin["user"]["username"] == "admin@example.test"
+
+
+@pytest.mark.asyncio
+async def test_feedback_submission_audit_failure_rolls_back_ticket(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    acg_id = _acg_id(app, "ACG-EU-CYBER")
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        request_id = await _approved_feedback_request(client, app, acg_id)
+        original = _ticket_for_feedback_request(app, request_id)
+        user = await login(client, "user@example.test")
+        monkeypatch.setattr(app.state.feedback_analytics_service._audit_log, "record", _fail_audit)
+        with pytest.raises(RuntimeError, match="audit unavailable"):
+            await client.post(
+                f"/api/v1/feedback/requests/{request_id}/submit",
+                headers={"X-CSRF-Token": str(user["csrfToken"])},
+                json={"rating": 5, "comment": "Audit should roll back."},
+            )
+
+    ticket = _ticket_for_feedback_request(app, request_id)
+    assert ticket.feedback_requests == original.feedback_requests
+    assert ticket.feedback_submissions == original.feedback_submissions
+    assert ticket.timeline == original.timeline
 
 
 @pytest.mark.asyncio
@@ -136,7 +164,7 @@ async def test_team_dashboard_excludes_product_reuse_rows_without_store_access()
     }
 
 
-async def _approved_feedback_request(client: AsyncClient, app: object, acg_id: str) -> str:
+async def _approved_feedback_request(client: AsyncClient, app: FastAPI, acg_id: str) -> str:
     ticket_id = await _approved_route_ticket(client, "", "rfa")
     analyst_user = app.state.access_services.repository.get_user_by_username("analyst@example.test")
     assert analyst_user is not None
@@ -273,8 +301,20 @@ def _draft_payload() -> dict[str, object]:
     }
 
 
-def _acg_id(app: object, code: str) -> str:
+def _acg_id(app: FastAPI, code: str) -> str:
     for acg in app.state.access_services.repository.list_acgs():
         if acg.code == code:
             return str(acg.acg_id)
     raise AssertionError(f"Missing seed ACG {code}")
+
+
+def _ticket_for_feedback_request(app: FastAPI, request_id: str) -> TicketRecord:
+    parsed_request_id = UUID(request_id)
+    for ticket in app.state.ticket_services.tickets._repository.list_tickets():
+        if any(request.request_id == parsed_request_id for request in ticket.feedback_requests):
+            return cast(TicketRecord, ticket)
+    raise AssertionError(f"Missing feedback request {request_id}")
+
+
+def _fail_audit(*_args: object, **_kwargs: object) -> None:
+    raise RuntimeError("audit unavailable")

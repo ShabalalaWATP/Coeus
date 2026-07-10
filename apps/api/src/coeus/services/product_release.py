@@ -138,6 +138,16 @@ class ProductReleaseService:
         try:
             self._notify_requester(requester, ticket, product)
         except Exception as exc:
+            self._record_notification_failure(actor, ticket, product, exc)
+
+    def _record_notification_failure(
+        self,
+        actor: UserAccount,
+        ticket: TicketRecord,
+        product: StoreProduct,
+        exc: Exception,
+    ) -> None:
+        try:
             self._audit_log.record(
                 "product_release_notification_failed",
                 str(actor.user_id),
@@ -147,6 +157,8 @@ class ProductReleaseService:
                     "error": type(exc).__name__,
                 },
             )
+        except Exception:
+            return
 
     def _notify_requester(
         self, requester: UserAccount, ticket: TicketRecord, product: StoreProduct

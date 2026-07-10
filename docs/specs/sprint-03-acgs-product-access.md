@@ -4,8 +4,6 @@
 
 Add the first product visibility layer on top of Sprint 2 RBAC. RBAC decides what a user can do; ACG membership decides what products the user can see.
 
-Project workspaces from the original Sprint 3 scope were retired by ADR 0018.
-
 ## Scope
 
 - Local seed models for Access Control Groups, ACG memberships and product summaries.

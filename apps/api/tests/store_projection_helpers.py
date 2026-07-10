@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from typing import Any
+from typing import Any, cast
 
 from coeus.core.config import Settings
 from coeus.domain.access import ProductStatus
@@ -190,7 +190,7 @@ class FakeResult:
 
 def access_repository() -> SeedAccessRepository:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
-    return app.state.access_services.repository
+    return cast(SeedAccessRepository, app.state.access_services.repository)
 
 
 def seed_product() -> StoreProduct:
@@ -232,7 +232,6 @@ def _product_row(product: StoreProduct) -> dict[str, Any]:
         "tags": sorted(metadata.tags),
         "semantic_labels": sorted(metadata.semantic_labels),
         "acg_ids": sorted(metadata.acg_ids, key=str),
-        "project_id": metadata.project_id,
         "status": metadata.status.value,
         "time_period_start": metadata.time_period_start,
         "time_period_end": metadata.time_period_end,

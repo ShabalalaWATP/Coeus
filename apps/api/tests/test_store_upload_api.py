@@ -44,7 +44,52 @@ async def test_upload_rolls_back_product_when_asset_storage_fails(tmp_path: Path
         )
 
     products = app.state.store_services.repository.list_products()
+    audit_types = [event.event_type for event in app.state.auth_service.audit_log.list_events()]
     assert response.status_code == 500
     assert response.json()["error"]["code"] == "asset_storage_failed"
     assert len(products) == before_count
     assert all(product.metadata.title != "Mock Harbour Activity Brief" for product in products)
+    assert "product_created" not in audit_types
+
+
+@pytest.mark.asyncio
+async def test_upload_rolls_back_product_and_bytes_when_audit_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    object_root = tmp_path / "objects"
+    app = create_app(
+        Settings(
+            environment="test",
+            argon2_memory_cost=8_192,
+            local_object_storage_path=str(object_root),
+        )
+    )
+    acg_id = str(app.state.access_services.repository.list_acgs()[0].acg_id)
+    metadata = product_payload(acg_id)
+    metadata.pop("assets")
+    before_count = len(app.state.store_services.repository.list_products())
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        session = await login(client, "admin@example.test")
+        monkeypatch.setattr(app.state.store_services.ingestion._audit_log, "record", _fail_audit)
+        with pytest.raises(RuntimeError, match="audit unavailable"):
+            await client.post(
+                "/api/v1/store/products/upload",
+                headers={"X-CSRF-Token": str(session["csrfToken"])},
+                files={
+                    "asset": ("uploaded-brief.txt", b"MOCK DATA ONLY", "text/plain"),
+                    "metadata": (None, json.dumps(metadata), "application/json"),
+                },
+            )
+
+    products = app.state.store_services.repository.list_products()
+    assert len(products) == before_count
+    assert all(product.metadata.title != "Mock Harbour Activity Brief" for product in products)
+    assert not any(path.name == "uploaded-brief.txt" for path in object_root.rglob("*"))
+
+
+def _fail_audit(*_args: object, **_kwargs: object) -> None:
+    raise RuntimeError("audit unavailable")

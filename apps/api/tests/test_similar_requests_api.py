@@ -1,9 +1,11 @@
+from typing import cast
 from uuid import UUID
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from coeus.core.config import Settings
+from coeus.domain.tickets import TicketRecord
 from coeus.main import create_app
 
 SEED_CREDENTIAL = "CoeusLocal1!"
@@ -15,7 +17,9 @@ async def login(client: AsyncClient, username: str) -> dict[str, object]:
         json={"username": username, "password": SEED_CREDENTIAL},
     )
     assert response.status_code == 200
-    return response.json()
+    payload = response.json()
+    assert isinstance(payload, dict)
+    return cast(dict[str, object], payload)
 
 
 async def submitted_ticket(
@@ -292,12 +296,12 @@ async def test_manager_link_failure_rolls_back_related_ticket(
         original_save = tickets.save_system_update
         calls = 0
 
-        def fail_second_save(ticket):
+        def fail_second_save(ticket: TicketRecord) -> TicketRecord:
             nonlocal calls
             calls += 1
             if calls == 2:
                 raise RuntimeError("simulated source save failure")
-            return original_save(ticket)
+            return cast(TicketRecord, original_save(ticket))
 
         monkeypatch.setattr(tickets, "save_system_update", fail_second_save)
         with pytest.raises(RuntimeError, match="simulated source save failure"):
@@ -316,5 +320,5 @@ async def test_manager_link_failure_rolls_back_related_ticket(
     assert _timeline_count(target, "related_ticket_linked") == 0
 
 
-def _timeline_count(ticket, event_type: str) -> int:
+def _timeline_count(ticket: TicketRecord, event_type: str) -> int:
     return sum(1 for entry in ticket.timeline if entry.event_type == event_type)

@@ -118,7 +118,7 @@ class ManagerDecisionResponse(BaseModel):
     created_at: datetime = Field(serialization_alias="createdAt")
 
 
-class ProjectPlanUpdateResponse(BaseModel):
+class WorkflowPlanUpdateResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     update_id: UUID = Field(serialization_alias="id")
@@ -144,8 +144,8 @@ class RoutingTicketResponse(BaseModel):
     clarifications: list[ClarificationRequestResponse]
     agent_runs: list[str] = Field(serialization_alias="agentRuns")
     manager_decisions: list[ManagerDecisionResponse] = Field(serialization_alias="managerDecisions")
-    project_plan_updates: list[ProjectPlanUpdateResponse] = Field(
-        serialization_alias="projectPlanUpdates"
+    workflow_plan_updates: list[WorkflowPlanUpdateResponse] = Field(
+        serialization_alias="workflowPlanUpdates"
     )
 
 

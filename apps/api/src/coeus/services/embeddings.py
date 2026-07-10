@@ -4,7 +4,7 @@ from math import sqrt
 from os import environ
 from pathlib import Path
 from re import findall
-from typing import Protocol
+from typing import Protocol, cast
 
 import httpx
 
@@ -34,7 +34,12 @@ class EmbeddingProvider(Protocol):
 
 class ApiKeyProvider(Protocol):
     def api_key(self) -> str | None:
-        raise NotImplementedError
+        pass
+
+
+class _FastEmbedModel(Protocol):
+    def embed(self, texts: list[str]) -> Iterable[object]:
+        pass
 
 
 class EmbeddingService:
@@ -98,17 +103,17 @@ class LocalFastEmbedProvider:
 
     def __init__(self, model_path: str) -> None:
         self._model_path = Path(model_path)
-        self._model: object | None = None
+        self._model: _FastEmbedModel | None = None
 
     def embed(self, text: str) -> tuple[float, ...]:
         model = self._load_model()
         try:
-            vector = next(iter(model.embed([text])))  # type: ignore[attr-defined]
+            vector = next(iter(model.embed([text])))
         except Exception as exc:  # pragma: no cover - provider boundary
             raise EmbeddingUnavailable("local model embedding failed") from exc
         return _normalise(_coerce_vector(vector))
 
-    def _load_model(self) -> object:
+    def _load_model(self) -> _FastEmbedModel:
         if self._model is not None:
             return self._model
         try:
@@ -116,11 +121,14 @@ class LocalFastEmbedProvider:
         except ImportError as exc:  # pragma: no cover - optional dependency
             raise EmbeddingUnavailable("fastembed package is not installed") from exc
         self._model_path.mkdir(parents=True, exist_ok=True)
-        self._model = _offline_hf_call(
-            lambda: TextEmbedding(
-                cache_dir=str(self._model_path),
-                model_name="BAAI/bge-small-en-v1.5",
-            )
+        self._model = cast(
+            _FastEmbedModel,
+            _offline_hf_call(
+                lambda: TextEmbedding(
+                    cache_dir=str(self._model_path),
+                    model_name="BAAI/bge-small-en-v1.5",
+                )
+            ),
         )
         return self._model
 

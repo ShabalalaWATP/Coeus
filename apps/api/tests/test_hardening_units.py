@@ -1,4 +1,5 @@
-from types import SimpleNamespace
+from typing import Any
+from uuid import uuid4
 
 import pytest
 from fastapi import Request
@@ -8,15 +9,18 @@ from pydantic import ValidationError
 from coeus.api.routes.auth import client_ip
 from coeus.core.config import Settings
 from coeus.domain.access import ProductStatus
+from coeus.domain.enums import TicketState
 from coeus.domain.store import StoreProductMetadata
+from coeus.domain.tickets import IntakeDetails, TicketRecord
 from coeus.main import create_app
-from coeus.persistence.store_projection_search import SEARCH_PRODUCTS_SQL, _escape_like
+from coeus.persistence.store_projection_search import _escape_like
+from coeus.persistence.store_projection_search_sql import SEARCH_PRODUCTS_SQL
 from coeus.repositories.tickets import _max_reference_counter
 from coeus.services.store_search_dates import within_dates
 from rfi_search_helpers import login, product_payload
 
 
-def _settings(**overrides) -> Settings:
+def _settings(**overrides: Any) -> Settings:
     return Settings(environment="test", argon2_memory_cost=8_192, **overrides)
 
 
@@ -61,6 +65,11 @@ def test_removed_gemma_providers_are_rejected() -> None:
     assert _settings(llm_provider="gemini_api").llm_provider == "gemini_api"
 
 
+def test_unsupported_csrf_header_name_fails_at_startup() -> None:
+    with pytest.raises(ValueError, match="COEUS_CSRF_HEADER_NAME"):
+        create_app(_settings(csrf_header_name="X-Other-CSRF"))
+
+
 def test_escape_like_neutralises_wildcards() -> None:
     assert _escape_like(None) is None
     assert _escape_like("100% baltic_ports\\x") == "100\\% baltic\\_ports\\\\x"
@@ -81,7 +90,6 @@ def _metadata(start: str | None, end: str | None) -> StoreProductMetadata:
         handling_caveats=frozenset({"MOCK DATA ONLY"}),
         tags=frozenset(),
         acg_ids=frozenset(),
-        project_id=None,
         status=ProductStatus.PUBLISHED,
         time_period_start=start,
         time_period_end=end,
@@ -105,12 +113,12 @@ def test_within_dates_parses_dates_and_skips_invalid_values() -> None:
 
 def test_ticket_reference_counter_restores_from_max_suffix() -> None:
     tickets = (
-        SimpleNamespace(reference="TCK-0002"),
-        SimpleNamespace(reference="TCK-0009"),
-        SimpleNamespace(reference="not-a-reference"),
+        _ticket("TCK-0002"),
+        _ticket("TCK-0009"),
+        _ticket("not-a-reference"),
     )
 
-    assert _max_reference_counter(tickets) == 9  # type: ignore[arg-type]
+    assert _max_reference_counter(tickets) == 9
     assert _max_reference_counter(()) == 0
 
 
@@ -213,13 +221,10 @@ def test_analytics_active_count_excludes_cancelled_and_closed_states() -> None:
     from coeus.domain.enums import TicketState
     from coeus.services.feedback_analytics import _is_active
 
-    assert _is_active(SimpleNamespace(state=TicketState.ANALYST_IN_PROGRESS)) is True  # type: ignore[arg-type]
-    assert _is_active(SimpleNamespace(state=TicketState.DISSEMINATION_READY)) is True  # type: ignore[arg-type]
-    assert _is_active(SimpleNamespace(state=TicketState.CANCELLED)) is False  # type: ignore[arg-type]
-    assert (
-        _is_active(SimpleNamespace(state=TicketState.CLOSED_EXISTING_PRODUCT_ACCEPTED))  # type: ignore[arg-type]
-        is False
-    )
+    assert _is_active(_ticket("TCK-0001", TicketState.ANALYST_IN_PROGRESS)) is True
+    assert _is_active(_ticket("TCK-0001", TicketState.DISSEMINATION_READY)) is True
+    assert _is_active(_ticket("TCK-0001", TicketState.CANCELLED)) is False
+    assert _is_active(_ticket("TCK-0001", TicketState.CLOSED_EXISTING_PRODUCT_ACCEPTED)) is False
 
 
 @pytest.mark.asyncio
@@ -242,3 +247,13 @@ async def test_access_diagnostics_requires_csrf_token() -> None:
 
     assert missing_csrf.status_code == 403
     assert missing_csrf.json()["error"]["code"] == "csrf_failed"
+
+
+def _ticket(reference: str, state: TicketState = TicketState.DRAFT_INTAKE) -> TicketRecord:
+    return TicketRecord(
+        ticket_id=uuid4(),
+        reference=reference,
+        requester_user_id=uuid4(),
+        state=state,
+        intake=IntakeDetails(),
+    )

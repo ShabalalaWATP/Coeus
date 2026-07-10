@@ -49,7 +49,10 @@ export function AiModelPanel({ csrfToken }: AiModelPanelProps) {
         <BrainCircuit aria-hidden="true" size={20} />
         <div>
           <h2 id="ai-model-title">AI model</h2>
-          <p>Choose the Gemini model every Istari agent uses for extraction, search and routing.</p>
+          <p>
+            Choose the Gemini model used by the intake assistant. Search embeddings are configured
+            separately.
+          </p>
         </div>
       </div>
       {stateQuery.isError ? <ErrorState onRetry={() => void stateQuery.refetch()} /> : null}

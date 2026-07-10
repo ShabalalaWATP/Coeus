@@ -2,11 +2,14 @@
 
 ## Status
 
-Superseded for project workspaces by ADR 0018. The ACG and product access parts remain accepted.
+Accepted for ACG and product access. The earlier workspace visibility scope was
+superseded by ADR 0018.
 
 ## Context
 
-Sprint 3 needed Access Control Groups, project workspace visibility and product access filtering before the database schema and migration phase. The implementation had to establish the access-policy boundary without coupling route handlers to temporary seed data.
+Sprint 3 needed Access Control Groups and product access filtering before the
+database schema and migration phase. The implementation had to establish the
+access-policy boundary without coupling route handlers to temporary seed data.
 
 ## Decision
 

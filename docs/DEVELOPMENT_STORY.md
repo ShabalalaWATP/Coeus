@@ -1,18 +1,15 @@
 # Coeus Development Story
 
-Sprint 1 to Sprint 13 entries live in
-[DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVELOPMENT_STORY_SPRINTS_01-13.md).
+Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVELOPMENT_STORY_SPRINTS_01-13.md).
 
 ## 2026-07-09 Access-control audit rollback
 
-- Hardened ACG administration so create, update, membership-add and
-  membership-remove operations restore the previous repository state if audit
-  recording fails. Added regression coverage for all four mutation paths and
-  updated the ACG project-access threat model.
-- Hardened notification and email side effects so notification creation,
-  mark-read and email outbox writes restore previous state if persistence or
-  audit recording fails. Added regression coverage and updated the manager
-  final-release threat model.
+- Hardened ACG administration so create, update and membership changes restore
+  previous repository state if audit recording fails. Added regression coverage
+  and updated the ACG product-access threat model.
+- Hardened notification and email side effects so creation, mark-read and
+  email outbox writes restore previous state if persistence or audit recording
+  fails. Updated the manager final-release threat model.
 - Hardened admin AI model configuration so failed model selection or Gemini API
   key configuration restores the previous provider, model, key and change
   metadata. Added persistence and audit-failure regression coverage.
@@ -41,6 +38,13 @@ Sprint 1 to Sprint 13 entries live in
 - Hardened analyst assignment, notes, product links, work-package updates,
   draft saves and QC submission so failed audit recording restores the original
   ticket state.
+- Hardened Store product ingestion so `product_created` audit failure restores
+  product metadata and uploaded bytes, and storage failure does not leave a
+  false product-created audit event.
+- Hardened auth session lifecycle changes so failed `login_success`, `logout`
+  or `password_changed` audit restores sessions, credentials and login attempts.
+- Removed retired workspace sanitisation so old Project permissions and records
+  fail closed instead of being accepted by the runtime persistence codec.
 
 ## 2026-07-08 No-match consent
 
@@ -87,10 +91,10 @@ Sprint 1 to Sprint 13 entries live in
 - Added shared `LoadingState`, `ErrorState`, `EmptyState` and `StatusPill`
   components with styles for the previously unstyled `request-row` and
   `status-pill` classes, and wired loading, error, empty and success states
-  into the store, projects, analytics, audit, requests, routing, analyst, QC
+  into the store, analytics, audit, requests, routing, analyst, QC
   and ACG pages.
-- Preserved product back-navigation context from team workspaces and project
-  pages, and relabelled the controlled asset grant with token expiry.
+- Preserved product back-navigation context from team workspaces, and relabelled
+  the controlled asset grant with token expiry.
 - Verified all eight role views end to end in the browser, including the full
   intake, RFI search, routing, assignment, analyst production and QC
   dissemination pipeline, auth negative states and responsive layouts at
@@ -307,15 +311,15 @@ Sprint 1 to Sprint 13 entries live in
   across routing, analyst, QC, feedback, notifications and upload; global 401
   handling routes to the session-expired page; partial intake saves omit blank
   fields; the QC checklist resets between products; unreachable pages gained
-  navigation, deep-link handling and a project picker; dead components were
-  removed.
+  navigation and deep-link handling; dead components were removed.
 - Verified the whole lifecycle in the running app: chat intake with injection
   refusal, RFI search and offer rejection, capability review, same-queue
   approval, analyst production, QC approval, release with notification,
   delivery confirmation and a header-token asset download. The live run
   surfaced and fixed three integration gaps: `X-Asset-Token` missing from the
   CORS allow list, cacheable grant/download responses replaying stale tokens,
-  and `ProjectPlanUpdate` missing from the persistence codec allowlist.
+  and the routing plan update record missing from the persistence codec
+  allowlist.
 - Checks: pytest (269 tests, 95.9% coverage), Vitest (280 tests, 99% lines),
   mypy, Ruff, tsc, ESLint, Prettier and the 350-line limit all pass.
 
@@ -333,10 +337,14 @@ Sprint 1 to Sprint 13 entries live in
   documented the embedding provider settings, the optional `embeddings` extra
   and the backfill command in `docs/SETUP.md`.
 
-## 2026-07-09 Project workspace retirement
+## 2026-07-09 Legacy workspace removal
 
-- Removed the Projects workspace feature from backend routes, services, seed
-  data, frontend navigation, admin shortcuts and client methods. Product/store
-  `projectId` remains optional catalogue metadata only.
+- Removed the legacy workspace feature from backend routes, services, seed
+  data, frontend navigation, admin shortcuts, client methods and Store
+  workspace metadata/filtering.
+- Removed the remaining ticket-level suggested workspace field and renamed
+  routing plan records to workflow plan updates.
+- Removed active runtime shims for retired workspace state. The persistence
+  decoder rejects older retired workspace payloads during local startup.
 - Added ADR 0018 and refreshed the ACG/product access threat model and Sprint 3
   spec to record the retirement decision.

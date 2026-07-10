@@ -3,7 +3,7 @@
 ## Goal
 
 Make the app locally durable and integration-ready without requiring GCP
-hosting, GCS, Pub/Sub or Vertex AI.
+hosting, GCS, Pub/Sub or a cloud-hosted AI platform.
 
 ## Scope
 
@@ -34,8 +34,8 @@ hosting, GCS, Pub/Sub or Vertex AI.
   on a start-up snapshot.
 - Store search uses PostgreSQL-side visibility and metadata predicates for
   shared ACG, clearance, draft visibility, full-text query, owner/team, status,
-  type, source, region, tag, project and date filters, then the service rechecks
-  the normal access policy before counts, facets or results are returned.
+  type, source, region, tag and date filters, then the service rechecks the
+  normal access policy before counts, facets or results are returned.
 - Store product detail and asset-download grant paths also use PostgreSQL-side
   visible-product lookups before the normal API policy recheck.
 - Product upload accepts one real asset, computes its size and SHA-256 hash
@@ -49,7 +49,7 @@ hosting, GCS, Pub/Sub or Vertex AI.
 
 ## Non-Goals
 
-- Cloud SQL, GCS, Pub/Sub, Cloud Run or Vertex AI deployment.
+- Cloud SQL, GCS, Pub/Sub, Cloud Run or cloud-hosted AI deployment.
 - Malware scanning of uploaded files.
 - Multi-file upload batches.
 - Production email bounce handling or unsubscribe workflows.

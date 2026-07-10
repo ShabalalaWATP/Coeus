@@ -5,7 +5,7 @@
 Add the first controlled routing layer after RFI search cannot satisfy a request.
 Sprint 8 must run deterministic RFA and CM capability checks, present manager
 queues, require human approval before analyst assignment, support clarification
-requests and record project-plan updates.
+requests and record workflow plan updates.
 
 ## In Scope
 
@@ -17,7 +17,7 @@ requests and record project-plan updates.
 - CM fallback when RFA cannot satisfy and collection can.
 - Human manager approval, rejection and clarification request actions.
 - Override approval with required reason and audit event.
-- Ticket-level project-plan update records.
+- Ticket-level workflow plan update records.
 - RFA and CM manager queue frontend pages.
 
 ## Out Of Scope
@@ -37,7 +37,7 @@ requests and record project-plan updates.
   `CM_MANAGER_REVIEW`.
 - If neither route can satisfy, the ticket enters `INFO_REQUIRED` with focused
   clarification requirements.
-- Approval transitions to `ANALYST_ASSIGNMENT` and appends a project-plan update.
+- Approval transitions to `ANALYST_ASSIGNMENT` and appends a workflow plan update.
 - Clarification and rejection require a reason and create audit events.
 - Override approval requires an override reason and creates a `manager_override`
   audit event.

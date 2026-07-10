@@ -21,8 +21,13 @@ class InMemoryTicketRepository:
                 return reference
 
     def save(self, ticket: TicketRecord) -> None:
+        tickets = dict(self._tickets)
         self._tickets[ticket.ticket_id] = ticket
-        self._persist()
+        try:
+            self._persist()
+        except Exception:
+            self._tickets = tickets
+            raise
 
     def get(self, ticket_id: UUID) -> TicketRecord | None:
         return self._tickets.get(ticket_id)

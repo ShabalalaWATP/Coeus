@@ -1,8 +1,9 @@
 import pytest
+from httpx import AsyncClient
 
 
 @pytest.mark.asyncio
-async def test_openapi_is_generated(api_client) -> None:
+async def test_openapi_is_generated(api_client: AsyncClient) -> None:
     response = await api_client.get("/openapi.json")
 
     assert response.status_code == 200

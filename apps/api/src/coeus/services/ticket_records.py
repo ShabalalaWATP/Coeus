@@ -37,10 +37,6 @@ def timeline(
     )
 
 
-def suggest_project_name(ticket: TicketRecord) -> str:
-    return f"{ticket.intake.title or 'Draft Requirement'} Workspace"
-
-
 def is_owner(actor: UserAccount, ticket: TicketRecord) -> bool:
     return ticket.requester_user_id == actor.user_id
 

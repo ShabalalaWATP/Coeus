@@ -206,7 +206,7 @@ async def test_manager_clarification_is_handed_to_customer_chatbot() -> None:
 
 
 @pytest.mark.asyncio
-async def test_rfa_manager_approval_updates_project_plan_and_audit_log() -> None:
+async def test_rfa_manager_approval_updates_workflow_plan_and_audit_log() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
@@ -235,7 +235,7 @@ async def test_rfa_manager_approval_updates_project_plan_and_audit_log() -> None
     assert approved.status_code == 200
     assert approved.json()["state"] == "ANALYST_ASSIGNMENT"
     assert approved.json()["managerDecisions"][0]["status"] == "approved"
-    assert approved.json()["projectPlanUpdates"][-1]["title"] == "Prepare analyst assignment"
+    assert approved.json()["workflowPlanUpdates"][-1]["title"] == "Prepare analyst assignment"
     assert "route_approved" in [event["eventType"] for event in audit.json()["events"]]
     assert admin["user"]["username"] == "admin@example.test"
 

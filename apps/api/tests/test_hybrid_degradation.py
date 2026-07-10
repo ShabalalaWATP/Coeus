@@ -1,9 +1,11 @@
-from typing import Any
+from typing import Any, cast
+
+from sqlalchemy.engine import Connection
 
 from coeus.domain.store import StoreProduct
 from coeus.persistence.store_projection_search import hybrid_candidates
 from coeus.repositories.store_hybrid import memory_hybrid_candidates
-from coeus.services.embeddings import MockEmbeddingProvider
+from coeus.services.embeddings import EmbeddingService, MockEmbeddingProvider
 from coeus.services.store_semantics import product_semantic_text
 from store_projection_helpers import (
     _acg_rows,
@@ -62,7 +64,7 @@ def test_projection_flags_lexical_only_when_no_candidate_has_embedding() -> None
     connection = _Connection([_row(product, vector_rank=None)], product)
 
     candidates = hybrid_candidates(
-        connection, filters(), visibility_scope(product), "query", "[0.1,0.2]"
+        cast(Connection, connection), filters(), visibility_scope(product), "query", "[0.1,0.2]"
     )
 
     assert candidates
@@ -74,7 +76,7 @@ def test_projection_not_lexical_only_when_a_candidate_has_embedding() -> None:
     connection = _Connection([_row(product, vector_rank=1)], product)
 
     candidates = hybrid_candidates(
-        connection, filters(), visibility_scope(product), "query", "[0.1,0.2]"
+        cast(Connection, connection), filters(), visibility_scope(product), "query", "[0.1,0.2]"
     )
 
     assert candidates
@@ -98,7 +100,10 @@ def test_memory_lexical_only_when_query_embeds_but_no_candidate_vector() -> None
     product = seed_product()
 
     candidates = memory_hybrid_candidates(
-        (product,), product.metadata.title, _UNIT_VECTOR, NoneService()
+        (product,),
+        product.metadata.title,
+        _UNIT_VECTOR,
+        cast(EmbeddingService, NoneService()),
     )
 
     assert candidates
@@ -115,7 +120,9 @@ def test_memory_uses_supplied_provider_for_product_vectors() -> None:
 
     product = seed_product()
 
-    candidates = memory_hybrid_candidates((product,), "query", _UNIT_VECTOR, StubService())
+    candidates = memory_hybrid_candidates(
+        (product,), "query", _UNIT_VECTOR, cast(EmbeddingService, StubService())
+    )
 
     assert calls == ["memory-candidate"]
     assert candidates

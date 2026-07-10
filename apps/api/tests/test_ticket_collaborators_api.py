@@ -1,10 +1,14 @@
+from typing import cast
 from uuid import UUID
 
 import pytest
-from httpx import ASGITransport, AsyncClient
+from fastapi import FastAPI
+from httpx import ASGITransport, AsyncClient, Response
 
 from coeus.core.config import Settings
+from coeus.domain.tickets import TicketRecord
 from coeus.main import create_app
+from coeus.services.audit import AuditEvent
 
 SEED_CREDENTIAL = "CoeusLocal1!"
 
@@ -39,7 +43,7 @@ async def _tag(
     ticket_id: str,
     username: str,
     access: str,
-):
+) -> Response:
     return await client.post(
         f"/api/v1/tickets/{ticket_id}/collaborators",
         headers={"X-CSRF-Token": csrf},
@@ -133,6 +137,13 @@ async def test_viewer_can_read_but_not_edit_or_manage() -> None:
             json={"priority": "routine"},
         )
         assert intake.status_code == 404
+
+        information = await client.post(
+            f"/api/v1/tickets/{ticket_id}/timeline",
+            headers={"X-CSRF-Token": viewer_csrf},
+            json={"body": "Trying to add information as a viewer."},
+        )
+        assert information.status_code == 404
 
         manage = await _tag(client, viewer_csrf, ticket_id, "qc.manager@example.test", "viewer")
         assert manage.status_code == 404
@@ -248,11 +259,15 @@ async def test_remove_collaborator_audit_failure_rolls_back_ticket(
     assert ticket.timeline == original.timeline
 
 
-def _fail_audit(*_args: object, **_kwargs: object) -> None:
+def _fail_audit(
+    event_type: str,
+    actor_user_id: str | None = None,
+    metadata: dict[str, str] | None = None,
+) -> AuditEvent:
     raise RuntimeError("audit unavailable")
 
 
-def _stored_ticket(app: object, ticket_id: str):
+def _stored_ticket(app: FastAPI, ticket_id: str) -> TicketRecord:
     ticket = app.state.ticket_services.tickets._repository.get(UUID(ticket_id))
     assert ticket is not None
-    return ticket
+    return cast(TicketRecord, ticket)

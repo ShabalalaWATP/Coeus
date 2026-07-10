@@ -24,7 +24,6 @@ def store_schema_statements() -> Sequence[str]:
             tags text[] NOT NULL DEFAULT '{}',
             semantic_labels text[] NOT NULL DEFAULT '{}',
             acg_ids uuid[] NOT NULL DEFAULT '{}',
-            project_id uuid,
             status text NOT NULL,
             time_period_start date,
             time_period_end date,

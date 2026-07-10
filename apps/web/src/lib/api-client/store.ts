@@ -26,7 +26,6 @@ export type StoreProduct = {
   tags: string[];
   semanticLabels: string[];
   acgIds: string[];
-  projectId: string | null;
   status: string;
   timePeriodStart: string | null;
   timePeriodEnd: string | null;
@@ -46,7 +45,6 @@ export type StoreSearchFilters = {
   tag?: string;
   sourceType?: string;
   status?: string;
-  projectId?: string;
   dateFrom?: string;
   dateTo?: string;
   ownerTeam?: string;
