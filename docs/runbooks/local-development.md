@@ -16,6 +16,21 @@ corepack pnpm --filter @coeus/web dev
 Open <http://127.0.0.1:5173>. The web app defaults to the API at
 <http://127.0.0.1:8001>.
 
+PostgreSQL must publish only on loopback. Confirm the rendered Compose mapping
+uses `127.0.0.1:5432:5432` rather than a wildcard host binding. Use a generated
+local credential kept outside Git, and run the application with a
+least-privilege login role. The application role must not have PostgreSQL
+`SUPERUSER`, `CREATEDB` or `CREATEROLE`.
+
+Verify before development:
+
+```powershell
+docker compose config
+Test-NetConnection 127.0.0.1 -Port 5432
+```
+
+From a second network namespace or LAN host, TCP/5432 must not be reachable.
+
 ## Full Docker Stack
 
 Use this when you want local container parity with PostgreSQL and the app
@@ -72,3 +87,7 @@ coverage. Hand-written files changed during normal work must stay within the
 350-line limit. The OpenAPI contract check protects the committed API contract
 from drift. The dead-code check uses Knip for the TypeScript workspace and
 should stay clean before merging frontend changes.
+
+Sprint 14B also requires the 16 sealed finding regression PoCs, event-loop
+liveness checks, bounded collection maximum-plus-one tests, streaming download
+memory checks and readiness connection-budget tests.

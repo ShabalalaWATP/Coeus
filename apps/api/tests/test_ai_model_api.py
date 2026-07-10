@@ -297,7 +297,10 @@ async def test_env_key_alone_does_not_override_the_configured_provider(
         )
 
     assert response.status_code == 201
-    assert "before this can be submitted." in response.json()["messages"][-1]["body"]
+    assert (
+        "What is the specific question you would like answered?"
+        in response.json()["messages"][-1]["body"]
+    )
 
 
 @pytest.mark.asyncio

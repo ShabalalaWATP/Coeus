@@ -1,15 +1,18 @@
 import re
+from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Protocol
 from uuid import uuid4
 
-from coeus.domain.capabilities import CapabilityTeam
+from coeus.domain.capabilities import CandidateTeam, CapabilityTeam
 from coeus.domain.tickets import (
     CmCapabilityReview,
     IntakeDetails,
     RfaCapabilityReview,
     TicketRecord,
 )
-from coeus.services.capability_catalogue import CapabilityCatalogue
+from coeus.services.capability_catalogue import CapabilityCataloguePort
+from coeus.services.prioritisation import assessment_or_computed
 
 ASSESSMENT_TERMS = frozenset(
     {"assessment", "assess", "brief", "briefing", "report", "estimate", "analysis"}
@@ -22,16 +25,38 @@ UNSUPPORTED_TERMS = frozenset({"mars", "martian", "tbd", "unbounded"})
 _TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
 
 
+@dataclass(frozen=True)
+class RecommendationInputs:
+    disciplines: frozenset[str]
+    region: str | None
+    priority_tier: str | None
+
+
+class RfaReviewAgent(Protocol):
+    def review(self, ticket: TicketRecord) -> RfaCapabilityReview: ...
+
+
+class CmReviewAgent(Protocol):
+    def review(self, ticket: TicketRecord) -> CmCapabilityReview: ...
+
+
 class RfaCapabilityAgent:
-    def __init__(self, catalogue: CapabilityCatalogue | None = None) -> None:
-        self._catalogue = catalogue or CapabilityCatalogue()
+    def __init__(self, catalogue: CapabilityCataloguePort) -> None:
+        self._catalogue = catalogue
 
     def review(self, ticket: TicketRecord) -> RfaCapabilityReview:
         text = _intake_text(ticket.intake)
         terms = _terms(text)
         output_terms = _terms(ticket.intake.required_output_format or "")
         clarifications = _base_clarifications(ticket.intake, terms)
-        team = self._catalogue.best_rfa_team(terms)
+        inputs = _recommendation_inputs(ticket)
+        candidates = self._catalogue.recommend_rfa(
+            terms,
+            disciplines=inputs.disciplines,
+            region=inputs.region,
+            priority_tier=inputs.priority_tier,
+        )
+        team = self._team_or_triage(candidates)
         assessment_signal = bool(terms.intersection(ASSESSMENT_TERMS))
         collection_output = bool(output_terms.intersection(COLLECTION_TERMS)) and not bool(
             output_terms.intersection(ASSESSMENT_TERMS)
@@ -63,18 +88,33 @@ class RfaCapabilityAgent:
             ),
             created_at=datetime.now(UTC),
             suggested_team_name=team.name if can_satisfy else None,
+            candidate_teams=candidates,
         )
+
+    def _team_or_triage(self, candidates: tuple[CandidateTeam, ...]) -> CapabilityTeam:
+        if candidates:
+            team = self._catalogue.team(candidates[0].team_id)
+            if team is not None:
+                return team
+        return self._catalogue.rfa_teams()[-1]
 
 
 class CmCapabilityAgent:
-    def __init__(self, catalogue: CapabilityCatalogue | None = None) -> None:
-        self._catalogue = catalogue or CapabilityCatalogue()
+    def __init__(self, catalogue: CapabilityCataloguePort) -> None:
+        self._catalogue = catalogue
 
     def review(self, ticket: TicketRecord) -> CmCapabilityReview:
         text = _intake_text(ticket.intake)
         terms = _terms(text)
         clarifications = _base_clarifications(ticket.intake, terms)
-        team = self._catalogue.best_cm_team(terms)
+        inputs = _recommendation_inputs(ticket)
+        candidates = self._catalogue.recommend_cm(
+            terms,
+            disciplines=inputs.disciplines,
+            region=inputs.region,
+            priority_tier=inputs.priority_tier,
+        )
+        team = self._catalogue.team(candidates[0].team_id) if candidates else None
         # A confident answer needs a genuine collection term; a team-keyword
         # match alone is only an unconfirmed signal.
         collection_hit = bool(terms.intersection(COLLECTION_TERMS))
@@ -104,7 +144,20 @@ class CmCapabilityAgent:
             created_at=datetime.now(UTC),
             suggested_collection_team_id=team.team_id if can_satisfy and team else None,
             suggested_collection_team_name=team.name if can_satisfy and team else None,
+            candidate_teams=candidates,
         )
+
+
+def _recommendation_inputs(ticket: TicketRecord) -> RecommendationInputs:
+    intake = ticket.intake
+    disciplines = frozenset(
+        item.strip() for item in (intake.intelligence_disciplines or "").split(",") if item.strip()
+    )
+    return RecommendationInputs(
+        disciplines=disciplines,
+        region=intake.area_or_region,
+        priority_tier=assessment_or_computed(ticket).tier,
+    )
 
 
 def _intake_text(intake: IntakeDetails) -> str:
@@ -116,6 +169,8 @@ def _intake_text(intake: IntakeDetails) -> str:
         intake.required_output_format,
         intake.known_context,
         intake.customer_success_criteria,
+        intake.intelligence_disciplines,
+        intake.supported_operation,
     )
     return " ".join(value for value in values if value).casefold()
 

@@ -14,9 +14,22 @@ type IntakeDetails = {
   restrictionsOrCaveats: string | null;
   customerSuccessCriteria: string | null;
   suggestedAcgContext: string | null;
+  requestingUnit: string | null;
+  intelligenceDisciplines: string | null;
+  supportedOperation: string | null;
+  urgencyJustification: string | null;
   missingInformation: string[];
   confidence: number;
 };
+
+type IntakeChecklistItem = {
+  key: string;
+  label: string;
+  value: string | null;
+  satisfied: boolean;
+};
+
+type ConversationStatus = "open" | "close_offered" | "closed";
 
 type ChatMessage = {
   id: string;
@@ -79,6 +92,8 @@ export type Ticket = {
   requesterUserId: string;
   state: TicketState;
   intake: IntakeDetails;
+  intakeChecklist: IntakeChecklistItem[];
+  conversationStatus: ConversationStatus;
   isReadyForSubmission: boolean;
   visibleProductMatches: string[];
   releasedProductIds: string[];
@@ -88,6 +103,20 @@ export type Ticket = {
   agentRuns: AgentRun[];
   clarificationRequests?: ClarificationRequest[];
   timeline: TimelineEntry[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+type TicketSummary = {
+  id: string;
+  reference: string;
+  requesterUserId: string;
+  state: TicketState;
+  title: string | null;
+  priority: string | null;
+  isReadyForSubmission: boolean;
+  collaboratorCount: number;
+  releasedProductId: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -127,6 +156,10 @@ export type IntakeUpdate = Partial<
     | "restrictionsOrCaveats"
     | "customerSuccessCriteria"
     | "suggestedAcgContext"
+    | "requestingUnit"
+    | "intelligenceDisciplines"
+    | "supportedOperation"
+    | "urgencyJustification"
   >
 >;
 
@@ -137,10 +170,30 @@ export type AttachmentMetadataInput = {
 };
 
 export async function listTickets(): Promise<Ticket[]> {
-  const response = await apiRequestJson<{ tickets: Ticket[] }>("/api/v1/tickets", {
-    method: "GET",
-  });
-  return response.tickets;
+  const response = await apiRequestJson<{ tickets: TicketSummary[]; nextCursor: string | null }>(
+    "/api/v1/tickets",
+    {
+      method: "GET",
+    },
+  );
+  return Promise.all(response.tickets.map((ticket) => getTicket(ticket.id)));
+}
+
+async function getTicket(ticketId: string): Promise<Ticket> {
+  const response = await apiRequestJson<Ticket | { tickets: Ticket[] }>(
+    `/api/v1/tickets/${pathSegment(ticketId)}`,
+    {
+      method: "GET",
+    },
+  );
+  if ("tickets" in response) {
+    const ticket = response.tickets.find((item) => item.id === ticketId);
+    if (!ticket) {
+      throw new Error("Ticket detail response did not contain the requested ticket.");
+    }
+    return ticket;
+  }
+  return response;
 }
 
 export async function sendChatMessage(

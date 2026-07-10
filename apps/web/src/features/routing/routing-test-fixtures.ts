@@ -9,6 +9,16 @@ export const baseTicket: RoutingTicket = {
   state: "ROUTE_ASSESSMENT",
   title: "Arctic Fisheries Assessment",
   priority: "high",
+  priorityAssessment: {
+    score: 0.77,
+    tier: "P2",
+    reasons: [
+      "priority:level:high",
+      "priority:region:tier-1:arctic",
+      "priority:unit:carrier-group",
+      "priority:operation:standing-task:harbour-sentinel",
+    ],
+  },
   rfaReview: null,
   cmReview: null,
   recommendation: null,
@@ -40,6 +50,20 @@ export const reviewedTicket: RoutingTicket = {
     managerReviewRequired: true,
     reasoningSummary: "RFA can satisfy the request with assessment-led work packages.",
     createdAt: "2026-07-05T00:00:00Z",
+    candidateTeams: [
+      {
+        teamId: "RFA-MARITIME",
+        name: "Maritime Assessment Cell",
+        score: 0.79,
+        reasons: ["capability:keyword:maritime", "capability:region:arctic", "capability:rank:0.9"],
+      },
+      {
+        teamId: "RFA-GEO",
+        name: "Geospatial Assessment Cell",
+        score: 0.55,
+        reasons: ["capability:keyword:map", "capability:region:global", "capability:rank:0.8"],
+      },
+    ],
   },
   cmReview: {
     id: "cm-review-1",

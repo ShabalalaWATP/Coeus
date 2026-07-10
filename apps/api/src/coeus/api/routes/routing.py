@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from coeus.api.dependencies import (
     get_csrf_validated_session,
@@ -17,7 +17,7 @@ from coeus.api.presenters.routing import (
 )
 from coeus.core.errors import AppError
 from coeus.domain.auth import AuthenticatedSession
-from coeus.domain.tickets import RoutingRoute
+from coeus.domain.tickets import RoutingRoute, TicketRecord
 from coeus.schemas.routing import (
     CapabilityCatalogueResponse,
     RouteApprovalRequest,
@@ -33,6 +33,7 @@ from coeus.services.routing import RoutingService
 router = APIRouter(prefix="/routing", tags=["routing"])
 
 RELEASE_ROUTES = {"rfa": RoutingRoute.RFA, "cm": RoutingRoute.CM}
+QUEUE_PAGE_SIZE = 25
 
 
 def _release_route(route: str) -> RoutingRoute:
@@ -42,15 +43,26 @@ def _release_route(route: str) -> RoutingRoute:
     return resolved
 
 
+def _queue_page(
+    tickets: tuple[TicketRecord, ...], cursor: int, limit: int
+) -> tuple[tuple[TicketRecord, ...], str | None]:
+    page = tickets[cursor : cursor + limit]
+    next_cursor = str(cursor + limit) if cursor + limit < len(tickets) else None
+    return page, next_cursor
+
+
 @router.get("/{route}/release-queue", response_model=RoutingQueueResponse)
 async def release_queue(
     route: str,
     authenticated: Annotated[AuthenticatedSession, Depends(get_current_session)],
     releases: Annotated[ProductReleaseService, Depends(get_product_release_service)],
     routing: Annotated[RoutingService, Depends(get_routing_service)],
+    cursor: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=QUEUE_PAGE_SIZE)] = QUEUE_PAGE_SIZE,
 ) -> RoutingQueueResponse:
     tickets = releases.queue(authenticated.user, _release_route(route))
-    return routing_queue_response(tickets, routing.stats(authenticated.user))
+    page, next_cursor = _queue_page(tickets, cursor, limit)
+    return routing_queue_response(page, routing.stats(authenticated.user), next_cursor)
 
 
 @router.post("/{ticket_id}/release", response_model=RoutingTicketResponse)
@@ -69,22 +81,24 @@ def release_product(
 async def rfa_queue(
     authenticated: Annotated[AuthenticatedSession, Depends(get_current_session)],
     routing: Annotated[RoutingService, Depends(get_routing_service)],
+    cursor: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=QUEUE_PAGE_SIZE)] = QUEUE_PAGE_SIZE,
 ) -> RoutingQueueResponse:
-    return routing_queue_response(
-        routing.rfa_queue(authenticated.user),
-        routing.stats(authenticated.user),
-    )
+    tickets = routing.rfa_queue(authenticated.user)
+    page, next_cursor = _queue_page(tickets, cursor, limit)
+    return routing_queue_response(page, routing.stats(authenticated.user), next_cursor)
 
 
 @router.get("/cm/queue", response_model=RoutingQueueResponse)
 async def cm_queue(
     authenticated: Annotated[AuthenticatedSession, Depends(get_current_session)],
     routing: Annotated[RoutingService, Depends(get_routing_service)],
+    cursor: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=QUEUE_PAGE_SIZE)] = QUEUE_PAGE_SIZE,
 ) -> RoutingQueueResponse:
-    return routing_queue_response(
-        routing.cm_queue(authenticated.user),
-        routing.stats(authenticated.user),
-    )
+    tickets = routing.cm_queue(authenticated.user)
+    page, next_cursor = _queue_page(tickets, cursor, limit)
+    return routing_queue_response(page, routing.stats(authenticated.user), next_cursor)
 
 
 @router.get("/stats", response_model=RoutingStatsResponse)

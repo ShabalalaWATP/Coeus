@@ -5,6 +5,11 @@ from uuid import UUID, uuid4
 
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
+from coeus.core.resource_limits import (
+    MAX_ATTACHMENT_METADATA_BYTES,
+    MAX_TICKET_ATTACHMENTS,
+    text_bytes,
+)
 from coeus.domain.agent_names import RFI_SEARCH_AGENT
 from coeus.domain.auth import UserAccount
 from coeus.domain.enums import TicketState
@@ -22,6 +27,11 @@ from coeus.services.intake import (
     RequirementCompletenessService,
     merge_intake,
 )
+from coeus.services.prioritisation import (
+    assessment_or_computed,
+    prioritisation_agent_run,
+    with_assessment,
+)
 from coeus.services.ticket_records import (
     is_collaborator,
     is_editor,
@@ -37,6 +47,12 @@ if TYPE_CHECKING:
 class TicketServices:
     tickets: "TicketService"
     conversations: "ConversationService"
+
+
+@dataclass(frozen=True)
+class TicketPage:
+    tickets: tuple[TicketRecord, ...]
+    next_cursor: UUID | None
 
 
 class TicketService:
@@ -59,6 +75,30 @@ class TicketService:
             for ticket in self._repository.list_tickets()
             if (owns and is_owner(actor, ticket)) or is_collaborator(actor, ticket)
         )
+
+    def list_visible_ticket_page(
+        self, actor: UserAccount, *, cursor: UUID | None, page_size: int
+    ) -> TicketPage:
+        visible = sorted(
+            self.list_visible_tickets(actor),
+            key=lambda ticket: (ticket.created_at, ticket.ticket_id),
+            reverse=True,
+        )
+        start = 0
+        if cursor is not None:
+            try:
+                start = next(
+                    index + 1 for index, ticket in enumerate(visible) if ticket.ticket_id == cursor
+                )
+            except StopIteration as exc:
+                raise AppError(
+                    400, "invalid_ticket_cursor", "The ticket cursor is invalid."
+                ) from exc
+        selected = tuple(visible[start : start + page_size])
+        next_cursor = (
+            selected[-1].ticket_id if selected and start + len(selected) < len(visible) else None
+        )
+        return TicketPage(selected, next_cursor)
 
     def get_visible_ticket(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         ticket = self._repository.get(ticket_id)
@@ -94,14 +134,18 @@ class TicketService:
         intake = self._completeness.with_completeness(intake)
         state = self.state_for_intake(ticket.state, intake)
         updated = self._save(
-            replace(
-                ticket,
-                intake=intake,
-                state=state,
-                timeline=(
-                    *ticket.timeline,
-                    timeline(ticket.ticket_id, actor.user_id, "intake_updated", "Intake updated."),
-                ),
+            with_assessment(
+                replace(
+                    ticket,
+                    intake=intake,
+                    state=state,
+                    timeline=(
+                        *ticket.timeline,
+                        timeline(
+                            ticket.ticket_id, actor.user_id, "intake_updated", "Intake updated."
+                        ),
+                    ),
+                )
             )
         )
         self._audit_log.record(
@@ -120,6 +164,18 @@ class TicketService:
         source_type: str,
     ) -> TicketRecord:
         ticket = self.get_editable_ticket(actor, ticket_id)
+        projected_bytes = sum(
+            text_bytes(item.name, item.description, item.source_type) for item in ticket.attachments
+        ) + text_bytes(name, description, source_type)
+        if (
+            len(ticket.attachments) >= MAX_TICKET_ATTACHMENTS
+            or projected_bytes > MAX_ATTACHMENT_METADATA_BYTES
+        ):
+            raise AppError(
+                409,
+                "attachment_limit_reached",
+                "The ticket has reached its attachment metadata limit.",
+            )
         attachment = AttachmentMetadata(
             attachment_id=uuid4(),
             ticket_id=ticket.ticket_id,
@@ -156,13 +212,24 @@ class TicketService:
             safety_flags=(),
             created_at=datetime.now(UTC),
         )
+        # The internal priority snapshot is recorded at submission so queue
+        # ordering is explainable and audited alongside the search run.
+        ticket = with_assessment(ticket)
+        assessment = assessment_or_computed(ticket)
+        priority_run = prioritisation_agent_run(ticket, assessment)
         updated = self._save(
             replace(
                 ticket,
                 state=TicketState.RFI_SEARCHING,
-                agent_runs=(*ticket.agent_runs, search_run),
+                agent_runs=(*ticket.agent_runs, priority_run, search_run),
                 timeline=(
                     *ticket.timeline,
+                    timeline(
+                        ticket.ticket_id,
+                        actor.user_id,
+                        "priority_assessed",
+                        f"Internal priority {assessment.tier} recorded.",
+                    ),
                     timeline(
                         ticket.ticket_id, actor.user_id, "ticket_submitted", "Ticket submitted."
                     ),

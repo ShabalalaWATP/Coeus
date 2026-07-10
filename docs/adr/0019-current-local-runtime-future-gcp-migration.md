@@ -20,6 +20,8 @@ between state semantics and possible Cloud Run replica count.
 - The GitHub migration workflow validates Terraform and builds images locally;
   it has no cloud authentication, push or deployment step.
 - Terraform apply is blocked by a default-deny migration-readiness precondition.
+- Every cloud-creating root module must depend directly or transitively on the
+  migration-readiness gate. Targeted plans or applies must not exclude it.
 - The reference configuration permits one API writer until sessions, rate
   limits, registration capacity and audit evidence use shared transactional or
   append-only controls suitable for distributed execution.
@@ -36,6 +38,8 @@ The future path cannot be activated until all of the following are verified:
 4. Implemented and tested GCS and Pub/Sub adapters.
 5. Authorised staging validation of Terraform, identity, traffic and rollback.
 6. A fresh threat model and security scan against the migration revision.
+7. Regression tests for the exact targeted plan/apply commands in the runbook,
+   proving the gate fails while readiness is false.
 
 ## Consequences
 
@@ -44,3 +48,5 @@ The future path cannot be activated until all of the following are verified:
   production readiness.
 - Horizontal API scaling is intentionally unavailable until its security
   invariants are implemented rather than merely documented.
+- `terraform -target` is not an activation mechanism. Any documented targeted
+  command must preserve the same default-deny gate as a full plan.

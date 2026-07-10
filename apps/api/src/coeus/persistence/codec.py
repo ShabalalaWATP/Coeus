@@ -15,8 +15,10 @@ from coeus.domain.access import (
     ProductStatus,
 )
 from coeus.domain.auth import RoleName, SessionRecord, UserAccount
+from coeus.domain.capabilities import CandidateTeam
 from coeus.domain.enums import TicketState
 from coeus.domain.notifications import EmailRecord, NotificationRecord
+from coeus.domain.prioritisation import PriorityAssessment
 from coeus.domain.qc import (
     FeedbackRequest,
     FeedbackRequestStatus,
@@ -72,6 +74,7 @@ _ALLOWED_TYPES = (
     AnalystWorkPackage,
     AttachmentMetadata,
     BoundingBox,
+    CandidateTeam,
     ChatMessage,
     ClarificationRequest,
     CmCapabilityReview,
@@ -84,6 +87,7 @@ _ALLOWED_TYPES = (
     LinkedAnalystProduct,
     ManagerRoutingDecision,
     NotificationRecord,
+    PriorityAssessment,
     ProductDissemination,
     ProductIndexRecord,
     ProductOffer,

@@ -11,6 +11,9 @@ def test_local_object_storage_reads_deletes_and_rejects_unsafe_keys(tmp_path: Pa
     storage.write_bytes("top-level.bin", b"content")
 
     assert storage.read_bytes("top-level.bin") == b"content"
+    assert list(storage.iter_bytes("top-level.bin", 3)) == [b"con", b"ten", b"t"]
+    with pytest.raises(ValueError, match="positive"):
+        list(storage.iter_bytes("top-level.bin", 0))
     storage.delete_bytes("top-level.bin")
     assert not storage.exists("top-level.bin")
 

@@ -5,6 +5,11 @@ from uuid import UUID
 
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
+from coeus.core.resource_limits import (
+    MAX_PRODUCT_ASSET_METADATA_BYTES,
+    MAX_PRODUCT_ASSETS,
+    text_bytes,
+)
 from coeus.domain.access import ProductStatus
 from coeus.domain.auth import UserAccount
 from coeus.domain.store import (
@@ -178,6 +183,12 @@ class StoreIngestionService:
     def _validate_assets(assets: tuple[StoreAsset, ...]) -> None:
         if not assets:
             raise AppError(409, "asset_required", "Products must include at least one asset.")
+        metadata_bytes = sum(
+            text_bytes(asset.name, asset.asset_type, asset.mime_type, asset.sha256)
+            for asset in assets
+        )
+        if len(assets) > MAX_PRODUCT_ASSETS or metadata_bytes > MAX_PRODUCT_ASSET_METADATA_BYTES:
+            raise AppError(409, "asset_limit_reached", "Product asset metadata exceeds its limit.")
         for asset in assets:
             if not fullmatch(HASH_PATTERN, asset.sha256):
                 raise AppError(409, "asset_hash_invalid", "Asset SHA-256 must be 64 hex chars.")

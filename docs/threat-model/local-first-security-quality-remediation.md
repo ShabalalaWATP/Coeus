@@ -2,8 +2,8 @@
 
 ## Status
 
-Implemented and locally verified. Final completion still requires a sealed
-whole-repository scan of the immutable delivery revision.
+Reopened for Sprint 14B. The sealed scan of revision `72a0dc58` reported 16
+findings that must be remediated before release closure.
 
 ## Scope
 
@@ -40,6 +40,13 @@ changed by the remediation milestone.
 | Dormant cloud automation activates an unsupported runtime. | GitHub performs validation and local builds only; Terraform has a default-deny migration gate. |
 | Green CI hides weak branch coverage. | Independent line and branch thresholds fail below 95 percent. |
 | Mocked browser tests miss API integration failures. | At least one real browser-to-FastAPI lifecycle runs in CI. |
+| A local-network peer authenticates to a wildcard-published PostgreSQL superuser. | Bind PostgreSQL to loopback, generate an uncommitted credential and use a least-privilege application role. |
+| Synchronous Store or RFI provider calls stall unrelated work. | Use async providers or bounded offload with liveness and concurrency tests. |
+| Repeated bounded records create unbounded aggregate state and responses. | Enforce domain count and byte budgets and return paginated or bounded summaries. |
+| Concurrent downloads multiply whole-object process memory. | Stream bytes and enforce per-user and global in-flight byte budgets. |
+| Anonymous readiness traffic fans out database connections. | Coalesce checks or use a small shared semaphore and dedicated timeout; restrict ingress. |
+| Audit event churn hides older evidence from the shipped UI. | Preserve cursors, expose older-event navigation and label page counts honestly. |
+| ZAP reports warnings while its required status remains green. | Remove warning suppression, maintain a reviewed rules file and test a blocking fixture. |
 
 ## Validation Requirements
 
@@ -48,6 +55,9 @@ changed by the remediation milestone.
 - Review equivalent callers and alternate malicious inputs.
 - Run the complete backend, frontend and security gate set.
 - Seal a fresh repository-wide security scan at the final revision.
+- Re-run all 16 sealed finding PoCs and record equivalent-sink review.
+- Verify that current uncommitted feature work is either integrated into the
+  scanned revision or explicitly excluded from the release candidate.
 
 ## Deferred Future-Migration Risks
 

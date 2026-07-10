@@ -47,8 +47,16 @@ test("runs RFA capability checks and approves the recommended route", async () =
   renderWithProviders(<RoutingQueuePage route="rfa" />, "/rfa/queue");
 
   expect(await screen.findByText("Maritime Assessment Cell")).toBeVisible();
+  // The internal priority tier badge and its reason breakdown are visible.
+  expect(screen.getAllByText("P2").length).toBeGreaterThan(0);
+  expect(screen.getByText("Internal priority score 0.77")).toBeVisible();
+  expect(screen.getByText("priority:region:tier-1:arctic")).toBeVisible();
   await userEvent.click(await screen.findByRole("button", { name: "Run capability checks" }));
   expect(await screen.findByText("Recommended route: RFA")).toBeVisible();
+  // Top candidate teams from the recommendation scorer are listed.
+  expect(screen.getByText("Candidate teams")).toBeVisible();
+  expect(screen.getByText("Geospatial Assessment Cell")).toBeVisible();
+  expect(screen.getByText("score 0.79")).toBeVisible();
   await userEvent.click(screen.getByRole("button", { name: "Approve route" }));
 
   expect(await screen.findByLabelText("Assign analyst")).toBeVisible();

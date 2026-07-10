@@ -14,12 +14,18 @@ from coeus.domain.tickets import (
     TicketRecord,
 )
 from coeus.services.audit import AuditLog
-from coeus.services.capability_catalogue import CapabilityCatalogue
+from coeus.services.capability_catalogue import CapabilityCatalogue, CapabilityCataloguePort
 from coeus.services.orchestration_handoff import (
     append_handoff,
     manager_clarification_handoff,
 )
-from coeus.services.routing_agents import CmCapabilityAgent, RfaCapabilityAgent
+from coeus.services.prioritisation import priority_sort_key
+from coeus.services.routing_agents import (
+    CmCapabilityAgent,
+    CmReviewAgent,
+    RfaCapabilityAgent,
+    RfaReviewAgent,
+)
 from coeus.services.routing_records import (
     can_review_route,
     current_queue_permission,
@@ -44,14 +50,15 @@ class RoutingService:
         self,
         tickets: TicketServices,
         audit_log: AuditLog,
-        rfa_agent: RfaCapabilityAgent | None = None,
-        cm_agent: CmCapabilityAgent | None = None,
+        catalogue: CapabilityCataloguePort,
+        rfa_agent: RfaReviewAgent,
+        cm_agent: CmReviewAgent,
     ) -> None:
         self._tickets = tickets
         self._audit_log = audit_log
-        self._catalogue = CapabilityCatalogue()
-        self._rfa_agent = rfa_agent or RfaCapabilityAgent(self._catalogue)
-        self._cm_agent = cm_agent or CmCapabilityAgent(self._catalogue)
+        self._catalogue = catalogue
+        self._rfa_agent = rfa_agent
+        self._cm_agent = cm_agent
 
     def rfa_queue(self, actor: UserAccount) -> tuple[TicketRecord, ...]:
         self._require(actor, Permission.RFA_REVIEW)
@@ -209,7 +216,8 @@ class RoutingService:
 
     def _queue_for(self, actor: UserAccount, states: set[TicketState]) -> tuple[TicketRecord, ...]:
         tickets = self._tickets.tickets.list_workflow_tickets(actor, ROUTING_READ_PERMISSIONS)
-        return tuple(ticket for ticket in tickets if ticket.state in states)
+        queued = (ticket for ticket in tickets if ticket.state in states)
+        return tuple(sorted(queued, key=priority_sort_key))
 
     def _save_decision(
         self,
@@ -281,4 +289,11 @@ class RoutingService:
 
 
 def build_routing_service(ticket_services: TicketServices, audit_log: AuditLog) -> RoutingService:
-    return RoutingService(ticket_services, audit_log)
+    catalogue = CapabilityCatalogue()
+    return RoutingService(
+        ticket_services,
+        audit_log,
+        catalogue,
+        RfaCapabilityAgent(catalogue),
+        CmCapabilityAgent(catalogue),
+    )

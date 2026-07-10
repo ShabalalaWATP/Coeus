@@ -3,7 +3,8 @@ from httpx import ASGITransport, AsyncClient
 
 from coeus.core.config import Settings
 from coeus.main import create_app
-from rfi_search_helpers import login, submitted_ticket
+from rfi_search_helpers import login
+from routing_helpers import route_assessment_ticket
 
 
 @pytest.mark.asyncio
@@ -91,9 +92,14 @@ async def test_routing_falls_back_to_collection_when_rfa_cannot_satisfy() -> Non
     assert routed.json()["recommendation"]["recommendedRoute"] == "cm"
     assert routed.json()["rfaReview"]["canSatisfy"] is False
     assert routed.json()["cmReview"]["canSatisfy"] is True
+    # The declared IMINT discipline and Arctic region now steer the
+    # recommendation to the specialist cell instead of the triage fallback.
     assert routed.json()["cmReview"]["suggestedCollectionTeamName"] == (
-        "Collection Coordination Triage Cell"
+        "Maritime Imagery Collection Cell"
     )
+    candidates = routed.json()["cmReview"]["candidateTeams"]
+    assert candidates and candidates[0]["name"] == "Maritime Imagery Collection Cell"
+    assert any(reason.startswith("capability:") for reason in candidates[0]["reasons"])
     assert queue.json()["tickets"][0]["ticketId"] == ticket_id
 
 
@@ -144,7 +150,7 @@ async def test_routing_requests_clarification_when_neither_route_can_satisfy() -
             headers={"X-CSRF-Token": str(manager["csrfToken"])},
         )
         user = await login(client, "user@example.test")
-        tickets = await client.get("/api/v1/tickets")
+        ticket = await client.get(f"/api/v1/tickets/{ticket_id}")
         resumed = await client.post(
             f"/api/v1/tickets/{ticket_id}/timeline",
             headers={"X-CSRF-Token": str(user["csrfToken"])},
@@ -157,7 +163,7 @@ async def test_routing_requests_clarification_when_neither_route_can_satisfy() -
     assert routed_payload["recommendation"]["recommendedRoute"] == "clarification"
     assert routed_payload["rfaReview"]["requiredClarifications"]
     assert routed_payload["clarifications"][0]["route"] == "clarification"
-    ticket_payload = tickets.json()["tickets"][0]
+    ticket_payload = ticket.json()
     assert ticket_payload["messages"][-1]["author"] == "assistant"
     assert "Confirm a supported mock region" in ticket_payload["messages"][-1]["body"]
     assert [run["agentName"] for run in ticket_payload["agentRuns"][-2:]] == [
@@ -191,14 +197,14 @@ async def test_manager_clarification_is_handed_to_customer_chatbot() -> None:
             },
         )
         await login(client, "user@example.test")
-        tickets = await client.get("/api/v1/tickets")
+        ticket = await client.get(f"/api/v1/tickets/{ticket_id}")
 
     assert clarification.status_code == 200
     assert clarification.json()["state"] == "INFO_REQUIRED"
     assert clarification.json()["clarifications"][0]["questions"] == [
         "Which mock port should take priority?"
     ]
-    ticket_payload = tickets.json()["tickets"][0]
+    ticket_payload = ticket.json()
     assert ticket_payload["messages"][-1]["author"] == "assistant"
     assert "Scope needs tightening" in ticket_payload["messages"][-1]["body"]
     assert "Which mock port should take priority?" in ticket_payload["messages"][-1]["body"]
@@ -299,33 +305,5 @@ async def test_customer_cannot_access_routing_manager_actions() -> None:
     assert routed.status_code == 403
 
 
-async def _route_assessment_ticket(
-    client: AsyncClient,
-    csrf_token: str,
-    *,
-    title: str = "Arctic Fisheries Assessment",
-    area_or_region: str = "Arctic fisheries",
-    output_format: str = "assessment report",
-) -> str:
-    ticket_id = await submitted_ticket(
-        client,
-        csrf_token,
-        title=title,
-        area_or_region=area_or_region,
-        output_format=output_format,
-    )
-    response = await client.post(
-        f"/api/v1/rfi-search/{ticket_id}/run",
-        headers={"X-CSRF-Token": csrf_token},
-    )
-    assert response.status_code == 200
-    if response.json()["ticketState"] == "RFI_MATCH_OFFERED":
-        for offer in response.json()["offers"]:
-            response = await client.post(
-                f"/api/v1/rfi-search/{ticket_id}/offers/{offer['productId']}/reject",
-                headers={"X-CSRF-Token": csrf_token},
-                json={"reason": "Need a new assessment route."},
-            )
-            assert response.status_code == 200
-    assert response.json()["ticketState"] == "ROUTE_ASSESSMENT"
-    return ticket_id
+# Shared with test_routing_queue_order.py; kept under its historical name.
+_route_assessment_ticket = route_assessment_ticket

@@ -41,6 +41,18 @@ class IntakeUpdateRequest(BaseModel):
     suggested_acg_context: str | None = Field(
         default=None, max_length=500, validation_alias="suggestedAcgContext"
     )
+    requesting_unit: str | None = Field(
+        default=None, min_length=2, max_length=180, validation_alias="requestingUnit"
+    )
+    intelligence_disciplines: str | None = Field(
+        default=None, min_length=2, max_length=240, validation_alias="intelligenceDisciplines"
+    )
+    supported_operation: str | None = Field(
+        default=None, min_length=2, max_length=180, validation_alias="supportedOperation"
+    )
+    urgency_justification: str | None = Field(
+        default=None, min_length=3, max_length=500, validation_alias="urgencyJustification"
+    )
 
 
 class AttachmentMetadataRequest(BaseModel):
@@ -99,8 +111,21 @@ class IntakeDetailsResponse(BaseModel):
     restrictions_or_caveats: str | None = Field(serialization_alias="restrictionsOrCaveats")
     customer_success_criteria: str | None = Field(serialization_alias="customerSuccessCriteria")
     suggested_acg_context: str | None = Field(serialization_alias="suggestedAcgContext")
+    requesting_unit: str | None = Field(serialization_alias="requestingUnit")
+    intelligence_disciplines: str | None = Field(serialization_alias="intelligenceDisciplines")
+    supported_operation: str | None = Field(serialization_alias="supportedOperation")
+    urgency_justification: str | None = Field(serialization_alias="urgencyJustification")
     missing_information: list[str] = Field(serialization_alias="missingInformation")
     confidence: float
+
+
+class IntakeChecklistItemResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    key: str
+    label: str
+    value: str | None
+    satisfied: bool
 
 
 class ChatMessageResponse(BaseModel):
@@ -169,6 +194,10 @@ class TicketResponse(BaseModel):
     requester_user_id: UUID = Field(serialization_alias="requesterUserId")
     state: str
     intake: IntakeDetailsResponse
+    intake_checklist: list[IntakeChecklistItemResponse] = Field(
+        serialization_alias="intakeChecklist"
+    )
+    conversation_status: str = Field(serialization_alias="conversationStatus")
     is_ready_for_submission: bool = Field(serialization_alias="isReadyForSubmission")
     visible_product_matches: list[str] = Field(serialization_alias="visibleProductMatches")
     released_product_ids: list[UUID] = Field(serialization_alias="releasedProductIds")
@@ -184,7 +213,24 @@ class TicketResponse(BaseModel):
     updated_at: datetime = Field(serialization_alias="updatedAt")
 
 
+class TicketSummaryResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    ticket_id: UUID = Field(serialization_alias="id")
+    reference: str
+    requester_user_id: UUID = Field(serialization_alias="requesterUserId")
+    state: str
+    title: str | None
+    priority: str | None
+    is_ready_for_submission: bool = Field(serialization_alias="isReadyForSubmission")
+    collaborator_count: int = Field(serialization_alias="collaboratorCount")
+    released_product_id: UUID | None = Field(serialization_alias="releasedProductId")
+    created_at: datetime = Field(serialization_alias="createdAt")
+    updated_at: datetime = Field(serialization_alias="updatedAt")
+
+
 class TicketListResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    tickets: list[TicketResponse]
+    tickets: list[TicketSummaryResponse]
+    next_cursor: UUID | None = Field(serialization_alias="nextCursor")

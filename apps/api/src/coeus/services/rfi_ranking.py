@@ -16,6 +16,7 @@ from coeus.services.store_semantics import product_semantic_text, semantic_label
 
 RFI_OFFER_THRESHOLD = 0.34
 RFI_MAX_OFFERS = 5
+RFI_RANKING_WORK_LIMIT = 100
 STOP_WORDS = frozenset(
     {
         "a",
@@ -80,15 +81,17 @@ def rank_hybrid_rfi_candidates(
     candidates: tuple[StoreHybridCandidate, ...],
     intake: IntakeDetails,
 ) -> tuple[ProductOffer, ...]:
-    query_tokens = _tokens(query_text(intake))
     query = query_text(intake)
+    query_tokens = _tokens(query)
     if not query_tokens:
         return ()
     scored: list[tuple[StoreHybridCandidate, float, tuple[str, ...]]] = []
-    available_legs = _available_legs(candidates)
-    for candidate in candidates:
-        text_score, text_reasons = _full_text_score(candidate.product, query_tokens)
-        token_score, token_reasons = _semantic_score(candidate.product, query_tokens)
+    bounded_candidates = candidates[:RFI_RANKING_WORK_LIMIT]
+    available_legs = _available_legs(bounded_candidates)
+    for candidate in bounded_candidates:
+        product_tokens = _tokens(_product_text(candidate.product))
+        text_score, text_reasons = _score_tokens(query_tokens, product_tokens, "full-text")
+        token_score, token_reasons = _semantic_score_from_tokens(query_tokens, product_tokens)
         metadata_score, metadata_reasons = _metadata_score(candidate.product, intake)
         label_score, label_reasons = _semantic_label_score(candidate.product, query)
         score = min(1.0, _rrf_score(candidate, available_legs) + metadata_score + label_score)
@@ -120,6 +123,8 @@ def query_text(intake: IntakeDetails) -> str:
             intake.known_context,
             intake.required_output_format,
             intake.customer_success_criteria,
+            intake.intelligence_disciplines,
+            intake.supported_operation,
         )
         if value
     )
@@ -188,6 +193,23 @@ def _semantic_score(
     if not query_tokens:
         return 0.0, ()
     product_tokens = _tokens(_product_text(product))
+    overlap = matched_tokens(query_tokens, product_tokens)
+    denominator = sqrt(max(len(query_tokens), 1) * max(len(product_tokens), 1))
+    score = len(overlap) / denominator
+    return min(score, 1.0), tuple(f"semantic:{token}" for token in overlap)
+
+
+def _score_tokens(
+    query_tokens: tuple[str, ...], product_tokens: tuple[str, ...], prefix: str
+) -> tuple[float, tuple[str, ...]]:
+    matches = matched_tokens(query_tokens, product_tokens)
+    score = len(matches) / len(query_tokens) if query_tokens else 0.0
+    return min(score, 1.0), tuple(f"{prefix}:{token}" for token in matches)
+
+
+def _semantic_score_from_tokens(
+    query_tokens: tuple[str, ...], product_tokens: tuple[str, ...]
+) -> tuple[float, tuple[str, ...]]:
     overlap = matched_tokens(query_tokens, product_tokens)
     denominator = sqrt(max(len(query_tokens), 1) * max(len(product_tokens), 1))
     score = len(overlap) / denominator

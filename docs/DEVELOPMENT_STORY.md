@@ -167,3 +167,20 @@ Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVEL
   and 95.54 percent branch coverage; 3 Playwright flows; Ruff, mypy, Bandit,
   pip-audit, pnpm audit, Semgrep, Gitleaks, Actionlint, Checkov, Terraform,
   container build, Trivy, production build and file-line gates all passed.
+
+## 2026-07-10 Sprint 14B post-seal remediation opened
+
+- Sealed a standard whole-repository review of revision `72a0dc58`. It reported
+  16 findings: three medium and thirteen low.
+- Reopened Sprint 14 rather than claiming completion. The new baseline covers
+  local PostgreSQL exposure, async/provider and matcher availability, aggregate
+  metadata/history growth, unpaginated responses, readiness fan-out, audit UI
+  pagination and ZAP fail-open behaviour.
+- Kept local-first and single-writer scope authoritative. The GCP reference
+  remains inactive and every cloud-creating target must retain the migration
+  gate.
+- Defined Sprint 14B completion as fixed-boundary regression evidence, all
+  quality/security gates and a fresh sealed scan of a clean immutable revision.
+- The concurrent intake, prioritisation and capability-recommendation work is
+  unsealed. It must be integrated and scanned explicitly or excluded from the
+  remediation release candidate.

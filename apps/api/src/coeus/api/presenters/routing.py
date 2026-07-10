@@ -1,6 +1,6 @@
 from collections.abc import Iterable
 
-from coeus.domain.capabilities import CapabilityTeam
+from coeus.domain.capabilities import CandidateTeam, CapabilityTeam
 from coeus.domain.tickets import (
     ClarificationRequest,
     CmCapabilityReview,
@@ -11,11 +11,13 @@ from coeus.domain.tickets import (
     WorkflowPlanUpdate,
 )
 from coeus.schemas.routing import (
+    CandidateTeamResponse,
     CapabilityCatalogueResponse,
     CapabilityTeamResponse,
     ClarificationRequestResponse,
     CmCapabilityReviewResponse,
     ManagerDecisionResponse,
+    PriorityAssessmentResponse,
     RfaCapabilityReviewResponse,
     RouteRecommendationResponse,
     RoutingQueueResponse,
@@ -23,15 +25,17 @@ from coeus.schemas.routing import (
     RoutingTicketResponse,
     WorkflowPlanUpdateResponse,
 )
+from coeus.services.prioritisation import assessment_or_computed
 from coeus.services.routing_stats import RoutingStats
 
 
 def routing_queue_response(
-    tickets: Iterable[TicketRecord], stats: RoutingStats
+    tickets: Iterable[TicketRecord], stats: RoutingStats, next_cursor: str | None = None
 ) -> RoutingQueueResponse:
     return RoutingQueueResponse(
         tickets=[ticket_response(ticket) for ticket in tickets],
         stats=stats_response(stats),
+        next_cursor=next_cursor,
     )
 
 
@@ -49,6 +53,7 @@ def ticket_response(ticket: TicketRecord) -> RoutingTicketResponse:
         state=ticket.state.value,
         title=ticket.intake.title or "Untitled requirement",
         priority=ticket.intake.priority,
+        priority_assessment=priority_assessment_response(ticket),
         rfa_review=_rfa_response(ticket.rfa_reviews[-1]) if ticket.rfa_reviews else None,
         cm_review=_cm_response(ticket.cm_reviews[-1]) if ticket.cm_reviews else None,
         recommendation=_recommendation_response(ticket.route_recommendations[-1])
@@ -60,6 +65,15 @@ def ticket_response(ticket: TicketRecord) -> RoutingTicketResponse:
         workflow_plan_updates=[
             _workflow_update_response(item) for item in ticket.workflow_plan_updates
         ],
+    )
+
+
+def priority_assessment_response(ticket: TicketRecord) -> PriorityAssessmentResponse:
+    assessment = assessment_or_computed(ticket)
+    return PriorityAssessmentResponse(
+        score=assessment.score,
+        tier=assessment.tier,
+        reasons=list(assessment.reasons),
     )
 
 
@@ -83,6 +97,18 @@ def _capability_team_response(team: CapabilityTeam) -> CapabilityTeamResponse:
         keywords=sorted(team.keywords),
         work_packages=list(team.work_packages),
         source_labels=list(team.source_labels),
+        disciplines=sorted(team.disciplines),
+        regions=sorted(team.regions),
+        rank=team.rank,
+    )
+
+
+def _candidate_response(candidate: CandidateTeam) -> CandidateTeamResponse:
+    return CandidateTeamResponse(
+        team_id=candidate.team_id,
+        name=candidate.name,
+        score=candidate.score,
+        reasons=list(candidate.reasons),
     )
 
 
@@ -100,6 +126,7 @@ def _rfa_response(review: RfaCapabilityReview) -> RfaCapabilityReviewResponse:
         manager_review_required=review.manager_review_required,
         reasoning_summary=review.reasoning_summary,
         created_at=review.created_at,
+        candidate_teams=[_candidate_response(item) for item in review.candidate_teams],
     )
 
 
@@ -118,6 +145,7 @@ def _cm_response(review: CmCapabilityReview) -> CmCapabilityReviewResponse:
         manager_review_required=review.manager_review_required,
         reasoning_summary=review.reasoning_summary,
         created_at=review.created_at,
+        candidate_teams=[_candidate_response(item) for item in review.candidate_teams],
     )
 
 

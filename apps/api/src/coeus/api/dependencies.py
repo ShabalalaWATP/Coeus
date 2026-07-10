@@ -6,7 +6,7 @@ from fastapi import Depends, Header, Request
 from coeus.core.config import Settings
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
-from coeus.db.session import DatabaseReadinessChecker
+from coeus.db.session import DatabaseReadinessChecker, readiness_checker_for
 from coeus.domain.auth import AuthenticatedSession
 from coeus.services.access import AccessServices
 from coeus.services.ai_models import AiModelService
@@ -39,7 +39,7 @@ def get_settings(request: Request) -> Settings:
 def get_readiness_checker(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> DatabaseReadinessChecker:
-    return DatabaseReadinessChecker(settings.database_url)
+    return readiness_checker_for(settings.database_url)
 
 
 def get_request_id(request: Request) -> str:

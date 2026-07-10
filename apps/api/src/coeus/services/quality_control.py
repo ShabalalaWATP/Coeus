@@ -12,6 +12,7 @@ from coeus.domain.tickets import TicketRecord
 from coeus.repositories.access import AccessRepository
 from coeus.services.audit import AuditLog
 from coeus.services.object_storage import ObjectStorage
+from coeus.services.prioritisation import priority_sort_key
 from coeus.services.qc_ingestion import (
     ProductAutoIngestionService,
     QcApprovalInput,
@@ -82,11 +83,12 @@ class QualityControlService:
 
     def queue(self, actor: UserAccount) -> tuple[TicketRecord, ...]:
         self._require(actor, Permission.QC_REVIEW)
-        return tuple(
+        queued = (
             ticket
             for ticket in self._tickets.tickets.list_workflow_tickets(actor, QC_READ_PERMISSIONS)
             if ticket.state == TicketState.QC_REVIEW
         )
+        return tuple(sorted(queued, key=priority_sort_key))
 
     def details(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         self._require(actor, Permission.QC_REVIEW)

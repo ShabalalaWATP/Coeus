@@ -936,6 +936,17 @@
             },
             "title": "Events",
             "type": "array"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextcursor"
           }
         },
         "required": [
@@ -1023,6 +1034,37 @@
         "title": "BreakGlassProductAccessRequest",
         "type": "object"
       },
+      "CandidateTeamResponse": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "teamId": {
+            "title": "Teamid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "teamId",
+          "name",
+          "score",
+          "reasons"
+        ],
+        "title": "CandidateTeamResponse",
+        "type": "object"
+      },
       "CapabilityCatalogueResponse": {
         "properties": {
           "teams": {
@@ -1045,6 +1087,13 @@
             "title": "Department",
             "type": "string"
           },
+          "disciplines": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Disciplines",
+            "type": "array"
+          },
           "keywords": {
             "items": {
               "type": "string"
@@ -1055,6 +1104,17 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "number"
+          },
+          "regions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Regions",
+            "type": "array"
           },
           "sourceLabels": {
             "items": {
@@ -1081,7 +1141,10 @@
           "department",
           "keywords",
           "workPackages",
-          "sourceLabels"
+          "sourceLabels",
+          "disciplines",
+          "regions",
+          "rank"
         ],
         "title": "CapabilityTeamResponse",
         "type": "object"
@@ -1231,6 +1294,13 @@
             "title": "Cansatisfy",
             "type": "boolean"
           },
+          "candidateTeams": {
+            "items": {
+              "$ref": "#/components/schemas/CandidateTeamResponse"
+            },
+            "title": "Candidateteams",
+            "type": "array"
+          },
           "confidence": {
             "title": "Confidence",
             "type": "number"
@@ -1325,7 +1395,8 @@
           "risks",
           "managerReviewRequired",
           "reasoningSummary",
-          "createdAt"
+          "createdAt",
+          "candidateTeams"
         ],
         "title": "CmCapabilityReviewResponse",
         "type": "object"
@@ -1879,6 +1950,41 @@
         "title": "HealthResponse",
         "type": "object"
       },
+      "IntakeChecklistItemResponse": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "satisfied": {
+            "title": "Satisfied",
+            "type": "boolean"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "value",
+          "satisfied"
+        ],
+        "title": "IntakeChecklistItemResponse",
+        "type": "object"
+      },
       "IntakeDetailsResponse": {
         "properties": {
           "areaOrRegion": {
@@ -1929,6 +2035,17 @@
             ],
             "title": "Description"
           },
+          "intelligenceDisciplines": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intelligencedisciplines"
+          },
           "knownContext": {
             "anyOf": [
               {
@@ -1969,6 +2086,17 @@
             ],
             "title": "Priority"
           },
+          "requestingUnit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requestingunit"
+          },
           "requiredOutputFormat": {
             "anyOf": [
               {
@@ -2002,6 +2130,17 @@
             ],
             "title": "Suggestedacgcontext"
           },
+          "supportedOperation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supportedoperation"
+          },
           "timePeriodEnd": {
             "anyOf": [
               {
@@ -2034,6 +2173,17 @@
               }
             ],
             "title": "Title"
+          },
+          "urgencyJustification": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Urgencyjustification"
           }
         },
         "required": [
@@ -2050,6 +2200,10 @@
           "restrictionsOrCaveats",
           "customerSuccessCriteria",
           "suggestedAcgContext",
+          "requestingUnit",
+          "intelligenceDisciplines",
+          "supportedOperation",
+          "urgencyJustification",
           "missingInformation",
           "confidence"
         ],
@@ -2109,6 +2263,19 @@
             ],
             "title": "Description"
           },
+          "intelligenceDisciplines": {
+            "anyOf": [
+              {
+                "maxLength": 240,
+                "minLength": 2,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intelligencedisciplines"
+          },
           "knownContext": {
             "anyOf": [
               {
@@ -2147,6 +2314,19 @@
             ],
             "title": "Priority"
           },
+          "requestingUnit": {
+            "anyOf": [
+              {
+                "maxLength": 180,
+                "minLength": 2,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requestingunit"
+          },
           "requiredOutputFormat": {
             "anyOf": [
               {
@@ -2184,6 +2364,19 @@
             ],
             "title": "Suggestedacgcontext"
           },
+          "supportedOperation": {
+            "anyOf": [
+              {
+                "maxLength": 180,
+                "minLength": 2,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supportedoperation"
+          },
           "timePeriodEnd": {
             "anyOf": [
               {
@@ -2220,6 +2413,19 @@
               }
             ],
             "title": "Title"
+          },
+          "urgencyJustification": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 3,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Urgencyjustification"
           }
         },
         "title": "IntakeUpdateRequest",
@@ -2543,6 +2749,32 @@
           "newPassword"
         ],
         "title": "PasswordChangeRequest",
+        "type": "object"
+      },
+      "PriorityAssessmentResponse": {
+        "properties": {
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "tier": {
+            "title": "Tier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "score",
+          "tier",
+          "reasons"
+        ],
+        "title": "PriorityAssessmentResponse",
         "type": "object"
       },
       "ProductReuseResponse": {
@@ -3033,6 +3265,9 @@
             ],
             "title": "Priority"
           },
+          "priorityAssessment": {
+            "$ref": "#/components/schemas/PriorityAssessmentResponse"
+          },
           "reference": {
             "title": "Reference",
             "type": "string"
@@ -3076,6 +3311,7 @@
           "operationalQuestion",
           "areaOrRegion",
           "priority",
+          "priorityAssessment",
           "requiredOutputFormat",
           "checklistKeys",
           "latestDraft",
@@ -3340,6 +3576,13 @@
             "title": "Cansatisfy",
             "type": "boolean"
           },
+          "candidateTeams": {
+            "items": {
+              "$ref": "#/components/schemas/CandidateTeamResponse"
+            },
+            "title": "Candidateteams",
+            "type": "array"
+          },
           "confidence": {
             "title": "Confidence",
             "type": "number"
@@ -3422,7 +3665,8 @@
           "risks",
           "managerReviewRequired",
           "reasoningSummary",
-          "createdAt"
+          "createdAt",
+          "candidateTeams"
         ],
         "title": "RfaCapabilityReviewResponse",
         "type": "object"
@@ -3745,6 +3989,17 @@
       },
       "RoutingQueueResponse": {
         "properties": {
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextcursor"
+          },
           "stats": {
             "$ref": "#/components/schemas/RoutingStatsResponse"
           },
@@ -3758,7 +4013,8 @@
         },
         "required": [
           "tickets",
-          "stats"
+          "stats",
+          "nextCursor"
         ],
         "title": "RoutingQueueResponse",
         "type": "object"
@@ -3850,6 +4106,9 @@
             ],
             "title": "Priority"
           },
+          "priorityAssessment": {
+            "$ref": "#/components/schemas/PriorityAssessmentResponse"
+          },
           "recommendation": {
             "anyOf": [
               {
@@ -3907,6 +4166,7 @@
           "state",
           "title",
           "priority",
+          "priorityAssessment",
           "rfaReview",
           "cmReview",
           "recommendation",
@@ -4154,6 +4414,7 @@
             "items": {
               "$ref": "#/components/schemas/StoreAssetRequest"
             },
+            "maxItems": 100,
             "minItems": 1,
             "title": "Assets",
             "type": "array"
@@ -4673,16 +4934,29 @@
       },
       "TicketListResponse": {
         "properties": {
+          "nextCursor": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextcursor"
+          },
           "tickets": {
             "items": {
-              "$ref": "#/components/schemas/TicketResponse"
+              "$ref": "#/components/schemas/TicketSummaryResponse"
             },
             "title": "Tickets",
             "type": "array"
           }
         },
         "required": [
-          "tickets"
+          "tickets",
+          "nextCursor"
         ],
         "title": "TicketListResponse",
         "type": "object"
@@ -4717,6 +4991,10 @@
             "title": "Collaborators",
             "type": "array"
           },
+          "conversationStatus": {
+            "title": "Conversationstatus",
+            "type": "string"
+          },
           "createdAt": {
             "format": "date-time",
             "title": "Createdat",
@@ -4729,6 +5007,13 @@
           },
           "intake": {
             "$ref": "#/components/schemas/IntakeDetailsResponse"
+          },
+          "intakeChecklist": {
+            "items": {
+              "$ref": "#/components/schemas/IntakeChecklistItemResponse"
+            },
+            "title": "Intakechecklist",
+            "type": "array"
           },
           "isReadyForSubmission": {
             "title": "Isreadyforsubmission",
@@ -4788,6 +5073,8 @@
           "requesterUserId",
           "state",
           "intake",
+          "intakeChecklist",
+          "conversationStatus",
           "isReadyForSubmission",
           "visibleProductMatches",
           "releasedProductIds",
@@ -4801,6 +5088,95 @@
           "updatedAt"
         ],
         "title": "TicketResponse",
+        "type": "object"
+      },
+      "TicketSummaryResponse": {
+        "properties": {
+          "collaboratorCount": {
+            "title": "Collaboratorcount",
+            "type": "integer"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "isReadyForSubmission": {
+            "title": "Isreadyforsubmission",
+            "type": "boolean"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "releasedProductId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Releasedproductid"
+          },
+          "requesterUserId": {
+            "format": "uuid",
+            "title": "Requesteruserid",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "requesterUserId",
+          "state",
+          "title",
+          "priority",
+          "isReadyForSubmission",
+          "collaboratorCount",
+          "releasedProductId",
+          "createdAt",
+          "updatedAt"
+        ],
+        "title": "TicketSummaryResponse",
         "type": "object"
       },
       "TimelineEntryResponse": {
@@ -6622,6 +6998,36 @@
     "/api/v1/audit": {
       "get": {
         "operationId": "list_audit_events_api_v1_audit_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Before"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -6632,6 +7038,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "List Audit Events",
@@ -7640,6 +8056,31 @@
     "/api/v1/routing/cm/queue": {
       "get": {
         "operationId": "cm_queue_api_v1_routing_cm_queue_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Cursor",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 25,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -7650,6 +8091,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Cm Queue",
@@ -7661,6 +8112,31 @@
     "/api/v1/routing/rfa/queue": {
       "get": {
         "operationId": "rfa_queue_api_v1_routing_rfa_queue_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Cursor",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 25,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -7671,6 +8147,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Rfa Queue",
@@ -7711,6 +8197,29 @@
             "schema": {
               "title": "Route",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Cursor",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 25,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
             }
           }
         ],
@@ -9105,6 +9614,37 @@
     "/api/v1/tickets": {
       "get": {
         "operationId": "list_tickets_api_v1_tickets_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Pagesize",
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -9115,9 +9655,62 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "List Tickets",
+        "tags": [
+          "tickets"
+        ]
+      }
+    },
+    "/api/v1/tickets/{ticket_id}": {
+      "get": {
+        "operationId": "ticket_details_api_v1_tickets__ticket_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ticket Details",
         "tags": [
           "tickets"
         ]

@@ -1,0 +1,79 @@
+.priority-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0 9px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.priority-badge--p1 {
+  border-color: var(--critical);
+  color: var(--critical);
+}
+
+.priority-badge--p2 {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.priority-badge--p3 {
+  color: var(--text);
+}
+
+.priority-assessment {
+  display: grid;
+  gap: 7px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 11px 13px;
+  background: var(--surface-muted);
+}
+
+.priority-assessment span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.priority-assessment ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+}
+
+.routing-candidates h4 {
+  margin: 0 0 6px;
+  font-size: 0.86rem;
+}
+
+.routing-candidates ol {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.routing-candidates li {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.routing-candidates li strong {
+  color: var(--text);
+  margin-right: 8px;
+}
+
+.capability-team__badge {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 8px;
+  color: var(--accent);
+  font-family: var(--font-mono);
+}

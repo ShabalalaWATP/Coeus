@@ -3,7 +3,9 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from uuid import UUID
 
+from coeus.domain.capabilities import CandidateTeam
 from coeus.domain.enums import TicketState
+from coeus.domain.prioritisation import PriorityAssessment
 from coeus.domain.qc import FeedbackRequest, FeedbackSubmission, ProductIndexRecord, QcDecision
 
 
@@ -70,6 +72,10 @@ class IntakeDetails:
     restrictions_or_caveats: str | None = None
     customer_success_criteria: str | None = None
     suggested_acg_context: str | None = None
+    requesting_unit: str | None = None
+    intelligence_disciplines: str | None = None
+    supported_operation: str | None = None
+    urgency_justification: str | None = None
     missing_information: tuple[str, ...] = ()
     confidence: float = 0.0
 
@@ -168,6 +174,7 @@ class RfaCapabilityReview:
     reasoning_summary: str
     created_at: datetime
     suggested_team_name: str | None = None
+    candidate_teams: tuple[CandidateTeam, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -186,6 +193,7 @@ class CmCapabilityReview:
     created_at: datetime
     suggested_collection_team_id: str | None = None
     suggested_collection_team_name: str | None = None
+    candidate_teams: tuple[CandidateTeam, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -331,5 +339,8 @@ class TicketRecord:
     product_index_records: tuple[ProductIndexRecord, ...] = field(default_factory=tuple)
     feedback_requests: tuple[FeedbackRequest, ...] = field(default_factory=tuple)
     feedback_submissions: tuple[FeedbackSubmission, ...] = field(default_factory=tuple)
+    # Intake conversation lifecycle: "open", "close_offered" or "closed".
+    conversation_status: str = "open"
+    priority_assessment: PriorityAssessment | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))

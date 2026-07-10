@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "pwsh ./scripts/dev.ps1",
     "line-limit": "node scripts/check-file-lines.mjs",
+    "security-policy:check": "node scripts/check-security-policy.mjs",
     "lint": "pnpm --filter @coeus/web lint",
     "test": "pnpm --filter @coeus/web test && pnpm test:backend",
     "test:backend": "uv run --directory apps/api pytest --cov-report=json:coverage.json && uv run --project apps/api python scripts/check_backend_coverage.py apps/api/coverage.json",

@@ -1,15 +1,17 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { ClipboardList } from "lucide-react";
 
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/PageState";
 import { listAuditEvents } from "../../lib/api-client/audit";
 
 export default function AuditPage() {
-  const auditQuery = useQuery({
+  const auditQuery = useInfiniteQuery({
     queryKey: ["audit-events"],
-    queryFn: listAuditEvents,
+    queryFn: ({ pageParam }) => listAuditEvents(pageParam),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
   });
-  const events = auditQuery.data ?? [];
+  const events = auditQuery.data?.pages.flatMap((page) => page.events) ?? [];
 
   return (
     <div className="workspace-page">
@@ -26,7 +28,7 @@ export default function AuditPage() {
           <ClipboardList aria-hidden="true" size={20} />
           <div>
             <h2 id="audit-events-title">Events</h2>
-            <p>{events.length} events recorded.</p>
+            <p>{events.length} events loaded.</p>
           </div>
         </div>
         {auditQuery.isLoading ? <LoadingState label="Loading audit events" /> : null}
@@ -46,6 +48,16 @@ export default function AuditPage() {
             </article>
           ))}
         </div>
+        {auditQuery.hasNextPage ? (
+          <button
+            className="secondary-button"
+            disabled={auditQuery.isFetchingNextPage}
+            onClick={() => void auditQuery.fetchNextPage()}
+            type="button"
+          >
+            {auditQuery.isFetchingNextPage ? "Loading older events…" : "Load older events"}
+          </button>
+        ) : null}
       </section>
     </div>
   );

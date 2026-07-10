@@ -6,6 +6,32 @@ Close every validated finding from the 2026-07-10 repository assessment and
 raise the codebase's SOLID, readability, maintainability and verification
 quality without turning GCP into a current runtime dependency.
 
+The sealed scan of revision `72a0dc58` reported a second baseline of 16
+reportable findings, three medium and thirteen low. Sprint 14B keeps this spec
+open until those occurrences are closed on a clean immutable revision.
+
+## Sealed Sprint 14B Finding Baseline
+
+### Immediate boundaries
+
+1. Restrict PostgreSQL to loopback and remove the known superuser credential.
+2. Move Store and RFI provider I/O away from the event loop.
+3. Cap per-ticket chat count and aggregate bytes.
+
+### Shared resource budgets
+
+1. Stream asset downloads and cap aggregate in-flight bytes.
+2. Bound Store and RFI candidate, comparison and provider-call work.
+3. Coalesce or semaphore readiness database checks.
+4. Cap product asset metadata, ticket attachments and analyst draft history.
+5. Paginate ticket and routing collections with bounded summary responses.
+
+### Monitoring and CI integrity
+
+1. Preserve audit cursors in the client and expose older-event navigation.
+2. Remove ZAP warning suppression and define reviewed FAIL, WARN and IGNORE
+   rules with a deliberately vulnerable CI fixture.
+
 ## Product Boundary
 
 - Coeus is currently a local, single-instance application.
@@ -140,6 +166,25 @@ The orchestrator owns final edits, integration, broad checks, documentation and
 the completion audit. A subagent summary is evidence for planning, not proof
 that a finding is fixed.
 
+Sprint 14B uses these non-overlapping editing contracts:
+
+- Database and network worker: Compose, database roles, migrations and local
+  database runbooks only.
+- Async and compute worker: Store/RFI embeddings, ranking budgets and liveness
+  tests only.
+- Aggregate-boundary worker: chat, attachment, asset, draft and list limits,
+  plus their schemas and focused tests.
+- Storage and health worker: streaming downloads, download concurrency and
+  readiness coalescing/timeout only.
+- Monitoring and CI worker: audit pagination, ZAP policy, controlled fixture
+  and required-check documentation only.
+- Documentation and Plan Keeper: the root plan, master tracker, ADRs, threat
+  models, development story and runbooks only.
+
+Each worker must return changed files, the invariant restored, the exact tests
+run, remaining proof gaps and a maximum/maximum-plus-one or equivalent bounded
+regression. One editing owner is responsible for each shared file.
+
 ## Definition Of Done
 
 ### Security findings
@@ -179,6 +224,20 @@ that a finding is fixed.
 - A fresh sealed security scan has no unresolved occurrence from the original 17
   findings. Any newly discovered finding is fixed or explicitly retained with
   evidence that completion is not being claimed.
+
+### Sprint 14B sealed baseline
+
+- Every one of the 16 sealed-scan PoCs fails safely on the fixed revision.
+- Legitimate use through each original entrypoint still succeeds.
+- Equivalent callers and sibling sinks have been reviewed and recorded.
+- No rejected over-budget operation changes persistence, timeline, audit or
+  object-storage state.
+- PostgreSQL is loopback-only and the application role is not a superuser.
+- A delayed provider does not block independent event-loop work.
+- List and mutation response sizes are bounded by documented budgets.
+- The ZAP fixture fails its required check and still publishes evidence.
+- A fresh sealed repository-wide scan of a clean revision has no unresolved
+  occurrence from the 16-finding baseline and no newly reportable finding.
 
 ## Pre-Seal Verification Evidence
 

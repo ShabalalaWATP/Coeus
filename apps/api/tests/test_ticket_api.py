@@ -59,7 +59,13 @@ async def test_intake_can_be_edited_and_submitted_when_complete() -> None:
                 "description": "Assess mock shipping activity and likely disruption.",
                 "operationalQuestion": "What activity needs command attention?",
                 "areaOrRegion": "Baltic ports",
+                "timePeriodStart": "2026-06-01",
                 "priority": "high",
+                "supportedOperation": "Operation Harbour Sentinel",
+                "urgencyJustification": "A patrol posture decision is due this week.",
+                "deadline": "Friday",
+                "requestingUnit": "Carrier Strike Group Atlas",
+                "intelligenceDisciplines": "IMINT",
                 "requiredOutputFormat": "Briefing note",
                 "customerSuccessCriteria": "Identify actions for watch teams.",
             },
@@ -76,8 +82,10 @@ async def test_intake_can_be_edited_and_submitted_when_complete() -> None:
     assert payload["state"] == TicketState.RFI_SEARCHING
     assert [run["agentName"] for run in payload["agentRuns"]] == [
         "customer-chatbot-agent",
+        "prioritisation-agent",
         "rfi-search-agent",
     ]
+    assert any(entry["eventType"] == "priority_assessed" for entry in payload["timeline"])
     assert any(entry["eventType"] == "search_started" for entry in payload["timeline"])
 
 
@@ -244,7 +252,13 @@ async def test_product_team_ticket_list_excludes_unrelated_submitted_tickets() -
                 "description": "Assess mock shipping activity and likely disruption.",
                 "operationalQuestion": "What activity needs command attention?",
                 "areaOrRegion": "Baltic ports",
+                "timePeriodStart": "2026-06-01",
                 "priority": "high",
+                "supportedOperation": "Operation Harbour Sentinel",
+                "urgencyJustification": "A patrol posture decision is due this week.",
+                "deadline": "Friday",
+                "requestingUnit": "Carrier Strike Group Atlas",
+                "intelligenceDisciplines": "IMINT",
                 "requiredOutputFormat": "Briefing note",
                 "customerSuccessCriteria": "Identify actions for watch teams.",
             },

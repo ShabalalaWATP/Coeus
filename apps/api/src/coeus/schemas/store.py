@@ -1,7 +1,13 @@
 from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from coeus.core.resource_limits import (
+    MAX_PRODUCT_ASSET_METADATA_BYTES,
+    MAX_PRODUCT_ASSETS,
+    text_bytes,
+)
 
 ISO_DATE_PATTERN = r"^\d{4}-\d{2}-\d{2}$"
 ReleasabilityText = Annotated[str, Field(min_length=1, max_length=40)]
@@ -63,7 +69,17 @@ class StoreProductCreateRequest(BaseModel):
     )
     geojson_ref: str | None = Field(default=None, validation_alias="geojsonRef")
     bounding_box: BoundingBoxRequest | None = Field(default=None, validation_alias="boundingBox")
-    assets: list[StoreAssetRequest] = Field(min_length=1)
+    assets: list[StoreAssetRequest] = Field(min_length=1, max_length=MAX_PRODUCT_ASSETS)
+
+    @model_validator(mode="after")
+    def validate_asset_metadata_budget(self) -> "StoreProductCreateRequest":
+        used = sum(
+            text_bytes(asset.name, asset.asset_type, asset.mime_type, asset.sha256)
+            for asset in self.assets
+        )
+        if used > MAX_PRODUCT_ASSET_METADATA_BYTES:
+            raise ValueError("asset metadata exceeds the product budget")
+        return self
 
 
 class MetadataSuggestionRequest(BaseModel):

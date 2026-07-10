@@ -37,6 +37,18 @@ class CapabilityTeamResponse(BaseModel):
     keywords: list[str]
     work_packages: list[str] = Field(serialization_alias="workPackages")
     source_labels: list[str] = Field(serialization_alias="sourceLabels")
+    disciplines: list[str]
+    regions: list[str]
+    rank: float
+
+
+class CandidateTeamResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    team_id: str = Field(serialization_alias="teamId")
+    name: str
+    score: float
+    reasons: list[str]
 
 
 class CapabilityCatalogueResponse(BaseModel):
@@ -60,6 +72,7 @@ class RfaCapabilityReviewResponse(BaseModel):
     manager_review_required: bool = Field(serialization_alias="managerReviewRequired")
     reasoning_summary: str = Field(serialization_alias="reasoningSummary")
     created_at: datetime = Field(serialization_alias="createdAt")
+    candidate_teams: list[CandidateTeamResponse] = Field(serialization_alias="candidateTeams")
 
 
 class CmCapabilityReviewResponse(BaseModel):
@@ -84,6 +97,7 @@ class CmCapabilityReviewResponse(BaseModel):
     manager_review_required: bool = Field(serialization_alias="managerReviewRequired")
     reasoning_summary: str = Field(serialization_alias="reasoningSummary")
     created_at: datetime = Field(serialization_alias="createdAt")
+    candidate_teams: list[CandidateTeamResponse] = Field(serialization_alias="candidateTeams")
 
 
 class RouteRecommendationResponse(BaseModel):
@@ -129,6 +143,14 @@ class WorkflowPlanUpdateResponse(BaseModel):
     created_at: datetime = Field(serialization_alias="createdAt")
 
 
+class PriorityAssessmentResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    score: float
+    tier: str
+    reasons: list[str]
+
+
 class RoutingTicketResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -138,6 +160,9 @@ class RoutingTicketResponse(BaseModel):
     state: str
     title: str
     priority: str | None
+    priority_assessment: PriorityAssessmentResponse = Field(
+        serialization_alias="priorityAssessment"
+    )
     rfa_review: RfaCapabilityReviewResponse | None = Field(serialization_alias="rfaReview")
     cm_review: CmCapabilityReviewResponse | None = Field(serialization_alias="cmReview")
     recommendation: RouteRecommendationResponse | None
@@ -166,3 +191,4 @@ class RoutingQueueResponse(BaseModel):
 
     tickets: list[RoutingTicketResponse]
     stats: RoutingStatsResponse
+    next_cursor: str | None = Field(serialization_alias="nextCursor")

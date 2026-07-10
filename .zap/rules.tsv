@@ -1,0 +1,3 @@
+# ZAP baseline policy. FAIL and WARN entries block because the workflow does not use -I.
+# rule_id<TAB>action<TAB>reason
+10021	IGNORE	The local Vite preview and API are HTTP-only test targets; production TLS terminates outside this local scan.

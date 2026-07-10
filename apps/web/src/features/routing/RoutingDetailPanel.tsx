@@ -80,6 +80,21 @@ export function RoutingDetailPanel({
             <p>{selectedTicket.title}</p>
           </div>
           <StatusPill state={selectedTicket.state} />
+          {selectedTicket.priorityAssessment ? (
+            <div className="priority-assessment">
+              <span
+                className={`priority-badge priority-badge--${selectedTicket.priorityAssessment.tier.toLowerCase()}`}
+              >
+                {selectedTicket.priorityAssessment.tier}
+              </span>
+              <span>Internal priority score {selectedTicket.priorityAssessment.score}</span>
+              <ul>
+                {selectedTicket.priorityAssessment.reasons.map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <Recommendation ticket={selectedTicket} />
           <Review title="RFA recommendation" review={selectedTicket.rfaReview} />
           <Review title="CM recommendation" review={selectedTicket.cmReview} />

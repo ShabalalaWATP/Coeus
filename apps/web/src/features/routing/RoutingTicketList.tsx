@@ -21,6 +21,14 @@ export function RoutingTicketList({ onSelect, tickets }: RoutingTicketListProps)
         >
           <strong>{ticket.reference}</strong>
           <span>{ticket.title}</span>
+          {ticket.priorityAssessment ? (
+            <small
+              className={`priority-badge priority-badge--${ticket.priorityAssessment.tier.toLowerCase()}`}
+              title={ticket.priorityAssessment.reasons.join(", ")}
+            >
+              {ticket.priorityAssessment.tier}
+            </small>
+          ) : null}
           <small>{formatWorkflowState(ticket.state)}</small>
         </button>
       ))}

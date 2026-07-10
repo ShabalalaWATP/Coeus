@@ -20,5 +20,8 @@ RUN apk upgrade --no-cache
 
 COPY infra/docker/nginx-web.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/apps/web/dist /usr/share/nginx/html
+RUN chown -R nginx:nginx /etc/nginx/conf.d /usr/share/nginx/html /var/cache/nginx /var/run
+
+USER nginx
 
 EXPOSE 8080

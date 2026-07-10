@@ -31,6 +31,7 @@ type RoutingQueuePageProps = {
 
 const EMPTY_QUEUE: RoutingQueue = {
   tickets: [],
+  nextCursor: null,
   stats: {
     routeAssessmentCount: 0,
     rfaReviewCount: 0,
@@ -59,6 +60,21 @@ export default function RoutingQueuePage({ route }: RoutingQueuePageProps) {
     initialDataUpdatedAt: 0,
   });
   const queue = queueQuery.data;
+  const olderQueueMutation = useMutation({
+    mutationFn: () => listRoutingQueue(route, queue.nextCursor ?? undefined),
+    onSuccess: (page) => {
+      queryClient.setQueryData<RoutingQueue>(["routing-queue", route], {
+        ...queue,
+        nextCursor: page.nextCursor,
+        tickets: [
+          ...queue.tickets,
+          ...page.tickets.filter(
+            (candidate) => !queue.tickets.some((ticket) => ticket.ticketId === candidate.ticketId),
+          ),
+        ],
+      });
+    },
+  });
   const selectedTicket = useMemo(
     () => queue.tickets.find((ticket) => ticket.ticketId === selectedTicketId) ?? queue.tickets[0],
     [queue.tickets, selectedTicketId],
@@ -168,7 +184,19 @@ export default function RoutingQueuePage({ route }: RoutingQueuePageProps) {
           {queueQuery.isError ? (
             <ErrorState onRetry={() => void queueQuery.refetch()} />
           ) : (
-            <RoutingTicketList onSelect={setSelectedTicketId} tickets={queue.tickets} />
+            <>
+              <RoutingTicketList onSelect={setSelectedTicketId} tickets={queue.tickets} />
+              {queue.nextCursor ? (
+                <button
+                  className="secondary-button"
+                  disabled={olderQueueMutation.isPending}
+                  onClick={() => olderQueueMutation.mutate()}
+                  type="button"
+                >
+                  {olderQueueMutation.isPending ? "Loading more…" : "Load more tickets"}
+                </button>
+              ) : null}
+            </>
           )}
         </aside>
         <RoutingDetailPanel

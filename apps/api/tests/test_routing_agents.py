@@ -5,6 +5,7 @@ import pytest
 from coeus.core.errors import AppError
 from coeus.domain.enums import TicketState
 from coeus.domain.tickets import IntakeDetails, RoutingRoute, TicketRecord
+from coeus.services.capability_catalogue import CapabilityCatalogue
 from coeus.services.routing_agents import CmCapabilityAgent, RfaCapabilityAgent
 from coeus.services.routing_records import (
     current_queue_permission,
@@ -22,6 +23,14 @@ def _ticket(intake: IntakeDetails) -> TicketRecord:
         state=TicketState.ROUTE_ASSESSMENT,
         intake=intake,
     )
+
+
+def _cm_agent() -> CmCapabilityAgent:
+    return CmCapabilityAgent(CapabilityCatalogue())
+
+
+def _rfa_agent() -> RfaCapabilityAgent:
+    return RfaCapabilityAgent(CapabilityCatalogue())
 
 
 def _complete_intake(**overrides: str | None) -> IntakeDetails:
@@ -61,7 +70,7 @@ def _complete_intake(**overrides: str | None) -> IntakeDetails:
 def test_cm_agent_confirms_collection_terms_even_without_a_team_keyword() -> None:
     intake = _complete_intake(description="Monitor the mock area daily.")
 
-    review = CmCapabilityAgent().review(_ticket(intake))
+    review = _cm_agent().review(_ticket(intake))
 
     assert review.can_satisfy is True
     assert review.confidence == 0.86
@@ -71,7 +80,7 @@ def test_cm_agent_confirms_collection_terms_even_without_a_team_keyword() -> Non
 def test_cm_agent_treats_team_keyword_only_match_as_unconfirmed_signal() -> None:
     intake = _complete_intake(description="Summarise mock shipping registry entries.")
 
-    review = CmCapabilityAgent().review(_ticket(intake))
+    review = _cm_agent().review(_ticket(intake))
 
     assert review.can_satisfy is False
     assert review.confidence == 0.48
@@ -85,8 +94,8 @@ def test_agents_report_no_signal_for_unrelated_intake() -> None:
     )
     ticket = _ticket(intake)
 
-    rfa = RfaCapabilityAgent().review(ticket)
-    cm = CmCapabilityAgent().review(ticket)
+    rfa = _rfa_agent().review(ticket)
+    cm = _cm_agent().review(ticket)
 
     assert rfa.can_satisfy is False
     assert rfa.confidence == 0.34
@@ -103,7 +112,7 @@ def test_cm_agent_requires_deadline_for_critical_priority_and_flags_risks() -> N
         restrictions_or_caveats="Mock data only.",
     )
 
-    review = CmCapabilityAgent().review(_ticket(intake))
+    review = _cm_agent().review(_ticket(intake))
 
     assert review.can_satisfy is False
     assert review.confidence == 0.28
@@ -117,7 +126,7 @@ def test_cm_agent_requires_deadline_for_critical_priority_and_flags_risks() -> N
 def test_terms_match_through_punctuation_and_plurals() -> None:
     intake = _complete_intake(description="Can the team deploy more sensors?")
 
-    review = CmCapabilityAgent().review(_ticket(intake))
+    review = _cm_agent().review(_ticket(intake))
 
     assert review.can_satisfy is True
     assert "mock sensor reporting" in review.suggested_collection_sources
@@ -125,7 +134,7 @@ def test_terms_match_through_punctuation_and_plurals() -> None:
 
 def test_routing_record_guards_reject_missing_or_wrong_queue_state() -> None:
     ticket = _ticket(_complete_intake())
-    cm_review = CmCapabilityAgent().review(
+    cm_review = _cm_agent().review(
         _ticket(_complete_intake(description="Monitor the mock area daily."))
     )
 

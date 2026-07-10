@@ -91,6 +91,19 @@ export function Review({
           ))}
         </ul>
       ) : null}
+      {review.candidateTeams?.length ? (
+        <div className="routing-candidates">
+          <h4>Candidate teams</h4>
+          <ol>
+            {review.candidateTeams.map((candidate) => (
+              <li key={candidate.teamId} title={candidate.reasons.join(", ")}>
+                <strong>{candidate.name}</strong>
+                <span>score {candidate.score}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : null}
     </article>
   );
 }

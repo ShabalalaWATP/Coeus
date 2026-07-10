@@ -13,6 +13,7 @@ from coeus.repositories.access import AccessRepository
 from coeus.services.analyst_records import approved_route
 from coeus.services.audit import AuditLog
 from coeus.services.notifications import NotificationService
+from coeus.services.prioritisation import priority_sort_key
 from coeus.services.qc_records import dissemination, feedback_request
 from coeus.services.store import StoreServices
 from coeus.services.ticket_records import timeline
@@ -44,13 +45,14 @@ class ProductReleaseService:
 
     def queue(self, actor: UserAccount, route: RoutingRoute) -> tuple[TicketRecord, ...]:
         self._require(actor, ROUTE_PERMISSIONS[route])
-        return tuple(
+        queued = (
             ticket
             for ticket in self._tickets.tickets.list_workflow_tickets(
                 actor, RELEASE_READ_PERMISSIONS
             )
             if ticket.state == TicketState.MANAGER_RELEASE and approved_route(ticket) == route
         )
+        return tuple(sorted(queued, key=priority_sort_key))
 
     def release(self, actor: UserAccount, ticket_id: UUID, route: RoutingRoute) -> TicketRecord:
         self._require(actor, ROUTE_PERMISSIONS[route])

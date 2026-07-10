@@ -18,8 +18,8 @@ The repository uses GitHub Actions for pull-request and `main` branch checks.
 | `IaC Security` | pull request, push to `main`, weekly schedule | Checkov Terraform scan with SARIF upload. |
 | `Container Security` | pull request, push to `main`, weekly schedule | Docker image build and Trivy vulnerability scanning for API and web images. |
 | `Supply Chain Security` | pull request, push to `main`, weekly schedule | Gitleaks committed-history scan and CycloneDX SBOM artifact generation. |
-| `DAST Security` | pull request, push to `main`, weekly schedule | ZAP baseline scan against a local CI-hosted web target. |
-| `Deploy Dev` | manual dispatch, optional push to `main` | Keyless build, push and Cloud Run deploy for a future GCP dev environment. |
+| `DAST Security` | pull request, push to `main`, weekly schedule | Fail-closed ZAP baseline scan against a local CI-hosted web target using a reviewed rules file. |
+| `Deploy Dev` | manual dispatch, optional push to `main` | Future-migration validation and local image builds only. It does not authenticate, push, change infrastructure or deploy. |
 
 Dependabot runs weekly for GitHub Actions, npm, pip, Docker and Terraform
 dependencies. Each ecosystem has a 7-day cooldown for version updates. npm
@@ -68,13 +68,12 @@ available required check.
 
 ## Deployment
 
-The current app is local-first. The protected dev deployment workflow is a
-reference path for a future work-owned GCP project. It uses GitHub OIDC and GCP
-Workload Identity Federation, not service account key JSON. Keep deployment
-disabled unless the `dev` GitHub Environment variables are configured and the
-first manual deployment succeeds.
+The current app is local-first. No current workflow may authenticate to GCP,
+push images, change infrastructure or deploy traffic. The dev workflow is an
+inactive migration-reference validator and local builder only.
 
-Deployment jobs must:
+Any future deployment job requires a separate authorised migration milestone
+and must:
 
 - run only after all CI and security jobs pass
 - target a named GitHub Environment such as `dev`, `staging` or `production`
@@ -83,3 +82,12 @@ Deployment jobs must:
 - publish immutable artefacts or container images
 - record the deployed Git SHA
 - have a documented rollback command
+
+## ZAP Required-Gate Policy
+
+- Do not pass `-I`; warning exit codes must reach `fail_action: true`.
+- Maintain a reviewed rules file that explicitly classifies FAIL, WARN and
+  justified IGNORE rules.
+- Run a controlled vulnerable fixture and prove `zap-baseline` fails while its
+  report and local target logs remain available.
+- Verify the live GitHub ruleset requires the exact `zap-baseline` context.

@@ -20,7 +20,7 @@ async def test_no_match_search_requires_customer_consent_before_route_review() -
         user = await login(client, "user@example.test")
         ticket_id = await _no_match_ticket(client, str(user["csrfToken"]))
         search = await _run_no_match_search(client, ticket_id, str(user["csrfToken"]))
-        tickets = await client.get("/api/v1/tickets")
+        ticket = (await client.get(f"/api/v1/tickets/{ticket_id}")).json()
         consent = await client.post(
             f"/api/v1/tickets/{ticket_id}/no-match-consent",
             headers={"X-CSRF-Token": str(user["csrfToken"])},
@@ -32,7 +32,6 @@ async def test_no_match_search_requires_customer_consent_before_route_review() -
             headers={"X-CSRF-Token": str(manager["csrfToken"])},
         )
 
-    ticket = _ticket_payload(tickets.json(), ticket_id)
     assert search.json()["ticketState"] == "RFI_NO_MATCH"
     assert search.json()["offers"] == []
     assert search.json()["metrics"]["offeredCount"] == 0
@@ -155,7 +154,10 @@ async def _no_match_ticket(client: AsyncClient, csrf_token: str) -> str:
             "description": "Forecast mock agricultural yields on Mars farms.",
             "operationalQuestion": "What crop yield is expected?",
             "areaOrRegion": "Mars farms",
+            "timePeriodStart": "2026-06-01",
             "priority": "routine",
+            "requestingUnit": "Mars Survey Squadron",
+            "intelligenceDisciplines": "OSINT",
             "requiredOutputFormat": "spreadsheet",
             "customerSuccessCriteria": "Estimate crop output.",
             "knownContext": None,

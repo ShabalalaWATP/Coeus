@@ -7,7 +7,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, Header, UploadFile
 from pydantic import ValidationError
-from starlette.responses import Response
+from starlette.responses import StreamingResponse
 
 from coeus.api.dependencies import (
     get_asset_token_service,
@@ -80,7 +80,7 @@ def download_asset(
     tokens: Annotated[AssetTokenService, Depends(get_asset_token_service)],
     storage: Annotated[ObjectStorage, Depends(get_object_storage)],
     store_services: Annotated[StoreServices, Depends(get_store_services)],
-) -> Response:
+) -> StreamingResponse:
     claims = tokens.verify(token)
     if (
         claims.user_id != authenticated.user.user_id
@@ -99,8 +99,8 @@ def download_asset(
     if not storage.exists(selected.object_key):
         raise AppError(404, "asset_bytes_not_found", "Asset bytes were not found.")
     filename = quote(object_key_segment(selected.name))
-    return Response(
-        content=storage.read_bytes(selected.object_key),
+    return StreamingResponse(
+        storage.iter_bytes(selected.object_key, CHUNK_SIZE),
         media_type=selected.mime_type,
         # Controlled downloads must never be served from the browser HTTP cache.
         headers={

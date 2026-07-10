@@ -1,3 +1,4 @@
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 from uuid import uuid4
@@ -12,6 +13,9 @@ class ObjectStorage(Protocol):
         pass
 
     def read_bytes(self, object_key: str) -> bytes:
+        pass
+
+    def iter_bytes(self, object_key: str, chunk_size: int) -> Iterator[bytes]:
         pass
 
     def exists(self, object_key: str) -> bool:
@@ -40,6 +44,13 @@ class LocalObjectStorage:
 
     def read_bytes(self, object_key: str) -> bytes:
         return self.path_for(object_key).read_bytes()
+
+    def iter_bytes(self, object_key: str, chunk_size: int) -> Iterator[bytes]:
+        if chunk_size <= 0:
+            raise ValueError("Chunk size must be positive.")
+        with self.path_for(object_key).open("rb") as source:
+            while chunk := source.read(chunk_size):
+                yield chunk
 
     def delete_bytes(self, object_key: str) -> None:
         path = self.path_for(object_key)

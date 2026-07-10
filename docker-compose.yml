@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: coeus
       POSTGRES_PASSWORD: coeus-local
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - coeus-postgres:/var/lib/postgresql/data
     healthcheck:
@@ -24,8 +24,8 @@ services:
       MINIO_ROOT_USER: coeus-local
       MINIO_ROOT_PASSWORD: coeus-local-password
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     volumes:
       - coeus-minio:/data
 
@@ -44,7 +44,7 @@ services:
       COEUS_ASSET_TOKEN_SECRET: local-docker-only-asset-token-secret-32
       COEUS_EMAIL_PROVIDER: outbox
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
       - coeus-api-local-data:/var/lib/coeus
     depends_on:
@@ -58,7 +58,7 @@ services:
     environment:
       VITE_API_BASE_URL: http://localhost:8000
     ports:
-      - "5173:5173"
+      - "127.0.0.1:5173:5173"
     depends_on:
       - api
 

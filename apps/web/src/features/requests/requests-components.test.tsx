@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { ChatPanel } from "./ChatPanel";
@@ -41,12 +41,107 @@ test("disables sending short chat messages and shows a hint", async () => {
   expect(screen.getByText("Messages need at least 3 characters.")).toBeVisible();
   expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
   expect(onSend).not.toHaveBeenCalled();
-  expect(screen.getByText("No chat transcript")).toBeVisible();
 
   await userEvent.type(screen.getByLabelText("Message"), "w a brief");
   expect(screen.getByRole("button", { name: "Send" })).toBeEnabled();
   await userEvent.click(screen.getByRole("button", { name: "Send" }));
   expect(onSend).toHaveBeenCalledWith("now a brief");
+});
+
+test("greets the customer when a conversation has not started", () => {
+  render(<ChatPanel isSending={false} onSend={vi.fn()} />);
+
+  expect(screen.getByText(/Hi, I am Istari/)).toBeVisible();
+});
+
+test("shows an empty transcript note for read-only conversations", () => {
+  render(<ChatPanel isSending={false} onSend={vi.fn()} readOnly />);
+
+  expect(screen.getByText("No chat transcript")).toBeVisible();
+  expect(screen.queryByText(/Hi, I am Istari/)).not.toBeInTheDocument();
+});
+
+test("replaces the message form once the conversation is complete", () => {
+  render(
+    <ChatPanel
+      isSending={false}
+      onSend={vi.fn()}
+      ticket={{ ...ticket, conversationStatus: "closed" }}
+    />,
+  );
+
+  expect(
+    screen.getByText("The conversation is complete. Review the details and press Submit."),
+  ).toBeVisible();
+  expect(screen.queryByLabelText("Message")).not.toBeInTheDocument();
+});
+
+class FakeSpeechRecognition {
+  static instances: FakeSpeechRecognition[] = [];
+  continuous = false;
+  interimResults = false;
+  lang = "";
+  onend: (() => void) | null = null;
+  onerror: ((event: { error: string }) => void) | null = null;
+  onresult:
+    | ((event: {
+        resultIndex: number;
+        results: ArrayLike<{ 0: { transcript: string }; isFinal: boolean }>;
+      }) => void)
+    | null = null;
+  start = vi.fn();
+  stop = vi.fn(() => this.onend?.());
+
+  constructor() {
+    FakeSpeechRecognition.instances.push(this);
+  }
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  FakeSpeechRecognition.instances = [];
+});
+
+test("hides the dictate button when the browser has no speech support", () => {
+  render(<ChatPanel isSending={false} onSend={vi.fn()} />);
+
+  expect(screen.queryByRole("button", { name: "Dictate" })).not.toBeInTheDocument();
+});
+
+test("dictates a message with the microphone", async () => {
+  vi.stubGlobal("SpeechRecognition", FakeSpeechRecognition);
+  render(<ChatPanel isSending={false} onSend={vi.fn()} />);
+
+  await userEvent.click(screen.getByRole("button", { name: "Dictate" }));
+  const recognition = FakeSpeechRecognition.instances.at(-1);
+  expect(recognition?.start).toHaveBeenCalled();
+  expect(screen.getByText(/Listening/)).toBeVisible();
+
+  act(() => {
+    recognition?.onresult?.({
+      resultIndex: 0,
+      results: [{ 0: { transcript: "need a harbour brief" }, isFinal: true }],
+    });
+  });
+  expect(screen.getByLabelText("Message")).toHaveValue("need a harbour brief");
+
+  await userEvent.click(screen.getByRole("button", { name: "Stop dictation" }));
+  expect(recognition?.stop).toHaveBeenCalled();
+  expect(screen.getByRole("button", { name: "Dictate" })).toBeVisible();
+});
+
+test("explains when microphone access is blocked", async () => {
+  vi.stubGlobal("SpeechRecognition", FakeSpeechRecognition);
+  render(<ChatPanel isSending={false} onSend={vi.fn()} />);
+
+  await userEvent.click(screen.getByRole("button", { name: "Dictate" }));
+  act(() => {
+    FakeSpeechRecognition.instances.at(-1)?.onerror?.({ error: "not-allowed" });
+  });
+
+  expect(
+    screen.getByText("Microphone access was blocked. Allow it in the browser to dictate."),
+  ).toBeVisible();
 });
 
 test("shows the assistant typing indicator while a message is sending", () => {
@@ -182,6 +277,9 @@ test("omits blank intake fields from the saved payload", async () => {
     description: "Assess activity.",
     operationalQuestion: "What changed?",
     areaOrRegion: "Baltic ports",
+    timePeriodStart: "next week",
+    requestingUnit: "Carrier Strike Group Atlas",
+    intelligenceDisciplines: "IMINT",
   });
 });
 

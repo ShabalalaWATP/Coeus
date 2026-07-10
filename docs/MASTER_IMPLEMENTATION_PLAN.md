@@ -6,7 +6,7 @@ the concise delivery tracker and must stay within the repository line limit.
 
 ## Current Stage
 
-Sprint 14: Local-first security and quality remediation.
+Sprint 14B: Post-seal security remediation and release closure.
 
 ## Delivery Ledger
 
@@ -25,7 +25,8 @@ Sprint 14: Local-first security and quality remediation.
 | 11 | Feedback submission, admin/RFA/CM dashboards, product reuse analytics and Trends Analysis Agent. | Complete | Local backend, frontend, Semgrep and security gates passed on 2026-07-05. |
 | 12 | Inactive future GCP migration reference: Terraform, Cloud Run, Cloud SQL, Cloud Storage, Secret Manager, Pub/Sub, Artifact Registry and AI provider configuration. | Reference complete, inactive | Reference validation passed on 2026-07-05; no live GCP runtime is supported or required. |
 | 13 | Security hardening, container scans, SBOM, DAST, Terraform scanning, prompt-injection suite and air-gapped notes. | Complete | Local backend, frontend, Semgrep, Checkov and Gitleaks gates passed on 2026-07-05; Docker-backed checks run in GitHub Actions. |
-| 14 | Close the 2026-07-10 security findings and improve SOLID boundaries, maintainability, independent coverage gates and real integration testing. | Implementation complete, seal pending | All local quality and security gates pass; final Codex Security seal is pending. |
+| 14 | Close the original 2026-07-10 security findings and improve SOLID boundaries, maintainability, independent coverage gates and real integration testing. | Reopened by sealed scan | The implementation gates passed, but the sealed scan of `72a0dc58` reported 16 new reportable findings. |
+| 14B | Remediate the sealed 16-finding baseline, verify equivalent sinks and produce a clean immutable release candidate. | In progress | Three medium and thirteen low findings are open. Fresh-scan closure is release-blocking. |
 
 ## Sprint 11 Delivered Scope
 
@@ -114,6 +115,24 @@ local, single-instance application until the readiness gates in ADR 0019 pass.
   single-writer module tests 3 of 3 passed.
 - API container rebuilt; Trivy found zero high or critical vulnerabilities
   when ignoring unfixed issues.
+
+## Sprint 14B Remediation Ledger
+
+The sealed scan of revision `72a0dc58` supersedes the pre-seal completion
+claim. Its reportable baseline is:
+
+- P2: exposed local-network PostgreSQL superuser, blocking Store embeddings
+  and unbounded chat history.
+- P3: blocking RFI embeddings, buffered asset downloads, corpus-linear Store
+  embeddings, hybrid and RFI matcher stalls, readiness connection fan-out,
+  unbounded product assets, attachment metadata and analyst drafts,
+  unpaginated ticket and routing collections, audit pagination loss and a
+  false-green ZAP gate.
+
+Completion requires fixed-boundary regressions, full local gates and a fresh
+sealed scan of a clean revision. The current uncommitted intake and
+prioritisation work is not covered by the sealed `72a0dc58` result and must be
+integrated and scanned explicitly or excluded from the release candidate.
 
 ## Sprint 13 Delivered Scope
 

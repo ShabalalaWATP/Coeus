@@ -8,6 +8,9 @@ from coeus.services.audit import AuditLog
 from coeus.services.ticket_builder import ConfigurableIntakeProvider
 
 REFUSAL = "I can only help capture the requirement. Please provide the missing details."
+PRIORITY_QUESTION = (
+    "Thanks, that helps. How urgent is this for you: critical, high, medium, routine or low?"
+)
 
 
 class ForbiddenClient:
@@ -44,7 +47,7 @@ def test_env_key_alone_never_switches_the_provider(monkeypatch: pytest.MonkeyPat
     message = provider.build_assistant_message(_intake(), ())
 
     assert ai_models.provider() == "mock"
-    assert message == "I need priority before this can be submitted."
+    assert message == PRIORITY_QUESTION
 
 
 def test_admin_key_configuration_switches_to_gemini(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -99,7 +102,7 @@ def test_gemini_failure_degrades_to_the_mock_reply(monkeypatch: pytest.MonkeyPat
 
     message = provider.build_assistant_message(_intake(), ())
 
-    assert message == "I need priority before this can be submitted."
+    assert message == PRIORITY_QUESTION
 
 
 def test_gemini_provider_without_key_degrades_to_the_mock_reply(
@@ -111,4 +114,4 @@ def test_gemini_provider_without_key_degrades_to_the_mock_reply(
 
     message = provider.build_assistant_message(_intake(), ())
 
-    assert message == "I need priority before this can be submitted."
+    assert message == PRIORITY_QUESTION

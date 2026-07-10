@@ -1,0 +1,18 @@
+"""Security-derived aggregate budgets for user-controlled retained data."""
+
+MAX_CHAT_MESSAGES_PER_TICKET = 200
+MAX_CHAT_HISTORY_BYTES = 500_000
+MAX_ASSISTANT_REPLY_BYTES = 8_000
+MAX_TICKET_ATTACHMENTS = 50
+MAX_ATTACHMENT_METADATA_BYTES = 50_000
+MAX_PRODUCT_ASSETS = 100
+MAX_PRODUCT_ASSET_METADATA_BYTES = 100_000
+MAX_DRAFT_VERSIONS = 25
+MAX_DRAFT_HISTORY_BYTES = 250_000
+DEFAULT_TICKET_PAGE_SIZE = 25
+MAX_TICKET_PAGE_SIZE = 100
+
+
+def text_bytes(*values: str) -> int:
+    """Return a deterministic UTF-8 byte budget for persisted text."""
+    return sum(len(value.encode("utf-8")) for value in values)

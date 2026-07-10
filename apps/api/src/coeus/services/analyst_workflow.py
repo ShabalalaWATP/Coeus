@@ -15,7 +15,13 @@ from coeus.domain.tickets import (
 )
 from coeus.repositories.access import AccessRepository
 from coeus.services.analyst_assignment import assignment_change
-from coeus.services.analyst_drafts import DraftProductInput, draft_asset, new_uuid, now
+from coeus.services.analyst_drafts import (
+    DraftProductInput,
+    draft_asset,
+    ensure_draft_budget,
+    new_uuid,
+    now,
+)
 from coeus.services.analyst_records import (
     all_work_packages_complete,
     approved_route,
@@ -27,6 +33,7 @@ from coeus.services.analyst_records import (
 )
 from coeus.services.audit import AuditLog
 from coeus.services.audit_rollback import record_ticket_audit_or_rollback
+from coeus.services.prioritisation import priority_sort_key
 from coeus.services.store import StoreServices
 from coeus.services.ticket_records import timeline
 from coeus.services.tickets import TicketServices
@@ -107,7 +114,7 @@ class AnalystWorkflowService:
 
     def list_tasks(self, actor: UserAccount) -> tuple[TicketRecord, ...]:
         self._require(actor, Permission.ANALYST_WORK)
-        tasks = tuple(
+        tasks = (
             ticket
             for ticket in self._tickets.tickets.list_workflow_tickets(
                 actor, ANALYST_READ_PERMISSIONS
@@ -115,7 +122,7 @@ class AnalystWorkflowService:
             if assigned_to(ticket, actor.user_id)
             and ticket.state in {*ACTIVE_ANALYST_STATES, TicketState.QC_REVIEW}
         )
-        return tasks[:ANALYST_TASK_LIST_LIMIT]
+        return tuple(sorted(tasks, key=priority_sort_key))[:ANALYST_TASK_LIST_LIMIT]
 
     def task_details(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         self._require(actor, Permission.ANALYST_WORK)
@@ -246,6 +253,7 @@ class AnalystWorkflowService:
         self, actor: UserAccount, ticket_id: UUID, draft: DraftProductInput
     ) -> TicketRecord:
         ticket = self._active_task(actor, ticket_id)
+        ensure_draft_budget(ticket.draft_products, draft)
         assets = tuple(draft_asset(asset) for asset in draft.assets)
         version = draft_version(
             ticket.ticket_id,

@@ -4,10 +4,12 @@
 @import "./components.css";
 @import "./overview.css";
 @import "./requests.css";
+@import "./chat.css";
 @import "./requests-workspace.css";
 @import "./requests-actions.css";
 @import "./journey.css";
 @import "./routing.css";
+@import "./routing-priority.css";
 @import "./routing-override.css";
 @import "./similar-requests.css";
 @import "./analyst.css";

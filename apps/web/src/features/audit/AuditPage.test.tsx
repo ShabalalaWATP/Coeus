@@ -29,6 +29,7 @@ test("renders audit events from the API", async () => {
               metadata: { username: "admin@example.test" },
             },
           ],
+          nextCursor: null,
         }),
     }),
   );
@@ -45,7 +46,7 @@ test("renders empty audit logs", async () => {
     "fetch",
     vi.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ events: [] }),
+      json: () => Promise.resolve({ events: [], nextCursor: null }),
     }),
   );
 
@@ -66,7 +67,7 @@ test("renders an audit error state with retry", async () => {
     .mockResolvedValueOnce(failure)
     .mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ events: [] }),
+      json: () => Promise.resolve({ events: [], nextCursor: null }),
     });
   vi.stubGlobal("fetch", fetchMock);
 
@@ -95,6 +96,7 @@ test("renders system audit actors", async () => {
               metadata: {},
             },
           ],
+          nextCursor: null,
         }),
     }),
   );
@@ -103,4 +105,51 @@ test("renders system audit actors", async () => {
 
   expect(await screen.findByText("system_start")).toBeVisible();
   expect(screen.getByText("system")).toBeVisible();
+});
+
+test("loads older audit events through the cursor", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          events: [
+            {
+              eventId: "event-new",
+              eventType: "new_event",
+              occurredAt: "2026-07-05T22:00:00Z",
+              actorUserId: "admin-user",
+              metadata: {},
+            },
+          ],
+          nextCursor: "event-old",
+        }),
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          events: [
+            {
+              eventId: "event-old",
+              eventType: "older_security_event",
+              occurredAt: "2026-07-04T22:00:00Z",
+              actorUserId: "security-user",
+              metadata: {},
+            },
+          ],
+          nextCursor: null,
+        }),
+    });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<AuditPage />, "/audit");
+
+  await userEvent.click(await screen.findByRole("button", { name: "Load older events" }));
+  expect(await screen.findByText("older_security_event")).toBeVisible();
+  expect(fetchMock).toHaveBeenLastCalledWith(
+    expect.stringContaining("before=event-old"),
+    expect.anything(),
+  );
 });

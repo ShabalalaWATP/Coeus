@@ -51,7 +51,7 @@ test("shows the dashboard and opens the new request workspace", async () => {
 
   expect(await screen.findByRole("heading", { name: "Request" })).toBeVisible();
   expect(screen.getByLabelText("Message")).toBeVisible();
-  expect(screen.getByText("No chat transcript")).toBeVisible();
+  expect(screen.getByText(/Hi, I am Istari/)).toBeVisible();
 });
 
 test("shows a missing state for an unknown direct request URL", async () => {
@@ -98,8 +98,8 @@ test("creates a ticket from chat and shows the captured details checklist", asyn
   await userEvent.click(screen.getByRole("button", { name: "Send" }));
 
   expect(await screen.findByText("TCK-0001")).toBeVisible();
-  expect(screen.getByText("Details the assistant needs")).toBeVisible();
-  expect(screen.getByText("5 of 7 captured from the conversation.")).toBeVisible();
+  expect(screen.getByText("Request details")).toBeVisible();
+  expect(screen.getByText("5 of 10 captured from the conversation.")).toBeVisible();
   expect(screen.getByText("Baltic Ports Brief")).toBeVisible();
   expect(fetchMock).toHaveBeenCalledWith(
     "http://127.0.0.1:8001/api/v1/chat/messages",

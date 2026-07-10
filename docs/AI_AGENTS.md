@@ -1,18 +1,15 @@
 # Istari AI Agents
 
-Istari is an AI-first tasking system. A small set of focused agents sit behind
-the workflow and do the repetitive reasoning, while a person always makes the
-decision that changes state. This document describes each agent precisely: what
-triggers it, what it reads, how it decides, what it returns, and where the human
-stays in control.
+Istari is an AI-first tasking system: focused agents do the repetitive
+reasoning while a person always makes the decision that changes state. This
+document describes what triggers each agent, what it reads, how it decides,
+what it returns, and where the human stays in control.
 
 > Agents are deterministic mocks by default in local and test environments
-> (`COEUS_LLM_PROVIDER=mock`). They do not call an external model, they never
-> execute user instructions, and every input is treated as synthetic. Admins can
-> configure a Gemini API key locally for the chatbot response provider without
-> requiring Google Cloud hosting. The configured provider setting is
-> authoritative: an API key supplied through the environment never switches the
-> provider by itself.
+> (`COEUS_LLM_PROVIDER=mock`): no external calls, no instruction execution,
+> every input treated as synthetic. Admins can configure a Gemini API key
+> locally for the chatbot reply provider; the configured provider setting is
+> authoritative and an environment key never switches the provider by itself.
 
 ## Agents at a glance
 
@@ -24,56 +21,58 @@ stays in control.
 | RFA Capability Agent   | Route review                 | Manager runs capability checks          | Assessment-route feasibility review               | RFA manager approves, rejects or queries        |
 | CM Capability Agent    | Route review                 | Manager runs capability checks          | Collection-route feasibility review               | CM manager approves, rejects or queries         |
 | Orchestrator Agent     | Route review                 | RFI search plus RFA and CM reviews      | Recommended route and reasoning                   | Manager may follow or override with a reason    |
+| Prioritisation Agent   | Every queue                  | Intake changes; snapshot at submission  | Internal P1-P4 score with reason tags             | Managers see the ranking; no automatic action   |
 
-The stages map one-to-one onto the customer-facing
-[request journey](USER_GUIDE.md#the-request-journey).
+The stages map onto the [request journey](USER_GUIDE.md#the-request-journey).
 
 ---
 
 ## 1. Customer Chatbot Agent
 
-- **Lives in:** `apps/api/src/coeus/services/intake.py`
-- **Classes:** `MockLlmProvider`, `IntakeExtractionService`, `RequirementCompletenessService`
+- **Lives in:** `apps/api/src/coeus/services/intake.py` and `intake_standard.py`
+- **Classes:** `MockLlmProvider`, `IntakeExtractionService`,
+  `RequirementCompletenessService`, `IntakeFieldStandard`
 
 ### Purpose
 
-Turn a free-text conversation into a structured, submittable requirement without
-making the customer fill in a long form.
+Turn a free-text conversation into a structured, submittable requirement
+without ever sounding like a form: chat copy never mentions required fields,
+checklists or counts. The chat opens with a greeting, asks one question per
+turn, and knows how to end: once the intake is complete the assistant offers
+to finish and closes on confirmation, while an early "that's all" gets a
+polite explanation that more information is needed, then the next question.
+Lifecycle decisions are deterministic (`services/conversation_lifecycle.py`),
+never the LLM's. It reads the customer's chat messages only.
 
-### What it reads
+### The intake standard
 
-The customer's chat messages only. It never reads other tickets, products or
-user data.
+`INTAKE_STANDARD` in `intake_standard.py` defines the minimum information a
+query needs before it can be submitted: thirteen entries in elicitation order,
+ten always required and three urgency entries (`supported_operation`,
+`urgency_justification`, `deadline` as latest useful time) that apply only
+when the stated priority is critical or high, so claiming urgency triggers a
+natural deep-dive into what the request supports and why it is time critical.
+Each entry carries a label, rationale and the self-motivating question the
+assistant asks. The completeness gate, the workspace checklist (served as
+`intakeChecklist`) and the questions all derive from this one definition; see
+`docs/specs/intelligence-intake-and-prioritisation.md` for the full list.
 
-### What it extracts
+On each turn the assistant asks exactly one question, for the first applicable
+entry still missing (`next_elicitation`), with acknowledgement openers rotated
+so replies do not repeat. The Gemini prompt carries the same goal.
 
-The assistant works towards seven required fields:
-
-1. `title`
-2. `description`
-3. `operational_question`
-4. `area_or_region`
-5. `priority`
-6. `required_output_format`
-7. `customer_success_criteria`
-
-Extraction is heuristic and transparent: for example a phrase after "titled"
-becomes the title (or the first six words, when the message reads like a
-requirement statement), a sentence ending in "?" becomes the operational
-question, and keywords such as "critical/high/medium/low" set the priority.
-Anything the customer does not provide is left blank rather than invented: no
-operational question or success criteria is ever synthesised on the customer's
-behalf.
+Extraction (`services/intake_extractors.py`) is heuristic, transparent and
+cue-gated: a phrase after "titled" becomes the title, a sentence ending in "?"
+becomes the operational question, "urgent" maps to high priority, and the
+newer extractors (operation, unit, disciplines, urgency justification) fire
+only on explicit cues. Nothing the customer does not provide is invented.
 
 ### Completeness and confidence
 
-`RequirementCompletenessService` recomputes, on every message:
-
-- `missing_information` — the required fields still blank.
-- `confidence` — `fields_present / 7`, rounded to two decimals.
-
-The workspace checklist ("N of 7 captured") is a direct view of this. A ticket
-can only be submitted once `missing_information` is empty.
+`RequirementCompletenessService` recomputes `missing_information` and
+`confidence` (captured / applicable entries) on every message. The workspace
+checklist is a direct view of this, and a ticket can only be submitted once
+`missing_information` is empty.
 
 ### Safety
 
@@ -89,15 +88,17 @@ intake extraction is skipped entirely so injected text cannot land in any
 requirement field. The user message, the flags and the refusal are still
 recorded on the ticket.
 
-### Output
-
-An updated `IntakeDetails` record plus an assistant reply that either asks for
-the top missing fields or confirms the requirement is ready to submit.
-
 ### Human control
 
-The customer owns the requirement. They can also edit any field directly in the
-"Edit details manually" panel, and nothing is submitted until they press Submit.
+The customer owns the requirement, can edit any field in the "Edit details
+manually" panel, and nothing is submitted until they press Submit.
+
+### Voice input
+
+The chat panel offers dictation through the browser Web Speech API
+(`apps/web/src/features/requests/useSpeechToText.ts`): no server-side model or
+key, final transcripts append to the message box, the customer still presses
+Send, and unsupported browsers simply keep typing.
 
 ---
 
@@ -292,6 +293,25 @@ approval, rejection and clarification is written to the audit log.
 
 ---
 
+## 6. Prioritisation Agent
+
+- **Lives in:** `apps/api/src/coeus/domain/prioritisation.py` and
+  `services/prioritisation.py`
+
+Deterministically scores every intake from synthetic registries (priority
+level, region tier with Russia and the Baltic highest, requesting-unit
+category, supported-operation type) into a 0..1 score, a P1-P4 tier and
+prefixed reason tags. The assessment is stored whenever the intake changes,
+recorded as a `prioritisation-agent` run at submission, and orders the
+routing, analyst, QC and release queues. Managers see the badge and reasons;
+customers see only their stated priority; nothing changes state automatically.
+The capability agents reuse the tier plus team disciplines, regions and rank
+to attach top-3 `candidate_teams` to each review
+(`services/capability_recommendation.py`). Weights and details:
+`docs/specs/intelligence-intake-and-prioritisation.md` and ADR 0020.
+
+---
+
 ## Model provider and selection
 
 The agents depend on an LLM provider interface, not on a specific model:
@@ -311,13 +331,11 @@ The agents depend on an LLM provider interface, not on a specific model:
 - **Future GCP deployment:** the same runtime boundary can point at Google
   managed services without changing the workflow contracts.
 
-Administrators choose which Gemini model the chatbot provider should use from the
-Admin workspace. The catalogue, tiers and the audit of who last changed the
-model are described in the [User Guide](USER_GUIDE.md#administrator) and
-implemented in `apps/api/src/coeus/services/ai_models.py`. The selection records
-the active model and raises an `ai_model_changed` audit event. Persisted
-provider credentials should be supplied through environment configuration or a
-secret manager, not through the admin UI runtime key field.
+Administrators choose the active Gemini model from the Admin workspace
+(`services/ai_models.py`); each selection raises an `ai_model_changed` audit
+event. Persisted provider credentials belong in environment configuration or a
+secret manager, not the admin UI runtime key field. See the
+[User Guide](USER_GUIDE.md#administrator) for the catalogue and tiers.
 
 ## Design principles
 

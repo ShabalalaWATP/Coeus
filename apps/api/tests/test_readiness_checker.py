@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import AsyncIterator
 from types import TracebackType
 
@@ -86,7 +87,7 @@ async def test_database_readiness_checker_reuses_cached_engine(
     assert first.ready is True
     assert second.ready is True
     assert len(created) == 1
-    assert fake_engine.connect_calls == 2
+    assert fake_engine.connect_calls == 1
     assert fake_engine.disposed is False
 
     await dispose_readiness_engines()
@@ -106,3 +107,17 @@ async def test_database_readiness_checker_handles_unexpected_failure(
 
     assert result.ready is False
     assert result.detail == "database readiness check failed"
+
+
+@pytest.mark.asyncio
+async def test_database_readiness_checker_coalesces_concurrent_checks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake_engine = FakeEngine()
+    monkeypatch.setattr(session, "create_async_engine", lambda *_args, **_kwargs: fake_engine)
+    checker = DatabaseReadinessChecker("postgresql+asyncpg://example")
+
+    results = await asyncio.gather(*(checker.check() for _ in range(50)))
+
+    assert all(result.ready for result in results)
+    assert fake_engine.connect_calls == 1

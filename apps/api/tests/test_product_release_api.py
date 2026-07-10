@@ -50,10 +50,7 @@ async def test_owning_manager_releases_and_customer_is_notified() -> None:
         assert emptied.json()["tickets"] == []
 
         await login(client, "user@example.test")
-        tickets = await client.get("/api/v1/tickets")
-        released_ticket = next(
-            ticket for ticket in tickets.json()["tickets"] if ticket["id"] == ticket_id
-        )
+        released_ticket = (await client.get(f"/api/v1/tickets/{ticket_id}")).json()
         assert len(released_ticket["releasedProductIds"]) == 1
         product_id = released_ticket["releasedProductIds"][0]
 

@@ -95,6 +95,12 @@ async def test_prompt_injection_suite_preserves_api_authorisation_boundaries() -
         assert ticket["intake"]["title"] is None
         assert ticket["intake"]["description"] is None
         assert ticket["intake"]["knownContext"] is None
+        assert ticket["intake"]["requestingUnit"] is None
+        assert ticket["intake"]["intelligenceDisciplines"] is None
+        assert ticket["intake"]["supportedOperation"] is None
+        assert ticket["intake"]["urgencyJustification"] is None
+        # A flagged message never advances or closes the conversation.
+        assert ticket["conversationStatus"] == "open"
         # The user message and the refusal are still preserved.
         assert ticket["messages"][-2]["author"] == "user"
         assert ticket["messages"][-1]["body"] == (

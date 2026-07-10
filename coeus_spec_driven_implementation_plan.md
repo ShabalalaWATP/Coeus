@@ -2491,6 +2491,48 @@ Deliver:
 - Real browser-to-FastAPI Playwright verification.
 - Fresh sealed repository-wide security scan.
 
+### Sprint 14B: Post-seal security remediation and release closure
+
+The sealed repository-wide scan of revision
+`72a0dc582c5fd3405bf986293ecdcc94ef83bb03` reported 16 findings: three medium
+and thirteen low. Sprint 14B reopens security closure and is release-blocking.
+
+Deliver:
+
+- Loopback-only local PostgreSQL publication, a generated uncommitted password
+  and a least-privilege application role rather than a database superuser.
+- Async or bounded-offload embedding paths for Store and RFI searches.
+- Explicit count, byte, concurrency and provider-call budgets for chat,
+  attachment metadata, product asset metadata, analyst drafts, similarity,
+  ranking, downloads and readiness checks.
+- Cursor pagination and bounded summary DTOs for ticket, routing and audit
+  collections.
+- A fail-closed ZAP policy with a reviewed rules file and a controlled failing
+  fixture.
+- Regression tests for every sealed finding and a review of equivalent callers
+  and sinks.
+- A clean immutable delivery revision followed by a fresh sealed
+  whole-repository security scan.
+
+The supported runtime remains local and single-instance. Sprint 14B must not
+add GCP credentials, active cloud workflows, multiple API writers or cloud
+services as current dependencies. The separate intake, prioritisation and
+capability-recommendation feature slice must be integrated and scanned as an
+explicit workstream or kept out of the remediation delivery revision.
+
+Acceptance criteria:
+
+- All 16 sealed finding PoCs no longer reproduce through their original
+  boundary, while legitimate controls still pass.
+- Backend and frontend line and branch coverage each remain at least 95%.
+- Ruff, mypy, Bandit, pip-audit, Prettier, ESLint, TypeScript, Knip, Vitest,
+  Playwright, builds, package audits, Semgrep, Gitleaks, Actionlint, Checkov,
+  container scanning, Terraform tests and the 350-line gate pass.
+- PostgreSQL is not reachable through a non-loopback host address and the API
+  does not use a PostgreSQL superuser.
+- A fresh sealed whole-repository scan has no unresolved occurrence from the
+  16-finding baseline. Any new reportable finding blocks completion.
+
 ## 20. Definition of done for MVP
 
 The MVP is done when:

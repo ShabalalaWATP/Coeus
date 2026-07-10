@@ -39,6 +39,11 @@ export function CapabilityCataloguePanel({ route }: CapabilityCataloguePanelProp
 
 function CapabilityTeamRow({ team }: { team: CapabilityTeam }) {
   const labels = team.department === "cm" ? team.sourceLabels : team.keywords;
+  const badges = [
+    ...(team.disciplines ?? []),
+    ...(team.regions ?? []),
+    ...(team.rank !== undefined ? [`rank ${team.rank}`] : []),
+  ];
   return (
     <article className="capability-team">
       <strong>{team.name}</strong>
@@ -47,6 +52,11 @@ function CapabilityTeamRow({ team }: { team: CapabilityTeam }) {
       <div className="capability-team__labels">
         {labels.slice(0, 3).map((label) => (
           <small key={label}>{label}</small>
+        ))}
+        {badges.map((badge) => (
+          <small className="capability-team__badge" key={badge}>
+            {badge}
+          </small>
         ))}
       </div>
     </article>
