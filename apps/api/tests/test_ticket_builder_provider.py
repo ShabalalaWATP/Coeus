@@ -3,7 +3,6 @@ import pytest
 
 from coeus.core.config import Settings
 from coeus.domain.tickets import IntakeDetails
-from coeus.integrations import gemini_api
 from coeus.services.ai_models import AiModelService
 from coeus.services.audit import AuditLog
 from coeus.services.ticket_builder import ConfigurableIntakeProvider
@@ -37,7 +36,7 @@ def _intake() -> IntakeDetails:
 
 
 def test_env_key_alone_never_switches_the_provider(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(gemini_api.httpx, "Client", ForbiddenClient)
+    monkeypatch.setattr("coeus.integrations.gemini_api.httpx.Client", ForbiddenClient)
     settings = Settings(environment="test", gemini_api_key="env-secret")
     ai_models = AiModelService(settings, AuditLog())
     provider = ConfigurableIntakeProvider(settings, ai_models)
@@ -69,7 +68,7 @@ def test_admin_key_configuration_switches_to_gemini(monkeypatch: pytest.MonkeyPa
         def post(self, url: str, *, json: object, headers: object) -> FakeResponse:
             return FakeResponse()
 
-    monkeypatch.setattr(gemini_api.httpx, "Client", FakeClient)
+    monkeypatch.setattr("coeus.integrations.gemini_api.httpx.Client", FakeClient)
     settings = Settings(environment="test")
     ai_models = AiModelService(settings, AuditLog())
     ai_models.configure_api_key("admin-id", "admin@example.test", "runtime-secret")
@@ -82,7 +81,7 @@ def test_admin_key_configuration_switches_to_gemini(monkeypatch: pytest.MonkeyPa
 def test_flagged_messages_are_refused_without_calling_gemini(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(gemini_api.httpx, "Client", ForbiddenClient)
+    monkeypatch.setattr("coeus.integrations.gemini_api.httpx.Client", ForbiddenClient)
     settings = Settings(environment="test")
     ai_models = AiModelService(settings, AuditLog())
     ai_models.configure_api_key("admin-id", "admin@example.test", "runtime-secret")
@@ -94,7 +93,7 @@ def test_flagged_messages_are_refused_without_calling_gemini(
 
 
 def test_gemini_failure_degrades_to_the_mock_reply(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(gemini_api.httpx, "Client", FailingClient)
+    monkeypatch.setattr("coeus.integrations.gemini_api.httpx.Client", FailingClient)
     settings = Settings(environment="test", llm_provider="gemini_api", gemini_api_key="env-secret")
     provider = ConfigurableIntakeProvider(settings, None)
 
@@ -106,7 +105,7 @@ def test_gemini_failure_degrades_to_the_mock_reply(monkeypatch: pytest.MonkeyPat
 def test_gemini_provider_without_key_degrades_to_the_mock_reply(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(gemini_api.httpx, "Client", ForbiddenClient)
+    monkeypatch.setattr("coeus.integrations.gemini_api.httpx.Client", ForbiddenClient)
     settings = Settings(environment="test", llm_provider="gemini_api")
     provider = ConfigurableIntakeProvider(settings, None)
 

@@ -1,15 +1,19 @@
+from typing import Any, cast
+
 from httpx import AsyncClient
 
 SEED_CREDENTIAL = "CoeusLocal1!"
 
 
-async def login(client: AsyncClient, username: str) -> dict[str, object]:
+async def login(client: AsyncClient, username: str) -> dict[str, Any]:
     response = await client.post(
         "/api/v1/auth/login",
         json={"username": username, "password": SEED_CREDENTIAL},
     )
     assert response.status_code == 200
-    return response.json()
+    payload = response.json()
+    assert isinstance(payload, dict)
+    return cast(dict[str, Any], payload)
 
 
 def product_payload(acg_id: str, *, owner_team: str = "RFA") -> dict[str, object]:

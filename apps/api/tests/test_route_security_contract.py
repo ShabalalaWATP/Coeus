@@ -50,7 +50,8 @@ def test_authenticated_mutations_require_csrf_validation() -> None:
     missing_csrf: list[str] = []
 
     for route in _routes(ROUTERS):
-        for method in sorted(route.methods & MUTATING_METHODS):
+        methods = route.methods or set()
+        for method in sorted(methods & MUTATING_METHODS):
             if (method, route.path) in PUBLIC_MUTATION_EXCEPTIONS:
                 continue
             if get_csrf_validated_session not in set(_dependency_calls(route)):
