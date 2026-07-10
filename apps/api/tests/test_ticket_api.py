@@ -1,22 +1,12 @@
-from uuid import UUID
-
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from coeus.core.config import Settings
 from coeus.domain.enums import TicketState
 from coeus.main import create_app
-
-SEED_CREDENTIAL = "CoeusLocal1!"
-
-
-async def login(client: AsyncClient, username: str = "user@example.test") -> dict[str, object]:
-    response = await client.post(
-        "/api/v1/auth/login",
-        json={"username": username, "password": SEED_CREDENTIAL},
-    )
-    assert response.status_code == 200
-    return response.json()
+from ticket_api_helpers import fail_audit as _fail_audit
+from ticket_api_helpers import login
+from ticket_api_helpers import stored_ticket as _stored_ticket
 
 
 @pytest.mark.asyncio
@@ -333,13 +323,3 @@ async def test_prompt_injection_is_flagged_without_escalation_or_fabricated_prod
     assert "hidden prompt" not in ticket["messages"][-1]["body"].casefold()
     assert ticket["visibleProductMatches"] == []
     assert "prompt_injection_attempt" in ticket["agentRuns"][0]["safetyFlags"]
-
-
-def _fail_audit(*_args: object, **_kwargs: object) -> None:
-    raise RuntimeError("audit unavailable")
-
-
-def _stored_ticket(app: object, ticket_id: str):
-    ticket = app.state.ticket_services.tickets._repository.get(UUID(ticket_id))
-    assert ticket is not None
-    return ticket

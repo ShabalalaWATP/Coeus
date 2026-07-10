@@ -17,7 +17,7 @@ from coeus.services.passwords import PasswordHasher
 SEED_CREDENTIAL = "CoeusLocal1!"
 
 
-class RecordingPasswordHasher:
+class RecordingPasswordHasher(PasswordHasher):
     def __init__(self) -> None:
         self.verified_hashes: list[str] = []
 

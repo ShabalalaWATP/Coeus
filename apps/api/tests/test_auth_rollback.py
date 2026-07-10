@@ -2,7 +2,7 @@ import pytest
 
 from coeus.core.config import Settings
 from coeus.repositories.auth import LoginAttemptRepository, SeedUserRepository, SessionRepository
-from coeus.services.audit import AuditLog
+from coeus.services.audit import AuditEvent, AuditLog
 from coeus.services.auth import AuthService
 from coeus.services.passwords import PasswordHasher
 
@@ -55,10 +55,14 @@ def test_login_rolls_back_session_and_attempts_when_audit_fails(
     service._login_attempts.record_failure("user@example.test", threshold=3, lockout_seconds=300)
     original_record = service.audit_log.record
 
-    def fail_login_success(event_type: str, *_args: object, **_kwargs: object) -> None:
+    def fail_login_success(
+        event_type: str,
+        actor_user_id: str | None = None,
+        metadata: dict[str, str] | None = None,
+    ) -> AuditEvent:
         if event_type == "login_success":
             raise RuntimeError("simulated audit failure")
-        original_record(event_type, *_args, **_kwargs)
+        return original_record(event_type, actor_user_id, metadata)
 
     monkeypatch.setattr(service.audit_log, "record", fail_login_success)
 
@@ -84,10 +88,14 @@ def test_password_change_rolls_back_user_sessions_and_attempts_when_audit_fails(
     service._login_attempts.record_failure("user@example.test", threshold=3, lockout_seconds=300)
     original_record = service.audit_log.record
 
-    def fail_password_changed(event_type: str, *_args: object, **_kwargs: object) -> None:
+    def fail_password_changed(
+        event_type: str,
+        actor_user_id: str | None = None,
+        metadata: dict[str, str] | None = None,
+    ) -> AuditEvent:
         if event_type == "password_changed":
             raise RuntimeError("simulated audit failure")
-        original_record(event_type, *_args, **_kwargs)
+        return original_record(event_type, actor_user_id, metadata)
 
     monkeypatch.setattr(service.audit_log, "record", fail_password_changed)
 
@@ -108,9 +116,16 @@ def test_logout_keeps_session_when_audit_fails(monkeypatch: pytest.MonkeyPatch) 
     service = _service()
     result = service.login("user@example.test", SEED_CREDENTIAL)
 
-    def fail_logout(event_type: str, *_args: object, **_kwargs: object) -> None:
+    original_record = service.audit_log.record
+
+    def fail_logout(
+        event_type: str,
+        actor_user_id: str | None = None,
+        metadata: dict[str, str] | None = None,
+    ) -> AuditEvent:
         if event_type == "logout":
             raise RuntimeError("simulated audit failure")
+        return original_record(event_type, actor_user_id, metadata)
 
     monkeypatch.setattr(service.audit_log, "record", fail_logout)
 

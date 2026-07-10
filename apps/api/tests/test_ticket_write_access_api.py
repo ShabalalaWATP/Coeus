@@ -1,4 +1,5 @@
 import pytest
+from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from coeus.core.config import Settings
@@ -6,7 +7,7 @@ from coeus.main import create_app
 from rfi_search_helpers import login
 
 
-def _client(app: object) -> AsyncClient:
+def _client(app: FastAPI) -> AsyncClient:
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver")
 
 

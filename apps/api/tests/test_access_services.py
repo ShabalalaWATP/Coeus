@@ -6,12 +6,12 @@ from coeus.core.permissions import Permission
 from coeus.domain.access import ProductStatus
 from coeus.repositories.access import SeedAccessRepository
 from coeus.repositories.auth import SeedUserRepository
-from coeus.services.access import build_access_services
-from coeus.services.audit import AuditLog
+from coeus.services.access import AccessServices, build_access_services
+from coeus.services.audit import AuditEvent, AuditLog
 from coeus.services.passwords import PasswordHasher
 
 
-def build_seed_access_services():
+def build_seed_access_services() -> AccessServices:
     settings = Settings(environment="test", argon2_memory_cost=8_192)
     users = SeedUserRepository(settings, PasswordHasher(settings))
     return build_access_services(SeedAccessRepository(users), AuditLog())
@@ -23,11 +23,11 @@ class FailingAuditLog(AuditLog):
         event_type: str,
         actor_user_id: str | None = None,
         metadata: dict[str, str] | None = None,
-    ):
+    ) -> AuditEvent:
         raise RuntimeError("audit unavailable")
 
 
-def build_seed_access_services_with_failing_audit():
+def build_seed_access_services_with_failing_audit() -> AccessServices:
     settings = Settings(environment="test", argon2_memory_cost=8_192)
     users = SeedUserRepository(settings, PasswordHasher(settings))
     return build_access_services(SeedAccessRepository(users), FailingAuditLog())
