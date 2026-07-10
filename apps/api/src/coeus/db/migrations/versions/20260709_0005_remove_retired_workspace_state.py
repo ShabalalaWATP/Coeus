@@ -18,6 +18,7 @@ revision: str = "20260709_0005"
 down_revision: str | None = "20260709_0004"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
+__all__ = ("branch_labels", "depends_on", "down_revision", "downgrade", "revision", "upgrade")
 
 _RETIRED_PERMISSION_VALUES = frozenset(
     {
