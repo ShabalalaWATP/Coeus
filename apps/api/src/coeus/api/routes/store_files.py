@@ -16,7 +16,7 @@ from coeus.api.dependencies import (
     get_settings,
     get_store_services,
 )
-from coeus.api.routes.store import _to_product_draft, _to_product_response
+from coeus.api.presenters.store import product_draft_from_request, product_response
 from coeus.core.config import Settings
 from coeus.core.errors import AppError
 from coeus.domain.auth import AuthenticatedSession
@@ -45,7 +45,7 @@ async def upload_product(
     request = _validated_product_request(payload)
     product = store_services.ingestion.create_existing_product(
         authenticated.user,
-        _to_product_draft(request),
+        product_draft_from_request(request),
         audit=False,
     )
     try:
@@ -63,7 +63,7 @@ async def upload_product(
         store_services.repository.delete_product(product.product_id)
         storage.delete_bytes(product.assets[0].object_key)
         raise
-    return _to_product_response(product)
+    return product_response(product)
 
 
 @router.get("/products/{product_id}/assets/{asset_id}/download")
