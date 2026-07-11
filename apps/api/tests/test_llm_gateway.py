@@ -58,7 +58,7 @@ def test_gemini_call_uses_key_header_and_generate_content(
     captured: dict[str, Any] = {}
     payload = {"candidates": [{"content": {"parts": [{"text": "Gemini says hello."}]}}]}
     monkeypatch.setattr(
-        "coeus.integrations.llm_gateway.httpx.Client", _fake_client(captured, payload)
+        "coeus.integrations.provider_http.httpx.Client", _fake_client(captured, payload)
     )
 
     text = generate_text(_call("gemini_api", model="gemini-2.5-flash"))
@@ -75,7 +75,7 @@ def test_openai_call_uses_bearer_token_and_chat_completions(
     captured: dict[str, Any] = {}
     payload = {"choices": [{"message": {"content": "OpenAI says hello."}}]}
     monkeypatch.setattr(
-        "coeus.integrations.llm_gateway.httpx.Client", _fake_client(captured, payload)
+        "coeus.integrations.provider_http.httpx.Client", _fake_client(captured, payload)
     )
 
     text = generate_text(_call("openai_api", model="gpt-5-mini"))
@@ -90,7 +90,7 @@ def test_vertex_call_targets_the_publisher_endpoint(monkeypatch: pytest.MonkeyPa
     captured: dict[str, Any] = {}
     payload = {"candidates": [{"content": {"parts": [{"text": "Vertex says hello."}]}}]}
     monkeypatch.setattr(
-        "coeus.integrations.llm_gateway.httpx.Client", _fake_client(captured, payload)
+        "coeus.integrations.provider_http.httpx.Client", _fake_client(captured, payload)
     )
 
     text = generate_text(_call("vertex_ai", model="gemini-2.5-pro"))
@@ -108,7 +108,7 @@ def test_bedrock_call_targets_the_regional_converse_endpoint(
     captured: dict[str, Any] = {}
     payload = {"output": {"message": {"content": [{"text": "Bedrock says hello."}]}}}
     monkeypatch.setattr(
-        "coeus.integrations.llm_gateway.httpx.Client", _fake_client(captured, payload)
+        "coeus.integrations.provider_http.httpx.Client", _fake_client(captured, payload)
     )
 
     text = generate_text(_call("bedrock", model="anthropic.claude-haiku-4-5-20251001-v1:0"))
@@ -143,7 +143,7 @@ def test_network_failures_surface_as_provider_unavailable(
 
             raise httpx.ConnectError("mock network failure")
 
-    monkeypatch.setattr("coeus.integrations.llm_gateway.httpx.Client", RaisingClient)
+    monkeypatch.setattr("coeus.integrations.provider_http.httpx.Client", RaisingClient)
     with pytest.raises(AppError, match="llm_provider_unavailable"):
         generate_text(_call("openai_api"))
 

@@ -3,6 +3,7 @@ type ErrorPayload = {
     code?: string;
     message?: string;
   };
+  detail?: Array<{ msg?: string }>;
 };
 
 export class ApiError extends Error {
@@ -53,10 +54,15 @@ export async function toApiError(response: Response, path: string): Promise<ApiE
   } catch {
     payload = {};
   }
+  const validationMessage = payload.detail
+    ?.find((detail) => detail.msg)
+    ?.msg?.replace(/^Value error,\s*/, "");
   const error = new ApiError(
     response.status,
-    payload.error?.code ?? "request_failed",
-    payload.error?.message ?? `API request failed with status ${response.status}`,
+    payload.error?.code ?? (validationMessage ? "request_validation_failed" : "request_failed"),
+    payload.error?.message ??
+      validationMessage ??
+      `API request failed with status ${response.status}`,
   );
   notifyAuthFailure(error, path);
   return error;

@@ -1,7 +1,9 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from coeus.core.model_ids import MODEL_ID_MAX_LENGTH, MODEL_ID_MIN_LENGTH, is_valid_model_id
 
 EMAIL_PATTERN = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
 
@@ -54,13 +56,19 @@ class AiProviderSelectRequest(BaseModel):
     provider: str = Field(min_length=3, max_length=40)
 
 
-class AiModelRefreshRequest(BaseModel):
-    provider: str = Field(min_length=3, max_length=40)
-
-
 class AiCustomModelRequest(BaseModel):
     provider: str = Field(min_length=3, max_length=40)
-    model: str = Field(min_length=2, max_length=80, pattern=r"^[A-Za-z0-9._:\-/]+$")
+    model: str = Field(min_length=MODEL_ID_MIN_LENGTH, max_length=MODEL_ID_MAX_LENGTH)
+
+    @field_validator("model")
+    @classmethod
+    def validate_model_id(cls, value: str) -> str:
+        if not is_valid_model_id(value.strip()):
+            raise ValueError(
+                "Model IDs may contain only letters, numbers, dots, underscores, "
+                "colons, slashes and hyphens."
+            )
+        return value
 
 
 class AiModelApiKeyRequest(BaseModel):
@@ -90,6 +98,7 @@ class AiProviderStateResponse(BaseModel):
     models: list[str]
     active_model: str = Field(serialization_alias="activeModel")
     api_key_configured: bool = Field(serialization_alias="apiKeyConfigured")
+    supports_model_refresh: bool = Field(serialization_alias="supportsModelRefresh")
 
 
 class AiModelStateResponse(BaseModel):

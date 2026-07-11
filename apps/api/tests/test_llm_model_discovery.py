@@ -50,7 +50,7 @@ def test_openai_listing_keeps_chat_models_and_drops_others(
         ]
     }
     monkeypatch.setattr(
-        "coeus.integrations.llm_models.httpx.Client", _fake_get_client(captured, payload)
+        "coeus.integrations.provider_http.httpx.Client", _fake_get_client(captured, payload)
     )
 
     models = discover_models("openai_api", "sk-key", 10)
@@ -72,7 +72,7 @@ def test_gemini_listing_keeps_generatecontent_models(monkeypatch: pytest.MonkeyP
         ]
     }
     monkeypatch.setattr(
-        "coeus.integrations.llm_models.httpx.Client", _fake_get_client(captured, payload)
+        "coeus.integrations.provider_http.httpx.Client", _fake_get_client(captured, payload)
     )
 
     models = discover_models("gemini_api", "gk-key", 10)
@@ -103,15 +103,43 @@ def test_listing_network_failure_surfaces_as_unavailable(
         def get(self, url: str, *, headers: dict[str, str]) -> object:
             raise httpx.ConnectError("mock network failure")
 
-    monkeypatch.setattr("coeus.integrations.llm_models.httpx.Client", FailingClient)
+    monkeypatch.setattr("coeus.integrations.provider_http.httpx.Client", FailingClient)
     with pytest.raises(AppError, match="llm_provider_unavailable"):
         discover_models("openai_api", "sk-key", 10)
 
 
-def test_non_dict_payload_yields_no_models(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_non_dict_payload_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
     captured: dict[str, Any] = {}
     monkeypatch.setattr(
-        "coeus.integrations.llm_models.httpx.Client",
+        "coeus.integrations.provider_http.httpx.Client",
         _fake_get_client(captured, []),  # type: ignore[arg-type]
     )
-    assert discover_models("openai_api", "sk-key", 10) == ()
+    try:
+        discover_models("openai_api", "sk-key", 10)
+    except AppError as error:
+        assert error.code == "provider_model_list_invalid"
+    else:
+        raise AssertionError("Invalid provider payload should be rejected")
+
+
+def test_openai_accepts_future_and_search_models_but_rejects_instruct(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, Any] = {}
+    payload = {
+        "data": [
+            {"id": "o5-pro"},
+            {"id": "gpt-4o-search-preview"},
+            {"id": "gpt-3.5-turbo-instruct"},
+            {"id": "bad id"},
+            {"id": "x" * 81},
+        ]
+    }
+    monkeypatch.setattr(
+        "coeus.integrations.provider_http.httpx.Client", _fake_get_client(captured, payload)
+    )
+
+    assert discover_models("openai_api", "sk-key", 10) == (
+        "gpt-4o-search-preview",
+        "o5-pro",
+    )

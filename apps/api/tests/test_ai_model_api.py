@@ -66,7 +66,7 @@ async def test_key_configuration_stores_the_key_without_switching_provider() -> 
 async def test_admin_provider_settings_drive_ticket_assistant(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("coeus.integrations.llm_gateway.httpx.Client", FakeLlmClient)
+    monkeypatch.setattr("coeus.integrations.provider_http.httpx.Client", FakeLlmClient)
     FakeLlmClient.captured = {}
 
     async with make_client() as client:
@@ -115,7 +115,7 @@ async def test_env_key_alone_does_not_override_the_configured_provider(
         def __init__(self, *, timeout: int) -> None:
             raise AssertionError("No LLM API may be called when the provider is mock.")
 
-    monkeypatch.setattr("coeus.integrations.llm_gateway.httpx.Client", ForbiddenClient)
+    monkeypatch.setattr("coeus.integrations.provider_http.httpx.Client", ForbiddenClient)
     app = create_app(
         Settings(environment="test", argon2_memory_cost=8_192, gemini_api_key="env-secret")
     )

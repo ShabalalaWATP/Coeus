@@ -16,6 +16,7 @@ class ProviderSpec:
     label: str
     models: tuple[str, ...]
     default_model: str
+    supports_model_refresh: bool
 
 
 def provider_specs(settings: Settings) -> tuple[ProviderSpec, ...]:
@@ -26,9 +27,14 @@ def provider_specs(settings: Settings) -> tuple[ProviderSpec, ...]:
             "Gemini API (primary)",
             settings.available_gemini_models,
             settings.gemini_api_model,
+            supports_model_refresh=True,
         ),
         _spec(
-            "openai_api", "OpenAI API", settings.available_openai_models, settings.openai_api_model
+            "openai_api",
+            "OpenAI API",
+            settings.available_openai_models,
+            settings.openai_api_model,
+            supports_model_refresh=True,
         ),
         _spec(
             "vertex_ai",
@@ -39,7 +45,13 @@ def provider_specs(settings: Settings) -> tuple[ProviderSpec, ...]:
         _spec(
             "bedrock", "AWS Bedrock", settings.available_bedrock_models, settings.bedrock_api_model
         ),
-        ProviderSpec(name="mock", label="Mock (offline)", models=("mock",), default_model="mock"),
+        ProviderSpec(
+            name="mock",
+            label="Mock (offline)",
+            models=("mock",),
+            default_model="mock",
+            supports_model_refresh=False,
+        ),
     )
 
 
@@ -58,7 +70,20 @@ def initial_api_keys(settings: Settings) -> dict[LlmProviderName, str | None]:
     }
 
 
-def _spec(name: LlmProviderName, label: str, models: list[str], default_model: str) -> ProviderSpec:
+def _spec(
+    name: LlmProviderName,
+    label: str,
+    models: list[str],
+    default_model: str,
+    *,
+    supports_model_refresh: bool = False,
+) -> ProviderSpec:
     catalogue = tuple(models)
     default = default_model if default_model in catalogue else catalogue[0]
-    return ProviderSpec(name=name, label=label, models=catalogue, default_model=default)
+    return ProviderSpec(
+        name=name,
+        label=label,
+        models=catalogue,
+        default_model=default,
+        supports_model_refresh=supports_model_refresh,
+    )

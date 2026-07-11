@@ -6,6 +6,7 @@ export type AiProviderState = {
   models: string[];
   activeModel: string;
   apiKeyConfigured: boolean;
+  supportsModelRefresh: boolean;
 };
 
 export type AiModelState = {

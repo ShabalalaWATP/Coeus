@@ -252,3 +252,17 @@ Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVEL
 - Closed non-reportable quality debt with compact cursor-paged request summaries,
   selected-only details, browser dictation disclosure and digest-pinned runtime
   images. Full post-fix gates and the final immutable scan remain pending.
+
+## 2026-07-12 AI model administration hardening
+
+- Integrated the distinct provider and model administration work without
+  replacing the newer user-management filtering and confirmation behaviour.
+- Added bounded live model discovery for OpenAI and Gemini, persistent custom
+  model identifiers, explicit activation, safe provider error mapping and
+  append-only catalogue refreshes that do not remove existing choices.
+- Improved keyboard, focus, loading and error behaviour in the admin UI, and
+  documented the local persistence, provider capability and migration model.
+- Verified the updated admin experience in the running local application. The
+  release gates passed with 644 backend tests at 97.64 percent total coverage
+  and the complete frontend suite at 98.78 percent line and 95.12 percent
+  branch coverage.

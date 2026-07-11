@@ -6,6 +6,22 @@
   width: 100%;
 }
 
+.ai-model-configuration,
+.ai-model-selection,
+.ai-model-refresh {
+  display: grid;
+  gap: 10px;
+}
+
+.ai-model-selection {
+  justify-items: start;
+}
+
+.ai-model-refresh__hint {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
 .ai-custom-model {
   display: flex;
   flex: 1 1 320px;
@@ -24,7 +40,8 @@
 }
 
 .ai-custom-model input:focus-visible {
-  outline: none;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
   border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
 }
 

@@ -318,7 +318,6 @@
           "model": {
             "maxLength": 80,
             "minLength": 2,
-            "pattern": "^[A-Za-z0-9._:\\-/]+$",
             "title": "Model",
             "type": "string"
           },
@@ -356,21 +355,6 @@
           "apiKey"
         ],
         "title": "AiModelApiKeyRequest",
-        "type": "object"
-      },
-      "AiModelRefreshRequest": {
-        "properties": {
-          "provider": {
-            "maxLength": 40,
-            "minLength": 3,
-            "title": "Provider",
-            "type": "string"
-          }
-        },
-        "required": [
-          "provider"
-        ],
-        "title": "AiModelRefreshRequest",
         "type": "object"
       },
       "AiModelSelectRequest": {
@@ -511,6 +495,10 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "supportsModelRefresh": {
+            "title": "Supportsmodelrefresh",
+            "type": "boolean"
           }
         },
         "required": [
@@ -518,7 +506,8 @@
           "label",
           "models",
           "activeModel",
-          "apiKeyConfigured"
+          "apiKeyConfigured",
+          "supportsModelRefresh"
         ],
         "title": "AiProviderStateResponse",
         "type": "object"
@@ -6659,7 +6648,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AiModelRefreshRequest"
+                "$ref": "#/components/schemas/AiProviderSelectRequest"
               }
             }
           },

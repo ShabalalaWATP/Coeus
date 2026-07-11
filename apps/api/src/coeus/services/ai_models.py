@@ -4,8 +4,10 @@ from datetime import UTC, datetime
 
 from coeus.core.config import LlmProviderName, Settings
 from coeus.core.errors import AppError
+from coeus.core.model_ids import MAX_MODELS_PER_SOURCE, clean_model_ids, is_valid_model_id
 from coeus.integrations.llm_models import discover_models
 from coeus.persistence.state_store import StateStore
+from coeus.services.ai_model_state import model_state_payload, restore_model_state
 from coeus.services.ai_provider_catalog import (
     ProviderSpec,
     initial_api_keys,
@@ -24,6 +26,7 @@ class AiProviderState:
     models: tuple[str, ...]
     active_model: str
     api_key_configured: bool
+    supports_model_refresh: bool
 
 
 @dataclass(frozen=True)
@@ -43,21 +46,15 @@ class AiModelState:
 class _AiModelSnapshot:
     provider: LlmProviderName
     active_models: dict[LlmProviderName, str]
-    extra_models: dict[str, list[str]]
+    custom_models: dict[str, list[str]]
+    discovered_models: dict[str, list[str]]
     api_keys: dict[LlmProviderName, str | None]
     changed_by: str | None
     changed_at: datetime | None
 
 
 class AiModelService:
-    """Administrator-controlled LLM provider and model selection.
-
-    One instance serves the whole application, so switching the provider or
-    model takes effect for every user immediately. API keys are write-only
-    over the admin API: held server-side, never returned to clients and
-    never persisted, so generic local state stores and database backups do
-    not become secret stores.
-    """
+    """Administrator-controlled, application-wide LLM configuration."""
 
     def __init__(
         self,
@@ -72,13 +69,10 @@ class AiModelService:
         self._embedding_provider = settings.embedding_provider
         self._embedded_product_count: Callable[[], int] = lambda: 0
         self._api_keys = initial_api_keys(settings)
-        self._active_models = {spec.name: spec.default_model for spec in provider_specs(settings)}
-        # Models discovered from a provider's API or added by hand, on top of
-        # the curated defaults, so the selectable set is not frozen to a
-        # release. Keyed by provider name.
-        self._extra_models: dict[str, list[str]] = {
-            spec.name: [] for spec in provider_specs(settings)
-        }
+        specs = provider_specs(settings)
+        self._active_models = {spec.name: spec.default_model for spec in specs}
+        self._custom_models: dict[str, list[str]] = {spec.name: [] for spec in specs}
+        self._discovered_models: dict[str, list[str]] = {spec.name: [] for spec in specs}
         self._changed_by: str | None = None
         self._changed_at: datetime | None = None
         self._restore_or_persist()
@@ -93,24 +87,32 @@ class AiModelService:
             embedded_product_count=self._embedded_product_count(),
             changed_by=self._changed_by,
             changed_at=self._changed_at,
-            providers=tuple(
-                AiProviderState(
-                    name=spec.name,
-                    label=spec.label,
-                    models=self._effective_models(spec.name),
-                    active_model=self._active_models[spec.name],
-                    api_key_configured=bool(self._api_keys.get(spec.name)),
-                )
-                for spec in provider_specs(self._settings)
-            ),
+            providers=tuple(self._provider_state(spec) for spec in provider_specs(self._settings)),
+        )
+
+    def _provider_state(self, spec: ProviderSpec) -> AiProviderState:
+        return AiProviderState(
+            name=spec.name,
+            label=spec.label,
+            models=self._effective_models(spec.name),
+            active_model=self._active_models[spec.name],
+            api_key_configured=bool(self._api_keys.get(spec.name)),
+            supports_model_refresh=spec.supports_model_refresh,
         )
 
     def _effective_models(self, provider: str) -> tuple[str, ...]:
-        """Curated models first, then any discovered or hand-added ids."""
         spec = self._spec(provider)
         if spec is None:
             return ()
-        return tuple(dict.fromkeys([*spec.models, *self._extra_models.get(provider, [])]))
+        return tuple(
+            dict.fromkeys(
+                [
+                    *spec.models,
+                    *self._custom_models.get(provider, []),
+                    *self._discovered_models.get(provider, []),
+                ]
+            )
+        )
 
     def provider(self) -> LlmProviderName:
         return self._provider
@@ -183,13 +185,7 @@ class AiModelService:
         api_key: str,
         provider: str = "gemini_api",
     ) -> AiModelState:
-        # Saving a key stores it for that provider only; activating the
-        # provider is a separate, explicit (and warned) admin action.
-        spec = self._spec(provider)
-        if spec is None or spec.name == "mock":
-            raise AppError(
-                422, "provider_not_available", "The requested provider is not available."
-            )
+        spec = self._require_external_provider(provider)
         self._apply_change(
             actor_user_id,
             actor_username,
@@ -202,8 +198,8 @@ class AiModelService:
     def refresh_models(
         self, actor_user_id: str, actor_username: str, provider: str
     ) -> AiModelState:
-        """Reload a provider's selectable models from its live API."""
-        spec = self._require_configured_provider(provider)
+        """Append safe live discoveries without removing existing model IDs."""
+        spec = self._require_refreshable_provider(provider)
         key = self._api_keys.get(spec.name)
         if not key:
             raise AppError(
@@ -212,14 +208,21 @@ class AiModelService:
                 "Save an API key for this provider before refreshing its models.",
             )
         discovered = discover_models(spec.name, key, self._settings.llm_api_timeout_seconds)
-        curated = set(spec.models)
-        extras = [model for model in discovered if model not in curated]
+        current = self._discovered_models[spec.name]
+        existing = {*spec.models, *self._custom_models[spec.name], *current}
+        candidates = [model for model in clean_model_ids(discovered) if model not in existing]
+        additions = candidates[: MAX_MODELS_PER_SOURCE - len(current)]
+        merged = [*current, *additions]
         self._apply_change(
             actor_user_id,
             actor_username,
             "ai_models_refreshed",
-            {"provider": spec.name, "discovered": str(len(discovered))},
-            lambda: self._extra_models.__setitem__(spec.name, extras),
+            {
+                "provider": spec.name,
+                "returned": str(len(discovered)),
+                "added": str(len(additions)),
+            },
+            lambda: self._discovered_models.__setitem__(spec.name, merged),
             record_actor=False,
         )
         return self.state()
@@ -227,29 +230,39 @@ class AiModelService:
     def add_custom_model(
         self, actor_user_id: str, actor_username: str, provider: str, model: str
     ) -> AiModelState:
-        """Add a model id by hand and make it the provider's selected model."""
-        spec = self._require_configured_provider(provider)
+        """Register a model ID without changing the provider's active model."""
+        spec = self._require_external_provider(provider)
         model = model.strip()
+        if not is_valid_model_id(model):
+            raise AppError(422, "invalid_model_id", "The model ID contains unsupported characters.")
         if model in self._effective_models(spec.name):
-            return self.select(actor_user_id, actor_username, model, spec.name)
+            return self.state()
+        if len(self._custom_models[spec.name]) >= MAX_MODELS_PER_SOURCE:
+            raise AppError(409, "model_limit_reached", "The custom model limit has been reached.")
         self._apply_change(
             actor_user_id,
             actor_username,
             "ai_custom_model_added",
             {"provider": spec.name, "model": model},
-            lambda: self._register_model(spec.name, model),
+            lambda: self._custom_models[spec.name].append(model),
         )
         return self.state()
 
-    def _register_model(self, provider: str, model: str) -> None:
-        self._extra_models.setdefault(provider, []).append(model)
-        self._active_models[provider] = model
-
-    def _require_configured_provider(self, provider: str) -> ProviderSpec:
+    def _require_external_provider(self, provider: str) -> ProviderSpec:
         spec = self._spec(provider)
         if spec is None or spec.name == "mock":
             raise AppError(
                 422, "provider_not_available", "The requested provider is not available."
+            )
+        return spec
+
+    def _require_refreshable_provider(self, provider: str) -> ProviderSpec:
+        spec = self._require_external_provider(provider)
+        if not spec.supports_model_refresh:
+            raise AppError(
+                422,
+                "refresh_not_supported",
+                "Live model listing is not available for this provider. Add model IDs by hand instead.",
             )
         return spec
 
@@ -285,50 +298,38 @@ class AiModelService:
         if payload is None:
             self._persist()
             return
-        needs_secret_scrub = "api_key" in payload
-        # Restore discovered/custom models first so an active model that is one
-        # of them still validates below.
-        stored_extras = payload.get("extra_models")
-        if isinstance(stored_extras, dict):
-            for name, models in stored_extras.items():
-                if self._spec(str(name)) is not None and isinstance(models, list):
-                    self._extra_models[str(name)] = [str(m) for m in models if isinstance(m, str)]
-        stored_models = payload.get("active_models")
-        if isinstance(stored_models, dict):
-            for name, model in stored_models.items():
-                spec = self._spec(str(name))
-                if spec is not None and model in self._effective_models(spec.name):
-                    self._active_models[spec.name] = str(model)
-        # Pre-multi-provider payloads stored a single Gemini model.
-        legacy_model = str(payload.get("active_model", ""))
-        gemini = self._spec("gemini_api")
-        if not isinstance(stored_models, dict) and gemini and legacy_model in gemini.models:
-            self._active_models["gemini_api"] = legacy_model
-        self._changed_by = payload.get("changed_by") if payload.get("changed_by") else None
-        changed_at = payload.get("changed_at")
-        self._changed_at = datetime.fromisoformat(str(changed_at)) if changed_at else None
-        if needs_secret_scrub:
-            self._persist()
+        restored = restore_model_state(payload, provider_specs(self._settings))
+        self._active_models = restored.active_models
+        self._custom_models = restored.custom_models
+        self._discovered_models = restored.discovered_models
+        self._changed_by = restored.changed_by
+        self._changed_at = restored.changed_at
+        # Re-save to scrub legacy keys and invalid or oversized model IDs.
+        self._persist()
 
     def _persist(self) -> None:
         if self._state_store is None:
             return
         self._state_store.save(
             AI_MODEL_NAMESPACE,
-            {
-                "active_model": self._active_models[self._provider],
-                "active_models": dict(self._active_models),
-                "extra_models": {name: list(models) for name, models in self._extra_models.items()},
-                "changed_by": self._changed_by,
-                "changed_at": self._changed_at.isoformat() if self._changed_at else None,
-            },
+            model_state_payload(
+                active_provider=self._provider,
+                active_models=self._active_models,
+                custom_models=self._custom_models,
+                discovered_models=self._discovered_models,
+                changed_by=self._changed_by,
+                changed_at=self._changed_at,
+            ),
         )
 
     def _snapshot(self) -> _AiModelSnapshot:
         return _AiModelSnapshot(
             provider=self._provider,
             active_models=dict(self._active_models),
-            extra_models={name: list(models) for name, models in self._extra_models.items()},
+            custom_models={name: list(models) for name, models in self._custom_models.items()},
+            discovered_models={
+                name: list(models) for name, models in self._discovered_models.items()
+            },
             api_keys=dict(self._api_keys),
             changed_by=self._changed_by,
             changed_at=self._changed_at,
@@ -337,7 +338,12 @@ class AiModelService:
     def _restore(self, snapshot: _AiModelSnapshot) -> None:
         self._provider = snapshot.provider
         self._active_models = dict(snapshot.active_models)
-        self._extra_models = {name: list(models) for name, models in snapshot.extra_models.items()}
+        self._custom_models = {
+            name: list(models) for name, models in snapshot.custom_models.items()
+        }
+        self._discovered_models = {
+            name: list(models) for name, models in snapshot.discovered_models.items()
+        }
         self._api_keys = dict(snapshot.api_keys)
         self._changed_by = snapshot.changed_by
         self._changed_at = snapshot.changed_at

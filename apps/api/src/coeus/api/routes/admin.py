@@ -21,7 +21,6 @@ from coeus.schemas.registration import (
     AiConnectionTestResponse,
     AiCustomModelRequest,
     AiModelApiKeyRequest,
-    AiModelRefreshRequest,
     AiModelSelectRequest,
     AiModelStateResponse,
     AiProviderSelectRequest,
@@ -85,8 +84,8 @@ async def select_ai_model(
 
 
 @router.post("/ai-model/refresh", response_model=AiModelStateResponse)
-async def refresh_ai_models(
-    payload: AiModelRefreshRequest,
+def refresh_ai_models(
+    payload: AiProviderSelectRequest,
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
     permitted: Annotated[
         AuthenticatedSession,
@@ -153,7 +152,7 @@ async def select_ai_provider(
 
 
 @router.post("/ai-model/test", response_model=AiConnectionTestResponse)
-async def test_ai_connection(
+def test_ai_connection(
     payload: AiConnectionTestRequest,
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
     permitted: Annotated[
@@ -206,6 +205,7 @@ def _ai_model_response(state: AiModelState) -> AiModelStateResponse:
                 models=list(provider.models),
                 active_model=provider.active_model,
                 api_key_configured=provider.api_key_configured,
+                supports_model_refresh=provider.supports_model_refresh,
             )
             for provider in state.providers
         ],

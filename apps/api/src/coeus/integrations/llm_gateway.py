@@ -13,6 +13,7 @@ from urllib.parse import quote
 import httpx
 
 from coeus.core.errors import AppError
+from coeus.integrations.provider_http import post_json
 
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 OPENAI_URL = "https://api.openai.com/v1/chat/completions"
@@ -46,10 +47,7 @@ def generate_text(call: LlmCall) -> str:
     url, headers, body = _request_for(call)
     label = PROVIDER_LABELS.get(call.provider, call.provider)
     try:
-        with httpx.Client(timeout=call.timeout) as client:
-            response = client.post(url, json=body, headers=headers)
-            response.raise_for_status()
-            payload = response.json()
+        payload = post_json(url, headers=headers, body=body, timeout=call.timeout)
     except (httpx.HTTPError, ValueError) as exc:
         raise AppError(502, "llm_provider_unavailable", f"{label} is unavailable.") from exc
     return _reply_text(call.provider, payload)

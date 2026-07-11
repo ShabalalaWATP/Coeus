@@ -190,7 +190,7 @@
 
 /* Buttons ---------------------------------------------------------------- */
 
-.ai-model-panel button {
+:where(.ai-model-panel button) {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -221,7 +221,7 @@
   border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
 }
 
-.ai-model-panel button:disabled {
+:where(.ai-model-panel button:disabled) {
   cursor: not-allowed;
   border-color: var(--border);
   background: var(--surface-muted);
