@@ -11,7 +11,7 @@ export function canApprove(ticket: RoutingTicket) {
   );
 }
 
-export function canReviewDecision(ticket: RoutingTicket) {
+function canReviewDecision(ticket: RoutingTicket) {
   return ticket.state === "JIOC_REVIEW";
 }
 
