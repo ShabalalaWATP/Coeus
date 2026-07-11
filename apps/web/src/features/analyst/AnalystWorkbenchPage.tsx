@@ -62,6 +62,7 @@ export default function AnalystWorkbenchPage() {
             <>
               {tasks.map((task) => (
                 <Link
+                  aria-current={selectedTask?.ticketId === task.ticketId ? "page" : undefined}
                   className="request-row"
                   key={task.ticketId}
                   to={`/analyst/tasks/${encodeURIComponent(task.ticketId)}`}

@@ -86,6 +86,7 @@ class AvailabilityResponse(BaseModel):
     on_leave: int = Field(serialization_alias="onLeave")
     on_task_calendar: int = Field(serialization_alias="onTaskCalendar")
     assigned_live: int = Field(serialization_alias="assignedLive")
+    on_task: int = Field(serialization_alias="onTask")
     free: int
 
 

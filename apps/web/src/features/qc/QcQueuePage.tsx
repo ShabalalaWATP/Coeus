@@ -87,7 +87,7 @@ export default function QcQueuePage() {
           classificationLevel: Number(releaseForm.classificationLevel),
           releasability: csvToValues(releaseForm.releasability),
           handlingCaveats: csvToValues(releaseForm.caveats),
-          acgIds: [selectedAcgId(releaseForm, acgsQuery.data)],
+          acgIds: [selectedAcgId(releaseForm)],
           reason: releaseForm.reason,
         },
         csrfToken,
@@ -115,6 +115,7 @@ export default function QcQueuePage() {
       updateQueue(queryClient, product);
     },
   });
+  const actionPending = approveMutation.isPending || rejectMutation.isPending;
 
   return (
     <div className="qc-page">
@@ -129,7 +130,9 @@ export default function QcQueuePage() {
         <aside className="surface qc-list" aria-label="QC products">
           <div className="section-heading">
             <h2>Submitted products</h2>
-            <p>{products.length} products awaiting QC.</p>
+            <p>
+              {products.length} {products.length === 1 ? "product" : "products"} awaiting QC.
+            </p>
           </div>
           {queueQuery.isError ? (
             <ErrorState onRetry={() => void queueQuery.refetch()} />
@@ -137,9 +140,17 @@ export default function QcQueuePage() {
             <>
               {products.map((product) => (
                 <Link
+                  aria-current={product.ticketId === selectedProductId ? "page" : undefined}
+                  aria-disabled={actionPending || undefined}
                   className="request-row"
                   key={product.ticketId}
-                  onClick={() => setActionResult(undefined)}
+                  onClick={(event) => {
+                    if (actionPending) {
+                      event.preventDefault();
+                      return;
+                    }
+                    setActionResult(undefined);
+                  }}
                   to={`/qc/products/${encodeURIComponent(product.ticketId)}`}
                 >
                   <strong>{product.reference}</strong>
@@ -152,6 +163,7 @@ export default function QcQueuePage() {
           )}
         </aside>
         <QcProductDetail
+          actionPending={actionPending}
           acgs={acgsQuery.data}
           acgsFailed={acgsQuery.isError}
           acgsLoading={acgsQuery.isLoading}

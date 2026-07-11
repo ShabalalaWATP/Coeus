@@ -96,11 +96,7 @@ async def update_intake(
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
     ticket_services: Annotated[TicketServices, Depends(get_ticket_services)],
 ) -> TicketResponse:
-    updates = {
-        key: value
-        for key, value in payload.model_dump(exclude_unset=True).items()
-        if value is not None
-    }
+    updates = payload.model_dump(exclude_unset=True)
     return to_ticket_response(
         ticket_services.tickets.update_intake(authenticated.user, ticket_id, updates),
         authenticated.user,

@@ -37,8 +37,14 @@ export function RequestDashboard({
   const metricItems = [
     { label: "Total requests", value: metrics.total, icon: ClipboardList, tone: "info" },
     { label: "Draft", value: metrics.draft, icon: Hourglass, tone: "warning" },
-    { label: "Ready", value: metrics.ready, icon: CheckCircle2, tone: "success" },
-    { label: "In progress", value: metrics.searching, icon: Search, tone: "info" },
+    { label: "In progress", value: metrics.inProgress, icon: Search, tone: "info" },
+    {
+      label: "Awaiting your action",
+      value: metrics.awaitingAction,
+      icon: Hourglass,
+      tone: "warning",
+    },
+    { label: "Completed", value: metrics.completed, icon: CheckCircle2, tone: "success" },
   ] as const;
 
   return (

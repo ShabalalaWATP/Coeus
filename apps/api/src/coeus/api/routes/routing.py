@@ -4,12 +4,14 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 
 from coeus.api.dependencies import (
+    get_analyst_workflow_service,
     get_csrf_validated_session,
     get_current_session,
     get_manager_approval_service,
     get_manager_queue_service,
     get_routing_service,
 )
+from coeus.api.presenters.analyst import task_response
 from coeus.api.presenters.routing import (
     capability_catalogue_response,
     routing_queue_response,
@@ -18,6 +20,7 @@ from coeus.api.presenters.routing import (
 )
 from coeus.domain.auth import AuthenticatedSession
 from coeus.domain.tickets import RoutingRoute, TicketRecord
+from coeus.schemas.analyst import AnalystTaskResponse
 from coeus.schemas.routing import (
     CapabilityCatalogueResponse,
     RouteApprovalRequest,
@@ -27,6 +30,7 @@ from coeus.schemas.routing import (
     RoutingStatsResponse,
     RoutingTicketResponse,
 )
+from coeus.services.analyst_workflow import AnalystWorkflowService
 from coeus.services.manager_approval import ManagerApprovalService
 from coeus.services.manager_queue import ManagerQueueService
 from coeus.services.routing import RoutingService
@@ -34,6 +38,18 @@ from coeus.services.routing import RoutingService
 router = APIRouter(prefix="/routing", tags=["routing"])
 
 QUEUE_PAGE_SIZE = 25
+
+
+@router.get("/{ticket_id}/manager-work", response_model=AnalystTaskResponse)
+async def manager_review_work(
+    ticket_id: UUID,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_current_session)],
+    approvals: Annotated[ManagerApprovalService, Depends(get_manager_approval_service)],
+    analyst: Annotated[AnalystWorkflowService, Depends(get_analyst_workflow_service)],
+) -> AnalystTaskResponse:
+    return task_response(
+        approvals.review_work(authenticated.user, ticket_id), authenticated.user, analyst
+    )
 
 
 def _queue_page(

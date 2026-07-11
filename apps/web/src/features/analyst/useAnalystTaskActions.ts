@@ -94,9 +94,16 @@ export function useAnalystTaskActions(
     onMutate: clearActionError,
     onSuccess: onTaskChange,
   });
+  const actionPending =
+    noteMutation.isPending ||
+    linkMutation.isPending ||
+    packageMutation.isPending ||
+    draftMutation.isPending ||
+    submitMutation.isPending;
 
   return {
     actionError,
+    actionPending,
     completePackage: (packageId: string) => packageMutation.mutate(packageId),
     draft,
     linkProduct: (productId: string) => linkMutation.mutate(productId),

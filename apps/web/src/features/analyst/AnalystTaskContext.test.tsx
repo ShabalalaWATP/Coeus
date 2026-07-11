@@ -50,3 +50,24 @@ test("shows the first active assignment's team", () => {
 
   expect(screen.getByText("Maritime Assessment Cell")).toBeVisible();
 });
+
+test("shows missing context fallbacks and supplied requester and manager context", () => {
+  render(
+    <AnalystTaskContext
+      task={{
+        ...baseTask,
+        description: null,
+        operationalQuestion: null,
+        priority: null,
+        requiredOutputFormat: null,
+        chatSummary: ["Requester needs a decision-ready summary."],
+        managerNotes: ["Separate evidence from assessment."],
+      }}
+    />,
+  );
+
+  expect(screen.getByText("No operational question was supplied.")).toBeVisible();
+  expect(screen.getByText("No background description was supplied.")).toBeVisible();
+  expect(screen.getByText("Requester needs a decision-ready summary.")).toBeVisible();
+  expect(screen.getByText("Separate evidence from assessment.")).toBeVisible();
+});

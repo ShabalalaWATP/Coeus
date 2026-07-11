@@ -44,6 +44,7 @@ export type TeamAvailability = {
   onLeave: number;
   onTaskCalendar: number;
   assignedLive: number;
+  onTask: number;
   free: number;
 };
 

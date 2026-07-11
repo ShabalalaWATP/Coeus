@@ -114,7 +114,7 @@ test("hides the confirm receipt action from non-owners and closed requests", () 
   expect(
     screen.queryByRole("button", { name: "Confirm receipt and close" }),
   ).not.toBeInTheDocument();
-  expect(screen.getByText("CLOSED DELIVERED")).toBeVisible();
+  expect(screen.getByText("Closed delivered")).toBeVisible();
 });
 
 test("renders fallback titles and an empty dashboard state", () => {

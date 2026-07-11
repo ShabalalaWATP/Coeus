@@ -2,13 +2,22 @@ import type { AccessControlGroup } from "../../lib/api-client/access";
 import type { QcProduct } from "../../lib/api-client/qc";
 import type { QcReleaseFormState } from "./qc-release-model";
 
-export function MetadataChecks({ acgId, product }: { acgId: string; product: QcProduct }) {
+export function MetadataChecks({
+  acgId,
+  form,
+  product,
+}: {
+  acgId: string;
+  form: QcReleaseFormState;
+  product: QcProduct;
+}) {
   const draft = product.latestDraft;
   const checks: [string, boolean][] = [
     ["Draft content", Boolean(draft?.content)],
     ["Product asset", Boolean(draft?.assets.length)],
     ["ACG selected", acgId.trim().length > 0],
-    ["Releasability checked", true],
+    ["Releasability checked", form.releasability.trim().length > 0],
+    ["Approval reason recorded", form.reason.trim().length >= 3],
   ];
   return (
     <section className="qc-panel">
@@ -28,11 +37,13 @@ export function MetadataChecks({ acgId, product }: { acgId: string; product: QcP
 export function ReleaseForm({
   acgSelectDisabled = false,
   acgs,
+  disabled = false,
   form,
   onChange,
 }: {
   acgSelectDisabled?: boolean;
   acgs: AccessControlGroup[];
+  disabled?: boolean;
   form: QcReleaseFormState;
   onChange: (form: QcReleaseFormState) => void;
 }) {
@@ -43,6 +54,7 @@ export function ReleaseForm({
         <label>
           Classification
           <input
+            disabled={disabled}
             max="5"
             min="0"
             onChange={(event) => onChange({ ...form, classificationLevel: event.target.value })}
@@ -53,11 +65,11 @@ export function ReleaseForm({
         <label>
           ACG
           <select
-            disabled={acgSelectDisabled}
+            disabled={disabled || acgSelectDisabled}
             onChange={(event) => onChange({ ...form, acgId: event.target.value })}
             value={form.acgId}
           >
-            <option value="">Use first visible ACG</option>
+            <option value="">Select an access control group</option>
             {acgs.map((acg) => (
               <option key={acg.id} value={acg.id}>
                 {acg.code}
@@ -68,6 +80,7 @@ export function ReleaseForm({
         <label>
           Releasability
           <input
+            disabled={disabled}
             onChange={(event) => onChange({ ...form, releasability: event.target.value })}
             value={form.releasability}
           />
@@ -75,6 +88,7 @@ export function ReleaseForm({
         <label>
           Handling caveats
           <input
+            disabled={disabled}
             onChange={(event) => onChange({ ...form, caveats: event.target.value })}
             value={form.caveats}
           />
@@ -82,6 +96,7 @@ export function ReleaseForm({
         <label>
           Approval reason
           <textarea
+            disabled={disabled}
             onChange={(event) => onChange({ ...form, reason: event.target.value })}
             value={form.reason}
           />
@@ -89,6 +104,7 @@ export function ReleaseForm({
         <label>
           Rejection reason
           <textarea
+            disabled={disabled}
             onChange={(event) => onChange({ ...form, rejectionReason: event.target.value })}
             value={form.rejectionReason}
           />

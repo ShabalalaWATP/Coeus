@@ -19,10 +19,6 @@ type FeedbackPanelProps = {
 export function FeedbackPanel({ csrfToken }: FeedbackPanelProps) {
   const { session } = useAuth();
   const canSubmitFeedback = session?.user.permissions.includes("feedback:create") ?? false;
-  const queryClient = useQueryClient();
-  const [rating, setRating] = useState("5");
-  const [comment, setComment] = useState("");
-  const [followUpRequested, setFollowUpRequested] = useState(false);
   const feedbackQuery = useQuery({
     queryKey: ["feedback-requests"],
     queryFn: listFeedbackRequests,
@@ -31,31 +27,6 @@ export function FeedbackPanel({ csrfToken }: FeedbackPanelProps) {
     retry: false,
   });
   const requests = feedbackQuery.data ?? EMPTY_FEEDBACK;
-  const pendingRequest = requests.find((request) => request.status === "requested");
-  const { actionError, clearActionError, failActionWith } = useActionError();
-  const submitMutation = useMutation({
-    onError: failActionWith("The feedback could not be submitted. Try again."),
-    onMutate: clearActionError,
-    mutationFn: () =>
-      submitFeedback(
-        pendingRequest?.id ?? "",
-        {
-          rating: Number(rating),
-          comment,
-          followUpRequested,
-        },
-        csrfToken,
-      ),
-    onSuccess: (updated) => {
-      queryClient.setQueryData<FeedbackRequest[]>(["feedback-requests"], (current) =>
-        (current ?? EMPTY_FEEDBACK).map((request) =>
-          request.id === updated.id ? updated : request,
-        ),
-      );
-      setComment("");
-      setFollowUpRequested(false);
-    },
-  });
 
   if (!canSubmitFeedback) {
     return null;
@@ -78,15 +49,43 @@ export function FeedbackPanel({ csrfToken }: FeedbackPanelProps) {
       {!feedbackQuery.isError && requests.length === 0 ? <p>No feedback requests yet.</p> : null}
       <div className="feedback-list" aria-label="Feedback requests">
         {requests.map((request) => (
-          <article className="feedback-row" key={request.id}>
-            <span>{request.ticketReference}</span>
-            <strong>{request.productTitle}</strong>
-            <small>{request.status}</small>
-          </article>
+          <FeedbackRequestRow csrfToken={csrfToken} key={request.id} request={request} />
         ))}
       </div>
-      {pendingRequest ? (
+    </section>
+  );
+}
+
+type FeedbackRequestRowProps = FeedbackPanelProps & {
+  request: FeedbackRequest;
+};
+
+function FeedbackRequestRow({ csrfToken, request }: FeedbackRequestRowProps) {
+  const queryClient = useQueryClient();
+  const [rating, setRating] = useState("5");
+  const [comment, setComment] = useState("");
+  const [followUpRequested, setFollowUpRequested] = useState(false);
+  const { actionError, clearActionError, failActionWith } = useActionError();
+  const submitMutation = useMutation({
+    onError: failActionWith("The feedback could not be submitted. Try again."),
+    onMutate: clearActionError,
+    mutationFn: () =>
+      submitFeedback(request.id, { rating: Number(rating), comment, followUpRequested }, csrfToken),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<FeedbackRequest[]>(["feedback-requests"], (current) =>
+        (current ?? EMPTY_FEEDBACK).map((item) => (item.id === updated.id ? updated : item)),
+      );
+    },
+  });
+
+  return (
+    <article className="feedback-row">
+      <span>{request.ticketReference}</span>
+      <strong>{request.productTitle}</strong>
+      <small>{request.status}</small>
+      {request.status === "requested" ? (
         <form
+          aria-label={`Feedback for ${request.productTitle}`}
           className="feedback-form"
           onSubmit={(event) => {
             event.preventDefault();
@@ -95,7 +94,11 @@ export function FeedbackPanel({ csrfToken }: FeedbackPanelProps) {
         >
           <label>
             Rating
-            <select onChange={(event) => setRating(event.target.value)} value={rating}>
+            <select
+              disabled={submitMutation.isPending}
+              onChange={(event) => setRating(event.target.value)}
+              value={rating}
+            >
               {[5, 4, 3, 2, 1].map((value) => (
                 <option key={value} value={value}>
                   {value}
@@ -106,6 +109,7 @@ export function FeedbackPanel({ csrfToken }: FeedbackPanelProps) {
           <label>
             Comment
             <textarea
+              disabled={submitMutation.isPending}
               onChange={(event) => setComment(event.target.value)}
               rows={3}
               value={comment}
@@ -114,6 +118,7 @@ export function FeedbackPanel({ csrfToken }: FeedbackPanelProps) {
           <label className="feedback-follow-up">
             <input
               checked={followUpRequested}
+              disabled={submitMutation.isPending}
               onChange={(event) => setFollowUpRequested(event.target.checked)}
               type="checkbox"
             />
@@ -129,6 +134,6 @@ export function FeedbackPanel({ csrfToken }: FeedbackPanelProps) {
           </button>
         </form>
       ) : null}
-    </section>
+    </article>
   );
 }

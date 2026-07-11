@@ -46,11 +46,12 @@ test("runs RFA capability checks and approves the recommended route", async () =
 
   renderWithProviders(<RoutingQueuePage queue="jioc" />, "/rfa/queue");
 
+  await userEvent.click(await screen.findByText("Capability teams"));
   expect(await screen.findByText("Maritime Assessment Cell")).toBeVisible();
   // The internal priority tier badge and its reason breakdown are visible.
   expect(screen.getAllByText("P2").length).toBeGreaterThan(0);
   expect(screen.getByText("Internal priority score 0.77")).toBeVisible();
-  expect(screen.getByText("priority:region:tier-1:arctic")).toBeVisible();
+  expect(screen.getByText("Region tier 1 arctic")).toBeVisible();
   await userEvent.click(await screen.findByRole("button", { name: "Run capability checks" }));
   expect(await screen.findByText("Recommended route: RFA")).toBeVisible();
   // Top candidate teams from the recommendation scorer are listed.
@@ -119,6 +120,7 @@ test("renders an empty JIOC queue with the full capability catalogue", async () 
 
   expect(await screen.findByText("No tickets in this queue.")).toBeVisible();
   expect(screen.getByRole("heading", { name: "JIOC Queue" })).toBeVisible();
+  await userEvent.click(screen.getByText("Capability teams"));
   expect(await screen.findByText("Cyber Sensor Coordination Cell")).toBeVisible();
 });
 
@@ -196,7 +198,7 @@ test("approves a collection route which pauses for the customer's collect choice
   await userEvent.click(screen.getByRole("button", { name: "Approve route" }));
 
   // Awaiting the customer's collect choice keeps the ticket visible to JIOC.
-  expect((await screen.findAllByText("COLLECT CHOICE")).length).toBeGreaterThan(0);
+  expect((await screen.findAllByText("Collect choice")).length).toBeGreaterThan(0);
   expect(fetchMock).toHaveBeenNthCalledWith(
     2,
     "http://127.0.0.1:8001/api/v1/routing/ticket-1/approve",

@@ -71,14 +71,12 @@ export function IntakePanel({
 
   function saveIntake(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    // Blank fields are omitted entirely: the backend applies minimum-length
-    // rules per field and rejects empty strings, which would fail every
-    // partial save.
     const payload: IntakeUpdate = {};
     for (const [key] of editableFields) {
       const value = (formState[key] ?? "").trim();
-      if (value !== "") {
-        payload[key] = value;
+      const original = ticket?.intake[key] ?? null;
+      if (value !== (original ?? "").trim()) {
+        payload[key] = value === "" ? null : value;
       }
     }
     onSave(payload);
@@ -90,7 +88,9 @@ export function IntakePanel({
       return null;
     }
     return (
-      <small className="field-hint">Needs at least {minLength} characters or leave it blank.</small>
+      <small className="field-hint">
+        Needs at least {minLength} characters. Clearing a saved value removes it.
+      </small>
     );
   }
 

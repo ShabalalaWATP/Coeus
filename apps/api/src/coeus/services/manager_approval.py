@@ -35,6 +35,7 @@ class ManagerApprovalService:
 
     def approve(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         ticket = self._reviewable_ticket(actor, ticket_id)
+        self._ensure_separation_of_duties(actor, ticket)
         self._ensure_transition(ticket.state, TicketState.QC_REVIEW)
         updated = self._tickets.tickets.save_system_update(
             replace(
@@ -87,6 +88,10 @@ class ManagerApprovalService:
         )
         return updated
 
+    def review_work(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
+        """Return the submitted work only to the manager authorised to decide it."""
+        return self._reviewable_ticket(actor, ticket_id)
+
     def _reviewable_ticket(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         if Permission.PRODUCT_APPROVE not in actor.permissions:
             raise AppError(403, "forbidden", "Permission denied.")
@@ -99,7 +104,6 @@ class ManagerApprovalService:
         permission = ROUTE_PERMISSIONS.get(route) if route is not None else None
         if permission is None or permission not in actor.permissions:
             raise AppError(403, "forbidden", "Permission denied.")
-        self._ensure_separation_of_duties(actor, ticket)
         return ticket
 
     @staticmethod

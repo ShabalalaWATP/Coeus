@@ -69,6 +69,11 @@ async def test_manager_can_return_work_for_rework_and_then_approve() -> None:
         assert submitted.json()["state"] == "MANAGER_APPROVAL"
 
         manager = await login(client, "rfa.manager@example.test")
+        review = await client.get(f"/api/v1/routing/{ticket_id}/manager-work")
+        assert review.status_code == 200
+        assert review.json()["drafts"][-1]["title"] == "Chain product"
+        assert review.json()["workPackages"]
+        assert all(item["status"] == "complete" for item in review.json()["workPackages"])
         reworked = await client.post(
             f"/api/v1/routing/{ticket_id}/manager-rework",
             headers={"X-CSRF-Token": str(manager["csrfToken"])},
@@ -122,6 +127,8 @@ async def test_manager_approval_guards_permissions_state_and_reason() -> None:
         assert submitted.status_code == 200
 
         analyst = await login(client, "analyst@example.test")
+        hidden_review = await client.get(f"/api/v1/routing/{ticket_id}/manager-work")
+        assert hidden_review.status_code == 403
         analyst_attempt = await client.post(
             f"/api/v1/routing/{ticket_id}/manager-approval",
             headers={"X-CSRF-Token": str(analyst["csrfToken"])},
@@ -163,11 +170,13 @@ async def test_a_manager_who_drafted_the_work_cannot_approve_it() -> None:
         assert manager_user is not None
         _make_latest_drafter(app, ticket_id, manager_user.user_id)
         manager = await login(client, "rfa.manager@example.test")
+        review = await client.get(f"/api/v1/routing/{ticket_id}/manager-work")
         refused = await client.post(
             f"/api/v1/routing/{ticket_id}/manager-approval",
             headers={"X-CSRF-Token": str(manager["csrfToken"])},
         )
 
+    assert review.status_code == 200
     assert refused.status_code == 403
     assert refused.json()["error"]["code"] == "separation_of_duties"
 

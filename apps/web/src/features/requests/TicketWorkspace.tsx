@@ -21,6 +21,7 @@ import { useAuth } from "../../lib/auth/auth-context";
 import { hasPermissions } from "../../lib/permissions/route-access";
 
 const INTAKE_STATES = new Set(["DRAFT_INTAKE", "INFO_REQUIRED"]);
+const PRODUCT_OFFER_STATES = new Set(["RFI_SEARCHING", "RFI_MATCH_OFFERED", "RFI_NO_MATCH"]);
 const CANCELABLE_STATES = new Set([
   "DRAFT_INTAKE",
   "INFO_REQUIRED",
@@ -118,7 +119,7 @@ export function TicketWorkspace({
   const canRunRfiSearch =
     canEdit && session !== null && hasPermissions(session.user, ["rfi:search"]);
   const showIntakeTools = ticket === undefined || INTAKE_STATES.has(ticket.state);
-  const showOffers = ticket !== undefined && !INTAKE_STATES.has(ticket.state);
+  const showOffers = ticket !== undefined && PRODUCT_OFFER_STATES.has(ticket.state);
   const canCancel = ticket !== undefined && isOwner && CANCELABLE_STATES.has(ticket.state);
 
   return (
@@ -237,6 +238,7 @@ export function TicketWorkspace({
             Request history
           </summary>
           <TimelinePanel
+            currentUserId={currentUserId}
             isAdding={pending.adding}
             onAddInformation={actions.onAddInformation}
             readOnly={!canAddInformation}

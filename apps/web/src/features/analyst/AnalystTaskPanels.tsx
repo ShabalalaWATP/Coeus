@@ -6,9 +6,11 @@ import type { StoreProduct } from "../../lib/api-client/store";
 import { ACTIVE_ANALYST_STATES } from "./analyst-task-policy";
 
 export function WorkPackagesPanel({
+  disabled = false,
   onComplete,
   task,
 }: {
+  disabled?: boolean;
   onComplete: (packageId: string) => void;
   task: AnalystTask;
 }) {
@@ -19,7 +21,9 @@ export function WorkPackagesPanel({
         <label className="analyst-check" key={item.id}>
           <input
             checked={item.status === "complete"}
-            disabled={item.status === "complete" || !ACTIVE_ANALYST_STATES.has(task.state)}
+            disabled={
+              disabled || item.status === "complete" || !ACTIVE_ANALYST_STATES.has(task.state)
+            }
             onChange={() => onComplete(item.id)}
             type="checkbox"
           />
@@ -31,11 +35,13 @@ export function WorkPackagesPanel({
 }
 
 export function NotesPanel({
+  disabled = false,
   noteBody,
   onNoteChange,
   onSubmit,
   task,
 }: {
+  disabled?: boolean;
   noteBody: string;
   onNoteChange: (body: string) => void;
   onSubmit: () => void;
@@ -51,9 +57,13 @@ export function NotesPanel({
         <form className="analyst-inline-form" onSubmit={(event) => submit(event, onSubmit)}>
           <label>
             Note
-            <textarea onChange={(event) => onNoteChange(event.target.value)} value={noteBody} />
+            <textarea
+              disabled={disabled}
+              onChange={(event) => onNoteChange(event.target.value)}
+              value={noteBody}
+            />
           </label>
-          <button disabled={noteBody.trim().length < 3} type="submit">
+          <button disabled={disabled || noteBody.trim().length < 3} type="submit">
             Add note
           </button>
         </form>
@@ -68,6 +78,7 @@ export function NotesPanel({
 }
 
 export function LinkedProductsPanel({
+  disabled = false,
   isError,
   onLink,
   onQueryChange,
@@ -77,6 +88,7 @@ export function LinkedProductsPanel({
   productQuery,
   task,
 }: {
+  disabled?: boolean;
   isError: boolean;
   onLink: (productId: string) => void;
   onQueryChange: (query: string) => void;
@@ -96,9 +108,13 @@ export function LinkedProductsPanel({
         <form className="analyst-inline-form" onSubmit={(event) => submit(event, onSearch)}>
           <label>
             Product search
-            <input onChange={(event) => onQueryChange(event.target.value)} value={productQuery} />
+            <input
+              disabled={disabled}
+              onChange={(event) => onQueryChange(event.target.value)}
+              value={productQuery}
+            />
           </label>
-          <button disabled={productQuery.trim().length < 2} type="submit">
+          <button disabled={disabled || productQuery.trim().length < 2} type="submit">
             Search products
           </button>
         </form>
@@ -112,7 +128,12 @@ export function LinkedProductsPanel({
             </div>
           ) : null}
           {products.map((product) => (
-            <button key={product.id} onClick={() => onLink(product.id)} type="button">
+            <button
+              disabled={disabled}
+              key={product.id}
+              onClick={() => onLink(product.id)}
+              type="button"
+            >
               {product.title}
             </button>
           ))}

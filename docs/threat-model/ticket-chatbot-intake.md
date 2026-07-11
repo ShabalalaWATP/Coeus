@@ -33,3 +33,12 @@ metadata placeholders, agent-run records and ticket timeline.
   when live providers are introduced.
 - Real file upload needs malware scanning, type validation, size limits and
   object-storage access controls.
+
+## July 2026 interface hardening
+
+- Existing-ticket routes now wait for the exact requested record before any
+  mutation controls render, preventing a delayed lookup from acting on a
+  fallback ticket.
+- Intake PATCH requests preserve omitted fields and represent deliberate
+  clearing as explicit `null`, reducing stale sensitive metadata and accidental
+  bulk erasure.

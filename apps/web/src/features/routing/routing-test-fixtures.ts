@@ -1,6 +1,7 @@
 import { vi } from "vitest";
 
 import type { RoutingQueue, RoutingTicket } from "../../lib/api-client/routing";
+import type { AnalystTask } from "../../lib/api-client/analyst";
 
 export const baseTicket: RoutingTicket = {
   ticketId: "ticket-1",
@@ -92,6 +93,38 @@ export const reviewedTicket: RoutingTicket = {
   ],
 };
 
+const submittedManagerWork: AnalystTask = {
+  ticketId: "ticket-1",
+  reference: "TCK-0001",
+  state: "MANAGER_APPROVAL",
+  title: "Arctic Fisheries Assessment",
+  description: "Assess the current activity.",
+  operationalQuestion: "What changed?",
+  areaOrRegion: "Arctic",
+  priority: "high",
+  requiredOutputFormat: "assessment report",
+  chatSummary: [],
+  managerNotes: [],
+  assignments: [],
+  workPackages: [
+    { id: "package-1", title: "Validate assumptions", status: "complete", sortOrder: 1 },
+  ],
+  notes: [],
+  linkedProducts: [],
+  drafts: [
+    {
+      id: "draft-1",
+      versionNumber: 1,
+      title: "Arctic Fisheries Assessment",
+      summary: "The analyst assessment is ready for review.",
+      productType: "assessment_report",
+      content: "MOCK DATA ONLY analyst assessment content.",
+      assets: [],
+      createdAt: "2026-07-05T00:00:00Z",
+    },
+  ],
+};
+
 const capabilityCatalogue = {
   teams: [
     {
@@ -147,6 +180,9 @@ export function stubRoutingFetch(
       }
       if (url.includes("similar-requests/routing") && !url.includes("/link/")) {
         return Promise.resolve(jsonResponse({ matches: [] }));
+      }
+      if (url.includes("/manager-work")) {
+        return Promise.resolve(jsonResponse(submittedManagerWork));
       }
       return sequential(url, init);
     }),

@@ -67,7 +67,7 @@ test("confirms no-match tasking as a new request from the workspace", async () =
       }),
     ),
   );
-  expect((await screen.findAllByText("JIOC REVIEW"))[0]).toBeVisible();
+  expect((await screen.findAllByText("JIOC review"))[0]).toBeVisible();
 });
 
 test("declines no-match tasking and cancels the request", async () => {
@@ -103,7 +103,7 @@ test("declines no-match tasking and cancels the request", async () => {
       }),
     ),
   );
-  expect((await screen.findAllByText("CANCELLED"))[0]).toBeVisible();
+  expect((await screen.findAllByText("Cancelled"))[0]).toBeVisible();
 });
 
 test("shows no-match consent failures through the shared action error", async () => {

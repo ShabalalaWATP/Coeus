@@ -10,7 +10,10 @@ import { listTeams, teamAvailability } from "../../lib/api-client/teams";
 import { useAuth } from "../../lib/auth/auth-context";
 
 function isoToday() {
-  return new Date().toISOString().slice(0, 10);
+  const today = new Date();
+  return [today.getFullYear(), today.getMonth() + 1, today.getDate()]
+    .map((part, index) => String(part).padStart(index === 0 ? 4 : 2, "0"))
+    .join("-");
 }
 
 export default function TeamsPage() {
@@ -71,9 +74,7 @@ export default function TeamsPage() {
                 </div>
                 <div>
                   <dt>On task</dt>
-                  <dd>
-                    {availabilityQuery.data.assignedLive + availabilityQuery.data.onTaskCalendar}
-                  </dd>
+                  <dd>{availabilityQuery.data.onTask}</dd>
                 </div>
                 <div>
                   <dt>On leave</dt>
@@ -90,9 +91,9 @@ export default function TeamsPage() {
             <TeamRosterPanel csrfToken={csrfToken} currentUserId={userId} team={team} />
             <TeamCalendarPanel csrfToken={csrfToken} currentUserId={userId} team={team} />
           </div>
-          <MyProfilePanel csrfToken={csrfToken} />
         </>
       ) : null}
+      <MyProfilePanel csrfToken={csrfToken} />
     </div>
   );
 }

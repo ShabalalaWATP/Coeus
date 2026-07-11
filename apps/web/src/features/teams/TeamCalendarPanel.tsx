@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarPlus, Trash2 } from "lucide-react";
+import { CalendarPlus, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import {
@@ -17,10 +17,12 @@ const STATUS_LABELS: Record<CalendarEntry["status"], string> = {
   leave: "On leave",
 };
 
-function isoDate(offsetDays: number) {
-  const date = new Date();
+function isoDate(offsetDays: number, base = new Date()) {
+  const date = new Date(base);
   date.setDate(date.getDate() + offsetDays);
-  return date.toISOString().slice(0, 10);
+  return [date.getFullYear(), date.getMonth() + 1, date.getDate()]
+    .map((part, index) => String(part).padStart(index === 0 ? 4 : 2, "0"))
+    .join("-");
 }
 
 const DAY_LABEL = new Intl.DateTimeFormat("en-GB", {
@@ -34,8 +36,13 @@ function dayLabel(date: string) {
 }
 
 function groupByDate(entries: CalendarEntry[]): [string, CalendarEntry[]][] {
-  const groups = new Map<string, CalendarEntry[]>();
+  const effective = new Map<string, CalendarEntry>();
   for (const entry of entries) {
+    const key = `${entry.date}:${entry.userId}`;
+    effective.set(key, entry);
+  }
+  const groups = new Map<string, CalendarEntry[]>();
+  for (const entry of effective.values()) {
     groups.set(entry.date, [...(groups.get(entry.date) ?? []), entry]);
   }
   return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
@@ -69,13 +76,14 @@ type TeamCalendarPanelProps = {
 
 export function TeamCalendarPanel({ csrfToken, currentUserId, team }: TeamCalendarPanelProps) {
   const queryClient = useQueryClient();
-  const [entryDate, setEntryDate] = useState(isoDate(0));
+  const [windowOffset, setWindowOffset] = useState(0);
+  const windowFrom = isoDate(windowOffset);
+  const windowTo = isoDate(windowOffset + 14);
+  const [entryDate, setEntryDate] = useState(windowFrom);
   const [status, setStatus] = useState<CalendarEntry["status"]>("available");
   const [memberId, setMemberId] = useState(currentUserId);
   const [note, setNote] = useState("");
   const { actionError, clearActionError, failActionWith } = useActionError();
-  const windowFrom = isoDate(0);
-  const windowTo = isoDate(14);
   const calendarKey = ["team-calendar", team.id, windowFrom, windowTo];
   const calendarQuery = useQuery({
     queryKey: calendarKey,
@@ -90,6 +98,7 @@ export function TeamCalendarPanel({ csrfToken, currentUserId, team }: TeamCalend
       : (team.members[0]?.userId ?? "");
     setMemberId(validMember);
   }, [currentUserId, team.id, team.members]);
+  useEffect(() => setEntryDate(windowFrom), [windowFrom]);
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: calendarKey });
     void queryClient.invalidateQueries({ queryKey: ["team-availability", team.id] });
@@ -121,9 +130,20 @@ export function TeamCalendarPanel({ csrfToken, currentUserId, team }: TeamCalend
   return (
     <section className="surface team-calendar" aria-label="Team calendar">
       <h2>Calendar (next two weeks)</h2>
+      <nav aria-label="Calendar period" className="team-calendar__navigation">
+        <button onClick={() => setWindowOffset((current) => current - 14)} type="button">
+          <ChevronLeft aria-hidden="true" size={16} /> Previous fortnight
+        </button>
+        <button disabled={windowOffset === 0} onClick={() => setWindowOffset(0)} type="button">
+          Today
+        </button>
+        <button onClick={() => setWindowOffset((current) => current + 14)} type="button">
+          Next fortnight <ChevronRight aria-hidden="true" size={16} />
+        </button>
+      </nav>
       {calendarQuery.isError ? <p role="alert">The calendar could not be loaded.</p> : null}
       {calendarQuery.isSuccess && calendarQuery.data.entries.length === 0 ? (
-        <p className="team-calendar__empty">No entries in the next two weeks.</p>
+        <p className="team-calendar__empty">No entries in this fortnight.</p>
       ) : null}
       {calendarDays(windowFrom, calendarQuery.data?.entries ?? []).map(([date, entries]) => (
         <div
@@ -150,7 +170,15 @@ export function TeamCalendarPanel({ csrfToken, currentUserId, team }: TeamCalend
                   <button
                     aria-label={`Remove entry for ${memberName(entry.userId)} on ${entry.date}`}
                     disabled={removeMutation.isPending}
-                    onClick={() => removeMutation.mutate(entry.id)}
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `Remove this calendar entry for ${memberName(entry.userId)}?`,
+                        )
+                      ) {
+                        removeMutation.mutate(entry.id);
+                      }
+                    }}
                     type="button"
                   >
                     <Trash2 aria-hidden="true" size={14} />

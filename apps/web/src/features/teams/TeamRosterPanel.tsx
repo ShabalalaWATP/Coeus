@@ -41,7 +41,7 @@ export function TeamRosterPanel({ csrfToken, currentUserId, team }: TeamRosterPa
   const directoryQuery = useQuery({
     enabled: canSearch,
     queryFn: () => listTeamMemberCandidates(team.id, debouncedTerm),
-    queryKey: ["teams", "directory", debouncedTerm],
+    queryKey: ["teams", team.id, "directory", debouncedTerm],
   });
   const memberIds = new Set(team.members.map((member) => member.userId));
   const suggestions = (directoryQuery.data?.users ?? []).filter(
@@ -82,7 +82,11 @@ export function TeamRosterPanel({ csrfToken, currentUserId, team }: TeamRosterPa
               <button
                 aria-label={`Remove ${member.displayName}`}
                 disabled={removeMutation.isPending}
-                onClick={() => removeMutation.mutate(member.userId)}
+                onClick={() => {
+                  if (window.confirm(`Remove ${member.displayName} from ${team.name}?`)) {
+                    removeMutation.mutate(member.userId);
+                  }
+                }}
                 type="button"
               >
                 <UserMinus aria-hidden="true" size={16} />

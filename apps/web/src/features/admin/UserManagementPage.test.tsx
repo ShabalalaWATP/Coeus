@@ -24,6 +24,10 @@ const analystUser = {
 };
 
 beforeEach(() => {
+  vi.stubGlobal(
+    "confirm",
+    vi.fn(() => true),
+  );
   resetQueryClientForTests();
 });
 
@@ -158,4 +162,35 @@ test("shows an actionable error when a user update fails", async () => {
   expect(
     await screen.findByText("The user change could not be saved. Refresh and try again."),
   ).toBeVisible();
+});
+
+test("filters users and honours a declined deactivation confirmation", async () => {
+  const inactiveUser = {
+    ...analystUser,
+    id: "inactive-user",
+    displayName: "Inactive User",
+    isActive: false,
+  };
+  const fetchMock = vi.fn((url: string) =>
+    Promise.resolve({
+      ok: true,
+      json: () =>
+        Promise.resolve(url.endsWith("/admin/users") ? { users: [analystUser, inactiveUser] } : {}),
+    }),
+  );
+  vi.stubGlobal("fetch", fetchMock);
+  vi.stubGlobal(
+    "confirm",
+    vi.fn(() => false),
+  );
+  renderWithProviders(<UserManagementPage />, "/admin/users");
+
+  await screen.findByText("Inactive User");
+  await userEvent.selectOptions(screen.getByLabelText("Status"), "inactive");
+  expect(screen.getByText("Inactive User")).toBeVisible();
+  expect(screen.queryByText("Analyst Operator")).not.toBeInTheDocument();
+  await userEvent.selectOptions(screen.getByLabelText("Status"), "active");
+  await userEvent.type(screen.getByLabelText("Search users"), "analyst");
+  await userEvent.click(screen.getByLabelText("Active account"));
+  expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining("/status"), expect.anything());
 });

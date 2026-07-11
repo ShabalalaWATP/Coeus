@@ -31,6 +31,7 @@ import {
 import { actionErrorMessage } from "../../lib/mutations/action-error";
 
 type UseRequestWorkspaceMutationsInput = {
+  allowCreate: boolean;
   csrfToken: string;
   currentRouteTicketId?: string;
   selectedTicket?: Ticket;
@@ -41,6 +42,7 @@ type UseRequestWorkspaceMutationsInput = {
 };
 
 export function useRequestWorkspaceMutations({
+  allowCreate,
   csrfToken,
   currentRouteTicketId,
   selectedTicket,
@@ -88,8 +90,12 @@ export function useRequestWorkspaceMutations({
   };
 
   const chatMutation = useMutation({
-    mutationFn: (message: string) =>
-      sendChatMessage({ ticketId: selectedTicket?.id, message }, csrfToken),
+    mutationFn: (message: string) => {
+      if (!allowCreate && selectedTicket === undefined) {
+        throw new Error("The requested ticket has not loaded.");
+      }
+      return sendChatMessage({ ticketId: selectedTicket?.id, message }, csrfToken);
+    },
     onError: failAction("The message could not be sent. Try again."),
     onMutate: clearActionError,
     onSuccess: updateTicketCache,

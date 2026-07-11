@@ -1,4 +1,5 @@
 import { apiRequestJson, pathSegment } from "./client";
+import type { AnalystTask } from "./analyst";
 import type { TicketState } from "./tickets";
 
 export type RoutingRoute = "rfa" | "cm";
@@ -148,6 +149,12 @@ export async function approveManagerWork(
       method: "POST",
     },
   );
+}
+
+export async function getManagerWork(ticketId: string): Promise<AnalystTask> {
+  return apiRequestJson<AnalystTask>(`/api/v1/routing/${pathSegment(ticketId)}/manager-work`, {
+    method: "GET",
+  });
 }
 
 export async function returnWorkForRework(

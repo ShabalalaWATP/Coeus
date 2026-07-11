@@ -1,7 +1,18 @@
 export type StatusTone = "info" | "success" | "warning" | "critical";
 
 export function formatWorkflowState(state: string) {
-  return state.replaceAll("_", " ");
+  const acronyms = new Set(["RFI", "JIOC", "QC", "RFA"]);
+  return state
+    .split("_")
+    .map((word, index) =>
+      acronyms.has(word) ? word : index === 0 ? titleCase(word) : word.toLowerCase(),
+    )
+    .join(" ");
+}
+
+function titleCase(value: string) {
+  const lower = value.toLowerCase();
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
 }
 
 export function toneForState(state: string): StatusTone {

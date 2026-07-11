@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { ChatPanel } from "./ChatPanel";
@@ -28,7 +28,7 @@ test("calculates ticket metrics for every visible state", () => {
       { ...ticket, id: "ticket-3", state: "RFI_SEARCHING" },
       { ...ticket, id: "ticket-4", state: "RFI_MATCH_OFFERED" },
     ]),
-  ).toEqual({ total: 4, draft: 2, searching: 2, ready: 3 });
+  ).toEqual({ total: 4, draft: 2, awaitingAction: 1, inProgress: 1, completed: 0 });
 });
 
 test("disables sending short chat messages and shows a hint", async () => {
@@ -248,7 +248,7 @@ test("renders the timeline as read-only when the viewer cannot write", () => {
   expect(screen.queryByRole("button", { name: "Add information" })).not.toBeInTheDocument();
 });
 
-test("omits blank intake fields from the saved payload", async () => {
+test("sends explicit null only when a saved intake field is cleared", async () => {
   const onSave = vi.fn();
   render(
     <IntakePanel
@@ -269,18 +269,16 @@ test("omits blank intake fields from the saved payload", async () => {
     />,
   );
 
+  const intakeForm = screen
+    .getByRole("heading", { name: "Extracted Intake" })
+    .closest("section")
+    ?.querySelector<HTMLFormElement>("form.intake-form");
+  expect(intakeForm).not.toBeNull();
+  await userEvent.clear(within(intakeForm!).getByLabelText("Description"));
   await userEvent.type(screen.getByLabelText("Priority"), "  ");
   await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
-  expect(onSave).toHaveBeenCalledWith({
-    title: "Regional Brief",
-    description: "Assess activity.",
-    operationalQuestion: "What changed?",
-    areaOrRegion: "Baltic ports",
-    timePeriodStart: "next week",
-    requestingUnit: "Carrier Strike Group Atlas",
-    intelligenceDisciplines: "IMINT",
-  });
+  expect(onSave).toHaveBeenCalledWith({ description: null });
 });
 
 test("hints when intake fields are below the minimum length", async () => {
@@ -301,11 +299,15 @@ test("hints when intake fields are below the minimum length", async () => {
   await userEvent.type(screen.getByLabelText("Title"), "ab");
   await userEvent.type(screen.getByLabelText("Priority"), "a");
 
-  expect(screen.getByText("Needs at least 3 characters or leave it blank.")).toBeVisible();
-  expect(screen.getByText("Needs at least 2 characters or leave it blank.")).toBeVisible();
+  expect(
+    screen.getByText("Needs at least 3 characters. Clearing a saved value removes it."),
+  ).toBeVisible();
+  expect(
+    screen.getByText("Needs at least 2 characters. Clearing a saved value removes it."),
+  ).toBeVisible();
 
   await userEvent.type(screen.getByLabelText("Title"), "c");
   expect(
-    screen.queryByText("Needs at least 3 characters or leave it blank."),
+    screen.queryByText("Needs at least 3 characters. Clearing a saved value removes it."),
   ).not.toBeInTheDocument();
 });

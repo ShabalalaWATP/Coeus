@@ -129,7 +129,7 @@ class RequirementCompletenessService:
         return not self.with_completeness(intake).missing_information
 
 
-def merge_intake(intake: IntakeDetails, updates: dict[str, str]) -> IntakeDetails:
+def merge_intake(intake: IntakeDetails, updates: dict[str, str | None]) -> IntakeDetails:
     return replace(
         intake,
         title=updates.get("title", intake.title),

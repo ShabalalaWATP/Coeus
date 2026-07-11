@@ -11,6 +11,7 @@ import {
   type AccessControlGroup,
   type CreateAccessControlGroupRequest,
 } from "../../lib/api-client/access";
+import { listAdminUsers, type AdminUser } from "../../lib/api-client/admin";
 import { useAuth } from "../../lib/auth/auth-context";
 import { useActionError } from "../../lib/mutations/action-error";
 import { hasPermissions } from "../../lib/permissions/route-access";
@@ -26,6 +27,7 @@ export function useAcgAdminModel() {
   const [editName, setEditName] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [memberUserId, setMemberUserId] = useState("");
+  const [directoryRequested, setDirectoryRequested] = useState(false);
   const { actionError, clearActionError, failActionWith } = useActionError();
   const acgsQuery = useQuery({ queryKey: ["acgs"], queryFn: listAcgs });
   const acgs = useMemo(() => acgsQuery.data ?? [], [acgsQuery.data]);
@@ -35,6 +37,13 @@ export function useAcgAdminModel() {
     () => acgs.find((acg) => acg.id === requestedId),
     [acgs, requestedId],
   );
+  const canManageMembers = session !== null && hasPermissions(session.user, ["acg:assign_user"]);
+  const usersQuery = useQuery({
+    enabled: canManageMembers && directoryRequested,
+    queryFn: async () => (await listAdminUsers()) ?? [],
+    queryKey: ["admin-users"],
+  });
+  const users: AdminUser[] = Array.isArray(usersQuery.data) ? usersQuery.data : [];
 
   useEffect(() => {
     setEditName(selectedAcg?.name ?? "");
@@ -96,12 +105,14 @@ export function useAcgAdminModel() {
     routedAcgMissing:
       acgId !== undefined && acgs.length > 0 && !routedAcgExists && selectedId === null,
     canCreate: session !== null && hasPermissions(session.user, ["acg:create"]),
-    canManageMembers: session !== null && hasPermissions(session.user, ["acg:assign_user"]),
+    canManageMembers,
     canUpdate: session !== null && hasPermissions(session.user, ["acg:update"]),
     createPending: createMutation.isPending,
     updatePending: updateMutation.isPending,
     addMemberPending: addMemberMutation.isPending,
     removeMemberPending: removeMemberMutation.isPending,
+    users,
+    requestDirectory: () => setDirectoryRequested(true),
     selectAcg: setSelectedId,
     setCreateForm,
     setEditName,
@@ -111,6 +122,8 @@ export function useAcgAdminModel() {
     submitUpdate: submit(() => selectedAcg && updateMutation.mutate(selectedAcg)),
     submitMember: submit(() => selectedAcg && addMemberMutation.mutate(selectedAcg)),
     removeMember: (userId: string) =>
-      selectedAcg && removeMemberMutation.mutate({ acg: selectedAcg, userId }),
+      selectedAcg &&
+      window.confirm(`Remove this user from ${selectedAcg.name}?`) &&
+      removeMemberMutation.mutate({ acg: selectedAcg, userId }),
   };
 }

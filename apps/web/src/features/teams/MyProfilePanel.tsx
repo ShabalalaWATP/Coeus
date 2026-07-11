@@ -50,6 +50,12 @@ export function MyProfilePanel({ csrfToken }: { csrfToken: string }) {
         <h2>My profile</h2>
       </div>
       <p>Teammates see your title and specialisms beside your name on the roster.</p>
+      {profileQuery.isLoading ? <p role="status">Loading your profile…</p> : null}
+      {profileQuery.isError ? (
+        <p role="alert">
+          Your profile could not be loaded. You can still enter replacement details below.
+        </p>
+      ) : null}
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -58,11 +64,17 @@ export function MyProfilePanel({ csrfToken }: { csrfToken: string }) {
       >
         <label>
           Title
-          <input maxLength={120} onChange={(event) => setTitle(event.target.value)} value={title} />
+          <input
+            disabled={saveMutation.isPending}
+            maxLength={120}
+            onChange={(event) => setTitle(event.target.value)}
+            value={title}
+          />
         </label>
         <label>
           Specialisms (semicolon separated)
           <input
+            disabled={saveMutation.isPending}
             onChange={(event) => setSpecialisms(event.target.value)}
             placeholder="IMINT; Maritime"
             value={specialisms}
@@ -70,7 +82,12 @@ export function MyProfilePanel({ csrfToken }: { csrfToken: string }) {
         </label>
         <label>
           Bio
-          <textarea maxLength={1000} onChange={(event) => setBio(event.target.value)} value={bio} />
+          <textarea
+            disabled={saveMutation.isPending}
+            maxLength={1000}
+            onChange={(event) => setBio(event.target.value)}
+            value={bio}
+          />
         </label>
         <button disabled={saveMutation.isPending} type="submit">
           Save profile

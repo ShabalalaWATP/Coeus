@@ -6,6 +6,7 @@ import type {
   RoutingQueue,
   RoutingTicket,
 } from "../../lib/api-client/routing";
+import { formatTaggedReason } from "./routing-labels";
 
 function AgentChip({ label }: { label: string }) {
   return (
@@ -96,7 +97,11 @@ export function Review({
           <h4>Candidate teams</h4>
           <ol>
             {review.candidateTeams.map((candidate) => (
-              <li key={candidate.teamId} title={candidate.reasons.join(", ")}>
+              <li
+                aria-label={`${candidate.name}. ${candidate.reasons.map(formatTaggedReason).join(". ")}`}
+                key={candidate.teamId}
+                title={candidate.reasons.map(formatTaggedReason).join(", ")}
+              >
                 <strong>{candidate.name}</strong>
                 <span>score {candidate.score}</span>
               </li>

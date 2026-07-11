@@ -57,6 +57,7 @@ def availability_response(availability: TeamAvailability) -> AvailabilityRespons
         on_leave=availability.on_leave,
         on_task_calendar=availability.on_task_calendar,
         assigned_live=availability.assigned_live,
+        on_task=availability.on_task,
         free=availability.free,
     )
 

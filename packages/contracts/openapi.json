@@ -1121,6 +1121,10 @@
             "title": "Onleave",
             "type": "integer"
           },
+          "onTask": {
+            "title": "Ontask",
+            "type": "integer"
+          },
           "onTaskCalendar": {
             "title": "Ontaskcalendar",
             "type": "integer"
@@ -1138,6 +1142,7 @@
           "onLeave",
           "onTaskCalendar",
           "assignedLive",
+          "onTask",
           "free"
         ],
         "title": "AvailabilityResponse",
@@ -9185,6 +9190,49 @@
           }
         },
         "summary": "Manager Return For Rework",
+        "tags": [
+          "routing"
+        ]
+      }
+    },
+    "/api/v1/routing/{ticket_id}/manager-work": {
+      "get": {
+        "operationId": "manager_review_work_api_v1_routing__ticket_id__manager_work_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalystTaskResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Manager Review Work",
         "tags": [
           "routing"
         ]

@@ -323,5 +323,22 @@ async def test_manager_link_failure_rolls_back_related_ticket(
     assert _timeline_count(target, "related_ticket_linked") == 0
 
 
+async def test_jioc_lists_similar_requests_for_a_routing_ticket() -> None:
+    app = create_app(
+        Settings(environment="test", argon2_memory_cost=8_192, persistence_provider="memory")
+    )
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        user = await login(client, "user@example.test")
+        source_id, target_id = await similar_ticket_pair(client, str(user["csrfToken"]))
+        await login(client, "jioc.team@example.test")
+
+        listed = await client.get(f"/api/v1/similar-requests/routing/{source_id}")
+
+    assert listed.status_code == 200
+    assert listed.json()["matches"][0]["ticketId"] == target_id
+
+
 def _timeline_count(ticket: TicketRecord, event_type: str) -> int:
     return sum(1 for entry in ticket.timeline if entry.event_type == event_type)

@@ -16,7 +16,6 @@ type RegistrationApprovalsPanelProps = {
 
 export function RegistrationApprovalsPanel({ csrfToken }: RegistrationApprovalsPanelProps) {
   const queryClient = useQueryClient();
-  const [rejectReason, setRejectReason] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const registrationsQuery = useQuery({
     queryKey: ["registrations"],
@@ -37,13 +36,9 @@ export function RegistrationApprovalsPanel({ csrfToken }: RegistrationApprovalsP
     onError: failAction,
   });
   const rejectMutation = useMutation({
-    mutationFn: (registrationId: string) =>
-      rejectRegistration(registrationId, rejectReason, csrfToken),
-    onSuccess: (registration) => {
-      removeRegistration(registration);
-      // Clear the shared reason so it cannot be reused against the next request.
-      setRejectReason("");
-    },
+    mutationFn: ({ registrationId, reason }: { registrationId: string; reason: string }) =>
+      rejectRegistration(registrationId, reason, csrfToken),
+    onSuccess: removeRegistration,
     onError: failAction,
   });
 
@@ -62,42 +57,17 @@ export function RegistrationApprovalsPanel({ csrfToken }: RegistrationApprovalsP
         />
       ) : (
         <>
-          <label className="approvals-reason">
-            Rejection reason
-            <input
-              onChange={(event) => setRejectReason(event.target.value)}
-              placeholder="Required before rejecting"
-              value={rejectReason}
-            />
-          </label>
           <div className="stack-list">
             {registrations.map((registration) => (
-              <article className="approvals-row" key={registration.id}>
-                <div>
-                  <strong>{registration.displayName}</strong>
-                  <span>{registration.username}</span>
-                  {registration.justification ? <p>{registration.justification}</p> : null}
-                </div>
-                <div className="approvals-actions">
-                  <button
-                    disabled={approveMutation.isPending}
-                    onClick={() => approveMutation.mutate(registration.id)}
-                    type="button"
-                  >
-                    <UserCheck aria-hidden="true" size={16} />
-                    Approve
-                  </button>
-                  <button
-                    className="approvals-reject"
-                    disabled={rejectMutation.isPending || rejectReason.trim().length < 3}
-                    onClick={() => rejectMutation.mutate(registration.id)}
-                    type="button"
-                  >
-                    <UserX aria-hidden="true" size={16} />
-                    Reject
-                  </button>
-                </div>
-              </article>
+              <RegistrationRow
+                actionPending={approveMutation.isPending || rejectMutation.isPending}
+                key={registration.id}
+                onApprove={() => approveMutation.mutate(registration.id)}
+                onReject={(reason) =>
+                  rejectMutation.mutate({ registrationId: registration.id, reason })
+                }
+                registration={registration}
+              />
             ))}
           </div>
         </>
@@ -108,5 +78,51 @@ export function RegistrationApprovalsPanel({ csrfToken }: RegistrationApprovalsP
         </p>
       ) : null}
     </section>
+  );
+}
+
+function RegistrationRow({
+  actionPending,
+  onApprove,
+  onReject,
+  registration,
+}: {
+  actionPending: boolean;
+  onApprove: () => void;
+  onReject: (reason: string) => void;
+  registration: PendingRegistration;
+}) {
+  const [reason, setReason] = useState("");
+  return (
+    <article className="approvals-row">
+      <div>
+        <strong>{registration.displayName}</strong>
+        <span>{registration.username}</span>
+        {registration.justification ? <p>{registration.justification}</p> : null}
+      </div>
+      <label className="approvals-reason">
+        Rejection reason for {registration.displayName}
+        <input
+          aria-label="Rejection reason"
+          disabled={actionPending}
+          onChange={(event) => setReason(event.target.value)}
+          placeholder="Required before rejecting"
+          value={reason}
+        />
+      </label>
+      <div className="approvals-actions">
+        <button disabled={actionPending} onClick={onApprove} type="button">
+          <UserCheck aria-hidden="true" size={16} /> Approve
+        </button>
+        <button
+          className="approvals-reject"
+          disabled={actionPending || reason.trim().length < 3}
+          onClick={() => onReject(reason.trim())}
+          type="button"
+        >
+          <UserX aria-hidden="true" size={16} /> Reject
+        </button>
+      </div>
+    </article>
   );
 }

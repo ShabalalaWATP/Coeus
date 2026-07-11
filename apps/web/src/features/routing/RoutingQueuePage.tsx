@@ -178,6 +178,22 @@ export default function RoutingQueuePage({ queue: queueKind }: RoutingQueuePageP
     onSuccess: (matches) => queryClient.setQueryData(selectedSimilarKey, matches),
   });
   const labels = QUEUE_LABELS[queueKind];
+  const actionPending =
+    runMutation.isPending ||
+    approveMutation.isPending ||
+    rejectMutation.isPending ||
+    clarificationMutation.isPending ||
+    linkSimilarMutation.isPending;
+  const selectTicket = (ticketId: string) => {
+    if (actionPending) return;
+    setSelectedTicketId(ticketId);
+    setDecisionRoute("rfa");
+    setClarificationReason("");
+    setClarificationQuestion("");
+    setRejectReason("");
+    setOverrideReason("");
+    clearActionError();
+  };
 
   return (
     <div className="routing-page">
@@ -194,13 +210,17 @@ export default function RoutingQueuePage({ queue: queueKind }: RoutingQueuePageP
             <h2>{labels.listTitle}</h2>
             <p>{queue.tickets.length} tickets in this queue.</p>
           </div>
-          <RoutingStats queue={queue} />
-          <CapabilityCataloguePanel route={isJioc ? "rfa" : queueKind} showAll={isJioc} />
+          {isJioc ? <RoutingStats queue={queue} /> : null}
           {queueQuery.isError ? (
             <ErrorState onRetry={() => void queueQuery.refetch()} />
           ) : (
             <>
-              <RoutingTicketList onSelect={setSelectedTicketId} tickets={queue.tickets} />
+              <RoutingTicketList
+                disabled={actionPending}
+                onSelect={selectTicket}
+                selectedTicketId={selectedTicket?.ticketId}
+                tickets={queue.tickets}
+              />
               {queue.nextCursor ? (
                 <button
                   className="secondary-button"
@@ -213,9 +233,11 @@ export default function RoutingQueuePage({ queue: queueKind }: RoutingQueuePageP
               ) : null}
             </>
           )}
+          <CapabilityCataloguePanel route={isJioc ? "rfa" : queueKind} showAll={isJioc} />
         </aside>
         <RoutingDetailPanel
           actionError={actionError}
+          actionPending={actionPending}
           canDecide={isJioc}
           onManagerDecision={updateQueue}
           clarificationQuestion={clarificationQuestion}

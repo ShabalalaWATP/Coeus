@@ -25,6 +25,10 @@ function renderPage() {
 }
 
 beforeEach(() => {
+  vi.stubGlobal(
+    "confirm",
+    vi.fn(() => true),
+  );
   resetQueryClientForTests();
 });
 
@@ -56,14 +60,14 @@ test("removes a member from the selected access control group", async () => {
     members.getByRole("button", { name: "Remove user-bravo from Alpha Regional" }),
   );
 
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
-  expect(fetchMock).toHaveBeenNthCalledWith(
-    2,
-    "http://127.0.0.1:8001/api/v1/acgs/acg-alpha/members/user-bravo",
-    expect.objectContaining({
-      headers: { "X-CSRF-Token": "test-csrf-token" },
-      method: "DELETE",
-    }),
+  await waitFor(() =>
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8001/api/v1/acgs/acg-alpha/members/user-bravo",
+      expect.objectContaining({
+        headers: { "X-CSRF-Token": "test-csrf-token" },
+        method: "DELETE",
+      }),
+    ),
   );
 });
 

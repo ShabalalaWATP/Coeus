@@ -38,6 +38,7 @@ class TeamAvailability:
     on_leave: int
     on_task_calendar: int
     assigned_live: int
+    on_task: int
     free: int
 
 
@@ -81,6 +82,7 @@ class TeamAvailabilityService:
             on_leave=len(on_leave),
             on_task_calendar=len(on_task),
             assigned_live=len(assigned),
+            on_task=len((on_task | assigned) - on_leave),
             free=len(members - busy),
         )
 

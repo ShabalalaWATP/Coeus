@@ -1,0 +1,66 @@
+.manager-work-review {
+  display: grid;
+  gap: 14px;
+  border-block: 1px solid var(--border);
+  padding-block: 18px;
+}
+
+.manager-work-review__heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: start;
+}
+
+.manager-work-review__heading h4,
+.manager-work-review__heading p,
+.manager-work-review__packages h4 {
+  margin: 0;
+}
+
+.manager-work-review__content {
+  max-height: 22rem;
+  overflow: auto;
+  border-left: 3px solid var(--accent);
+  padding: 12px 16px;
+  background: color-mix(in srgb, var(--surface-raised) 72%, transparent);
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+.manager-work-review__facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.manager-work-review__facts div {
+  display: grid;
+  gap: 3px;
+}
+
+.manager-work-review__facts dt {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.manager-work-review__facts dd {
+  margin: 0;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.manager-work-review__packages ul,
+.manager-work-review details ul {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+.manager-work-review__packages li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
