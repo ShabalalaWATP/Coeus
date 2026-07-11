@@ -1,10 +1,12 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { AiModelPanel } from "./AiModelPanel";
 import { modelInfoFor } from "./model-catalogue";
 import { resetQueryClientForTests } from "../../app/query-client";
 import { renderWithProviders } from "../../test/test-utils";
+
+const liveRegion = () => screen.getByRole("group", { name: "Live AI configuration" });
 
 const providers = [
   {
@@ -91,9 +93,9 @@ test("switches the active model within the live provider", async () => {
       }),
     ),
   );
-  expect(await screen.findByText(/embeddings: mock/)).toBeVisible();
-  expect(screen.getByText(/embedded products: 3/)).toBeVisible();
-  expect(screen.getByText(/last changed by admin@example.test/)).toBeVisible();
+  await waitFor(() => expect(within(liveRegion()).getByText(/admin@example\.test/)).toBeVisible());
+  expect(within(liveRegion()).getByText("Embeddings")).toBeVisible();
+  expect(within(liveRegion()).getByText("3")).toBeVisible();
 });
 
 test("stores an API key for the selected provider without rendering it back", async () => {
@@ -115,7 +117,7 @@ test("stores an API key for the selected provider without rendering it back", as
   renderWithProviders(<AiModelPanel csrfToken="test-csrf-token" />, "/admin/overview");
 
   await userEvent.click(await screen.findByRole("tab", { name: /OpenAI API/ }));
-  await userEvent.type(screen.getByLabelText("OpenAI API API key"), "sk-openai-secret");
+  await userEvent.type(screen.getByLabelText("API key"), "sk-openai-secret");
   await userEvent.click(screen.getByRole("button", { name: "Save key" }));
 
   await waitFor(() =>
@@ -208,7 +210,7 @@ test("activating another provider warns about the app-wide change first", async 
       }),
     ),
   );
-  expect(await screen.findByText(/live model: gpt-5-mini/)).toBeVisible();
+  expect(await within(liveRegion()).findByText(/gpt-5-mini/)).toBeVisible();
 });
 
 test("cancelling the activation warning sends nothing", async () => {
@@ -253,7 +255,7 @@ test("shows a generic error when the switch fails", async () => {
   expect(
     await screen.findByText("The model could not be changed. Refresh and try again."),
   ).toBeVisible();
-  expect(screen.getByText(/last changed by admin@example.test/)).toBeVisible();
+  expect(within(liveRegion()).getByText(/admin@example\.test/)).toBeVisible();
 });
 
 test("shows a key-specific error when saving the API key fails", async () => {
@@ -269,10 +271,7 @@ test("shows a key-specific error when saving the API key fails", async () => {
 
   renderWithProviders(<AiModelPanel csrfToken="test-csrf-token" />, "/admin/overview");
 
-  await userEvent.type(
-    await screen.findByLabelText("Gemini API (primary) API key"),
-    "gemini-secret-key",
-  );
+  await userEvent.type(await screen.findByLabelText("API key"), "gemini-secret-key");
   await userEvent.click(screen.getByRole("button", { name: "Save key" }));
 
   expect(
