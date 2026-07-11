@@ -38,7 +38,9 @@ test("drives request, JIOC routing, analyst, manager approval and QC release", a
   await page.getByRole("button", { name: "Save draft" }).click();
   await expect(page.getByText("v1: North Atlantic Assessment")).toBeVisible();
   await page.getByRole("button", { name: "Submit for manager approval" }).click();
-  await expect(page.getByLabel("Analyst task detail").getByText("MANAGER APPROVAL")).toBeVisible();
+  await expect(
+    page.getByLabel("Analyst task detail").getByText("Manager approval", { exact: true }),
+  ).toBeVisible();
 
   await page.goto("/rfa/queue");
   await page.getByRole("button", { name: "Approve and send to QC" }).click();
@@ -46,7 +48,10 @@ test("drives request, JIOC routing, analyst, manager approval and QC release", a
 
   await page.goto("/qc/queue");
   await expect(page.getByRole("heading", { name: "QC Queue" })).toBeVisible();
-  await page.getByRole("button", { name: "Mark all complete" }).click();
+  await page.getByRole("checkbox", { name: "source checked" }).check();
+  await page.getByRole("checkbox", { name: "classification checked" }).check();
+  await page.getByLabel("ACG").selectOption("acg-alpha");
+  await page.getByLabel("Approval reason").fill("Approved after QC review.");
   await page.getByRole("button", { name: "Approve and disseminate" }).click();
   await expect(page.getByText("Released to customer")).toBeVisible();
 });

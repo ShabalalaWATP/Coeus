@@ -186,7 +186,7 @@ export function routingTicket(flow: FlowState, overrideState?: string) {
   return {
     agentRuns: flow.stage === "route" ? [] : ["rfa-capability-agent", "orchestrator-agent"],
     clarifications: [],
-    cmReview: null,
+    cmReview: flow.stage === "route" ? null : capabilityReview(),
     managerDecisions: [],
     priority: "routine",
     workflowPlanUpdates:
