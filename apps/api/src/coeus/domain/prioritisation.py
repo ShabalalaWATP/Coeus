@@ -10,12 +10,23 @@ carries prefixed reason tags in the same idiom as the search scorers.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import Protocol
 
-if TYPE_CHECKING:
-    # Imported for typing only; tickets.py imports PriorityAssessment at
-    # runtime, so a runtime import here would be circular.
-    from coeus.domain.tickets import IntakeDetails
+
+class PriorityIntake(Protocol):
+    """The intake fields required by deterministic priority assessment."""
+
+    @property
+    def priority(self) -> str | None: ...
+
+    @property
+    def area_or_region(self) -> str | None: ...
+
+    @property
+    def requesting_unit(self) -> str | None: ...
+
+    @property
+    def supported_operation(self) -> str | None: ...
 
 WEIGHT_LEVEL = 0.35
 WEIGHT_REGION = 0.25
@@ -75,7 +86,7 @@ class PriorityAssessment:
     reasons: tuple[str, ...]
 
 
-def assess_intake(intake: IntakeDetails) -> PriorityAssessment:
+def assess_intake(intake: PriorityIntake) -> PriorityAssessment:
     level_weight, level_reason = _level(intake.priority)
     region_weight, region_reason = _region(intake.area_or_region)
     unit_weight, unit_reason = _unit(intake.requesting_unit)

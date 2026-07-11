@@ -1,3 +1,6 @@
 # ZAP baseline policy. FAIL and WARN entries block because the workflow does not use -I.
 # rule_id<TAB>action<TAB>reason
 10021	IGNORE	The local Vite preview and API are HTTP-only test targets; production TLS terminates outside this local scan.
+10094	IGNORE	The public Istari logo is embedded as base64 image data; it contains no secret or sensitive content.
+10109	IGNORE	The frontend is intentionally a client-rendered modern web application.
+90005	IGNORE	Sec-Fetch-Dest is a browser request header; ZAP's synthetic requests do not send it and the server cannot add it.

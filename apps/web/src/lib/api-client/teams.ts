@@ -1,6 +1,6 @@
 import { apiRequestJson, apiRequestNoContent, pathSegment } from "./client";
 
-export type TeamMember = {
+type TeamMember = {
   userId: string;
   username: string;
   displayName: string;
