@@ -7,8 +7,9 @@ export default defineConfig({
     headers: {
       "Cache-Control": "no-store",
       "Content-Security-Policy":
-        "default-src 'self'; connect-src 'self' http://127.0.0.1:8001; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+        "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' http://127.0.0.1:8001; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
       "Cross-Origin-Embedder-Policy": "require-corp",
+      "Cross-Origin-Opener-Policy": "same-origin",
       "Permissions-Policy": "camera=(), geolocation=(), microphone=()",
       "X-Frame-Options": "DENY",
     },

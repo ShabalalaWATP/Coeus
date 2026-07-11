@@ -28,6 +28,7 @@ class PriorityIntake(Protocol):
     @property
     def supported_operation(self) -> str | None: ...
 
+
 WEIGHT_LEVEL = 0.35
 WEIGHT_REGION = 0.25
 WEIGHT_UNIT = 0.20
