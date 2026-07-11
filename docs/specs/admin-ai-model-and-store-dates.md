@@ -8,7 +8,18 @@ key), AWS Bedrock (long-term API key) and the offline mock. All providers
 are key-based over plain HTTPS through one gateway
 (`integrations/llm_gateway.py`); keys travel in headers, never in URLs, and
 no vendor SDKs are used. Per-provider model allow-lists and defaults come
-from settings (`available_*_models`).
+from settings (`available_*_models`) as a curated fallback.
+
+The selectable model set is not frozen to those defaults. An administrator
+can **refresh** a provider's list from its live API (OpenAI and Gemini
+expose a listing endpoint over the same key; `integrations/llm_models.py`
+filters out known non-chat families) and can **add a model ID by hand** for any provider,
+so brand-new models are usable the day they ship even before, or without, a
+listing. Discovered and hand-added ids are held per provider on top of the
+curated defaults and persisted (they are not secrets); the effective list is
+`curated + custom + discovered`. Refresh is append-only: it never removes
+custom IDs, prior discoveries or the active model. IDs are constrained to 2-80
+safe characters and each persisted source is capped at 200 entries.
 
 One `AiModelService` instance serves the whole application, so the active
 provider and model apply to every user at once.
@@ -19,7 +30,7 @@ All endpoints require `system:configure`; writes also require CSRF.
 
 - `GET /api/v1/admin/ai-model` returns the active provider and model plus a
   `providers` array (name, label, allow-listed models, per-provider active
-  model, whether a key is configured).
+  model, whether a key is configured and `supportsModelRefresh`).
 - `PUT /api/v1/admin/ai-model` with `{model, provider?}` switches a
   provider's selected model (default: the active provider). Unknown models
   return `422 model_not_available`; changes are audit logged
@@ -41,6 +52,22 @@ All endpoints require `system:configure`; writes also require CSRF.
   without changing any state, so admins can prove a key works before
   activating. Missing keys and unreachable providers report `ok: false`
   rather than erroring.
+- `POST /api/v1/admin/ai-model/refresh` with `{provider}` loads that
+  provider's models from its live API and appends safe new IDs to the
+  selectable list (audit: `ai_models_refreshed`). Requires a configured key
+  (`409 provider_not_configured`); providers without a usable listing
+  endpoint (Vertex AI, Bedrock) return `422 refresh_not_supported`.
+- `POST /api/v1/admin/ai-model/custom-model` with `{provider, model}` adds a
+  model ID by hand without activating it, covering brand-new models and
+  providers without live listing (audit: `ai_custom_model_added`). The admin
+  must then choose **Apply model**, which uses the separately audited model
+  selection endpoint.
+
+Provider listing and connection-test calls run in FastAPI's worker thread pool,
+so a slow vendor cannot block unrelated sessions on the event loop. Invalid,
+empty or malformed catalogues fail without changing the persisted list. OpenAI's
+list response does not declare endpoint compatibility, so administrators must
+test a newly discovered model before applying it.
 
 ## Environment configuration
 

@@ -39,7 +39,7 @@ def _intake() -> IntakeDetails:
 
 
 def test_env_key_alone_never_switches_the_provider(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("coeus.integrations.llm_gateway.httpx.Client", ForbiddenClient)
+    monkeypatch.setattr("coeus.integrations.provider_http.httpx.Client", ForbiddenClient)
     settings = Settings(environment="test", gemini_api_key="env-secret")
     ai_models = AiModelService(settings, AuditLog())
     provider = ConfigurableIntakeProvider(settings, ai_models)
@@ -53,7 +53,7 @@ def test_env_key_alone_never_switches_the_provider(monkeypatch: pytest.MonkeyPat
 def test_key_configuration_alone_does_not_activate_the_provider(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("coeus.integrations.llm_gateway.httpx.Client", ForbiddenClient)
+    monkeypatch.setattr("coeus.integrations.provider_http.httpx.Client", ForbiddenClient)
     settings = Settings(environment="test")
     ai_models = AiModelService(settings, AuditLog())
     ai_models.configure_api_key("admin-id", "admin@example.test", "runtime-secret")
@@ -86,7 +86,7 @@ def test_explicit_provider_activation_routes_replies_to_it(
         def post(self, url: str, *, json: object, headers: object) -> FakeResponse:
             return FakeResponse()
 
-    monkeypatch.setattr("coeus.integrations.llm_gateway.httpx.Client", FakeClient)
+    monkeypatch.setattr("coeus.integrations.provider_http.httpx.Client", FakeClient)
     settings = Settings(environment="test")
     ai_models = AiModelService(settings, AuditLog())
     ai_models.configure_api_key("admin-id", "admin@example.test", "runtime-secret")
@@ -100,7 +100,7 @@ def test_explicit_provider_activation_routes_replies_to_it(
 def test_flagged_messages_are_refused_without_calling_any_provider(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("coeus.integrations.llm_gateway.httpx.Client", ForbiddenClient)
+    monkeypatch.setattr("coeus.integrations.provider_http.httpx.Client", ForbiddenClient)
     settings = Settings(environment="test")
     ai_models = AiModelService(settings, AuditLog())
     ai_models.configure_api_key("admin-id", "admin@example.test", "runtime-secret")
@@ -113,7 +113,7 @@ def test_flagged_messages_are_refused_without_calling_any_provider(
 
 
 def test_provider_failure_degrades_to_the_mock_reply(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("coeus.integrations.llm_gateway.httpx.Client", FailingClient)
+    monkeypatch.setattr("coeus.integrations.provider_http.httpx.Client", FailingClient)
     settings = Settings(environment="test", llm_provider="gemini_api", gemini_api_key="env-secret")
     provider = ConfigurableIntakeProvider(settings, None)
 
@@ -125,7 +125,7 @@ def test_provider_failure_degrades_to_the_mock_reply(monkeypatch: pytest.MonkeyP
 def test_provider_without_key_degrades_to_the_mock_reply(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("coeus.integrations.llm_gateway.httpx.Client", ForbiddenClient)
+    monkeypatch.setattr("coeus.integrations.provider_http.httpx.Client", ForbiddenClient)
     settings = Settings(environment="test", llm_provider="gemini_api")
     provider = ConfigurableIntakeProvider(settings, None)
 
@@ -161,7 +161,7 @@ def test_settings_driven_openai_provider_is_called_without_ai_models(
             captured["headers"] = headers
             return FakeResponse()
 
-    monkeypatch.setattr("coeus.integrations.llm_gateway.httpx.Client", FakeClient)
+    monkeypatch.setattr("coeus.integrations.provider_http.httpx.Client", FakeClient)
     settings = Settings(environment="test", llm_provider="openai_api", openai_api_key="sk-test")
     provider = ConfigurableIntakeProvider(settings, None)
 

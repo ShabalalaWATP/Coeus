@@ -41,7 +41,7 @@ export function SplashIntro() {
       <p className="splash-intro__tagline shiny-text">Task. Assess. Deliver.</p>
       <p className="splash-intro__pitch">
         The secure workspace for intelligence tasking: route customer requests, task analysts and
-        release quality-assured products with every action audited.
+        release quality-assured products with security-sensitive changes audited.
       </p>
       <ul className="splash-intro__points">
         {capabilities.map((capability) => (

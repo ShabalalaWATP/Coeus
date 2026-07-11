@@ -100,7 +100,7 @@ async def test_connection_test_reports_key_state_and_provider_reachability(
         )
         assert unknown.status_code == 422
 
-        monkeypatch.setattr("coeus.integrations.llm_gateway.httpx.Client", FakeLlmClient)
+        monkeypatch.setattr("coeus.integrations.provider_http.httpx.Client", FakeLlmClient)
         await client.put(
             "/api/v1/admin/ai-model/api-key",
             headers={"X-CSRF-Token": csrf},
@@ -130,7 +130,7 @@ async def test_connection_test_reports_key_state_and_provider_reachability(
 
                 raise httpx.ConnectError("mock network failure")
 
-        monkeypatch.setattr("coeus.integrations.llm_gateway.httpx.Client", FailingClient)
+        monkeypatch.setattr("coeus.integrations.provider_http.httpx.Client", FailingClient)
         unreachable = await client.post(
             "/api/v1/admin/ai-model/test",
             headers={"X-CSRF-Token": csrf},
@@ -149,7 +149,7 @@ async def test_connection_test_flags_an_empty_provider_reply(
         def json(self) -> dict[str, object]:
             return {"candidates": []}
 
-    monkeypatch.setattr("coeus.integrations.llm_gateway.httpx.Client", EmptyReplyClient)
+    monkeypatch.setattr("coeus.integrations.provider_http.httpx.Client", EmptyReplyClient)
     async with make_client() as client:
         csrf = await admin_login(client)
         await client.put(

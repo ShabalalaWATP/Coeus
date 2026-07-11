@@ -1,260 +1,153 @@
-# GCP Reference Deployment Runbook
+# GCP Reference Deployment and Migration Guide
 
-Coeus runs locally by default. This runbook is a reference for a future
-work-owned GCP development deployment. Do not use personal GCP account details,
-personal project IDs or personal billing accounts in committed files.
+## Current status
 
-## What This Deploys
+Istari runs locally by default. The GCP files are a dormant reference for a
+future work-owned development environment, not a supported deployment. Do not
+apply the Terraform or push bootstrap images today.
 
-- Cloud Run service for the FastAPI API.
-- Cloud Run service for the React web container.
-- Artifact Registry Docker repository.
-- Cloud SQL PostgreSQL database shell.
-- Cloud Storage buckets for future product assets and previews.
-- Pub/Sub topics for future workers.
-- Secret Manager placeholders.
-- GitHub Actions authentication through Workload Identity Federation.
+The reference models:
 
-Current limitation: the local app now has file and PostgreSQL state-store
-adapters, but this runbook remains a reference path. GCS, Pub/Sub and production
-worker adapters still need implementation before a full hosted deployment.
-Do not execute this runbook until ADR 0019's migration readiness gates pass.
-The reference API is intentionally limited to one instance.
+- Cloud Run services for the API and static web container;
+- Artifact Registry, Cloud SQL PostgreSQL, Cloud Storage, Pub/Sub, KMS, Secret
+  Manager and Workload Identity Federation.
 
-## Values You Need
+The current GitHub workflow validates Terraform and builds images locally only.
+It has no GCP authentication, registry push, infrastructure mutation or traffic
+deployment step.
 
-Collect these from the work GCP project and GitHub repository:
+## Why deployment is blocked
+
+All of these conditions must be resolved before the reference can be enabled:
+
+1. The runtime rejects `COEUS_OBJECT_STORAGE_PROVIDER=gcs`; no GCS adapter exists.
+2. The runtime rejects `COEUS_PUBSUB_ENABLED=true`; no worker adapter exists.
+3. The API uses whole-namespace, single-writer state and must remain one instance.
+4. Hosted identity lifecycle, backup/restore, audit export, monitoring and
+   incident-response procedures are incomplete.
+5. Terraform does not currently inject the required hosted asset-token secret.
+6. The web API origin is compiled into the Vite bundle. The old bootstrap command
+   used `https://bootstrap.invalid`, which cannot produce a working UI.
+7. A full apply is stopped by `migration_adapters_ready=false`. Targeted applies
+   can bypass the dependency for resource-shell modules, so they are prohibited.
+8. There is no reviewed migration job that can reach Cloud SQL and run Alembic.
+
+## Values required after readiness approval
+
+Use an authorised work project and approved secret manager:
 
 ```text
 PROJECT_ID=<work-gcp-project-id>
 PROJECT_NUMBER=<numeric-project-number>
 REGION=europe-west2
-GITHUB_REPOSITORY=<github-owner>/<repo-name>
+GITHUB_REPOSITORY=<github-owner>/<repository>
 ```
 
-Safe to share with Codex or in tickets:
+Project IDs, numbers, region and service names are identifiers. Never commit or
+share service-account keys, database passwords, session/CSRF/asset-token secrets,
+API keys, Terraform state or plans.
 
-- project ID and project number
-- region
-- GitHub repository name
-- Cloud Run service names
-- Artifact Registry repository ID
-- Workload Identity Provider resource name
-- deployer service account email
+## Required implementation work
 
-Never share or commit:
+Before changing the readiness flag:
 
-- service account key JSON
-- database passwords
-- session or CSRF secrets
-- OAuth/client/API keys
-- Terraform state files or plans
+- implement GCS product-asset storage with the same authorisation, streaming,
+  token and rollback guarantees as local storage;
+- implement Pub/Sub publishing and worker idempotency, retry and dead-letter
+  behaviour, or keep Pub/Sub disabled and remove unused resources;
+- replace or formally constrain single-writer state; keep Cloud Run API maximum
+  instances at one until distributed invariants are implemented;
+- add persistent production user storage or an approved identity provider;
+- add `COEUS_ASSET_TOKEN_SECRET` to Secret Manager and the API mapping;
+- create a Cloud Run Job or other private migration runner for
+  `alembic upgrade head`;
+- add database/object backup, restore tests, retained audit export, monitoring,
+  alerts and rollback;
+- make every cloud-creating Terraform module depend on the readiness gate so
+  `-target` cannot bypass it;
+- independently review the threat model and Terraform plan.
 
-## Install Local Tools
+## Migration order after every gate passes
 
-On Windows PowerShell:
+### 1. Validate tools and identity
 
-```powershell
-(New-Object Net.WebClient).DownloadFile(
-  "https://dl.google.com/dl/cloudsdk/channels/rapid/GoogleCloudSDKInstaller.exe",
-  "$env:TEMP\GoogleCloudSDKInstaller.exe"
-)
-& "$env:TEMP\GoogleCloudSDKInstaller.exe"
-```
-
-Close and reopen PowerShell, then check:
-
-```powershell
-gcloud --version
-terraform -version
-docker version
-```
-
-Authenticate:
+Install and verify `gcloud`, Terraform and Docker. Use Workload Identity
+Federation for CI; do not create long-lived service-account keys.
 
 ```powershell
-gcloud init
 gcloud auth application-default login
 gcloud config set project <PROJECT_ID>
 gcloud projects describe <PROJECT_ID> --format="value(projectNumber)"
+terraform -chdir=infra/gcp/environments/dev init
+terraform -chdir=infra/gcp/environments/dev fmt -check -recursive
+terraform -chdir=infra/gcp/environments/dev validate
+terraform -chdir=infra/gcp/environments/dev test
 ```
 
-The last command must print `<PROJECT_NUMBER>`.
+### 2. Review one complete infrastructure plan
 
-## Prepare Terraform Variables
+Create a private `terraform.tfvars` from the example. Use immutable image
+references, enable Cloud SQL deletion protection outside disposable development,
+and set the final HTTPS web origin in `allowed_cors_origins`. Do not use targeted
+apply. Review a complete plan before any apply.
 
-Copy the example file, but do not commit the copy:
+### 3. Provision data and secret services
+
+After formal readiness approval, apply the reviewed configuration to create the
+resource shell. Create a least-privilege Cloud SQL application user. Add secret
+versions for database URL, session, CSRF and asset-token secrets plus any selected
+provider credentials. Never store secret values in Terraform variables.
+
+### 4. Build and publish the API image
 
 ```powershell
-cd C:\path\to\Coeus\infra\gcp\environments\dev
-Copy-Item terraform.tfvars.example terraform.tfvars
-```
-
-Edit `terraform.tfvars`:
-
-```hcl
-project_id        = "<PROJECT_ID>"
-project_number    = "<PROJECT_NUMBER>"
-region            = "europe-west2"
-environment       = "dev"
-github_repository = "<GITHUB_OWNER>/<REPO>"
-
-api_image = "europe-west2-docker.pkg.dev/<PROJECT_ID>/coeus/coeus-api:bootstrap"
-web_image = "europe-west2-docker.pkg.dev/<PROJECT_ID>/coeus/coeus-web:bootstrap"
-
-allowed_cors_origins = []
-
-cloud_sql_deletion_protection = false
-```
-
-## Create The Core Resource Shell
-
-```powershell
-terraform init
-terraform fmt -recursive
-terraform validate
-
-terraform apply `
-  -target=module.project_services `
-  -target=module.iam `
-  -target=module.kms `
-  -target=module.artifact_registry `
-  -target=module.secrets `
-  -target=module.storage `
-  -target=module.pubsub `
-  -target=module.database
-```
-
-Type `yes` when the plan matches the expected resources.
-
-## Add Secret Manager Versions
-
-Add versions for these secrets:
-
-```text
-coeus-dev-database-url
-coeus-dev-session-secret
-coeus-dev-csrf-secret
-coeus-dev-local-seed-credential
-coeus-dev-llm-provider-config
-coeus-dev-object-storage-config
-```
-
-Generate local values:
-
-```powershell
-python -c "import secrets; print(secrets.token_urlsafe(48))"
-```
-
-Add a version without exposing it in shell history:
-
-```powershell
-$tmp = New-TemporaryFile
-Set-Content -Path $tmp -NoNewline -Value "<SECRET_VALUE>"
-gcloud secrets versions add coeus-dev-session-secret --data-file=$tmp --project <PROJECT_ID>
-Remove-Item $tmp
-```
-
-Repeat for each secret. The local seed credential must not be the public
-development default.
-
-For `coeus-dev-database-url`, create a database user first in the GCP Console:
-
-1. Go to **SQL > coeus-dev-postgres > Users**.
-2. Add user `coeus_app`.
-3. Generate a strong password in an approved work password vault.
-4. Do not paste the password into chat, Markdown or shell history.
-
-Then set the database URL secret to a Cloud SQL Unix socket URL:
-
-```text
-postgresql+asyncpg://coeus_app:<URL_ENCODED_DATABASE_PASSWORD>@/coeus?host=/cloudsql/<PROJECT_ID>:europe-west2:coeus-dev-postgres
-```
-
-URL-encode special characters in the password before adding the secret version.
-Cloud SQL can back the current compatibility state table and the relational
-Intelligence Store schema. Apply Alembic migrations before relying on a
-persistent hosted database.
-
-## Build And Push Bootstrap Images
-
-```powershell
-gcloud auth configure-docker europe-west2-docker.pkg.dev --quiet
-
-cd C:\path\to\Coeus
 $repo = "europe-west2-docker.pkg.dev/<PROJECT_ID>/coeus"
+gcloud auth configure-docker europe-west2-docker.pkg.dev --quiet
+docker build -f infra/docker/api.Dockerfile -t "$repo/coeus-api:<GIT_SHA>" .
+docker push "$repo/coeus-api:<GIT_SHA>"
+```
 
-docker build -f infra/docker/api.Dockerfile -t "$repo/coeus-api:bootstrap" .
-docker push "$repo/coeus-api:bootstrap"
+Run the approved migration job against Cloud SQL before routing traffic to the
+new API revision. Deploy the API at zero traffic, verify live/readiness endpoints,
+then obtain its final HTTPS URL.
 
-docker build `
-  --build-arg "VITE_API_BASE_URL=https://bootstrap.invalid" `
+### 5. Build the web image with the real API URL
+
+`VITE_API_BASE_URL` is build-time configuration. Build only after the API URL is
+known:
+
+```powershell
+$apiUrl = "https://<actual-api-service-url>"
+docker build --build-arg "VITE_API_BASE_URL=$apiUrl" `
   -f infra/docker/web-prod.Dockerfile `
-  -t "$repo/coeus-web:bootstrap" .
-docker push "$repo/coeus-web:bootstrap"
+  -t "$repo/coeus-web:<GIT_SHA>" .
+docker push "$repo/coeus-web:<GIT_SHA>"
 ```
 
-## Apply The Full Dev Environment
+Update the reviewed Terraform image values, plan again and deploy the web
+revision. Confirm API CORS contains the final web URL and secure cookies are on.
 
-```powershell
-cd C:\path\to\Coeus\infra\gcp\environments\dev
-terraform plan -out coeus-dev.tfplan
-terraform apply coeus-dev.tfplan
-terraform output
-```
+### 6. Validate before admitting users
 
-Copy the `web_service_url`, then set CORS:
-
-```powershell
-$webUrl = terraform output -raw web_service_url
-$env:TF_VAR_allowed_cors_origins = "[`"$webUrl`"]"
-terraform plan -out coeus-dev-cors.tfplan
-terraform apply coeus-dev-cors.tfplan
-```
-
-## Validate The Dormant Reference In GitHub Actions
-
-Run **Actions > Future GCP Migration Reference > Run workflow** only for an
-authorised migration exercise, and select the required confirmation input.
-The workflow validates Terraform, runs its migration-gate and single-writer
-tests, and builds API and web images locally. It has no GCP authentication,
-registry push, infrastructure mutation or deployment step. There is no
-push-triggered or scheduled deployment path.
-
-Do not create deployment variables or enable a protected deployment environment
-until every ADR 0019 readiness gate passes and a separate supported deployment
-workflow has been reviewed and authorised.
-
-## Verify
-
-```powershell
-gcloud run services describe coeus-dev-api `
-  --region europe-west2 `
-  --project <PROJECT_ID> `
-  --format="value(status.url)"
-
-gcloud run services describe coeus-dev-web `
-  --region europe-west2 `
-  --project <PROJECT_ID> `
-  --format="value(status.url)"
-```
-
-Open the web URL and sign in with the work-approved dev seed credential.
+- exercise sign-in, CSRF, request creation, routing, assignment, QC and asset
+  upload/download using synthetic data;
+- verify object-level access, ACG and clearance enforcement;
+- verify logs contain no secrets and audit export is retained;
+- restore a database and object backup in an isolated environment;
+- exercise revision rollback and confirm migrations are compatible;
+- keep the API at one instance until distributed-state work is complete.
 
 ## Rollback
 
-List recent revisions:
+Cloud Run can route traffic to a previous known-good revision, but application
+rollback also depends on database and object-schema compatibility. Record the
+image digests, migration version and Terraform plan for every release. Never roll
+back code across a destructive migration without an approved recovery plan.
 
-```powershell
-gcloud run revisions list --service coeus-dev-api --region europe-west2 --project <PROJECT_ID>
-gcloud run revisions list --service coeus-dev-web --region europe-west2 --project <PROJECT_ID>
-```
+## GitHub workflow boundary
 
-Route traffic to a known-good revision:
-
-```powershell
-gcloud run services update-traffic coeus-dev-api `
-  --region europe-west2 `
-  --project <PROJECT_ID> `
-  --to-revisions REVISION_NAME=100
-```
+**Future GCP Migration Reference** remains validation-only. A future deployment
+workflow must use a protected GitHub Environment, least-privilege Workload
+Identity Federation, immutable image digests, approvals, migration and smoke
+gates, and an explicit rollback path. Enabling that workflow is a separate
+security-reviewed change.

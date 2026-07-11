@@ -8,13 +8,13 @@ directory for now.
 
 ## Prerequisites
 
-| Tool | Version | Purpose |
-| --- | --- | --- |
-| Python | 3.12+ | Backend runtime |
-| [uv](https://docs.astral.sh/uv/) | latest | Python dependency and venv manager |
-| Node.js | 22+ | Frontend runtime |
-| pnpm | via `corepack` | Frontend package manager |
-| Docker Desktop | latest | Local PostgreSQL and optional full app stack |
+| Tool                             | Version        | Purpose                                      |
+| -------------------------------- | -------------- | -------------------------------------------- |
+| Python                           | 3.12+          | Backend runtime                              |
+| [uv](https://docs.astral.sh/uv/) | latest         | Python dependency and venv manager           |
+| Node.js                          | 22+            | Frontend runtime                             |
+| pnpm                             | via `corepack` | Frontend package manager                     |
+| Docker Desktop                   | latest         | Local PostgreSQL and optional full app stack |
 
 Enable pnpm through Corepack (it ships with Node) rather than installing it
 globally:
@@ -35,9 +35,11 @@ uv sync --project apps/api --all-groups
 corepack pnpm install
 ```
 
-Create a local `.env` from the safe example values. The file is gitignored and
+Create a root `.env` from the safe example values. The file is gitignored and
 keeps local persistence, object storage and optional integration settings out of
-committed source.
+committed source. Use the `uv run --project apps/api` runtime command below: it
+keeps the working directory at the repository root, so Pydantic loads this file
+and relative `.local-data` paths resolve where documented.
 
 ```bash
 cp .env.example .env
@@ -59,7 +61,7 @@ docker compose up -d postgres
 **Terminal 2: API on port 8001**
 
 ```bash
-uv run --directory apps/api uvicorn coeus.main:app --host 127.0.0.1 --port 8001 --workers 1
+uv run --project apps/api uvicorn coeus.main:app --host 127.0.0.1 --port 8001 --workers 1
 ```
 
 Run one API process only. The current local repositories are deliberately
@@ -80,9 +82,10 @@ the web app at a different API, set `VITE_API_BASE_URL` before starting Vite.
 
 ## Run the app (full Docker stack)
 
-For local parity with the future deployment topology, Docker starts PostgreSQL,
-MinIO and the app containers. The API stores app state in PostgreSQL and keeps
-uploaded asset bytes on a named local Docker volume.
+For local container parity, Docker starts PostgreSQL, MinIO and the app
+containers. The API stores app state in PostgreSQL and keeps uploaded asset bytes
+on a named local Docker volume. Compose supplies explicit local settings; the
+root `.env` is not an application `env_file` for these containers.
 
 ```powershell
 pwsh ./scripts/dev.ps1            # add -Detached to run in the background
@@ -103,22 +106,23 @@ MinIO remains in the stack as future object-storage parity scaffolding.
 All local seed accounts use mock `example.test` usernames and the mock local
 credential `CoeusLocal1!`. They exist only in `local` and `test` environments.
 
-| Username | Role | Lands on |
-| --- | --- | --- |
-| `admin@example.test` | Administrator | `/admin/overview` |
-| `user@example.test` | Customer | `/app/requests` |
-| `jioc.team@example.test` | JIOC Team Member | `/jioc/queue` |
-| `rfa.manager@example.test` | RFA Manager | `/rfa/queue` |
-| `rfa.team@example.test` | RFA Team Member | `/rfa/products` |
-| `collection.manager@example.test` | CM Manager | `/collection/queue` |
-| `collection.team@example.test` | CM Team Member | `/collection/products` |
-| `store.manager@example.test` | Intelligence Store Manager | `/store` |
-| `analyst@example.test` | Analyst | `/analyst/workbench` |
-| `analyst.maritime@example.test` | Maritime Assessment Analyst | `/analyst/workbench` |
-| `analyst.cyber@example.test` | Cyber Threat Analyst | `/analyst/workbench` |
-| `analyst.geo@example.test` | Geospatial Assessment Analyst | `/analyst/workbench` |
-| `qc.manager@example.test` | Quality Control Manager | `/qc/queue` |
-| `disabled@example.test` | (disabled) | Blocked from login |
+| Username                          | Role                          | Lands on               |
+| --------------------------------- | ----------------------------- | ---------------------- |
+| `admin@example.test`              | Administrator                 | `/admin/overview`      |
+| `user@example.test`               | Customer                      | `/app/requests`        |
+| `colleague@example.test`          | Customer colleague            | `/app/requests`        |
+| `jioc.team@example.test`          | JIOC Team Member              | `/jioc/queue`          |
+| `rfa.manager@example.test`        | RFA Manager                   | `/rfa/queue`           |
+| `rfa.team@example.test`           | RFA Team Member               | `/rfa/products`        |
+| `collection.manager@example.test` | CM Manager                    | `/collection/queue`    |
+| `collection.team@example.test`    | CM Team Member                | `/collection/products` |
+| `store.manager@example.test`      | Intelligence Store Manager    | `/store`               |
+| `analyst@example.test`            | Analyst                       | `/analyst/workbench`   |
+| `analyst.maritime@example.test`   | Maritime Assessment Analyst   | `/analyst/workbench`   |
+| `analyst.cyber@example.test`      | Cyber Threat Analyst          | `/analyst/workbench`   |
+| `analyst.geo@example.test`        | Geospatial Assessment Analyst | `/analyst/workbench`   |
+| `qc.manager@example.test`         | Quality Control Manager       | `/qc/queue`            |
+| `disabled@example.test`           | (disabled)                    | Blocked from login     |
 
 Four organisational teams are also seeded for the My Team page (`/teams`): the
 RFA Assessment Team (RFA manager plus the analysts), the Collection Management
@@ -147,6 +151,15 @@ To exercise the full workflow, sign in as the customer to raise a request, then
 sign in as the JIOC team member to route it, and as the team manager, analyst
 and QC manager in turn to move it through the pipeline. See the
 [User Guide](USER_GUIDE.md).
+
+## Local multi-user evaluation
+
+Local accounts can request access, then administrators can manage roles,
+clearance, status and credentials from **Users**. Team managers manage roster
+membership separately, and ACG administrators grant need-to-know membership.
+See [Local Multi-User Operations](runbooks/local-multi-user-operations.md) for the
+complete lifecycle and its boundaries. This is a single-writer local evaluation
+model, not a supported production identity or organisation-wide hosting setup.
 
 ## Running the checks
 
@@ -196,8 +209,11 @@ coverage. Do not lower the coverage gates.
   an explicit fallback, not the product target. `COEUS_PERSISTENCE_PATH` is
   ignored unless that fallback is deliberately enabled.
 - Alembic migration files live under `apps/api/src/coeus/db/migrations`; apply
-  them with `uv run --directory apps/api alembic upgrade head` when managing a
-  persistent database explicitly.
+  them from the repository root with
+  `uv run --project apps/api alembic -c apps/api/alembic.ini upgrade head` when
+  managing a persistent database explicitly. The configuration resolves paths
+  from its own directory, while application settings still load the root
+  `.env`.
 - Store uploads write real file bytes under `COEUS_LOCAL_OBJECT_STORAGE_PATH`.
   Downloads require an authenticated session plus the signed, expiring token
   returned by the asset-access endpoint.
@@ -233,25 +249,33 @@ coverage. Do not lower the coverage gates.
   the environment never switches the provider on by itself. If the provider is
   unavailable at query time, search degrades to the lexical leg alone rather than
   failing.
+
 - Embeddings are written when products are created, updated or ingested at QC.
   To populate embeddings for products that predate the feature (or after
   enabling a provider), run the batched, idempotent backfill:
 
   ```powershell
-  uv run --directory apps/api python -m coeus.tools.backfill_embeddings
+  uv run --project apps/api python -m coeus.tools.backfill_embeddings
   ```
+
 - Outside `local`/`test`, start-up fails closed if session/CSRF secrets are too
   short, if secure cookies are off in staging/prod, or if dev seed users are
   enabled without overriding the default seed credential. This is by design: it
   stops a known default password ever reaching a deployed environment.
 
-## GCP
+## Deployment support
 
-GCP is not required to run Istari locally. The Terraform and Cloud Run files are
-reference material for a future work-owned GCP project. See
-[GCP Reference Deployment Runbook](runbooks/gcp-dev-deployment.md) when that
-project exists; do not add personal project IDs, billing details or cloud
-secrets to committed files.
+Local development is the supported runtime. Docker Compose is supported locally.
+GCP Cloud Run and Kubernetes are migration targets only:
+
+- [GCP Reference Deployment](runbooks/gcp-dev-deployment.md) explains the dormant
+  Terraform reference, current blockers and required migration order.
+- [Kubernetes Migration](runbooks/kubernetes-migration.md) explains what the
+  existing images provide, a constrained evaluation topology and production
+  readiness gates.
+
+Neither cloud path is ready to apply today. Do not add personal project IDs,
+billing details or cloud secrets to committed files.
 
 ## Troubleshooting
 

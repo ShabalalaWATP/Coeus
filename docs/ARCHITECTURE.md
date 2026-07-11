@@ -1,19 +1,20 @@
 # Istari Architecture
 
-Istari (internal working name `coeus`) is a secure, role-based platform for
+Istari (internal working name `coeus`) is a security-conscious, role-based platform for
 intelligence tasking and product orchestration. It routes customer requests,
 searches existing intelligence before new work is raised, tasks analysts,
-quality-controls products and releases them, with every action audited.
+quality-controls products and releases them. Security-sensitive and
+workflow-changing actions are audited.
 
 Architecture is documented across three cohesive guides. This one covers the
 structure: how the system is composed, how data is stored, and how access is
 controlled. Every diagram reflects the shipped code.
 
-| Guide | Read it for |
-| --- | --- |
-| **Architecture (this page)** | System context, application layers, data and persistence, security |
-| [Architecture: Workflow](ARCHITECTURE_WORKFLOW.md) | The request journey, end-to-end sequence, and the AI agents |
-| [Architecture: Deployment](ARCHITECTURE_DEPLOYMENT.md) | Local runtime, future GCP design, provider matrix, scaling |
+| Guide                                                  | Read it for                                                        |
+| ------------------------------------------------------ | ------------------------------------------------------------------ |
+| **Architecture (this page)**                           | System context, application layers, data and persistence, security |
+| [Architecture: Workflow](ARCHITECTURE_WORKFLOW.md)     | The request journey, end-to-end sequence, and the AI agents        |
+| [Architecture: Deployment](ARCHITECTURE_DEPLOYMENT.md) | Local runtime, future GCP design, provider matrix, scaling         |
 
 ## Design principles
 
@@ -22,13 +23,13 @@ controlled. Every diagram reflects the shipped code.
 - **Local-first.** The full application runs on a developer machine with no
   cloud dependency. Cloud is a future option, not a requirement.
 - **Controlled by design.** Role-based access, need-to-know access control
-  groups (ACGs), clearance levels and a full audit trail are enforced
-  server-side at the object and action level.
+  groups (ACGs) and clearance levels are enforced server-side at the object and
+  action level. Security-sensitive and workflow-changing actions are audited.
 - **Thin edges, rich core.** Route handlers stay thin; business logic lives in
   services, domain modules and repositories.
-- **Provider-swappable.** Persistence, object storage, the language model, the
-  embedding model and email are each selected by configuration, so the same
-  code runs against local stand-ins or managed cloud services.
+- **Provider boundaries.** Persistence, object storage, the language model, the
+  embedding model and email are selected by configuration. Local providers are
+  implemented; managed adapters must be implemented and tested before cloud use.
 
 ---
 
@@ -232,12 +233,12 @@ managers, not customers.
 
 ## Where to go next
 
-| To understand | Read |
-| --- | --- |
-| The request journey, sequence and agents | [Architecture: Workflow](ARCHITECTURE_WORKFLOW.md) |
-| Local runtime and the future GCP design | [Architecture: Deployment](ARCHITECTURE_DEPLOYMENT.md) |
-| How to run it and sign in | [Setup Guide](SETUP.md) |
-| Every role's workspace, with screenshots | [User Guide](USER_GUIDE.md) |
-| What each agent reads and returns | [AI Agents](AI_AGENTS.md) |
-| Why key choices were made | [Architecture Decision Records](adr/) |
-| Per-feature threat models | [Threat Models](threat-model/) |
+| To understand                            | Read                                                   |
+| ---------------------------------------- | ------------------------------------------------------ |
+| The request journey, sequence and agents | [Architecture: Workflow](ARCHITECTURE_WORKFLOW.md)     |
+| Local runtime and the future GCP design  | [Architecture: Deployment](ARCHITECTURE_DEPLOYMENT.md) |
+| How to run it and sign in                | [Setup Guide](SETUP.md)                                |
+| Every role's workspace, with screenshots | [User Guide](USER_GUIDE.md)                            |
+| What each agent reads and returns        | [AI Agents](AI_AGENTS.md)                              |
+| Why key choices were made                | [Architecture Decision Records](adr/)                  |
+| Per-feature threat models                | [Threat Models](threat-model/)                         |

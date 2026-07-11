@@ -2,6 +2,24 @@
 
 Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVELOPMENT_STORY_SPRINTS_01-13.md). The longer 2026-07-06 continuation lives in [DEVELOPMENT_STORY_2026-07-06.md](DEVELOPMENT_STORY_2026-07-06.md).
 
+## 2026-07-11 cross-role usability and documentation accuracy
+
+- Completed the desktop cross-role audit across customer, JIOC, team manager,
+  analyst, QC, Store, team and administrator workspaces.
+- Added manager work review, deliberate QC controls, safer record switching,
+  structured multi-analyst assignment, clearer task context, profiles, calendar
+  corrections, readable workflow language and accessible command navigation.
+- Fixed JIOC similar-request access by aligning its workflow permission boundary
+  with the routing queue and updated the real end-to-end workflow fixture.
+- Added Gemini, OpenAI, Vertex AI and Bedrock runtime provider administration with
+  connection tests and explicitly warned app-wide activation.
+- Re-audited active documentation and screenshots. Kept local development as the
+  supported runtime, documented local multi-user evaluation, and made GCP and
+  Kubernetes explicit migration targets with readiness gates rather than active
+  deployment claims.
+- PRs #98 to #100 passed backend, frontend, CodeQL, DAST, container, Semgrep,
+  Checkov, Gitleaks, SBOM and Terraform checks before merge.
+
 ## 2026-07-11 JIOC workflow restructure, QC release, teams and calendars
 
 - Renamed the workflow roles to plain names (Customer, RFA/CM Manager and Team
@@ -234,3 +252,17 @@ Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVEL
 - Closed non-reportable quality debt with compact cursor-paged request summaries,
   selected-only details, browser dictation disclosure and digest-pinned runtime
   images. Full post-fix gates and the final immutable scan remain pending.
+
+## 2026-07-12 AI model administration hardening
+
+- Integrated the distinct provider and model administration work without
+  replacing the newer user-management filtering and confirmation behaviour.
+- Added bounded live model discovery for OpenAI and Gemini, persistent custom
+  model identifiers, explicit activation, safe provider error mapping and
+  append-only catalogue refreshes that do not remove existing choices.
+- Improved keyboard, focus, loading and error behaviour in the admin UI, and
+  documented the local persistence, provider capability and migration model.
+- Verified the updated admin experience in the running local application. The
+  release gates passed with 644 backend tests at 97.64 percent total coverage
+  and the complete frontend suite at 98.78 percent line and 95.12 percent
+  branch coverage.

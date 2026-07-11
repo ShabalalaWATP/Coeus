@@ -1,7 +1,9 @@
 import {
+  addCustomAiModel,
   configureAiApiKey,
   getAiModelState,
   listAdminUsers,
+  refreshAiModels,
   resetAdminUserCredential,
   selectAiModel,
   selectAiProvider,
@@ -35,6 +37,8 @@ test("reads and updates the AI provider and model with CSRF protection", async (
   await configureAiApiKey("gemini-key-value", "gemini_api", "csrf");
   await selectAiProvider("gemini_api", "csrf");
   await testAiConnection("gemini_api", "csrf");
+  await refreshAiModels("gemini_api", "csrf");
+  await addCustomAiModel("gemini_api", "gemini-4-pro", "csrf");
 
   expect(fetchMock).toHaveBeenNthCalledWith(1, "http://127.0.0.1:8001/api/v1/admin/ai-model", {
     credentials: "include",
@@ -73,6 +77,22 @@ test("reads and updates the AI provider and model with CSRF protection", async (
     expect.objectContaining({
       body: JSON.stringify({ provider: "gemini_api" }),
       headers: { "Content-Type": "application/json", "X-CSRF-Token": "csrf" },
+      method: "POST",
+    }),
+  );
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    6,
+    "http://127.0.0.1:8001/api/v1/admin/ai-model/refresh",
+    expect.objectContaining({
+      body: JSON.stringify({ provider: "gemini_api" }),
+      method: "POST",
+    }),
+  );
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    7,
+    "http://127.0.0.1:8001/api/v1/admin/ai-model/custom-model",
+    expect.objectContaining({
+      body: JSON.stringify({ provider: "gemini_api", model: "gemini-4-pro" }),
       method: "POST",
     }),
   );

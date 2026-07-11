@@ -19,6 +19,7 @@ from coeus.domain.registration import RegistrationRequest
 from coeus.schemas.registration import (
     AiConnectionTestRequest,
     AiConnectionTestResponse,
+    AiCustomModelRequest,
     AiModelApiKeyRequest,
     AiModelSelectRequest,
     AiModelStateResponse,
@@ -82,6 +83,43 @@ async def select_ai_model(
     )
 
 
+@router.post("/ai-model/refresh", response_model=AiModelStateResponse)
+def refresh_ai_models(
+    payload: AiProviderSelectRequest,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    permitted: Annotated[
+        AuthenticatedSession,
+        Depends(require_permission(Permission.SYSTEM_CONFIGURE)),
+    ],
+    ai_models: Annotated[AiModelService, Depends(get_ai_model_service)],
+) -> AiModelStateResponse:
+    return _ai_model_response(
+        ai_models.refresh_models(
+            str(authenticated.user.user_id), authenticated.user.username, payload.provider
+        )
+    )
+
+
+@router.post("/ai-model/custom-model", response_model=AiModelStateResponse)
+async def add_custom_ai_model(
+    payload: AiCustomModelRequest,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    permitted: Annotated[
+        AuthenticatedSession,
+        Depends(require_permission(Permission.SYSTEM_CONFIGURE)),
+    ],
+    ai_models: Annotated[AiModelService, Depends(get_ai_model_service)],
+) -> AiModelStateResponse:
+    return _ai_model_response(
+        ai_models.add_custom_model(
+            str(authenticated.user.user_id),
+            authenticated.user.username,
+            payload.provider,
+            payload.model,
+        )
+    )
+
+
 @router.put("/ai-model/provider", response_model=AiModelStateResponse)
 async def select_ai_provider(
     payload: AiProviderSelectRequest,
@@ -114,7 +152,7 @@ async def select_ai_provider(
 
 
 @router.post("/ai-model/test", response_model=AiConnectionTestResponse)
-async def test_ai_connection(
+def test_ai_connection(
     payload: AiConnectionTestRequest,
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
     permitted: Annotated[
@@ -167,6 +205,7 @@ def _ai_model_response(state: AiModelState) -> AiModelStateResponse:
                 models=list(provider.models),
                 active_model=provider.active_model,
                 api_key_configured=provider.api_key_configured,
+                supports_model_refresh=provider.supports_model_refresh,
             )
             for provider in state.providers
         ],

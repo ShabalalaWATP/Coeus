@@ -11,25 +11,25 @@ just in the UI, so hiding a control is a convenience, never the security boundar
 
 ## Roles at a glance
 
-| Role | Default workspace | Purpose |
-| --- | --- | --- |
-| Administrator | `/admin/overview` | Governance: access requests, model selection, ACGs, audit, analytics |
-| Customer | `/app/requests` | Raise and track intelligence requests |
-| JIOC Team Member | `/jioc/queue` | Decide whether a progressed request needs collection (route to CM) or assessment (route to RFA) |
-| RFA Manager | `/rfa/queue` | Lead the RFA team: assign analysts, approve analyst work, manage the team |
-| RFA Team Member | `/rfa/products` | Contribute assessment products |
-| CM Manager | `/collection/queue` | Lead the CM team: assign analysts, approve analyst work, manage the team |
-| CM Team Member | `/collection/products` | Contribute collection products |
-| Analyst | `/analyst/workbench` | Produce draft products against assigned tasks |
-| Quality Control (QC) Manager | `/qc/queue` | Quality-assure products and perform the final release |
-| Intelligence Store Manager | `/store` | Administer product metadata, assets and ACG assignment without blanket content access |
+| Role                         | Default workspace      | Purpose                                                                                         |
+| ---------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------- |
+| Administrator                | `/admin/overview`      | Governance: access requests, model selection, ACGs, audit, analytics                            |
+| Customer                     | `/app/requests`        | Raise and track intelligence requests                                                           |
+| JIOC Team Member             | `/jioc/queue`          | Decide whether a progressed request needs collection (route to CM) or assessment (route to RFA) |
+| RFA Manager                  | `/rfa/queue`           | Lead the RFA team: assign analysts, approve analyst work, manage the team                       |
+| RFA Team Member              | `/rfa/products`        | Contribute assessment products                                                                  |
+| CM Manager                   | `/collection/queue`    | Lead the CM team: assign analysts, approve analyst work, manage the team                        |
+| CM Team Member               | `/collection/products` | Contribute collection products                                                                  |
+| Analyst                      | `/analyst/workbench`   | Produce draft products against assigned tasks                                                   |
+| Quality Control (QC) Manager | `/qc/queue`            | Quality-assure products and perform the final release                                           |
+| Intelligence Store Manager   | `/store`               | Administer product metadata, assets and ACG assignment without blanket content access           |
 
 Legacy role names ("Request for Assessment Manager", "Collection Manager",
 "Collection Team Member", "Intelligence Analyst", "User") still decode from
 persisted data and are accepted by the admin API, normalising to the names
 above.
 
-A ninth state exists before a role is granted: a **pending registrant** who has
+A separate account state exists before a role is granted: a **pending registrant** who has
 requested access from the sign-in page and is awaiting administrator approval.
 
 ## What each role can do
@@ -38,11 +38,14 @@ The tables below summarise the meaningful capabilities. "Products" always means
 products the user is entitled to see through their access control groups.
 
 ### Administrator
+
 Holds every permission. In practice the admin governs rather than operates:
-approves or rejects access requests, chooses the AI model, manages ACGs and their
-membership, and reads the audit log and global analytics.
+approves or rejects access requests, manages users, roles, clearance and account
+status, chooses the AI provider and model, manages ACG membership, and reads the
+audit log and global analytics.
 
 ### User (Customer)
+
 - Create requests and drive the chat intake.
 - Track their own requests on a dashboard and view the request journey.
 - Tag colleagues on a request as editors or viewers.
@@ -52,12 +55,14 @@ membership, and reads the audit log and global analytics.
 - Cannot see other customers' requests, route tickets, or produce products.
 
 ### JIOC Team Member
+
 - Review progressed requests with the capability recommendation beside them.
 - Decide whether collection is required: yes routes to the CM team, no routes
   to the RFA team; may query the requester instead.
 - Views team analytics. Does not assign analysts or touch products.
 
 ### RFA Manager / CM Manager
+
 - Lead their team: assign one to five analysts and define work packages.
 - Approve or return analyst work before it reaches Quality Control.
 - Manage the team roster and calendar, and view team analytics.
@@ -65,11 +70,13 @@ membership, and reads the audit log and global analytics.
 - A manager only sees and acts on their own team's queue.
 
 ### RFA / CM Team Member
+
 - Contribute products for their team and manage product metadata and assets.
 - Read and search entitled products.
 - Do not approve routes, assign analysts or release products.
 
 ### Intelligence Analyst
+
 - See only tasks assigned to them; a task may be shared by up to five analysts.
 - Complete work packages, keep working notes, link supporting products and draft
   the product.
@@ -78,6 +85,7 @@ membership, and reads the audit log and global analytics.
 - Cannot approve their own work or release it.
 
 ### Quality Control Manager
+
 - Review submitted drafts and approve or reject them.
 - On approval, ingest the product and perform the final release to the
   customer; for an analysed collect, forward the ticket to RFA assignment with
@@ -85,6 +93,7 @@ membership, and reads the audit log and global analytics.
 - Cannot approve a draft they authored (separation of duties is enforced).
 
 ### Intelligence Store Manager
+
 - Administer product metadata, assets and product ACG assignment.
 - Manage store operations without receiving unrestricted report-content access.
 - Read product contents only when their account has at least one matching ACG,
@@ -94,6 +103,7 @@ membership, and reads the audit log and global analytics.
 ## User stories
 
 ### Customer
+
 - As a customer, I want to describe what I need in plain language so that I do
   not have to learn a form or the workflow.
 - As a customer, I want to be told exactly which details are still missing so
@@ -108,6 +118,7 @@ membership, and reads the audit log and global analytics.
   notification when a product is released so that I never miss a delivery.
 
 ### JIOC Team Member
+
 - As a JIOC team member, I want capability agents and the orchestrator to
   assess feasibility and recommend a route so that I can decide quickly with
   the reasoning in front of me.
@@ -117,6 +128,7 @@ membership, and reads the audit log and global analytics.
   justification so that I stay in control when the agent is wrong.
 
 ### RFA / Collection Manager
+
 - As an RFA or Collection manager, I want to assign one or more analysts with
   the team availability in front of me so that production starts with people
   who are actually free.
@@ -126,6 +138,7 @@ membership, and reads the audit log and global analytics.
   calendar so that ownership of my analysts is explicit.
 
 ### Intelligence Analyst
+
 - As an analyst, I want to see only my assigned tasks so that my workbench is not
   cluttered with everyone else's work.
 - As an analyst, I want work packages, notes and linked products in one place so
@@ -134,14 +147,16 @@ membership, and reads the audit log and global analytics.
   checklist is complete so that hand-off is unambiguous.
 
 ### Quality Control Manager
+
 - As a QC manager, I want to review a draft against quality and releasability so
   that only sound products progress.
 - As a QC manager, I want to be blocked from approving my own draft so that
   separation of duties is guaranteed.
-- As a QC manager, I want approval to ingest the product and route it to the
-  manager for release so that the hand-off is automatic and recorded.
+- As a QC manager, I want approval to ingest and release the product to the
+  customer so that the final controlled hand-off is automatic and recorded.
 
 ### Administrator
+
 - As an administrator, I want to approve or reject access requests with a reason
   so that only vetted people get accounts.
 - As an administrator, I want to choose the AI model the agents use, with tiers
@@ -152,11 +167,13 @@ membership, and reads the audit log and global analytics.
   visibility reflects how teams are actually organised.
 
 ### Intelligence Store Manager
+
 - As an Intelligence Store Manager, I want to administer product metadata,
   assets and ACG labels so that the store stays useful without granting me
   blanket access to report contents.
 
 ### Pending registrant
+
 - As a prospective user, I want to request access from the sign-in page so that I
   can be onboarded without a side channel.
 - As a prospective user, I want a generic confirmation so that the system does

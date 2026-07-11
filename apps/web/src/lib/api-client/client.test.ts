@@ -83,6 +83,24 @@ test("uses fallback API error details when the response body is not JSON", async
   );
 });
 
+test("turns FastAPI validation details into an actionable API error", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: false,
+      status: 422,
+      json: () =>
+        Promise.resolve({
+          detail: [{ msg: "Value error, Model IDs may contain only safe characters." }],
+        }),
+    }),
+  );
+
+  await expect(apiRequest("/api/v1/admin/ai-model", {}, "http://api.test")).rejects.toEqual(
+    new ApiError(422, "request_validation_failed", "Model IDs may contain only safe characters."),
+  );
+});
+
 test("resolves configured and fallback API base URLs", () => {
   expect(resolveApiBaseUrl()).toBe("http://127.0.0.1:8001");
   vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");

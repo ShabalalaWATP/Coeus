@@ -313,6 +313,28 @@
         "title": "AiConnectionTestResponse",
         "type": "object"
       },
+      "AiCustomModelRequest": {
+        "properties": {
+          "model": {
+            "maxLength": 80,
+            "minLength": 2,
+            "title": "Model",
+            "type": "string"
+          },
+          "provider": {
+            "maxLength": 40,
+            "minLength": 3,
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "model"
+        ],
+        "title": "AiCustomModelRequest",
+        "type": "object"
+      },
       "AiModelApiKeyRequest": {
         "properties": {
           "apiKey": {
@@ -473,6 +495,10 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "supportsModelRefresh": {
+            "title": "Supportsmodelrefresh",
+            "type": "boolean"
           }
         },
         "required": [
@@ -480,7 +506,8 @@
           "label",
           "models",
           "activeModel",
-          "apiKeyConfigured"
+          "apiKeyConfigured",
+          "supportsModelRefresh"
         ],
         "title": "AiProviderStateResponse",
         "type": "object"
@@ -6478,6 +6505,65 @@
         ]
       }
     },
+    "/api/v1/admin/ai-model/custom-model": {
+      "post": {
+        "operationId": "add_custom_ai_model_api_v1_admin_ai_model_custom_model_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiCustomModelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiModelStateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Custom Ai Model",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/ai-model/provider": {
       "put": {
         "operationId": "select_ai_provider_api_v1_admin_ai_model_provider_put",
@@ -6532,6 +6618,65 @@
           }
         },
         "summary": "Select Ai Provider",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/ai-model/refresh": {
+      "post": {
+        "operationId": "refresh_ai_models_api_v1_admin_ai_model_refresh_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiProviderSelectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiModelStateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Refresh Ai Models",
         "tags": [
           "admin"
         ]

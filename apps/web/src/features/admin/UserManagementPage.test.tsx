@@ -186,11 +186,43 @@ test("filters users and honours a declined deactivation confirmation", async () 
   renderWithProviders(<UserManagementPage />, "/admin/users");
 
   await screen.findByText("Inactive User");
+  expect(screen.getByText("Showing 2 of 2")).toBeVisible();
   await userEvent.selectOptions(screen.getByLabelText("Status"), "inactive");
   expect(screen.getByText("Inactive User")).toBeVisible();
   expect(screen.queryByText("Analyst Operator")).not.toBeInTheDocument();
+  expect(screen.getByText("Showing 1 of 2")).toBeVisible();
   await userEvent.selectOptions(screen.getByLabelText("Status"), "active");
   await userEvent.type(screen.getByLabelText("Search users"), "analyst");
   await userEvent.click(screen.getByLabelText("Active account"));
+  await userEvent.click(screen.getByRole("button", { name: "Reset credential" }));
   expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining("/status"), expect.anything());
+  expect(fetchMock).not.toHaveBeenCalledWith(
+    expect.stringContaining("/credential-reset"),
+    expect.anything(),
+  );
+});
+
+test("searches role names while preserving the existing status filter", async () => {
+  const qualityUser = {
+    ...analystUser,
+    id: "quality-user",
+    username: "reviewer@example.test",
+    displayName: "Review Operator",
+    roles: ["Quality Control Manager"],
+  };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ users: [analystUser, qualityUser] }),
+    }),
+  );
+  renderWithProviders(<UserManagementPage />, "/admin/users");
+
+  await screen.findByText("Review Operator");
+  await userEvent.type(screen.getByLabelText("Search users"), "quality control");
+
+  expect(screen.getByText("Review Operator")).toBeVisible();
+  expect(screen.queryByText("Analyst Operator")).not.toBeInTheDocument();
+  expect(screen.getByText("Showing 1 of 2")).toBeVisible();
 });

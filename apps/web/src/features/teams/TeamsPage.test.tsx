@@ -253,7 +253,10 @@ test("saves the caller's own profile", async () => {
 });
 
 test("marks today's group and shows the day summary", async () => {
-  const today = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const today = [now.getFullYear(), now.getMonth() + 1, now.getDate()]
+    .map((part, index) => String(part).padStart(index === 0 ? 4 : 2, "0"))
+    .join("-");
   vi.stubGlobal("fetch", teamsFetch({ calendar: { entries: [{ ...entry, date: today }] } }));
 
   renderWithProviders(<TeamsPage />, "/teams");

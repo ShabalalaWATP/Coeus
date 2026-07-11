@@ -67,8 +67,9 @@ export default function UserManagementPage() {
     : resetMutation.isPending
       ? resetMutation.variables
       : undefined;
-  const users = (usersQuery.data ?? []).filter((user) => {
-    const matchesSearch = `${user.displayName} ${user.username}`
+  const allUsers = usersQuery.data ?? [];
+  const users = allUsers.filter((user) => {
+    const matchesSearch = `${user.displayName} ${user.username} ${user.roles.join(" ")}`
       .toLowerCase()
       .includes(searchTerm.trim().toLowerCase());
     const matchesStatus =
@@ -114,6 +115,11 @@ export default function UserManagementPage() {
               <option value="inactive">Inactive</option>
             </select>
           </label>
+          {usersQuery.isSuccess ? (
+            <span aria-live="polite">
+              Showing {users.length} of {allUsers.length}
+            </span>
+          ) : null}
         </div>
         {usersQuery.isSuccess && users.length === 0 ? <p>No users match these filters.</p> : null}
         {users.map((user) => (

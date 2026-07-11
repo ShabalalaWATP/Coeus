@@ -1,46 +1,11 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { AiModelPanel } from "./AiModelPanel";
+import { liveRegion, modelState, providers } from "./ai-model.fixtures";
 import { modelInfoFor } from "./model-catalogue";
 import { resetQueryClientForTests } from "../../app/query-client";
 import { renderWithProviders } from "../../test/test-utils";
-
-const providers = [
-  {
-    name: "gemini_api",
-    label: "Gemini API (primary)",
-    models: ["gemma-4-31b", "gemini-2.5-flash", "gemini-2.5-pro"],
-    activeModel: "gemma-4-31b",
-    apiKeyConfigured: false,
-  },
-  {
-    name: "openai_api",
-    label: "OpenAI API",
-    models: ["gpt-5", "gpt-5-mini"],
-    activeModel: "gpt-5-mini",
-    apiKeyConfigured: false,
-  },
-  {
-    name: "mock",
-    label: "Mock (offline)",
-    models: ["mock"],
-    activeModel: "mock",
-    apiKeyConfigured: false,
-  },
-];
-
-const modelState = {
-  provider: "gemini_api",
-  activeModel: "gemma-4-31b",
-  availableModels: ["gemma-4-31b", "gemini-2.5-flash", "gemini-2.5-pro"],
-  apiKeyConfigured: false,
-  embeddingProvider: "mock",
-  embeddedProductCount: 3,
-  changedBy: null,
-  changedAt: null,
-  providers,
-};
 
 beforeEach(() => {
   resetQueryClientForTests();
@@ -91,9 +56,10 @@ test("switches the active model within the live provider", async () => {
       }),
     ),
   );
-  expect(await screen.findByText(/embeddings: mock/)).toBeVisible();
-  expect(screen.getByText(/embedded products: 3/)).toBeVisible();
-  expect(screen.getByText(/last changed by admin@example.test/)).toBeVisible();
+  await waitFor(() => expect(within(liveRegion()).getByText(/admin@example\.test/)).toBeVisible());
+  expect(within(liveRegion()).getByText("Embeddings")).toBeVisible();
+  expect(within(liveRegion()).getByText("mock")).toBeVisible();
+  expect(within(liveRegion()).getByText("3")).toBeVisible();
 });
 
 test("stores an API key for the selected provider without rendering it back", async () => {
@@ -114,8 +80,8 @@ test("stores an API key for the selected provider without rendering it back", as
 
   renderWithProviders(<AiModelPanel csrfToken="test-csrf-token" />, "/admin/overview");
 
-  await userEvent.click(await screen.findByRole("tab", { name: /OpenAI API/ }));
-  await userEvent.type(screen.getByLabelText("OpenAI API API key"), "sk-openai-secret");
+  await userEvent.click(await screen.findByRole("button", { name: /OpenAI API/ }));
+  await userEvent.type(screen.getByLabelText("OpenAI API key"), "sk-openai-secret");
   await userEvent.click(screen.getByRole("button", { name: "Save key" }));
 
   await waitFor(() =>
@@ -131,6 +97,26 @@ test("stores an API key for the selected provider without rendering it back", as
   );
   expect(await screen.findByPlaceholderText("API key configured")).toBeVisible();
   expect(screen.queryByDisplayValue("sk-openai-secret")).not.toBeInTheDocument();
+});
+
+test("pressing Enter in the provider key field saves that key", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(modelState) })
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(modelState) });
+  vi.stubGlobal("fetch", fetchMock);
+  renderWithProviders(<AiModelPanel csrfToken="test-csrf-token" />, "/admin/overview");
+
+  await userEvent.type(
+    await screen.findByLabelText("Gemini API (primary) key"),
+    "gemini-secret-key{Enter}",
+  );
+
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+  expect(fetchMock).toHaveBeenLastCalledWith(
+    "http://127.0.0.1:8001/api/v1/admin/ai-model/api-key",
+    expect.objectContaining({ method: "PUT" }),
+  );
 });
 
 test("tests a provider connection and reports the outcome", async () => {
@@ -151,7 +137,7 @@ test("tests a provider connection and reports the outcome", async () => {
 
   renderWithProviders(<AiModelPanel csrfToken="test-csrf-token" />, "/admin/overview");
 
-  await userEvent.click(await screen.findByRole("tab", { name: /OpenAI API/ }));
+  await userEvent.click(await screen.findByRole("button", { name: /OpenAI API/ }));
   await userEvent.click(screen.getByRole("button", { name: "Test connection" }));
 
   await waitFor(() =>
@@ -165,6 +151,31 @@ test("tests a provider connection and reports the outcome", async () => {
     ),
   );
   expect(await screen.findByText(/Connection failed: No API key is configured/)).toBeVisible();
+});
+
+test("reports a successful connection test", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(modelState) })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          ok: true,
+          provider: "gemini_api",
+          model: "gemma-4-31b",
+          message: "gemma-4-31b answered the test prompt.",
+        }),
+    });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<AiModelPanel csrfToken="test-csrf-token" />, "/admin/overview");
+
+  await userEvent.click(await screen.findByRole("button", { name: "Test connection" }));
+
+  expect(
+    await screen.findByText(/Connection OK: gemma-4-31b answered the test prompt/),
+  ).toBeVisible();
 });
 
 test("activating another provider warns about the app-wide change first", async () => {
@@ -186,7 +197,7 @@ test("activating another provider warns about the app-wide change first", async 
 
   renderWithProviders(<AiModelPanel csrfToken="test-csrf-token" />, "/admin/overview");
 
-  await userEvent.click(await screen.findByRole("tab", { name: /OpenAI API/ }));
+  await userEvent.click(await screen.findByRole("button", { name: /OpenAI API/ }));
   await userEvent.click(screen.getByRole("button", { name: "Make active provider" }));
 
   // The warning explains the consequence before anything is sent.
@@ -208,7 +219,7 @@ test("activating another provider warns about the app-wide change first", async 
       }),
     ),
   );
-  expect(await screen.findByText(/live model: gpt-5-mini/)).toBeVisible();
+  expect(await within(liveRegion()).findByText(/gpt-5-mini/)).toBeVisible();
 });
 
 test("cancelling the activation warning sends nothing", async () => {
@@ -219,7 +230,7 @@ test("cancelling the activation warning sends nothing", async () => {
 
   renderWithProviders(<AiModelPanel csrfToken="test-csrf-token" />, "/admin/overview");
 
-  await userEvent.click(await screen.findByRole("tab", { name: /Mock \(offline\)/ }));
+  await userEvent.click(await screen.findByRole("button", { name: /Mock \(offline\)/ }));
   expect(screen.getByText(/answers locally with deterministic replies/)).toBeVisible();
   await userEvent.click(screen.getByRole("button", { name: "Make active provider" }));
   await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
@@ -253,7 +264,7 @@ test("shows a generic error when the switch fails", async () => {
   expect(
     await screen.findByText("The model could not be changed. Refresh and try again."),
   ).toBeVisible();
-  expect(screen.getByText(/last changed by admin@example.test/)).toBeVisible();
+  expect(within(liveRegion()).getByText(/admin@example\.test/)).toBeVisible();
 });
 
 test("shows a key-specific error when saving the API key fails", async () => {
@@ -270,7 +281,7 @@ test("shows a key-specific error when saving the API key fails", async () => {
   renderWithProviders(<AiModelPanel csrfToken="test-csrf-token" />, "/admin/overview");
 
   await userEvent.type(
-    await screen.findByLabelText("Gemini API (primary) API key"),
+    await screen.findByLabelText("Gemini API (primary) key"),
     "gemini-secret-key",
   );
   await userEvent.click(screen.getByRole("button", { name: "Save key" }));

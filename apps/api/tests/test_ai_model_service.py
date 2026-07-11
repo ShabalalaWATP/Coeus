@@ -5,6 +5,7 @@ import pytest
 from ai_model_helpers import FailingAuditLog
 from coeus.core.config import Settings
 from coeus.core.errors import AppError
+from coeus.core.model_ids import MAX_MODELS_PER_SOURCE
 from coeus.persistence.state_store import MemoryStateStore
 from coeus.services.ai_models import AI_MODEL_NAMESPACE, AiModelService
 from coeus.services.audit import AuditLog
@@ -151,3 +152,96 @@ def test_key_configuration_rejects_the_mock_provider() -> None:
 
     with pytest.raises(AppError, match="not available"):
         service.configure_api_key("admin-id", "admin@example.test", "runtime-secret", "mock")
+
+
+def test_custom_models_persist_without_becoming_active() -> None:
+    state_store = MemoryStateStore()
+    settings = Settings(environment="test", openai_api_key="sk-env")
+    service = AiModelService(settings, AuditLog(), state_store)
+
+    service.add_custom_model("admin-id", "admin@example.test", "openai_api", "gpt-6-omni")
+    assert "gpt-6-omni" in service.state().providers[1].models
+
+    restarted = AiModelService(settings, AuditLog(), state_store)
+    openai = next(p for p in restarted.state().providers if p.name == "openai_api")
+    assert "gpt-6-omni" in openai.models
+    assert openai.active_model == "gpt-5-mini"
+
+    service.select("admin-id", "admin@example.test", "gpt-6-omni", "openai_api")
+    selected = AiModelService(settings, AuditLog(), state_store)
+    assert selected.active_model("openai_api") == "gpt-6-omni"
+
+
+def test_refresh_preserves_custom_and_prior_discovered_models(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    responses = iter((("gpt-6-first",), ("gpt-6-second",)))
+    monkeypatch.setattr("coeus.services.ai_models.discover_models", lambda *_args: next(responses))
+    service = AiModelService(
+        Settings(environment="test", openai_api_key="sk-env"), AuditLog(), MemoryStateStore()
+    )
+    service.add_custom_model("admin-id", "admin@example.test", "openai_api", "gpt-custom")
+    service.refresh_models("admin-id", "admin@example.test", "openai_api")
+    service.select("admin-id", "admin@example.test", "gpt-6-first", "openai_api")
+
+    state = service.refresh_models("admin-id", "admin@example.test", "openai_api")
+    openai = next(provider for provider in state.providers if provider.name == "openai_api")
+
+    assert {"gpt-custom", "gpt-6-first", "gpt-6-second"} <= set(openai.models)
+    assert openai.active_model == "gpt-6-first"
+
+
+def test_refresh_limit_never_evicts_prior_discoveries(monkeypatch: pytest.MonkeyPatch) -> None:
+    original = tuple(f"gpt-found-{index:03d}" for index in range(MAX_MODELS_PER_SOURCE))
+    responses = iter((original, ("gpt-new-after-limit",)))
+    monkeypatch.setattr("coeus.services.ai_models.discover_models", lambda *_args: next(responses))
+    service = AiModelService(
+        Settings(environment="test", openai_api_key="sk-env"), AuditLog(), MemoryStateStore()
+    )
+
+    service.refresh_models("admin-id", "admin@example.test", "openai_api")
+    state = service.refresh_models("admin-id", "admin@example.test", "openai_api")
+    openai = next(provider for provider in state.providers if provider.name == "openai_api")
+
+    assert set(original) <= set(openai.models)
+    assert "gpt-new-after-limit" not in openai.models
+
+
+def test_refresh_rolls_back_extra_models_when_audit_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("coeus.services.ai_models.discover_models", lambda *_args: ("gpt-6-omni",))
+    state_store = MemoryStateStore()
+    service = AiModelService(
+        Settings(environment="test", openai_api_key="sk-env"), FailingAuditLog(), state_store
+    )
+
+    with pytest.raises(RuntimeError, match="audit unavailable"):
+        service.refresh_models("admin-id", "admin@example.test", "openai_api")
+
+    openai = next(p for p in service.state().providers if p.name == "openai_api")
+    assert "gpt-6-omni" not in openai.models
+    assert service.state().changed_by is None
+
+
+def test_persisted_model_ids_are_sanitised_and_bounded() -> None:
+    state_store = MemoryStateStore()
+    candidates = [f"gpt-custom-{index}" for index in range(MAX_MODELS_PER_SOURCE + 25)]
+    state_store.save(
+        AI_MODEL_NAMESPACE,
+        {
+            "custom_models": {"openai_api": [*candidates, "bad id", "x" * 81, "gpt-custom-1"]},
+            "active_models": {"openai_api": "bad id"},
+        },
+    )
+
+    service = AiModelService(Settings(environment="test"), AuditLog(), state_store)
+    openai = next(
+        provider for provider in service.state().providers if provider.name == "openai_api"
+    )
+    extras = [model for model in openai.models if model.startswith("gpt-custom-")]
+
+    assert len(extras) == MAX_MODELS_PER_SOURCE
+    assert "bad id" not in openai.models
+    assert "x" * 81 not in openai.models
+    assert openai.active_model == "gpt-5-mini"
