@@ -110,7 +110,7 @@ test("cancels an owned request with a recorded reason", async () => {
   await userEvent.type(screen.getByLabelText("Reason"), "No longer required.");
   await userEvent.click(screen.getByRole("button", { name: "Cancel request" }));
 
-  expect((await screen.findAllByText("CANCELLED"))[0]).toBeVisible();
+  expect((await screen.findAllByText("Cancelled"))[0]).toBeVisible();
   expect(fetchMock).toHaveBeenCalledWith(
     "http://127.0.0.1:8001/api/v1/tickets/ticket-1/cancel",
     expect.objectContaining({

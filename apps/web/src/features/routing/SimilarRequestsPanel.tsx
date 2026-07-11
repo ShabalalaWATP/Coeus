@@ -1,6 +1,8 @@
 import { GitCompareArrows, Link2, RefreshCw } from "lucide-react";
 
 import type { SimilarRequestList } from "../../lib/api-client/similar-requests";
+import { formatWorkflowState } from "../../lib/workflow/state-format";
+import { formatTaggedReason } from "./routing-labels";
 
 type SimilarRequestsPanelProps = {
   isLinking: boolean;
@@ -47,10 +49,10 @@ export function SimilarRequestsPanel({
                 <span>{match.title}</span>
               </div>
               <span className="similar-score">{Math.round(match.score * 100)}%</span>
-              <small>{match.state.replaceAll("_", " ")}</small>
+              <small>{formatWorkflowState(match.state)}</small>
               <div className="similar-match__reasons">
                 {match.reasons.map((reason) => (
-                  <span key={reason}>{reason}</span>
+                  <span key={reason}>{formatTaggedReason(reason)}</span>
                 ))}
               </div>
               <button

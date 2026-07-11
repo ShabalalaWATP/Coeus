@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { FeedbackPanel } from "./FeedbackPanel";
@@ -66,6 +66,54 @@ test("submits customer feedback for a pending request", async () => {
     ),
   );
   expect(await screen.findByText("submitted")).toBeVisible();
+});
+
+test("keeps feedback drafts and submission targets isolated by request", async () => {
+  const secondRequest = {
+    ...request,
+    id: "feedback-2",
+    ticketId: "ticket-2",
+    ticketReference: "TCK-0002",
+    productId: "product-2",
+    productTitle: "Maritime pattern report",
+  };
+  const fetchMock = vi.fn((input: RequestInfo | URL) => {
+    const url = requestUrl(input);
+    if (url.endsWith("/api/v1/feedback/requests")) {
+      return Promise.resolve(jsonResponse({ requests: [request, secondRequest] }));
+    }
+    return Promise.resolve(jsonResponse({ ...secondRequest, status: "submitted" }));
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(
+    <FeedbackPanel csrfToken="test-csrf-token" />,
+    "/app/requests",
+    feedbackSession,
+  );
+
+  const firstForm = await screen.findByRole("form", {
+    name: "Feedback for Arctic feedback product",
+  });
+  const secondForm = screen.getByRole("form", { name: "Feedback for Maritime pattern report" });
+  await userEvent.type(within(firstForm).getByLabelText("Comment"), "First draft stays here.");
+  await userEvent.selectOptions(within(secondForm).getByLabelText("Rating"), "3");
+  await userEvent.type(within(secondForm).getByLabelText("Comment"), "Second request response.");
+  await userEvent.click(within(secondForm).getByRole("button", { name: /Submit feedback/ }));
+
+  await waitFor(() =>
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8001/api/v1/feedback/requests/feedback-2/submit",
+      expect.objectContaining({
+        body: JSON.stringify({
+          rating: 3,
+          comment: "Second request response.",
+          followUpRequested: false,
+        }),
+      }),
+    ),
+  );
+  expect(within(firstForm).getByLabelText("Comment")).toHaveValue("First draft stays here.");
 });
 
 test("shows an inline error when feedback submission fails", async () => {

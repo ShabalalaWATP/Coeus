@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Ticket } from "../../lib/api-client/tickets";
 
 type TimelinePanelProps = {
+  currentUserId?: string;
   isAdding: boolean;
   onAddInformation: (body: string) => void;
   readOnly?: boolean;
@@ -11,6 +12,7 @@ type TimelinePanelProps = {
 };
 
 export function TimelinePanel({
+  currentUserId,
   isAdding,
   onAddInformation,
   readOnly = false,
@@ -39,8 +41,12 @@ export function TimelinePanel({
         {ticket?.timeline.length ? (
           ticket.timeline.map((entry) => (
             <div className="stack-row" key={entry.id}>
-              <strong>{entry.eventType.replaceAll("_", " ")}</strong>
+              <strong>{formatEventType(entry.eventType)}</strong>
               <span>{entry.body}</span>
+              <small>
+                {entry.actorUserId === currentUserId ? "You" : "Workflow"} ·{" "}
+                {formatEventTime(entry.createdAt)}
+              </small>
             </div>
           ))
         ) : (
@@ -70,4 +76,18 @@ export function TimelinePanel({
       ) : null}
     </section>
   );
+}
+
+function formatEventType(eventType: string) {
+  const label = eventType.replaceAll("_", " ").toLowerCase();
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+function formatEventTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Time not recorded";
+  return new Intl.DateTimeFormat("en-GB", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
 }

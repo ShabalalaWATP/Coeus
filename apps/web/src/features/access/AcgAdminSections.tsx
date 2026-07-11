@@ -6,6 +6,7 @@ import type {
   AccessControlGroup,
   CreateAccessControlGroupRequest,
 } from "../../lib/api-client/access";
+import type { AdminUser } from "../../lib/api-client/admin";
 
 export function AcgSelector({
   acgs,
@@ -58,8 +59,10 @@ export function AcgEditor({
   onIsActive,
   onMemberUserId,
   onRemoveMember,
+  onRequestDirectory,
   onUpdate,
   removePending,
+  users,
 }: {
   acg?: AccessControlGroup;
   canManageMembers: boolean;
@@ -72,8 +75,10 @@ export function AcgEditor({
   onIsActive: (value: boolean) => void;
   onMemberUserId: (value: string) => void;
   onRemoveMember: (id: string) => void;
+  onRequestDirectory: () => void;
   onUpdate: FormEventHandler<HTMLFormElement>;
   removePending: boolean;
+  users: AdminUser[];
 }) {
   return (
     <div className="surface access-detail" aria-label="Selected access group">
@@ -104,7 +109,12 @@ export function AcgEditor({
             ) : (
               acg.memberUserIds.map((userId) => (
                 <div className="member-row" key={userId}>
-                  <code>{userId}</code>
+                  <span>
+                    <strong>
+                      {users.find((user) => user.id === userId)?.displayName ?? "Unknown user"}
+                    </strong>
+                    <small>{users.find((user) => user.id === userId)?.username ?? userId}</small>
+                  </span>
                   {canManageMembers ? (
                     <button
                       aria-label={`Remove ${userId} from ${acg.name}`}
@@ -144,15 +154,29 @@ export function AcgEditor({
           ) : null}
           {canManageMembers ? (
             <form className="inline-form" onSubmit={onAddMember}>
+              <button onClick={onRequestDirectory} type="button">
+                Load user directory
+              </button>
               <label>
-                User ID
+                Find user
                 <input
+                  aria-label="User ID"
+                  list="acg-user-options"
                   onChange={(event) => onMemberUserId(event.target.value)}
-                  placeholder="00000000-0000-0000-0000-000000000000"
+                  placeholder="Search by name, username or select a user"
                   value={memberUserId}
                 />
+                <datalist id="acg-user-options">
+                  {users
+                    .filter((user) => !acg.memberUserIds.includes(user.id))
+                    .map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.displayName} ({user.username})
+                      </option>
+                    ))}
+                </datalist>
               </label>
-              <button type="submit">
+              <button disabled={memberUserId.trim().length < 3} type="submit">
                 <UserPlus aria-hidden="true" size={16} /> Add member
               </button>
             </form>

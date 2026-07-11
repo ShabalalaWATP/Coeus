@@ -65,6 +65,7 @@ function memberFetch({ calendarFails = false } = {}) {
         onLeave: 0,
         onTaskCalendar: 1,
         assignedLive: 0,
+        onTask: 0,
         free: 1,
       });
     }

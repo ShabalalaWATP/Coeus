@@ -44,7 +44,7 @@ test("assigns analysts from the manager team queue and clears the ticket", async
   await userEvent.click(await screen.findByRole("button", { name: /TCK-0001/ }));
   await userEvent.click(await screen.findByRole("checkbox", { name: "Intelligence Analyst" }));
   await userEvent.click(screen.getByRole("checkbox", { name: "Geospatial Assessment Analyst" }));
-  expect(screen.getByLabelText("Team name")).toHaveValue("Maritime Assessment Cell");
+  expect(screen.getByLabelText("Team")).toHaveValue("Maritime Assessment Cell");
   await userEvent.click(screen.getByRole("button", { name: "Assign analysts" }));
 
   expect(await screen.findByText("No tickets in this queue.")).toBeVisible();
@@ -112,7 +112,7 @@ test("manager returns submitted work for rework with a reason", async () => {
     ),
   );
   // Rework keeps the ticket in the team queue.
-  expect((await screen.findAllByText("ANALYST IN PROGRESS")).length).toBeGreaterThan(0);
+  expect((await screen.findAllByText("Analyst in progress")).length).toBeGreaterThan(0);
 });
 
 test("surfaces a manager approval failure inline", async () => {
@@ -147,5 +147,5 @@ test("offers analyst assignment without a team suggestion in the collection queu
 
   expect(await screen.findByRole("heading", { name: "Collection Queue" })).toBeVisible();
   // The CM review offered no collection team, so the suggestion stays empty.
-  expect(await screen.findByLabelText("Team name")).toHaveValue("");
+  expect(await screen.findByLabelText("Team")).toHaveValue("");
 });

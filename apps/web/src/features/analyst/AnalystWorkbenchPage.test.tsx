@@ -330,7 +330,7 @@ test("works an assigned task through notes, products, draft and QC submission", 
 
   await userEvent.click(screen.getByRole("button", { name: "Submit for manager approval" }));
   expect(
-    await within(screen.getByLabelText("Analyst task detail")).findByText("MANAGER APPROVAL"),
+    await within(screen.getByLabelText("Analyst task detail")).findByText("Manager approval"),
   ).toBeVisible();
   expect(fetchMock).toHaveBeenLastCalledWith(
     "http://127.0.0.1:8001/api/v1/analyst/tasks/ticket-1/submit",

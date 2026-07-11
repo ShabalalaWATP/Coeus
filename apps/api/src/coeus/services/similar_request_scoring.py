@@ -17,7 +17,9 @@ from coeus.services.rfi_ranking import (
 CUSTOMER_SIMILARITY_THRESHOLD = 0.58
 MANAGER_SIMILARITY_THRESHOLD = 0.50
 MAX_SIMILAR_REQUESTS = 5
-ROUTING_READ_PERMISSIONS = frozenset({Permission.RFA_REVIEW, Permission.COLLECTION_REVIEW})
+ROUTING_READ_PERMISSIONS = frozenset(
+    {Permission.JIOC_REVIEW, Permission.RFA_REVIEW, Permission.COLLECTION_REVIEW}
+)
 OPEN_SIMILARITY_STATES = frozenset(
     {
         TicketState.RFI_SEARCHING,

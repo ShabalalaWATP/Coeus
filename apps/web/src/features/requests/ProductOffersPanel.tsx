@@ -7,6 +7,8 @@ import type {
   RfiSearchResults,
 } from "../../lib/api-client/rfi-search";
 import type { Ticket } from "../../lib/api-client/tickets";
+import { formatWorkflowState } from "../../lib/workflow/state-format";
+import { productTypeLabel } from "../store/store-options";
 
 type ProductOffersPanelProps = {
   canManageOffers: boolean;
@@ -55,7 +57,7 @@ export function ProductOffersPanel({
       {ticket !== undefined ? (
         <>
           <div className="offer-toolbar">
-            <span className="offer-state">{ticket.state.replaceAll("_", " ")}</span>
+            <span className="offer-state">{formatWorkflowState(ticket.state)}</span>
             <button disabled={!canRun || isRunning} onClick={onRun} type="button">
               <Search aria-hidden="true" size={18} />
               Run search
@@ -145,7 +147,7 @@ function OfferCard({
       <div className="offer-card__header">
         <div>
           <strong>{offer.title}</strong>
-          <span>{offer.productType.replaceAll("_", " ")}</span>
+          <span>{productTypeLabel(offer.productType)}</span>
         </div>
         <ScoreBadge offer={offer} />
       </div>

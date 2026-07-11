@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { JOURNEY_STAGES, stageIndexForState } from "./journey-stages";
 import type { TicketState } from "../../lib/api-client/tickets";
@@ -10,18 +10,41 @@ type RequestJourneyProps = {
 };
 
 export function RequestJourney({ onClose, state }: RequestJourneyProps) {
+  const dialogRef = useRef<HTMLElement>(null);
   const currentIndex = stageIndexForState(state);
   const reused = state === "CLOSED_EXISTING_PRODUCT_ACCEPTED";
   const cancelled = state === "CANCELLED";
 
   useEffect(() => {
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const dialog = dialogRef.current;
+    dialog?.querySelector<HTMLElement>("button")?.focus();
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         onClose();
       }
+      if (event.key === "Tab" && dialog) {
+        const focusable = [
+          ...dialog.querySelectorAll<HTMLElement>(
+            "button, [href], [tabindex]:not([tabindex='-1'])",
+          ),
+        ].filter((element) => !element.hasAttribute("disabled"));
+        const first = focusable[0];
+        const last = focusable.at(-1);
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first?.focus();
+        }
+      }
     }
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      previousFocus?.focus();
+    };
   }, [onClose]);
 
   return (
@@ -31,6 +54,7 @@ export function RequestJourney({ onClose, state }: RequestJourneyProps) {
         aria-modal="true"
         className="journey-dialog"
         onClick={(event) => event.stopPropagation()}
+        ref={dialogRef}
         role="dialog"
       >
         <header className="journey-dialog__header">

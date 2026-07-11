@@ -1,7 +1,7 @@
 import { AnalystDraftForm } from "./AnalystDraftForm";
 import { AnalystTaskContext } from "./AnalystTaskContext";
 import { LinkedProductsPanel, NotesPanel, WorkPackagesPanel } from "./AnalystTaskPanels";
-import { canSubmitTask } from "./analyst-task-policy";
+import { canSubmitTask, submissionBlockers } from "./analyst-task-policy";
 import { useAnalystTaskActions } from "./useAnalystTaskActions";
 import type { AnalystTask } from "../../lib/api-client/analyst";
 
@@ -20,6 +20,7 @@ export default function AnalystTaskDetail({ onTaskChange, task }: AnalystTaskDet
       </section>
     );
   }
+  const blockers = submissionBlockers(task);
 
   return (
     <section className="surface analyst-detail" aria-label="Analyst task detail">
@@ -33,14 +34,20 @@ export default function AnalystTaskDetail({ onTaskChange, task }: AnalystTaskDet
         </p>
       ) : null}
       <AnalystTaskContext task={task} />
-      <WorkPackagesPanel onComplete={actions.completePackage} task={task} />
+      <WorkPackagesPanel
+        disabled={actions.actionPending}
+        onComplete={actions.completePackage}
+        task={task}
+      />
       <NotesPanel
+        disabled={actions.actionPending}
         noteBody={actions.noteBody}
         onNoteChange={actions.setNoteBody}
         onSubmit={actions.submitNote}
         task={task}
       />
       <LinkedProductsPanel
+        disabled={actions.actionPending}
         isError={actions.productsQuery.isError}
         onLink={actions.linkProduct}
         onQueryChange={actions.setProductQuery}
@@ -53,6 +60,7 @@ export default function AnalystTaskDetail({ onTaskChange, task }: AnalystTaskDet
       <section className="analyst-panel">
         <h3>Draft product</h3>
         <AnalystDraftForm
+          disabled={actions.actionPending}
           draft={actions.draft}
           onChange={actions.setDraft}
           onSubmit={actions.saveDraft}
@@ -65,9 +73,19 @@ export default function AnalystTaskDetail({ onTaskChange, task }: AnalystTaskDet
           ))}
         </ol>
       </section>
+      {blockers.length ? (
+        <div className="analyst-submit-guidance" role="status">
+          <strong>Before submission</strong>
+          <ul>
+            {blockers.map((blocker) => (
+              <li key={blocker}>{blocker}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       <button
         className="analyst-submit"
-        disabled={!canSubmitTask(task) || actions.submitPending}
+        disabled={!canSubmitTask(task) || actions.actionPending}
         onClick={actions.submit}
         type="button"
       >

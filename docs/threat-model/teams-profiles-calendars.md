@@ -30,3 +30,15 @@ availability service (`docs/specs/teams-profiles-calendars.md`).
   members; accepted as the feature's purpose within a team boundary.
 - The calendar is app-local by design (no ICS/Outlook sync), so it can drift
   from real-world availability; entries are self-reported.
+
+## July 2026 interface hardening
+
+- Team-directory caches include the team identifier, preventing candidate
+  results from crossing team boundaries in the browser cache.
+- Calendar dates use local calendar components rather than UTC conversion, and
+  duplicate entries render according to the backend latest-entry-wins rule.
+- Availability exposes a deduplicated on-task count so overlapping live and
+  self-reported work does not overstate team utilisation.
+- Membership removal, account deactivation and credential reset require an
+  explicit confirmation in the client; server-side authorisation remains the
+  controlling security boundary.

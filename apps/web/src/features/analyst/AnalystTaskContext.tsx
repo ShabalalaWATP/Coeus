@@ -1,4 +1,5 @@
 import type { AnalystTask } from "../../lib/api-client/analyst";
+import { formatWorkflowState } from "../../lib/workflow/state-format";
 
 export function AnalystTaskContext({ task }: { task: AnalystTask }) {
   return (
@@ -6,7 +7,7 @@ export function AnalystTaskContext({ task }: { task: AnalystTask }) {
       <dl>
         <div>
           <dt>State</dt>
-          <dd>{task.state.replaceAll("_", " ")}</dd>
+          <dd>{formatWorkflowState(task.state)}</dd>
         </div>
         <div>
           <dt>Region</dt>
@@ -20,13 +21,39 @@ export function AnalystTaskContext({ task }: { task: AnalystTask }) {
           <dt>Team</dt>
           <dd>{task.assignments[0]?.teamName ?? "Not assigned"}</dd>
         </div>
+        <div>
+          <dt>Analysts</dt>
+          <dd>{task.assignments.length} assigned</dd>
+        </div>
+        <div>
+          <dt>Priority</dt>
+          <dd>{task.priority ?? "Not set"}</dd>
+        </div>
       </dl>
-      <p>{task.description}</p>
-      <ul>
-        {task.managerNotes.map((note) => (
-          <li key={note}>{note}</li>
-        ))}
-      </ul>
+      <h3>Tasking question</h3>
+      <p>{task.operationalQuestion ?? "No operational question was supplied."}</p>
+      <h3>Background</h3>
+      <p>{task.description ?? "No background description was supplied."}</p>
+      {task.chatSummary.length ? (
+        <>
+          <h3>Requester context</h3>
+          <ul>
+            {task.chatSummary.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {task.managerNotes.length ? (
+        <>
+          <h3>Manager direction</h3>
+          <ul>
+            {task.managerNotes.map((note) => (
+              <li key={note}>{note}</li>
+            ))}
+          </ul>
+        </>
+      ) : null}
     </section>
   );
 }

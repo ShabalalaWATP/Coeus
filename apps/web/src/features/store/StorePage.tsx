@@ -116,6 +116,7 @@ export default function StorePage({
   // to the user's roles) the filter runs client-side, so server totals and
   // pagination would be wrong. Use the filtered list for counts instead.
   const clientScoped = scope === "mine" && activeOwnerTeam === undefined;
+  const hasOwnedProductScope = scope !== "mine" || activeOwnerTeam !== undefined;
   const totalVisible = clientScoped
     ? visibleProducts.length
     : (productsQuery.data?.total ?? visibleProducts.length);
@@ -138,6 +139,16 @@ export default function StorePage({
           <div className="classification-note">MOCK DATA ONLY</div>
         )}
       </section>
+
+      {!hasOwnedProductScope ? (
+        <section className="workspace-alert" role="status">
+          <span>
+            My Products is for RFA and Collection teams. Store managers administer the full
+            catalogue instead.
+          </span>
+          <Link to="/store">Open the full Intelligence Store</Link>
+        </section>
+      ) : null}
 
       <section className="store-layout">
         <StoreSearchFiltersPanel

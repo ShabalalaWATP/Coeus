@@ -45,6 +45,8 @@ export default function AcgAdminPage() {
           onRemoveMember={model.removeMember}
           onUpdate={model.submitUpdate}
           removePending={model.removeMemberPending}
+          onRequestDirectory={model.requestDirectory}
+          users={model.users}
         />
       </section>
       {model.canCreate ? (

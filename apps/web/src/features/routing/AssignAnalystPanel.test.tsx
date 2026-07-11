@@ -41,6 +41,7 @@ test("assigns multiple analysts with custom work packages", async () => {
     onLeave: 1,
     onTaskCalendar: 0,
     assignedLive: 2,
+    onTask: 3,
     free: 3,
   };
   const fetchMock = vi.fn((url: string) =>
@@ -77,9 +78,9 @@ test("assigns multiple analysts with custom work packages", async () => {
 
   await userEvent.click(await screen.findByRole("checkbox", { name: "Intelligence Analyst" }));
   await userEvent.click(screen.getByRole("checkbox", { name: "Geospatial Assessment Analyst" }));
-  await userEvent.type(screen.getByLabelText("Team name"), "Maritime Assessment Cell");
+  await userEvent.selectOptions(screen.getByLabelText("Team"), "RFA Assessment Team");
   await userEvent.type(
-    screen.getByLabelText("Work packages (semicolon separated)"),
+    screen.getByLabelText("Work packages (one per line)"),
     "Validate scope; Draft assessment ;",
   );
   await userEvent.click(screen.getByRole("button", { name: "Assign analysts" }));
@@ -90,7 +91,7 @@ test("assigns multiple analysts with custom work packages", async () => {
     {
       body: JSON.stringify({
         analystUserIds: ["analyst-1", "analyst-2"],
-        teamName: "Maritime Assessment Cell",
+        teamName: "RFA Assessment Team",
         workPackages: ["Validate scope", "Draft assessment"],
       }),
       credentials: "include",

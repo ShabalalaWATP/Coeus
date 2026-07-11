@@ -58,6 +58,11 @@ export default function RequestsPage() {
     queryFn: () => getTicket(ticketId!),
   });
   const selectedTicket = selectedTicketQuery.data;
+  const existingTicketLoading =
+    !isNewRequest &&
+    ticketId !== undefined &&
+    selectedTicket === undefined &&
+    selectedTicketQuery.isFetching;
   const summaryExhaustedWithoutTicket =
     !ticketsQuery.isFetching &&
     !ticketsQuery.hasNextPage &&
@@ -94,6 +99,7 @@ export default function RequestsPage() {
   });
   useEffect(() => setActionError(null), [selectedTicketId]);
   const mutations = useRequestWorkspaceMutations({
+    allowCreate: isNewRequest,
     csrfToken,
     currentRouteTicketId: ticketId,
     selectedTicket,
@@ -133,6 +139,10 @@ export default function RequestsPage() {
         </section>
       ) : requestedTicketMissing ? (
         <RequestRouteMissingState onBack={() => void navigate("/app/requests")} />
+      ) : existingTicketLoading ? (
+        <section className="surface" aria-label="Request loading">
+          <p role="status">Loading request…</p>
+        </section>
       ) : showWorkspace ? (
         <TicketWorkspace
           actions={mutations.actions}

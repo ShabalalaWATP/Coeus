@@ -9,7 +9,7 @@ import {
 } from "./route-access";
 
 test("preview profile can see every sprint shell route", () => {
-  expect(visibleNavigationItems(previewProfile)).toHaveLength(navigationItems.length);
+  expect(visibleNavigationItems(previewProfile)).toHaveLength(navigationItems.length - 1);
 });
 
 test("route access requires all route permissions", () => {
@@ -46,7 +46,6 @@ test("store manager sees store administration surfaces without admin overview", 
 
   expect(visibleNavigationItems(profile).map((item) => item.label)).toEqual([
     "Intelligence Store",
-    "My Products",
     "ACGs",
   ]);
   expect(canAccessRoute(profile, routeByPath("/admin/overview")!)).toBe(false);

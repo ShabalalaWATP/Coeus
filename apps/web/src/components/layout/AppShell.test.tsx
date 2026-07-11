@@ -27,13 +27,16 @@ test("renders the expected shell landmarks and navigation", () => {
 
   expect(screen.getByLabelText("Primary navigation")).toBeVisible();
   expect(screen.getByLabelText("Istari workspace")).toBeVisible();
-  expect(screen.getByRole("searchbox", { name: "Command" })).toBeVisible();
+  expect(screen.getByRole("combobox", { name: "Command" })).toBeVisible();
   expect(screen.getByRole("button", { name: "Notifications" })).toBeVisible();
   expect(screen.getByRole("button", { name: "Profile" })).toBeVisible();
 });
 
 test("marks only the most specific navigation item active", () => {
-  renderWithProviders(<AppShell profile={previewProfile} />, "/store/my-products");
+  renderWithProviders(
+    <AppShell profile={{ ...previewProfile, roles: ["RFA Manager"] }} />,
+    "/store/my-products",
+  );
 
   expect(screen.getByRole("link", { name: "Intelligence Store" })).not.toHaveAttribute(
     "aria-current",

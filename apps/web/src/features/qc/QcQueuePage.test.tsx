@@ -22,6 +22,14 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+async function completeQcReview() {
+  for (const key of baseProduct.checklistKeys) {
+    await userEvent.click(screen.getByLabelText(key.replaceAll("_", " ")));
+  }
+  await userEvent.selectOptions(screen.getByLabelText("ACG"), "acg-1");
+  await userEvent.type(screen.getByLabelText("Approval reason"), "Reviewed every QC control.");
+}
+
 test("approves a QC product and confirms ingestion", async () => {
   const fetchMock = vi.fn(fetchByUrl({ approve: approvedProduct }));
   vi.stubGlobal("fetch", fetchMock);
@@ -30,7 +38,8 @@ test("approves a QC product and confirms ingestion", async () => {
 
   expect(await screen.findByRole("link", { name: /TCK-0001/ })).toBeVisible();
   expect(screen.getByText("MOCK DATA ONLY assessment content.")).toBeVisible();
-  await userEvent.click(screen.getByRole("button", { name: /Mark all complete/ }));
+  expect(screen.queryByRole("button", { name: /Mark all complete/ })).not.toBeInTheDocument();
+  await completeQcReview();
   await userEvent.click(screen.getByRole("button", { name: /Approve and disseminate/ }));
 
   expect(await screen.findByText("Released to customer")).toBeVisible();
@@ -47,7 +56,7 @@ test("approves a QC product and confirms ingestion", async () => {
           releasability: ["MOCK"],
           handlingCaveats: ["MOCK DATA ONLY"],
           acgIds: ["acg-1"],
-          reason: "QC checklist complete.",
+          reason: "Reviewed every QC control.",
         }),
         credentials: "include",
         headers: { "Content-Type": "application/json", "X-CSRF-Token": "test-csrf-token" },
@@ -85,7 +94,7 @@ test("returns a QC product to the analyst for rework", async () => {
   await userEvent.click(screen.getByRole("button", { name: /Return to analyst/ }));
 
   expect(
-    await within(screen.getByLabelText("QC product detail")).findByText("REWORK REQUIRED"),
+    await within(screen.getByLabelText("QC product detail")).findByText("Rework required"),
   ).toBeVisible();
   await waitFor(() =>
     expect(fetchMock).toHaveBeenCalledWith(
@@ -133,7 +142,10 @@ test("keeps approval disabled until access control groups are available", async 
   renderWithProviders(<QcQueuePage />, "/qc/queue");
 
   await screen.findByRole("link", { name: /TCK-0001/ });
-  await userEvent.click(screen.getByRole("button", { name: /Mark all complete/ }));
+  for (const key of baseProduct.checklistKeys) {
+    await userEvent.click(screen.getByLabelText(key.replaceAll("_", " ")));
+  }
+  await userEvent.type(screen.getByLabelText("Approval reason"), "Reviewed every QC control.");
 
   expect(screen.getByRole("button", { name: /Approve and disseminate/ })).toBeDisabled();
 });
@@ -163,13 +175,17 @@ test("shows a retryable error when QC access control groups cannot load", async 
     await screen.findByText("Access groups could not be loaded. Refresh and try again."),
   ).toBeVisible();
   expect(screen.getByLabelText("ACG")).toBeDisabled();
-  await userEvent.click(screen.getByRole("button", { name: /Mark all complete/ }));
+  for (const key of baseProduct.checklistKeys) {
+    await userEvent.click(screen.getByLabelText(key.replaceAll("_", " ")));
+  }
+  await userEvent.type(screen.getByLabelText("Approval reason"), "Reviewed every QC control.");
   expect(screen.getByRole("button", { name: /Approve and disseminate/ })).toBeDisabled();
 
   await userEvent.click(screen.getByRole("button", { name: "Retry access groups" }));
 
   expect(await screen.findByRole("option", { name: "ACG-ALPHA-REGIONAL" })).toBeVisible();
   await waitFor(() => expect(screen.getByLabelText("ACG")).not.toBeDisabled());
+  await userEvent.selectOptions(screen.getByLabelText("ACG"), "acg-1");
   expect(screen.getByRole("button", { name: /Approve and disseminate/ })).not.toBeDisabled();
 });
 
@@ -191,7 +207,7 @@ test("resets the checklist and release form when the selected product changes", 
   renderQcRoutes("/qc/queue");
 
   await screen.findByRole("link", { name: /TCK-0001/ });
-  await userEvent.click(screen.getByRole("button", { name: /Mark all complete/ }));
+  await userEvent.click(screen.getByLabelText("answers customer question"));
   await userEvent.type(screen.getByLabelText("Rejection reason"), "Needs new sources.");
   expect(screen.getByLabelText("answers customer question")).toBeChecked();
 

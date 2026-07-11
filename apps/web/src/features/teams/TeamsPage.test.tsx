@@ -40,6 +40,7 @@ const availability = {
   onLeave: 1,
   onTaskCalendar: 0,
   assignedLive: 1,
+  onTask: 1,
   free: 0,
 };
 
@@ -116,6 +117,10 @@ function teamsFetch(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   resetQueryClientForTests();
+  vi.stubGlobal(
+    "confirm",
+    vi.fn(() => true),
+  );
 });
 
 afterEach(() => {
@@ -253,7 +258,9 @@ test("marks today's group and shows the day summary", async () => {
 
   renderWithProviders(<TeamsPage />, "/teams");
 
-  expect(await screen.findByText("Today")).toBeVisible();
+  expect((await screen.findAllByText("Today")).some((element) => element.tagName === "SPAN")).toBe(
+    true,
+  );
   expect(await screen.findByText("1 on leave")).toBeVisible();
 });
 
@@ -262,7 +269,7 @@ test("shows an empty calendar and surfaces entry failures", async () => {
 
   renderWithProviders(<TeamsPage />, "/teams");
 
-  expect(await screen.findByText("No entries in the next two weeks.")).toBeVisible();
+  expect(await screen.findByText("No entries in this fortnight.")).toBeVisible();
   await userEvent.click(screen.getByRole("button", { name: "Add entry" }));
   expect(await screen.findByText("Failed.")).toBeVisible();
 });

@@ -57,6 +57,9 @@ export async function installApiMocks(page: Page, flow: FlowState) {
       flow.stage = "qc";
       return json(route, routingTicket(flow, "QC_REVIEW"));
     }
+    if (method === "GET" && path === "/routing/ticket-e2e/manager-work") {
+      return json(route, analystTask(flow, "MANAGER_APPROVAL"));
+    }
     if (method === "GET" && path === "/analyst/candidates") {
       return json(route, {
         analysts: [{ displayName: "Analyst Operator", userId: "analyst-user", username: "a.test" }],

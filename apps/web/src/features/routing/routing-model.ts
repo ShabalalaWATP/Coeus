@@ -3,15 +3,24 @@ import type { RoutingRoute, RoutingTicket } from "../../lib/api-client/routing";
 // JIOC decides routes: actions are available while the ticket awaits a
 // JIOC decision, regardless of which route the decision will pick.
 export function canApprove(ticket: RoutingTicket) {
+  return (
+    ticket.state === "JIOC_REVIEW" &&
+    ticket.rfaReview !== null &&
+    ticket.cmReview !== null &&
+    ticket.recommendation !== null
+  );
+}
+
+function canReviewDecision(ticket: RoutingTicket) {
   return ticket.state === "JIOC_REVIEW";
 }
 
 export function canReject(ticket: RoutingTicket, reason: string) {
-  return canApprove(ticket) && reason.trim().length >= 3;
+  return canReviewDecision(ticket) && reason.trim().length >= 3;
 }
 
 export function canSubmitClarification(ticket: RoutingTicket, reason: string, question: string) {
-  return canApprove(ticket) && reason.trim().length >= 3 && question.trim().length >= 3;
+  return canReviewDecision(ticket) && reason.trim().length >= 3 && question.trim().length >= 3;
 }
 
 /**

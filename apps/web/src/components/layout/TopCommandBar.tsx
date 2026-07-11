@@ -16,6 +16,7 @@ export function TopCommandBar({ onLogout, profile }: TopCommandBarProps) {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const [commandQuery, setCommandQuery] = useState("");
+  const [activeCommandIndex, setActiveCommandIndex] = useState(0);
   const [openPanel, setOpenPanel] = useState<"notifications" | "profile" | null>(null);
   const commandInputRef = useRef<HTMLInputElement>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
@@ -72,20 +73,41 @@ export function TopCommandBar({ onLogout, profile }: TopCommandBarProps) {
     void navigate(path);
   }
 
+  const activeCommand = commandMatches[activeCommandIndex] ?? commandMatches[0];
+
   return (
     <header className="command-bar">
       <div className="command-search-wrap">
         <div className="command-search">
           <Search aria-hidden="true" size={18} strokeWidth={1.8} />
           <input
+            aria-activedescendant={
+              activeCommand ? `command-result-${activeCommandIndex}` : undefined
+            }
+            aria-autocomplete="list"
+            aria-controls="command-results"
+            aria-expanded={commandQuery.trim().length > 0}
             aria-label="Command"
             autoComplete="off"
             id="global-command"
-            onChange={(event) => setCommandQuery(event.target.value)}
+            onChange={(event) => {
+              setCommandQuery(event.target.value);
+              setActiveCommandIndex(0);
+            }}
             onKeyDown={(event) => {
-              if (event.key === "Enter" && commandMatches[0] !== undefined) {
+              if (event.key === "ArrowDown" && commandMatches.length) {
                 event.preventDefault();
-                openRoute(commandMatches[0].path);
+                setActiveCommandIndex((current) => (current + 1) % commandMatches.length);
+              }
+              if (event.key === "ArrowUp" && commandMatches.length) {
+                event.preventDefault();
+                setActiveCommandIndex(
+                  (current) => (current - 1 + commandMatches.length) % commandMatches.length,
+                );
+              }
+              if (event.key === "Enter" && activeCommand !== undefined) {
+                event.preventDefault();
+                openRoute(activeCommand.path);
               }
               if (event.key === "Escape") {
                 setCommandQuery("");
@@ -94,14 +116,27 @@ export function TopCommandBar({ onLogout, profile }: TopCommandBarProps) {
             placeholder="Go to workspace"
             ref={commandInputRef}
             type="search"
+            role="combobox"
             value={commandQuery}
           />
           <kbd aria-hidden="true">Ctrl K</kbd>
         </div>
         {commandQuery.trim() ? (
-          <div className="command-menu" aria-label="Command results">
-            {commandMatches.map((item) => (
-              <button key={item.path} onClick={() => openRoute(item.path)} type="button">
+          <div
+            className="command-menu"
+            aria-label="Command results"
+            id="command-results"
+            role="listbox"
+          >
+            {commandMatches.map((item, index) => (
+              <button
+                aria-selected={index === activeCommandIndex}
+                id={`command-result-${index}`}
+                key={item.path}
+                onClick={() => openRoute(item.path)}
+                role="option"
+                type="button"
+              >
                 {item.label}
               </button>
             ))}
@@ -120,6 +155,8 @@ export function TopCommandBar({ onLogout, profile }: TopCommandBarProps) {
           open={openPanel === "notifications"}
         />
         <button
+          aria-controls="profile-panel"
+          aria-expanded={openPanel === "profile"}
           aria-label="Profile"
           className="profile-menu"
           onClick={() => setOpenPanel((current) => (current === "profile" ? null : "profile"))}
@@ -132,7 +169,7 @@ export function TopCommandBar({ onLogout, profile }: TopCommandBarProps) {
           <LogOut aria-hidden="true" size={18} strokeWidth={1.8} />
         </IconButton>
         {openPanel === "profile" ? (
-          <aside className="command-popover" aria-label="Profile panel">
+          <aside className="command-popover" aria-label="Profile panel" id="profile-panel">
             <strong>{profile.displayName}</strong>
             <p>{profile.username}</p>
             <small>{profile.roles.join(", ")}</small>

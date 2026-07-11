@@ -56,7 +56,8 @@ test("shows the dashboard and opens the new request workspace", async () => {
 
 test("loads older compact request summaries through the server cursor", async () => {
   const older = { ...baseTicket, id: "ticket-older", reference: "TCK-0000" };
-  const fetchMock = vi.fn((url: string) => {
+  const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+    void init;
     if (url.includes("cursor=ticket-1")) {
       return Promise.resolve({
         ok: true,
@@ -103,6 +104,36 @@ test("shows a missing state for an unknown direct request URL", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Back to my requests" }));
 
   expect(await screen.findByRole("heading", { name: "My Requests" })).toBeVisible();
+});
+
+test("locks an existing-request route until its exact ticket has loaded", async () => {
+  let resolveDetail: ((response: Response) => void) | undefined;
+  const detail = new Promise<Response>((resolve) => {
+    resolveDetail = resolve;
+  });
+  const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+    void init;
+    if (url.endsWith("/api/v1/tickets/ticket-1")) {
+      return detail;
+    }
+    if (url.endsWith("/api/v1/tickets")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ tickets: [baseTicket], nextCursor: null }),
+      });
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderRequests("/app/requests/ticket-1");
+
+  expect(await screen.findByRole("status")).toHaveTextContent("Loading request");
+  expect(screen.queryByLabelText("Message")).not.toBeInTheDocument();
+  expect(fetchMock.mock.calls.some(([, init]) => init?.method === "POST")).toBe(false);
+
+  resolveDetail?.({ ok: true, json: () => Promise.resolve(baseTicket) } as Response);
+  expect(await screen.findByText("Edit details manually")).toBeVisible();
 });
 
 test("creates a ticket from chat and shows the captured details checklist", async () => {
@@ -180,7 +211,7 @@ test("edits intake manually and submits once complete", async () => {
   await waitFor(() => expect(submit).toBeEnabled());
   await userEvent.click(submit);
 
-  expect((await screen.findAllByText("RFI SEARCHING")).length).toBeGreaterThan(0);
+  expect((await screen.findAllByText("RFI searching")).length).toBeGreaterThan(0);
 
   // Submission opens the transient journey popup so the requester sees what happens next.
   expect(await screen.findByRole("dialog", { name: "Request journey" })).toBeVisible();
@@ -224,7 +255,7 @@ test("confirms delivery of a disseminated request from the dashboard", async () 
 
   await userEvent.click(await screen.findByRole("button", { name: "Confirm receipt and close" }));
 
-  expect(await screen.findByText("CLOSED DELIVERED")).toBeVisible();
+  expect(await screen.findByText("Closed delivered")).toBeVisible();
   expect(
     screen.queryByRole("button", { name: "Confirm receipt and close" }),
   ).not.toBeInTheDocument();
@@ -297,7 +328,7 @@ test("clears a delivery confirmation error after a successful retry", async () =
 
   await userEvent.click(confirm);
 
-  expect(await screen.findByText("CLOSED DELIVERED")).toBeVisible();
+  expect(await screen.findByText("Closed delivered")).toBeVisible();
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 });
 

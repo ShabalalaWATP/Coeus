@@ -8,6 +8,7 @@ import { selectedAcgId, type QcReleaseFormState } from "./qc-release-model";
 import { MetadataChecks, PostReleaseStatus, ReleaseForm } from "./qc-release-sections";
 
 export function QcProductDetail({
+  actionPending,
   acgs,
   acgsFailed,
   acgsLoading,
@@ -22,6 +23,7 @@ export function QcProductDetail({
   releaseForm,
   requestedMissing,
 }: {
+  actionPending: boolean;
   acgs: AccessControlGroup[] | undefined;
   acgsFailed: boolean;
   acgsLoading: boolean;
@@ -52,13 +54,22 @@ export function QcProductDetail({
   }
   const draft = product.latestDraft;
   const allChecklistComplete = product.checklistKeys.every((key) => checklist[key]);
-  const releaseAcgId = selectedAcgId(releaseForm, acgs);
+  const releaseAcgId = selectedAcgId(releaseForm);
   const acgsUnavailable = acgsLoading || acgsFailed;
+  const classificationLevel = Number(releaseForm.classificationLevel);
   const canApprove =
     product.state === "QC_REVIEW" &&
+    Boolean(draft?.content) &&
+    Boolean(draft?.assets.length) &&
     allChecklistComplete &&
     releaseAcgId !== "" &&
-    !acgsUnavailable;
+    releaseForm.releasability.trim().length > 0 &&
+    releaseForm.reason.trim().length >= 3 &&
+    Number.isInteger(classificationLevel) &&
+    classificationLevel >= 0 &&
+    classificationLevel <= 5 &&
+    !acgsUnavailable &&
+    !actionPending;
   return (
     <section className="surface qc-detail" aria-label="QC product detail">
       {missingNotice}
@@ -67,7 +78,7 @@ export function QcProductDetail({
         <p>{product.title}</p>
       </div>
       <ProductPreview product={product} />
-      <MetadataChecks acgId={releaseAcgId} product={product} />
+      <MetadataChecks acgId={releaseAcgId} form={releaseForm} product={product} />
       {acgsFailed ? (
         <div className="workspace-alert" role="alert">
           <span>Access groups could not be loaded. Refresh and try again.</span>
@@ -78,17 +89,12 @@ export function QcProductDetail({
       ) : null}
       <section className="qc-panel">
         <h3>QC checklist</h3>
-        <button
-          className="qc-secondary"
-          onClick={() => onChecklistChange(keysToChecklist(product.checklistKeys))}
-          type="button"
-        >
-          <CheckCircle2 aria-hidden="true" size={18} /> Mark all complete
-        </button>
+        <p>Review and confirm every control individually before approving the product.</p>
         {product.checklistKeys.map((key) => (
           <label className="qc-check" key={key}>
             <input
               checked={Boolean(checklist[key])}
+              disabled={actionPending}
               onChange={(event) => onChecklistChange({ ...checklist, [key]: event.target.checked })}
               type="checkbox"
             />
@@ -99,6 +105,7 @@ export function QcProductDetail({
       <ReleaseForm
         acgSelectDisabled={acgsUnavailable}
         acgs={acgs ?? []}
+        disabled={actionPending}
         form={releaseForm}
         onChange={onReleaseFormChange}
       />
@@ -107,7 +114,11 @@ export function QcProductDetail({
           <CheckCircle2 aria-hidden="true" size={18} /> Approve and disseminate
         </button>
         <button
-          disabled={product.state !== "QC_REVIEW" || releaseForm.rejectionReason.trim().length < 3}
+          disabled={
+            actionPending ||
+            product.state !== "QC_REVIEW" ||
+            releaseForm.rejectionReason.trim().length < 3
+          }
           onClick={onReject}
           type="button"
         >
@@ -120,11 +131,7 @@ export function QcProductDetail({
         </p>
       ) : null}
       <PostReleaseStatus product={product} />
-      {draft === null ? null : (
-        <p className="qc-footnote">
-          Latest draft v{draft.versionNumber} by {draft.createdByUserId}
-        </p>
-      )}
+      {draft === null ? null : <p className="qc-footnote">Latest draft v{draft.versionNumber}</p>}
     </section>
   );
 }
@@ -153,10 +160,6 @@ function ProductPreview({ product }: { product: QcProduct }) {
       {draft === null ? null : <pre className="qc-preview">{draft.content}</pre>}
     </section>
   );
-}
-
-function keysToChecklist(keys: string[]) {
-  return Object.fromEntries(keys.map((key) => [key, true]));
 }
 
 function formatKey(key: string) {

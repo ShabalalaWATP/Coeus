@@ -24,6 +24,8 @@ export default function UserManagementPage() {
   const queryClient = useQueryClient();
   const csrfToken = session?.csrfToken ?? "";
   const [actionError, setActionError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [resetResult, setResetResult] = useState<{
     temporaryCredential: string;
     userId: string;
@@ -60,7 +62,19 @@ export default function UserManagementPage() {
     onSuccess: (result, userId) =>
       setResetResult({ temporaryCredential: result.temporaryCredential, userId }),
   });
-  const isSaving = updateMutation.isPending || resetMutation.isPending;
+  const pendingUserId = updateMutation.isPending
+    ? updateMutation.variables?.userId
+    : resetMutation.isPending
+      ? resetMutation.variables
+      : undefined;
+  const users = (usersQuery.data ?? []).filter((user) => {
+    const matchesSearch = `${user.displayName} ${user.username}`
+      .toLowerCase()
+      .includes(searchTerm.trim().toLowerCase());
+    const matchesStatus =
+      statusFilter === "all" || (statusFilter === "active" ? user.isActive : !user.isActive);
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <div className="workspace-page">
@@ -84,13 +98,42 @@ export default function UserManagementPage() {
         ) : null}
         {usersQuery.isLoading ? <LoadingState label="Loading users" /> : null}
         {usersQuery.isError ? <ErrorState onRetry={() => void usersQuery.refetch()} /> : null}
-        {usersQuery.data?.map((user) => (
+        <div className="admin-user-filters">
+          <label>
+            Search users
+            <input onChange={(event) => setSearchTerm(event.target.value)} value={searchTerm} />
+          </label>
+          <label>
+            Status
+            <select
+              onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
+              value={statusFilter}
+            >
+              <option value="all">All accounts</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </label>
+        </div>
+        {usersQuery.isSuccess && users.length === 0 ? <p>No users match these filters.</p> : null}
+        {users.map((user) => (
           <UserManagementRow
             currentUserId={session?.user.id ?? ""}
-            isSaving={isSaving}
+            isSaving={pendingUserId === user.id}
             key={user.id}
-            onReset={(userId) => resetMutation.mutate(userId)}
-            onUpdate={(input) => updateMutation.mutate(input)}
+            onReset={(userId) => {
+              if (window.confirm(`Reset the credential for ${user.displayName}?`))
+                resetMutation.mutate(userId);
+            }}
+            onUpdate={(input) => {
+              if (
+                input.type !== "status" ||
+                input.isActive ||
+                window.confirm(`Deactivate ${user.displayName}?`)
+              ) {
+                updateMutation.mutate(input);
+              }
+            }}
             resetCredential={
               resetResult?.userId === user.id ? resetResult.temporaryCredential : null
             }

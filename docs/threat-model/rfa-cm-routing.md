@@ -14,6 +14,10 @@ clarification, override decisions and ticket-level workflow-plan updates.
 
 ## Threats And Controls
 
+- Similar-request workflow reads accept the same JIOC, RFA and collection review permissions
+  as the routing queues. This keeps object-level scope consistent while preventing a JIOC
+  reviewer from receiving a false not-found response for a ticket already visible in their queue.
+
 | Threat | Control in Sprint 8 |
 |---|---|
 | A customer invokes manager-only route actions. | Routing queues and actions require RFA or collection review permissions and return 403 or 404 where appropriate. |
@@ -31,3 +35,12 @@ clarification, override decisions and ticket-level workflow-plan updates.
 - Ticket-level workflow-plan updates are stored with the ticket until a
   dedicated planning workspace is specified.
 - Analyst assignment itself is deferred to Sprint 9.
+
+## July 2026 decision safeguards
+
+- JIOC approval remains unavailable until both capability reviews and the
+  current route recommendation exist.
+- Ticket selection and all decision controls lock during a write, preventing a
+  response for one ticket being applied to another ticket selected mid-flight.
+- Managers can inspect submitted work before deciding, while separation of
+  duties remains enforced specifically for approval.

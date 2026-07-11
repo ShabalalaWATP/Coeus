@@ -192,7 +192,26 @@ export function hasPermissions(profile: UserProfile, permissions: readonly Permi
 }
 
 export function visibleNavigationItems(profile: UserProfile) {
-  return navigationItems.filter((item) => canAccessRoute(profile, item));
+  return navigationItems.filter(
+    (item) =>
+      canAccessRoute(profile, item) &&
+      (item.path !== "/store/my-products" || hasOwnedProductRole(profile.roles)),
+  );
+}
+
+function hasOwnedProductRole(roles: readonly string[]) {
+  return roles.some((role) =>
+    [
+      "RFA Manager",
+      "RFA Team Member",
+      "Request for Assessment Manager",
+      "Request for Assessment Team Member",
+      "CM Manager",
+      "CM Team Member",
+      "Collection Manager",
+      "Collection Team Member",
+    ].includes(role),
+  );
 }
 
 export function groupedNavigationItems(items: readonly NavigationItem[]) {

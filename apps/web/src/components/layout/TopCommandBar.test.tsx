@@ -91,7 +91,7 @@ test("navigates from command search results", async () => {
   );
 
   await user.type(screen.getByLabelText("Command"), "Audit");
-  await user.click(screen.getByRole("button", { name: "Audit" }));
+  await user.click(screen.getByRole("option", { name: "Audit" }));
 
   expect(screen.getByTestId("location")).toHaveTextContent("/audit");
 });
@@ -124,9 +124,28 @@ test("focuses the command input with Ctrl+K and clears it with Escape", async ()
   expect(screen.getByLabelText("Command")).toHaveFocus();
 
   await user.type(screen.getByLabelText("Command"), "Audit");
-  expect(screen.getByRole("button", { name: "Audit" })).toBeVisible();
+  expect(screen.getByRole("option", { name: "Audit" })).toBeVisible();
   await user.keyboard("{Escape}");
   expect(screen.getByLabelText("Command")).toHaveValue("");
+});
+
+test("moves through command results with arrow keys", async () => {
+  const user = userEvent.setup();
+  renderWithProviders(
+    <>
+      <TopCommandBar onLogout={vi.fn()} profile={previewProfile} />
+      <LocationProbe />
+    </>,
+    "/",
+  );
+
+  await user.type(screen.getByLabelText("Command"), "Analytics");
+  const options = screen.getAllByRole("option");
+  expect(options[0]).toHaveAttribute("aria-selected", "true");
+  await user.keyboard("{ArrowUp}");
+  expect(options.at(-1)).toHaveAttribute("aria-selected", "true");
+  await user.keyboard("{ArrowDown}{ArrowDown}{Enter}");
+  expect(screen.getByTestId("location")).toHaveTextContent("/collection/analytics");
 });
 
 function LocationProbe() {

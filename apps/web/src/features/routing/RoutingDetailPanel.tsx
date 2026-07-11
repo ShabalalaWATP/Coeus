@@ -11,6 +11,7 @@ import {
   isRouteOverride,
 } from "./routing-model";
 import { PlanUpdates, Recommendation, Review } from "./routing-sections";
+import { formatTaggedReason } from "./routing-labels";
 import { EmptyState } from "../../components/ui/PageState";
 import { StatusPill } from "../../components/ui/StatusPill";
 import type { AnalystTask } from "../../lib/api-client/analyst";
@@ -19,6 +20,7 @@ import type { SimilarRequestList } from "../../lib/api-client/similar-requests";
 
 type RoutingDetailPanelProps = {
   actionError: string | null;
+  actionPending: boolean;
   canDecide: boolean;
   clarificationQuestion: string;
   clarificationReason: string;
@@ -51,6 +53,7 @@ type RoutingDetailPanelProps = {
 
 export function RoutingDetailPanel({
   actionError,
+  actionPending,
   canDecide,
   clarificationQuestion,
   clarificationReason,
@@ -81,7 +84,10 @@ export function RoutingDetailPanel({
   similarMatches,
 }: RoutingDetailPanelProps) {
   return (
-    <section className="surface routing-detail" aria-label="Route recommendation">
+    <section
+      className="surface routing-detail"
+      aria-label={canDecide ? "Route recommendation" : "Team assignment and review"}
+    >
       {selectedTicket ? (
         <>
           <div className="section-heading">
@@ -99,17 +105,29 @@ export function RoutingDetailPanel({
               <span>Internal priority score {selectedTicket.priorityAssessment.score}</span>
               <ul>
                 {selectedTicket.priorityAssessment.reasons.map((reason) => (
-                  <li key={reason}>{reason}</li>
+                  <li key={reason}>{formatTaggedReason(reason)}</li>
                 ))}
               </ul>
             </div>
+          ) : null}
+          {!canDecide ? (
+            <p className="workspace-alert" role="status">
+              This request is already routed to the {route === "cm" ? "Collection" : "RFA"}
+              team. The recommendations below are retained as decision context.
+            </p>
           ) : null}
           <Recommendation ticket={selectedTicket} />
           <Review title="RFA recommendation" review={selectedTicket.rfaReview} />
           <Review title="CM recommendation" review={selectedTicket.cmReview} />
           <PlanUpdates ticket={selectedTicket} />
+          {canDecide && selectedTicket.state === "JIOC_REVIEW" && !canApprove(selectedTicket) ? (
+            <p className="workspace-alert" role="status">
+              Run capability checks before approval. Both capability reviews and a route
+              recommendation are required.
+            </p>
+          ) : null}
           <SimilarRequestsPanel
-            isLinking={isLinkingSimilar}
+            isLinking={actionPending || isLinkingSimilar}
             isLoading={isSimilarLoading}
             isQueryError={isSimilarQueryError}
             matches={similarMatches}
@@ -122,6 +140,7 @@ export function RoutingDetailPanel({
               <label>
                 <input
                   checked={decisionRoute === "rfa"}
+                  disabled={actionPending}
                   name="jioc-decision-route"
                   onChange={() => onDecisionRouteChange("rfa")}
                   type="radio"
@@ -131,6 +150,7 @@ export function RoutingDetailPanel({
               <label>
                 <input
                   checked={decisionRoute === "cm"}
+                  disabled={actionPending}
                   name="jioc-decision-route"
                   onChange={() => onDecisionRouteChange("cm")}
                   type="radio"
@@ -144,6 +164,7 @@ export function RoutingDetailPanel({
               <label htmlFor="routing-override-reason">Override reason</label>
               <textarea
                 id="routing-override-reason"
+                disabled={actionPending}
                 onChange={(event) => onOverrideReasonChange(event.target.value)}
                 placeholder="Explain why the recommendation should not be followed."
                 value={overrideReason}
@@ -157,13 +178,19 @@ export function RoutingDetailPanel({
           {canDecide ? (
             <div className="routing-actions">
               {selectedTicket.state === "JIOC_REVIEW" ? (
-                <button disabled={isRunningReviews} onClick={onRunReviews} type="button">
+                <button
+                  disabled={actionPending || isRunningReviews}
+                  onClick={onRunReviews}
+                  type="button"
+                >
                   Run capability checks
                 </button>
               ) : null}
               <button
                 disabled={
-                  !canApproveWithOverride(selectedTicket, route, overrideReason) || isApprovePending
+                  !canApproveWithOverride(selectedTicket, route, overrideReason) ||
+                  actionPending ||
+                  isApprovePending
                 }
                 onClick={onApprove}
                 type="button"
@@ -180,6 +207,7 @@ export function RoutingDetailPanel({
           {selectedTicket.state === "MANAGER_APPROVAL" && !canDecide ? (
             <ManagerApprovalPanel
               csrfToken={csrfToken}
+              key={selectedTicket.ticketId}
               onDecided={onManagerDecision}
               route={route}
               ticketId={selectedTicket.ticketId}
@@ -188,6 +216,7 @@ export function RoutingDetailPanel({
           {selectedTicket.state === "ANALYST_ASSIGNMENT" && !canDecide ? (
             <AssignAnalystPanel
               csrfToken={csrfToken}
+              key={selectedTicket.ticketId}
               onAssigned={onAssigned}
               route={route}
               suggestedTeamName={teamNameForAssignment(selectedTicket, route)}
@@ -203,6 +232,7 @@ export function RoutingDetailPanel({
                 <label>
                   Clarification reason
                   <textarea
+                    disabled={actionPending}
                     onChange={(event) => onClarificationReasonChange(event.target.value)}
                     value={clarificationReason}
                   />
@@ -210,6 +240,7 @@ export function RoutingDetailPanel({
                 <label>
                   Clarification question
                   <input
+                    disabled={actionPending}
                     onChange={(event) => onClarificationQuestionChange(event.target.value)}
                     value={clarificationQuestion}
                   />
@@ -220,7 +251,7 @@ export function RoutingDetailPanel({
                       selectedTicket,
                       clarificationReason,
                       clarificationQuestion,
-                    )
+                    ) || actionPending
                   }
                   onClick={onRequestClarification}
                   type="button"
@@ -230,12 +261,13 @@ export function RoutingDetailPanel({
                 <label>
                   Rejection reason
                   <textarea
+                    disabled={actionPending}
                     onChange={(event) => onRejectReasonChange(event.target.value)}
                     value={rejectReason}
                   />
                 </label>
                 <button
-                  disabled={!canReject(selectedTicket, rejectReason)}
+                  disabled={!canReject(selectedTicket, rejectReason) || actionPending}
                   onClick={onReject}
                   type="button"
                 >

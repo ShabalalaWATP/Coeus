@@ -128,7 +128,7 @@ class TicketService:
         return ticket
 
     def update_intake(
-        self, actor: UserAccount, ticket_id: UUID, updates: dict[str, str]
+        self, actor: UserAccount, ticket_id: UUID, updates: dict[str, str | None]
     ) -> TicketRecord:
         ticket = self.get_editable_ticket(actor, ticket_id)
         intake = self._completeness.with_completeness(merge_intake(ticket.intake, updates))

@@ -6,13 +6,13 @@ import { formatWorkflowState, toneForState } from "../../lib/workflow/state-form
 test("renders a formatted workflow state", () => {
   render(<StatusPill state="RFA_MANAGER_REVIEW" />);
 
-  const pill = screen.getByText("RFA MANAGER REVIEW");
+  const pill = screen.getByText("RFA manager review");
   expect(pill).toBeVisible();
   expect(pill).toHaveClass("status-pill--info");
 });
 
 test("formats workflow states for display", () => {
-  expect(formatWorkflowState("ANALYST_IN_PROGRESS")).toBe("ANALYST IN PROGRESS");
+  expect(formatWorkflowState("ANALYST_IN_PROGRESS")).toBe("Analyst in progress");
 });
 
 test.each([

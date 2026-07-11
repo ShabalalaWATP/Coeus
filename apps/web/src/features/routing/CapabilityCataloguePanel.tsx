@@ -30,7 +30,7 @@ export function CapabilityCataloguePanel({
       : "Collection capability teams";
 
   return (
-    <details className="workspace-details capability-catalogue" open>
+    <details className="workspace-details capability-catalogue">
       <summary>
         <Bot aria-hidden="true" size={16} />
         {title}

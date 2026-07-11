@@ -63,6 +63,8 @@ export function NotificationsPopover({ onToggle, open }: NotificationsPopoverPro
     <>
       <span className="notification-bell">
         <IconButton
+          aria-controls="notifications-panel"
+          aria-expanded={open}
           ariaLabel={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
           onClick={onToggle}
         >
@@ -75,7 +77,11 @@ export function NotificationsPopover({ onToggle, open }: NotificationsPopoverPro
         ) : null}
       </span>
       {open ? (
-        <aside className="command-popover notifications-popover" aria-label="Notifications panel">
+        <aside
+          className="command-popover notifications-popover"
+          aria-label="Notifications panel"
+          id="notifications-panel"
+        >
           <strong>Notifications</strong>
           {actionError ? (
             <p className="auth-error" role="alert">

@@ -35,6 +35,9 @@ export function AssignAnalystPanel({
     queryFn: () => listAnalystCandidates(route ?? "rfa"),
   });
   const teamsQuery = useQuery({ queryKey: ["teams"], queryFn: listTeams });
+  const availableTeams = (teamsQuery.data?.teams ?? []).filter(
+    (team) => team.kind === (route === "cm" ? "cm" : "rfa"),
+  );
   const orgTeam = (teamsQuery.data?.teams ?? []).find(
     (team) => team.kind === (route === "cm" ? "cm" : "rfa"),
   );
@@ -91,8 +94,9 @@ export function AssignAnalystPanel({
               <input
                 checked={analystUserIds.includes(candidate.userId)}
                 disabled={
-                  !analystUserIds.includes(candidate.userId) &&
-                  analystUserIds.length >= MAX_ANALYSTS
+                  assignMutation.isPending ||
+                  (!analystUserIds.includes(candidate.userId) &&
+                    analystUserIds.length >= MAX_ANALYSTS)
                 }
                 onChange={(event) => toggleAnalyst(candidate.userId, event.target.checked)}
                 type="checkbox"
@@ -102,16 +106,28 @@ export function AssignAnalystPanel({
           ))}
         </fieldset>
         <label>
-          Team name
-          <input
+          Team
+          <select
+            disabled={assignMutation.isPending}
             onChange={(event) => setTeamName(event.target.value)}
-            placeholder="Analyst or capability team"
             value={teamName}
-          />
+          >
+            <option value="">Select a team</option>
+            {suggestedTeamName &&
+            !availableTeams.some((team) => team.name === suggestedTeamName) ? (
+              <option value={suggestedTeamName}>{suggestedTeamName} (recommended)</option>
+            ) : null}
+            {availableTeams.map((team) => (
+              <option key={team.id} value={team.name}>
+                {team.name}
+              </option>
+            ))}
+          </select>
         </label>
         <label>
-          Work packages (semicolon separated)
-          <input
+          Work packages (one per line)
+          <textarea
+            disabled={assignMutation.isPending}
             onChange={(event) => setWorkPackages(event.target.value)}
             placeholder="Optional"
             value={workPackages}
@@ -131,7 +147,7 @@ export function AssignAnalystPanel({
 
 function packageTitles(raw: string) {
   return raw
-    .split(";")
+    .split(/[;\n]/)
     .map((title) => title.trim())
     .filter((title) => title !== "");
 }

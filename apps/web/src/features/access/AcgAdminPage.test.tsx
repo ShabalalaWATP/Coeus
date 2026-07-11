@@ -33,6 +33,10 @@ const acg = {
 };
 
 beforeEach(() => {
+  vi.stubGlobal(
+    "confirm",
+    vi.fn(() => true),
+  );
   resetQueryClientForTests();
 });
 
@@ -72,19 +76,19 @@ test("renders access control groups and allows creating a group", async () => {
   await userEvent.type(createForm.getByLabelText("Description"), "Collection access group");
   await userEvent.click(createForm.getByRole("button", { name: /Create/i }));
 
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
-  expect(fetchMock).toHaveBeenNthCalledWith(
-    2,
-    "http://127.0.0.1:8001/api/v1/acgs",
-    expect.objectContaining({
-      body: JSON.stringify({
-        code: "ACG-BRAVO",
-        name: "Bravo Collection",
-        description: "Collection access group",
+  await waitFor(() =>
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8001/api/v1/acgs",
+      expect.objectContaining({
+        body: JSON.stringify({
+          code: "ACG-BRAVO",
+          name: "Bravo Collection",
+          description: "Collection access group",
+        }),
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": "test-csrf-token" },
+        method: "POST",
       }),
-      headers: { "Content-Type": "application/json", "X-CSRF-Token": "test-csrf-token" },
-      method: "POST",
-    }),
+    ),
   );
 });
 
@@ -111,15 +115,15 @@ test("updates selected access control group membership", async () => {
   await userEvent.type(screen.getByLabelText("User ID"), "user-bravo");
   await userEvent.click(screen.getByRole("button", { name: /Add member/i }));
 
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
-  expect(fetchMock).toHaveBeenNthCalledWith(
-    2,
-    "http://127.0.0.1:8001/api/v1/acgs/acg-alpha/members",
-    expect.objectContaining({
-      body: JSON.stringify({ userId: "user-bravo" }),
-      headers: { "Content-Type": "application/json", "X-CSRF-Token": "test-csrf-token" },
-      method: "POST",
-    }),
+  await waitFor(() =>
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8001/api/v1/acgs/acg-alpha/members",
+      expect.objectContaining({
+        body: JSON.stringify({ userId: "user-bravo" }),
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": "test-csrf-token" },
+        method: "POST",
+      }),
+    ),
   );
 });
 
@@ -205,15 +209,15 @@ test("initialises the edit form from a routed inactive group", async () => {
   await userEvent.type(selectedGroup.getByLabelText("Name"), "Bravo Reviewed");
   await userEvent.click(selectedGroup.getByRole("button", { name: /Save/i }));
 
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
-  expect(fetchMock).toHaveBeenNthCalledWith(
-    2,
-    "http://127.0.0.1:8001/api/v1/acgs/acg-bravo",
-    expect.objectContaining({
-      body: JSON.stringify({ name: "Bravo Reviewed", isActive: false }),
-      headers: { "Content-Type": "application/json", "X-CSRF-Token": "test-csrf-token" },
-      method: "PATCH",
-    }),
+  await waitFor(() =>
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8001/api/v1/acgs/acg-bravo",
+      expect.objectContaining({
+        body: JSON.stringify({ name: "Bravo Reviewed", isActive: false }),
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": "test-csrf-token" },
+        method: "PATCH",
+      }),
+    ),
   );
 });
 
@@ -284,14 +288,14 @@ test("selects and updates access control group details", async () => {
   await userEvent.click(selectedGroup.getByLabelText("Active"));
   await userEvent.click(selectedGroup.getByRole("button", { name: /Save/i }));
 
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
-  expect(fetchMock).toHaveBeenNthCalledWith(
-    2,
-    "http://127.0.0.1:8001/api/v1/acgs/acg-bravo",
-    expect.objectContaining({
-      body: JSON.stringify({ name: "Bravo Updated", isActive: true }),
-      headers: { "Content-Type": "application/json", "X-CSRF-Token": "test-csrf-token" },
-      method: "PATCH",
-    }),
+  await waitFor(() =>
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8001/api/v1/acgs/acg-bravo",
+      expect.objectContaining({
+        body: JSON.stringify({ name: "Bravo Updated", isActive: true }),
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": "test-csrf-token" },
+        method: "PATCH",
+      }),
+    ),
   );
 });
