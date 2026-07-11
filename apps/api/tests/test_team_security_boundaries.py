@@ -141,6 +141,17 @@ def test_assignment_candidates_and_state_boundaries(monkeypatch: pytest.MonkeyPa
         )
 
 
+def test_assignment_permission_and_transition_guards() -> None:
+    app = _app()
+    service: AnalystAssignmentService = app.state.analyst_assignment_service
+    rfa_manager = _user(app, "rfa.manager@example.test")
+
+    with pytest.raises(AppError, match="Permission denied"):
+        service._require_assignment_permission(rfa_manager, RoutingRoute.CM)
+    with pytest.raises(AppError, match="cannot move"):
+        service._ensure_transition(TicketState.CLOSED_DELIVERED, TicketState.ANALYST_IN_PROGRESS)
+
+
 def test_calendar_rejects_dates_outside_the_supported_window() -> None:
     app = _app()
     calendar = app.state.team_calendar_service
