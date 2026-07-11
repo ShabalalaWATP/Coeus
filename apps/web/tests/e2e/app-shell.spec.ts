@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const API = "http://127.0.0.1:8011/api/v1";
+const API = "http://127.0.0.1:8021/api/v1";
 
 test("loads the authenticated app shell", async ({ page }) => {
   await page.route(`${API}/**`, async (route) => {

@@ -2,7 +2,7 @@
   "name": "coeus",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@11.7.0",
+  "packageManager": "pnpm@11.11.0",
   "scripts": {
     "dev": "pwsh ./scripts/dev.ps1",
     "line-limit": "node scripts/check-file-lines.mjs",
