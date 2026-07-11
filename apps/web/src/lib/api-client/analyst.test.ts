@@ -65,7 +65,7 @@ test("lists analyst candidates and assigns tasks with CSRF protection", async ()
   });
   vi.stubGlobal("fetch", fetchMock);
 
-  await listAnalystCandidates();
+  await listAnalystCandidates("rfa");
   await assignAnalystTask(
     "ticket-1",
     ["analyst-1", "analyst-2"],
@@ -74,10 +74,11 @@ test("lists analyst candidates and assigns tasks with CSRF protection", async ()
     "csrf",
   );
 
-  expect(fetchMock).toHaveBeenNthCalledWith(1, "http://127.0.0.1:8001/api/v1/analyst/candidates", {
-    credentials: "include",
-    method: "GET",
-  });
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    1,
+    "http://127.0.0.1:8001/api/v1/analyst/candidates?route=rfa",
+    { credentials: "include", method: "GET" },
+  );
   expect(fetchMock).toHaveBeenNthCalledWith(
     2,
     "http://127.0.0.1:8001/api/v1/analyst/tasks/ticket-1/assign",

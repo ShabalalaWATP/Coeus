@@ -2,7 +2,6 @@
 
 from uuid import UUID, uuid4
 
-from coeus.domain.auth import UserAccount
 from coeus.domain.teams import OrgTeam, TeamKind, UserProfile
 from coeus.repositories.auth import SeedUserRepository
 from coeus.repositories.teams import TeamRepository
@@ -28,7 +27,11 @@ _TEAM_SPECS: tuple[tuple[str, TeamKind, str | None, tuple[str, ...], tuple[str, 
         TeamKind.CM,
         "CM-CYBER-SENSOR",
         ("collection.manager@example.test",),
-        ("collection.team@example.test", "analyst@example.test"),
+        (
+            "collection.team@example.test",
+            "analyst@example.test",
+            "analyst.cyber@example.test",
+        ),
     ),
     (
         "JIOC Routing Cell",
@@ -78,7 +81,7 @@ def _ensure_profiles(teams: TeamRepository, users: SeedUserRepository) -> None:
     for user in users.list_users():
         spec = PROFILE_SPECS.get(user.username)
         existing = teams.get_profile(user.user_id)
-        if existing is not None and not _is_default_profile(existing, user):
+        if existing is not None:
             continue
         if spec is None:
             if existing is None:
@@ -88,11 +91,6 @@ def _ensure_profiles(teams: TeamRepository, users: SeedUserRepository) -> None:
         teams.save_profile(
             UserProfile(user_id=user.user_id, title=title, specialisms=specialisms, bio=bio)
         )
-
-
-def _is_default_profile(profile: UserProfile, user: UserAccount) -> bool:
-    bare_title = profile.title in ("", user.display_name)
-    return bare_title and not profile.specialisms and not profile.bio
 
 
 def _user_ids(users: SeedUserRepository, usernames: tuple[str, ...]) -> tuple[UUID, ...]:

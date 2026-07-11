@@ -91,8 +91,11 @@ export async function listAnalystTasks(): Promise<AnalystTaskList> {
   return apiRequestJson<AnalystTaskList>("/api/v1/analyst/tasks", { method: "GET" });
 }
 
-export async function listAnalystCandidates(): Promise<AnalystCandidateList> {
-  return apiRequestJson<AnalystCandidateList>("/api/v1/analyst/candidates", { method: "GET" });
+export async function listAnalystCandidates(route: "rfa" | "cm"): Promise<AnalystCandidateList> {
+  return apiRequestJson<AnalystCandidateList>(
+    `/api/v1/analyst/candidates?route=${encodeURIComponent(route)}`,
+    { method: "GET" },
+  );
 }
 
 export async function assignAnalystTask(

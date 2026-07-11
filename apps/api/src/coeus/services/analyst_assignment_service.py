@@ -13,8 +13,10 @@ from coeus.core.permissions import Permission
 from coeus.domain.auth import RoleName, UserAccount
 from coeus.domain.enums import TicketState
 from coeus.domain.state_machine import can_transition
+from coeus.domain.teams import TeamKind, team_member_ids
 from coeus.domain.tickets import RoutingRoute, TicketRecord
 from coeus.repositories.access import AccessRepository
+from coeus.repositories.teams import TeamRepository
 from coeus.services.analyst_assignment import assignment_change
 from coeus.services.analyst_records import active_assignments_for_route, approved_route
 from coeus.services.audit import AuditLog
@@ -30,18 +32,25 @@ class AnalystAssignmentService:
         self,
         tickets: TicketServices,
         access_repository: AccessRepository,
+        team_repository: TeamRepository,
         audit_log: AuditLog,
     ) -> None:
         self._tickets = tickets
         self._access = access_repository
+        self._teams = team_repository
         self._audit_log = audit_log
 
-    def analyst_candidates(self, actor: UserAccount) -> tuple[UserAccount, ...]:
+    def analyst_candidates(
+        self, actor: UserAccount, route: RoutingRoute
+    ) -> tuple[UserAccount, ...]:
         self._require_any(actor, ASSIGNMENT_READ_PERMISSIONS)
+        eligible_ids = self._eligible_analyst_ids(actor, route)
         return tuple(
             user
             for user in self._access.list_users()
-            if user.is_active and RoleName.INTELLIGENCE_ANALYST in user.roles
+            if user.user_id in eligible_ids
+            and user.is_active
+            and RoleName.INTELLIGENCE_ANALYST in user.roles
         )
 
     def assign(
@@ -71,6 +80,9 @@ class AnalystAssignmentService:
             raise AppError(409, "analyst_already_assigned", "Ticket already has an analyst.")
         self._require_assignment_permission(actor, route)
         analysts = self._resolve_analysts(analyst_user_ids)
+        eligible_ids = self._eligible_analyst_ids(actor, route)
+        if any(analyst.user_id not in eligible_ids for analyst in analysts):
+            raise AppError(403, "analyst_outside_team", "Analysts must belong to your route team.")
         if not reassignment:
             self._ensure_transition(ticket.state, TicketState.ANALYST_IN_PROGRESS)
         change = assignment_change(
@@ -120,6 +132,21 @@ class AnalystAssignmentService:
         )
         if permission not in actor.permissions:
             raise AppError(403, "forbidden", "Permission denied.")
+
+    def _eligible_analyst_ids(self, actor: UserAccount, route: RoutingRoute) -> frozenset[UUID]:
+        kind = TeamKind.RFA if route == RoutingRoute.RFA else TeamKind.CM
+        managed = tuple(
+            team
+            for team in self._teams.list_teams()
+            if team.kind == kind
+            and (
+                Permission.ROLE_MANAGE in actor.permissions
+                or actor.user_id in team.manager_user_ids
+            )
+        )
+        if not managed:
+            raise AppError(403, "forbidden", "You do not manage the route team.")
+        return frozenset().union(*(team_member_ids(team) for team in managed))
 
     @staticmethod
     def _ensure_transition(current: TicketState, target: TicketState) -> None:

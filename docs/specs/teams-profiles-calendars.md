@@ -23,8 +23,7 @@ seed users (`repositories/teams_seed.py`):
 - `UserProfile { user_id, title, specialisms, bio }` — created for every
   seed user and on first read. Seed profiles carry personal content (title,
   specialisms, bio per user in `repositories/teams_seed_profiles.py`);
-  profiles still at the bare default are upgraded on restart, while any
-  user-edited profile is left untouched.
+  existing profiles are never overwritten during restart seeding.
 - `TeamCalendarEntry { entry_id, team_id, user_id, entry_date (ISO date),
   status: available|on_task|leave, note }`.
 
@@ -40,6 +39,8 @@ seed users (`repositories/teams_seed.py`):
   bounded window, bounded note length) and audited.
 - Profiles are self-edited (`user:update_self`) with bounded fields, and
   readable by the owner, teammates and administrators only.
+- Analyst candidates and assignments are restricted to the manager's
+  organisational team for the approved RFA or collection route.
 
 ## Availability
 
@@ -52,7 +53,8 @@ ticket read is a system-level snapshot that only ever surfaces derived counts.
 
 ## API
 
-`GET /teams`, `POST/DELETE /teams/{id}/members[/{userId}]`,
+`GET /teams`, `GET /teams/{id}/member-candidates?query=`,
+`POST/DELETE /teams/{id}/members[/{userId}]`,
 `GET/POST/DELETE /teams/{id}/calendar[/{entryId}]` (window `?from=&to=`),
 `GET /teams/{id}/availability?date=`, `GET/PUT /users/me/profile`,
 `GET /users/{id}/profile`. All writes are CSRF-validated.
@@ -62,8 +64,8 @@ ticket read is a system-level snapshot that only ever surfaces derived counts.
 `/teams` ("My Team"): roster with profile titles and specialisms, a manager
 add/remove control (directory search with click-to-add suggestions; the
 search keeps the directory's minimum-three-character, ten-result
-need-to-know posture), the two-week calendar grouped by day with a "Today"
-highlight and per-day status summary, an availability tile for today, and
+need-to-know posture), the complete two-week calendar with a "Today"
+highlight, empty days and per-day status summaries, an availability tile for today, and
 the self-service profile editor. The AssignAnalystPanel shows "X of Y team
 members are free today" beside the candidate checkboxes. Non-members see an
 informative empty state.

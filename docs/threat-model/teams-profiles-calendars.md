@@ -14,12 +14,14 @@ availability service (`docs/specs/teams-profiles-calendars.md`).
 
 | Threat | Control |
 | --- | --- |
-| Cross-team user enumeration | Teams and profiles are visible only to that team's managers and members (admins excepted); outsiders get 404, not 403, so membership is not confirmed |
+| Cross-team user enumeration | Teams and profiles are visible only to that team's managers and members (admins excepted); roster candidate search requires both `team:manage` and object-level manager access |
 | Membership tampering | Roster changes require `team:manage` AND management of that specific team (object-level, not just role-level); targets must be active accounts; every change is audited with rollback on audit failure |
 | A member forges a teammate's availability | Members may only write their own entries; only the team's managers write for others; entries record `created_by_user_id` |
 | Profile impersonation or stored-text abuse | Profiles are self-edit only, with bounded lengths (title 120, specialisms 8x80, bio 1000) validated at the schema boundary; values render as text, never markup |
 | Calendar as a data sink | Dates must be ISO calendar dates, windows are bounded (62 days), notes capped at 280 characters |
 | Ticket content leaking through availability | The availability service reads a system ticket snapshot but only ever returns derived counts; no ticket fields cross the boundary |
+| Cross-team analyst assignment | Candidate discovery and assignment are limited to members of the manager's organisational team for the approved RFA or collection route |
+| Audit failure leaves an unrecorded write | Profile, roster and calendar mutations restore their previous repository state when audit persistence fails |
 | CSRF on writes | All mutating endpoints require the CSRF header |
 
 ## Residual risks

@@ -7,7 +7,18 @@ type TeamMember = {
   isManager: boolean;
   title: string;
   specialisms: string[];
+  bio: string;
 };
+
+export async function listTeamMemberCandidates(
+  teamId: string,
+  query: string,
+): Promise<{ users: TeamMember[] }> {
+  return apiRequestJson<{ users: TeamMember[] }>(
+    `/api/v1/teams/${pathSegment(teamId)}/member-candidates?query=${encodeURIComponent(query)}`,
+    { method: "GET" },
+  );
+}
 
 export type OrgTeam = {
   id: string;

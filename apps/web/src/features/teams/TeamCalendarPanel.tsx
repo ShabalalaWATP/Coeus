@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarPlus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   addCalendarEntry,
@@ -41,6 +41,16 @@ function groupByDate(entries: CalendarEntry[]): [string, CalendarEntry[]][] {
   return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
 }
 
+function calendarDays(from: string, entries: CalendarEntry[]): [string, CalendarEntry[]][] {
+  const grouped = new Map(groupByDate(entries));
+  return Array.from({ length: 15 }, (_, offset) => {
+    const date = new Date(`${from}T00:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + offset);
+    const key = date.toISOString().slice(0, 10);
+    return [key, grouped.get(key) ?? []];
+  });
+}
+
 function daySummary(entries: CalendarEntry[]) {
   const counts = new Map<CalendarEntry["status"], number>();
   for (const entry of entries) {
@@ -74,6 +84,12 @@ export function TeamCalendarPanel({ csrfToken, currentUserId, team }: TeamCalend
   const isManager = team.members.some(
     (member) => member.userId === currentUserId && member.isManager,
   );
+  useEffect(() => {
+    const validMember = team.members.some((member) => member.userId === currentUserId)
+      ? currentUserId
+      : (team.members[0]?.userId ?? "");
+    setMemberId(validMember);
+  }, [currentUserId, team.id, team.members]);
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: calendarKey });
     void queryClient.invalidateQueries({ queryKey: ["team-availability", team.id] });
@@ -109,7 +125,7 @@ export function TeamCalendarPanel({ csrfToken, currentUserId, team }: TeamCalend
       {calendarQuery.isSuccess && calendarQuery.data.entries.length === 0 ? (
         <p className="team-calendar__empty">No entries in the next two weeks.</p>
       ) : null}
-      {groupByDate(calendarQuery.data?.entries ?? []).map(([date, entries]) => (
+      {calendarDays(windowFrom, calendarQuery.data?.entries ?? []).map(([date, entries]) => (
         <div
           className={`team-calendar__day${date === windowFrom ? " team-calendar__day--today" : ""}`}
           key={date}
@@ -122,6 +138,7 @@ export function TeamCalendarPanel({ csrfToken, currentUserId, team }: TeamCalend
             <small>{daySummary(entries)}</small>
           </header>
           <ul className="team-calendar__list">
+            {entries.length === 0 ? <li className="team-calendar__free-day">No entries</li> : null}
             {entries.map((entry) => (
               <li key={entry.id}>
                 <strong>{memberName(entry.userId)}</strong>
@@ -167,6 +184,8 @@ export function TeamCalendarPanel({ csrfToken, currentUserId, team }: TeamCalend
           Date
           <input
             onChange={(event) => setEntryDate(event.target.value)}
+            min={windowFrom}
+            max={windowTo}
             type="date"
             value={entryDate}
           />

@@ -47,6 +47,22 @@ class TeamWorkspaceService:
         members = (self._users.get_by_id(user_id) for user_id in member_ids)
         return tuple(member for member in members if member is not None)
 
+    def member_candidates(
+        self, actor: UserAccount, team_id: UUID, query: str
+    ) -> tuple[UserAccount, ...]:
+        team = self._managed_team(actor, team_id)
+        member_ids = team_member_ids(team)
+        needle = query.strip().casefold()
+        if len(needle) < 3:
+            return ()
+        return tuple(
+            user
+            for user in self._users.list_users()
+            if user.is_active
+            and user.user_id not in member_ids
+            and needle in f"{user.display_name} {user.username}".casefold()
+        )[:20]
+
     def add_member(self, actor: UserAccount, team_id: UUID, user_id: UUID) -> OrgTeam:
         team = self._managed_team(actor, team_id)
         user = self._users.get_by_id(user_id)
@@ -96,10 +112,18 @@ class TeamWorkspaceService:
             bio=bio.strip(),
             updated_at=datetime.now(UTC),
         )
+        original = self._teams.get_profile(actor.user_id)
         self._teams.save_profile(profile)
-        self._audit_log.record(
-            "profile_updated", str(actor.user_id), {"user_id": str(actor.user_id)}
-        )
+        try:
+            self._audit_log.record(
+                "profile_updated", str(actor.user_id), {"user_id": str(actor.user_id)}
+            )
+        except Exception:
+            if original is None:
+                self._teams.delete_profile(actor.user_id)
+            else:
+                self._teams.save_profile(original)
+            raise
         return profile
 
     def _can_view(self, actor: UserAccount, team: OrgTeam) -> bool:

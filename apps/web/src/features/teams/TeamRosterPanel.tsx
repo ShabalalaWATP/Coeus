@@ -2,8 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { UserMinus, UserPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { addTeamMember, removeTeamMember, type OrgTeam } from "../../lib/api-client/teams";
-import { listUserDirectory } from "../../lib/api-client/tickets";
+import {
+  addTeamMember,
+  listTeamMemberCandidates,
+  removeTeamMember,
+  type OrgTeam,
+} from "../../lib/api-client/teams";
 import { useActionError } from "../../lib/mutations/action-error";
 
 const SEARCH_MIN_LENGTH = 3;
@@ -36,11 +40,13 @@ export function TeamRosterPanel({ csrfToken, currentUserId, team }: TeamRosterPa
   const canSearch = isManager && debouncedTerm.length >= SEARCH_MIN_LENGTH;
   const directoryQuery = useQuery({
     enabled: canSearch,
-    queryFn: () => listUserDirectory(debouncedTerm),
+    queryFn: () => listTeamMemberCandidates(team.id, debouncedTerm),
     queryKey: ["teams", "directory", debouncedTerm],
   });
   const memberIds = new Set(team.members.map((member) => member.userId));
-  const suggestions = (directoryQuery.data ?? []).filter((user) => !memberIds.has(user.id));
+  const suggestions = (directoryQuery.data?.users ?? []).filter(
+    (user) => !memberIds.has(user.userId),
+  );
   const addMutation = useMutation({
     mutationFn: (userId: string) => addTeamMember(team.id, userId, csrfToken),
     onError: failActionWith("The member could not be added."),
@@ -70,6 +76,7 @@ export function TeamRosterPanel({ csrfToken, currentUserId, team }: TeamRosterPa
               {member.specialisms.length > 0 ? (
                 <small>{member.specialisms.join(", ")}</small>
               ) : null}
+              {member.bio ? <p className="team-roster__bio">{member.bio}</p> : null}
             </div>
             {isManager && !member.isManager ? (
               <button
@@ -97,16 +104,16 @@ export function TeamRosterPanel({ csrfToken, currentUserId, team }: TeamRosterPa
           {canSearch && suggestions.length > 0 ? (
             <ul aria-label="Matching users" className="team-roster__suggestions">
               {suggestions.map((user) => (
-                <li key={user.id}>
+                <li key={user.userId}>
                   <button
                     disabled={addMutation.isPending}
-                    onClick={() => addMutation.mutate(user.id)}
+                    onClick={() => addMutation.mutate(user.userId)}
                     type="button"
                   >
                     <UserPlus aria-hidden="true" size={16} />
                     <span>
                       <strong>{user.displayName}</strong>
-                      <small>{user.username}</small>
+                      <small>{user.title || user.username}</small>
                     </span>
                   </button>
                 </li>

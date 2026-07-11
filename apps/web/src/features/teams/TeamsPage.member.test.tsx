@@ -19,6 +19,7 @@ const rfaTeam: OrgTeam = {
       isManager: true,
       title: "Team Lead",
       specialisms: [],
+      bio: "Team manager.",
     },
     {
       userId: "preview-user",
@@ -27,6 +28,7 @@ const rfaTeam: OrgTeam = {
       isManager: false,
       title: "",
       specialisms: [],
+      bio: "Analyst profile.",
     },
   ],
 };

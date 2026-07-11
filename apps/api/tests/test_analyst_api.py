@@ -21,7 +21,7 @@ async def test_manager_assigns_analyst_and_workbench_lists_assigned_tasks_only()
     ) as client:
         ticket_id = await _approved_ticket(client)
         manager = await login(client, "rfa.manager@example.test")
-        candidates = await client.get("/api/v1/analyst/candidates")
+        candidates = await client.get("/api/v1/analyst/candidates?route=rfa")
         assigned = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/assign",
             headers={"X-CSRF-Token": str(manager["csrfToken"])},
@@ -206,7 +206,7 @@ async def test_analyst_workflow_rejects_invalid_inputs_and_duplicate_actions() -
             json={"analystUserIds": [str(analyst_user.user_id)]},
         )
         analyst = await login(client, "analyst@example.test")
-        candidates = await client.get("/api/v1/analyst/candidates")
+        candidates = await client.get("/api/v1/analyst/candidates?route=rfa")
         linked = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/products",
             headers={"X-CSRF-Token": str(analyst["csrfToken"])},

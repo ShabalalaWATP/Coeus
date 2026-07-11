@@ -34,6 +34,7 @@ def _member_response(
         is_manager=member.user_id in team.manager_user_ids,
         title=profile.title if profile else "",
         specialisms=list(profile.specialisms) if profile else [],
+        bio=profile.bio if profile else "",
     )
 
 

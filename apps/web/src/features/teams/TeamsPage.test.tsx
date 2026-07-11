@@ -19,6 +19,7 @@ const team: OrgTeam = {
       isManager: true,
       title: "Team Lead",
       specialisms: [],
+      bio: "Leads the assessment team.",
     },
     {
       userId: "analyst-1",
@@ -27,6 +28,7 @@ const team: OrgTeam = {
       isManager: false,
       title: "Senior Imagery Analyst",
       specialisms: ["IMINT", "Maritime"],
+      bio: "Maritime imagery specialist.",
     },
   ],
 };
@@ -80,10 +82,20 @@ function teamsFetch(overrides: Record<string, unknown> = {}) {
         ? respond({ error: { code: "server_error", message: "Failed." } }, 500)
         : respond({ ...entry, id: "entry-2" });
     }
-    if (url.includes("/users/directory")) {
+    if (url.includes("/member-candidates")) {
       return respond(
         overrides.directory ?? {
-          users: [{ id: "user-9", username: "colleague@example.test", displayName: "Colleague" }],
+          users: [
+            {
+              userId: "user-9",
+              username: "colleague@example.test",
+              displayName: "Colleague",
+              isManager: false,
+              title: "Liaison",
+              specialisms: [],
+              bio: "",
+            },
+          ],
         },
       );
     }
@@ -192,7 +204,7 @@ test("manager adds a member from directory suggestions and removes members", asy
 
 test("tells the manager when a search matches nobody addable", async () => {
   const fetchMock = teamsFetch({
-    directory: { users: [{ id: "analyst-1", username: "analyst@example.test", displayName: "A" }] },
+    directory: { users: [] },
   });
   vi.stubGlobal("fetch", fetchMock);
 
@@ -242,7 +254,7 @@ test("marks today's group and shows the day summary", async () => {
   renderWithProviders(<TeamsPage />, "/teams");
 
   expect(await screen.findByText("Today")).toBeVisible();
-  expect(screen.getByText("1 on leave")).toBeVisible();
+  expect(await screen.findByText("1 on leave")).toBeVisible();
 });
 
 test("shows an empty calendar and surfaces entry failures", async () => {

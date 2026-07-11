@@ -28,6 +28,7 @@ from coeus.schemas.teams import (
     ProfileResponse,
     ProfileUpdateRequest,
     TeamListResponse,
+    TeamMemberCandidateListResponse,
     TeamMemberRequest,
     TeamResponse,
 )
@@ -67,6 +68,25 @@ async def add_team_member(
 ) -> TeamResponse:
     team = workspace.add_member(authenticated.user, team_id, payload.user_id)
     return team_response(team, workspace.roster(authenticated.user, team_id), teams)
+
+
+@router.get("/{team_id}/member-candidates", response_model=TeamMemberCandidateListResponse)
+async def team_member_candidates(
+    team_id: UUID,
+    authenticated: SessionDep,
+    workspace: WorkspaceDep,
+    teams: RepositoryDep,
+    query: Annotated[str, Query(min_length=3, max_length=120)],
+) -> TeamMemberCandidateListResponse:
+    candidates = workspace.member_candidates(authenticated.user, team_id, query)
+    # Candidate profile details are returned only through this manager-authorised boundary.
+    placeholder_team = workspace.team_details(authenticated.user, team_id)
+    return TeamMemberCandidateListResponse(
+        users=[
+            team_response(placeholder_team, (candidate,), teams).members[0]
+            for candidate in candidates
+        ]
+    )
 
 
 @router.delete("/{team_id}/members/{user_id}", response_model=TeamResponse)

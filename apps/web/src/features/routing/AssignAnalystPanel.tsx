@@ -31,8 +31,8 @@ export function AssignAnalystPanel({
   const [teamName, setTeamName] = useState(suggestedTeamName ?? "");
   const [workPackages, setWorkPackages] = useState("");
   const candidatesQuery = useQuery({
-    queryKey: ["analyst-candidates"],
-    queryFn: listAnalystCandidates,
+    queryKey: ["analyst-candidates", route ?? "rfa"],
+    queryFn: () => listAnalystCandidates(route ?? "rfa"),
   });
   const teamsQuery = useQuery({ queryKey: ["teams"], queryFn: listTeams });
   const orgTeam = (teamsQuery.data?.teams ?? []).find(

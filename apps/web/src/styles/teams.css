@@ -79,6 +79,17 @@
   font-size: 0.88rem;
 }
 
+.team-roster__bio {
+  max-width: 62ch;
+  line-height: 1.45;
+}
+
+.team-calendar__free-day {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-style: italic;
+}
+
 .team-roster__badge {
   margin-left: 8px;
   padding: 2px 8px;
