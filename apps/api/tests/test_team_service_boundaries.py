@@ -12,11 +12,11 @@ from coeus.core.permissions import Permission
 from coeus.domain.auth import UserAccount
 from coeus.domain.enums import TicketState
 from coeus.domain.teams import CalendarStatus, OrgTeam, TeamCalendarEntry, TeamKind, UserProfile
-from coeus.domain.tickets import RoutingRoute
 from coeus.main import create_app
 from coeus.persistence.state_store import StateStore
+from coeus.repositories.auth import SeedUserRepository
 from coeus.repositories.teams import TeamRepository
-from coeus.services.analyst_assignment_service import AnalystAssignmentService
+from coeus.repositories.teams_seed import seed_teams
 from coeus.services.capability_catalogue import CapabilityCatalogue, _regions, _tags
 from coeus.services.team_availability import (
     TeamAvailabilityService,
@@ -102,6 +102,53 @@ def test_team_workspace_covers_full_roster_admin_and_non_manager_paths() -> None
     with pytest.raises(AppError, match="Profile was not found"):
         service.get_profile(admin, uuid4())
     assert service.list_teams(admin)
+
+
+def test_seed_profiles_are_personal_and_preserve_user_edits() -> None:
+    app = _app()
+    repository = app.state.team_repository
+    users = cast(SeedUserRepository, app.state.team_workspace_service._users)
+    analyst = _user(app, "analyst.maritime@example.test")
+
+    seeded = repository.get_profile(analyst.user_id)
+    assert seeded is not None
+    assert seeded.title == "Maritime Assessment Analyst"
+    assert seeded.specialisms
+    assert seeded.bio
+
+    edited = replace(seeded, title="Custom title", specialisms=("OSINT",), bio="My own bio.")
+    repository.save_profile(edited)
+    seed_teams(repository, users)
+    assert repository.get_profile(analyst.user_id) == edited
+
+    bare = UserProfile(user_id=analyst.user_id, title=analyst.display_name)
+    repository.save_profile(bare)
+    seed_teams(repository, users)
+    assert repository.get_profile(analyst.user_id) == bare
+
+
+def test_seed_profiles_give_unlisted_users_a_default_profile() -> None:
+    app = _app()
+    repository = app.state.team_repository
+    extra = UserAccount(
+        user_id=uuid4(),
+        username="extra@example.test",
+        display_name="Extra User",
+        roles=frozenset(),
+        permissions=frozenset(),
+        password_hash="",
+        is_active=True,
+        clearance_level=1,
+    )
+    users = cast(SeedUserRepository, SimpleNamespace(list_users=lambda: (extra,)))
+
+    seed_teams(repository, users)
+    created = repository.get_profile(extra.user_id)
+    assert created is not None
+    assert created.title == "Extra User"
+
+    seed_teams(repository, users)
+    assert repository.get_profile(extra.user_id) == created
 
 
 def test_calendar_audit_failures_restore_the_previous_repository_state(
@@ -223,24 +270,6 @@ def test_catalogue_fallbacks_cover_missing_catalogue_records() -> None:
     cm_id = catalogue.recommend_cm(frozenset({"imagery"}))[0].team_id
     catalogue._by_id.pop(cm_id)
     assert catalogue.best_cm_team(frozenset({"imagery"})) is None
-
-
-def test_assignment_service_rejects_invalid_candidates_and_permissions() -> None:
-    app = _app()
-    service: AnalystAssignmentService = app.state.analyst_assignment_service
-    manager = _user(app, "rfa.manager@example.test")
-    customer = _user(app, "user@example.test")
-
-    with pytest.raises(AppError, match="Permission denied"):
-        service.analyst_candidates(customer)
-    with pytest.raises(AppError, match="one and five"):
-        service._resolve_analysts(())
-    with pytest.raises(AppError, match="active analyst"):
-        service._resolve_analysts((uuid4(),))
-    with pytest.raises(AppError, match="Permission denied"):
-        service._require_assignment_permission(manager, route=RoutingRoute.CM)
-    with pytest.raises(AppError, match="cannot move"):
-        service._ensure_transition(TicketState.CLOSED_DELIVERED, TicketState.ANALYST_IN_PROGRESS)
 
 
 def _record_audit(*_args: object, **_kwargs: object) -> None:

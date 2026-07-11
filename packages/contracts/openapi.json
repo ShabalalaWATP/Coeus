@@ -4367,6 +4367,15 @@
         "title": "RoutingQueueResponse",
         "type": "object"
       },
+      "RoutingRoute": {
+        "enum": [
+          "rfa",
+          "cm",
+          "clarification"
+        ],
+        "title": "RoutingRoute",
+        "type": "string"
+      },
       "RoutingStatsResponse": {
         "properties": {
           "analystAssignmentCount": {
@@ -5276,6 +5285,22 @@
         "title": "TeamListResponse",
         "type": "object"
       },
+      "TeamMemberCandidateListResponse": {
+        "properties": {
+          "users": {
+            "items": {
+              "$ref": "#/components/schemas/TeamMemberResponse"
+            },
+            "title": "Users",
+            "type": "array"
+          }
+        },
+        "required": [
+          "users"
+        ],
+        "title": "TeamMemberCandidateListResponse",
+        "type": "object"
+      },
       "TeamMemberRequest": {
         "properties": {
           "userId": {
@@ -5292,6 +5317,10 @@
       },
       "TeamMemberResponse": {
         "properties": {
+          "bio": {
+            "title": "Bio",
+            "type": "string"
+          },
           "displayName": {
             "title": "Displayname",
             "type": "string"
@@ -5327,7 +5356,8 @@
           "displayName",
           "isManager",
           "title",
-          "specialisms"
+          "specialisms",
+          "bio"
         ],
         "title": "TeamMemberResponse",
         "type": "object"
@@ -7025,6 +7055,16 @@
     "/api/v1/analyst/candidates": {
       "get": {
         "operationId": "analyst_candidates_api_v1_analyst_candidates_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "route",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/RoutingRoute"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -7035,6 +7075,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Analyst Candidates",
@@ -10511,6 +10561,60 @@
           }
         },
         "summary": "Remove Calendar Entry",
+        "tags": [
+          "teams"
+        ]
+      }
+    },
+    "/api/v1/teams/{team_id}/member-candidates": {
+      "get": {
+        "operationId": "team_member_candidates_api_v1_teams__team_id__member_candidates_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Team Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "query",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 3,
+              "title": "Query",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamMemberCandidateListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Team Member Candidates",
         "tags": [
           "teams"
         ]

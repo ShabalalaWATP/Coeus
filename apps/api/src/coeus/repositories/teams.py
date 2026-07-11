@@ -75,6 +75,14 @@ class TeamRepository:
             self._profiles[profile.user_id] = profile
             self._persist_or_rollback(PROFILES_NAMESPACE, previous)
 
+    def delete_profile(self, user_id: UUID) -> UserProfile | None:
+        with self._lock:
+            previous = dict(self._profiles)
+            removed = self._profiles.pop(user_id, None)
+            if removed is not None:
+                self._persist_or_rollback(PROFILES_NAMESPACE, previous)
+            return removed
+
     def _persist_or_rollback(self, namespace: str, previous: Mapping[UUID, object]) -> None:
         try:
             self._persist(namespace)

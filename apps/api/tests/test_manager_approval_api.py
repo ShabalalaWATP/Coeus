@@ -217,6 +217,12 @@ async def test_assignment_rejects_duplicates_and_fresh_double_assignment() -> No
         second_ticket = await analyst_assignment_ticket(client)
         assigned = await _assign(client, second_ticket, solo)
         assert assigned.status_code == 200
+        # One analyst can hold several live tasks at once.
+        await login(client, "analyst@example.test")
+        tasks = await client.get("/api/v1/analyst/tasks")
+        task_ids = [task["ticketId"] for task in tasks.json()["tasks"]]
+        assert ticket_id in task_ids
+        assert second_ticket in task_ids
         # The ticket is ANALYST_IN_PROGRESS now, so a further assign call is a
         # reassignment, but a fresh assignment is blocked while active
         # assignments exist for the approved route.
