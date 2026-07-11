@@ -9,23 +9,27 @@ Run PostgreSQL in Docker, then run the API and web app as local processes.
 
 ```powershell
 docker compose up -d postgres
-uv run --directory apps/api uvicorn coeus.main:app --host 127.0.0.1 --port 8001
+uv run --project apps/api uvicorn coeus.main:app --host 127.0.0.1 --port 8001 --workers 1
 corepack pnpm --filter @coeus/web dev
 ```
 
 Open <http://127.0.0.1:5173>. The web app defaults to the API at
 <http://127.0.0.1:8001>.
 
-PostgreSQL must publish only on loopback. Confirm the rendered Compose mapping
-uses `127.0.0.1:5432:5432` rather than a wildcard host binding. Use a generated
-local credential kept outside Git, and run the application with a
-least-privilege login role. The application role must not have PostgreSQL
-`SUPERUSER`, `CREATEDB` or `CREATEROLE`.
+PostgreSQL must publish only on loopback. Recreate older containers after
+pulling Compose changes, then confirm the rendered mapping uses
+`127.0.0.1:5432:5432` rather than a wildcard host binding. The supplied Compose
+credential is a public local-development value and its initial PostgreSQL user
+is privileged; do not reuse either in a shared or hosted environment. A hosted
+database must use a generated secret and a least-privilege application role
+without `SUPERUSER`, `CREATEDB` or `CREATEROLE`.
 
 Verify before development:
 
 ```powershell
 docker compose config
+docker compose up -d --force-recreate postgres
+docker compose ps
 Test-NetConnection 127.0.0.1 -Port 5432
 ```
 

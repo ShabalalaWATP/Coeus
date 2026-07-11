@@ -1,8 +1,9 @@
 # Istari User Guide
 
 This guide walks through Istari by role, with screenshots of each workspace. All
-data shown is synthetic and labelled **MOCK DATA ONLY**. Desktop is the primary
-experience; the layout is responsive down to mobile widths.
+data shown is synthetic and authenticated workspaces are labelled **MOCK DATA
+ONLY**. Desktop is the supported experience. Mobile layouts have not been
+designed or validated and must not be presented as supported.
 
 For how to run the app locally see the [Setup Guide](SETUP.md). For the roles and
 their permissions see [Roles and User Stories](ROLES_AND_USER_STORIES.md). For
@@ -21,6 +22,7 @@ how the agents work see [AI Agents](AI_AGENTS.md).
 - [Quality control](#quality-control)
 - [My Team](#my-team)
 - [Administrator](#administrator)
+- [Users and account lifecycle](#users-and-account-lifecycle)
 
 ---
 
@@ -64,14 +66,15 @@ list of their requests, with one action to open a new request.
 
 Opening a request shows the **chat-first workspace**. On the left the intake
 assistant captures the requirement conversationally; on the right a live
-checklist shows how many of the seven required details have been captured, with a
-manual edit panel and product offers below.
+checklist shows which core and priority-dependent details have been captured,
+with a manual edit panel and product offers below.
 
 ![Customer request workspace with intake assistant and checklist](images/04-request-workspace.png)
 
 From here a customer can:
 
-- Chat with the intake assistant until the checklist reads "7 of 7 captured".
+- Chat with the intake assistant until every detail displayed in the checklist
+  has been captured.
 - Edit any detail directly in "Edit details manually".
 - Tag colleagues as editors or viewers.
 - Submit the request, then accept or reject any existing-product offers.
@@ -116,7 +119,7 @@ query/reject the route with a recorded reason. When a request is routed to
 CM, the customer is asked in their workspace whether they want the **raw
 collect only** or the **collect plus an RFA analysis**.
 
-![Routing queue with agent recommendations](images/07-rfa-queue.png)
+![JIOC routing queue with agent recommendations](images/07-rfa-queue.png)
 
 ## RFA and Collection managers
 
@@ -166,19 +169,18 @@ profile (title, specialisms, bio) at the bottom of the page.
 
 The Admin workspace is the governance control plane. It shows service status,
 pending **access requests** to approve or reject with a reason, and the AI model
-catalogue. The left navigation exposes every team queue, analytics, ACGs and the
-audit log.
+catalogue. The left navigation exposes operational workspaces, analytics, Users,
+ACGs and the audit log according to the administrator's permissions.
 
 ![Administrator overview](images/10-admin-overview.png)
 
 ### Choosing the AI model
 
-The **AI model** panel presents each available model as a selectable card with a
-tier (Sovereign, Fast, Advanced, or Custom for anything unrecognised) and a
-description. The active model is badged, and the panel records who last changed
-it and when. Entering a Gemini API key enables Gemini-backed assistant replies
-for every user in the current API process, but the key is write-only and not
-persisted; model choice is persisted.
+The **AI model** panel groups models by provider. Gemini, OpenAI, Vertex AI and
+Bedrock can each accept a write-only runtime key, test the connection and retain
+their own selected model. Activating a provider is a separate warned action that
+changes the provider for every user. Runtime keys are not returned to the browser
+or persisted and disappear when the API restarts; model choices are persisted.
 
 ![Admin AI model catalogue](images/12-admin-ai-model.png)
 
@@ -190,3 +192,17 @@ Cyber", "Maritime GEOINT") so product visibility reflects how teams are actually
 organised.
 
 ![Access control groups](images/11-admin-acgs.png)
+
+### Users and account lifecycle
+
+The **Users** workspace searches and filters accounts. An administrator can
+assign roles, change clearance, activate or deactivate an account, and issue a
+temporary credential that is displayed once. The signed-in administrator cannot
+change their own protected fields. Role assignment, team membership and ACG
+membership are separate controls and should all follow least privilege.
+
+![Administrator user management](images/13-admin-users.png)
+
+For the full local onboarding and offboarding sequence, including its
+single-writer and non-production boundaries, see [Local Multi-User
+Operations](runbooks/local-multi-user-operations.md).

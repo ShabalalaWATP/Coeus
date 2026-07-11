@@ -2,6 +2,24 @@
 
 Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVELOPMENT_STORY_SPRINTS_01-13.md). The longer 2026-07-06 continuation lives in [DEVELOPMENT_STORY_2026-07-06.md](DEVELOPMENT_STORY_2026-07-06.md).
 
+## 2026-07-11 cross-role usability and documentation accuracy
+
+- Completed the desktop cross-role audit across customer, JIOC, team manager,
+  analyst, QC, Store, team and administrator workspaces.
+- Added manager work review, deliberate QC controls, safer record switching,
+  structured multi-analyst assignment, clearer task context, profiles, calendar
+  corrections, readable workflow language and accessible command navigation.
+- Fixed JIOC similar-request access by aligning its workflow permission boundary
+  with the routing queue and updated the real end-to-end workflow fixture.
+- Added Gemini, OpenAI, Vertex AI and Bedrock runtime provider administration with
+  connection tests and explicitly warned app-wide activation.
+- Re-audited active documentation and screenshots. Kept local development as the
+  supported runtime, documented local multi-user evaluation, and made GCP and
+  Kubernetes explicit migration targets with readiness gates rather than active
+  deployment claims.
+- PRs #98 to #100 passed backend, frontend, CodeQL, DAST, container, Semgrep,
+  Checkov, Gitleaks, SBOM and Terraform checks before merge.
+
 ## 2026-07-11 JIOC workflow restructure, QC release, teams and calendars
 
 - Renamed the workflow roles to plain names (Customer, RFA/CM Manager and Team

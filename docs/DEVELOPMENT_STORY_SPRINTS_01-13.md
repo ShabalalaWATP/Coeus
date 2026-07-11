@@ -2,6 +2,7 @@
 
 Earlier entries moved from [DEVELOPMENT_STORY.md](DEVELOPMENT_STORY.md) to keep
 that file within the repository line limit.
+
 ## 2026-07-04
 
 - Started Sprint 1 from `coeus_spec_driven_implementation_plan.md`.
@@ -111,9 +112,9 @@ that file within the repository line limit.
 - Added a GCP dev deployment baseline with Terraform modules for services, IAM,
   Workload Identity Federation, Artifact Registry, Cloud Run, Cloud SQL, Cloud
   Storage, Secret Manager and Pub/Sub.
-- Added a manual-first `Deploy Dev` GitHub Actions workflow that builds API and
-  web images, pushes them to Artifact Registry and deploys to Cloud Run through
-  GitHub OIDC.
+- Added an initial manual-first Cloud Run deployment-workflow design. It was
+  subsequently retired in favour of the current validation-only migration
+  reference, which does not authenticate, push images or deploy infrastructure.
 - Added GCP, GCS, Pub/Sub and AI provider runtime settings without importing
   cloud SDKs into domain services.
 - Added a production web container image for Cloud Run.

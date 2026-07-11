@@ -4,17 +4,18 @@ How the same application runs on a developer machine today and how it could run
 on Google Cloud Platform in future. This is one of three architecture guides;
 see [Architecture](ARCHITECTURE.md) for the system structure and
 [Architecture: Workflow](ARCHITECTURE_WORKFLOW.md) for the request journey. The
-application binary does not change between local and cloud; only the provider
-configuration does.
+local-first design is retained for any migration. Cloud deployment requires
+additional provider adapters and operational controls; it is not a configuration
+switch in the current build.
 
 ---
 
 ## 1. Local runtime (today)
 
 Everything runs on the developer machine. `docker compose` provides PostgreSQL
-with pgvector (and MinIO if bucket-style storage is wanted); the API and web app
-run either in containers or directly via `uv` and `pnpm`. The default provider
-choices keep the system fully offline.
+with pgvector and optional full app containers; MinIO is present as unused
+future-parity scaffolding. The API and web app run either in containers or
+directly via `uv` and `pnpm`. The default providers keep the system offline.
 
 ```mermaid
 flowchart TB
@@ -25,7 +26,7 @@ flowchart TB
         UVICORN["Uvicorn<br/>FastAPI, single worker"]
         subgraph compose["docker compose"]
             PG[("pgvector/pgvector:pg16<br/>PostgreSQL")]
-            MINIO[["MinIO<br/>optional bucket storage"]]
+            MINIO[["MinIO<br/>unused parity scaffolding"]]
         end
         FS[["Local filesystem<br/>object bytes + email outbox"]]
     end
@@ -33,7 +34,7 @@ flowchart TB
     BROWSER --> VITE --> UVICORN
     UVICORN --> PG
     UVICORN --> FS
-    UVICORN -.optional.-> MINIO
+    MINIO -.not currently wired.-> UVICORN
 
     classDef fe fill:#0d9488,stroke:#0f766e,color:#fff,stroke-width:1px
     classDef be fill:#4f46e5,stroke:#3730a3,color:#fff,stroke-width:1px
@@ -62,7 +63,7 @@ Identity Federation, with no long-lived keys.
 ```mermaid
 flowchart TB
     subgraph gh["GitHub"]
-        GHA["GitHub Actions<br/>validate and build locally"]
+        GHA["Future GitHub Actions deploy workflow<br/>not implemented"]
     end
 
     subgraph gcp["Google Cloud Platform (project)"]
@@ -117,9 +118,10 @@ services, IAM with Workload Identity Federation and runtime and deployer service
 accounts, Artifact Registry, Cloud KMS, Secret Manager placeholders, Cloud
 Storage buckets, Pub/Sub topics with worker subscriptions and dead-letter
 topics, a Cloud SQL PostgreSQL instance, and the two Cloud Run services. Secret
-values are never stored in Terraform state. Terraform apply is blocked by the
-default-deny ADR 0019 readiness gate, and GitHub Actions has no cloud deployment
-step. See the
+values are never stored in Terraform state. API and web creation is blocked by
+the ADR 0019 readiness gate, but targeted Terraform applies can bypass that
+dependency for resource-shell modules and therefore must not be used. GitHub
+Actions has no cloud deployment step. See the
 [GCP Reference Deployment Runbook](runbooks/gcp-dev-deployment.md).
 
 ---
@@ -130,15 +132,15 @@ The table records the target provider mapping. Only the local column is
 currently supported; the GCP column remains a migration contract until its
 adapters and readiness gates pass.
 
-| Concern | Setting | Local default | GCP reference |
-| --- | --- | --- | --- |
-| Persistence | `COEUS_PERSISTENCE_PROVIDER` | `postgres` (local container) | `postgres` (Cloud SQL) |
-| Object storage | `COEUS_OBJECT_STORAGE_PROVIDER` | `local` (filesystem) | `gcs` (Cloud Storage) |
-| Language model | `COEUS_LLM_PROVIDER` | `mock` | `mock` or `gemini_api` |
-| Embeddings | `COEUS_EMBEDDING_PROVIDER` | `mock` | `mock`, `local` or `gemini_api` |
-| Email | `COEUS_EMAIL_PROVIDER` | `outbox` (on disk) | `smtp` |
-| Secrets | environment / `.env` | local file | Secret Manager |
-| Deploy identity | n/a | n/a | Workload Identity Federation |
+| Concern         | Setting                         | Local default                | GCP reference                   |
+| --------------- | ------------------------------- | ---------------------------- | ------------------------------- |
+| Persistence     | `COEUS_PERSISTENCE_PROVIDER`    | `postgres` (local container) | `postgres` (Cloud SQL)          |
+| Object storage  | `COEUS_OBJECT_STORAGE_PROVIDER` | `local` (filesystem)         | `gcs` (Cloud Storage)           |
+| Language model  | `COEUS_LLM_PROVIDER`            | `mock`                       | `mock` or `gemini_api`          |
+| Embeddings      | `COEUS_EMBEDDING_PROVIDER`      | `mock`                       | `mock`, `local` or `gemini_api` |
+| Email           | `COEUS_EMAIL_PROVIDER`          | `outbox` (on disk)           | `smtp`                          |
+| Secrets         | environment / `.env`            | local file                   | Secret Manager                  |
+| Deploy identity | n/a                             | n/a                          | Workload Identity Federation    |
 
 Provider settings are authoritative: an API key present in the environment never
 silently switches the language or embedding provider on; the provider must be
@@ -165,3 +167,13 @@ selected explicitly. This keeps a machine configured for offline use offline.
 - **Embeddings.** Written on create, metadata update and QC ingestion, preserved
   across provider outages, and backfillable in batches. The 384-dimension column
   matches both the offline local model and the Gemini embedding output.
+
+## 4. Future: Kubernetes
+
+Kubernetes is not implemented. There are no manifests, Helm charts or deployment
+workflows. The existing API and production web images are reusable migration
+boundaries, but the current API must stay at one replica and local object bytes
+need a single-writer volume for any evaluation deployment. A production cluster
+requires shared transactional state, shared object storage, identity operations,
+backups, audit export, ingress/TLS and monitoring first. See the [Kubernetes
+Migration Guide](runbooks/kubernetes-migration.md).
