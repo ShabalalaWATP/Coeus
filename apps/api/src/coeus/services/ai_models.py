@@ -262,7 +262,8 @@ class AiModelService:
             raise AppError(
                 422,
                 "refresh_not_supported",
-                "Live model listing is not available for this provider. Add model IDs by hand instead.",
+                "Live model listing is not available for this provider. "
+                "Add model IDs by hand instead.",
             )
         return spec
 

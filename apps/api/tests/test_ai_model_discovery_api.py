@@ -3,7 +3,6 @@
 import asyncio
 import inspect
 from threading import Event
-
 from typing import Any, ClassVar
 
 import pytest
@@ -11,6 +10,8 @@ import pytest
 from ai_model_helpers import admin_login, make_client
 from coeus.api.routes.admin import (
     refresh_ai_models as refresh_route,
+)
+from coeus.api.routes.admin import (
     test_ai_connection as connection_test_route,
 )
 
