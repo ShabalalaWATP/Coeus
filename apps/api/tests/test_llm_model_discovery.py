@@ -143,3 +143,53 @@ def test_openai_accepts_future_and_search_models_but_rejects_instruct(
         "gpt-4o-search-preview",
         "o5-pro",
     )
+
+
+@pytest.mark.parametrize(
+    ("status", "expected_code"),
+    (
+        (401, "provider_credentials_rejected"),
+        (429, "provider_rate_limited"),
+        (500, "llm_provider_unavailable"),
+    ),
+)
+def test_provider_statuses_are_mapped_without_response_details(
+    monkeypatch: pytest.MonkeyPatch,
+    status: int,
+    expected_code: str,
+) -> None:
+    request = httpx.Request("GET", "https://provider.example/models")
+    response = httpx.Response(status, request=request, text="sensitive provider detail")
+
+    def raise_status(*_args: object, **_kwargs: object) -> dict[str, object]:
+        raise httpx.HTTPStatusError("provider response", request=request, response=response)
+
+    monkeypatch.setattr("coeus.integrations.llm_models.get_json", raise_status)
+
+    with pytest.raises(AppError) as raised:
+        discover_models("openai_api", "sk-key", 10)
+
+    assert raised.value.code == expected_code
+    assert "sensitive provider detail" not in raised.value.message
+
+
+@pytest.mark.parametrize(
+    ("provider", "payload"),
+    (
+        ("openai_api", {"data": {}}),
+        ("gemini_api", {"models": {}}),
+        ("gemini_api", {"models": ["not-a-model-record"]}),
+    ),
+)
+def test_invalid_or_empty_catalogue_shapes_are_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+    provider: str,
+    payload: dict[str, object],
+) -> None:
+    monkeypatch.setattr(
+        "coeus.integrations.llm_models.get_json",
+        lambda *_args, **_kwargs: payload,
+    )
+
+    with pytest.raises(AppError, match="provider_model_list_invalid"):
+        discover_models(provider, "key", 10)
