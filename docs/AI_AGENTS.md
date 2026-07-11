@@ -1,19 +1,16 @@
 # Istari AI Agents
 
-Istari is an AI-first tasking system: focused agents do the repetitive
-reasoning while a person always makes the decision that changes state. This
-document describes what triggers each agent, what it reads, how it decides,
-what it returns, and where the human stays in control.
+Istari is an AI-first tasking system: focused agents do the repetitive reasoning
+while a person always makes the decision that changes state. This document describes
+each agent's trigger, inputs, decision, output and human control.
 
 > Agents are deterministic mocks by default in local and test environments
 > (`COEUS_LLM_PROVIDER=mock`): no external calls, no instruction execution,
 > every input treated as synthetic. Admins can configure API keys locally for
 > the chatbot reply provider (Gemini API is primary; OpenAI, GCP Vertex AI and
-> AWS Bedrock are optional alternatives, all behind one gateway). The
-> configured provider setting is authoritative: neither an environment key nor
-> saving a key through the admin panel switches the provider by itself, and
-> activating a provider notifies every administrator because it changes
-> replies for all users at once.
+> AWS Bedrock are optional alternatives behind one gateway). Neither an
+> environment key nor saving a key switches provider. Activation is explicit
+> and notifies every administrator because it changes replies for all users.
 
 ## Agents at a glance
 
@@ -291,8 +288,7 @@ event, so the customer does not need to inspect manager-only route metadata.
 
 The orchestrator is a recommendation source, not a route manager. A human RFA or
 Collection manager can approve the recommended route, or approve the other route
-by supplying a written
-**override reason**, which is recorded as a `manager_override` audit event. Every
+by supplying a written **override reason**, recorded as a `manager_override` audit event. Every
 approval, rejection and clarification is written to the audit log.
 
 ---

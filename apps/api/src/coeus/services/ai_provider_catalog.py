@@ -47,7 +47,7 @@ def spec_for(settings: Settings, name: str) -> ProviderSpec | None:
     return next((spec for spec in provider_specs(settings) if spec.name == name), None)
 
 
-def initial_api_keys(settings: Settings) -> dict[str, str | None]:
+def initial_api_keys(settings: Settings) -> dict[LlmProviderName, str | None]:
     """Environment-supplied keys per provider; mock never needs one."""
     return {
         "gemini_api": settings.gemini_api_key,

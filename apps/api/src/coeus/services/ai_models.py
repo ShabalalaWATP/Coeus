@@ -41,8 +41,8 @@ class AiModelState:
 @dataclass(frozen=True)
 class _AiModelSnapshot:
     provider: LlmProviderName
-    active_models: dict[str, str]
-    api_keys: dict[str, str | None]
+    active_models: dict[LlmProviderName, str]
+    api_keys: dict[LlmProviderName, str | None]
     changed_by: str | None
     changed_at: datetime | None
 
@@ -98,13 +98,13 @@ class AiModelService:
             ),
         )
 
-    def provider(self) -> str:
+    def provider(self) -> LlmProviderName:
         return self._provider
 
-    def active_model(self, provider: str | None = None) -> str:
+    def active_model(self, provider: LlmProviderName | None = None) -> str:
         return self._active_models[provider or self._provider]
 
-    def api_key(self, provider: str | None = None) -> str | None:
+    def api_key(self, provider: LlmProviderName | None = None) -> str | None:
         return self._api_keys.get(provider or self._provider)
 
     def set_embedded_product_count_provider(self, provider: Callable[[], int]) -> None:
