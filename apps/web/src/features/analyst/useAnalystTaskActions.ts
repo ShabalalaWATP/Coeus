@@ -5,7 +5,7 @@ import {
   addAnalystNote,
   linkAnalystProduct,
   saveDraftProduct,
-  submitTaskToQc,
+  submitTaskForReview,
   updateWorkPackage,
   type AnalystTask,
 } from "../../lib/api-client/analyst";
@@ -89,8 +89,8 @@ export function useAnalystTaskActions(
     },
   });
   const submitMutation = useMutation({
-    mutationFn: () => submitTaskToQc(ticketId, csrfToken),
-    onError: failActionWith("The task could not be submitted to QC. Try again."),
+    mutationFn: () => submitTaskForReview(ticketId, csrfToken),
+    onError: failActionWith("The task could not be submitted for review. Try again."),
     onMutate: clearActionError,
     onSuccess: onTaskChange,
   });

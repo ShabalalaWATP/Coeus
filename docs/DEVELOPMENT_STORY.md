@@ -2,6 +2,42 @@
 
 Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVELOPMENT_STORY_SPRINTS_01-13.md). The longer 2026-07-06 continuation lives in [DEVELOPMENT_STORY_2026-07-06.md](DEVELOPMENT_STORY_2026-07-06.md).
 
+## 2026-07-11 JIOC workflow restructure, QC release, teams and calendars
+
+- Renamed the workflow roles to plain names (Customer, RFA/CM Manager and Team
+  Member, Analyst) and added the JIOC Team Member role; legacy persisted role
+  strings decode through `RoleName._missing_` aliases.
+- Replaced the manager route-review stage with a single JIOC queue: capability
+  agents advise, a JIOC member decides collection (CM) or assessment (RFA),
+  with recorded override reasons. Retired `ROUTE_ASSESSMENT` and the manager
+  review states via `TicketState` aliases.
+- Added the customer collect choice: a CM-routed ticket pauses in
+  `COLLECT_CHOICE` until the requester picks raw collect only or collect plus
+  RFA analysis (owner-only, CSRF-validated, audited).
+- Added the manager approval chain (`MANAGER_APPROVAL`) with separation of
+  duties and multi-analyst assignment (one to five analysts; reassignment
+  deactivates prior assignments instead of overwriting them), splitting out
+  `services/analyst_assignment_service.py` and `services/manager_approval.py`.
+- Moved the final release from managers to Quality Control: QC approval now
+  publishes, disseminates, raises the feedback request and notifies the
+  requester in one compensated step (`services/qc_release.py`); an analysed
+  collect is instead forwarded to RFA assignment with the collect linked and
+  still DRAFT. Retired `MANAGER_RELEASE` (aliases to `QC_REVIEW`), the release
+  endpoints and the ReleaseQueuePanel; the release hardening tests moved to
+  `test_qc_release_api.py`.
+- Fixed a live-only privilege bug found in the walk-through: restored user
+  records kept the permission snapshot from seed time, so revoked release
+  permissions survived upgrades. `SeedUserRepository` now re-derives
+  permissions from persisted roles on startup, with regression coverage.
+- Added organisational teams, member profiles and team calendars with a
+  deterministic availability service (calendar plus live assignments), the
+  My Team page and availability counts in the assignment panel.
+- Docs: ADR 0022, specs and threat models for the JIOC restructure and for
+  teams/profiles/calendars; superseded the manager-final-release documents;
+  refreshed the workflow architecture, roles, user guide and setup docs.
+- Both suites green at the 95% gates; every phase also verified live in the
+  browser, including the CM-to-RFA analysed-collect journey.
+
 ## 2026-07-09 Access-control audit rollback
 
 - Hardened ACG administration so create, update and membership changes restore
@@ -184,3 +220,17 @@ Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVEL
 - The concurrent intake, prioritisation and capability-recommendation work is
   unsealed. It must be integrated and scanned explicitly or excluded from the
   remediation release candidate.
+
+## 2026-07-10 Sprint 14B verification remediation
+
+- Integrated the complete feature and remediation slice as `7165e49e`; full
+  backend, frontend, browser, container and security gates passed before scan.
+- Sealed verification scan `a089e83c-afc7-4213-8763-4a5e5759598d`: all 16
+  baseline findings were closed, while three new Low/P3 integrity findings were
+  reported.
+- Added failure-atomic audited ticket saves, exact rollback for new and existing
+  tickets, repository compare-and-swap, conditional RFI rollback and coordinated
+  concurrency regressions.
+- Closed non-reportable quality debt with compact cursor-paged request summaries,
+  selected-only details, browser dictation disclosure and digest-pinned runtime
+  images. Full post-fix gates and the final immutable scan remain pending.

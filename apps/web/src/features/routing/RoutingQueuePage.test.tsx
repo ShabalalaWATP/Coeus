@@ -44,7 +44,7 @@ test("runs RFA capability checks and approves the recommended route", async () =
     .mockResolvedValue(jsonResponse({ analysts: [] }));
   stubRoutingFetch(fetchMock);
 
-  renderWithProviders(<RoutingQueuePage route="rfa" />, "/rfa/queue");
+  renderWithProviders(<RoutingQueuePage queue="jioc" />, "/rfa/queue");
 
   expect(await screen.findByText("Maritime Assessment Cell")).toBeVisible();
   // The internal priority tier badge and its reason breakdown are visible.
@@ -59,7 +59,8 @@ test("runs RFA capability checks and approves the recommended route", async () =
   expect(screen.getByText("score 0.79")).toBeVisible();
   await userEvent.click(screen.getByRole("button", { name: "Approve route" }));
 
-  expect(await screen.findByLabelText("Assign analyst")).toBeVisible();
+  // The approved ticket belongs to the team manager now, so it leaves JIOC.
+  expect(await screen.findByText("No tickets in this queue.")).toBeVisible();
   expect(fetchMock).toHaveBeenNthCalledWith(
     3,
     "http://127.0.0.1:8001/api/v1/routing/ticket-1/approve",
@@ -85,7 +86,7 @@ test("requests clarification from an RFA manager review", async () => {
     .mockResolvedValueOnce(jsonResponse({ ...clarificationTicket, state: "INFO_REQUIRED" }));
   stubRoutingFetch(fetchMock);
 
-  renderWithProviders(<RoutingQueuePage route="rfa" />, "/rfa/queue");
+  renderWithProviders(<RoutingQueuePage queue="jioc" />, "/rfa/queue");
 
   await screen.findByText("Recommended route: RFA");
   expect(screen.getByText("Confirm a supported mock region.")).toBeVisible();
@@ -111,13 +112,13 @@ test("requests clarification from an RFA manager review", async () => {
   );
 });
 
-test("renders an empty collection queue", async () => {
+test("renders an empty JIOC queue with the full capability catalogue", async () => {
   stubRoutingFetch(vi.fn().mockResolvedValueOnce(jsonResponse(queueWith([]))));
 
-  renderWithProviders(<RoutingQueuePage route="cm" />, "/collection/queue");
+  renderWithProviders(<RoutingQueuePage queue="jioc" />, "/jioc/queue");
 
   expect(await screen.findByText("No tickets in this queue.")).toBeVisible();
-  expect(screen.getByRole("heading", { name: "Collection Queue" })).toBeVisible();
+  expect(screen.getByRole("heading", { name: "JIOC Queue" })).toBeVisible();
   expect(await screen.findByText("Cyber Sensor Coordination Cell")).toBeVisible();
 });
 
@@ -128,7 +129,7 @@ test("runs route checks with an empty CSRF token when no session is present", as
     .mockResolvedValueOnce(jsonResponse(reviewedTicket));
   stubRoutingFetch(fetchMock);
 
-  renderWithProviders(<RoutingQueuePage route="rfa" />, "/rfa/queue", null);
+  renderWithProviders(<RoutingQueuePage queue="jioc" />, "/rfa/queue", null);
 
   await userEvent.click(await screen.findByRole("button", { name: "Run capability checks" }));
 
@@ -151,7 +152,7 @@ test("rejects an RFA route with a manager reason", async () => {
     .mockResolvedValueOnce(jsonResponse({ ...reviewedTicket, state: "INFO_REQUIRED" }));
   stubRoutingFetch(fetchMock);
 
-  renderWithProviders(<RoutingQueuePage route="rfa" />, "/rfa/queue");
+  renderWithProviders(<RoutingQueuePage queue="jioc" />, "/rfa/queue");
 
   await screen.findByText("Recommended route: RFA");
   await userEvent.click(screen.getByText("Query or reject this route"));
@@ -172,10 +173,9 @@ test("rejects an RFA route with a manager reason", async () => {
   expect(await screen.findByText("No ticket selected")).toBeVisible();
 });
 
-test("approves collection manager fallback routes", async () => {
+test("approves a collection route which pauses for the customer's collect choice", async () => {
   const cmTicket: RoutingTicket = {
     ...reviewedTicket,
-    state: "CM_MANAGER_REVIEW",
     recommendation: {
       ...reviewedTicket.recommendation!,
       recommendedRoute: "cm",
@@ -185,16 +185,18 @@ test("approves collection manager fallback routes", async () => {
   const fetchMock = vi
     .fn()
     .mockResolvedValueOnce(jsonResponse(queueWith([cmTicket])))
-    .mockResolvedValueOnce(jsonResponse({ ...cmTicket, state: "ANALYST_ASSIGNMENT" }))
+    .mockResolvedValueOnce(jsonResponse({ ...cmTicket, state: "COLLECT_CHOICE" }))
     .mockResolvedValue(jsonResponse({ analysts: [] }));
   stubRoutingFetch(fetchMock);
 
-  renderWithProviders(<RoutingQueuePage route="cm" />, "/collection/queue");
+  renderWithProviders(<RoutingQueuePage queue="jioc" />, "/jioc/queue");
 
   expect(await screen.findByText("Recommended route: CM")).toBeVisible();
+  await userEvent.click(screen.getByLabelText("Collection required: route to CM"));
   await userEvent.click(screen.getByRole("button", { name: "Approve route" }));
 
-  expect(await screen.findByLabelText("Assign analyst")).toBeVisible();
+  // Awaiting the customer's collect choice keeps the ticket visible to JIOC.
+  expect((await screen.findAllByText("COLLECT CHOICE")).length).toBeGreaterThan(0);
   expect(fetchMock).toHaveBeenNthCalledWith(
     2,
     "http://127.0.0.1:8001/api/v1/routing/ticket-1/approve",
@@ -207,46 +209,53 @@ test("approves collection manager fallback routes", async () => {
   );
 });
 
-test("assigns an analyst after route approval and clears the ticket from the queue", async () => {
-  const assignmentTicket: RoutingTicket = { ...reviewedTicket, state: "ANALYST_ASSIGNMENT" };
+test("shows an action error when the route approval fails", async () => {
+  const failure = {
+    ok: false,
+    status: 500,
+    json: () => Promise.resolve({ error: { code: "server_error", message: "Failed." } }),
+  };
   const fetchMock = vi
     .fn()
-    .mockResolvedValueOnce(jsonResponse(queueWith([assignmentTicket])))
-    .mockResolvedValueOnce(
-      jsonResponse({
-        analysts: [
-          {
-            userId: "analyst-1",
-            username: "analyst@example.test",
-            displayName: "Intelligence Analyst",
-          },
-        ],
-      }),
-    )
-    .mockResolvedValueOnce(jsonResponse({ ticketId: "ticket-1", state: "ANALYST_IN_PROGRESS" }));
+    .mockResolvedValueOnce(jsonResponse(queueWith([reviewedTicket])))
+    .mockResolvedValueOnce(failure);
   stubRoutingFetch(fetchMock);
 
-  renderWithProviders(<RoutingQueuePage route="rfa" />, "/rfa/queue");
+  renderWithProviders(<RoutingQueuePage queue="jioc" />, "/jioc/queue");
 
-  await userEvent.click(await screen.findByRole("button", { name: /TCK-0001/ }));
-  await screen.findByRole("option", { name: "Intelligence Analyst" });
-  await userEvent.selectOptions(screen.getByLabelText("Analyst"), "analyst-1");
-  expect(screen.getByLabelText("Team name")).toHaveValue("Maritime Assessment Cell");
-  await userEvent.click(screen.getByRole("button", { name: "Assign analyst" }));
+  await screen.findByText("Recommended route: RFA");
+  await userEvent.click(screen.getByRole("button", { name: "Approve route" }));
 
-  expect(await screen.findByText("No tickets in this queue.")).toBeVisible();
-  expect(screen.getByText("No ticket selected")).toBeVisible();
+  // Deliberate backend rejections surface their own message in the alert.
+  expect(await screen.findByRole("alert")).toHaveTextContent("Failed.");
+});
+
+test("loads older tickets through cursor pagination without duplicates", async () => {
+  const olderTicket: RoutingTicket = {
+    ...reviewedTicket,
+    ticketId: "ticket-2",
+    reference: "TCK-0002",
+    title: "Older mock request",
+  };
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(jsonResponse({ ...queueWith([baseTicket]), nextCursor: "cursor-2" }))
+    .mockResolvedValueOnce(
+      jsonResponse({ ...queueWith([baseTicket, olderTicket]), nextCursor: null }),
+    );
+  stubRoutingFetch(fetchMock);
+
+  renderWithProviders(<RoutingQueuePage queue="jioc" />, "/jioc/queue");
+
+  await userEvent.click(await screen.findByRole("button", { name: "Load more tickets" }));
+
+  expect(await screen.findByText("2 tickets in this queue.")).toBeVisible();
+  expect(screen.getByRole("button", { name: /TCK-0002/ })).toBeVisible();
+  expect(screen.queryByRole("button", { name: "Load more tickets" })).not.toBeInTheDocument();
   expect(fetchMock).toHaveBeenNthCalledWith(
-    3,
-    "http://127.0.0.1:8001/api/v1/analyst/tasks/ticket-1/assign",
-    expect.objectContaining({
-      body: JSON.stringify({
-        analystUserId: "analyst-1",
-        teamName: "Maritime Assessment Cell",
-        workPackages: [],
-      }),
-      method: "POST",
-    }),
+    2,
+    "http://127.0.0.1:8001/api/v1/routing/jioc/queue?cursor=cursor-2",
+    { credentials: "include", method: "GET" },
   );
 });
 
@@ -258,7 +267,7 @@ test("renders a queue error state with retry", async () => {
   };
   stubRoutingFetch(vi.fn().mockResolvedValue(failure));
 
-  renderWithProviders(<RoutingQueuePage route="rfa" />, "/rfa/queue");
+  renderWithProviders(<RoutingQueuePage queue="jioc" />, "/rfa/queue");
 
   expect(
     await screen.findByText("Unable to load data", undefined, { timeout: 5000 }),

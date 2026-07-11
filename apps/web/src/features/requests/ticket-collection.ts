@@ -1,4 +1,4 @@
-import type { Ticket } from "../../lib/api-client/tickets";
+import type { Ticket, TicketSummary } from "../../lib/api-client/tickets";
 
 export function upsertTicket(tickets: Ticket[] | undefined, nextTicket: Ticket): Ticket[] {
   const current = tickets ?? [];
@@ -8,7 +8,9 @@ export function upsertTicket(tickets: Ticket[] | undefined, nextTicket: Ticket):
   return [nextTicket, ...current];
 }
 
-export function ticketMetrics(tickets: Ticket[]) {
+export function ticketMetrics(
+  tickets: Array<Pick<TicketSummary, "state" | "isReadyForSubmission">>,
+) {
   const searchingStates = new Set(["RFI_SEARCHING", "RFI_MATCH_OFFERED", "RFI_NO_MATCH"]);
   const draftStates = new Set(["DRAFT_INTAKE", "INFO_REQUIRED"]);
   return {

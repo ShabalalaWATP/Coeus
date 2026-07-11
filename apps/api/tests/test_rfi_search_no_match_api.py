@@ -26,10 +26,10 @@ async def test_no_match_search_requires_customer_consent_before_route_review() -
             headers={"X-CSRF-Token": str(user["csrfToken"])},
             json={"taskAsNewRequest": True},
         )
-        manager = await login(client, "rfa.manager@example.test")
+        jioc = await login(client, "jioc.team@example.test")
         routed = await client.post(
             f"/api/v1/routing/{ticket_id}/run",
-            headers={"X-CSRF-Token": str(manager["csrfToken"])},
+            headers={"X-CSRF-Token": str(jioc["csrfToken"])},
         )
 
     assert search.json()["ticketState"] == "RFI_NO_MATCH"
@@ -38,9 +38,9 @@ async def test_no_match_search_requires_customer_consent_before_route_review() -
     assert ticket["state"] == "RFI_NO_MATCH"
     assert _timeline_bodies(ticket, "rfi_no_match") == ["No existing product matched this request."]
     assert consent.status_code == 200
-    assert consent.json()["state"] == "ROUTE_ASSESSMENT"
+    assert consent.json()["state"] == "JIOC_REVIEW"
     assert _timeline_bodies(consent.json(), "tasking_confirmed") == [
-        "Requester confirmed tasking as a new request."
+        "Requester confirmed tasking; queued for JIOC route review."
     ]
     assert routed.status_code == 200
     assert routed.json()["rfaReview"] is not None

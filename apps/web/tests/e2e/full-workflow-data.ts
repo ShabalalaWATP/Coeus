@@ -13,7 +13,16 @@ export const acg = {
 export type FlowState = {
   draftSaved: boolean;
   released: boolean;
-  stage: "empty" | "draft" | "route" | "review" | "assignment" | "analyst" | "qc" | "release";
+  stage:
+    | "empty"
+    | "draft"
+    | "route"
+    | "review"
+    | "assignment"
+    | "analyst"
+    | "approval"
+    | "qc"
+    | "release";
   ticketCreated: boolean;
   workPackageDone: boolean;
 };
@@ -35,7 +44,14 @@ export function session() {
       defaultRoute: "/app/requests",
       displayName: "Admin Operator",
       id: "e2e-user",
-      permissions: ["chat:use", "ticket:read_own", "rfa:review", "analyst:work", "qc:review"],
+      permissions: [
+        "chat:use",
+        "ticket:read_own",
+        "jioc:review",
+        "rfa:review",
+        "analyst:work",
+        "qc:review",
+      ],
       roles: ["Administrator"],
       username: "admin@example.test",
     },
@@ -51,6 +67,7 @@ export function ticket(
     attachments: [],
     clarificationRequests: [],
     collaborators: [],
+    collectDisposition: null,
     conversationStatus: "open",
     createdAt: now,
     id: "ticket-e2e",
@@ -138,25 +155,19 @@ function intakeChecklist() {
   ];
 }
 
-export function routingQueue(flow: FlowState, kind: "queue" | "release") {
-  const queueStates = ["route", "review", "assignment"];
-  const tickets =
-    kind === "release"
-      ? flow.stage === "release"
-        ? [routingTicket(flow, "MANAGER_RELEASE")]
-        : []
-      : queueStates.includes(flow.stage)
-        ? [routingTicket(flow)]
-        : [];
+export function routingQueue(flow: FlowState, kind: "jioc" | "team") {
+  const jiocStates = ["route", "review"];
+  const teamStates = ["assignment", "analyst", "approval"];
+  const visible = kind === "jioc" ? jiocStates : teamStates;
+  const tickets = visible.includes(flow.stage) ? [routingTicket(flow)] : [];
   return {
     stats: {
       analystAssignmentCount: flow.stage === "assignment" ? 1 : 0,
       clarificationCount: 0,
       cmFallbackRate: 0,
-      cmReviewCount: 0,
+      collectChoiceCount: 0,
+      jiocQueueCount: flow.stage === "route" || flow.stage === "review" ? 1 : 0,
       rfaAcceptanceRate: 1,
-      rfaReviewCount: flow.stage === "review" ? 1 : 0,
-      routeAssessmentCount: flow.stage === "route" ? 1 : 0,
     },
     tickets,
   };
@@ -165,11 +176,13 @@ export function routingQueue(flow: FlowState, kind: "queue" | "release") {
 export function routingTicket(flow: FlowState, overrideState?: string) {
   const state =
     overrideState ??
-    (flow.stage === "assignment"
-      ? "ANALYST_ASSIGNMENT"
-      : flow.stage === "review"
-        ? "RFA_MANAGER_REVIEW"
-        : "ROUTE_ASSESSMENT");
+    (flow.stage === "approval"
+      ? "MANAGER_APPROVAL"
+      : flow.stage === "analyst"
+        ? "ANALYST_IN_PROGRESS"
+        : flow.stage === "assignment"
+          ? "ANALYST_ASSIGNMENT"
+          : "JIOC_REVIEW");
   return {
     agentRuns: flow.stage === "route" ? [] : ["rfa-capability-agent", "orchestrator-agent"],
     clarifications: [],
@@ -227,14 +240,16 @@ function capabilityReview() {
 export function analystTask(flow: FlowState, state = "ANALYST_IN_PROGRESS") {
   return {
     areaOrRegion: "North Atlantic",
-    assignment: {
-      analystUserId: "analyst-user",
-      assignedByUserId: "e2e-user",
-      createdAt: now,
-      id: "assignment-1",
-      route: "rfa",
-      teamName: "Maritime Assessment Cell",
-    },
+    assignments: [
+      {
+        analystUserId: "analyst-user",
+        assignedByUserId: "e2e-user",
+        createdAt: now,
+        id: "assignment-1",
+        route: "rfa",
+        teamName: "Maritime Assessment Cell",
+      },
+    ],
     chatSummary: ["Customer requested assessment."],
     description: "Synthetic request.",
     drafts: flow.draftSaved ? [draft()] : [],
@@ -289,7 +304,16 @@ export function qcProduct(flow: FlowState) {
     disseminations: flow.released
       ? [{ id: "dissemination-1", productId: "product-1", recipientUserId: "e2e-user" }]
       : [],
-    feedbackRequests: [],
+    feedbackRequests: flow.released
+      ? [
+          {
+            id: "feedback-1",
+            productId: "product-1",
+            requesterUserId: "e2e-user",
+            status: "requested",
+          },
+        ]
+      : [],
     ingestedProduct:
       flow.stage === "release"
         ? {
@@ -311,7 +335,7 @@ export function qcProduct(flow: FlowState) {
     reference: "TCK-E2E",
     requesterUserId: "e2e-user",
     requiredOutputFormat: "Assessment",
-    state: flow.stage === "release" ? "MANAGER_RELEASE" : "QC_REVIEW",
+    state: flow.stage === "release" ? "DISSEMINATION_READY" : "QC_REVIEW",
     ticketId: "ticket-e2e",
     title: "North Atlantic Activity",
   };

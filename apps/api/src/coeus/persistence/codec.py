@@ -31,6 +31,13 @@ from coeus.domain.qc import (
 )
 from coeus.domain.registration import RegistrationRequest, RegistrationStatus
 from coeus.domain.store import BoundingBox, StoreAsset, StoreProduct, StoreProductMetadata
+from coeus.domain.teams import (
+    CalendarStatus,
+    OrgTeam,
+    TeamCalendarEntry,
+    TeamKind,
+    UserProfile,
+)
 from coeus.domain.tickets import (
     AgentRun,
     AgentRunStatus,
@@ -87,6 +94,7 @@ _ALLOWED_TYPES = (
     LinkedAnalystProduct,
     ManagerRoutingDecision,
     NotificationRecord,
+    OrgTeam,
     PriorityAssessment,
     ProductDissemination,
     ProductIndexRecord,
@@ -102,15 +110,18 @@ _ALLOWED_TYPES = (
     StoreAsset,
     StoreProduct,
     StoreProductMetadata,
+    TeamCalendarEntry,
     TicketCollaborator,
     TicketRecord,
     TicketTimelineEntry,
     UserAccount,
+    UserProfile,
     WorkflowPlanUpdate,
 )
 
 _ALLOWED_ENUMS = (
     AgentRunStatus,
+    CalendarStatus,
     CollaboratorAccess,
     FeedbackRequestStatus,
     ManagerRoutingDecisionStatus,
@@ -123,6 +134,7 @@ _ALLOWED_ENUMS = (
     RegistrationStatus,
     RoleName,
     RoutingRoute,
+    TeamKind,
     TicketState,
     WorkPackageStatus,
 )

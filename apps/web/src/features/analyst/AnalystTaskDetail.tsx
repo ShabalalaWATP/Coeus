@@ -71,7 +71,7 @@ export default function AnalystTaskDetail({ onTaskChange, task }: AnalystTaskDet
         onClick={actions.submit}
         type="button"
       >
-        Submit to QC
+        {task.state === "REWORK_REQUIRED" ? "Resubmit to QC" : "Submit for manager approval"}
       </button>
     </section>
   );

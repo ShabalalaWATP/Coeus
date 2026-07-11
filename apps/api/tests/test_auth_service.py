@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
@@ -5,6 +6,8 @@ import pytest
 
 from coeus.core.config import Settings
 from coeus.core.errors import AppError
+from coeus.core.permissions import Permission
+from coeus.domain.rbac import permissions_for_roles
 from coeus.persistence.codec import encode_value
 from coeus.persistence.state_store import MemoryStateStore
 from coeus.repositories.auth import (
@@ -236,6 +239,35 @@ def test_seed_user_repository_restores_missing_required_seed_users() -> None:
 
     assert restored.get_by_username("admin@example.test") is not None
     assert restored.get_by_username("user@example.test") is not None
+
+
+def test_restored_users_get_permissions_rederived_from_their_roles() -> None:
+    """Persisted permission snapshots must not survive role-definition changes.
+
+    A stale snapshot would let an account keep privileges the current role
+    definitions have revoked (or miss newly granted ones), so restore always
+    re-derives permissions from the persisted roles.
+    """
+    settings = Settings(environment="test")
+    password_hasher = RecordingPasswordHasher()
+    state_store = MemoryStateStore()
+    baseline = SeedUserRepository(settings, password_hasher)
+    manager = baseline.get_by_username("rfa.manager@example.test")
+    assert manager is not None
+    stale = replace(
+        manager,
+        permissions=frozenset({Permission.PRODUCT_PUBLISH, Permission.PRODUCT_DISSEMINATE}),
+    )
+    state_store.save("users", {"users": [encode_value(stale)]})
+
+    restored = SeedUserRepository(settings, password_hasher, state_store)
+
+    refreshed = restored.get_by_username("rfa.manager@example.test")
+    assert refreshed is not None
+    assert refreshed.permissions == permissions_for_roles(refreshed.roles)
+    assert Permission.PRODUCT_APPROVE in refreshed.permissions
+    # The revoked release permissions do not survive the restore.
+    assert Permission.PRODUCT_DISSEMINATE not in refreshed.permissions
 
 
 def test_session_is_revoked_when_its_user_disappears() -> None:

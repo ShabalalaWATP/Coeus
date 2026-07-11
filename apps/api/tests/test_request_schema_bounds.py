@@ -32,7 +32,7 @@ def test_analyst_assignment_work_package_items_are_bounded() -> None:
     with pytest.raises(ValidationError):
         AnalystAssignmentRequest.model_validate(
             {
-                "analystUserId": str(uuid4()),
+                "analystUserIds": [str(uuid4())],
                 "workPackages": ["x" * 181],
             }
         )

@@ -8,8 +8,8 @@ import { RequestJourney } from "./RequestJourney";
 test("maps workflow states onto journey stages with a safe fallback", () => {
   expect(stageIndexForState("DRAFT_INTAKE")).toBe(0);
   expect(stageIndexForState("RFI_NO_MATCH")).toBe(1);
-  expect(stageIndexForState("QC_REVIEW")).toBe(4);
-  expect(stageIndexForState("MANAGER_RELEASE")).toBe(5);
+  expect(stageIndexForState("MANAGER_APPROVAL")).toBe(4);
+  expect(stageIndexForState("QC_REVIEW")).toBe(5);
   expect(stageIndexForState("CLOSED_DELIVERED")).toBe(6);
   expect(stageIndexForState("CANCELLED")).toBe(0);
 });
@@ -22,9 +22,9 @@ test("marks the delivered stage for confirmed deliveries", () => {
 
 test("marks the current stage and closes on escape", async () => {
   const onClose = vi.fn();
-  render(<RequestJourney onClose={onClose} state="ROUTE_ASSESSMENT" />);
+  render(<RequestJourney onClose={onClose} state="JIOC_REVIEW" />);
 
-  const current = screen.getByText("Route review").closest("li");
+  const current = screen.getByText("JIOC route review").closest("li");
   expect(current).toHaveClass("journey-step--current");
   expect(screen.getByText("You are here")).toBeVisible();
   expect(screen.getByText("Describe the need").closest("li")).toHaveClass("journey-step--done");

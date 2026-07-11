@@ -105,9 +105,8 @@ export type RoutingTicket = {
 };
 
 type RoutingStats = {
-  routeAssessmentCount: number;
-  rfaReviewCount: number;
-  cmReviewCount: number;
+  jiocQueueCount: number;
+  collectChoiceCount: number;
   clarificationCount: number;
   analystAssignmentCount: number;
   rfaAcceptanceRate: number;
@@ -120,13 +119,16 @@ export type RoutingQueue = {
   nextCursor?: string | null;
 };
 
+export type RoutingQueueKind = RoutingRoute | "jioc";
+
 export async function listRoutingQueue(
-  route: RoutingRoute,
+  queue: RoutingQueueKind,
   cursor?: string,
 ): Promise<RoutingQueue> {
-  const path = route === "rfa" ? "/api/v1/routing/rfa/queue" : "/api/v1/routing/cm/queue";
   const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
-  return apiRequestJson<RoutingQueue>(`${path}${query}`, { method: "GET" });
+  return apiRequestJson<RoutingQueue>(`/api/v1/routing/${queue}/queue${query}`, {
+    method: "GET",
+  });
 }
 
 export async function listCapabilityCatalogue(): Promise<CapabilityCatalogue> {
@@ -135,19 +137,27 @@ export async function listCapabilityCatalogue(): Promise<CapabilityCatalogue> {
   });
 }
 
-export async function listReleaseQueue(route: RoutingRoute): Promise<RoutingQueue> {
-  return apiRequestJson<RoutingQueue>(`/api/v1/routing/${route}/release-queue`, {
-    method: "GET",
-  });
-}
-
-export async function releaseProduct(
+export async function approveManagerWork(
   ticketId: string,
-  route: RoutingRoute,
   csrfToken: string,
 ): Promise<RoutingTicket> {
-  return apiRequestJson<RoutingTicket>(`/api/v1/routing/${pathSegment(ticketId)}/release`, {
-    body: JSON.stringify({ route }),
+  return apiRequestJson<RoutingTicket>(
+    `/api/v1/routing/${pathSegment(ticketId)}/manager-approval`,
+    {
+      headers: { "X-CSRF-Token": csrfToken },
+      method: "POST",
+    },
+  );
+}
+
+export async function returnWorkForRework(
+  ticketId: string,
+  route: RoutingRoute,
+  reason: string,
+  csrfToken: string,
+): Promise<RoutingTicket> {
+  return apiRequestJson<RoutingTicket>(`/api/v1/routing/${pathSegment(ticketId)}/manager-rework`, {
+    body: JSON.stringify({ route, reason }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
   });

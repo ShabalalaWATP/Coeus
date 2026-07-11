@@ -39,11 +39,13 @@ PRODUCT_TEAM_PERMISSIONS = SELF_SERVICE | frozenset(
     }
 )
 
-MANAGER_RELEASE_PERMISSIONS = frozenset(
+# Team managers lead their team: they approve analyst work and manage the
+# team roster and calendar.
+MANAGER_TEAM_LEAD_PERMISSIONS = frozenset(
     {
-        Permission.PRODUCT_CREATE_EXISTING,
-        Permission.PRODUCT_PUBLISH,
-        Permission.PRODUCT_DISSEMINATE,
+        Permission.PRODUCT_APPROVE,
+        Permission.TEAM_MANAGE,
+        Permission.ANALYTICS_VIEW_TEAM,
     }
 )
 
@@ -74,17 +76,31 @@ ROLE_DEFINITIONS: dict[RoleName, RoleDefinition] = {
         default_route="/app/requests",
         permissions=CUSTOMER_PERMISSIONS,
     ),
+    RoleName.JIOC_TEAM_MEMBER: RoleDefinition(
+        name=RoleName.JIOC_TEAM_MEMBER,
+        default_route="/jioc/queue",
+        permissions=SELF_SERVICE
+        | frozenset(
+            {
+                Permission.JIOC_REVIEW,
+                Permission.TICKET_ADD_COMMENT,
+                Permission.ANALYTICS_VIEW_TEAM,
+            }
+        ),
+    ),
     RoleName.RFA_MANAGER: RoleDefinition(
         name=RoleName.RFA_MANAGER,
         default_route="/rfa/queue",
         permissions=PRODUCT_TEAM_PERMISSIONS
-        | MANAGER_RELEASE_PERMISSIONS
+        | MANAGER_TEAM_LEAD_PERMISSIONS
         | frozenset(
             {
                 Permission.RFA_REVIEW,
                 Permission.RFA_ASSIGN,
                 Permission.RFA_ADD_PRODUCT,
-                Permission.ANALYTICS_VIEW_TEAM,
+                # Store uploads of existing team products; the release powers
+                # (publish, disseminate) belong to Quality Control.
+                Permission.PRODUCT_CREATE_EXISTING,
             }
         ),
     ),
@@ -97,13 +113,15 @@ ROLE_DEFINITIONS: dict[RoleName, RoleDefinition] = {
         name=RoleName.COLLECTION_MANAGER,
         default_route="/collection/queue",
         permissions=PRODUCT_TEAM_PERMISSIONS
-        | MANAGER_RELEASE_PERMISSIONS
+        | MANAGER_TEAM_LEAD_PERMISSIONS
         | frozenset(
             {
                 Permission.COLLECTION_REVIEW,
                 Permission.COLLECTION_ASSIGN,
                 Permission.COLLECTION_ADD_PRODUCT,
-                Permission.ANALYTICS_VIEW_TEAM,
+                # Store uploads of existing team products; the release powers
+                # (publish, disseminate) belong to Quality Control.
+                Permission.PRODUCT_CREATE_EXISTING,
             }
         ),
     ),
@@ -133,6 +151,7 @@ ROLE_DEFINITIONS: dict[RoleName, RoleDefinition] = {
                 Permission.QC_APPROVE,
                 Permission.QC_REJECT,
                 Permission.PRODUCT_CREATE_FROM_QC,
+                Permission.PRODUCT_CREATE_EXISTING,
                 Permission.PRODUCT_PUBLISH,
                 Permission.PRODUCT_DISSEMINATE,
                 Permission.FEEDBACK_READ,

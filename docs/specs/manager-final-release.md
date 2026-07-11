@@ -1,5 +1,10 @@
 # Manager Final Release and Customer Notification
 
+> **Superseded (2026-07-11).** Quality Control now performs the final release
+> at QC approval; the manager release step and its endpoints were retired.
+> See `docs/specs/jioc-workflow-restructure.md` and ADR 0022. Kept for
+> history.
+
 ## Goal
 
 Uploading intelligence products and releasing analyst work are manager

@@ -18,30 +18,30 @@ state change.
 ```mermaid
 stateDiagram-v2
     [*] --> DRAFT_INTAKE: start a chat
-    DRAFT_INTAKE --> RFI_SEARCHING: submit (7 of 7 captured)
+    DRAFT_INTAKE --> RFI_SEARCHING: submit (required fields captured)
     RFI_SEARCHING --> RFI_MATCH_OFFERED: existing products found
     RFI_SEARCHING --> RFI_NO_MATCH: nothing suitable found
 
     RFI_MATCH_OFFERED --> CLOSED_EXISTING_PRODUCT_ACCEPTED: accept an offer
-    RFI_MATCH_OFFERED --> ROUTE_ASSESSMENT: reject all offers
+    RFI_MATCH_OFFERED --> JIOC_REVIEW: reject all offers
 
-    RFI_NO_MATCH --> ROUTE_ASSESSMENT: task as new request (yes)
+    RFI_NO_MATCH --> JIOC_REVIEW: task as new request (yes)
     RFI_NO_MATCH --> CANCELLED: decline (no)
 
-    ROUTE_ASSESSMENT --> RFA_MANAGER_REVIEW: assessment route
-    ROUTE_ASSESSMENT --> CM_MANAGER_REVIEW: collection route
-    RFA_MANAGER_REVIEW --> ANALYST_ASSIGNMENT: approve
-    CM_MANAGER_REVIEW --> ANALYST_ASSIGNMENT: approve
-    RFA_MANAGER_REVIEW --> INFO_REQUIRED: request clarification
-    CM_MANAGER_REVIEW --> INFO_REQUIRED: request clarification
+    JIOC_REVIEW --> ANALYST_ASSIGNMENT: JIOC routes to RFA
+    JIOC_REVIEW --> COLLECT_CHOICE: JIOC routes to CM
+    JIOC_REVIEW --> INFO_REQUIRED: request clarification
+    COLLECT_CHOICE --> ANALYST_ASSIGNMENT: customer picks raw or analysed
 
-    ANALYST_ASSIGNMENT --> ANALYST_IN_PROGRESS: analyst assigned
-    ANALYST_IN_PROGRESS --> QC_REVIEW: submit to QC
-    QC_REVIEW --> MANAGER_RELEASE: QC approves
+    ANALYST_ASSIGNMENT --> ANALYST_IN_PROGRESS: analysts assigned (1 to 5)
+    ANALYST_IN_PROGRESS --> MANAGER_APPROVAL: submit to team manager
+    MANAGER_APPROVAL --> ANALYST_IN_PROGRESS: manager returns for rework
+    MANAGER_APPROVAL --> QC_REVIEW: manager approves
     QC_REVIEW --> REWORK_REQUIRED: QC rejects
-    REWORK_REQUIRED --> ANALYST_IN_PROGRESS: rework
+    REWORK_REQUIRED --> QC_REVIEW: analyst resubmits
+    QC_REVIEW --> DISSEMINATION_READY: QC approves and releases
+    QC_REVIEW --> ANALYST_ASSIGNMENT: analysed collect forwarded to RFA
 
-    MANAGER_RELEASE --> DISSEMINATION_READY: manager releases
     DISSEMINATION_READY --> CLOSED_DELIVERED: customer confirms receipt
     CLOSED_DELIVERED --> [*]
 
@@ -49,10 +49,14 @@ stateDiagram-v2
     CANCELLED --> [*]
 ```
 
-Two recently added stops are worth calling out: **RFI_NO_MATCH** gives the
-customer an explicit yes/no decision ("no existing product matches, task this as
-a new request?") instead of silently raising new work, and **CLOSED_DELIVERED**
-lets the customer confirm receipt so a delivered request can actually close.
+Stops worth calling out: **RFI_NO_MATCH** gives the customer an explicit yes/no
+decision instead of silently raising new work; **JIOC_REVIEW** puts a JIOC team
+member (not the capability agents) in charge of the collection-or-assessment
+decision; **COLLECT_CHOICE** asks the customer whether a collect should be
+delivered raw or followed by an RFA analysis; **MANAGER_APPROVAL** has the team
+manager review the analysts' work before Quality Control; and QC approval now
+performs the final release itself (for an analysed collect it instead forwards
+the ticket to RFA assignment with the collect product linked).
 
 ---
 
@@ -67,25 +71,32 @@ sequenceDiagram
     actor C as Customer
     participant CB as Chatbot agent
     participant RFI as RFI search agent
-    actor M as RFA / CM manager
+    actor J as JIOC team member
     participant CAP as Capability + orchestrator agents
-    actor A as Analyst
+    actor M as RFA / CM manager
+    actor A as Analysts (1 to 5)
     actor Q as QC manager
 
     C->>CB: describe the need in chat
-    CB-->>C: extract 7 fields, flag gaps, refuse injections
+    CB-->>C: extract the required fields, flag gaps, refuse injections
     C->>RFI: submit the requirement
     RFI-->>C: ranked existing-product offers (hybrid search)
     alt an offer fits
         C->>C: accept -> request closed against existing product
     else nothing fits
-        C->>C: confirm "task as new request"
-        C->>M: request enters the manager queue
-        CAP-->>M: RFA/CM feasibility + recommended route
-        M->>A: approve route, assign analyst (human decision)
-        A->>Q: produce draft, submit to QC
-        Q->>M: approve with ACGs (or reject for rework)
-        M->>C: release product, notify customer
+        C->>J: confirm "task as new request" -> JIOC queue
+        CAP-->>J: RFA/CM feasibility + recommended route
+        J->>M: decide collection or assessment (human decision)
+        opt collection route
+            C->>C: choose raw collect or collect plus analysis
+        end
+        M->>A: assign one to five analysts
+        A->>M: produce draft, submit for manager approval
+        M->>Q: approve (or return for rework)
+        Q->>C: approve with ACGs -> release product, notify customer
+        opt analysed collect
+            Q->>M: forward collect to RFA assignment instead of releasing
+        end
         C->>C: confirm receipt -> request closed, delivered
     end
 ```

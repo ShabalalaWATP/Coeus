@@ -3,7 +3,7 @@ from uuid import UUID
 
 from coeus.domain.auth import UserAccount
 from coeus.domain.enums import TicketState
-from coeus.domain.tickets import RoutingRoute, TicketRecord
+from coeus.domain.tickets import AnalystAssignment, RoutingRoute, TicketRecord
 from coeus.services.analyst_records import (
     assignment_record,
     default_work_package_titles,
@@ -38,16 +38,28 @@ def suggested_team_name(ticket: TicketRecord, route: RoutingRoute) -> str | None
     return None
 
 
-def assignment_summary(username: str, team_name: str | None) -> str:
+def assignment_summary(usernames: tuple[str, ...], team_name: str | None) -> str:
+    names = ", ".join(usernames)
     if team_name:
-        return f"{username} assigned via {team_name}."
-    return username
+        return f"{names} assigned via {team_name}."
+    return names
+
+
+def deactivate_route_assignments(
+    assignments: tuple[AnalystAssignment, ...], route: RoutingRoute
+) -> tuple[AnalystAssignment, ...]:
+    return tuple(
+        replace(assignment, active=False)
+        if assignment.active and assignment.route == route
+        else assignment
+        for assignment in assignments
+    )
 
 
 def assignment_change(
     ticket: TicketRecord,
     actor: UserAccount,
-    analyst: UserAccount,
+    analysts: tuple[UserAccount, ...],
     route: RoutingRoute,
     work_package_titles: tuple[str, ...],
     team_name: str | None,
@@ -57,16 +69,24 @@ def assignment_change(
     titles = normalise_titles(work_package_titles) or default_work_package_titles(ticket, route)
     assignment_team = normalise_team_name(team_name) or suggested_team_name(ticket, route)
     event_type = "analyst_reassigned" if reassignment else "analyst_assigned"
-    assignment = assignment_record(
-        ticket.ticket_id, analyst.user_id, actor.user_id, route, assignment_team
+    existing = (
+        deactivate_route_assignments(ticket.analyst_assignments, route)
+        if reassignment
+        else ticket.analyst_assignments
+    )
+    new_assignments = tuple(
+        assignment_record(ticket.ticket_id, analyst.user_id, actor.user_id, route, assignment_team)
+        for analyst in analysts
     )
     packages = () if reassignment else work_package_records(ticket.ticket_id, titles)
-    metadata = assignment_metadata(ticket.ticket_id, analyst.user_id, assignment_team)
+    metadata = assignment_metadata(
+        ticket.ticket_id, tuple(analyst.user_id for analyst in analysts), assignment_team
+    )
     return AssignmentChange(
         ticket=replace(
             ticket,
             state=TicketState.ANALYST_IN_PROGRESS,
-            analyst_assignments=(*ticket.analyst_assignments, assignment),
+            analyst_assignments=(*existing, *new_assignments),
             work_packages=(*ticket.work_packages, *packages),
             timeline=(
                 *ticket.timeline,
@@ -74,7 +94,9 @@ def assignment_change(
                     ticket.ticket_id,
                     actor.user_id,
                     event_type,
-                    assignment_summary(analyst.username, assignment_team),
+                    assignment_summary(
+                        tuple(analyst.username for analyst in analysts), assignment_team
+                    ),
                 ),
             ),
         ),
@@ -84,11 +106,11 @@ def assignment_change(
 
 
 def assignment_metadata(
-    ticket_id: UUID, analyst_user_id: UUID, team_name: str | None
+    ticket_id: UUID, analyst_user_ids: tuple[UUID, ...], team_name: str | None
 ) -> dict[str, str]:
     metadata = {
         "ticket_id": str(ticket_id),
-        "analyst_user_id": str(analyst_user_id),
+        "analyst_user_ids": ",".join(str(user_id) for user_id in analyst_user_ids),
     }
     if team_name:
         metadata["team_name"] = team_name

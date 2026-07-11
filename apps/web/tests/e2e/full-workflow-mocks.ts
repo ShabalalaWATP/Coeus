@@ -39,11 +39,11 @@ export async function installApiMocks(page: Page, flow: FlowState) {
       flow.stage = "route";
       return json(route, ticket(flow, "RFI_SEARCHING"));
     }
-    if (method === "GET" && path === "/routing/rfa/queue") {
-      return json(route, routingQueue(flow, "queue"));
+    if (method === "GET" && path === "/routing/jioc/queue") {
+      return json(route, routingQueue(flow, "jioc"));
     }
-    if (method === "GET" && path === "/routing/rfa/release-queue") {
-      return json(route, routingQueue(flow, "release"));
+    if (method === "GET" && path === "/routing/rfa/queue") {
+      return json(route, routingQueue(flow, "team"));
     }
     if (method === "POST" && path === "/routing/ticket-e2e/run") {
       flow.stage = "review";
@@ -52,6 +52,10 @@ export async function installApiMocks(page: Page, flow: FlowState) {
     if (method === "POST" && path === "/routing/ticket-e2e/approve") {
       flow.stage = "assignment";
       return json(route, routingTicket(flow));
+    }
+    if (method === "POST" && path === "/routing/ticket-e2e/manager-approval") {
+      flow.stage = "qc";
+      return json(route, routingTicket(flow, "QC_REVIEW"));
     }
     if (method === "GET" && path === "/analyst/candidates") {
       return json(route, {
@@ -65,6 +69,10 @@ export async function installApiMocks(page: Page, flow: FlowState) {
     if (method === "GET" && path === "/analyst/tasks") {
       return json(route, { tasks: flow.stage === "analyst" ? [analystTask(flow)] : [] });
     }
+    if (method === "POST" && path === "/analyst/tasks/ticket-e2e/submit") {
+      flow.stage = "approval";
+      return json(route, analystTask(flow, "MANAGER_APPROVAL"));
+    }
     if (method === "PATCH" && path.includes("/work-packages/package-1")) {
       flow.workPackageDone = true;
       return json(route, analystTask(flow));
@@ -73,20 +81,14 @@ export async function installApiMocks(page: Page, flow: FlowState) {
       flow.draftSaved = true;
       return json(route, analystTask(flow));
     }
-    if (method === "POST" && path === "/analyst/tasks/ticket-e2e/submit-qc") {
-      flow.stage = "qc";
-      return json(route, analystTask(flow, "QC_REVIEW"));
-    }
     if (method === "GET" && path === "/qc/queue")
       return json(route, { products: [qcProduct(flow)] });
     if (method === "GET" && path === "/acgs") return json(route, { acgs: [acg] });
     if (method === "POST" && path === "/qc/products/ticket-e2e/approve") {
+      // QC approval performs the final release to the customer.
       flow.stage = "release";
-      return json(route, qcProduct(flow));
-    }
-    if (method === "POST" && path === "/routing/ticket-e2e/release") {
       flow.released = true;
-      return json(route, routingTicket(flow, "DISSEMINATION_READY"));
+      return json(route, qcProduct(flow));
     }
     return json(route, {});
   });

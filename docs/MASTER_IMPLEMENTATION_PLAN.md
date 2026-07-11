@@ -6,7 +6,10 @@ the concise delivery tracker and must stay within the repository line limit.
 
 ## Current Stage
 
-Sprint 14B: Post-seal security remediation and release closure.
+Sprint 15: JIOC workflow restructure delivered (roles, JIOC routing, collect
+choice, manager approval, QC-owned release, CM-to-RFA leg, multi-analyst,
+teams/profiles/calendars). Sprint 14B security remediation closure continues
+in parallel.
 
 ## Delivery Ledger
 
@@ -26,7 +29,8 @@ Sprint 14B: Post-seal security remediation and release closure.
 | 12 | Inactive future GCP migration reference: Terraform, Cloud Run, Cloud SQL, Cloud Storage, Secret Manager, Pub/Sub, Artifact Registry and AI provider configuration. | Reference complete, inactive | Reference validation passed on 2026-07-05; no live GCP runtime is supported or required. |
 | 13 | Security hardening, container scans, SBOM, DAST, Terraform scanning, prompt-injection suite and air-gapped notes. | Complete | Local backend, frontend, Semgrep, Checkov and Gitleaks gates passed on 2026-07-05; Docker-backed checks run in GitHub Actions. |
 | 14 | Close the original 2026-07-10 security findings and improve SOLID boundaries, maintainability, independent coverage gates and real integration testing. | Reopened by sealed scan | The implementation gates passed, but the sealed scan of `72a0dc58` reported 16 new reportable findings. |
-| 14B | Remediate the sealed 16-finding baseline, verify equivalent sinks and produce a clean immutable release candidate. | In progress | Three medium and thirteen low findings are open. Fresh-scan closure is release-blocking. |
+| 14B | Remediate the sealed 16-finding baseline, verification findings and quality debt, then produce a clean immutable release candidate. | In progress | The original 16 are closed at `7165e49e`. Verification scan `a089e83c` found three Low/P3 findings; their post-scan fixes await full gates and a final seal. |
+| 15 | JIOC workflow restructure: role renames plus JIOC Team Member, JIOC routing queue, customer collect choice, manager approval chain, QC-owned release with the CM-to-RFA analysed-collect leg, multi-analyst assignment, teams/profiles/availability calendars, and the permission-refresh-on-restore fix. | Complete | Backend and web suites green at the 95% gates on 2026-07-11; contracts, line-limit, lint and format clean; all four phases verified live in the browser. See ADR 0022 and `docs/specs/jioc-workflow-restructure.md`. |
 
 ## Sprint 11 Delivered Scope
 
@@ -129,10 +133,18 @@ claim. Its reportable baseline is:
   unpaginated ticket and routing collections, audit pagination loss and a
   false-green ZAP gate.
 
-Completion requires fixed-boundary regressions, full local gates and a fresh
-sealed scan of a clean revision. The current uncommitted intake and
-prioritisation work is not covered by the sealed `72a0dc58` result and must be
-integrated and scanned explicitly or excluded from the release candidate.
+Revision `7165e49e` integrated the feature slice, passed the full local gates
+and closed all 16 baseline findings. The sealed verification scan
+`a089e83c-afc7-4213-8763-4a5e5759598d` then found three Low/P3 issues:
+
+- chat and intake saves were not failure-atomic with central audit append;
+- an offloaded RFI worker could overwrite a newer authorised ticket update.
+
+The current fix uses a repository-locked save-plus-confirmation boundary,
+optimistic ticket snapshot compare-and-swap, conditional rollback, cursor-based
+compact request summaries and an explicit browser-dictation privacy notice.
+Completion still requires full local gates and a zero-finding sealed scan of a
+clean post-fix revision.
 
 ## Sprint 13 Delivered Scope
 

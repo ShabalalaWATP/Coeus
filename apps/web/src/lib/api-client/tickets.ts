@@ -94,6 +94,7 @@ export type Ticket = {
   intake: IntakeDetails;
   intakeChecklist: IntakeChecklistItem[];
   conversationStatus: ConversationStatus;
+  collectDisposition: "raw" | "analysed" | null;
   isReadyForSubmission: boolean;
   visibleProductMatches: string[];
   releasedProductIds: string[];
@@ -107,7 +108,7 @@ export type Ticket = {
   updatedAt: string;
 };
 
-type TicketSummary = {
+export type TicketSummary = {
   id: string;
   reference: string;
   requesterUserId: string;
@@ -127,14 +128,13 @@ export type TicketState =
   | "RFI_SEARCHING"
   | "RFI_MATCH_OFFERED"
   | "RFI_NO_MATCH"
-  | "ROUTE_ASSESSMENT"
-  | "RFA_MANAGER_REVIEW"
-  | "CM_MANAGER_REVIEW"
+  | "JIOC_REVIEW"
+  | "COLLECT_CHOICE"
   | "ANALYST_ASSIGNMENT"
   | "ANALYST_IN_PROGRESS"
   | "QC_REVIEW"
   | "REWORK_REQUIRED"
-  | "MANAGER_RELEASE"
+  | "MANAGER_APPROVAL"
   | "DISSEMINATION_READY"
   | "CLOSED_DELIVERED"
   | "CLOSED_EXISTING_PRODUCT_ACCEPTED"
@@ -169,17 +169,23 @@ export type AttachmentMetadataInput = {
   sourceType: string;
 };
 
-export async function listTickets(): Promise<Ticket[]> {
+export type TicketSummaryPage = {
+  tickets: TicketSummary[];
+  nextCursor: string | null;
+};
+
+export async function listTickets(cursor?: string): Promise<TicketSummaryPage> {
+  const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
   const response = await apiRequestJson<{ tickets: TicketSummary[]; nextCursor: string | null }>(
-    "/api/v1/tickets",
+    `/api/v1/tickets${query}`,
     {
       method: "GET",
     },
   );
-  return Promise.all(response.tickets.map((ticket) => getTicket(ticket.id)));
+  return response;
 }
 
-async function getTicket(ticketId: string): Promise<Ticket> {
+export async function getTicket(ticketId: string): Promise<Ticket> {
   const response = await apiRequestJson<Ticket | { tickets: Ticket[] }>(
     `/api/v1/tickets/${pathSegment(ticketId)}`,
     {
@@ -192,6 +198,9 @@ async function getTicket(ticketId: string): Promise<Ticket> {
       throw new Error("Ticket detail response did not contain the requested ticket.");
     }
     return ticket;
+  }
+  if (response.id !== ticketId) {
+    throw new Error("Ticket detail response did not match the requested ticket.");
   }
   return response;
 }
@@ -257,6 +266,18 @@ export async function consentNoMatch(
 ): Promise<Ticket> {
   return apiRequestJson<Ticket>(`/api/v1/tickets/${pathSegment(ticketId)}/no-match-consent`, {
     body: JSON.stringify({ taskAsNewRequest }),
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+    method: "POST",
+  });
+}
+
+export async function chooseCollectOption(
+  ticketId: string,
+  analysed: boolean,
+  csrfToken: string,
+): Promise<Ticket> {
+  return apiRequestJson<Ticket>(`/api/v1/tickets/${pathSegment(ticketId)}/collect-choice`, {
+    body: JSON.stringify({ analysed }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
   });

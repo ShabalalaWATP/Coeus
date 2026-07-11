@@ -1,18 +1,14 @@
+from dataclasses import replace
 from uuid import uuid4
 
 import pytest
 
 from coeus.core.errors import AppError
 from coeus.domain.enums import TicketState
-from coeus.domain.tickets import IntakeDetails, RoutingRoute, TicketRecord
+from coeus.domain.tickets import IntakeDetails, TicketRecord
 from coeus.services.capability_catalogue import CapabilityCatalogue
 from coeus.services.routing_agents import CmCapabilityAgent, RfaCapabilityAgent
-from coeus.services.routing_records import (
-    current_queue_permission,
-    ensure_manager_state,
-    fallback_state,
-    latest_recommendation,
-)
+from coeus.services.routing_records import ensure_jioc_state, latest_recommendation
 
 
 def _ticket(intake: IntakeDetails) -> TicketRecord:
@@ -20,7 +16,7 @@ def _ticket(intake: IntakeDetails) -> TicketRecord:
         ticket_id=uuid4(),
         reference="RFI-TEST-0001",
         requester_user_id=uuid4(),
-        state=TicketState.ROUTE_ASSESSMENT,
+        state=TicketState.JIOC_REVIEW,
         intake=intake,
     )
 
@@ -134,14 +130,9 @@ def test_terms_match_through_punctuation_and_plurals() -> None:
 
 def test_routing_record_guards_reject_missing_or_wrong_queue_state() -> None:
     ticket = _ticket(_complete_intake())
-    cm_review = _cm_agent().review(
-        _ticket(_complete_intake(description="Monitor the mock area daily."))
-    )
+    drafted = replace(ticket, state=TicketState.DRAFT_INTAKE)
 
     with pytest.raises(AppError, match="Run capability reviews first"):
         latest_recommendation(ticket)
-    assert fallback_state(RoutingRoute.RFA, cm_review) == TicketState.CM_MANAGER_REVIEW
-    with pytest.raises(AppError, match="not in manager review"):
-        current_queue_permission(ticket)
-    with pytest.raises(AppError, match="not in that manager queue"):
-        ensure_manager_state(ticket, RoutingRoute.RFA)
+    with pytest.raises(AppError, match="not awaiting a JIOC decision"):
+        ensure_jioc_state(drafted)

@@ -79,9 +79,8 @@ def priority_assessment_response(ticket: TicketRecord) -> PriorityAssessmentResp
 
 def stats_response(stats: RoutingStats) -> RoutingStatsResponse:
     return RoutingStatsResponse(
-        route_assessment_count=stats.route_assessment_count,
-        rfa_review_count=stats.rfa_review_count,
-        cm_review_count=stats.cm_review_count,
+        jioc_queue_count=stats.jioc_queue_count,
+        collect_choice_count=stats.collect_choice_count,
         clarification_count=stats.clarification_count,
         analyst_assignment_count=stats.analyst_assignment_count,
         rfa_acceptance_rate=stats.rfa_acceptance_rate,

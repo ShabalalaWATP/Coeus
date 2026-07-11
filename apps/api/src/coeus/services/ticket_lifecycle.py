@@ -48,14 +48,12 @@ class TicketLifecycleService:
             raise AppError(
                 409, "invalid_ticket_state", "This request is not awaiting no-match consent."
             )
-        target_state = (
-            TicketState.ROUTE_ASSESSMENT if task_as_new_request else TicketState.CANCELLED
-        )
+        target_state = TicketState.JIOC_REVIEW if task_as_new_request else TicketState.CANCELLED
         if not can_transition(ticket.state, target_state):
             raise AppError(409, "invalid_ticket_state", "This request cannot be updated.")
         event_type = "tasking_confirmed" if task_as_new_request else "tasking_declined"
         body = (
-            "Requester confirmed tasking as a new request."
+            "Requester confirmed tasking; queued for JIOC route review."
             if task_as_new_request
             else "customer declined tasking after no-match"
         )
@@ -74,6 +72,37 @@ class TicketLifecycleService:
             "no_match_tasking_confirmed" if task_as_new_request else "no_match_tasking_declined",
             actor,
         )
+        return updated
+
+    def collect_choice(self, actor: UserAccount, ticket_id: UUID, analysed: bool) -> TicketRecord:
+        """Record whether the requester wants raw collect or collect plus analysis."""
+        ticket = self._tickets.get_visible_ticket(actor, ticket_id)
+        if not is_owner(actor, ticket):
+            raise AppError(403, "forbidden", "Only the requester can choose the collect option.")
+        if ticket.state != TicketState.COLLECT_CHOICE or not can_transition(
+            ticket.state, TicketState.ANALYST_ASSIGNMENT
+        ):
+            raise AppError(
+                409, "invalid_ticket_state", "This request is not awaiting a collect choice."
+            )
+        disposition = "analysed" if analysed else "raw"
+        body = (
+            "Requester chose collect followed by RFA analysis."
+            if analysed
+            else "Requester chose the raw collect only."
+        )
+        updated = self._tickets.save_system_update(
+            replace(
+                ticket,
+                state=TicketState.ANALYST_ASSIGNMENT,
+                collect_disposition=disposition,
+                timeline=(
+                    *ticket.timeline,
+                    timeline(ticket.ticket_id, actor.user_id, "collect_choice_recorded", body),
+                ),
+            )
+        )
+        self._record_ticket_audit_or_rollback(ticket, f"collect_choice_{disposition}", actor)
         return updated
 
     def confirm_delivery(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:

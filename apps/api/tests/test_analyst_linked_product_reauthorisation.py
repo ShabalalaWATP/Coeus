@@ -62,7 +62,7 @@ async def test_every_task_response_reauthorises_linked_products() -> None:
         reassigned = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/assign",
             headers={"X-CSRF-Token": str(manager["csrfToken"])},
-            json={"analystUserId": str(replacement.user_id)},
+            json={"analystUserIds": [str(replacement.user_id)]},
         )
         assert manager_denied.status_code == 404
         _assert_product_hidden(reassigned, product_id)
@@ -95,7 +95,7 @@ async def test_every_task_response_reauthorises_linked_products() -> None:
                     json={"status": "complete"},
                 )
         submitted = await client.post(
-            f"/api/v1/analyst/tasks/{ticket_id}/submit-qc",
+            f"/api/v1/analyst/tasks/{ticket_id}/submit",
             headers={"X-CSRF-Token": str(replacement_session["csrfToken"])},
         )
 
@@ -195,26 +195,36 @@ async def _collection_assigned_ticket(client: AsyncClient, app: FastAPI) -> str:
             json={"taskAsNewRequest": True},
         )
     state = search.json().get("ticketState", search.json().get("state"))
-    assert state == "ROUTE_ASSESSMENT"
+    assert state == "JIOC_REVIEW"
 
-    manager = await login(client, "collection.manager@example.test")
-    manager_csrf = str(manager["csrfToken"])
+    jioc = await login(client, "jioc.team@example.test")
+    jioc_csrf = str(jioc["csrfToken"])
     routed = await client.post(
-        f"/api/v1/routing/{ticket_id}/run", headers={"X-CSRF-Token": manager_csrf}
+        f"/api/v1/routing/{ticket_id}/run", headers={"X-CSRF-Token": jioc_csrf}
     )
     approved = await client.post(
         f"/api/v1/routing/{ticket_id}/approve",
-        headers={"X-CSRF-Token": manager_csrf},
+        headers={"X-CSRF-Token": jioc_csrf},
         json={"route": "cm"},
     )
     assert routed.status_code == 200
-    assert approved.json()["state"] == "ANALYST_ASSIGNMENT"
+    assert approved.json()["state"] == "COLLECT_CHOICE"
+    user = await login(client, "user@example.test")
+    chosen = await client.post(
+        f"/api/v1/tickets/{ticket_id}/collect-choice",
+        headers={"X-CSRF-Token": str(user["csrfToken"])},
+        json={"analysed": False},
+    )
+    assert chosen.status_code == 200
+    assert chosen.json()["state"] == "ANALYST_ASSIGNMENT"
+    manager = await login(client, "collection.manager@example.test")
+    manager_csrf = str(manager["csrfToken"])
     analyst = app.state.access_services.repository.get_user_by_username("analyst@example.test")
     assert analyst is not None
     assigned = await client.post(
         f"/api/v1/analyst/tasks/{ticket_id}/assign",
         headers={"X-CSRF-Token": manager_csrf},
-        json={"analystUserId": str(analyst.user_id)},
+        json={"analystUserIds": [str(analyst.user_id)]},
     )
     assert assigned.status_code == 200
     return ticket_id

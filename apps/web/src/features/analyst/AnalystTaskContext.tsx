@@ -18,7 +18,7 @@ export function AnalystTaskContext({ task }: { task: AnalystTask }) {
         </div>
         <div>
           <dt>Team</dt>
-          <dd>{task.assignment?.teamName ?? "Not assigned"}</dd>
+          <dd>{task.assignments[0]?.teamName ?? "Not assigned"}</dd>
         </div>
       </dl>
       <p>{task.description}</p>

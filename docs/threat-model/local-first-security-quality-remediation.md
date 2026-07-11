@@ -2,8 +2,9 @@
 
 ## Status
 
-Reopened for Sprint 14B. The sealed scan of revision `72a0dc58` reported 16
-findings that must be remediated before release closure.
+Reopened for Sprint 14B. The original 16 findings are closed at `7165e49e`.
+Verification scan `a089e83c` reported three Low/P3 integrity findings whose
+post-scan fixes require a final immutable verification scan.
 
 ## Scope
 
@@ -47,6 +48,10 @@ changed by the remediation milestone.
 | Anonymous readiness traffic fans out database connections. | Coalesce checks or use a small shared semaphore and dedicated timeout; restrict ingress. |
 | Audit event churn hides older evidence from the shipped UI. | Preserve cursors, expose older-event navigation and label page counts honestly. |
 | ZAP reports warnings while its required status remains green. | Remove warning suppression, maintain a reviewed rules file and test a blocking fixture. |
+| A ticket save succeeds but its required central audit append fails. | Hold the repository mutation behind a save-plus-confirmation boundary and restore the exact prior snapshot, including absence, before exposing failure. |
+| Long-running offloaded work saves or restores a stale aggregate. | Apply complete-record changes with atomic expected-snapshot compare-and-swap and conditionally roll back only the exact saved snapshot. |
+| Compact ticket listing causes detail fan-out or hides older requests. | Page compact summaries by cursor and fetch full detail only for the selected ticket. |
+| Browser dictation sends audio through an implementation-dependent provider. | Require an explicit user action and disclose possible remote browser processing before microphone use; synthetic data remains mandatory. |
 
 ## Validation Requirements
 
@@ -56,6 +61,8 @@ changed by the remediation milestone.
 - Run the complete backend, frontend and security gate set.
 - Seal a fresh repository-wide security scan at the final revision.
 - Re-run all 16 sealed finding PoCs and record equivalent-sink review.
+- Re-run the three verification-scan reproductions for exact audit rollback and
+  coordinated stale-write rejection.
 - Verify that current uncommitted feature work is either integrated into the
   scanned revision or explicitly excluded from the release candidate.
 

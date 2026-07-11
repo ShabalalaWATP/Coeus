@@ -1,0 +1,30 @@
+# Threat Model: Teams, Profiles and Calendars
+
+Scope: organisational teams, member profiles, team calendars and the
+availability service (`docs/specs/teams-profiles-calendars.md`).
+
+## Assets
+
+- Team rosters (who works where, who manages whom).
+- Personal profile data (title, specialisms, bio).
+- Calendar entries (leave and tasking patterns are sensitive in aggregate).
+- Live workload signals derived from analyst assignments.
+
+## Trust boundaries and controls
+
+| Threat | Control |
+| --- | --- |
+| Cross-team user enumeration | Teams and profiles are visible only to that team's managers and members (admins excepted); outsiders get 404, not 403, so membership is not confirmed |
+| Membership tampering | Roster changes require `team:manage` AND management of that specific team (object-level, not just role-level); targets must be active accounts; every change is audited with rollback on audit failure |
+| A member forges a teammate's availability | Members may only write their own entries; only the team's managers write for others; entries record `created_by_user_id` |
+| Profile impersonation or stored-text abuse | Profiles are self-edit only, with bounded lengths (title 120, specialisms 8x80, bio 1000) validated at the schema boundary; values render as text, never markup |
+| Calendar as a data sink | Dates must be ISO calendar dates, windows are bounded (62 days), notes capped at 280 characters |
+| Ticket content leaking through availability | The availability service reads a system ticket snapshot but only ever returns derived counts; no ticket fields cross the boundary |
+| CSRF on writes | All mutating endpoints require the CSRF header |
+
+## Residual risks
+
+- Aggregate availability counts reveal team workload levels to all team
+  members; accepted as the feature's purpose within a team boundary.
+- The calendar is app-local by design (no ICS/Outlook sync), so it can drift
+  from real-world availability; entries are self-reported.

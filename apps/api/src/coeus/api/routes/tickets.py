@@ -25,6 +25,7 @@ from coeus.schemas.tickets import (
     AttachmentMetadataRequest,
     ChatMessageRequest,
     CollaboratorAddRequest,
+    CollectChoiceRequest,
     DirectoryResponse,
     IntakeUpdateRequest,
     NoMatchConsentRequest,
@@ -207,6 +208,19 @@ async def no_match_consent(
 ) -> TicketResponse:
     return to_ticket_response(
         lifecycle.no_match_consent(authenticated.user, ticket_id, payload.task_as_new_request),
+        authenticated.user,
+    )
+
+
+@router.post("/tickets/{ticket_id}/collect-choice", response_model=TicketResponse)
+async def collect_choice(
+    ticket_id: UUID,
+    payload: CollectChoiceRequest,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    lifecycle: Annotated[TicketLifecycleService, Depends(get_ticket_lifecycle_service)],
+) -> TicketResponse:
+    return to_ticket_response(
+        lifecycle.collect_choice(authenticated.user, ticket_id, payload.analysed),
         authenticated.user,
     )
 

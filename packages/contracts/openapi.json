@@ -362,10 +362,15 @@
       },
       "AnalystAssignmentRequest": {
         "properties": {
-          "analystUserId": {
-            "format": "uuid",
-            "title": "Analystuserid",
-            "type": "string"
+          "analystUserIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Analystuserids",
+            "type": "array"
           },
           "teamName": {
             "anyOf": [
@@ -392,7 +397,7 @@
           }
         },
         "required": [
-          "analystUserId"
+          "analystUserIds"
         ],
         "title": "AnalystAssignmentRequest",
         "type": "object"
@@ -561,15 +566,12 @@
             ],
             "title": "Areaorregion"
           },
-          "assignment": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/AnalystAssignmentResponse"
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "assignments": {
+            "items": {
+              "$ref": "#/components/schemas/AnalystAssignmentResponse"
+            },
+            "title": "Assignments",
+            "type": "array"
           },
           "chatSummary": {
             "items": {
@@ -687,7 +689,7 @@
           "requiredOutputFormat",
           "chatSummary",
           "managerNotes",
-          "assignment",
+          "assignments",
           "workPackages",
           "notes",
           "linkedProducts",
@@ -972,6 +974,50 @@
         "title": "AuthSessionResponse",
         "type": "object"
       },
+      "AvailabilityResponse": {
+        "properties": {
+          "assignedLive": {
+            "title": "Assignedlive",
+            "type": "integer"
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "free": {
+            "title": "Free",
+            "type": "integer"
+          },
+          "members": {
+            "title": "Members",
+            "type": "integer"
+          },
+          "onLeave": {
+            "title": "Onleave",
+            "type": "integer"
+          },
+          "onTaskCalendar": {
+            "title": "Ontaskcalendar",
+            "type": "integer"
+          },
+          "teamId": {
+            "format": "uuid",
+            "title": "Teamid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "teamId",
+          "date",
+          "members",
+          "onLeave",
+          "onTaskCalendar",
+          "assignedLive",
+          "free"
+        ],
+        "title": "AvailabilityResponse",
+        "type": "object"
+      },
       "Body_upload_product_api_v1_store_products_upload_post": {
         "properties": {
           "asset": {
@@ -1032,6 +1078,104 @@
           "reason"
         ],
         "title": "BreakGlassProductAccessRequest",
+        "type": "object"
+      },
+      "CalendarEntryRequest": {
+        "properties": {
+          "date": {
+            "maxLength": 10,
+            "minLength": 10,
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "title": "Date",
+            "type": "string"
+          },
+          "note": {
+            "default": "",
+            "maxLength": 280,
+            "title": "Note",
+            "type": "string"
+          },
+          "status": {
+            "pattern": "^(available|on_task|leave)$",
+            "title": "Status",
+            "type": "string"
+          },
+          "userId": {
+            "format": "uuid",
+            "title": "Userid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "date",
+          "status"
+        ],
+        "title": "CalendarEntryRequest",
+        "type": "object"
+      },
+      "CalendarEntryResponse": {
+        "properties": {
+          "createdByUserId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdbyuserid"
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "userId": {
+            "format": "uuid",
+            "title": "Userid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "date",
+          "status",
+          "note",
+          "createdByUserId"
+        ],
+        "title": "CalendarEntryResponse",
+        "type": "object"
+      },
+      "CalendarResponse": {
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/CalendarEntryResponse"
+            },
+            "title": "Entries",
+            "type": "array"
+          }
+        },
+        "required": [
+          "entries"
+        ],
+        "title": "CalendarResponse",
         "type": "object"
       },
       "CandidateTeamResponse": {
@@ -1461,6 +1605,19 @@
           "createdAt"
         ],
         "title": "CollaboratorResponse",
+        "type": "object"
+      },
+      "CollectChoiceRequest": {
+        "properties": {
+          "analysed": {
+            "title": "Analysed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "analysed"
+        ],
+        "title": "CollectChoiceRequest",
         "type": "object"
       },
       "ComponentStatus": {
@@ -2842,6 +2999,72 @@
         "title": "ProductStatus",
         "type": "string"
       },
+      "ProfileResponse": {
+        "properties": {
+          "bio": {
+            "title": "Bio",
+            "type": "string"
+          },
+          "specialisms": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Specialisms",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          },
+          "userId": {
+            "format": "uuid",
+            "title": "Userid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "title",
+          "specialisms",
+          "bio",
+          "updatedAt"
+        ],
+        "title": "ProfileResponse",
+        "type": "object"
+      },
+      "ProfileUpdateRequest": {
+        "properties": {
+          "bio": {
+            "default": "",
+            "maxLength": 1000,
+            "title": "Bio",
+            "type": "string"
+          },
+          "specialisms": {
+            "items": {
+              "maxLength": 80,
+              "minLength": 2,
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Specialisms",
+            "type": "array"
+          },
+          "title": {
+            "default": "",
+            "maxLength": 120,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "title": "ProfileUpdateRequest",
+        "type": "object"
+      },
       "QcApprovalRequest": {
         "properties": {
           "acgIds": {
@@ -4033,27 +4256,22 @@
             "title": "Cmfallbackrate",
             "type": "number"
           },
-          "cmReviewCount": {
-            "title": "Cmreviewcount",
+          "collectChoiceCount": {
+            "title": "Collectchoicecount",
+            "type": "integer"
+          },
+          "jiocQueueCount": {
+            "title": "Jiocqueuecount",
             "type": "integer"
           },
           "rfaAcceptanceRate": {
             "title": "Rfaacceptancerate",
             "type": "number"
-          },
-          "rfaReviewCount": {
-            "title": "Rfareviewcount",
-            "type": "integer"
-          },
-          "routeAssessmentCount": {
-            "title": "Routeassessmentcount",
-            "type": "integer"
           }
         },
         "required": [
-          "routeAssessmentCount",
-          "rfaReviewCount",
-          "cmReviewCount",
+          "jiocQueueCount",
+          "collectChoiceCount",
           "clarificationCount",
           "analystAssignmentCount",
           "rfaAcceptanceRate",
@@ -4917,6 +5135,122 @@
         "title": "StoreSearchResponse",
         "type": "object"
       },
+      "TeamListResponse": {
+        "properties": {
+          "teams": {
+            "items": {
+              "$ref": "#/components/schemas/TeamResponse"
+            },
+            "title": "Teams",
+            "type": "array"
+          }
+        },
+        "required": [
+          "teams"
+        ],
+        "title": "TeamListResponse",
+        "type": "object"
+      },
+      "TeamMemberRequest": {
+        "properties": {
+          "userId": {
+            "format": "uuid",
+            "title": "Userid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId"
+        ],
+        "title": "TeamMemberRequest",
+        "type": "object"
+      },
+      "TeamMemberResponse": {
+        "properties": {
+          "displayName": {
+            "title": "Displayname",
+            "type": "string"
+          },
+          "isManager": {
+            "title": "Ismanager",
+            "type": "boolean"
+          },
+          "specialisms": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Specialisms",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "userId": {
+            "format": "uuid",
+            "title": "Userid",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "username",
+          "displayName",
+          "isManager",
+          "title",
+          "specialisms"
+        ],
+        "title": "TeamMemberResponse",
+        "type": "object"
+      },
+      "TeamResponse": {
+        "properties": {
+          "capabilityTeamId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilityteamid"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/TeamMemberResponse"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "capabilityTeamId",
+          "members"
+        ],
+        "title": "TeamResponse",
+        "type": "object"
+      },
       "TicketCancelRequest": {
         "properties": {
           "reason": {
@@ -4990,6 +5324,17 @@
             },
             "title": "Collaborators",
             "type": "array"
+          },
+          "collectDisposition": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collectdisposition"
           },
           "conversationStatus": {
             "title": "Conversationstatus",
@@ -5075,6 +5420,7 @@
           "intake",
           "intakeChecklist",
           "conversationStatus",
+          "collectDisposition",
           "isReadyForSubmission",
           "visibleProductMatches",
           "releasedProductIds",
@@ -6520,7 +6866,7 @@
     },
     "/api/v1/analyst/tasks/{ticket_id}/assign": {
       "post": {
-        "operationId": "assign_analyst_api_v1_analyst_tasks__ticket_id__assign_post",
+        "operationId": "assign_analysts_api_v1_analyst_tasks__ticket_id__assign_post",
         "parameters": [
           {
             "in": "path",
@@ -6581,7 +6927,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Assign Analyst",
+        "summary": "Assign Analysts",
         "tags": [
           "analyst"
         ]
@@ -6794,9 +7140,9 @@
         ]
       }
     },
-    "/api/v1/analyst/tasks/{ticket_id}/submit-qc": {
+    "/api/v1/analyst/tasks/{ticket_id}/submit": {
       "post": {
-        "operationId": "submit_to_qc_api_v1_analyst_tasks__ticket_id__submit_qc_post",
+        "operationId": "submit_work_api_v1_analyst_tasks__ticket_id__submit_post",
         "parameters": [
           {
             "in": "path",
@@ -6847,7 +7193,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Submit To Qc",
+        "summary": "Submit Work",
         "tags": [
           "analyst"
         ]
@@ -8109,6 +8455,62 @@
         ]
       }
     },
+    "/api/v1/routing/jioc/queue": {
+      "get": {
+        "operationId": "jioc_queue_api_v1_routing_jioc_queue_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Cursor",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 25,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutingQueueResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Jioc Queue",
+        "tags": [
+          "routing"
+        ]
+      }
+    },
     "/api/v1/routing/rfa/queue": {
       "get": {
         "operationId": "rfa_queue_api_v1_routing_rfa_queue_get",
@@ -8181,71 +8583,6 @@
           }
         },
         "summary": "Routing Stats",
-        "tags": [
-          "routing"
-        ]
-      }
-    },
-    "/api/v1/routing/{route}/release-queue": {
-      "get": {
-        "operationId": "release_queue_api_v1_routing__route__release_queue_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "route",
-            "required": true,
-            "schema": {
-              "title": "Route",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "cursor",
-            "required": false,
-            "schema": {
-              "default": 0,
-              "minimum": 0,
-              "title": "Cursor",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 25,
-              "maximum": 25,
-              "minimum": 1,
-              "title": "Limit",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RoutingQueueResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Release Queue",
         "tags": [
           "routing"
         ]
@@ -8432,6 +8769,134 @@
         ]
       }
     },
+    "/api/v1/routing/{ticket_id}/manager-approval": {
+      "post": {
+        "operationId": "manager_approve_work_api_v1_routing__ticket_id__manager_approval_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutingTicketResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Manager Approve Work",
+        "tags": [
+          "routing"
+        ]
+      }
+    },
+    "/api/v1/routing/{ticket_id}/manager-rework": {
+      "post": {
+        "operationId": "manager_return_for_rework_api_v1_routing__ticket_id__manager_rework_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RouteReasonRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutingTicketResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Manager Return For Rework",
+        "tags": [
+          "routing"
+        ]
+      }
+    },
     "/api/v1/routing/{ticket_id}/reject": {
       "post": {
         "operationId": "reject_route_api_v1_routing__ticket_id__reject_post",
@@ -8496,75 +8961,6 @@
           }
         },
         "summary": "Reject Route",
-        "tags": [
-          "routing"
-        ]
-      }
-    },
-    "/api/v1/routing/{ticket_id}/release": {
-      "post": {
-        "operationId": "release_product_api_v1_routing__ticket_id__release_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "ticket_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Ticket Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "X-CSRF-Token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Csrf-Token"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RouteApprovalRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RoutingTicketResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Release Product",
         "tags": [
           "routing"
         ]
@@ -9611,6 +10007,410 @@
         ]
       }
     },
+    "/api/v1/teams": {
+      "get": {
+        "operationId": "list_teams_api_v1_teams_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Teams",
+        "tags": [
+          "teams"
+        ]
+      }
+    },
+    "/api/v1/teams/{team_id}/availability": {
+      "get": {
+        "operationId": "team_availability_api_v1_teams__team_id__availability_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Team Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "title": "Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AvailabilityResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Team Availability",
+        "tags": [
+          "teams"
+        ]
+      }
+    },
+    "/api/v1/teams/{team_id}/calendar": {
+      "get": {
+        "operationId": "team_calendar_api_v1_teams__team_id__calendar_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Team Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "title": "From",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "title": "To",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Team Calendar",
+        "tags": [
+          "teams"
+        ]
+      },
+      "post": {
+        "operationId": "add_calendar_entry_api_v1_teams__team_id__calendar_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Team Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarEntryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarEntryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Calendar Entry",
+        "tags": [
+          "teams"
+        ]
+      }
+    },
+    "/api/v1/teams/{team_id}/calendar/{entry_id}": {
+      "delete": {
+        "operationId": "remove_calendar_entry_api_v1_teams__team_id__calendar__entry_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Team Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Entry Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Calendar Entry",
+        "tags": [
+          "teams"
+        ]
+      }
+    },
+    "/api/v1/teams/{team_id}/members": {
+      "post": {
+        "operationId": "add_team_member_api_v1_teams__team_id__members_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Team Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamMemberRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Team Member",
+        "tags": [
+          "teams"
+        ]
+      }
+    },
+    "/api/v1/teams/{team_id}/members/{user_id}": {
+      "delete": {
+        "operationId": "remove_team_member_api_v1_teams__team_id__members__user_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Team Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Team Member",
+        "tags": [
+          "teams"
+        ]
+      }
+    },
     "/api/v1/tickets": {
       "get": {
         "operationId": "list_tickets_api_v1_tickets_get",
@@ -9992,6 +10792,75 @@
         ]
       }
     },
+    "/api/v1/tickets/{ticket_id}/collect-choice": {
+      "post": {
+        "operationId": "collect_choice_api_v1_tickets__ticket_id__collect_choice_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CollectChoiceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Collect Choice",
+        "tags": [
+          "tickets"
+        ]
+      }
+    },
     "/api/v1/tickets/{ticket_id}/confirm-delivery": {
       "post": {
         "operationId": "confirm_delivery_api_v1_tickets__ticket_id__confirm_delivery_post",
@@ -10358,6 +11227,127 @@
         "summary": "User Directory",
         "tags": [
           "tickets"
+        ]
+      }
+    },
+    "/api/v1/users/me/profile": {
+      "get": {
+        "operationId": "my_profile_api_v1_users_me_profile_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "My Profile",
+        "tags": [
+          "teams"
+        ]
+      },
+      "put": {
+        "operationId": "update_my_profile_api_v1_users_me_profile_put",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update My Profile",
+        "tags": [
+          "teams"
+        ]
+      }
+    },
+    "/api/v1/users/{user_id}/profile": {
+      "get": {
+        "operationId": "user_profile_api_v1_users__user_id__profile_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "User Profile",
+        "tags": [
+          "teams"
         ]
       }
     }

@@ -12,7 +12,7 @@ const similarList = {
       ticketId: "related-1",
       reference: "TCK-0002",
       title: "Arctic maritime overlap",
-      state: "RFA_MANAGER_REVIEW",
+      state: "JIOC_REVIEW",
       score: 0.68,
       reasons: ["similarity:lexical-rank:1", "similarity:metadata-region"],
       alreadyLinked: false,
@@ -36,7 +36,7 @@ test("shows manager similar open requests and links a related ticket", async () 
   const fetchMock = routingSimilarFetch();
   vi.stubGlobal("fetch", fetchMock);
 
-  renderWithProviders(<RoutingQueuePage route="rfa" />, "/rfa/queue");
+  renderWithProviders(<RoutingQueuePage queue="jioc" />, "/rfa/queue");
 
   expect(await screen.findByText("Similar open requests")).toBeVisible();
   expect(await screen.findByText("TCK-0002")).toBeVisible();
@@ -55,7 +55,7 @@ test("shows manager similar open requests and links a related ticket", async () 
 test("surfaces manager link failures inline", async () => {
   vi.stubGlobal("fetch", routingSimilarFetch({ linkFails: true }));
 
-  renderWithProviders(<RoutingQueuePage route="rfa" />, "/rfa/queue");
+  renderWithProviders(<RoutingQueuePage queue="jioc" />, "/rfa/queue");
 
   await userEvent.click(await screen.findByRole("button", { name: "Link as related" }));
 
@@ -64,9 +64,6 @@ test("surfaces manager link failures inline", async () => {
 
 function routingSimilarFetch(options: { linkFails?: boolean } = {}) {
   return vi.fn((url: string) => {
-    if (url.includes("release-queue")) {
-      return Promise.resolve(jsonResponse(queueWith([])));
-    }
     if (url.includes("capability-catalogue")) {
       return Promise.resolve(jsonResponse({ teams: [] }));
     }
@@ -85,7 +82,7 @@ function routingSimilarFetch(options: { linkFails?: boolean } = {}) {
     if (url.includes("/similar-requests/routing/ticket-1")) {
       return Promise.resolve(jsonResponse(similarList));
     }
-    if (url.includes("/routing/rfa/queue")) {
+    if (url.includes("/routing/jioc/queue")) {
       return Promise.resolve(jsonResponse(queueWith([reviewedTicket])));
     }
     return Promise.resolve(jsonResponse({}));

@@ -32,7 +32,7 @@ async def test_assignment_audit_failure_rolls_back_ticket(
             await client.post(
                 f"/api/v1/analyst/tasks/{ticket_id}/assign",
                 headers={"X-CSRF-Token": str(manager["csrfToken"])},
-                json={"analystUserId": str(analyst_user.user_id)},
+                json={"analystUserIds": [str(analyst_user.user_id)]},
             )
 
     ticket = _stored_ticket(app, ticket_id)
@@ -171,7 +171,7 @@ async def test_qc_submission_audit_failure_rolls_back_ticket(
 
         with pytest.raises(RuntimeError, match="audit unavailable"):
             await client.post(
-                f"/api/v1/analyst/tasks/{ticket_id}/submit-qc",
+                f"/api/v1/analyst/tasks/{ticket_id}/submit",
                 headers={"X-CSRF-Token": str(analyst["csrfToken"])},
             )
 

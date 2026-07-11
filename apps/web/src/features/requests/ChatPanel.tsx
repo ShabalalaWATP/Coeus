@@ -110,10 +110,17 @@ export function ChatPanel({ isSending, onSend, readOnly = false, ticket }: ChatP
             </p>
           ) : null}
           {speech.error ? <small className="field-hint">{speech.error}</small> : null}
+          {speech.isSupported ? (
+            <small className="field-hint" id="dictation-privacy-notice">
+              Dictation is provided by your browser and may process audio remotely. Use synthetic
+              data only.
+            </small>
+          ) : null}
           <div className="chat-form__actions">
             {speech.isSupported ? (
               <button
                 aria-pressed={speech.isListening}
+                aria-describedby="dictation-privacy-notice"
                 className={speech.isListening ? "chat-mic chat-mic--listening" : "chat-mic"}
                 onClick={speech.isListening ? speech.stop : speech.start}
                 type="button"

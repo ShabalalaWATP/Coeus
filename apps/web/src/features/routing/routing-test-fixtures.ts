@@ -6,7 +6,7 @@ export const baseTicket: RoutingTicket = {
   ticketId: "ticket-1",
   reference: "TCK-0001",
   requesterUserId: "user-1",
-  state: "ROUTE_ASSESSMENT",
+  state: "JIOC_REVIEW",
   title: "Arctic Fisheries Assessment",
   priority: "high",
   priorityAssessment: {
@@ -30,7 +30,7 @@ export const baseTicket: RoutingTicket = {
 
 export const reviewedTicket: RoutingTicket = {
   ...baseTicket,
-  state: "RFA_MANAGER_REVIEW",
+  state: "JIOC_REVIEW",
   recommendation: {
     id: "recommendation-1",
     recommendedRoute: "rfa",
@@ -117,9 +117,8 @@ export function queueWith(tickets: RoutingTicket[]): RoutingQueue {
   return {
     tickets,
     stats: {
-      routeAssessmentCount: 1,
-      rfaReviewCount: tickets.filter((ticket) => ticket.state === "RFA_MANAGER_REVIEW").length,
-      cmReviewCount: tickets.filter((ticket) => ticket.state === "CM_MANAGER_REVIEW").length,
+      jiocQueueCount: tickets.filter((ticket) => ticket.state === "JIOC_REVIEW").length,
+      collectChoiceCount: tickets.filter((ticket) => ticket.state === "COLLECT_CHOICE").length,
       clarificationCount: 0,
       analystAssignmentCount: 0,
       rfaAcceptanceRate: 0,
@@ -140,8 +139,8 @@ export function stubRoutingFetch(
   vi.stubGlobal(
     "fetch",
     vi.fn((url: string, init?: RequestInit) => {
-      if (url.includes("release-queue")) {
-        return Promise.resolve(jsonResponse(queueWith([])));
+      if (url.endsWith("/api/v1/teams")) {
+        return Promise.resolve(jsonResponse({ teams: [] }));
       }
       if (url.includes("capability-catalogue")) {
         return Promise.resolve(jsonResponse(capabilityCatalogue));

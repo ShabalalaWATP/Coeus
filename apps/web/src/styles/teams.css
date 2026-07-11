@@ -1,0 +1,148 @@
+.teams-page {
+  display: grid;
+  gap: 18px;
+}
+
+.teams-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.teams-switcher button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  color: var(--text);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.teams-switcher button[aria-pressed="true"] {
+  border-color: var(--teal);
+  background: color-mix(in srgb, var(--teal) 12%, var(--surface-muted));
+}
+
+.team-availability dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin: 0;
+}
+
+.team-availability dt {
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.team-availability dd {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 780;
+}
+
+.teams-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+
+.team-roster__list,
+.team-calendar__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.team-roster__list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+}
+
+.team-roster__list p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.team-roster__badge {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--teal) 18%, var(--surface-muted));
+  font-size: 0.72rem;
+  font-weight: 780;
+  text-transform: uppercase;
+}
+
+.team-roster__add,
+.team-calendar__add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: end;
+}
+
+.team-roster__add label,
+.team-calendar__add label,
+.my-profile label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.86rem;
+  font-weight: 740;
+}
+
+.team-calendar__list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+}
+
+.team-calendar__status {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 780;
+  text-transform: uppercase;
+}
+
+.team-calendar__status--available {
+  background: color-mix(in srgb, var(--teal) 16%, var(--surface-muted));
+}
+
+.team-calendar__status--on_task {
+  background: color-mix(in srgb, var(--amber, #b58900) 18%, var(--surface-muted));
+}
+
+.team-calendar__status--leave {
+  background: color-mix(in srgb, var(--muted) 22%, var(--surface-muted));
+}
+
+.my-profile form {
+  display: grid;
+  gap: 10px;
+  max-width: 560px;
+}
+
+.routing-assign__availability {
+  font-weight: 720;
+  color: var(--text);
+}

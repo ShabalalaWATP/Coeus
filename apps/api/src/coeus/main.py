@@ -20,6 +20,8 @@ from coeus.api.routes.routing import router as routing_router
 from coeus.api.routes.similar_requests import router as similar_requests_router
 from coeus.api.routes.store import router as store_router
 from coeus.api.routes.store_files import router as store_files_router
+from coeus.api.routes.teams import profile_router as profiles_router
+from coeus.api.routes.teams import router as teams_router
 from coeus.api.routes.tickets import router as tickets_router
 from coeus.api.routes.users_admin import router as users_admin_router
 from coeus.composition import configure_application_state
@@ -96,6 +98,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(feedback_router, prefix="/api/v1")
     app.include_router(analytics_router, prefix="/api/v1")
     app.include_router(notifications_router, prefix="/api/v1")
+    app.include_router(teams_router, prefix="/api/v1")
+    app.include_router(profiles_router, prefix="/api/v1")
     app.include_router(health_router, prefix="/api/v1")
     return app
 

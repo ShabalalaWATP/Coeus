@@ -37,10 +37,12 @@ def test_suggests_assignment_team_from_latest_route_review() -> None:
 
 
 def test_assignment_summary_mentions_team_when_present() -> None:
-    assert assignment_summary("analyst@example.test", None) == "analyst@example.test"
+    assert assignment_summary(("analyst@example.test",), None) == "analyst@example.test"
     assert (
-        assignment_summary("analyst@example.test", "Maritime Assessment")
-        == "analyst@example.test assigned via Maritime Assessment."
+        assignment_summary(
+            ("analyst@example.test", "analyst.geo@example.test"), "Maritime Assessment"
+        )
+        == "analyst@example.test, analyst.geo@example.test assigned via Maritime Assessment."
     )
 
 

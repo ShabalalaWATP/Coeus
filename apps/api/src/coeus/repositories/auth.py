@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from threading import RLock
 from uuid import UUID, uuid4
@@ -103,9 +103,15 @@ class SeedUserRepository:
             self._persist()
             return
         seeded_users = dict(self._users_by_username)
-        users = tuple(decode_value(item) for item in payload.get("users", []))
+        # Roles are the persisted source of truth; permissions are re-derived
+        # from the current role definitions so code-level permission changes
+        # (grants AND revocations) apply to existing accounts on startup.
+        users = tuple(
+            _with_current_permissions(decode_value(item)) for item in payload.get("users", [])
+        )
         self._users_by_username = {user.username.casefold(): user for user in users}
         self._users_by_id = {user.user_id: user for user in users}
+        self._persist()
         for username, user in seeded_users.items():
             if username not in self._users_by_username:
                 self.save(user)
@@ -115,6 +121,10 @@ class SeedUserRepository:
             return
         users = sorted(self._users_by_id.values(), key=lambda user: user.username)
         self._state_store.save("users", {"users": [encode_value(user) for user in users]})
+
+
+def _with_current_permissions(user: UserAccount) -> UserAccount:
+    return replace(user, permissions=permissions_for_roles(user.roles))
 
 
 class SessionRepository:

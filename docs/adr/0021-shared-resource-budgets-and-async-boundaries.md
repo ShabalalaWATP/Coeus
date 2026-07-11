@@ -23,6 +23,9 @@ not authorise unbounded consumption of shared service resources.
   explicit timeouts and per-user/global concurrency controls.
 - Blocking network or CPU work does not run on a FastAPI event-loop thread.
   Providers are async where practical; otherwise bounded offload is explicit.
+- Offloaded work must not unconditionally commit a complete stale aggregate.
+  Mutation application uses an expected-snapshot compare-and-swap, and audit
+  rollback may restore only the exact snapshot written by that operation.
 - Readiness checks use a fixed database budget through coalescing or a small
   shared semaphore and a dedicated timeout.
 - Every limit has maximum, maximum-plus-one, legitimate-control and rollback

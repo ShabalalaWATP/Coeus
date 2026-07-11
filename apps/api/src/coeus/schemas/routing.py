@@ -177,9 +177,8 @@ class RoutingTicketResponse(BaseModel):
 class RoutingStatsResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    route_assessment_count: int = Field(serialization_alias="routeAssessmentCount")
-    rfa_review_count: int = Field(serialization_alias="rfaReviewCount")
-    cm_review_count: int = Field(serialization_alias="cmReviewCount")
+    jioc_queue_count: int = Field(serialization_alias="jiocQueueCount")
+    collect_choice_count: int = Field(serialization_alias="collectChoiceCount")
     clarification_count: int = Field(serialization_alias="clarificationCount")
     analyst_assignment_count: int = Field(serialization_alias="analystAssignmentCount")
     rfa_acceptance_rate: float = Field(serialization_alias="rfaAcceptanceRate")

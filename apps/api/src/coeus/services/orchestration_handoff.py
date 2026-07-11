@@ -55,6 +55,62 @@ def manager_clarification_handoff(
     )
 
 
+@dataclass(frozen=True)
+class CollectChoiceHandoff:
+    """Display-only chat notice: the intake conversation is closed by this
+    point, so the customer acts through the collect-choice panel, not chat."""
+
+    message: ChatMessage
+    agent_runs: tuple[AgentRun, ...]
+    timeline: TicketTimelineEntry
+
+
+def collect_choice_handoff(ticket_id: UUID, actor_user_id: UUID) -> CollectChoiceHandoff:
+    body = (
+        "JIOC has routed this request to the collection team. Before tasking "
+        "starts, choose in the panel whether you want the raw collect only, "
+        "or the collect followed by an RFA analysis."
+    )
+    return CollectChoiceHandoff(
+        message=ChatMessage(
+            message_id=uuid4(),
+            ticket_id=ticket_id,
+            author=MessageAuthor.ASSISTANT,
+            body=body,
+            created_at=datetime.now(UTC),
+        ),
+        agent_runs=(
+            _agent_run(
+                ticket_id,
+                "orchestrator-agent",
+                "Asked the requester to choose a collect disposition.",
+            ),
+            _agent_run(
+                ticket_id, "customer-chatbot-agent", "Notified the requester of the collect choice."
+            ),
+        ),
+        timeline=TicketTimelineEntry(
+            entry_id=uuid4(),
+            ticket_id=ticket_id,
+            event_type="collect_choice_requested",
+            body="Customer asked to choose raw collect or collect plus analysis.",
+            actor_user_id=actor_user_id,
+            created_at=datetime.now(UTC),
+        ),
+    )
+
+
+def append_collect_choice_handoff(
+    ticket: TicketRecord, handoff: CollectChoiceHandoff
+) -> TicketRecord:
+    return replace(
+        ticket,
+        messages=(*ticket.messages, handoff.message),
+        agent_runs=(*ticket.agent_runs, *handoff.agent_runs),
+        timeline=(*ticket.timeline, handoff.timeline),
+    )
+
+
 def append_handoff(ticket: TicketRecord, handoff: ClarificationHandoff | None) -> TicketRecord:
     if handoff is None:
         return ticket

@@ -39,26 +39,28 @@ const sorters: Record<StoreSort, (a: SortableProduct, b: SortableProduct) => num
 
 type SortableProduct = { title: string; timePeriodStart: string | null };
 
-// Owner-team labels stored on products map to the role families that own them.
-// Matching on a distinctive substring of the role display name keeps "My Products"
-// correct for every owning role (for example "Request for Assessment Manager").
-const OWNER_TEAM_ROLE_HINT: Record<string, string> = {
-  rfa: "assessment",
-  collection: "collection",
+// Owner-team labels stored on products map to the roles that own them. An
+// explicit role-name map (covering current and legacy role names) keeps
+// "My Products" correct; substring matching broke when roles were renamed.
+const OWNER_TEAM_ROLES: Record<string, readonly string[]> = {
+  rfa: [
+    "RFA Manager",
+    "RFA Team Member",
+    "Request for Assessment Manager",
+    "Request for Assessment Team Member",
+  ],
+  collection: ["CM Manager", "CM Team Member", "Collection Manager", "Collection Team Member"],
 };
 const STORE_PAGE_SIZE = 6;
 
 function ownsTeamProduct(roleNames: readonly string[], ownerTeam: string): boolean {
-  const hint = OWNER_TEAM_ROLE_HINT[ownerTeam.toLowerCase()];
-  if (hint === undefined) {
-    return false;
-  }
-  return roleNames.some((role) => role.toLowerCase().includes(hint));
+  const owners = OWNER_TEAM_ROLES[ownerTeam.toLowerCase()];
+  return owners !== undefined && roleNames.some((role) => owners.includes(role));
 }
 
 function ownerTeamForRoles(roleNames: readonly string[]): string | undefined {
-  const matched = Object.entries(OWNER_TEAM_ROLE_HINT).find(([, hint]) =>
-    roleNames.some((role) => role.toLowerCase().includes(hint)),
+  const matched = Object.entries(OWNER_TEAM_ROLES).find(([, owners]) =>
+    roleNames.some((role) => owners.includes(role)),
   );
   return matched ? (matched[0] === "rfa" ? "RFA" : "Collection") : undefined;
 }

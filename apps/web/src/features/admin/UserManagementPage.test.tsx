@@ -18,7 +18,7 @@ const analystUser = {
   id: "analyst-user",
   username: "analyst@example.test",
   displayName: "Analyst Operator",
-  roles: ["Intelligence Analyst"],
+  roles: ["Analyst"],
   clearanceLevel: 3,
   isActive: true,
 };
@@ -45,7 +45,7 @@ test("renders users and applies role, clearance and status changes", async () =>
         json: () =>
           Promise.resolve({
             ...analystUser,
-            roles: ["Intelligence Analyst", "Quality Control Manager"],
+            roles: ["Analyst", "Quality Control Manager"],
           }),
       });
     }
@@ -83,7 +83,7 @@ test("renders users and applies role, clearance and status changes", async () =>
       "http://127.0.0.1:8001/api/v1/admin/users/analyst-user/roles",
       expect.objectContaining({
         body: JSON.stringify({
-          roles: ["Intelligence Analyst", "Quality Control Manager"],
+          roles: ["Analyst", "Quality Control Manager"],
         }),
         method: "PUT",
       }),
@@ -126,11 +126,11 @@ test("refuses to remove the last role and explains why", async () => {
 
   renderWithProviders(<UserManagementPage />, "/admin/users");
 
-  await userEvent.click(await screen.findByLabelText("Intelligence Analyst"));
+  await userEvent.click(await screen.findByLabelText("Analyst"));
 
   expect(await screen.findByText("An account must keep at least one role.")).toBeVisible();
   expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining("/roles"), expect.anything());
-  expect(screen.getByLabelText("Intelligence Analyst")).toBeChecked();
+  expect(screen.getByLabelText("Analyst")).toBeChecked();
 });
 
 test("shows an actionable error when a user update fails", async () => {

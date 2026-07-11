@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { CancelRequestPanel } from "./CancelRequestPanel";
 import { ChatPanel } from "./ChatPanel";
 import { CollaboratorsPanel } from "./CollaboratorsPanel";
+import { CollectChoicePanel } from "./CollectChoicePanel";
 import { DetailsChecklist } from "./DetailsChecklist";
 import { IntakePanel } from "./IntakePanel";
 import { NoMatchConsentPanel } from "./NoMatchConsentPanel";
@@ -26,14 +27,13 @@ const CANCELABLE_STATES = new Set([
   "RFI_SEARCHING",
   "RFI_MATCH_OFFERED",
   "RFI_NO_MATCH",
-  "ROUTE_ASSESSMENT",
-  "RFA_MANAGER_REVIEW",
-  "CM_MANAGER_REVIEW",
+  "JIOC_REVIEW",
+  "COLLECT_CHOICE",
   "ANALYST_ASSIGNMENT",
   "ANALYST_IN_PROGRESS",
+  "MANAGER_APPROVAL",
   "QC_REVIEW",
   "REWORK_REQUIRED",
-  "MANAGER_RELEASE",
 ]);
 
 export type TicketWorkspaceActions = {
@@ -42,6 +42,7 @@ export type TicketWorkspaceActions = {
   onAddCollaborator: (username: string, access: "editor" | "viewer") => void;
   onAddInformation: (body: string) => void;
   onCancel: (reason: string) => void;
+  onCollectChoice: (analysed: boolean) => void;
   onNoMatchConsent: (taskAsNewRequest: boolean) => void;
   onReject: (productId: string, reason: string) => void;
   onRemoveCollaborator: (userId: string) => void;
@@ -55,6 +56,7 @@ export type TicketWorkspacePending = Record<
   | "accepting"
   | "collaborating"
   | "cancelling"
+  | "choosingCollect"
   | "consenting"
   | "adding"
   | "rejecting"
@@ -189,6 +191,12 @@ export function TicketWorkspace({
             <NoMatchConsentPanel
               isPending={pending.consenting}
               onConsent={actions.onNoMatchConsent}
+            />
+          ) : null}
+          {ticket && isOwner && ticket.state === "COLLECT_CHOICE" ? (
+            <CollectChoicePanel
+              isPending={pending.choosingCollect}
+              onChoose={actions.onCollectChoice}
             />
           ) : null}
           {showOffers ? (

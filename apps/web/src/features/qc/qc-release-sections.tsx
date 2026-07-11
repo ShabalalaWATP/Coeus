@@ -105,7 +105,7 @@ export function PostReleaseStatus({ product }: { product: QcProduct }) {
   const released = product.disseminations.length > 0;
   return (
     <section className="qc-panel qc-success">
-      <h3>{released ? "Released to customer" : "Awaiting manager release"}</h3>
+      <h3>{released ? "Released to customer" : "Forwarded to RFA for analysis"}</h3>
       <p>
         {product.ingestedProduct.reference}: {product.ingestedProduct.title}
       </p>
@@ -113,7 +113,7 @@ export function PostReleaseStatus({ product }: { product: QcProduct }) {
       {released ? (
         <p>{product.feedbackRequests.length} feedback request created.</p>
       ) : (
-        <p>The owning RFA or Collection manager performs the final release and notification.</p>
+        <p>The collect stays internal while the RFA team produces the requested analysis.</p>
       )}
     </section>
   );

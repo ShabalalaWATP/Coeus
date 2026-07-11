@@ -26,6 +26,30 @@ def test_workflow_plan_update_round_trips() -> None:
     assert decoded == update
 
 
+def test_legacy_role_names_decode_to_the_renamed_roles() -> None:
+    user = UserAccount(
+        user_id=uuid4(),
+        username="legacy@example.test",
+        display_name="Legacy Roles",
+        roles=frozenset({RoleName.COLLECTION_MANAGER, RoleName.INTELLIGENCE_ANALYST}),
+        permissions=frozenset(),
+        password_hash="codec-test-hash",  # noqa: S106 - synthetic hash fixture.
+        is_active=True,
+        clearance_level=2,
+    )
+    payload = encode_value(user)
+    # Rewrite the stored role values to their pre-rename strings, as any
+    # payload persisted before the JIOC restructure would hold them.
+    legacy = {"CM Manager": "Collection Manager", "Analyst": "Intelligence Analyst"}
+    for role in payload["fields"]["roles"]["__frozenset__"]:
+        role["value"] = legacy[role["value"]]
+
+    decoded = decode_value(payload)
+
+    assert isinstance(decoded, UserAccount)
+    assert decoded.roles == user.roles
+
+
 def test_retired_workspace_permissions_are_rejected_from_snapshots() -> None:
     user = UserAccount(
         user_id=uuid4(),

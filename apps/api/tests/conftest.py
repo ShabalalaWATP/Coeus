@@ -5,6 +5,10 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 os.environ.setdefault("COEUS_PERSISTENCE_PROVIDER", "memory")
+# Tests assert exact queue/store contents; the rich demo dataset is opt-in per
+# test (only test_demo_seed enables it) so every other suite sees the minimal
+# deterministic seed.
+os.environ.setdefault("COEUS_SEED_DEMO_CONTENT", "false")
 
 from coeus.main import create_app
 

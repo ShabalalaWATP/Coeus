@@ -9,15 +9,25 @@ import {
 
 type CapabilityCataloguePanelProps = {
   route: RoutingRoute;
+  showAll?: boolean;
 };
 
-export function CapabilityCataloguePanel({ route }: CapabilityCataloguePanelProps) {
+export function CapabilityCataloguePanel({
+  route,
+  showAll = false,
+}: CapabilityCataloguePanelProps) {
   const catalogueQuery = useQuery({
     queryKey: ["capability-catalogue"],
     queryFn: listCapabilityCatalogue,
   });
-  const teams = (catalogueQuery.data?.teams ?? []).filter((team) => team.department === route);
-  const title = route === "rfa" ? "RFA capability teams" : "Collection capability teams";
+  const teams = (catalogueQuery.data?.teams ?? []).filter(
+    (team) => showAll || team.department === route,
+  );
+  const title = showAll
+    ? "Capability teams"
+    : route === "rfa"
+      ? "RFA capability teams"
+      : "Collection capability teams";
 
   return (
     <details className="workspace-details capability-catalogue" open>

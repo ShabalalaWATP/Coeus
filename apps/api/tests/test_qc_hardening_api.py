@@ -228,7 +228,7 @@ async def test_failed_ticket_update_rolls_back_ingested_product(
     assert orphaned == []
     assert orphaned_objects == []
     assert retried.status_code == 200
-    assert retried.json()["state"] == "MANAGER_RELEASE"
+    assert retried.json()["state"] == "DISSEMINATION_READY"
 
 
 @pytest.mark.asyncio
@@ -271,7 +271,7 @@ async def test_failed_indexing_rolls_back_ingested_product(
     assert orphaned == []
     assert orphaned_objects == []
     assert retried.status_code == 200
-    assert retried.json()["state"] == "MANAGER_RELEASE"
+    assert retried.json()["state"] == "DISSEMINATION_READY"
 
 
 @pytest.mark.asyncio

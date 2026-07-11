@@ -78,6 +78,9 @@ class Settings(BaseSettings):
     asset_token_secret: str = DEFAULT_ASSET_TOKEN_SECRET
     persistence_provider: PersistenceProviderName = "postgres"
     persistence_path: str = ".local-data/state/coeus-state.json"
+    # Seed the rich local demo dataset (extra products, demo tickets across the
+    # workflow, feedback and calendars). None means "auto": on for local only.
+    seed_demo_content: bool | None = None
     email_provider: EmailProviderName = "outbox"
     smtp_host: str | None = None
     smtp_port: int = Field(default=587, ge=1, le=65_535)
@@ -90,6 +93,12 @@ class Settings(BaseSettings):
     gcs_generated_previews_bucket: str | None = None
     pubsub_enabled: bool = False
     pubsub_topic_prefix: str = "coeus-dev"
+
+    def should_seed_demo(self) -> bool:
+        """Whether to load the rich demo dataset; auto-on for local only."""
+        if self.seed_demo_content is not None:
+            return self.seed_demo_content
+        return self.environment == "local"
 
     def require_runtime_security(self) -> None:
         errors = [

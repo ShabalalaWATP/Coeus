@@ -1,5 +1,9 @@
 # Threat Model: Manager Final Release
 
+> **Superseded (2026-07-11)** by
+> `docs/threat-model/jioc-workflow-restructure.md`: QC now owns the release
+> and the `MANAGER_RELEASE` state was retired. Kept for history.
+
 Scope: manager-only product uploads, the `MANAGER_RELEASE` workflow state,
 release endpoints and customer notifications.
 

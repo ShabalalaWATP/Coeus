@@ -184,7 +184,7 @@ async def _approved_feedback_request(client: AsyncClient, app: FastAPI, acg_id: 
     assigned = await client.post(
         f"/api/v1/analyst/tasks/{ticket_id}/assign",
         headers={"X-CSRF-Token": str(manager["csrfToken"])},
-        json={"analystUserId": str(analyst_user.user_id)},
+        json={"analystUserIds": [str(analyst_user.user_id)]},
     )
     analyst = await login(client, "analyst@example.test")
     task = await client.post(
@@ -199,27 +199,26 @@ async def _approved_feedback_request(client: AsyncClient, app: FastAPI, acg_id: 
             json={"status": "complete"},
         )
     submitted = await client.post(
-        f"/api/v1/analyst/tasks/{ticket_id}/submit-qc",
+        f"/api/v1/analyst/tasks/{ticket_id}/submit",
         headers={"X-CSRF-Token": str(analyst["csrfToken"])},
     )
+    manager = await login(client, "rfa.manager@example.test")
+    manager_approved = await client.post(
+        f"/api/v1/routing/{ticket_id}/manager-approval",
+        headers={"X-CSRF-Token": str(manager["csrfToken"])},
+    )
     qc = await login(client, "qc.manager@example.test")
+    # QC approval performs the final release and raises the feedback request.
     approved = await client.post(
         f"/api/v1/qc/products/{ticket_id}/approve",
         headers={"X-CSRF-Token": str(qc["csrfToken"])},
         json=_approval_payload(acg_id),
     )
-    manager = await login(client, "rfa.manager@example.test")
-    released = await client.post(
-        f"/api/v1/routing/{ticket_id}/release",
-        headers={"X-CSRF-Token": str(manager["csrfToken"])},
-        json={"route": "rfa"},
-    )
-    await login(client, "qc.manager@example.test")
     details = await client.get(f"/api/v1/qc/products/{ticket_id}")
     assert assigned.status_code == 200
     assert submitted.status_code == 200
+    assert manager_approved.status_code == 200
     assert approved.status_code == 200
-    assert released.status_code == 200
     return str(details.json()["feedbackRequests"][0]["id"])
 
 
@@ -253,24 +252,35 @@ async def _approved_route_ticket(
                 headers={"X-CSRF-Token": csrf_token},
                 json={"reason": "Need a new route."},
             )
-    manager = await login(
-        client,
-        "collection.manager@example.test" if route == "cm" else "rfa.manager@example.test",
-    )
+    jioc = await login(client, "jioc.team@example.test")
     routed = await client.post(
         f"/api/v1/routing/{ticket_id}/run",
-        headers={"X-CSRF-Token": str(manager["csrfToken"])},
+        headers={"X-CSRF-Token": str(jioc["csrfToken"])},
     )
     if not approve:
         assert routed.status_code == 200
         return ticket_id
     approved = await client.post(
         f"/api/v1/routing/{ticket_id}/approve",
-        headers={"X-CSRF-Token": str(manager["csrfToken"])},
+        headers={"X-CSRF-Token": str(jioc["csrfToken"])},
         json={"route": route},
     )
+    if approved.status_code == 422:
+        approved = await client.post(
+            f"/api/v1/routing/{ticket_id}/approve",
+            headers={"X-CSRF-Token": str(jioc["csrfToken"])},
+            json={"route": route, "overrideReason": "Route override for analytics fixture."},
+        )
     assert routed.status_code == 200
     assert approved.status_code == 200
+    if approved.json()["state"] == "COLLECT_CHOICE":
+        user = await login(client, "user@example.test")
+        chosen = await client.post(
+            f"/api/v1/tickets/{ticket_id}/collect-choice",
+            headers={"X-CSRF-Token": str(user["csrfToken"])},
+            json={"analysed": False},
+        )
+        assert chosen.status_code == 200
     return ticket_id
 
 

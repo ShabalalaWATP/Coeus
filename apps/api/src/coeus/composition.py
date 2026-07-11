@@ -7,25 +7,32 @@ from coeus.persistence.factory import build_audit_event_store, build_state_store
 from coeus.repositories.access import SeedAccessRepository
 from coeus.repositories.auth import LoginAttemptRepository, SeedUserRepository, SessionRepository
 from coeus.repositories.registration import RegistrationRepository
+from coeus.repositories.teams import TeamRepository
+from coeus.repositories.teams_seed import seed_teams
 from coeus.services.access import build_access_services
 from coeus.services.ai_models import AiModelService
+from coeus.services.analyst_assignment_service import AnalystAssignmentService
 from coeus.services.analyst_workflow import AnalystWorkflowService
 from coeus.services.asset_tokens import AssetTokenService
 from coeus.services.audit import AuditLog
 from coeus.services.auth import AuthService
+from coeus.services.demo_seed import seed_demo_dataset
 from coeus.services.email_delivery import build_email_provider
 from coeus.services.embeddings import build_embedding_service
 from coeus.services.feedback_analytics import build_feedback_analytics_service
+from coeus.services.manager_approval import ManagerApprovalService
+from coeus.services.manager_queue import ManagerQueueService
 from coeus.services.notifications import NotificationService
 from coeus.services.object_storage import build_object_storage, seed_store_asset_placeholders
 from coeus.services.passwords import PasswordHasher
-from coeus.services.product_release import ProductReleaseService
 from coeus.services.quality_control import build_quality_control_service
 from coeus.services.registration import RegistrationService
 from coeus.services.rfi_search import build_rfi_search_service
 from coeus.services.routing import build_routing_service
 from coeus.services.similar_requests import SimilarRequestService
 from coeus.services.store_builder import build_store_services
+from coeus.services.team_availability import TeamAvailabilityService, TeamCalendarService
+from coeus.services.team_workspace import TeamWorkspaceService
 from coeus.services.ticket_builder import build_ticket_services
 from coeus.services.ticket_collaborators import TicketCollaboratorService
 from coeus.services.ticket_lifecycle import TicketLifecycleService
@@ -51,6 +58,14 @@ def configure_application_state(app: FastAPI, settings: Settings) -> None:
     identity = _configure_identity(app, settings)
     _configure_data_services(app, settings, identity)
     _configure_workflow_services(app, settings, identity)
+    if settings.should_seed_demo():
+        seed_demo_dataset(
+            identity.access,
+            app.state.store_services,
+            app.state.object_storage,
+            app.state.ticket_services,
+            app.state.team_repository,
+        )
 
 
 def _configure_identity(app: FastAPI, settings: Settings) -> IdentityComponents:
@@ -148,11 +163,24 @@ def _configure_workflow_services(
         app.state.embedding_service,
     )
     app.state.routing_service = build_routing_service(tickets, audit_log)
+    app.state.manager_queue_service = ManagerQueueService(tickets)
+    app.state.manager_approval_service = ManagerApprovalService(tickets, audit_log)
+    app.state.analyst_assignment_service = AnalystAssignmentService(
+        tickets,
+        identity.access,
+        audit_log,
+    )
     app.state.analyst_workflow_service = AnalystWorkflowService(
         tickets,
         store,
-        identity.access,
         audit_log,
+    )
+    # Notifications are built before QC because the QC release step notifies
+    # the requester when it publishes the approved product.
+    app.state.notification_service = NotificationService(
+        audit_log,
+        app.state.state_store,
+        build_email_provider(settings),
     )
     app.state.quality_control_service = build_quality_control_service(
         tickets,
@@ -160,21 +188,25 @@ def _configure_workflow_services(
         identity.access,
         audit_log,
         app.state.object_storage,
-    )
-    app.state.notification_service = NotificationService(
-        audit_log,
-        app.state.state_store,
-        build_email_provider(settings),
-    )
-    app.state.product_release_service = ProductReleaseService(
-        tickets=tickets,
-        store=store,
-        access=identity.access,
-        notifications=app.state.notification_service,
-        audit_log=audit_log,
+        app.state.notification_service,
     )
     app.state.feedback_analytics_service = build_feedback_analytics_service(
         tickets,
         store,
+        audit_log,
+    )
+    app.state.team_repository = TeamRepository(app.state.state_store)
+    seed_teams(app.state.team_repository, identity.users)
+    app.state.team_workspace_service = TeamWorkspaceService(
+        app.state.team_repository,
+        identity.users,
+        audit_log,
+    )
+    app.state.team_availability_service = TeamAvailabilityService(
+        app.state.team_repository,
+        tickets,
+    )
+    app.state.team_calendar_service = TeamCalendarService(
+        app.state.team_repository,
         audit_log,
     )

@@ -23,21 +23,18 @@ from coeus.domain.tickets import (
 )
 from coeus.repositories.tickets import InMemoryTicketRepository
 from coeus.services.audit import AuditLog
-from coeus.services.intake import (
-    RequirementCompletenessService,
-    merge_intake,
-)
+from coeus.services.intake import RequirementCompletenessService, merge_intake
 from coeus.services.prioritisation import (
     assessment_or_computed,
     prioritisation_agent_run,
     with_assessment,
 )
-from coeus.services.ticket_records import (
-    is_collaborator,
-    is_editor,
-    is_owner,
-    timeline,
+from coeus.services.ticket_persistence import (
+    save_audited_ticket,
+    save_ticket,
+    save_ticket_if_current,
 )
+from coeus.services.ticket_records import is_collaborator, is_editor, is_owner, timeline
 
 if TYPE_CHECKING:
     from coeus.services.ticket_conversations import ConversationService
@@ -115,6 +112,10 @@ class TicketService:
             return self._repository.list_tickets()
         return ()
 
+    def assignment_snapshot(self) -> tuple[TicketRecord, ...]:
+        """System read for availability counts; expose derived numbers only."""
+        return self._repository.list_tickets()
+
     def get_workflow_ticket(
         self, actor: UserAccount, ticket_id: UUID, permissions: frozenset[Permission]
     ) -> TicketRecord:
@@ -130,28 +131,20 @@ class TicketService:
         self, actor: UserAccount, ticket_id: UUID, updates: dict[str, str]
     ) -> TicketRecord:
         ticket = self.get_editable_ticket(actor, ticket_id)
-        intake = merge_intake(ticket.intake, updates)
-        intake = self._completeness.with_completeness(intake)
-        state = self.state_for_intake(ticket.state, intake)
-        updated = self._save(
+        intake = self._completeness.with_completeness(merge_intake(ticket.intake, updates))
+        entry = timeline(ticket.ticket_id, actor.user_id, "intake_updated", "Intake updated.")
+        updated = self._save_audited(
             with_assessment(
                 replace(
                     ticket,
                     intake=intake,
-                    state=state,
-                    timeline=(
-                        *ticket.timeline,
-                        timeline(
-                            ticket.ticket_id, actor.user_id, "intake_updated", "Intake updated."
-                        ),
-                    ),
+                    state=self.state_for_intake(ticket.state, intake),
+                    timeline=(*ticket.timeline, entry),
                 )
-            )
-        )
-        self._audit_log.record(
+            ),
             "ticket_intake_updated",
-            actor_user_id=str(actor.user_id),
-            metadata={"ticket_id": str(ticket.ticket_id)},
+            actor,
+            {"ticket_id": str(ticket.ticket_id)},
         )
         return updated
 
@@ -184,7 +177,7 @@ class TicketService:
             source_type=source_type,
             created_at=datetime.now(UTC),
         )
-        return self._save(
+        return self._save_audited(
             replace(
                 ticket,
                 attachments=(*ticket.attachments, attachment),
@@ -192,7 +185,10 @@ class TicketService:
                     *ticket.timeline,
                     timeline(ticket.ticket_id, actor.user_id, "attachment_added", name),
                 ),
-            )
+            ),
+            "ticket_attachment_added",
+            actor,
+            {"ticket_id": str(ticket.ticket_id), "attachment_id": str(attachment.attachment_id)},
         )
 
     def submit(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
@@ -212,12 +208,10 @@ class TicketService:
             safety_flags=(),
             created_at=datetime.now(UTC),
         )
-        # The internal priority snapshot is recorded at submission so queue
-        # ordering is explainable and audited alongside the search run.
         ticket = with_assessment(ticket)
         assessment = assessment_or_computed(ticket)
         priority_run = prioritisation_agent_run(ticket, assessment)
-        updated = self._save(
+        updated = self._save_audited(
             replace(
                 ticket,
                 state=TicketState.RFI_SEARCHING,
@@ -235,12 +229,10 @@ class TicketService:
                     ),
                     timeline(ticket.ticket_id, actor.user_id, "search_started", "Search queued."),
                 ),
-            )
-        )
-        self._audit_log.record(
+            ),
             "ticket_submitted",
-            actor_user_id=str(actor.user_id),
-            metadata={"ticket_id": str(ticket.ticket_id)},
+            actor,
+            {"ticket_id": str(ticket.ticket_id)},
         )
         return updated
 
@@ -253,7 +245,7 @@ class TicketService:
         ) or Permission.TICKET_ADD_INFORMATION not in actor.permissions:
             raise AppError(404, "ticket_not_found", "Ticket was not found.")
         state = (
-            TicketState.ROUTE_ASSESSMENT
+            TicketState.JIOC_REVIEW
             if ticket.state == TicketState.INFO_REQUIRED and ticket.route_recommendations
             else ticket.state
         )
@@ -261,7 +253,7 @@ class TicketService:
             *ticket.timeline,
             timeline(ticket.ticket_id, actor.user_id, "information_added", body),
         )
-        if state == TicketState.ROUTE_ASSESSMENT:
+        if state == TicketState.JIOC_REVIEW:
             entries = (
                 *entries,
                 timeline(
@@ -271,18 +263,22 @@ class TicketService:
                     "Requester clarification received.",
                 ),
             )
-        return self._save(
+        return self._save_audited(
             replace(
                 ticket,
                 state=state,
                 timeline=entries,
-            )
+            ),
+            "ticket_information_added",
+            actor,
+            {
+                "ticket_id": str(ticket.ticket_id),
+                "route_resumed": str(state == TicketState.JIOC_REVIEW).lower(),
+            },
         )
 
     def get_editable_ticket(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         ticket = self.get_visible_ticket(actor, ticket_id)
-        # Read-all visibility never confers write access: edits require
-        # ownership, editor collaboration, or the explicit write-all grant.
         if (
             not is_owner(actor, ticket)
             and not is_editor(actor, ticket)
@@ -294,7 +290,28 @@ class TicketService:
         return ticket
 
     def save_system_update(self, ticket: TicketRecord) -> TicketRecord:
-        return self._save(ticket)
+        return save_ticket(self._repository, ticket)
+
+    def save_audited_system_update(
+        self,
+        ticket: TicketRecord,
+        event_type: str,
+        actor: UserAccount,
+        metadata: dict[str, str],
+    ) -> TicketRecord:
+        return save_audited_ticket(
+            self._repository, self._audit_log, ticket, event_type, actor, metadata
+        )
+
+    def save_system_update_if_current(
+        self, expected: TicketRecord, proposed: TicketRecord
+    ) -> TicketRecord:
+        return save_ticket_if_current(self._repository, expected, proposed)
+
+    def restore_system_update_if_current(
+        self, expected: TicketRecord, original: TicketRecord
+    ) -> bool:
+        return self._repository.save_if_current(expected, original)
 
     def state_for_intake(self, current: TicketState, intake: IntakeDetails) -> TicketState:
         target = (
@@ -309,9 +326,18 @@ class TicketService:
         return current
 
     def _save(self, ticket: TicketRecord) -> TicketRecord:
-        updated = replace(ticket, updated_at=datetime.now(UTC))
-        self._repository.save(updated)
-        return updated
+        return save_ticket(self._repository, ticket)
+
+    def _save_audited(
+        self,
+        ticket: TicketRecord,
+        event_type: str,
+        actor: UserAccount,
+        metadata: dict[str, str],
+    ) -> TicketRecord:
+        return save_audited_ticket(
+            self._repository, self._audit_log, ticket, event_type, actor, metadata
+        )
 
     def _can_read(self, actor: UserAccount, ticket: TicketRecord) -> bool:
         return (

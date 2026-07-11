@@ -2533,6 +2533,13 @@ Acceptance criteria:
 - A fresh sealed whole-repository scan has no unresolved occurrence from the
   16-finding baseline. Any new reportable finding blocks completion.
 
+Verification scan `a089e83c-afc7-4213-8763-4a5e5759598d` of integrated revision
+`7165e49e` confirmed the 16 baseline closures and reported three Low/P3 issues:
+chat audit failure atomicity, intake audit failure atomicity and an RFI
+stale-snapshot lost update. Their definition of done is exact rollback on audit
+failure, explicit optimistic conflict on stale work, preservation of concurrent
+authorised state, focused regression tests and a later zero-finding sealed scan.
+
 ## 20. Definition of done for MVP
 
 The MVP is done when:

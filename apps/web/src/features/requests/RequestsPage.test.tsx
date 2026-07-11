@@ -54,6 +54,35 @@ test("shows the dashboard and opens the new request workspace", async () => {
   expect(screen.getByText(/Hi, I am Istari/)).toBeVisible();
 });
 
+test("loads older compact request summaries through the server cursor", async () => {
+  const older = { ...baseTicket, id: "ticket-older", reference: "TCK-0000" };
+  const fetchMock = vi.fn((url: string) => {
+    if (url.includes("cursor=ticket-1")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ tickets: [older], nextCursor: null }),
+      });
+    }
+    if (url.includes("/api/v1/tickets")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ tickets: [baseTicket], nextCursor: "ticket-1" }),
+      });
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({ requests: [] }) });
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderRequests("/app/requests");
+  await userEvent.click(await screen.findByRole("button", { name: "Load older requests" }));
+
+  expect(await screen.findByRole("button", { name: /TCK-0000/ })).toBeVisible();
+  expect(fetchMock).toHaveBeenCalledWith(
+    expect.stringContaining("cursor=ticket-1"),
+    expect.objectContaining({ method: "GET" }),
+  );
+});
+
 test("shows a missing state for an unknown direct request URL", async () => {
   vi.stubGlobal(
     "fetch",

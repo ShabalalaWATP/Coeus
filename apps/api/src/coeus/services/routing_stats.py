@@ -7,9 +7,8 @@ from coeus.services.routing_records import count_state, rate
 
 @dataclass(frozen=True)
 class RoutingStats:
-    route_assessment_count: int
-    rfa_review_count: int
-    cm_review_count: int
+    jioc_queue_count: int
+    collect_choice_count: int
     clarification_count: int
     analyst_assignment_count: int
     rfa_acceptance_rate: float
@@ -23,9 +22,8 @@ def routing_stats_from_tickets(tickets: tuple[TicketRecord, ...]) -> RoutingStat
     rfa_approved = [item for item in approved if item.route == RoutingRoute.RFA]
     cm_fallbacks = [item for item in recommendations if item.recommended_route == RoutingRoute.CM]
     return RoutingStats(
-        route_assessment_count=count_state(tickets, TicketState.ROUTE_ASSESSMENT),
-        rfa_review_count=count_state(tickets, TicketState.RFA_MANAGER_REVIEW),
-        cm_review_count=count_state(tickets, TicketState.CM_MANAGER_REVIEW),
+        jioc_queue_count=count_state(tickets, TicketState.JIOC_REVIEW),
+        collect_choice_count=count_state(tickets, TicketState.COLLECT_CHOICE),
         clarification_count=count_state(tickets, TicketState.INFO_REQUIRED),
         analyst_assignment_count=count_state(tickets, TicketState.ANALYST_ASSIGNMENT),
         rfa_acceptance_rate=rate(len(rfa_approved), len(approved)),

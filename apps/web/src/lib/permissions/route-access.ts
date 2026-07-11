@@ -51,6 +51,22 @@ export const navigationItems: readonly NavigationItem[] = [
     requiredPermissions: ["product:read", "product:search"],
   },
   {
+    label: "My Team",
+    path: "/teams",
+    group: "teams",
+    icon: "analyst",
+    // Every authenticated role may open the page; the server only returns
+    // teams the user belongs to, and non-members see an empty state.
+    requiredPermissions: ["user:read_self"],
+  },
+  {
+    label: "JIOC Queue",
+    path: "/jioc/queue",
+    group: "teams",
+    icon: "rfa",
+    requiredPermissions: ["jioc:review"],
+  },
+  {
     label: "RFA Queue",
     path: "/rfa/queue",
     group: "teams",

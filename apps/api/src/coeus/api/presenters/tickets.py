@@ -37,6 +37,7 @@ def to_ticket_response(ticket: TicketRecord, actor: UserAccount) -> TicketRespon
         intake=_to_intake_response(ticket.intake),
         intake_checklist=_to_intake_checklist(ticket.intake),
         conversation_status=ticket.conversation_status,
+        collect_disposition=ticket.collect_disposition,
         is_ready_for_submission=not ticket.intake.missing_information,
         visible_product_matches=_visible_product_matches(ticket, actor),
         released_product_ids=[dissemination.product_id for dissemination in ticket.disseminations],

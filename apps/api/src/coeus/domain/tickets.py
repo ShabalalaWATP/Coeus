@@ -250,6 +250,8 @@ class AnalystAssignment:
     route: RoutingRoute
     created_at: datetime
     team_name: str | None = None
+    # Reassignment deactivates earlier assignments, keeping history auditable.
+    active: bool = True
 
 
 @dataclass(frozen=True)
@@ -341,6 +343,8 @@ class TicketRecord:
     feedback_submissions: tuple[FeedbackSubmission, ...] = field(default_factory=tuple)
     # Intake conversation lifecycle: "open", "close_offered" or "closed".
     conversation_status: str = "open"
+    # Customer's choice after JIOC routes to collection: "raw" or "analysed".
+    collect_disposition: str | None = None
     priority_assessment: PriorityAssessment | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))

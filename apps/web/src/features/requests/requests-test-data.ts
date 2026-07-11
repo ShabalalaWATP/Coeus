@@ -60,6 +60,7 @@ export const requestTicket: Ticket = {
     { key: "title", label: "Title", value: "Regional Brief", satisfied: true },
   ],
   conversationStatus: "open",
+  collectDisposition: null,
   isReadyForSubmission: true,
   visibleProductMatches: [],
   releasedProductIds: [],

@@ -1,6 +1,7 @@
 import { MessageCircleQuestion } from "lucide-react";
 
 import { AssignAnalystPanel } from "./AssignAnalystPanel";
+import { ManagerApprovalPanel } from "./ManagerApprovalPanel";
 import { SimilarRequestsPanel } from "./SimilarRequestsPanel";
 import {
   canApprove,
@@ -18,9 +19,11 @@ import type { SimilarRequestList } from "../../lib/api-client/similar-requests";
 
 type RoutingDetailPanelProps = {
   actionError: string | null;
+  canDecide: boolean;
   clarificationQuestion: string;
   clarificationReason: string;
   csrfToken: string;
+  decisionRoute: RoutingRoute;
   isApprovePending: boolean;
   isLinkingSimilar: boolean;
   isRunningReviews: boolean;
@@ -30,7 +33,9 @@ type RoutingDetailPanelProps = {
   onAssigned: (task: AnalystTask) => void;
   onClarificationQuestionChange: (value: string) => void;
   onClarificationReasonChange: (value: string) => void;
+  onDecisionRouteChange: (route: RoutingRoute) => void;
   onLinkSimilar: (ticketId: string) => void;
+  onManagerDecision: (ticket: RoutingTicket) => void;
   onOverrideReasonChange: (value: string) => void;
   onReject: () => void;
   onRejectReasonChange: (value: string) => void;
@@ -46,9 +51,11 @@ type RoutingDetailPanelProps = {
 
 export function RoutingDetailPanel({
   actionError,
+  canDecide,
   clarificationQuestion,
   clarificationReason,
   csrfToken,
+  decisionRoute,
   isApprovePending,
   isLinkingSimilar,
   isRunningReviews,
@@ -58,7 +65,9 @@ export function RoutingDetailPanel({
   onAssigned,
   onClarificationQuestionChange,
   onClarificationReasonChange,
+  onDecisionRouteChange,
   onLinkSimilar,
+  onManagerDecision,
   onOverrideReasonChange,
   onReject,
   onRejectReasonChange,
@@ -107,13 +116,36 @@ export function RoutingDetailPanel({
             onLink={onLinkSimilar}
             onRetry={onRetrySimilar}
           />
-          {canApprove(selectedTicket, route) && isRouteOverride(selectedTicket, route) ? (
+          {canDecide && canApprove(selectedTicket) ? (
+            <fieldset className="routing-override">
+              <legend>Route decision</legend>
+              <label>
+                <input
+                  checked={decisionRoute === "rfa"}
+                  name="jioc-decision-route"
+                  onChange={() => onDecisionRouteChange("rfa")}
+                  type="radio"
+                />
+                Collection not required: route to RFA
+              </label>
+              <label>
+                <input
+                  checked={decisionRoute === "cm"}
+                  name="jioc-decision-route"
+                  onChange={() => onDecisionRouteChange("cm")}
+                  type="radio"
+                />
+                Collection required: route to CM
+              </label>
+            </fieldset>
+          ) : null}
+          {canDecide && canApprove(selectedTicket) && isRouteOverride(selectedTicket, route) ? (
             <div className="routing-override">
               <label htmlFor="routing-override-reason">Override reason</label>
               <textarea
                 id="routing-override-reason"
                 onChange={(event) => onOverrideReasonChange(event.target.value)}
-                placeholder="Explain why this queue should take the request instead."
+                placeholder="Explain why the recommendation should not be followed."
                 value={overrideReason}
               />
               <small>
@@ -122,35 +154,46 @@ export function RoutingDetailPanel({
               </small>
             </div>
           ) : null}
-          <div className="routing-actions">
-            {selectedTicket.state === "ROUTE_ASSESSMENT" ? (
-              <button disabled={isRunningReviews} onClick={onRunReviews} type="button">
-                Run capability checks
+          {canDecide ? (
+            <div className="routing-actions">
+              {selectedTicket.state === "JIOC_REVIEW" ? (
+                <button disabled={isRunningReviews} onClick={onRunReviews} type="button">
+                  Run capability checks
+                </button>
+              ) : null}
+              <button
+                disabled={
+                  !canApproveWithOverride(selectedTicket, route, overrideReason) || isApprovePending
+                }
+                onClick={onApprove}
+                type="button"
+              >
+                Approve route
               </button>
-            ) : null}
-            <button
-              disabled={
-                !canApproveWithOverride(selectedTicket, route, overrideReason) || isApprovePending
-              }
-              onClick={onApprove}
-              type="button"
-            >
-              Approve route
-            </button>
-          </div>
+            </div>
+          ) : null}
           {actionError ? (
             <p className="auth-error" role="alert">
               {actionError}
             </p>
           ) : null}
-          {selectedTicket.state === "ANALYST_ASSIGNMENT" ? (
+          {selectedTicket.state === "MANAGER_APPROVAL" && !canDecide ? (
+            <ManagerApprovalPanel
+              csrfToken={csrfToken}
+              onDecided={onManagerDecision}
+              route={route}
+              ticketId={selectedTicket.ticketId}
+            />
+          ) : null}
+          {selectedTicket.state === "ANALYST_ASSIGNMENT" && !canDecide ? (
             <AssignAnalystPanel
               csrfToken={csrfToken}
               onAssigned={onAssigned}
+              route={route}
               suggestedTeamName={teamNameForAssignment(selectedTicket, route)}
               ticketId={selectedTicket.ticketId}
             />
-          ) : (
+          ) : canDecide ? (
             <details className="workspace-details">
               <summary>
                 <MessageCircleQuestion aria-hidden="true" size={16} />
@@ -175,7 +218,6 @@ export function RoutingDetailPanel({
                   disabled={
                     !canSubmitClarification(
                       selectedTicket,
-                      route,
                       clarificationReason,
                       clarificationQuestion,
                     )
@@ -193,7 +235,7 @@ export function RoutingDetailPanel({
                   />
                 </label>
                 <button
-                  disabled={!canReject(selectedTicket, route, rejectReason)}
+                  disabled={!canReject(selectedTicket, rejectReason)}
                   onClick={onReject}
                   type="button"
                 >
@@ -201,7 +243,7 @@ export function RoutingDetailPanel({
                 </button>
               </div>
             </details>
-          )}
+          ) : null}
         </>
       ) : (
         <EmptyState

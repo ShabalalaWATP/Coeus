@@ -25,7 +25,7 @@ async def test_manager_can_reassign_in_progress_ticket_to_another_analyst() -> N
         reassigned = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/assign",
             headers={"X-CSRF-Token": str(manager["csrfToken"])},
-            json={"analystUserId": str(replacement.user_id)},
+            json={"analystUserIds": [str(replacement.user_id)]},
         )
         new_analyst = await login(client, "analyst.maritime@example.test")
         tasks = await client.get("/api/v1/analyst/tasks")
@@ -34,7 +34,9 @@ async def test_manager_can_reassign_in_progress_ticket_to_another_analyst() -> N
 
     assert reassigned.status_code == 200
     assert reassigned.json()["state"] == "ANALYST_IN_PROGRESS"
-    assert reassigned.json()["assignment"]["analystUserId"] == str(replacement.user_id)
+    assert [item["analystUserId"] for item in reassigned.json()["assignments"]] == [
+        str(replacement.user_id)
+    ]
     # Existing work packages carry over; reassignment does not add more.
     assert reassigned.json()["workPackages"] == before.json()["workPackages"]
     assert new_analyst["user"]["username"] == "analyst.maritime@example.test"
@@ -57,7 +59,7 @@ async def test_reassignment_is_blocked_before_first_assignment_completes() -> No
         assigned = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/assign",
             headers={"X-CSRF-Token": str(manager["csrfToken"])},
-            json={"analystUserId": str(analyst_user.user_id)},
+            json={"analystUserIds": [str(analyst_user.user_id)]},
         )
         analyst = await login(client, "analyst@example.test")
         draft = await client.post(
@@ -72,14 +74,14 @@ async def test_reassignment_is_blocked_before_first_assignment_completes() -> No
                 json={"status": "complete"},
             )
         submitted = await client.post(
-            f"/api/v1/analyst/tasks/{ticket_id}/submit-qc",
+            f"/api/v1/analyst/tasks/{ticket_id}/submit",
             headers={"X-CSRF-Token": str(analyst["csrfToken"])},
         )
         manager = await login(client, "rfa.manager@example.test")
         after_qc = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/assign",
             headers={"X-CSRF-Token": str(manager["csrfToken"])},
-            json={"analystUserId": str(analyst_user.user_id)},
+            json={"analystUserIds": [str(analyst_user.user_id)]},
         )
 
     assert assigned.status_code == 200

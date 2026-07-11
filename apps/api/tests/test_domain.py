@@ -13,10 +13,28 @@ def test_ticket_state_machine_allows_defined_transition() -> None:
     assert can_transition(TicketState.DRAFT_INTAKE, TicketState.RFI_SEARCHING) is True
 
 
-def test_no_match_state_only_exits_to_route_assessment_or_cancelled() -> None:
+def test_no_match_state_only_exits_to_jioc_review_or_cancelled() -> None:
     allowed = {target for target in TicketState if can_transition(TicketState.RFI_NO_MATCH, target)}
 
-    assert allowed == {TicketState.ROUTE_ASSESSMENT, TicketState.CANCELLED}
+    assert allowed == {TicketState.JIOC_REVIEW, TicketState.CANCELLED}
+
+
+def test_legacy_state_values_decode_to_jioc_review() -> None:
+    assert TicketState("ROUTE_ASSESSMENT") is TicketState.JIOC_REVIEW
+    assert TicketState("RFA_MANAGER_REVIEW") is TicketState.JIOC_REVIEW
+    assert TicketState("CM_MANAGER_REVIEW") is TicketState.JIOC_REVIEW
+    # Tickets awaiting the retired manager-release step return to QC.
+    assert TicketState("MANAGER_RELEASE") is TicketState.QC_REVIEW
+
+
+def test_analyst_work_now_routes_through_manager_approval() -> None:
+    assert can_transition(TicketState.ANALYST_IN_PROGRESS, TicketState.MANAGER_APPROVAL) is True
+    assert can_transition(TicketState.ANALYST_IN_PROGRESS, TicketState.QC_REVIEW) is False
+    assert can_transition(TicketState.MANAGER_APPROVAL, TicketState.QC_REVIEW) is True
+    assert can_transition(TicketState.MANAGER_APPROVAL, TicketState.ANALYST_IN_PROGRESS) is True
+    # QC either releases or forwards an analysed collect back to assignment.
+    assert can_transition(TicketState.QC_REVIEW, TicketState.DISSEMINATION_READY) is True
+    assert can_transition(TicketState.QC_REVIEW, TicketState.ANALYST_ASSIGNMENT) is True
 
 
 def test_ticket_state_machine_denies_undefined_transition() -> None:

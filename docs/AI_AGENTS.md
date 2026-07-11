@@ -177,8 +177,8 @@ can consolidate early without blocking a customer's submitted request.
 
 ### What it reads
 
-Open tickets from `RFI_SEARCHING` through `MANAGER_RELEASE`, including the
-`RFI_NO_MATCH` consent state. Draft,
+Open tickets from `RFI_SEARCHING` through `QC_REVIEW` (including
+`MANAGER_APPROVAL`) and the `RFI_NO_MATCH` consent state. Draft,
 `INFO_REQUIRED`, cancelled and closed tickets are excluded, and the source ticket
 is never compared with itself.
 
@@ -303,7 +303,7 @@ level, region tier with Russia and the Baltic highest, requesting-unit
 category, supported-operation type) into a 0..1 score, a P1-P4 tier and
 prefixed reason tags. The assessment is stored whenever the intake changes,
 recorded as a `prioritisation-agent` run at submission, and orders the
-routing, analyst, QC and release queues. Managers see the badge and reasons;
+JIOC, team, analyst and QC queues. Managers see the badge and reasons;
 customers see only their stated priority; nothing changes state automatically.
 The capability agents reuse the tier plus team disciplines, regions and rank
 to attach top-3 `candidate_teams` to each review

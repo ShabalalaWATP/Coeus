@@ -1,10 +1,10 @@
 import {
+  approveManagerWork,
   approveRoute,
-  listReleaseQueue,
   listRoutingQueue,
   rejectRoute,
-  releaseProduct,
   requestRouteClarification,
+  returnWorkForRework,
   runRoutingReviews,
 } from "./routing";
 
@@ -19,9 +19,8 @@ test("calls routing queue and manager action endpoints", async () => {
       Promise.resolve({
         tickets: [],
         stats: {
-          routeAssessmentCount: 0,
-          rfaReviewCount: 0,
-          cmReviewCount: 0,
+          jiocQueueCount: 0,
+          collectChoiceCount: 0,
           clarificationCount: 0,
           analystAssignmentCount: 0,
           rfaAcceptanceRate: 0,
@@ -33,6 +32,7 @@ test("calls routing queue and manager action endpoints", async () => {
 
   await listRoutingQueue("rfa");
   await listRoutingQueue("cm");
+  await listRoutingQueue("jioc", "cursor 1");
 
   expect(fetchMock).toHaveBeenNthCalledWith(1, "http://127.0.0.1:8001/api/v1/routing/rfa/queue", {
     credentials: "include",
@@ -42,27 +42,32 @@ test("calls routing queue and manager action endpoints", async () => {
     credentials: "include",
     method: "GET",
   });
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    3,
+    "http://127.0.0.1:8001/api/v1/routing/jioc/queue?cursor=cursor%201",
+    { credentials: "include", method: "GET" },
+  );
 });
 
-test("calls release queue and release endpoints", async () => {
+test("calls manager approval and rework endpoints with CSRF protection", async () => {
   const fetchMock = vi
     .fn()
     .mockResolvedValue({ ok: true, json: () => Promise.resolve({ ticketId: "ticket-1" }) });
   vi.stubGlobal("fetch", fetchMock);
 
-  await listReleaseQueue("rfa");
-  await releaseProduct("ticket-1", "rfa", "csrf");
+  await approveManagerWork("ticket-1", "csrf");
+  await returnWorkForRework("ticket-1", "rfa", "Tighten sources.", "csrf");
 
   expect(fetchMock).toHaveBeenNthCalledWith(
     1,
-    "http://127.0.0.1:8001/api/v1/routing/rfa/release-queue",
-    { credentials: "include", method: "GET" },
+    "http://127.0.0.1:8001/api/v1/routing/ticket-1/manager-approval",
+    { credentials: "include", headers: { "X-CSRF-Token": "csrf" }, method: "POST" },
   );
   expect(fetchMock).toHaveBeenNthCalledWith(
     2,
-    "http://127.0.0.1:8001/api/v1/routing/ticket-1/release",
+    "http://127.0.0.1:8001/api/v1/routing/ticket-1/manager-rework",
     expect.objectContaining({
-      body: JSON.stringify({ route: "rfa" }),
+      body: JSON.stringify({ route: "rfa", reason: "Tighten sources." }),
       headers: { "Content-Type": "application/json", "X-CSRF-Token": "csrf" },
       method: "POST",
     }),

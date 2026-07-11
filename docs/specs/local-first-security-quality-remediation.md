@@ -180,6 +180,10 @@ Sprint 14B uses these non-overlapping editing contracts:
   and required-check documentation only.
 - Documentation and Plan Keeper: the root plan, master tracker, ADRs, threat
   models, development story and runbooks only.
+- Audit atomicity worker: chat, intake, submission, attachment and information
+  save-plus-audit boundaries and exact rollback regressions only.
+- Aggregate concurrency worker: repository compare-and-swap, conditional RFI
+  rollback and coordinated lost-update regressions only.
 
 Each worker must return changed files, the invariant restored, the exact tests
 run, remaining proof gaps and a maximum/maximum-plus-one or equivalent bounded
@@ -189,7 +193,8 @@ regression. One editing owner is responsible for each shared file.
 
 ### Security findings
 
-- All 17 validated findings have regression or containment tests. Sixteen no
+- The original assessment contained 17 items: 16 sealed code findings plus one
+  topology-contained multi-replica item. All 16 sealed baseline findings no
   longer reproduce. The multi-replica stale-session primitive remains outside
   the supported topology and is blocked by single-writer runtime, IaC and
   migration-readiness gates until a transactional session adapter replaces it.
@@ -224,6 +229,21 @@ regression. One editing owner is responsible for each shared file.
 - A fresh sealed security scan has no unresolved occurrence from the original 17
   findings. Any newly discovered finding is fixed or explicitly retained with
   evidence that completion is not being claimed.
+
+### Verification-scan addendum
+
+- Scan `a089e83c-afc7-4213-8763-4a5e5759598d` of `7165e49e` confirmed the
+  original 16 closures and reported three new Low/P3 findings: chat audit
+  atomicity, intake audit atomicity and RFI stale-snapshot overwrite.
+- Definition of done: injected audit failure restores the exact prior ticket or
+  removes a new ticket; successful audited mutations emit exactly one event;
+  stale RFI work returns `409 ticket_changed` without erasing newer state.
+- Suppressed but real debt is also closed: submission, attachment and
+  information mutations use the audited boundary; request summaries paginate
+  without detail fan-out; dictation discloses browser-dependent remote audio
+  processing; container references are version and digest pinned.
+- Release closure requires a later immutable whole-repository scan with zero
+  reportable findings.
 
 ### Sprint 14B sealed baseline
 

@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 
 from coeus.api.dependencies import (
+    get_analyst_assignment_service,
     get_analyst_workflow_service,
     get_csrf_validated_session,
     get_current_session,
@@ -37,8 +38,9 @@ from coeus.schemas.analyst import (
     WorkPackageResponse,
     WorkPackageUpdateRequest,
 )
+from coeus.services.analyst_assignment_service import AnalystAssignmentService
 from coeus.services.analyst_drafts import DraftAssetInput, DraftProductInput
-from coeus.services.analyst_records import latest_assignment
+from coeus.services.analyst_records import active_assignments
 from coeus.services.analyst_workflow import AnalystWorkflowService
 
 router = APIRouter(prefix="/analyst", tags=["analyst"])
@@ -47,11 +49,11 @@ router = APIRouter(prefix="/analyst", tags=["analyst"])
 @router.get("/candidates", response_model=AnalystCandidateListResponse)
 async def analyst_candidates(
     authenticated: Annotated[AuthenticatedSession, Depends(get_current_session)],
-    analyst: Annotated[AnalystWorkflowService, Depends(get_analyst_workflow_service)],
+    assignments: Annotated[AnalystAssignmentService, Depends(get_analyst_assignment_service)],
 ) -> AnalystCandidateListResponse:
     return AnalystCandidateListResponse(
         analysts=[
-            _candidate_response(user) for user in analyst.analyst_candidates(authenticated.user)
+            _candidate_response(user) for user in assignments.analyst_candidates(authenticated.user)
         ]
     )
 
@@ -81,17 +83,18 @@ async def analyst_task_details(
 
 
 @router.post("/tasks/{ticket_id}/assign", response_model=AnalystTaskResponse)
-async def assign_analyst(
+async def assign_analysts(
     ticket_id: UUID,
     payload: AnalystAssignmentRequest,
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    assignments: Annotated[AnalystAssignmentService, Depends(get_analyst_assignment_service)],
     analyst: Annotated[AnalystWorkflowService, Depends(get_analyst_workflow_service)],
 ) -> AnalystTaskResponse:
     return _task_response(
-        analyst.assign(
+        assignments.assign(
             authenticated.user,
             ticket_id,
-            payload.analyst_user_id,
+            tuple(payload.analyst_user_ids),
             tuple(payload.work_packages),
             payload.team_name,
         ),
@@ -162,14 +165,14 @@ async def save_draft(
     )
 
 
-@router.post("/tasks/{ticket_id}/submit-qc", response_model=AnalystTaskResponse)
-async def submit_to_qc(
+@router.post("/tasks/{ticket_id}/submit", response_model=AnalystTaskResponse)
+async def submit_work(
     ticket_id: UUID,
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
     analyst: Annotated[AnalystWorkflowService, Depends(get_analyst_workflow_service)],
 ) -> AnalystTaskResponse:
     return _task_response(
-        analyst.submit_to_qc(authenticated.user, ticket_id), authenticated.user, analyst
+        analyst.submit_work(authenticated.user, ticket_id), authenticated.user, analyst
     )
 
 
@@ -197,7 +200,7 @@ def _task_response(
         required_output_format=intake.required_output_format,
         chat_summary=[message.body for message in ticket.messages[-4:]],
         manager_notes=[decision.reason for decision in ticket.manager_decisions],
-        assignment=_assignment_response(latest_assignment(ticket)),
+        assignments=[_assignment_response(assignment) for assignment in active_assignments(ticket)],
         work_packages=[_work_package_response(package) for package in ticket.work_packages],
         notes=[_note_response(note) for note in ticket.analyst_notes],
         linked_products=[
@@ -208,11 +211,7 @@ def _task_response(
     )
 
 
-def _assignment_response(
-    assignment: AnalystAssignment | None,
-) -> AnalystAssignmentResponse | None:
-    if assignment is None:
-        return None
+def _assignment_response(assignment: AnalystAssignment) -> AnalystAssignmentResponse:
     return AnalystAssignmentResponse(
         assignment_id=assignment.assignment_id,
         analyst_user_id=assignment.analyst_user_id,

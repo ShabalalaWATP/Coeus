@@ -170,7 +170,7 @@ async def test_offer_decisions_return_conflict_when_search_metrics_are_missing()
 
 
 @pytest.mark.asyncio
-async def test_rejecting_last_product_offer_routes_to_assessment() -> None:
+async def test_rejecting_last_product_offer_queues_for_jioc_review() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
@@ -191,7 +191,7 @@ async def test_rejecting_last_product_offer_routes_to_assessment() -> None:
         manager_results = await client.get(f"/api/v1/rfi-search/{ticket_id}/results")
 
     assert rejected.status_code == 200
-    assert rejected.json()["ticketState"] == "ROUTE_ASSESSMENT"
+    assert rejected.json()["ticketState"] == "JIOC_REVIEW"
     assert rejected.json()["offers"][0]["status"] == "rejected"
     assert rejected.json()["offers"][0]["rejectionReason"] == (
         "Need fresher reporting than this mock brief."

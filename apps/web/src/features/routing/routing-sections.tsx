@@ -20,12 +20,12 @@ export function RoutingStats({ queue }: { queue: RoutingQueue }) {
   return (
     <dl className="routing-stats" aria-label="Routing statistics">
       <div>
-        <dt>RFA review</dt>
-        <dd>{queue.stats.rfaReviewCount}</dd>
+        <dt>JIOC review</dt>
+        <dd>{queue.stats.jiocQueueCount}</dd>
       </div>
       <div>
-        <dt>CM review</dt>
-        <dd>{queue.stats.cmReviewCount}</dd>
+        <dt>Collect choice</dt>
+        <dd>{queue.stats.collectChoiceCount}</dd>
       </div>
       <div>
         <dt>CM fallback</dt>

@@ -33,14 +33,10 @@ test("approves a QC product and confirms ingestion", async () => {
   await userEvent.click(screen.getByRole("button", { name: /Mark all complete/ }));
   await userEvent.click(screen.getByRole("button", { name: /Approve and disseminate/ }));
 
-  expect(await screen.findByText("Awaiting manager release")).toBeVisible();
+  expect(await screen.findByText("Released to customer")).toBeVisible();
   expect(screen.getByText("PROD-1004: Arctic QC product")).toBeVisible();
   expect(screen.getByText("indexed in Intelligence Store indexing.")).toBeVisible();
-  expect(
-    screen.getByText(
-      "The owning RFA or Collection manager performs the final release and notification.",
-    ),
-  ).toBeVisible();
+  expect(screen.getByText("1 feedback request created.")).toBeVisible();
   await waitFor(() =>
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8001/api/v1/qc/products/ticket-1/approve",

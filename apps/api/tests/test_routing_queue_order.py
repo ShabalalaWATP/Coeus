@@ -8,7 +8,7 @@ from routing_helpers import route_assessment_ticket
 
 
 @pytest.mark.asyncio
-async def test_rfa_queue_orders_by_internal_priority_before_age() -> None:
+async def test_jioc_queue_orders_by_internal_priority_before_age() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
@@ -29,8 +29,8 @@ async def test_rfa_queue_orders_by_internal_priority_before_age() -> None:
             area_or_region="Arctic fisheries",
             output_format="assessment report",
         )
-        await login(client, "rfa.manager@example.test")
-        queue = await client.get("/api/v1/routing/rfa/queue")
+        await login(client, "jioc.team@example.test")
+        queue = await client.get("/api/v1/routing/jioc/queue")
 
     assert queue.status_code == 200
     tickets = queue.json()["tickets"]

@@ -67,6 +67,7 @@ export const baseTicket: Ticket = {
     { key: "title", label: "Title", value: "Baltic Ports Brief", satisfied: true },
   ],
   conversationStatus: "open",
+  collectDisposition: null,
   isReadyForSubmission: false,
   visibleProductMatches: [],
   releasedProductIds: [],

@@ -37,7 +37,13 @@ class ConversationTicketService(Protocol):
     def state_for_intake(self, current_state: TicketState, intake: IntakeDetails) -> TicketState:
         pass
 
-    def save_system_update(self, ticket: TicketRecord) -> TicketRecord:
+    def save_audited_system_update(
+        self,
+        ticket: TicketRecord,
+        event_type: str,
+        actor: UserAccount,
+        metadata: dict[str, str],
+    ) -> TicketRecord:
         pass
 
 
@@ -100,7 +106,7 @@ class ConversationService:
             created_at=datetime.now(UTC),
         )
         state = self._tickets.state_for_intake(ticket.state, intake)
-        updated = self._tickets.save_system_update(
+        return self._tickets.save_audited_system_update(
             with_assessment(
                 replace(
                     ticket,
@@ -116,14 +122,11 @@ class ConversationService:
                         ),
                     ),
                 )
-            )
-        )
-        self._audit_log.record(
+            ),
             "ticket_chat_message_received",
-            actor_user_id=str(actor.user_id),
-            metadata={"ticket_id": str(ticket.ticket_id)},
+            actor,
+            {"ticket_id": str(ticket.ticket_id)},
         )
-        return updated
 
     @staticmethod
     def _chat_bytes(ticket: TicketRecord) -> int:

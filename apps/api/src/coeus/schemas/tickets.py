@@ -186,6 +186,11 @@ class NoMatchConsentRequest(BaseModel):
     task_as_new_request: bool = Field(validation_alias="taskAsNewRequest")
 
 
+class CollectChoiceRequest(BaseModel):
+    # True: collect followed by RFA analysis; False: raw collect only.
+    analysed: bool
+
+
 class TicketResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -198,6 +203,7 @@ class TicketResponse(BaseModel):
         serialization_alias="intakeChecklist"
     )
     conversation_status: str = Field(serialization_alias="conversationStatus")
+    collect_disposition: str | None = Field(serialization_alias="collectDisposition")
     is_ready_for_submission: bool = Field(serialization_alias="isReadyForSubmission")
     visible_product_matches: list[str] = Field(serialization_alias="visibleProductMatches")
     released_product_ids: list[UUID] = Field(serialization_alias="releasedProductIds")

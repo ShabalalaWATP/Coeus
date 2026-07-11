@@ -8,14 +8,31 @@ from coeus.core.permissions import Permission
 
 class RoleName(StrEnum):
     ADMINISTRATOR = "Administrator"
-    USER = "User"
-    RFA_MANAGER = "Request for Assessment Manager"
-    RFA_TEAM_MEMBER = "Request for Assessment Team Member"
-    COLLECTION_MANAGER = "Collection Manager"
-    COLLECTION_TEAM_MEMBER = "Collection Team Member"
+    USER = "Customer"
+    JIOC_TEAM_MEMBER = "JIOC Team Member"
+    RFA_MANAGER = "RFA Manager"
+    RFA_TEAM_MEMBER = "RFA Team Member"
+    COLLECTION_MANAGER = "CM Manager"
+    COLLECTION_TEAM_MEMBER = "CM Team Member"
     INTELLIGENCE_STORE_MANAGER = "Intelligence Store Manager"
-    INTELLIGENCE_ANALYST = "Intelligence Analyst"
+    INTELLIGENCE_ANALYST = "Analyst"
     QUALITY_CONTROL_MANAGER = "Quality Control Manager"
+
+    @classmethod
+    def _missing_(cls, value: object) -> "RoleName | None":
+        # Legacy role names persisted before the JIOC restructure still
+        # decode; the codec reconstructs enums by value.
+        return _LEGACY_ROLE_NAMES.get(value) if isinstance(value, str) else None
+
+
+_LEGACY_ROLE_NAMES: dict[str, RoleName] = {
+    "User": RoleName.USER,
+    "Request for Assessment Manager": RoleName.RFA_MANAGER,
+    "Request for Assessment Team Member": RoleName.RFA_TEAM_MEMBER,
+    "Collection Manager": RoleName.COLLECTION_MANAGER,
+    "Collection Team Member": RoleName.COLLECTION_TEAM_MEMBER,
+    "Intelligence Analyst": RoleName.INTELLIGENCE_ANALYST,
+}
 
 
 @dataclass(frozen=True)

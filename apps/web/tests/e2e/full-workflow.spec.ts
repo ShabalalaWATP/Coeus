@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { createFlowState, installApiMocks } from "./full-workflow-mocks";
 
-test("drives request, routing, analyst, QC and release workflow", async ({ page }) => {
+test("drives request, JIOC routing, analyst, manager approval and QC release", async ({ page }) => {
   await installApiMocks(page, createFlowState());
 
   await page.goto("/app/requests");
@@ -15,15 +15,18 @@ test("drives request, routing, analyst, QC and release workflow", async ({ page 
   await expect(page.getByRole("dialog", { name: "Request journey" })).toBeVisible();
   await page.getByLabel("Close journey").click();
 
-  await page.goto("/rfa/queue");
-  await expect(page.getByRole("heading", { name: "RFA Queue" })).toBeVisible();
+  await page.goto("/jioc/queue");
+  await expect(page.getByRole("heading", { name: "JIOC Queue" })).toBeVisible();
   await page.getByRole("button", { name: "Run capability checks" }).click();
   await expect(page.getByText("Recommended route: RFA")).toBeVisible();
   await page.getByRole("button", { name: "Approve route" }).click();
-  await expect(page.getByRole("heading", { name: "Assign analyst" })).toBeVisible();
-  await page.getByRole("combobox").selectOption("analyst-user");
-  await page.getByRole("button", { name: "Assign analyst" }).click();
-  await expect(page.getByText("No ticket selected")).toBeVisible();
+  await expect(page.getByText("No tickets in this queue.")).toBeVisible();
+
+  await page.goto("/rfa/queue");
+  await expect(page.getByRole("heading", { name: "RFA Queue" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Assign analysts" })).toBeVisible();
+  await page.getByRole("checkbox", { name: "Analyst Operator" }).check();
+  await page.getByRole("button", { name: "Assign analysts" }).click();
 
   await page.goto("/analyst/workbench");
   await expect(page.getByRole("heading", { name: "Analyst Workbench" })).toBeVisible();
@@ -34,16 +37,16 @@ test("drives request, routing, analyst, QC and release workflow", async ({ page 
   await page.getByLabel("Content").fill("Synthetic assessment content for QC review.");
   await page.getByRole("button", { name: "Save draft" }).click();
   await expect(page.getByText("v1: North Atlantic Assessment")).toBeVisible();
-  await page.getByRole("button", { name: "Submit to QC" }).click();
-  await expect(page.getByLabel("Analyst task detail").getByText("QC REVIEW")).toBeVisible();
+  await page.getByRole("button", { name: "Submit for manager approval" }).click();
+  await expect(page.getByLabel("Analyst task detail").getByText("MANAGER APPROVAL")).toBeVisible();
+
+  await page.goto("/rfa/queue");
+  await page.getByRole("button", { name: "Approve and send to QC" }).click();
+  await expect(page.getByText("No tickets in this queue.")).toBeVisible();
 
   await page.goto("/qc/queue");
   await expect(page.getByRole("heading", { name: "QC Queue" })).toBeVisible();
   await page.getByRole("button", { name: "Mark all complete" }).click();
   await page.getByRole("button", { name: "Approve and disseminate" }).click();
-  await expect(page.getByText("Awaiting manager release")).toBeVisible();
-
-  await page.goto("/rfa/queue");
-  await page.getByRole("button", { name: "Release to customer" }).click();
-  await expect(page.getByRole("status")).toContainText("TCK-E2E released");
+  await expect(page.getByText("Released to customer")).toBeVisible();
 });
