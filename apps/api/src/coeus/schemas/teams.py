@@ -35,6 +35,13 @@ class TeamMemberResponse(BaseModel):
     is_manager: bool = Field(serialization_alias="isManager")
     title: str
     specialisms: list[str]
+    bio: str
+
+
+class TeamMemberCandidateListResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    users: list[TeamMemberResponse]
 
 
 class TeamResponse(BaseModel):

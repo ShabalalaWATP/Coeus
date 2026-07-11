@@ -72,6 +72,10 @@ async def test_only_the_owning_manager_changes_the_roster() -> None:
         team_id = await _team_id(client, "RFA Assessment Team")
         new_member = _user_id(app, "colleague@example.test")
 
+        candidates = await client.get(f"/api/v1/teams/{team_id}/member-candidates?query=coll")
+        assert candidates.status_code == 200
+        assert candidates.json()["users"][0]["userId"] == new_member
+
         added = await client.post(
             f"/api/v1/teams/{team_id}/members",
             headers={"X-CSRF-Token": str(manager["csrfToken"])},

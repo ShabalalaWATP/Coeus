@@ -141,6 +141,8 @@ def _configure_workflow_services(
     tickets = app.state.ticket_services
     store = app.state.store_services
     audit_log = identity.audit_log
+    app.state.team_repository = TeamRepository(app.state.state_store)
+    seed_teams(app.state.team_repository, identity.users)
     app.state.ticket_collaborator_service = TicketCollaboratorService(
         users=identity.users,
         tickets=tickets.tickets,
@@ -168,6 +170,7 @@ def _configure_workflow_services(
     app.state.analyst_assignment_service = AnalystAssignmentService(
         tickets,
         identity.access,
+        app.state.team_repository,
         audit_log,
     )
     app.state.analyst_workflow_service = AnalystWorkflowService(
@@ -195,8 +198,6 @@ def _configure_workflow_services(
         store,
         audit_log,
     )
-    app.state.team_repository = TeamRepository(app.state.state_store)
-    seed_teams(app.state.team_repository, identity.users)
     app.state.team_workspace_service = TeamWorkspaceService(
         app.state.team_repository,
         identity.users,

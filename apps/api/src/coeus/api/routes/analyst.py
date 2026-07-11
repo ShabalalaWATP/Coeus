@@ -17,6 +17,7 @@ from coeus.domain.tickets import (
     DraftProductAsset,
     DraftProductVersion,
     LinkedAnalystProduct,
+    RoutingRoute,
     TicketRecord,
     WorkPackageStatus,
 )
@@ -50,10 +51,12 @@ router = APIRouter(prefix="/analyst", tags=["analyst"])
 async def analyst_candidates(
     authenticated: Annotated[AuthenticatedSession, Depends(get_current_session)],
     assignments: Annotated[AnalystAssignmentService, Depends(get_analyst_assignment_service)],
+    route: RoutingRoute,
 ) -> AnalystCandidateListResponse:
     return AnalystCandidateListResponse(
         analysts=[
-            _candidate_response(user) for user in assignments.analyst_candidates(authenticated.user)
+            _candidate_response(user)
+            for user in assignments.analyst_candidates(authenticated.user, route)
         ]
     )
 

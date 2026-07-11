@@ -1,10 +1,17 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { UserMinus, UserPlus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-import { addTeamMember, removeTeamMember, type OrgTeam } from "../../lib/api-client/teams";
-import { listUserDirectory } from "../../lib/api-client/tickets";
+import {
+  addTeamMember,
+  listTeamMemberCandidates,
+  removeTeamMember,
+  type OrgTeam,
+} from "../../lib/api-client/teams";
 import { useActionError } from "../../lib/mutations/action-error";
+
+const SEARCH_MIN_LENGTH = 3;
+const SEARCH_DEBOUNCE_MS = 250;
 
 type TeamRosterPanelProps = {
   csrfToken: string;
@@ -12,29 +19,40 @@ type TeamRosterPanelProps = {
   team: OrgTeam;
 };
 
+function useDebouncedValue(value: string, delayMs: number): string {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(timer);
+  }, [value, delayMs]);
+  return debounced;
+}
+
 export function TeamRosterPanel({ csrfToken, currentUserId, team }: TeamRosterPanelProps) {
   const queryClient = useQueryClient();
-  const [newMemberName, setNewMemberName] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const { actionError, clearActionError, failActionWith } = useActionError();
   const isManager = team.members.some(
     (member) => member.userId === currentUserId && member.isManager,
   );
   const refresh = () => void queryClient.invalidateQueries({ queryKey: ["teams"] });
+  const debouncedTerm = useDebouncedValue(searchTerm.trim(), SEARCH_DEBOUNCE_MS);
+  const canSearch = isManager && debouncedTerm.length >= SEARCH_MIN_LENGTH;
+  const directoryQuery = useQuery({
+    enabled: canSearch,
+    queryFn: () => listTeamMemberCandidates(team.id, debouncedTerm),
+    queryKey: ["teams", "directory", debouncedTerm],
+  });
+  const memberIds = new Set(team.members.map((member) => member.userId));
+  const suggestions = (directoryQuery.data?.users ?? []).filter(
+    (user) => !memberIds.has(user.userId),
+  );
   const addMutation = useMutation({
-    mutationFn: async () => {
-      const directory = await listUserDirectory(newMemberName.trim());
-      const match = directory.find(
-        (user) => user.username.toLowerCase() === newMemberName.trim().toLowerCase(),
-      );
-      if (!match) {
-        throw new Error("No user with that username was found.");
-      }
-      return addTeamMember(team.id, match.id, csrfToken);
-    },
-    onError: failActionWith("The member could not be added. Check the username."),
+    mutationFn: (userId: string) => addTeamMember(team.id, userId, csrfToken),
+    onError: failActionWith("The member could not be added."),
     onMutate: clearActionError,
     onSuccess: () => {
-      setNewMemberName("");
+      setSearchTerm("");
       refresh();
     },
   });
@@ -58,6 +76,7 @@ export function TeamRosterPanel({ csrfToken, currentUserId, team }: TeamRosterPa
               {member.specialisms.length > 0 ? (
                 <small>{member.specialisms.join(", ")}</small>
               ) : null}
+              {member.bio ? <p className="team-roster__bio">{member.bio}</p> : null}
             </div>
             {isManager && !member.isManager ? (
               <button
@@ -73,26 +92,38 @@ export function TeamRosterPanel({ csrfToken, currentUserId, team }: TeamRosterPa
         ))}
       </ul>
       {isManager ? (
-        <form
-          className="team-roster__add"
-          onSubmit={(event) => {
-            event.preventDefault();
-            addMutation.mutate();
-          }}
-        >
+        <div className="team-roster__add">
           <label>
-            Add member by username
+            Add member
             <input
-              onChange={(event) => setNewMemberName(event.target.value)}
-              placeholder="analyst@example.test"
-              value={newMemberName}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Search by name or username"
+              value={searchTerm}
             />
           </label>
-          <button disabled={newMemberName.trim().length < 3 || addMutation.isPending} type="submit">
-            <UserPlus aria-hidden="true" size={16} />
-            Add member
-          </button>
-        </form>
+          {canSearch && suggestions.length > 0 ? (
+            <ul aria-label="Matching users" className="team-roster__suggestions">
+              {suggestions.map((user) => (
+                <li key={user.userId}>
+                  <button
+                    disabled={addMutation.isPending}
+                    onClick={() => addMutation.mutate(user.userId)}
+                    type="button"
+                  >
+                    <UserPlus aria-hidden="true" size={16} />
+                    <span>
+                      <strong>{user.displayName}</strong>
+                      <small>{user.title || user.username}</small>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {canSearch && directoryQuery.isSuccess && suggestions.length === 0 ? (
+            <p className="team-roster__hint">No matching users found.</p>
+          ) : null}
+        </div>
       ) : null}
       {actionError ? (
         <p className="auth-error" role="alert">

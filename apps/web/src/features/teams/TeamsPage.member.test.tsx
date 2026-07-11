@@ -19,6 +19,7 @@ const rfaTeam: OrgTeam = {
       isManager: true,
       title: "Team Lead",
       specialisms: [],
+      bio: "Team manager.",
     },
     {
       userId: "preview-user",
@@ -27,6 +28,7 @@ const rfaTeam: OrgTeam = {
       isManager: false,
       title: "",
       specialisms: [],
+      bio: "Analyst profile.",
     },
   ],
 };
@@ -106,7 +108,7 @@ test("members see the roster read-only, switch teams and log their own time", as
 
   expect(await screen.findByRole("heading", { name: "RFA Assessment Team" })).toBeVisible();
   // No management controls for a plain member.
-  expect(screen.queryByLabelText("Add member by username")).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Add member")).not.toBeInTheDocument();
   expect(screen.queryByLabelText("Member")).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Remove RFA Manager" })).not.toBeInTheDocument();
   // Another member's entry is not removable by this member.

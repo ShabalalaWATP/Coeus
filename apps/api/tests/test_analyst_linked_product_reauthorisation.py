@@ -41,6 +41,7 @@ async def test_every_task_response_reauthorises_linked_products() -> None:
         for user in access.list_users()
         if RoleName.INTELLIGENCE_ANALYST in user.roles
         and user.user_id != original_user.user_id
+        and user.username == "analyst.cyber@example.test"
         and not _can_read_product(app, user, product.product_id)
     )
 

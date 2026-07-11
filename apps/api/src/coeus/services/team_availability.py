@@ -6,7 +6,7 @@ before assigning new work. No model involvement: pure counting.
 """
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from uuid import UUID, uuid4
 
 from coeus.core.errors import AppError
@@ -126,7 +126,16 @@ class TeamCalendarService:
         status: CalendarStatus,
         note: str,
     ) -> TeamCalendarEntry:
-        parse_iso_date(entry_date)
+        parsed_date = parse_iso_date(entry_date)
+        today = datetime.now(UTC).date()
+        if parsed_date < today:
+            raise AppError(422, "invalid_calendar_date", "Calendar entries cannot be in the past.")
+        if parsed_date > today + timedelta(days=MAX_CALENDAR_WINDOW_DAYS):
+            raise AppError(
+                422,
+                "invalid_calendar_date",
+                f"Calendar entries must be within the next {MAX_CALENDAR_WINDOW_DAYS} days.",
+            )
         if not can_write_entry(actor, team, target_user_id):
             raise AppError(403, "forbidden", "Permission denied.")
         entry = TeamCalendarEntry(
