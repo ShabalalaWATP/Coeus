@@ -4,16 +4,17 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 import LoginPage from "./LoginPage";
 import { AppProviders } from "../../app/providers";
-import { ApiError, type ApiClient } from "../../lib/api-client/client";
+import type { AuthApi } from "../../lib/api-client/auth";
+import { ApiError } from "../../lib/api-client/client";
 import { previewSession } from "../../test/test-utils";
 
-function fakeClient(overrides: Partial<ApiClient>): ApiClient {
-  return overrides as ApiClient;
+function fakeClient(overrides: Partial<AuthApi>): AuthApi {
+  return overrides as AuthApi;
 }
 
-function renderLogin(client: ApiClient) {
+function renderLogin(client: AuthApi) {
   return render(
-    <AppProviders apiClient={client} initialAuthSession={null}>
+    <AppProviders authApi={client} initialAuthSession={null}>
       <MemoryRouter initialEntries={["/login"]}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
@@ -24,9 +25,9 @@ function renderLogin(client: ApiClient) {
   );
 }
 
-function renderLoginAtState(client: ApiClient, state: { from?: string }) {
+function renderLoginAtState(client: AuthApi, state: { from?: string }) {
   return render(
-    <AppProviders apiClient={client} initialAuthSession={null}>
+    <AppProviders authApi={client} initialAuthSession={null}>
       <MemoryRouter initialEntries={[{ pathname: "/login", state }]}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />

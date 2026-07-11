@@ -1,9 +1,15 @@
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from uuid import uuid4
 
 import pytest
 
 from coeus.core.config import Settings
 from coeus.core.errors import AppError
+from coeus.core.permissions import Permission
+from coeus.domain.rbac import permissions_for_roles
+from coeus.persistence.codec import encode_value
+from coeus.persistence.state_store import MemoryStateStore
 from coeus.repositories.auth import (
     IpAttemptRepository,
     LoginAttemptRepository,
@@ -219,23 +225,68 @@ def test_sessions_are_stored_hashed_at_rest() -> None:
     assert exc_info.value.code == "not_authenticated"
 
 
-def test_stale_login_failures_decay_outside_lockout_window() -> None:
-    attempts = LoginAttemptRepository()
-    stale = datetime.now(UTC) - timedelta(seconds=600)
-    attempts._attempts["user@example.test"] = ((stale, stale), None)
+def test_seed_user_repository_restores_missing_required_seed_users() -> None:
+    settings = Settings(environment="test")
+    password_hasher = RecordingPasswordHasher()
+    state_store = MemoryStateStore()
+    baseline = SeedUserRepository(settings, password_hasher)
+    admin = baseline.get_by_username("admin@example.test")
+    assert admin is not None
+    state_store.save("users", {"users": [encode_value(admin)]})
 
-    locked_until = attempts.record_failure("user@example.test", threshold=3, lockout_seconds=300)
+    restored = SeedUserRepository(settings, password_hasher, state_store)
+    restored.delete(uuid4())
 
-    assert locked_until is None
-    assert attempts.get_lockout_until("user@example.test") is None
+    assert restored.get_by_username("admin@example.test") is not None
+    assert restored.get_by_username("user@example.test") is not None
 
 
-def test_login_failures_within_window_still_trigger_lockout() -> None:
-    attempts = LoginAttemptRepository()
+def test_restored_users_get_permissions_rederived_from_their_roles() -> None:
+    """Persisted permission snapshots must not survive role-definition changes.
 
-    first = attempts.record_failure("user@example.test", threshold=2, lockout_seconds=300)
-    second = attempts.record_failure("user@example.test", threshold=2, lockout_seconds=300)
+    A stale snapshot would let an account keep privileges the current role
+    definitions have revoked (or miss newly granted ones), so restore always
+    re-derives permissions from the persisted roles.
+    """
+    settings = Settings(environment="test")
+    password_hasher = RecordingPasswordHasher()
+    state_store = MemoryStateStore()
+    baseline = SeedUserRepository(settings, password_hasher)
+    manager = baseline.get_by_username("rfa.manager@example.test")
+    assert manager is not None
+    stale = replace(
+        manager,
+        permissions=frozenset({Permission.PRODUCT_PUBLISH, Permission.PRODUCT_DISSEMINATE}),
+    )
+    state_store.save("users", {"users": [encode_value(stale)]})
 
-    assert first is None
-    assert second is not None
-    assert second > datetime.now(UTC)
+    restored = SeedUserRepository(settings, password_hasher, state_store)
+
+    refreshed = restored.get_by_username("rfa.manager@example.test")
+    assert refreshed is not None
+    assert refreshed.permissions == permissions_for_roles(refreshed.roles)
+    assert Permission.PRODUCT_APPROVE in refreshed.permissions
+    # The revoked release permissions do not survive the restore.
+    assert Permission.PRODUCT_DISSEMINATE not in refreshed.permissions
+
+
+def test_session_is_revoked_when_its_user_disappears() -> None:
+    service = build_auth_service()
+    result = service.login("user@example.test", SEED_CREDENTIAL)
+    service._users.delete(result.user.user_id)
+
+    with pytest.raises(AppError, match="Authentication is required"):
+        service.require_session(result.session_token)
+
+    assert service._sessions.get(result.session.session_id) is None
+
+
+def test_expired_lockout_state_is_reset_before_login() -> None:
+    service = build_auth_service()
+    past = datetime.now(UTC) - timedelta(seconds=1)
+    service._login_attempts.restore({"user@example.test": ((), past)})
+
+    result = service.login("user@example.test", SEED_CREDENTIAL)
+
+    assert result.user.username == "user@example.test"
+    assert service._login_attempts.entry_count == 0

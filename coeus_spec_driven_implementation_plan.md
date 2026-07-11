@@ -2446,9 +2446,9 @@ Deliver:
 - Product reuse analytics.
 - Trends Analysis Agent.
 
-### Sprint 12: GCP deployment
+### Sprint 12: Future GCP migration reference
 
-Deliver:
+Deliver as inactive reference material only:
 
 - Terraform dev.
 - Cloud Run API.
@@ -2459,7 +2459,8 @@ Deliver:
 - Pub/Sub.
 - Artifact Registry.
 - Gemma provider configuration.
-- Deploy pipeline.
+- Manual validation pipeline with local image builds and no cloud deployment.
+- Explicit migration readiness gates; no supported current cloud runtime.
 
 ### Sprint 13: Security hardening
 
@@ -2475,6 +2476,69 @@ Deliver:
 - Prompt injection suite.
 - Full threat model pass.
 - Air-gapped deployment notes.
+
+### Sprint 14: Local-first security and quality remediation
+
+Deliver:
+
+- Actor-scoped linked-product response authorisation.
+- Bounded similarity scoring and relational Store pagination.
+- Append-only local audit evidence and safe login-attempt retention.
+- Atomic local registration capacity and byte-derived QC integrity metadata.
+- Current and reference single-writer enforcement.
+- Local-first composition and provider-boundary improvements.
+- Independent 95 percent backend line and branch coverage gates.
+- Real browser-to-FastAPI Playwright verification.
+- Fresh sealed repository-wide security scan.
+
+### Sprint 14B: Post-seal security remediation and release closure
+
+The sealed repository-wide scan of revision
+`72a0dc582c5fd3405bf986293ecdcc94ef83bb03` reported 16 findings: three medium
+and thirteen low. Sprint 14B reopens security closure and is release-blocking.
+
+Deliver:
+
+- Loopback-only local PostgreSQL publication, a generated uncommitted password
+  and a least-privilege application role rather than a database superuser.
+- Async or bounded-offload embedding paths for Store and RFI searches.
+- Explicit count, byte, concurrency and provider-call budgets for chat,
+  attachment metadata, product asset metadata, analyst drafts, similarity,
+  ranking, downloads and readiness checks.
+- Cursor pagination and bounded summary DTOs for ticket, routing and audit
+  collections.
+- A fail-closed ZAP policy with a reviewed rules file and a controlled failing
+  fixture.
+- Regression tests for every sealed finding and a review of equivalent callers
+  and sinks.
+- A clean immutable delivery revision followed by a fresh sealed
+  whole-repository security scan.
+
+The supported runtime remains local and single-instance. Sprint 14B must not
+add GCP credentials, active cloud workflows, multiple API writers or cloud
+services as current dependencies. The separate intake, prioritisation and
+capability-recommendation feature slice must be integrated and scanned as an
+explicit workstream or kept out of the remediation delivery revision.
+
+Acceptance criteria:
+
+- All 16 sealed finding PoCs no longer reproduce through their original
+  boundary, while legitimate controls still pass.
+- Backend and frontend line and branch coverage each remain at least 95%.
+- Ruff, mypy, Bandit, pip-audit, Prettier, ESLint, TypeScript, Knip, Vitest,
+  Playwright, builds, package audits, Semgrep, Gitleaks, Actionlint, Checkov,
+  container scanning, Terraform tests and the 350-line gate pass.
+- PostgreSQL is not reachable through a non-loopback host address and the API
+  does not use a PostgreSQL superuser.
+- A fresh sealed whole-repository scan has no unresolved occurrence from the
+  16-finding baseline. Any new reportable finding blocks completion.
+
+Verification scan `a089e83c-afc7-4213-8763-4a5e5759598d` of integrated revision
+`7165e49e` confirmed the 16 baseline closures and reported three Low/P3 issues:
+chat audit failure atomicity, intake audit failure atomicity and an RFI
+stale-snapshot lost update. Their definition of done is exact rollback on audit
+failure, explicit optimistic conflict on stale work, preservation of concurrent
+authorised state, focused regression tests and a later zero-finding sealed scan.
 
 ## 20. Definition of done for MVP
 
@@ -2501,9 +2565,12 @@ The MVP is done when:
 - Users can provide feedback.
 - Admins and managers can view statistics, trends and audit logs.
 - All important actions are audited.
-- Backend and frontend coverage are at least 95%.
+- Backend and frontend line and branch coverage are each at least 95%.
 - CI/CD blocks unsafe merges.
 - No sensitive data exists in the public repository.
+- The supported current runtime is local and single-instance.
+- GCP remains an inactive future migration path until its documented readiness
+  gates pass.
 
 ## 21. Future enhancements
 

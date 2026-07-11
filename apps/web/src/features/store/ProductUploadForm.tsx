@@ -2,7 +2,7 @@ import { Lightbulb, Upload } from "lucide-react";
 import type { ChangeEvent, Dispatch, SetStateAction } from "react";
 
 import { productTypeOptions } from "./store-options";
-import type { AccessControlGroup } from "../../lib/api-client/client";
+import type { AccessControlGroup } from "../../lib/api-client/access";
 import type { MetadataSuggestion, StoreProduct } from "../../lib/api-client/store";
 import type { ProductUploadFormState } from "./product-upload-model";
 

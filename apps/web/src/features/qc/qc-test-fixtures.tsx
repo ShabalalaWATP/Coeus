@@ -57,7 +57,7 @@ export const baseProduct: QcProduct = {
 
 export const approvedProduct: QcProduct = {
   ...baseProduct,
-  state: "MANAGER_RELEASE",
+  state: "DISSEMINATION_READY",
   decisions: [
     {
       id: "decision-1",
@@ -72,13 +72,16 @@ export const approvedProduct: QcProduct = {
     { id: "index-1", productId: "product-1", status: "queued", summary: "Queued." },
     { id: "index-2", productId: "product-1", status: "indexed", summary: "Indexed." },
   ],
-  disseminations: [],
-  feedbackRequests: [],
+  // QC approval now performs the final release to the customer.
+  disseminations: [{ id: "dissemination-1", productId: "product-1", recipientUserId: "user-1" }],
+  feedbackRequests: [
+    { id: "feedback-1", productId: "product-1", requesterUserId: "user-1", status: "requested" },
+  ],
   ingestedProduct: {
     id: "product-1",
     reference: "PROD-1004",
     title: "Arctic QC product",
-    status: "draft",
+    status: "published",
     acgIds: ["acg-1"],
   },
 };

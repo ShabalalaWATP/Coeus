@@ -3,11 +3,12 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 import { ProtectedRoute } from "./ProtectedRoute";
 import { AppProviders } from "../../app/providers";
-import { ApiError, type ApiClient, type AuthSession } from "../../lib/api-client/client";
+import type { AuthApi, AuthSession } from "../../lib/api-client/auth";
+import { ApiError } from "../../lib/api-client/client";
 import { previewSession } from "../../test/test-utils";
 
-function fakeClient(overrides: Partial<ApiClient>): ApiClient {
-  return overrides as ApiClient;
+function fakeClient(overrides: Partial<AuthApi>): AuthApi {
+  return overrides as AuthApi;
 }
 
 function renderGuardedRoute(initialAuthSession: AuthSession | null, path = "/admin/overview") {
@@ -56,7 +57,7 @@ test("redirects authenticated users without permission to forbidden", () => {
 test("shows loading while protected route session state is loading", () => {
   render(
     <AppProviders
-      apiClient={fakeClient({ getCurrentUser: vi.fn().mockReturnValue(new Promise(() => null)) })}
+      authApi={fakeClient({ getCurrentUser: vi.fn().mockReturnValue(new Promise(() => null)) })}
     >
       <MemoryRouter initialEntries={["/admin/overview"]}>
         <Routes>
@@ -79,7 +80,7 @@ test("shows loading while protected route session state is loading", () => {
 test("redirects expired sessions from protected routes", async () => {
   render(
     <AppProviders
-      apiClient={fakeClient({
+      authApi={fakeClient({
         getCurrentUser: vi
           .fn()
           .mockRejectedValue(new ApiError(401, "session_expired", "Session expired.")),

@@ -29,7 +29,7 @@ export type AnalystTask = {
   requiredOutputFormat: string | null;
   chatSummary: string[];
   managerNotes: string[];
-  assignment: AnalystAssignment | null;
+  assignments: AnalystAssignment[];
   workPackages: WorkPackage[];
   notes: { id: string; body: string; createdByUserId: string; createdAt: string }[];
   linkedProducts: {
@@ -97,13 +97,13 @@ export async function listAnalystCandidates(): Promise<AnalystCandidateList> {
 
 export async function assignAnalystTask(
   ticketId: string,
-  analystUserId: string,
+  analystUserIds: string[],
   teamName: string,
   workPackages: string[],
   csrfToken: string,
 ): Promise<AnalystTask> {
   return apiRequestJson<AnalystTask>(`/api/v1/analyst/tasks/${pathSegment(ticketId)}/assign`, {
-    body: JSON.stringify({ analystUserId, teamName: teamName || undefined, workPackages }),
+    body: JSON.stringify({ analystUserIds, teamName: teamName || undefined, workPackages }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
   });
@@ -161,8 +161,11 @@ export async function saveDraftProduct(
   });
 }
 
-export async function submitTaskToQc(ticketId: string, csrfToken: string): Promise<AnalystTask> {
-  return apiRequestJson<AnalystTask>(`/api/v1/analyst/tasks/${pathSegment(ticketId)}/submit-qc`, {
+export async function submitTaskForReview(
+  ticketId: string,
+  csrfToken: string,
+): Promise<AnalystTask> {
+  return apiRequestJson<AnalystTask>(`/api/v1/analyst/tasks/${pathSegment(ticketId)}/submit`, {
     headers: { "X-CSRF-Token": csrfToken },
     method: "POST",
   });

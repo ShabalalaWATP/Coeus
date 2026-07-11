@@ -20,12 +20,12 @@ export function RoutingStats({ queue }: { queue: RoutingQueue }) {
   return (
     <dl className="routing-stats" aria-label="Routing statistics">
       <div>
-        <dt>RFA review</dt>
-        <dd>{queue.stats.rfaReviewCount}</dd>
+        <dt>JIOC review</dt>
+        <dd>{queue.stats.jiocQueueCount}</dd>
       </div>
       <div>
-        <dt>CM review</dt>
-        <dd>{queue.stats.cmReviewCount}</dd>
+        <dt>Collect choice</dt>
+        <dd>{queue.stats.collectChoiceCount}</dd>
       </div>
       <div>
         <dt>CM fallback</dt>
@@ -90,6 +90,19 @@ export function Review({
             <li key={item}>{item}</li>
           ))}
         </ul>
+      ) : null}
+      {review.candidateTeams?.length ? (
+        <div className="routing-candidates">
+          <h4>Candidate teams</h4>
+          <ol>
+            {review.candidateTeams.map((candidate) => (
+              <li key={candidate.teamId} title={candidate.reasons.join(", ")}>
+                <strong>{candidate.name}</strong>
+                <span>score {candidate.score}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
       ) : null}
     </article>
   );

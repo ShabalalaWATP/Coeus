@@ -11,8 +11,13 @@ from coeus.api.dependencies import (
     get_ticket_services,
     require_permission,
 )
-from coeus.api.presenters.tickets import to_directory_response, to_ticket_response
+from coeus.api.presenters.tickets import (
+    to_directory_response,
+    to_ticket_response,
+    to_ticket_summary_response,
+)
 from coeus.core.permissions import Permission
+from coeus.core.resource_limits import DEFAULT_TICKET_PAGE_SIZE, MAX_TICKET_PAGE_SIZE
 from coeus.domain.auth import AuthenticatedSession
 from coeus.domain.tickets import CollaboratorAccess
 from coeus.schemas.tickets import (
@@ -20,6 +25,7 @@ from coeus.schemas.tickets import (
     AttachmentMetadataRequest,
     ChatMessageRequest,
     CollaboratorAddRequest,
+    CollectChoiceRequest,
     DirectoryResponse,
     IntakeUpdateRequest,
     NoMatchConsentRequest,
@@ -38,13 +44,28 @@ router = APIRouter(tags=["tickets"])
 async def list_tickets(
     authenticated: Annotated[AuthenticatedSession, Depends(get_current_session)],
     ticket_services: Annotated[TicketServices, Depends(get_ticket_services)],
+    cursor: UUID | None = None,
+    page_size: Annotated[
+        int, Query(alias="pageSize", ge=1, le=MAX_TICKET_PAGE_SIZE)
+    ] = DEFAULT_TICKET_PAGE_SIZE,
 ) -> TicketListResponse:
-    return TicketListResponse(
-        tickets=[
-            to_ticket_response(ticket, authenticated.user)
-            for ticket in ticket_services.tickets.list_visible_tickets(authenticated.user)
-        ]
+    page = ticket_services.tickets.list_visible_ticket_page(
+        authenticated.user, cursor=cursor, page_size=page_size
     )
+    return TicketListResponse(
+        tickets=[to_ticket_summary_response(ticket) for ticket in page.tickets],
+        next_cursor=page.next_cursor,
+    )
+
+
+@router.get("/tickets/{ticket_id}", response_model=TicketResponse)
+async def ticket_details(
+    ticket_id: UUID,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_current_session)],
+    ticket_services: Annotated[TicketServices, Depends(get_ticket_services)],
+) -> TicketResponse:
+    ticket = ticket_services.tickets.get_visible_ticket(authenticated.user, ticket_id)
+    return to_ticket_response(ticket, authenticated.user)
 
 
 # Plain def so FastAPI runs this handler in the threadpool: the assistant
@@ -187,6 +208,19 @@ async def no_match_consent(
 ) -> TicketResponse:
     return to_ticket_response(
         lifecycle.no_match_consent(authenticated.user, ticket_id, payload.task_as_new_request),
+        authenticated.user,
+    )
+
+
+@router.post("/tickets/{ticket_id}/collect-choice", response_model=TicketResponse)
+async def collect_choice(
+    ticket_id: UUID,
+    payload: CollectChoiceRequest,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    lifecycle: Annotated[TicketLifecycleService, Depends(get_ticket_lifecycle_service)],
+) -> TicketResponse:
+    return to_ticket_response(
+        lifecycle.collect_choice(authenticated.user, ticket_id, payload.analysed),
         authenticated.user,
     )
 

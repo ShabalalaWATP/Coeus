@@ -1,4 +1,4 @@
-import type { AuthUser, Permission } from "../api-client/client";
+import type { AuthUser, Permission } from "../api-client/auth";
 
 export type UserProfile = AuthUser;
 
@@ -49,6 +49,22 @@ export const navigationItems: readonly NavigationItem[] = [
     group: "operations",
     icon: "store",
     requiredPermissions: ["product:read", "product:search"],
+  },
+  {
+    label: "My Team",
+    path: "/teams",
+    group: "teams",
+    icon: "analyst",
+    // Every authenticated role may open the page; the server only returns
+    // teams the user belongs to, and non-members see an empty state.
+    requiredPermissions: ["user:read_self"],
+  },
+  {
+    label: "JIOC Queue",
+    path: "/jioc/queue",
+    group: "teams",
+    icon: "rfa",
+    requiredPermissions: ["jioc:review"],
   },
   {
     label: "RFA Queue",

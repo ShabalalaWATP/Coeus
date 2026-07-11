@@ -76,7 +76,7 @@ class AuthService:
         if not user.is_active:
             self._audit_log.record("login_failure", str(user.user_id), {"reason": "user_disabled"})
             raise self._auth_failed()
-        attempts = self._login_attempts.snapshot()
+        attempts_reset = None
         replaced_session: SessionRecord | None = None
         if replace_session_id is not None:
             replaced_session = self._sessions.get(hash_session_id(replace_session_id))
@@ -84,7 +84,7 @@ class AuthService:
         try:
             if replace_session_id is not None:
                 self._sessions.delete(hash_session_id(replace_session_id))
-            self._login_attempts.reset(username)
+            attempts_reset = self._login_attempts.reset(username)
             session_token, session = self._create_session(user)
             new_session = session
             self._audit_log.record("login_success", str(user.user_id))
@@ -93,7 +93,8 @@ class AuthService:
                 self._sessions.delete(new_session.session_id)
             if replaced_session is not None:
                 self._sessions.save(replaced_session)
-            self._login_attempts.restore(attempts)
+            if attempts_reset is not None:
+                self._login_attempts.restore_reset(username, attempts_reset)
             raise
         from coeus.domain.rbac import default_route_for_roles
 
@@ -167,7 +168,7 @@ class AuthService:
             password_hash=self._password_hasher.hash(new_password),
             password_reset_required=False,
         )
-        attempts = self._login_attempts.snapshot()
+        attempts_reset = None
         revoked_sessions: tuple[SessionRecord, ...] = ()
         new_session: SessionRecord | None = None
         self._users.save(updated)
@@ -175,7 +176,7 @@ class AuthService:
             # Invalidate every session for this user, then issue a fresh one for
             # the caller so a stolen pre-change session cannot survive the change.
             revoked_sessions = self._sessions.delete_for_user(user.user_id)
-            self._login_attempts.reset(user.username)
+            attempts_reset = self._login_attempts.reset(user.username)
             session_token, session = self._create_session(updated)
             new_session = session
             self._audit_log.record("password_changed", str(user.user_id))
@@ -185,7 +186,8 @@ class AuthService:
                 self._sessions.delete(new_session.session_id)
             for revoked_session in revoked_sessions:
                 self._sessions.save(revoked_session)
-            self._login_attempts.restore(attempts)
+            if attempts_reset is not None:
+                self._login_attempts.restore_reset(user.username, attempts_reset)
             raise
         from coeus.domain.rbac import default_route_for_roles
 
@@ -231,12 +233,10 @@ class AuthService:
             raise AppError(429, "too_many_attempts", "Too many attempts. Try again later.")
 
     def _reject_if_locked(self, username: str) -> None:
-        locked_until = self._login_attempts.get_lockout_until(username)
-        if locked_until is not None and locked_until > datetime.now(UTC):
+        locked_until = self._login_attempts.active_lockout_until(username)
+        if locked_until is not None:
             self._audit_log.record("login_failure", None, {"reason": "account_locked"})
             raise AppError(423, "account_locked", "Authentication temporarily locked.")
-        if locked_until is not None:
-            self._login_attempts.reset(username)
 
     def _record_login_failure(self, username: str, user: UserAccount | None) -> NoReturn:
         try:

@@ -12,6 +12,7 @@ from store_api_helpers import login, product_payload
 
 class FailingObjectStorage(LocalObjectStorage):
     def write_bytes(self, object_key: str, content: bytes) -> None:
+        super().write_bytes(object_key, b"partial")
         raise OSError("synthetic storage failure")
 
 
@@ -50,6 +51,7 @@ async def test_upload_rolls_back_product_when_asset_storage_fails(tmp_path: Path
     assert len(products) == before_count
     assert all(product.metadata.title != "Mock Harbour Activity Brief" for product in products)
     assert "product_created" not in audit_types
+    assert not any((tmp_path / "failing-objects").rglob("*"))
 
 
 @pytest.mark.asyncio

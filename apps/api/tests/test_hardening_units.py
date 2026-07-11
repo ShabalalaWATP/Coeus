@@ -1,3 +1,4 @@
+from dataclasses import replace
 from typing import Any
 from uuid import uuid4
 
@@ -14,7 +15,11 @@ from coeus.domain.store import StoreProductMetadata
 from coeus.domain.tickets import IntakeDetails, TicketRecord
 from coeus.main import create_app
 from coeus.persistence.store_projection_search import _escape_like
-from coeus.persistence.store_projection_search_sql import SEARCH_PRODUCTS_SQL
+from coeus.persistence.store_projection_search_sql import (
+    SEARCH_PRODUCTS_SQL,
+    SEARCH_SUMMARY_SQL,
+)
+from coeus.repositories.store_ids import max_store_reference_counter
 from coeus.repositories.tickets import _max_reference_counter
 from coeus.services.store_search_dates import within_dates
 from rfi_search_helpers import login, product_payload
@@ -74,6 +79,7 @@ def test_escape_like_neutralises_wildcards() -> None:
     assert _escape_like(None) is None
     assert _escape_like("100% baltic_ports\\x") == "100\\% baltic\\_ports\\\\x"
     assert "ESCAPE" in SEARCH_PRODUCTS_SQL
+    assert "nosec" not in SEARCH_SUMMARY_SQL
 
 
 def _metadata(start: str | None, end: str | None) -> StoreProductMetadata:
@@ -129,6 +135,15 @@ def test_store_reference_allocation_skips_existing_references() -> None:
     repository._reference_counter = 1000
 
     assert repository.next_reference() == "PROD-1004"
+
+    products = repository.list_products()
+    assert (
+        max_store_reference_counter(
+            (replace(products[0], reference="OTHER-9999"), products[1]),
+            1000,
+        )
+        >= 1000
+    )
 
 
 @pytest.mark.asyncio

@@ -15,7 +15,7 @@ from coeus.domain.tickets import (
     RfiSearchMetrics,
     TicketRecord,
 )
-from coeus.repositories.access import SeedAccessRepository
+from coeus.repositories.access import AccessRepository
 from coeus.services.audit import AuditLog
 from coeus.services.embeddings import EmbeddingService
 from coeus.services.rfi_ranking import query_text, rank_hybrid_rfi_candidates
@@ -37,9 +37,8 @@ RFI_RESULTS_REVIEW_PERMISSIONS = frozenset({Permission.RFA_REVIEW, Permission.CO
 RFI_RESULTS_REVIEW_STATES = frozenset(
     {
         TicketState.RFI_NO_MATCH,
-        TicketState.ROUTE_ASSESSMENT,
-        TicketState.RFA_MANAGER_REVIEW,
-        TicketState.CM_MANAGER_REVIEW,
+        TicketState.JIOC_REVIEW,
+        TicketState.COLLECT_CHOICE,
     }
 )
 # Ranking must see every permitted PUBLISHED product, not the store-browse page
@@ -60,7 +59,7 @@ class RfiSearchService:
         tickets: TicketService,
         store_search: StoreSearchService,
         store_details: StoreDetailService,
-        access_repository: SeedAccessRepository,
+        access_repository: AccessRepository,
         audit_log: AuditLog,
         embeddings: EmbeddingService,
     ) -> None:
@@ -123,7 +122,8 @@ class RfiSearchService:
             accepted_product_id=None,
             created_at=now,
         )
-        updated = self._tickets.save_system_update(
+        updated = self._tickets.save_system_update_if_current(
+            ticket,
             replace(
                 ticket,
                 state=target_state,
@@ -132,10 +132,11 @@ class RfiSearchService:
                 search_metrics=(*ticket.search_metrics, metric),
                 visible_product_matches=tuple(offer.title for offer in offers),
                 timeline=(*ticket.timeline, *search_timeline),
-            )
+            ),
         )
         self._record_audit_or_rollback(
             ticket,
+            updated,
             "rfi_search_completed",
             actor,
             {"ticket_id": str(ticket.ticket_id), "offered_count": str(len(offers))},
@@ -179,6 +180,7 @@ class RfiSearchService:
         )
         self._record_audit_or_rollback(
             ticket,
+            updated,
             "product_offer_accepted",
             actor,
             {"ticket_id": str(ticket.ticket_id), "product_id": str(product_id)},
@@ -199,7 +201,7 @@ class RfiSearchService:
             reason.strip(),
         )
         next_state = (
-            TicketState.ROUTE_ASSESSMENT
+            TicketState.JIOC_REVIEW
             if not any(item.status == ProductOfferStatus.OFFERED for item in offers)
             else TicketState.RFI_MATCH_OFFERED
         )
@@ -217,6 +219,7 @@ class RfiSearchService:
         )
         self._record_audit_or_rollback(
             ticket,
+            updated,
             "product_offer_rejected",
             actor,
             {"ticket_id": str(ticket.ticket_id), "product_id": str(product_id)},
@@ -283,6 +286,7 @@ class RfiSearchService:
     def _record_audit_or_rollback(
         self,
         original_ticket: TicketRecord,
+        updated_ticket: TicketRecord,
         event_type: str,
         actor: UserAccount,
         details: dict[str, str],
@@ -290,7 +294,7 @@ class RfiSearchService:
         try:
             self._audit_log.record(event_type, str(actor.user_id), details)
         except Exception:
-            self._tickets.save_system_update(original_ticket)
+            self._tickets.restore_system_update_if_current(updated_ticket, original_ticket)
             raise
 
     @staticmethod
@@ -302,7 +306,7 @@ class RfiSearchService:
 def build_rfi_search_service(
     ticket_services: TicketServices,
     store_services: StoreServices,
-    access_repository: SeedAccessRepository,
+    access_repository: AccessRepository,
     audit_log: AuditLog,
     embeddings: EmbeddingService,
 ) -> RfiSearchService:

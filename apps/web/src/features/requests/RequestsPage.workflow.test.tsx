@@ -153,6 +153,12 @@ test("shows request mutation failures instead of failing silently", async () => 
 
 test("runs RFI search and accepts an offered product", async () => {
   const submittedTicket: Ticket = { ...baseTicket, state: "RFI_SEARCHING" };
+  const unrelatedTicket: Ticket = {
+    ...baseTicket,
+    id: "ticket-2",
+    reference: "RFI-0002",
+    intake: { ...baseTicket.intake, title: "Unrelated request" },
+  };
   const acceptedResults = {
     ...rfiSearchResults,
     ticketState: "CLOSED_EXISTING_PRODUCT_ACCEPTED",
@@ -172,7 +178,7 @@ test("runs RFI search and accepts an offered product", async () => {
     if (url.includes("/api/v1/tickets")) {
       return Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ tickets: [submittedTicket] }),
+        json: () => Promise.resolve({ tickets: [submittedTicket, unrelatedTicket] }),
       });
     }
     return Promise.resolve({ ok: true, json: () => Promise.resolve({}), init });
@@ -199,6 +205,7 @@ test("runs RFI search and accepts an offered product", async () => {
     "href",
     "/store/products/product-1",
   );
+  expect(screen.getByText("Unrelated request")).toBeVisible();
 });
 
 test("rejects an offered product with a reason", async () => {

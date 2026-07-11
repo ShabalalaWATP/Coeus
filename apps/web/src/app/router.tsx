@@ -5,7 +5,7 @@ import { DefaultRouteRedirect } from "../components/auth/DefaultRouteRedirect";
 import { ProtectedRoute } from "../components/auth/ProtectedRoute";
 import { AuthenticatedShell } from "../components/layout/AuthenticatedShell";
 import { RouteFallback } from "../components/layout/RouteFallback";
-import type { Permission } from "../lib/api-client/client";
+import type { Permission } from "../lib/api-client/auth";
 import {
   AcgAdminPage,
   AdminOverviewPage,
@@ -22,6 +22,7 @@ import {
   RoutingQueuePage,
   SessionExpiredPage,
   StorePage,
+  TeamsPage,
   UserManagementPage,
 } from "./route-components";
 
@@ -92,8 +93,12 @@ export function createAppRouter() {
           element: protectedPage(<ProductDetailPage />, ["product:read"]),
         },
         {
+          path: "jioc/queue",
+          element: protectedPage(<RoutingQueuePage queue="jioc" />, ["jioc:review"]),
+        },
+        {
           path: "rfa/queue",
-          element: protectedPage(<RoutingQueuePage route="rfa" />, ["rfa:review"]),
+          element: protectedPage(<RoutingQueuePage queue="rfa" />, ["rfa:review"]),
         },
         {
           path: "rfa/products",
@@ -115,7 +120,7 @@ export function createAppRouter() {
         },
         {
           path: "collection/queue",
-          element: protectedPage(<RoutingQueuePage route="cm" />, ["collection:review"]),
+          element: protectedPage(<RoutingQueuePage queue="cm" />, ["collection:review"]),
         },
         {
           path: "collection/products",
@@ -134,6 +139,11 @@ export function createAppRouter() {
             "analytics:view_team",
             "collection:review",
           ]),
+        },
+        {
+          // Membership is checked server-side; non-members see an empty state.
+          path: "teams",
+          element: protectedPage(<TeamsPage />, ["user:read_self"]),
         },
         {
           path: "analyst/workbench",

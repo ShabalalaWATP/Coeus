@@ -1,4 +1,4 @@
-import { ApiError, apiRequestJson, pathSegment, resolveApiBaseUrl } from "./client";
+import { apiRequest, apiRequestJson, pathSegment } from "./client";
 
 type StoreAsset = {
   id: string;
@@ -208,25 +208,15 @@ export async function downloadAssetBlob(
   assetId: string,
   token: string,
 ): Promise<Blob> {
-  const response = await fetch(
-    `${resolveApiBaseUrl()}/api/v1/store/products/${pathSegment(productId)}/assets/${pathSegment(
-      assetId,
-    )}/download`,
+  const response = await apiRequest(
+    `/api/v1/store/products/${pathSegment(productId)}/assets/${pathSegment(assetId)}/download`,
     {
       // The response varies with the token header, so bypass the HTTP cache.
       cache: "no-store",
-      credentials: "include",
       headers: { "X-Asset-Token": token },
       method: "GET",
     },
   );
-  if (!response.ok) {
-    throw new ApiError(
-      response.status,
-      "asset_download_failed",
-      `Asset download failed with status ${response.status}`,
-    );
-  }
   return response.blob();
 }
 

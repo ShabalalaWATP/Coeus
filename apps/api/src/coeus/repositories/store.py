@@ -1,15 +1,17 @@
+from typing import Protocol
 from uuid import UUID
 
 from coeus.domain.store import (
     StoreHybridCandidate,
     StoreProduct,
+    StoreProductSearchPage,
     StoreSearchFilters,
     StoreVisibilityScope,
     product_in_scope,
 )
 from coeus.persistence.codec import decode_value, encode_value
 from coeus.persistence.state_store import StateStore
-from coeus.repositories.access import SeedAccessRepository
+from coeus.repositories.access import AccessRepository
 from coeus.repositories.store_hybrid import memory_hybrid_candidates
 from coeus.repositories.store_ids import max_store_reference_counter
 from coeus.repositories.store_projection import StoreProjection
@@ -17,10 +19,43 @@ from coeus.repositories.store_seed import STORE_SEED_REFERENCE_COUNTER, seed_sto
 from coeus.services.embeddings import EmbeddingService
 
 
+class StoreRepository(Protocol):
+    def list_products(self) -> tuple[StoreProduct, ...]: ...
+
+    def search_product_page(
+        self, filters: StoreSearchFilters, scope: StoreVisibilityScope
+    ) -> StoreProductSearchPage | None: ...
+
+    def hybrid_candidates(
+        self,
+        filters: StoreSearchFilters,
+        scope: StoreVisibilityScope,
+        query: str,
+        query_embedding: tuple[float, ...] | None,
+        leg_limit: int = 50,
+    ) -> tuple[StoreHybridCandidate, ...]: ...
+
+    def get_visible_product(
+        self, product_id: UUID, scope: StoreVisibilityScope
+    ) -> StoreProduct | None: ...
+
+    def get_product(self, product_id: UUID) -> StoreProduct | None: ...
+
+    def save_product(self, product: StoreProduct) -> None: ...
+
+    def delete_product(self, product_id: UUID) -> None: ...
+
+    def embedded_product_count(self) -> int: ...
+
+    def backfill_missing_embeddings(self, batch_size: int = 500) -> int: ...
+
+    def next_reference(self) -> str: ...
+
+
 class InMemoryStoreRepository:
     def __init__(
         self,
-        access_repository: SeedAccessRepository,
+        access_repository: AccessRepository,
         state_store: StateStore | None = None,
         projection: StoreProjection | None = None,
         embeddings: EmbeddingService | None = None,
@@ -40,14 +75,14 @@ class InMemoryStoreRepository:
         self._refresh_from_projection(allow_empty=True)
         return tuple(sorted(self._products.values(), key=lambda product: product.metadata.title))
 
-    def search_products(
+    def search_product_page(
         self, filters: StoreSearchFilters, scope: StoreVisibilityScope
-    ) -> tuple[StoreProduct, ...]:
+    ) -> StoreProductSearchPage | None:
         if self._projection is None:
-            return self.list_products()
-        products = self._projection.search_products(filters, scope)
-        self._products.update({product.product_id: product for product in products})
-        return products
+            return None
+        page = self._projection.search_product_page(filters, scope)
+        self._products.update({product.product_id: product for product in page.products})
+        return page
 
     def hybrid_candidates(
         self,
@@ -70,9 +105,7 @@ class InMemoryStoreRepository:
             )
             return candidates
         scoped = tuple(
-            product
-            for product in self.search_products(filters, scope)
-            if product_in_scope(product, scope)
+            product for product in self.list_products() if product_in_scope(product, scope)
         )
         return memory_hybrid_candidates(
             scoped,

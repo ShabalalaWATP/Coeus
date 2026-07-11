@@ -56,38 +56,19 @@ def recommend_route(
 
 
 def state_for_recommendation(recommendation: RouteRecommendation) -> TicketState:
-    return {
-        RoutingRoute.RFA: TicketState.RFA_MANAGER_REVIEW,
-        RoutingRoute.CM: TicketState.CM_MANAGER_REVIEW,
-        RoutingRoute.CLARIFICATION: TicketState.INFO_REQUIRED,
-    }[recommendation.recommended_route]
-
-
-def fallback_state(route: RoutingRoute, cm_review: CmCapabilityReview | None) -> TicketState:
-    if route == RoutingRoute.RFA and cm_review is not None and cm_review.can_satisfy:
-        return TicketState.CM_MANAGER_REVIEW
-    return TicketState.INFO_REQUIRED
+    # The agents only advise: a recommendation keeps the ticket in the JIOC
+    # queue for a human decision, unless clarification is needed first.
+    if recommendation.recommended_route == RoutingRoute.CLARIFICATION:
+        return TicketState.INFO_REQUIRED
+    return TicketState.JIOC_REVIEW
 
 
 def can_review_route(actor: UserAccount, ticket: TicketRecord) -> bool:
     if Permission.TICKET_READ_ALL in actor.permissions:
         return True
-    reviewer = (
-        Permission.RFA_REVIEW in actor.permissions
-        or Permission.COLLECTION_REVIEW in actor.permissions
-    )
     return (
-        (
-            ticket.state == TicketState.RFA_MANAGER_REVIEW
-            and Permission.RFA_REVIEW in actor.permissions
-        )
-        or (
-            ticket.state == TicketState.CM_MANAGER_REVIEW
-            and Permission.COLLECTION_REVIEW in actor.permissions
-        )
-        or (
-            ticket.state in {TicketState.ROUTE_ASSESSMENT, TicketState.MANAGER_RELEASE} and reviewer
-        )
+        ticket.state in {TicketState.JIOC_REVIEW, TicketState.COLLECT_CHOICE}
+        and Permission.JIOC_REVIEW in actor.permissions
     )
 
 
@@ -95,25 +76,9 @@ def filled(value: str | None) -> bool:
     return value is not None and value.strip() != ""
 
 
-def current_queue_permission(ticket: TicketRecord) -> Permission:
-    """The review permission owned by the queue the ticket currently sits in."""
-    queue_permissions = {
-        TicketState.RFA_MANAGER_REVIEW: Permission.RFA_REVIEW,
-        TicketState.CM_MANAGER_REVIEW: Permission.COLLECTION_REVIEW,
-    }
-    permission = queue_permissions.get(ticket.state)
-    if permission is None:
-        raise AppError(409, "invalid_ticket_state", "Ticket is not in manager review.")
-    return permission
-
-
-def ensure_manager_state(ticket: TicketRecord, route: RoutingRoute) -> None:
-    allowed = {
-        RoutingRoute.RFA: TicketState.RFA_MANAGER_REVIEW,
-        RoutingRoute.CM: TicketState.CM_MANAGER_REVIEW,
-    }
-    if ticket.state != allowed[route]:
-        raise AppError(409, "invalid_ticket_state", "Ticket is not in that manager queue.")
+def ensure_jioc_state(ticket: TicketRecord) -> None:
+    if ticket.state != TicketState.JIOC_REVIEW:
+        raise AppError(409, "invalid_ticket_state", "Ticket is not awaiting a JIOC decision.")
 
 
 def ensure_override(override_reason: str | None) -> None:
@@ -229,16 +194,16 @@ def rate(part: int, total: int) -> float:
 def _plan_title_for_state(state: TicketState) -> str:
     if state == TicketState.ANALYST_ASSIGNMENT:
         return "Prepare analyst assignment"
-    if state == TicketState.CM_MANAGER_REVIEW:
-        return "Collection manager route review"
-    if state == TicketState.RFA_MANAGER_REVIEW:
-        return "RFA manager route review"
+    if state == TicketState.COLLECT_CHOICE:
+        return "Await customer collect choice"
+    if state == TicketState.JIOC_REVIEW:
+        return "JIOC route review"
     return "Clarify routing requirement"
 
 
 def _owner_for_route(route: RoutingRoute) -> str:
     return {
         RoutingRoute.RFA: "RFA Manager",
-        RoutingRoute.CM: "Collection Manager",
+        RoutingRoute.CM: "CM Manager",
         RoutingRoute.CLARIFICATION: "Requester",
     }[route]

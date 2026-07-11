@@ -18,3 +18,4 @@ export const RoutingQueuePage = lazy(() => import("../features/routing/RoutingQu
 export const ProductDetailPage = lazy(() => import("../features/store/ProductDetailPage"));
 export const ProductUploadPage = lazy(() => import("../features/store/ProductUploadPage"));
 export const StorePage = lazy(() => import("../features/store/StorePage"));
+export const TeamsPage = lazy(() => import("../features/teams/TeamsPage"));

@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from collections.abc import Callable, Iterable
 from hashlib import blake2b
 from math import sqrt
@@ -12,6 +13,7 @@ from coeus.core.config import Settings
 from coeus.core.logging import get_logger
 
 EMBEDDING_DIMENSIONS = 384
+EMBEDDING_CACHE_LIMIT = 2048
 GEMINI_EMBEDDING_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/{model}:embedContent"
 )
@@ -53,6 +55,7 @@ class EmbeddingService:
     def __init__(self, provider: EmbeddingProvider) -> None:
         self._provider = provider
         self._warned: set[str] = set()
+        self._cache: OrderedDict[str, tuple[float, ...] | None] = OrderedDict()
 
     @property
     def provider_name(self) -> str:
@@ -64,6 +67,18 @@ class EmbeddingService:
         except EmbeddingUnavailable as exc:
             self._warn_once(str(exc), purpose)
             return None
+
+    def embed_cached(self, text: str, *, purpose: str) -> tuple[float, ...] | None:
+        """Embed immutable retrieval text once per provider and process lifetime."""
+        key = f"{self.provider_name}:{blake2b(text.encode('utf-8'), digest_size=16).hexdigest()}"
+        if key in self._cache:
+            self._cache.move_to_end(key)
+            return self._cache[key]
+        vector = self.embed(text, purpose=purpose)
+        self._cache[key] = vector
+        if len(self._cache) > EMBEDDING_CACHE_LIMIT:
+            self._cache.popitem(last=False)
+        return vector
 
     def _warn_once(self, reason: str, purpose: str) -> None:
         key = f"{self.provider_name}:{reason}"

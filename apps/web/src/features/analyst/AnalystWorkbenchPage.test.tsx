@@ -20,14 +20,16 @@ const baseTask: AnalystTask = {
   requiredOutputFormat: "assessment report",
   chatSummary: ["Need an Arctic fisheries assessment."],
   managerNotes: ["Approved for analyst assignment."],
-  assignment: {
-    id: "assignment-1",
-    analystUserId: "analyst-1",
-    assignedByUserId: "manager-1",
-    route: "rfa",
-    createdAt: "2026-07-05T00:00:00Z",
-    teamName: "Maritime Assessment Cell",
-  },
+  assignments: [
+    {
+      id: "assignment-1",
+      analystUserId: "analyst-1",
+      assignedByUserId: "manager-1",
+      route: "rfa",
+      createdAt: "2026-07-05T00:00:00Z",
+      teamName: "Maritime Assessment Cell",
+    },
+  ],
   workPackages: [
     {
       id: "package-1",
@@ -279,7 +281,7 @@ test("works an assigned task through notes, products, draft and QC submission", 
       },
     ],
   };
-  const submitted = { ...withDraft, state: "QC_REVIEW" as const };
+  const submitted = { ...withDraft, state: "MANAGER_APPROVAL" as const };
   const fetchMock = vi
     .fn()
     .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ tasks: [baseTask] }) })
@@ -326,12 +328,12 @@ test("works an assigned task through notes, products, draft and QC submission", 
   await userEvent.click(screen.getByRole("button", { name: "Save draft" }));
   expect(await screen.findByText("v1: Arctic assessment draft")).toBeVisible();
 
-  await userEvent.click(screen.getByRole("button", { name: "Submit to QC" }));
+  await userEvent.click(screen.getByRole("button", { name: "Submit for manager approval" }));
   expect(
-    await within(screen.getByLabelText("Analyst task detail")).findByText("QC REVIEW"),
+    await within(screen.getByLabelText("Analyst task detail")).findByText("MANAGER APPROVAL"),
   ).toBeVisible();
   expect(fetchMock).toHaveBeenLastCalledWith(
-    "http://127.0.0.1:8001/api/v1/analyst/tasks/ticket-1/submit-qc",
+    "http://127.0.0.1:8001/api/v1/analyst/tasks/ticket-1/submit",
     { credentials: "include", headers: { "X-CSRF-Token": "test-csrf-token" }, method: "POST" },
   );
 });

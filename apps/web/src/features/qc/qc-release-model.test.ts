@@ -1,5 +1,5 @@
 import { csvToValues, initialReleaseForm, selectedAcgId } from "./qc-release-model";
-import type { AccessControlGroup } from "../../lib/api-client/client";
+import type { AccessControlGroup } from "../../lib/api-client/access";
 
 const acg: AccessControlGroup = {
   id: "first-acg",

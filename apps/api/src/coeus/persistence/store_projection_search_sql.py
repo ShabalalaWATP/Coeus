@@ -36,7 +36,7 @@ WHERE p.product_id = CAST(:product_id AS uuid)
   )
 """
 
-SEARCH_PRODUCTS_SQL = """
+SEARCH_PRODUCTS_BASE_SQL = """
 SELECT
     p.product_id,
     p.reference,
@@ -114,8 +114,34 @@ WHERE p.status <> :archived_status
           array_to_string(p.semantic_labels, ' ')
       ) ILIKE '%' || CAST(:query_like AS text) || '%' ESCAPE '\\'
   )
-ORDER BY p.title ASC
 """
+
+SEARCH_PRODUCTS_SQL = (
+    SEARCH_PRODUCTS_BASE_SQL
+    + """
+ORDER BY lower(p.title) ASC, p.reference ASC
+LIMIT :page_size
+OFFSET :offset
+"""
+)
+
+SEARCH_SUMMARY_SQL = (
+    # Every fragment is a static constant; request values remain bound parameters.
+    "WITH filtered_products AS ("  # noqa: S608  # nosec B608
+    + SEARCH_PRODUCTS_BASE_SQL
+    + """
+)
+SELECT
+    (SELECT count(*) FROM filtered_products) AS total,
+    (SELECT coalesce(array_agg(DISTINCT product_type ORDER BY product_type), ARRAY[]::text[])
+     FROM filtered_products) AS product_types,
+    (SELECT coalesce(array_agg(DISTINCT area_or_region ORDER BY area_or_region),
+        ARRAY[]::text[])
+     FROM filtered_products) AS regions,
+    (SELECT coalesce(array_agg(DISTINCT tag ORDER BY tag), ARRAY[]::text[])
+     FROM filtered_products, LATERAL unnest(tags) AS tag) AS tags
+"""
+)
 
 SEARCH_ASSETS_SQL = """
 SELECT

@@ -2,7 +2,8 @@ import { KeyRound, ShieldCheck } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { ApiError, apiClient } from "../../lib/api-client/client";
+import { changePassword } from "../../lib/api-client/auth";
+import { ApiError } from "../../lib/api-client/client";
 import { useAuth } from "../../lib/auth/auth-context";
 import { actionErrorMessage } from "../../lib/mutations/action-error";
 
@@ -33,7 +34,7 @@ export default function ChangePasswordPage() {
     setFormError(null);
     setIsSaving(true);
     try {
-      await apiClient.changePassword({ currentPassword, newPassword }, session?.csrfToken ?? "");
+      await changePassword({ currentPassword, newPassword }, session?.csrfToken ?? "");
       const nextSession = await refreshSession();
       void navigate(nextSession.user.defaultRoute, { replace: true });
     } catch (error) {

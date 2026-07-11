@@ -8,6 +8,8 @@ from coeus.services.embeddings import EmbeddingService, MockEmbeddingProvider, c
 from coeus.services.rfi_ranking import lexical_score_for_product
 from coeus.services.store_semantics import product_semantic_text
 
+MEMORY_VECTOR_WORK_LIMIT = 64
+
 
 def memory_hybrid_candidates(
     products: tuple[StoreProduct, ...],
@@ -29,7 +31,20 @@ def memory_hybrid_candidates(
 
     filtered_products = _structured_products(products, filters)
     lexical_ranked = _rank_lexical(filtered_products, query)
-    vector_ranked = _rank_vector(filtered_products, query_embedding, embeddings)
+    # The memory fallback has no persisted vector index. Bound its candidate
+    # work independently of corpus size, using lexical order as a deterministic
+    # preselection before the optional semantic leg.
+    vector_products = tuple(item[2] for item in lexical_ranked[:MEMORY_VECTOR_WORK_LIMIT])
+    if len(vector_products) < MEMORY_VECTOR_WORK_LIMIT:
+        selected = {product.product_id for product in vector_products}
+        supplements = (
+            product
+            for product in sorted(filtered_products, key=lambda item: item.metadata.title)
+            if product.product_id not in selected
+        )
+        remaining = MEMORY_VECTOR_WORK_LIMIT - len(vector_products)
+        vector_products = (*vector_products, *tuple(supplements)[:remaining])
+    vector_ranked = _rank_vector(vector_products, query_embedding, embeddings)
     # A run is effectively lexical-only when the query never embedded or when no
     # candidate produced a usable vector, so the semantic leg contributed nothing.
     lexical_only = query_embedding is None or not vector_ranked
@@ -101,5 +116,8 @@ def _product_embedder(
     embeddings: EmbeddingService | None,
 ) -> Callable[[str], tuple[float, ...] | None]:
     if embeddings is not None:
+        cached = getattr(embeddings, "embed_cached", None)
+        if cached is not None:
+            return lambda text: cached(text, purpose="memory-candidate")
         return lambda text: embeddings.embed(text, purpose="memory-candidate")
     return MockEmbeddingProvider().embed

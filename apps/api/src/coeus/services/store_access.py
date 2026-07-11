@@ -5,7 +5,7 @@ from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
 from coeus.domain.auth import UserAccount
 from coeus.domain.store import AssetAccessGrant, StoreProduct, StoreVisibilityScope
-from coeus.repositories.store import InMemoryStoreRepository
+from coeus.repositories.store import StoreRepository
 from coeus.services.asset_tokens import AssetTokenService
 from coeus.services.audit import AuditLog
 
@@ -21,7 +21,7 @@ class StoreReadPolicy(Protocol):
 class StoreDetailService:
     def __init__(
         self,
-        repository: InMemoryStoreRepository,
+        repository: StoreRepository,
         policy: StoreReadPolicy,
         audit_log: AuditLog,
     ) -> None:

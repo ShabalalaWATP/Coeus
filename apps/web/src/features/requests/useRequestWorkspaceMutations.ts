@@ -1,9 +1,8 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { type InfiniteData, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Dispatch, SetStateAction } from "react";
 import { useNavigate } from "react-router-dom";
 
 import type { TicketWorkspaceActions, TicketWorkspacePending } from "./TicketWorkspace";
-import { upsertTicket } from "./ticket-collection";
 import {
   acceptProductOffer,
   rejectProductOffer,
@@ -16,6 +15,7 @@ import {
   addTicketCollaborator,
   addTicketInformation,
   cancelTicket,
+  chooseCollectOption,
   consentNoMatch,
   confirmTicketDelivery,
   removeTicketCollaborator,
@@ -25,10 +25,10 @@ import {
   type AttachmentMetadataInput,
   type IntakeUpdate,
   type Ticket,
+  type TicketSummary,
+  type TicketSummaryPage,
 } from "../../lib/api-client/tickets";
 import { actionErrorMessage } from "../../lib/mutations/action-error";
-
-const EMPTY_TICKETS: Ticket[] = [];
 
 type UseRequestWorkspaceMutationsInput = {
   csrfToken: string;
@@ -57,7 +57,8 @@ export function useRequestWorkspaceMutations({
 
   const updateTicketCache = (ticket: Ticket) => {
     setActionError(null);
-    queryClient.setQueryData<Ticket[]>(["tickets"], (current) => upsertTicket(current, ticket));
+    queryClient.setQueryData(["tickets", "detail", ticket.id], ticket);
+    updateTicketSummary(queryClient, ticketSummary(ticket));
     if (ticket.id !== currentRouteTicketId) {
       void navigate(`/app/requests/${encodeURIComponent(ticket.id)}`, { replace: true });
     }
@@ -65,20 +66,24 @@ export function useRequestWorkspaceMutations({
   const updateRfiCache = (result: RfiSearchResults) => {
     setActionError(null);
     queryClient.setQueryData(["rfi-search", result.ticketId], result);
-    queryClient.setQueryData<Ticket[]>(["tickets"], (current) =>
-      (current ?? EMPTY_TICKETS).map((ticket) =>
-        ticket.id === result.ticketId
-          ? {
-              ...ticket,
-              state: result.ticketState,
-              visibleProductMatches: result.offers.map((offer) => offer.title),
-              releasedProductIds: withAcceptedProduct(
-                ticket.releasedProductIds,
-                result.metrics?.acceptedProductId ?? null,
-              ),
-            }
-          : ticket,
-      ),
+    queryClient.setQueryData<Ticket>(["tickets", "detail", result.ticketId], (ticket) =>
+      ticket
+        ? {
+            ...ticket,
+            state: result.ticketState,
+            visibleProductMatches: result.offers.map((offer) => offer.title),
+            releasedProductIds: withAcceptedProduct(
+              ticket.releasedProductIds,
+              result.metrics?.acceptedProductId ?? null,
+            ),
+          }
+        : ticket,
+    );
+    updateTicketSummaryState(
+      queryClient,
+      result.ticketId,
+      result.ticketState,
+      result.metrics?.acceptedProductId ?? null,
     );
   };
 
@@ -177,13 +182,20 @@ export function useRequestWorkspaceMutations({
     onMutate: clearActionError,
     onSuccess: updateTicketCache,
   });
+  const collectChoiceMutation = useMutation({
+    mutationFn: (analysed: boolean) => chooseCollectOption(selectedTicketId, analysed, csrfToken),
+    onError: failAction("The collect choice could not be recorded. Try again."),
+    onMutate: clearActionError,
+    onSuccess: updateTicketCache,
+  });
   const confirmDeliveryMutation = useMutation({
     mutationFn: (confirmTicketId: string) => confirmTicketDelivery(confirmTicketId, csrfToken),
     onError: failAction("Delivery could not be confirmed. Refresh and try again."),
     onMutate: clearActionError,
     onSuccess: (ticket) => {
       setActionError(null);
-      queryClient.setQueryData<Ticket[]>(["tickets"], (current) => upsertTicket(current, ticket));
+      queryClient.setQueryData(["tickets", "detail", ticket.id], ticket);
+      updateTicketSummary(queryClient, ticketSummary(ticket));
     },
   });
 
@@ -193,6 +205,7 @@ export function useRequestWorkspaceMutations({
     onAddCollaborator: (username, access) => addCollaboratorMutation.mutate({ username, access }),
     onAddInformation: (body) => informationMutation.mutate(body),
     onCancel: (reason) => cancelMutation.mutate(reason),
+    onCollectChoice: (analysed) => collectChoiceMutation.mutate(analysed),
     onNoMatchConsent: (taskAsNewRequest) => noMatchConsentMutation.mutate(taskAsNewRequest),
     onReject: (productId, reason) => rejectOfferMutation.mutate({ productId, reason }),
     onRemoveCollaborator: (userId) => removeCollaboratorMutation.mutate(userId),
@@ -205,6 +218,7 @@ export function useRequestWorkspaceMutations({
     accepting: acceptOfferMutation.isPending,
     adding: informationMutation.isPending,
     cancelling: cancelMutation.isPending,
+    choosingCollect: collectChoiceMutation.isPending,
     collaborating: addCollaboratorMutation.isPending || removeCollaboratorMutation.isPending,
     consenting: noMatchConsentMutation.isPending,
     rejecting: rejectOfferMutation.isPending,
@@ -230,4 +244,67 @@ function withAcceptedProduct(current: string[], acceptedProductId: string | null
     return current;
   }
   return [...current, acceptedProductId];
+}
+
+function updateTicketSummary(
+  queryClient: ReturnType<typeof useQueryClient>,
+  summary: TicketSummary,
+) {
+  queryClient.setQueryData<InfiniteData<TicketSummaryPage>>(["tickets"], (current) => {
+    if (!current) return current;
+    let found = false;
+    const pages = current.pages.map((page) => ({
+      ...page,
+      tickets: page.tickets.map((ticket) => {
+        if (ticket.id !== summary.id) return ticket;
+        found = true;
+        return summary;
+      }),
+    }));
+    if (!found && pages[0]) pages[0] = { ...pages[0], tickets: [summary, ...pages[0].tickets] };
+    return { ...current, pages };
+  });
+}
+
+function updateTicketSummaryState(
+  queryClient: ReturnType<typeof useQueryClient>,
+  ticketId: string,
+  state: Ticket["state"],
+  releasedProductId: string | null,
+) {
+  queryClient.setQueryData<InfiniteData<TicketSummaryPage>>(["tickets"], (current) =>
+    current
+      ? {
+          ...current,
+          pages: current.pages.map((page) => ({
+            ...page,
+            tickets: page.tickets.map((ticket) =>
+              ticket.id === ticketId
+                ? {
+                    ...ticket,
+                    state,
+                    releasedProductId: releasedProductId ?? ticket.releasedProductId,
+                  }
+                : ticket,
+            ),
+          })),
+        }
+      : current,
+  );
+}
+
+function ticketSummary(ticket: Ticket): TicketSummary {
+  return {
+    id: ticket.id,
+    reference: ticket.reference,
+    requesterUserId: ticket.requesterUserId,
+    state: ticket.state,
+    title: ticket.intake.title,
+    priority: ticket.intake.priority,
+    isReadyForSubmission: ticket.isReadyForSubmission,
+    collaboratorCount: ticket.collaborators.length,
+    releasedProductId: ticket.releasedProductIds[0] ?? null,
+    createdAt: ticket.createdAt,
+    updatedAt: ticket.updatedAt,
+  };
 }

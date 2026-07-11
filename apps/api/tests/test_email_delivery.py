@@ -183,6 +183,39 @@ def test_smtp_provider_wraps_delivery_errors(monkeypatch: pytest.MonkeyPatch) ->
         )
 
 
+def test_smtp_provider_can_send_without_tls_or_authentication(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[str] = []
+
+    class PlainSmtp:
+        def __init__(self, _host: str, _port: int, timeout: int) -> None:
+            return None
+
+        def __enter__(self) -> "PlainSmtp":
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def send_message(self, _message: EmailMessage) -> None:
+            calls.append("sent")
+
+    monkeypatch.setattr(email_delivery, "SMTP", PlainSmtp)
+    provider = build_email_provider(
+        Settings(
+            email_provider="smtp",
+            smtp_host="localhost",
+            smtp_from="noreply@example.test",
+            smtp_starttls=False,
+        )
+    )
+
+    provider.send(EmailRecord(uuid4(), "user@example.test", "Subject", "Body", _now()))
+
+    assert calls == ["sent"]
+
+
 def _user() -> UserAccount:
     return UserAccount(
         user_id=uuid4(),

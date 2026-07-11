@@ -8,7 +8,11 @@ WorkPackageText = Annotated[str, Field(min_length=3, max_length=180)]
 
 
 class AnalystAssignmentRequest(BaseModel):
-    analyst_user_id: UUID = Field(validation_alias="analystUserId")
+    analyst_user_ids: list[UUID] = Field(
+        min_length=1,
+        max_length=5,
+        validation_alias="analystUserIds",
+    )
     team_name: str | None = Field(
         default=None,
         min_length=2,
@@ -136,7 +140,7 @@ class AnalystTaskResponse(BaseModel):
     required_output_format: str | None = Field(serialization_alias="requiredOutputFormat")
     chat_summary: list[str] = Field(serialization_alias="chatSummary")
     manager_notes: list[str] = Field(serialization_alias="managerNotes")
-    assignment: AnalystAssignmentResponse | None
+    assignments: list[AnalystAssignmentResponse]
     work_packages: list[WorkPackageResponse] = Field(serialization_alias="workPackages")
     notes: list[AnalystNoteResponse]
     linked_products: list[LinkedProductResponse] = Field(serialization_alias="linkedProducts")

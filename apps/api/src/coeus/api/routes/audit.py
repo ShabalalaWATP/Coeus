@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from coeus.api.dependencies import get_auth_service, require_permission
 from coeus.core.permissions import Permission
@@ -18,7 +18,10 @@ async def list_audit_events(
         Depends(require_permission(Permission.AUDIT_READ)),
     ],
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
+    limit: Annotated[int, Query(ge=1, le=500)] = 200,
+    before: str | None = None,
 ) -> AuditLogResponse:
+    page = auth_service.audit_log.list_page(limit, before)
     return AuditLogResponse(
         events=[
             AuditEventResponse(
@@ -28,6 +31,7 @@ async def list_audit_events(
                 actor_user_id=event.actor_user_id,
                 metadata=dict(event.metadata),
             )
-            for event in auth_service.audit_log.list_events()
-        ]
+            for event in page.events
+        ],
+        next_cursor=page.next_cursor,
     )

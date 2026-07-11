@@ -37,6 +37,8 @@ async def test_admin_user_management_updates_user_and_revokes_sessions() -> None
             headers={"X-CSRF-Token": admin_csrf},
             json={"clearanceLevel": 4},
         )
+        # The legacy role name is deliberately used: it must normalise to the
+        # renamed role rather than being rejected.
         roles = await admin.put(
             f"/api/v1/admin/users/{target['id']}/roles",
             headers={"X-CSRF-Token": admin_csrf},
@@ -56,7 +58,7 @@ async def test_admin_user_management_updates_user_and_revokes_sessions() -> None
     assert clearance.status_code == 200
     assert clearance.json()["clearanceLevel"] == 4
     assert roles.status_code == 200
-    assert roles.json()["roles"] == ["Intelligence Analyst"]
+    assert roles.json()["roles"] == ["Analyst"]
     assert old_session.status_code == 401
     assert disabled.status_code == 200
     assert disabled.json()["isActive"] is False

@@ -10,6 +10,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from coeus.persistence.relational_schema import ensure_relational_schema
 
 if TYPE_CHECKING:
+    from coeus.persistence.audit_store import PostgresAuditEventStore
     from coeus.persistence.store_projection import PostgresStoreProjection
     from coeus.services.embeddings import EmbeddingService
 
@@ -105,6 +106,12 @@ class PostgresStateStore:
 
         self._ensure_schema()
         return PostgresStoreProjection(self._engine, embeddings)
+
+    def audit_event_store(self) -> "PostgresAuditEventStore":
+        from coeus.persistence.audit_store import PostgresAuditEventStore
+
+        self._ensure_schema()
+        return PostgresAuditEventStore(self._engine)
 
     def _ensure_schema(self) -> None:
         if self._schema_ready:

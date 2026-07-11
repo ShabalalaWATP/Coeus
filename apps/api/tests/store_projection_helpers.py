@@ -6,8 +6,10 @@ from typing import Any, cast
 from coeus.core.config import Settings
 from coeus.domain.access import ProductStatus
 from coeus.domain.store import (
+    StoreFacets,
     StoreHybridCandidate,
     StoreProduct,
+    StoreProductSearchPage,
     StoreSearchFilters,
     StoreVisibilityScope,
 )
@@ -25,8 +27,26 @@ class RecordingProjection:
     def list_products(self) -> tuple[StoreProduct, ...]:
         return self.products
 
-    def search_products(self, _filters: object, _scope: object) -> tuple[StoreProduct, ...]:
-        return self.products
+    def search_product_page(
+        self, filters: StoreSearchFilters, _scope: object
+    ) -> StoreProductSearchPage:
+        offset = (filters.page - 1) * filters.page_size
+        products = self.products[offset : offset + filters.page_size]
+        return StoreProductSearchPage(
+            products=products,
+            total=len(self.products),
+            facets=StoreFacets(
+                product_types=tuple(
+                    sorted({product.metadata.product_type for product in self.products})
+                ),
+                regions=tuple(
+                    sorted({product.metadata.area_or_region for product in self.products})
+                ),
+                tags=tuple(
+                    sorted({tag for product in self.products for tag in product.metadata.tags})
+                ),
+            ),
+        )
 
     def hybrid_candidates(
         self,
@@ -105,6 +125,27 @@ class FakeConnection:
             self._engine.params.append(params)
         if sql.startswith("SELECT count(*)"):
             return FakeResult([{"count": len(self._engine.embedding_hashes)}])
+        if sql.startswith("WITH filtered_products AS"):
+            return FakeResult(
+                [
+                    {
+                        "total": len(self._engine.products),
+                        "product_types": sorted(
+                            {product.metadata.product_type for product in self._engine.products}
+                        ),
+                        "regions": sorted(
+                            {product.metadata.area_or_region for product in self._engine.products}
+                        ),
+                        "tags": sorted(
+                            {
+                                tag
+                                for product in self._engine.products
+                                for tag in product.metadata.tags
+                            }
+                        ),
+                    }
+                ]
+            )
         if sql.startswith("SELECT product_id, embedding_source_hash"):
             requested = set(params.get("product_ids", []) if params else [])
             return FakeResult(
@@ -141,20 +182,32 @@ class FakeConnection:
                 ]
             )
         if sql.startswith("SELECT") and "intelligence_store_products" in sql:
-            return FakeResult([_product_row(product) for product in self._engine.products])
+            offset = int(params.get("offset", 0)) if params else 0
+            page_size = (
+                int(params.get("page_size", len(self._engine.products)))
+                if params
+                else len(self._engine.products)
+            )
+            products = self._engine.products[offset : offset + page_size]
+            return FakeResult([_product_row(product) for product in products])
         if sql.startswith("SELECT") and "intelligence_store_assets" in sql:
-            return FakeResult(
-                [row for product in self._engine.products for row in _asset_rows(product)]
-            )
+            products = self._requested_products(params)
+            return FakeResult([row for product in products for row in _asset_rows(product)])
         if sql.startswith("SELECT") and "intelligence_store_product_acgs" in sql:
-            return FakeResult(
-                [row for product in self._engine.products for row in _acg_rows(product)]
-            )
+            products = self._requested_products(params)
+            return FakeResult([row for product in products for row in _acg_rows(product)])
         if sql.startswith("SELECT") and "intelligence_store_semantic_labels" in sql:
-            return FakeResult(
-                [row for product in self._engine.products for row in _label_rows(product)]
-            )
+            products = self._requested_products(params)
+            return FakeResult([row for product in products for row in _label_rows(product)])
         return FakeResult([])
+
+    def _requested_products(self, params: dict[str, Any] | None) -> tuple[StoreProduct, ...]:
+        if not params or "product_ids" not in params:
+            return self._engine.products
+        requested = set(params.get("product_ids", ()) if params else ())
+        return tuple(
+            product for product in self._engine.products if str(product.product_id) in requested
+        )
 
     def _update_embedding(self, params: dict[str, Any]) -> FakeResult:
         product_id = params.get("product_id")

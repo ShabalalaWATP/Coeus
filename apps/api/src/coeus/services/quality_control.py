@@ -1,3 +1,4 @@
+from contextlib import suppress
 from dataclasses import replace
 from uuid import UUID
 
@@ -9,9 +10,11 @@ from coeus.domain.qc import ProductIndexRecord, QcChecklistItem, QcDecisionStatu
 from coeus.domain.state_machine import can_transition
 from coeus.domain.store import StoreProduct
 from coeus.domain.tickets import TicketRecord
-from coeus.repositories.access import SeedAccessRepository
+from coeus.repositories.access import AccessRepository
 from coeus.services.audit import AuditLog
-from coeus.services.object_storage import LocalObjectStorage
+from coeus.services.notifications import NotificationService
+from coeus.services.object_storage import ObjectStorage
+from coeus.services.prioritisation import priority_sort_key
 from coeus.services.qc_ingestion import (
     ProductAutoIngestionService,
     QcApprovalInput,
@@ -23,6 +26,7 @@ from coeus.services.qc_records import (
     qc_decision,
     queued_index,
 )
+from coeus.services.qc_release import QcReleaseStep, release_target_state
 from coeus.services.store import StoreServices
 from coeus.services.ticket_records import timeline
 from coeus.services.tickets import TicketServices
@@ -33,7 +37,7 @@ QC_READ_PERMISSIONS = frozenset({Permission.QC_REVIEW})
 
 
 class ReleaseCheckService:
-    def __init__(self, access_repository: SeedAccessRepository) -> None:
+    def __init__(self, access_repository: AccessRepository) -> None:
         self._access = access_repository
 
     def approval_checklist(self, answers: dict[str, bool]) -> tuple[QcChecklistItem, ...]:
@@ -72,28 +76,30 @@ class QualityControlService:
         release_checks: ReleaseCheckService,
         ingestion: ProductAutoIngestionService,
         indexing: ProductIndexingService,
+        release: QcReleaseStep,
         audit_log: AuditLog,
     ) -> None:
         self._tickets = tickets
         self._release_checks = release_checks
         self._ingestion = ingestion
         self._indexing = indexing
+        self._release = release
         self._audit_log = audit_log
 
     def queue(self, actor: UserAccount) -> tuple[TicketRecord, ...]:
         self._require(actor, Permission.QC_REVIEW)
-        return tuple(
+        queued = (
             ticket
             for ticket in self._tickets.tickets.list_workflow_tickets(actor, QC_READ_PERMISSIONS)
             if ticket.state == TicketState.QC_REVIEW
         )
+        return tuple(sorted(queued, key=priority_sort_key))
 
     def details(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         self._require(actor, Permission.QC_REVIEW)
         ticket = self._tickets.tickets.get_workflow_ticket(actor, ticket_id, QC_READ_PERMISSIONS)
         if ticket.state not in {
             TicketState.QC_REVIEW,
-            TicketState.MANAGER_RELEASE,
             TicketState.DISSEMINATION_READY,
             TicketState.REWORK_REQUIRED,
         }:
@@ -113,9 +119,8 @@ class QualityControlService:
         # DRAFT product without a matching QC decision on the ticket.
         checklist = self._release_checks.approval_checklist(approval.checklist)
         self._release_checks.validate_release_metadata(approval)
-        self._ensure_transition(ticket.state, TicketState.MANAGER_RELEASE)
+        self._ensure_transition(ticket.state, release_target_state(ticket))
         product = self._ingestion.ingest(actor, ticket, approval)
-        ticket_updated = False
         try:
             index_records = self._indexing.index_product(ticket, product)
             decision = qc_decision(
@@ -125,45 +130,44 @@ class QualityControlService:
                 actor.user_id,
                 checklist,
             )
-            updated = self._tickets.tickets.save_system_update(
-                replace(
-                    ticket,
-                    state=TicketState.MANAGER_RELEASE,
-                    qc_decisions=(*ticket.qc_decisions, decision),
-                    product_index_records=(*ticket.product_index_records, *index_records),
-                    timeline=(
-                        *ticket.timeline,
-                        timeline(ticket.ticket_id, actor.user_id, "qc_approved", product.reference),
-                        timeline(
-                            ticket.ticket_id,
-                            actor.user_id,
-                            "product_auto_ingested",
-                            product.reference,
-                        ),
-                        timeline(
-                            ticket.ticket_id,
-                            actor.user_id,
-                            "sent_for_manager_release",
-                            "Awaiting final release by the owning RFA or Collection manager.",
-                        ),
+            pending = replace(
+                ticket,
+                qc_decisions=(*ticket.qc_decisions, decision),
+                product_index_records=(*ticket.product_index_records, *index_records),
+                timeline=(
+                    *ticket.timeline,
+                    timeline(ticket.ticket_id, actor.user_id, "qc_approved", product.reference),
+                    timeline(
+                        ticket.ticket_id,
+                        actor.user_id,
+                        "product_auto_ingested",
+                        product.reference,
                     ),
-                )
+                ),
             )
-            ticket_updated = True
+            outcome = self._release.complete(actor, pending, product)
             self._audit_log.record(
                 "qc_approved",
                 str(actor.user_id),
                 {"ticket_id": str(ticket_id), "product_id": str(product.product_id)},
             )
+            self._audit_log.record(
+                outcome.audit_event,
+                str(actor.user_id),
+                {"ticket_id": str(ticket_id), "product_id": str(product.product_id)},
+            )
         except Exception:
-            # The ticket update or audit failed after ingestion; restore the
-            # original workflow state and remove the product so approval can be
-            # retried without an orphaned DRAFT product.
-            if ticket_updated:
+            # The release step, ticket update or audit failed after ingestion;
+            # restore the original workflow state and remove the product so
+            # approval can be retried without an orphaned DRAFT product. If
+            # persistence itself is down the restore may also fail; the
+            # product discard must still run so no orphan survives.
+            with suppress(Exception):
                 self._tickets.tickets.save_system_update(ticket)
             self._ingestion.discard(product.product_id)
             raise
-        return updated
+        self._release.notify_best_effort(actor, outcome)
+        return outcome.ticket
 
     def reject(self, actor: UserAccount, ticket_id: UUID, reason: str) -> TicketRecord:
         self._require(actor, Permission.QC_REJECT)
@@ -211,14 +215,16 @@ class QualityControlService:
 def build_quality_control_service(
     tickets: TicketServices,
     store: StoreServices,
-    access_repository: SeedAccessRepository,
+    access_repository: AccessRepository,
     audit_log: AuditLog,
-    storage: LocalObjectStorage,
+    storage: ObjectStorage,
+    notifications: NotificationService,
 ) -> QualityControlService:
     return QualityControlService(
         tickets,
         ReleaseCheckService(access_repository),
         ProductAutoIngestionService(store, access_repository, storage),
         ProductIndexingService(),
+        QcReleaseStep(tickets, store, access_repository, notifications, audit_log),
         audit_log,
     )

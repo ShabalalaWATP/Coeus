@@ -37,6 +37,6 @@ test("throws a typed error when the asset download is rejected", async () => {
   );
 
   await expect(downloadAssetBlob("product-1", "asset-1", "expired")).rejects.toEqual(
-    new ApiError(403, "asset_download_failed", "Asset download failed with status 403"),
+    new ApiError(403, "request_failed", "API request failed with status 403"),
   );
 });

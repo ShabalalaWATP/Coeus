@@ -67,7 +67,7 @@ async def test_registration_submission_is_generic_and_admin_can_approve() -> Non
             json={"username": "new.operator@example.test", "password": NEW_CREDENTIAL},
         )
         assert login.status_code == 200
-        assert login.json()["user"]["roles"] == ["User"]
+        assert login.json()["user"]["roles"] == ["Customer"]
         assert login.json()["user"]["defaultRoute"] == "/app/requests"
 
 

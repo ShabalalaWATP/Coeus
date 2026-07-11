@@ -1,5 +1,5 @@
 from coeus.persistence.state_store import PostgresStateStore, StateStore
-from coeus.repositories.access import SeedAccessRepository
+from coeus.repositories.access import AccessRepository
 from coeus.repositories.store import InMemoryStoreRepository
 from coeus.services.asset_tokens import AssetTokenService
 from coeus.services.audit import AuditLog
@@ -11,7 +11,7 @@ from coeus.services.store_product_policy import StoreProductAccessPolicy
 
 
 def build_store_services(
-    access_repository: SeedAccessRepository,
+    access_repository: AccessRepository,
     audit_log: AuditLog,
     asset_tokens: AssetTokenService,
     state_store: StateStore | None = None,

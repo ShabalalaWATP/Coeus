@@ -4,6 +4,7 @@ from uuid import UUID
 from coeus.domain.store import (
     StoreHybridCandidate,
     StoreProduct,
+    StoreProductSearchPage,
     StoreSearchFilters,
     StoreVisibilityScope,
 )
@@ -13,9 +14,9 @@ class StoreProjection(Protocol):
     def list_products(self) -> tuple[StoreProduct, ...]:
         pass
 
-    def search_products(
+    def search_product_page(
         self, filters: StoreSearchFilters, scope: StoreVisibilityScope
-    ) -> tuple[StoreProduct, ...]:
+    ) -> StoreProductSearchPage:
         pass
 
     def hybrid_candidates(

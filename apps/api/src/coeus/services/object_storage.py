@@ -1,6 +1,28 @@
+from collections.abc import Iterator
 from pathlib import Path
+from typing import Protocol, runtime_checkable
+from uuid import uuid4
 
+from coeus.core.config import Settings
 from coeus.domain.store import StoreProduct, object_key_segment
+
+
+@runtime_checkable
+class ObjectStorage(Protocol):
+    def write_bytes(self, object_key: str, content: bytes) -> None:
+        pass
+
+    def read_bytes(self, object_key: str) -> bytes:
+        pass
+
+    def iter_bytes(self, object_key: str, chunk_size: int) -> Iterator[bytes]:
+        pass
+
+    def exists(self, object_key: str) -> bool:
+        pass
+
+    def delete_bytes(self, object_key: str) -> None:
+        pass
 
 
 class LocalObjectStorage:
@@ -10,10 +32,25 @@ class LocalObjectStorage:
     def write_bytes(self, object_key: str, content: bytes) -> None:
         path = self.path_for(object_key)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(content)
+        temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
+        try:
+            temporary.write_bytes(content)
+            temporary.replace(path)
+        finally:
+            temporary.unlink(missing_ok=True)
 
     def exists(self, object_key: str) -> bool:
         return self.path_for(object_key).is_file()
+
+    def read_bytes(self, object_key: str) -> bytes:
+        return self.path_for(object_key).read_bytes()
+
+    def iter_bytes(self, object_key: str, chunk_size: int) -> Iterator[bytes]:
+        if chunk_size <= 0:
+            raise ValueError("Chunk size must be positive.")
+        with self.path_for(object_key).open("rb") as source:
+            while chunk := source.read(chunk_size):
+                yield chunk
 
     def delete_bytes(self, object_key: str) -> None:
         path = self.path_for(object_key)
@@ -40,7 +77,7 @@ class LocalObjectStorage:
 
 
 def seed_store_asset_placeholders(
-    storage: LocalObjectStorage,
+    storage: ObjectStorage,
     products: tuple[StoreProduct, ...],
 ) -> None:
     for product in products:
@@ -51,6 +88,14 @@ def seed_store_asset_placeholders(
                 f"MOCK DATA ONLY\n{product.reference}\n{product.metadata.title}\n{asset.name}\n"
             ).encode()
             storage.write_bytes(asset.object_key, content)
+
+
+def build_object_storage(settings: Settings) -> ObjectStorage:
+    if settings.object_storage_provider != "local":
+        raise ValueError(
+            "Only local object storage is implemented. GCS remains a future migration path."
+        )
+    return LocalObjectStorage(settings.local_object_storage_path)
 
 
 def _safe_parts(object_key: str) -> tuple[str, ...]:

@@ -7,6 +7,7 @@ from sqlalchemy.engine import Connection, Engine, Result
 from coeus.domain.store import (
     StoreHybridCandidate,
     StoreProduct,
+    StoreProductSearchPage,
     StoreSearchFilters,
     StoreVisibilityScope,
 )
@@ -44,14 +45,14 @@ class PostgresStoreProjection:
             label_rows = _mapping_rows(connection.execute(text(SELECT_LABELS_SQL)))
         return tuple(decode_product(row, asset_rows, acg_rows, label_rows) for row in product_rows)
 
-    def search_products(
+    def search_product_page(
         self, filters: StoreSearchFilters, scope: StoreVisibilityScope
-    ) -> tuple[StoreProduct, ...]:
-        from coeus.persistence.store_projection_search import search_products
+    ) -> StoreProductSearchPage:
+        from coeus.persistence.store_projection_search import search_product_page
 
         with self._engine.begin() as connection:
             ensure_relational_schema(connection)
-            return search_products(connection, filters, scope)
+            return search_product_page(connection, filters, scope)
 
     def hybrid_candidates(
         self,

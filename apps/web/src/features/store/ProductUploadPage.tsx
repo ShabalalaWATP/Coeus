@@ -10,7 +10,7 @@ import {
   metadataSuggestionInput,
   productUploadMetadata,
 } from "./product-upload-model";
-import { apiClient } from "../../lib/api-client/client";
+import { listAcgs } from "../../lib/api-client/access";
 import {
   createStoreProduct,
   suggestStoreMetadata,
@@ -26,7 +26,7 @@ export default function ProductUploadPage() {
   const [assetFile, setAssetFile] = useState<File | null>(null);
   const acgsQuery = useQuery({
     queryKey: ["acgs"],
-    queryFn: () => apiClient.listAcgs(),
+    queryFn: listAcgs,
     retry: false,
   });
   const acgs = acgsQuery.data ?? [];

@@ -1,4 +1,9 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  type InfiniteData,
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { MessageSquarePlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -12,11 +17,16 @@ import { ErrorState } from "../../components/ui/PageState";
 import { FeedbackPanel } from "../feedback/FeedbackPanel";
 import { getRfiSearchResults } from "../../lib/api-client/rfi-search";
 import { getSimilarRequestNotice } from "../../lib/api-client/similar-requests";
-import { listTickets, type Ticket } from "../../lib/api-client/tickets";
+import {
+  getTicket,
+  listTickets,
+  type TicketSummary,
+  type TicketSummaryPage,
+} from "../../lib/api-client/tickets";
 import { useAuth } from "../../lib/auth/auth-context";
 import { hasPermissions } from "../../lib/permissions/route-access";
 
-const EMPTY_TICKETS: Ticket[] = [];
+const EMPTY_TICKETS: TicketSummary[] = [];
 export default function RequestsPage() {
   const { session } = useAuth();
   const { ticketId } = useParams();
@@ -29,20 +39,34 @@ export default function RequestsPage() {
   const [dismissedSimilarNoticeIds, setDismissedSimilarNoticeIds] = useState<string[]>([]);
   const csrfToken = session?.csrfToken ?? "";
   const canCreate = session !== null && hasPermissions(session.user, ["chat:use"]);
-  const ticketsQuery = useQuery({
+  const ticketsQuery = useInfiniteQuery<
+    TicketSummaryPage,
+    Error,
+    InfiniteData<TicketSummaryPage>,
+    readonly ["tickets"],
+    string | undefined
+  >({
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
+    initialPageParam: undefined as string | undefined,
     queryKey: ["tickets"],
-    queryFn: listTickets,
-    placeholderData: EMPTY_TICKETS,
+    queryFn: ({ pageParam }): Promise<TicketSummaryPage> => listTickets(pageParam),
   });
-  const tickets = ticketsQuery.data ?? EMPTY_TICKETS;
-  const selectedTicket = isNewRequest
-    ? undefined
-    : tickets.find((ticket) => ticket.id === ticketId);
+  const tickets = ticketsQuery.data?.pages.flatMap((page) => page.tickets) ?? EMPTY_TICKETS;
+  const selectedTicketQuery = useQuery({
+    enabled: !isNewRequest && ticketId !== undefined,
+    queryKey: ["tickets", "detail", ticketId],
+    queryFn: () => getTicket(ticketId!),
+  });
+  const selectedTicket = selectedTicketQuery.data;
+  const summaryExhaustedWithoutTicket =
+    !ticketsQuery.isFetching &&
+    !ticketsQuery.hasNextPage &&
+    !tickets.some((ticket) => ticket.id === ticketId);
   const requestedTicketMissing =
     ticketId !== undefined &&
     selectedTicket === undefined &&
-    !ticketsQuery.isFetching &&
-    !ticketsQuery.isError;
+    (summaryExhaustedWithoutTicket ||
+      (!selectedTicketQuery.isFetching && selectedTicketQuery.isError));
   const selectedTicketId = selectedTicket?.id ?? "";
   const similarNoticeDismissed = dismissedSimilarNoticeIds.includes(selectedTicketId);
   const similarNoticeEligible =
@@ -160,6 +184,16 @@ export default function RequestsPage() {
             onOpen={(id) => void navigate(`/app/requests/${encodeURIComponent(id)}`)}
             tickets={tickets}
           />
+          {ticketsQuery.hasNextPage ? (
+            <button
+              className="secondary-action"
+              disabled={ticketsQuery.isFetchingNextPage}
+              onClick={() => void ticketsQuery.fetchNextPage()}
+              type="button"
+            >
+              {ticketsQuery.isFetchingNextPage ? "Loading…" : "Load older requests"}
+            </button>
+          ) : null}
           <FeedbackPanel csrfToken={csrfToken} />
         </>
       )}

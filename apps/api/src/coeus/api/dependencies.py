@@ -6,23 +6,28 @@ from fastapi import Depends, Header, Request
 from coeus.core.config import Settings
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
-from coeus.db.session import DatabaseReadinessChecker
+from coeus.db.session import DatabaseReadinessChecker, readiness_checker_for
 from coeus.domain.auth import AuthenticatedSession
+from coeus.repositories.teams import TeamRepository
 from coeus.services.access import AccessServices
 from coeus.services.ai_models import AiModelService
+from coeus.services.analyst_assignment_service import AnalystAssignmentService
 from coeus.services.analyst_workflow import AnalystWorkflowService
 from coeus.services.asset_tokens import AssetTokenService
 from coeus.services.auth import AuthService
 from coeus.services.feedback_analytics import FeedbackAnalyticsService
+from coeus.services.manager_approval import ManagerApprovalService
+from coeus.services.manager_queue import ManagerQueueService
 from coeus.services.notifications import NotificationService
-from coeus.services.object_storage import LocalObjectStorage
-from coeus.services.product_release import ProductReleaseService
+from coeus.services.object_storage import ObjectStorage
 from coeus.services.quality_control import QualityControlService
 from coeus.services.registration import RegistrationService
 from coeus.services.rfi_search import RfiSearchService
 from coeus.services.routing import RoutingService
 from coeus.services.similar_requests import SimilarRequestService
 from coeus.services.store import StoreServices
+from coeus.services.team_availability import TeamAvailabilityService, TeamCalendarService
+from coeus.services.team_workspace import TeamWorkspaceService
 from coeus.services.ticket_collaborators import TicketCollaboratorService
 from coeus.services.ticket_lifecycle import TicketLifecycleService
 from coeus.services.tickets import TicketServices
@@ -39,7 +44,7 @@ def get_settings(request: Request) -> Settings:
 def get_readiness_checker(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> DatabaseReadinessChecker:
-    return DatabaseReadinessChecker(settings.database_url)
+    return readiness_checker_for(settings.database_url)
 
 
 def get_request_id(request: Request) -> str:
@@ -83,10 +88,17 @@ def get_ai_model_service(request: Request) -> AiModelService:
     return service
 
 
-def get_product_release_service(request: Request) -> ProductReleaseService:
-    service = getattr(request.app.state, "product_release_service", None)
-    if not isinstance(service, ProductReleaseService):
-        raise AppError(500, "release_not_configured", "Product release is not configured.")
+def get_manager_approval_service(request: Request) -> ManagerApprovalService:
+    service = getattr(request.app.state, "manager_approval_service", None)
+    if not isinstance(service, ManagerApprovalService):
+        raise AppError(500, "approval_not_configured", "Manager approval is not configured.")
+    return service
+
+
+def get_analyst_assignment_service(request: Request) -> AnalystAssignmentService:
+    service = getattr(request.app.state, "analyst_assignment_service", None)
+    if not isinstance(service, AnalystAssignmentService):
+        raise AppError(500, "assignment_not_configured", "Analyst assignment is not configured.")
     return service
 
 
@@ -125,9 +137,9 @@ def get_store_services(request: Request) -> StoreServices:
     return store_services
 
 
-def get_object_storage(request: Request) -> LocalObjectStorage:
+def get_object_storage(request: Request) -> ObjectStorage:
     storage = getattr(request.app.state, "object_storage", None)
-    if not isinstance(storage, LocalObjectStorage):
+    if not isinstance(storage, ObjectStorage):
         raise AppError(500, "object_storage_not_configured", "Object storage is not configured.")
     return storage
 
@@ -153,6 +165,13 @@ def get_routing_service(request: Request) -> RoutingService:
     return routing_service
 
 
+def get_manager_queue_service(request: Request) -> ManagerQueueService:
+    service = getattr(request.app.state, "manager_queue_service", None)
+    if not isinstance(service, ManagerQueueService):
+        raise AppError(500, "manager_queue_not_configured", "Manager queues are not configured.")
+    return service
+
+
 def get_similar_request_service(request: Request) -> SimilarRequestService:
     service = getattr(request.app.state, "similar_request_service", None)
     if not isinstance(service, SimilarRequestService):
@@ -174,6 +193,34 @@ def get_quality_control_service(request: Request) -> QualityControlService:
     if not isinstance(qc_service, QualityControlService):
         raise AppError(500, "qc_not_configured", "Quality control is not configured.")
     return qc_service
+
+
+def get_team_workspace_service(request: Request) -> TeamWorkspaceService:
+    service = getattr(request.app.state, "team_workspace_service", None)
+    if not isinstance(service, TeamWorkspaceService):
+        raise AppError(500, "teams_not_configured", "Team workspaces are not configured.")
+    return service
+
+
+def get_team_availability_service(request: Request) -> TeamAvailabilityService:
+    service = getattr(request.app.state, "team_availability_service", None)
+    if not isinstance(service, TeamAvailabilityService):
+        raise AppError(500, "teams_not_configured", "Team availability is not configured.")
+    return service
+
+
+def get_team_calendar_service(request: Request) -> TeamCalendarService:
+    service = getattr(request.app.state, "team_calendar_service", None)
+    if not isinstance(service, TeamCalendarService):
+        raise AppError(500, "teams_not_configured", "Team calendars are not configured.")
+    return service
+
+
+def get_team_repository(request: Request) -> TeamRepository:
+    repository = getattr(request.app.state, "team_repository", None)
+    if not isinstance(repository, TeamRepository):
+        raise AppError(500, "teams_not_configured", "Team repository is not configured.")
+    return repository
 
 
 def get_feedback_analytics_service(request: Request) -> FeedbackAnalyticsService:

@@ -5,7 +5,7 @@ import pytest
 from coeus.core.config import Settings
 from coeus.core.errors import AppError
 from coeus.domain.tickets import IntakeDetails
-from coeus.integrations.gemini_api import GeminiApiLlmProvider
+from coeus.integrations.gemini_api import GeminiApiLlmProvider, _candidate_text
 
 
 class FakeResponse:
@@ -69,3 +69,9 @@ def test_gemini_provider_requires_api_key_before_call() -> None:
 
     with pytest.raises(AppError, match="llm_provider_not_configured"):
         provider.build_assistant_message(IntakeDetails(), ())
+
+
+def test_candidate_text_rejects_malformed_response_shapes() -> None:
+    assert _candidate_text([]) == ""
+    assert _candidate_text({"candidates": []}) == ""
+    assert _candidate_text({"candidates": [{"content": {"parts": "invalid"}}]}) == ""

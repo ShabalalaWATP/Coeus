@@ -5,11 +5,17 @@ from uuid import UUID
 
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
+from coeus.core.resource_limits import (
+    MAX_PRODUCT_ASSET_METADATA_BYTES,
+    MAX_PRODUCT_ASSETS,
+    text_bytes,
+)
 from coeus.domain.access import ProductStatus
 from coeus.domain.auth import UserAccount
 from coeus.domain.store import (
     BoundingBox,
     StoreAsset,
+    StoreFacets,
     StoreHybridCandidate,
     StoreProduct,
     StoreProductMetadata,
@@ -18,8 +24,8 @@ from coeus.domain.store import (
     object_key_segment,
 )
 from coeus.domain.store_filters import structured_filter_match
-from coeus.repositories.access import SeedAccessRepository
-from coeus.repositories.store import InMemoryStoreRepository
+from coeus.repositories.access import AccessRepository
+from coeus.repositories.store import StoreRepository
 from coeus.repositories.store_ids import new_store_product_id
 from coeus.services.audit import AuditLog
 from coeus.services.embeddings import EmbeddingService
@@ -33,6 +39,7 @@ from coeus.services.store_search_results import (
     has_text_query,
     hybrid_hits,
     paged_result,
+    projected_page_result,
     sort_hits_by_relevance,
     without_text_query,
 )
@@ -68,8 +75,8 @@ class StoreProductDraft:
 class StoreIngestionService:
     def __init__(
         self,
-        repository: InMemoryStoreRepository,
-        access_repository: SeedAccessRepository,
+        repository: StoreRepository,
+        access_repository: AccessRepository,
         audit_log: AuditLog,
     ) -> None:
         self._repository = repository
@@ -176,6 +183,12 @@ class StoreIngestionService:
     def _validate_assets(assets: tuple[StoreAsset, ...]) -> None:
         if not assets:
             raise AppError(409, "asset_required", "Products must include at least one asset.")
+        metadata_bytes = sum(
+            text_bytes(asset.name, asset.asset_type, asset.mime_type, asset.sha256)
+            for asset in assets
+        )
+        if len(assets) > MAX_PRODUCT_ASSETS or metadata_bytes > MAX_PRODUCT_ASSET_METADATA_BYTES:
+            raise AppError(409, "asset_limit_reached", "Product asset metadata exceeds its limit.")
         for asset in assets:
             if not fullmatch(HASH_PATTERN, asset.sha256):
                 raise AppError(409, "asset_hash_invalid", "Asset SHA-256 must be 64 hex chars.")
@@ -202,7 +215,7 @@ class StoreIngestionService:
 class StoreSearchService:
     def __init__(
         self,
-        repository: InMemoryStoreRepository,
+        repository: StoreRepository,
         policy: StoreProductAccessPolicy,
         embeddings: EmbeddingService | None = None,
     ) -> None:
@@ -215,12 +228,13 @@ class StoreSearchService:
             raise AppError(403, "forbidden", "Permission denied.")
         scope = self._policy.visibility_scope(actor)
         structured_filters = without_text_query(filters)
-        candidates = self._repository.search_products(structured_filters, scope)
-        visible = tuple(product for product in candidates if self._policy.can_read(actor, product))
-        filtered = tuple(
-            product for product in visible if structured_filter_match(product, structured_filters)
+        projected_page = self._repository.search_product_page(structured_filters, scope)
+        filtered = (
+            self._local_filtered_products(actor, structured_filters)
+            if projected_page is None
+            else ()
         )
-        facets = facets_for(filtered)
+        facets = facets_for(filtered) if projected_page is None else projected_page.facets
         if has_text_query(filters):
             query = filters.query.strip() if filters.query else ""
             query_embedding = (
@@ -238,9 +252,35 @@ class StoreSearchService:
                 ),
                 query,
             )
-        else:
-            hits = sort_hits_by_relevance(tuple(exact_text_hit(product) for product in filtered))
+            return paged_result(hits, filters, facets)
+        if projected_page is not None:
+            visible_page = tuple(
+                product
+                for product in projected_page.products
+                if self._policy.can_read(actor, product)
+                and structured_filter_match(product, structured_filters)
+            )
+            if len(visible_page) != len(projected_page.products):
+                return projected_page_result((), 0, filters, StoreFacets((), (), ()))
+            return projected_page_result(
+                visible_page,
+                projected_page.total,
+                filters,
+                projected_page.facets,
+            )
+        hits = sort_hits_by_relevance(tuple(exact_text_hit(product) for product in filtered))
         return paged_result(hits, filters, facets)
+
+    def _local_filtered_products(
+        self,
+        actor: UserAccount,
+        filters: StoreSearchFilters,
+    ) -> tuple[StoreProduct, ...]:
+        return tuple(
+            product
+            for product in self._repository.list_products()
+            if self._policy.can_read(actor, product) and structured_filter_match(product, filters)
+        )
 
     def hybrid_candidates(
         self,
@@ -266,7 +306,7 @@ class StoreSearchService:
 
 @dataclass(frozen=True)
 class StoreServices:
-    repository: InMemoryStoreRepository
+    repository: StoreRepository
     ingestion: StoreIngestionService
     search: StoreSearchService
     details: StoreDetailService

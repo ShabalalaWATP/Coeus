@@ -34,6 +34,8 @@ jobs:
         run: |
           uv sync --project apps/api --frozen --all-groups
           pnpm install --frozen-lockfile
+      - name: Check fail-closed DAST policy
+        run: pnpm security-policy:check
       - name: Build web app
         env:
           VITE_API_BASE_URL: http://127.0.0.1:8001
@@ -64,7 +66,8 @@ jobs:
           allow_issue_writing: false
           fail_action: true
           artifact_name: zap-baseline
-          cmd_options: "-I -a"
+          rules_file_name: .zap/rules.tsv
+          cmd_options: "-a"
       - name: Upload local target logs
         if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

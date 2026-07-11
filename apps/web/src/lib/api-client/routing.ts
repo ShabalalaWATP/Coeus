@@ -10,6 +10,16 @@ export type CapabilityTeam = {
   keywords: string[];
   workPackages: string[];
   sourceLabels: string[];
+  disciplines?: string[];
+  regions?: string[];
+  rank?: number;
+};
+
+type CandidateTeam = {
+  teamId: string;
+  name: string;
+  score: number;
+  reasons: string[];
 };
 
 export type CapabilityCatalogue = {
@@ -26,6 +36,7 @@ type CapabilityReview = {
   managerReviewRequired: boolean;
   reasoningSummary: string;
   createdAt: string;
+  candidateTeams?: CandidateTeam[];
 };
 
 export type RfaCapabilityReview = CapabilityReview & {
@@ -48,6 +59,12 @@ type RouteRecommendation = {
   createdAt: string;
 };
 
+type PriorityAssessment = {
+  score: number;
+  tier: string;
+  reasons: string[];
+};
+
 export type RoutingTicket = {
   ticketId: string;
   reference: string;
@@ -55,6 +72,7 @@ export type RoutingTicket = {
   state: TicketState;
   title: string;
   priority: string | null;
+  priorityAssessment?: PriorityAssessment;
   rfaReview: RfaCapabilityReview | null;
   cmReview: CmCapabilityReview | null;
   recommendation: RouteRecommendation | null;
@@ -87,9 +105,8 @@ export type RoutingTicket = {
 };
 
 type RoutingStats = {
-  routeAssessmentCount: number;
-  rfaReviewCount: number;
-  cmReviewCount: number;
+  jiocQueueCount: number;
+  collectChoiceCount: number;
   clarificationCount: number;
   analystAssignmentCount: number;
   rfaAcceptanceRate: number;
@@ -99,11 +116,19 @@ type RoutingStats = {
 export type RoutingQueue = {
   tickets: RoutingTicket[];
   stats: RoutingStats;
+  nextCursor?: string | null;
 };
 
-export async function listRoutingQueue(route: RoutingRoute): Promise<RoutingQueue> {
-  const path = route === "rfa" ? "/api/v1/routing/rfa/queue" : "/api/v1/routing/cm/queue";
-  return apiRequestJson<RoutingQueue>(path, { method: "GET" });
+export type RoutingQueueKind = RoutingRoute | "jioc";
+
+export async function listRoutingQueue(
+  queue: RoutingQueueKind,
+  cursor?: string,
+): Promise<RoutingQueue> {
+  const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
+  return apiRequestJson<RoutingQueue>(`/api/v1/routing/${queue}/queue${query}`, {
+    method: "GET",
+  });
 }
 
 export async function listCapabilityCatalogue(): Promise<CapabilityCatalogue> {
@@ -112,19 +137,27 @@ export async function listCapabilityCatalogue(): Promise<CapabilityCatalogue> {
   });
 }
 
-export async function listReleaseQueue(route: RoutingRoute): Promise<RoutingQueue> {
-  return apiRequestJson<RoutingQueue>(`/api/v1/routing/${route}/release-queue`, {
-    method: "GET",
-  });
-}
-
-export async function releaseProduct(
+export async function approveManagerWork(
   ticketId: string,
-  route: RoutingRoute,
   csrfToken: string,
 ): Promise<RoutingTicket> {
-  return apiRequestJson<RoutingTicket>(`/api/v1/routing/${pathSegment(ticketId)}/release`, {
-    body: JSON.stringify({ route }),
+  return apiRequestJson<RoutingTicket>(
+    `/api/v1/routing/${pathSegment(ticketId)}/manager-approval`,
+    {
+      headers: { "X-CSRF-Token": csrfToken },
+      method: "POST",
+    },
+  );
+}
+
+export async function returnWorkForRework(
+  ticketId: string,
+  route: RoutingRoute,
+  reason: string,
+  csrfToken: string,
+): Promise<RoutingTicket> {
+  return apiRequestJson<RoutingTicket>(`/api/v1/routing/${pathSegment(ticketId)}/manager-rework`, {
+    body: JSON.stringify({ route, reason }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
   });

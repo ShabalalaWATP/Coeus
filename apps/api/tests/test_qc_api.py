@@ -11,11 +11,12 @@ from coeus.core.errors import AppError
 from coeus.main import create_app
 from coeus.services.qc_records import preview_kind
 from coeus.services.quality_control import QcApprovalInput, ReleaseCheckService
-from rfi_search_helpers import login, submitted_ticket
+from rfi_search_helpers import login
+from routing_helpers import analyst_assignment_ticket
 
 
 @pytest.mark.asyncio
-async def test_qc_approval_hands_over_to_manager_release() -> None:
+async def test_qc_approval_releases_the_product_to_the_customer() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     acg_id = _acg_id(app, "ACG-EU-CYBER")
     async with AsyncClient(
@@ -31,6 +32,7 @@ async def test_qc_approval_hands_over_to_manager_release() -> None:
         )
         await login(client, "user@example.test")
         search = await client.get("/api/v1/store/products?query=Approved%20Arctic")
+        notifications = await client.get("/api/v1/notifications")
 
     assert queue.status_code == 200
     assert queue.json()["products"][0]["ticketId"] == ticket_id
@@ -38,15 +40,16 @@ async def test_qc_approval_hands_over_to_manager_release() -> None:
     assert len(queue.json()["products"][0]["checklistKeys"]) == 9
     assert approved.status_code == 200
     body = approved.json()
-    assert body["state"] == "MANAGER_RELEASE"
+    assert body["state"] == "DISSEMINATION_READY"
     assert body["decisions"][0]["status"] == "approved"
     assert [record["status"] for record in body["indexRecords"]] == ["queued", "indexed"]
     assert body["ingestedProduct"]["title"] == "Approved Arctic QC product"
-    assert body["disseminations"] == []
-    assert body["feedbackRequests"] == []
-    assert body["ingestedProduct"]["id"] not in {
-        product["id"] for product in search.json()["products"]
-    }
+    assert len(body["disseminations"]) == 1
+    assert len(body["feedbackRequests"]) == 1
+    # QC now performs the final release: the customer can find the product.
+    assert body["ingestedProduct"]["id"] in {product["id"] for product in search.json()["products"]}
+    assert notifications.json()["unread"] == 1
+    assert notifications.json()["notifications"][0]["kind"] == "product_released"
 
 
 @pytest.mark.asyncio
@@ -70,7 +73,7 @@ async def test_qc_rejects_to_rework_and_analyst_can_resubmit() -> None:
             json=_draft_payload("Revised Arctic product"),
         )
         resubmitted = await client.post(
-            f"/api/v1/analyst/tasks/{ticket_id}/submit-qc",
+            f"/api/v1/analyst/tasks/{ticket_id}/submit",
             headers={"X-CSRF-Token": str(analyst["csrfToken"])},
         )
 
@@ -194,6 +197,7 @@ def test_release_checks_validate_metadata_and_preview_kinds() -> None:
 
 
 async def _submitted_qc_ticket(client: AsyncClient, app: FastAPI, draft_title: str) -> str:
+    """Walk an assigned ticket through drafting, manager approval and into QC."""
     ticket_id = await _assigned_ticket(client, app)
     analyst = await login(client, "analyst@example.test")
     draft = await client.post(
@@ -210,11 +214,18 @@ async def _submitted_qc_ticket(client: AsyncClient, app: FastAPI, draft_title: s
         )
         assert updated.status_code == 200
     submitted = await client.post(
-        f"/api/v1/analyst/tasks/{ticket_id}/submit-qc",
+        f"/api/v1/analyst/tasks/{ticket_id}/submit",
         headers={"X-CSRF-Token": str(analyst["csrfToken"])},
     )
     assert submitted.status_code == 200
-    assert submitted.json()["state"] == "QC_REVIEW"
+    assert submitted.json()["state"] == "MANAGER_APPROVAL"
+    manager = await login(client, "rfa.manager@example.test")
+    approved = await client.post(
+        f"/api/v1/routing/{ticket_id}/manager-approval",
+        headers={"X-CSRF-Token": str(manager["csrfToken"])},
+    )
+    assert approved.status_code == 200
+    assert approved.json()["state"] == "QC_REVIEW"
     return ticket_id
 
 
@@ -226,47 +237,14 @@ async def _assigned_ticket(client: AsyncClient, app: FastAPI) -> str:
     assigned = await client.post(
         f"/api/v1/analyst/tasks/{ticket_id}/assign",
         headers={"X-CSRF-Token": str(manager["csrfToken"])},
-        json={"analystUserId": str(analyst_user.user_id)},
+        json={"analystUserIds": [str(analyst_user.user_id)]},
     )
     assert assigned.status_code == 200
     return ticket_id
 
 
 async def _approved_ticket(client: AsyncClient) -> str:
-    user = await login(client, "user@example.test")
-    ticket_id = await submitted_ticket(
-        client,
-        str(user["csrfToken"]),
-        title="Arctic Fisheries Assessment",
-        area_or_region="Arctic fisheries",
-        output_format="assessment report",
-    )
-    search = await client.post(
-        f"/api/v1/rfi-search/{ticket_id}/run",
-        headers={"X-CSRF-Token": str(user["csrfToken"])},
-    )
-    assert search.status_code == 200
-    if search.json()["ticketState"] == "RFI_MATCH_OFFERED":
-        for offer in search.json()["offers"]:
-            rejected = await client.post(
-                f"/api/v1/rfi-search/{ticket_id}/offers/{offer['productId']}/reject",
-                headers={"X-CSRF-Token": str(user["csrfToken"])},
-                json={"reason": "Need a new assessment route."},
-            )
-            assert rejected.status_code == 200
-    manager = await login(client, "rfa.manager@example.test")
-    routed = await client.post(
-        f"/api/v1/routing/{ticket_id}/run",
-        headers={"X-CSRF-Token": str(manager["csrfToken"])},
-    )
-    approved = await client.post(
-        f"/api/v1/routing/{ticket_id}/approve",
-        headers={"X-CSRF-Token": str(manager["csrfToken"])},
-        json={"route": "rfa"},
-    )
-    assert routed.status_code == 200
-    assert approved.status_code == 200
-    return ticket_id
+    return await analyst_assignment_ticket(client)
 
 
 def _approval_payload(acg_id: str) -> dict[str, Any]:

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
+from hashlib import sha256
 from uuid import UUID, uuid4
 
 from coeus.core.errors import AppError
@@ -13,10 +14,10 @@ from coeus.domain.store import (
     object_key_segment,
 )
 from coeus.domain.tickets import DraftProductAsset, DraftProductVersion, TicketRecord
-from coeus.repositories.access import SeedAccessRepository
+from coeus.repositories.access import AccessRepository
 from coeus.repositories.store_ids import new_store_product_id
 from coeus.services.analyst_records import approved_route
-from coeus.services.object_storage import LocalObjectStorage
+from coeus.services.object_storage import ObjectStorage
 from coeus.services.qc_acg_policy import validate_qc_acg_assignment
 from coeus.services.qc_records import preview_kind
 from coeus.services.store import StoreServices
@@ -31,6 +32,12 @@ class QcApprovalInput:
     handling_caveats: tuple[str, ...]
     acg_ids: frozenset[UUID]
     reason: str
+
+
+@dataclass(frozen=True)
+class PreparedAsset:
+    asset: StoreAsset
+    content: bytes
 
 
 def iso_date_or_none(value: str | None) -> str | None:
@@ -58,8 +65,8 @@ class ProductAutoIngestionService:
     def __init__(
         self,
         store: StoreServices,
-        access_repository: SeedAccessRepository,
-        storage: LocalObjectStorage,
+        access_repository: AccessRepository,
+        storage: ObjectStorage,
     ) -> None:
         self._store = store
         self._access = access_repository
@@ -80,9 +87,14 @@ class ProductAutoIngestionService:
             ticket.intake.area_or_region or "",
             ticket.intake.required_output_format or "",
         )
+        reference = self._store.repository.next_reference()
+        prepared_assets = tuple(
+            _prepare_asset(ticket.ticket_id, reference, draft.title, asset)
+            for asset in draft.assets
+        )
         product = StoreProduct(
             product_id=new_store_product_id(),
-            reference=self._store.repository.next_reference(),
+            reference=reference,
             metadata=StoreProductMetadata(
                 title=draft.title,
                 summary=draft.summary,
@@ -104,7 +116,7 @@ class ProductAutoIngestionService:
                 geojson_ref=None,
                 bounding_box=None,
             ),
-            assets=tuple(_store_asset(ticket.ticket_id, asset) for asset in draft.assets),
+            assets=tuple(prepared.asset for prepared in prepared_assets),
             created_by_user_id=actor.user_id,
             created_at=now,
             updated_at=now,
@@ -113,9 +125,16 @@ class ProductAutoIngestionService:
             raise AppError(409, "asset_required", "Approved products must include an asset.")
         # Write bytes before the product record so a released product is never
         # visible without downloadable content.
-        for asset in product.assets:
-            self._storage.write_bytes(asset.object_key, _placeholder_content(product, asset))
-        self._store.repository.save_product(product)
+        written_keys: list[str] = []
+        try:
+            for prepared in prepared_assets:
+                written_keys.append(prepared.asset.object_key)
+                self._storage.write_bytes(prepared.asset.object_key, prepared.content)
+            self._store.repository.save_product(product)
+        except Exception:
+            for object_key in reversed(written_keys):
+                self._storage.delete_bytes(object_key)
+            raise
         return product
 
     def discard(self, product_id: UUID) -> None:
@@ -132,30 +151,32 @@ class ProductAutoIngestionService:
             raise AppError(403, "forbidden", "Permission denied.")
 
 
-def _store_asset(ticket_id: UUID, asset: DraftProductAsset) -> StoreAsset:
+def _prepare_asset(
+    ticket_id: UUID,
+    reference: str,
+    product_title: str,
+    asset: DraftProductAsset,
+) -> PreparedAsset:
     # The store asset gets its own identity; the object key embeds that same
     # identity so the stored bytes always correspond to the served asset.
     asset_id = uuid4()
-    return StoreAsset(
+    object_key = f"store/qc/{ticket_id}/{asset_id}/{object_key_segment(asset.name)}"
+    content = _placeholder_content(reference, product_title, asset.name)
+    store_asset = StoreAsset(
         asset_id=asset_id,
         name=asset.name,
         asset_type=asset.asset_type,
         mime_type=asset.mime_type,
-        size_bytes=asset.size_bytes,
-        sha256=asset.sha256,
-        object_key=f"store/qc/{ticket_id}/{asset_id}/{object_key_segment(asset.name)}",
+        size_bytes=len(content),
+        sha256=sha256(content).hexdigest(),
+        object_key=object_key,
         preview_kind=preview_kind(asset.mime_type, asset.asset_type),
     )
+    return PreparedAsset(store_asset, content)
 
 
-def _placeholder_content(product: StoreProduct, asset: StoreAsset) -> bytes:
-    return (
-        "MOCK DATA ONLY\n"
-        f"{product.reference}\n"
-        f"{product.metadata.title}\n"
-        f"{asset.name}\n"
-        f"sha256:{asset.sha256}\n"
-    ).encode()
+def _placeholder_content(reference: str, product_title: str, asset_name: str) -> bytes:
+    return (f"MOCK DATA ONLY\n{reference}\n{product_title}\n{asset_name}\n").encode()
 
 
 def _owner_team(ticket: TicketRecord) -> str:

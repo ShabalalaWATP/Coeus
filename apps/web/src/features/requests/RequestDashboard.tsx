@@ -13,7 +13,7 @@ import { CountUp } from "../../components/effects/CountUp";
 import { SpotlightCard } from "../../components/effects/SpotlightCard";
 import { EmptyState } from "../../components/ui/PageState";
 import { formatWorkflowState } from "../../lib/workflow/state-format";
-import type { Ticket } from "../../lib/api-client/tickets";
+import type { Ticket, TicketSummary } from "../../lib/api-client/tickets";
 import { ticketMetrics } from "./ticket-collection";
 
 type RequestDashboardProps = {
@@ -22,7 +22,7 @@ type RequestDashboardProps = {
   isConfirming: boolean;
   onConfirmDelivery: (ticketId: string) => void;
   onOpen: (ticketId: string) => void;
-  tickets: Ticket[];
+  tickets: Array<Ticket | TicketSummary>;
 };
 
 export function RequestDashboard({
@@ -86,20 +86,20 @@ export function RequestDashboard({
                 type="button"
               >
                 <span>{ticket.reference}</span>
-                <strong>{ticket.intake.title ?? "Draft request"}</strong>
+                <strong>{ticketTitle(ticket) ?? "Draft request"}</strong>
                 <small>{formatWorkflowState(ticket.state)}</small>
-                {ticket.collaborators.length > 0 ? (
+                {collaboratorCount(ticket) > 0 ? (
                   <em className="request-open-row__shared">
                     <UsersRound aria-hidden="true" size={13} />
-                    {ticket.collaborators.length} tagged
+                    {collaboratorCount(ticket)} tagged
                   </em>
                 ) : null}
               </button>
-              {ticket.releasedProductIds.length > 0 ? (
+              {releasedProductId(ticket) ? (
                 <Link
                   className="request-open-row__product"
                   state={{ from: "/app/requests" }}
-                  to={`/store/products/${encodeURIComponent(ticket.releasedProductIds[0])}`}
+                  to={`/store/products/${encodeURIComponent(releasedProductId(ticket) ?? "")}`}
                 >
                   <PackageOpen aria-hidden="true" size={15} />
                   View released product
@@ -123,4 +123,16 @@ export function RequestDashboard({
       </section>
     </>
   );
+}
+
+function ticketTitle(ticket: Ticket | TicketSummary) {
+  return "title" in ticket ? ticket.title : ticket.intake.title;
+}
+
+function collaboratorCount(ticket: Ticket | TicketSummary) {
+  return "collaboratorCount" in ticket ? ticket.collaboratorCount : ticket.collaborators.length;
+}
+
+function releasedProductId(ticket: Ticket | TicketSummary) {
+  return "releasedProductId" in ticket ? ticket.releasedProductId : ticket.releasedProductIds[0];
 }

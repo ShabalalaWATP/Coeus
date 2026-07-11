@@ -64,6 +64,22 @@ def paged_result(
     )
 
 
+def projected_page_result(
+    products: tuple[StoreProduct, ...],
+    total: int,
+    filters: StoreSearchFilters,
+    facets: StoreFacets,
+) -> StoreSearchResult:
+    return StoreSearchResult(
+        hits=tuple(exact_text_hit(product) for product in products),
+        total=total,
+        page=filters.page,
+        page_size=filters.page_size,
+        total_pages=ceil(total / filters.page_size) if total else 0,
+        facets=facets,
+    )
+
+
 def facets_for(products: tuple[StoreProduct, ...]) -> StoreFacets:
     return StoreFacets(
         product_types=tuple(sorted({product.metadata.product_type for product in products})),

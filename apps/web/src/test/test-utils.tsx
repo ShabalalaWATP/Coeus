@@ -3,7 +3,7 @@ import type { ReactElement } from "react";
 import { MemoryRouter } from "react-router-dom";
 
 import { AppProviders } from "../app/providers";
-import type { AuthSession } from "../lib/api-client/client";
+import type { AuthSession } from "../lib/api-client/auth";
 import { previewProfile } from "../lib/permissions/route-access";
 
 export const previewSession: AuthSession = {

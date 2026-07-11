@@ -11,6 +11,7 @@ ObjectStorageProviderName = Literal["local", "gcs"]
 PersistenceProviderName = Literal["memory", "file", "postgres"]
 SEED_USER_ENVIRONMENTS = frozenset({"local", "test"})
 SECURE_COOKIE_ENVIRONMENTS = frozenset({"staging", "prod"})
+HOSTED_ENVIRONMENTS = frozenset({"dev", "staging", "prod"})
 DEFAULT_SEED_CREDENTIAL = "CoeusLocal1!"
 # Local-only default; startup rejects it outside local/test.
 DEFAULT_ASSET_TOKEN_SECRET = "local-only-asset-token-secret-not-for-deploy"  # noqa: S105  # nosec B105
@@ -36,8 +37,8 @@ class Settings(BaseSettings):
     session_secret: str | None = None
     csrf_secret: str | None = None
     csrf_header_name: str = "X-CSRF-Token"
-    login_lockout_threshold: int = 5
-    login_lockout_seconds: int = 5 * 60
+    login_lockout_threshold: int = Field(default=5, ge=1)
+    login_lockout_seconds: int = Field(default=5 * 60, ge=1)
     # Number of trusted reverse proxies in front of the API. 0 (default) means
     # X-Forwarded-For is ignored and the socket peer address is used.
     trusted_proxy_count: int = Field(default=0, ge=0, le=10)
@@ -47,6 +48,7 @@ class Settings(BaseSettings):
     auth_ip_window_seconds: int = Field(default=300, ge=1)
     auth_ip_max_entries: int = Field(default=10_000, ge=1)
     audit_log_max_events: int = Field(default=10_000, ge=1)
+    audit_log_path: str = ".local-data/audit/coeus-audit.jsonl"
     argon2_time_cost: int = 2
     argon2_memory_cost: int = 19_456
     argon2_parallelism: int = 1
@@ -76,6 +78,9 @@ class Settings(BaseSettings):
     asset_token_secret: str = DEFAULT_ASSET_TOKEN_SECRET
     persistence_provider: PersistenceProviderName = "postgres"
     persistence_path: str = ".local-data/state/coeus-state.json"
+    # Seed the rich local demo dataset (extra products, demo tickets across the
+    # workflow, feedback and calendars). None means "auto": on for local only.
+    seed_demo_content: bool | None = None
     email_provider: EmailProviderName = "outbox"
     smtp_host: str | None = None
     smtp_port: int = Field(default=587, ge=1, le=65_535)
@@ -89,49 +94,97 @@ class Settings(BaseSettings):
     pubsub_enabled: bool = False
     pubsub_topic_prefix: str = "coeus-dev"
 
+    def should_seed_demo(self) -> bool:
+        """Whether to load the rich demo dataset; auto-on for local only."""
+        if self.seed_demo_content is not None:
+            return self.seed_demo_content
+        return self.environment == "local"
+
     def require_runtime_security(self) -> None:
-        errors = []
-        dev_seed_users_allowed = self.environment == "dev" and self.allow_dev_seed_users
-        if self.environment not in SEED_USER_ENVIRONMENTS and not dev_seed_users_allowed:
-            errors.append(
-                "Seed users are local/test only. Configure persistent user storage "
-                f"before running environment={self.environment!r}."
-            )
-        if dev_seed_users_allowed and self.local_seed_credential == DEFAULT_SEED_CREDENTIAL:
-            errors.append(
-                "COEUS_LOCAL_SEED_CREDENTIAL must be overridden with a non-default value "
-                "when dev seed users are enabled, otherwise the published default password "
-                "grants administrator access."
-            )
-        if self.environment in {"dev", "staging", "prod"}:
-            if not self.session_secret or len(self.session_secret) < 32:
-                errors.append("COEUS_SESSION_SECRET must be at least 32 characters.")
-            if not self.csrf_secret or len(self.csrf_secret) < 32:
-                errors.append("COEUS_CSRF_SECRET must be at least 32 characters.")
-            if (
-                self.asset_token_secret == DEFAULT_ASSET_TOKEN_SECRET
-                or len(self.asset_token_secret) < 32
-            ):
-                errors.append("COEUS_ASSET_TOKEN_SECRET must be a non-default secret.")
-        if (
-            self.llm_provider == "gemini_api"
-            and not self.gemini_api_key
-            and self.environment in {"dev", "staging", "prod"}
-        ):
-            errors.append("COEUS_GEMINI_API_KEY is required when COEUS_LLM_PROVIDER=gemini_api.")
-        if self.csrf_header_name != "X-CSRF-Token":
-            errors.append("COEUS_CSRF_HEADER_NAME must remain X-CSRF-Token.")
-        if self.email_provider == "smtp":
-            if not self.smtp_host:
-                errors.append("COEUS_SMTP_HOST is required when COEUS_EMAIL_PROVIDER=smtp.")
-            if not self.smtp_from:
-                errors.append("COEUS_SMTP_FROM is required when COEUS_EMAIL_PROVIDER=smtp.")
-            if self.environment in {"dev", "staging", "prod"} and not self.smtp_starttls:
-                errors.append("COEUS_SMTP_STARTTLS must be true outside local/test.")
-        if self.environment in SECURE_COOKIE_ENVIRONMENTS and not self.secure_cookies:
-            errors.append(
-                "Secure cookies are required for staging/prod environments. "
-                "Set COEUS_SECURE_COOKIES=true."
-            )
+        errors = [
+            *_seed_user_errors(self),
+            *_secret_errors(self),
+            *_integration_errors(self),
+            *_transport_errors(self),
+            *_local_runtime_errors(self),
+        ]
         if errors:
             raise ValueError(" ".join(errors))
+
+
+def _seed_user_errors(settings: Settings) -> tuple[str, ...]:
+    dev_seed_users_allowed = settings.environment == "dev" and settings.allow_dev_seed_users
+    errors: list[str] = []
+    if settings.environment not in SEED_USER_ENVIRONMENTS and not dev_seed_users_allowed:
+        errors.append(
+            "Seed users are local/test only. Configure persistent user storage "
+            f"before running environment={settings.environment!r}."
+        )
+    if dev_seed_users_allowed and settings.local_seed_credential == DEFAULT_SEED_CREDENTIAL:
+        errors.append(
+            "COEUS_LOCAL_SEED_CREDENTIAL must be overridden with a non-default value "
+            "when dev seed users are enabled, otherwise the published default password "
+            "grants administrator access."
+        )
+    return tuple(errors)
+
+
+def _secret_errors(settings: Settings) -> tuple[str, ...]:
+    if settings.environment not in HOSTED_ENVIRONMENTS:
+        return ()
+    errors: list[str] = []
+    if not settings.session_secret or len(settings.session_secret) < 32:
+        errors.append("COEUS_SESSION_SECRET must be at least 32 characters.")
+    if not settings.csrf_secret or len(settings.csrf_secret) < 32:
+        errors.append("COEUS_CSRF_SECRET must be at least 32 characters.")
+    if (
+        settings.asset_token_secret == DEFAULT_ASSET_TOKEN_SECRET
+        or len(settings.asset_token_secret) < 32
+    ):
+        errors.append("COEUS_ASSET_TOKEN_SECRET must be a non-default secret.")
+    return tuple(errors)
+
+
+def _integration_errors(settings: Settings) -> tuple[str, ...]:
+    errors: list[str] = []
+    if (
+        settings.llm_provider == "gemini_api"
+        and not settings.gemini_api_key
+        and settings.environment in HOSTED_ENVIRONMENTS
+    ):
+        errors.append("COEUS_GEMINI_API_KEY is required when COEUS_LLM_PROVIDER=gemini_api.")
+    if settings.email_provider == "smtp":
+        if not settings.smtp_host:
+            errors.append("COEUS_SMTP_HOST is required when COEUS_EMAIL_PROVIDER=smtp.")
+        if not settings.smtp_from:
+            errors.append("COEUS_SMTP_FROM is required when COEUS_EMAIL_PROVIDER=smtp.")
+        if settings.environment in HOSTED_ENVIRONMENTS and not settings.smtp_starttls:
+            errors.append("COEUS_SMTP_STARTTLS must be true outside local/test.")
+    return tuple(errors)
+
+
+def _transport_errors(settings: Settings) -> tuple[str, ...]:
+    errors: list[str] = []
+    if settings.csrf_header_name != "X-CSRF-Token":
+        errors.append("COEUS_CSRF_HEADER_NAME must remain X-CSRF-Token.")
+    if settings.environment in SECURE_COOKIE_ENVIRONMENTS and not settings.secure_cookies:
+        errors.append(
+            "Secure cookies are required for staging/prod environments. "
+            "Set COEUS_SECURE_COOKIES=true."
+        )
+    return tuple(errors)
+
+
+def _local_runtime_errors(settings: Settings) -> tuple[str, ...]:
+    errors: list[str] = []
+    if settings.object_storage_provider != "local":
+        errors.append(
+            "COEUS_OBJECT_STORAGE_PROVIDER must remain local until the future GCS adapter "
+            "and migration gates are implemented."
+        )
+    if settings.pubsub_enabled:
+        errors.append(
+            "COEUS_PUBSUB_ENABLED must remain false until the future worker adapter and "
+            "migration gates are implemented."
+        )
+    return tuple(errors)

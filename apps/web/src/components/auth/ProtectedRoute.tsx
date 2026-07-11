@@ -2,7 +2,7 @@ import type { PropsWithChildren } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 
 import { RouteFallback } from "../layout/RouteFallback";
-import type { Permission } from "../../lib/api-client/client";
+import type { Permission } from "../../lib/api-client/auth";
 import { useAuth } from "../../lib/auth/auth-context";
 import { hasPermissions } from "../../lib/permissions/route-access";
 

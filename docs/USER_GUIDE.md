@@ -15,9 +15,11 @@ how the agents work see [AI Agents](AI_AGENTS.md).
 - [The request journey](#the-request-journey)
 - [Customer](#customer)
 - [Intelligence Store](#intelligence-store)
+- [JIOC team members](#jioc-team-members)
 - [RFA and Collection managers](#rfa-and-collection-managers)
 - [Intelligence analyst](#intelligence-analyst)
 - [Quality control](#quality-control)
+- [My Team](#my-team)
 - [Administrator](#administrator)
 
 ---
@@ -102,47 +104,61 @@ and clearance.
 
 ---
 
+## JIOC team members
+
+Progressed requests land in the JIOC queue. Selecting a ticket and running
+**capability checks** invokes the RFA and CM capability agents plus the
+orchestrator; their advice appears as agent-badged cards alongside a
+recommended route. The JIOC member decides whether collection is required
+(route to CM) or not (route to RFA), can approve against the recommendation
+with a written override reason, review and link similar open requests, or
+query/reject the route with a recorded reason. When a request is routed to
+CM, the customer is asked in their workspace whether they want the **raw
+collect only** or the **collect plus an RFA analysis**.
+
+![Routing queue with agent recommendations](images/07-rfa-queue.png)
+
 ## RFA and Collection managers
 
-RFA and Collection managers work route-specific queues. Selecting a ticket and
-running **capability checks** invokes the RFA and CM capability agents plus the
-orchestrator; their advice appears as agent-badged cards alongside a recommended
-route.
+Managers work their own team's queue and lead their team:
 
-![RFA manager queue with agent recommendations](images/07-rfa-queue.png)
-
-A manager can:
-
-- **Approve** the recommended route, or approve the other route with a written
-  override reason.
-- **Review similar open requests** before deciding the route and link related
-  work so both ticket timelines show the relationship.
-- **Query or reject** the route (the form is tucked behind a disclosure to keep
-  the screen focused).
-- **Assign an analyst** with a team name and work packages once a route is
-  approved.
-- **Release** a QC-approved product to the customer from the Final Release panel,
-  which publishes the product, links it on the customer's dashboard, sends a
-  notification and records the email in the local outbox.
-
-Collection managers get the same screen scoped to the collection route.
+- **Assign one to five analysts** with a team name and work packages once
+  JIOC approves the route; the panel shows how many team members are free
+  today from the team calendar and live assignments.
+- **Approve or return analyst work**: submitted drafts stop at manager
+  approval, where the manager forwards them to Quality Control or returns
+  them with a rework reason. A manager cannot approve work they drafted.
+- **Manage the team** on the My Team page: roster, member profiles and the
+  availability calendar.
 
 ## Intelligence analyst
 
-The analyst workbench lists only the tasks assigned to the signed-in analyst.
-Selecting a task shows its context, work packages, and progressive-disclosure
-sections for working notes and linked products, with the draft form and
-**Submit to QC** action below.
+The analyst workbench lists only the tasks assigned to the signed-in analyst;
+a task can be shared by several analysts. Selecting a task shows its context,
+work packages, and progressive-disclosure sections for working notes and
+linked products, with the draft form and **Submit for manager approval**
+action below (QC-requested rework resubmits straight to QC).
 
 ![Analyst workbench](images/08-analyst-workbench.png)
 
 ## Quality control
 
 The QC manager reviews submitted drafts and approves or rejects them. Approval
-ingests the product as an unpublished draft and moves the ticket to manager
-release; a QC manager cannot approve a draft they authored.
+now performs the final release: the product is published, disseminated to the
+requester with a notification and a recorded email, and a feedback request is
+raised. For a collect the customer asked to have analysed, approval instead
+forwards the ticket to RFA assignment with the collect linked (the collect
+itself is never released). A QC manager cannot approve a draft they authored.
 
 ![Quality control queue](images/09-qc-queue.png)
+
+## My Team
+
+Everyone on a team gets the **My Team** page: the roster with each member's
+title and specialisms, a two-week availability calendar and today's
+availability tile. Members log their own availability; managers can log for
+anyone on their team, and add or remove members. Every user edits their own
+profile (title, specialisms, bio) at the bottom of the page.
 
 ---
 

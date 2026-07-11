@@ -5,7 +5,7 @@ import {
   listAnalystCandidates,
   listAnalystTasks,
   saveDraftProduct,
-  submitTaskToQc,
+  submitTaskForReview,
   updateWorkPackage,
 } from "./analyst";
 import { ApiError } from "./client";
@@ -37,7 +37,7 @@ test("calls analyst workflow endpoints with CSRF-protected mutations", async () 
     },
     "csrf",
   );
-  await submitTaskToQc("ticket-1", "csrf");
+  await submitTaskForReview("ticket-1", "csrf");
 
   expect(fetchMock).toHaveBeenNthCalledWith(1, "http://127.0.0.1:8001/api/v1/analyst/tasks", {
     credentials: "include",
@@ -53,7 +53,7 @@ test("calls analyst workflow endpoints with CSRF-protected mutations", async () 
     }),
   );
   expect(fetchMock).toHaveBeenLastCalledWith(
-    "http://127.0.0.1:8001/api/v1/analyst/tasks/ticket-1/submit-qc",
+    "http://127.0.0.1:8001/api/v1/analyst/tasks/ticket-1/submit",
     { credentials: "include", headers: { "X-CSRF-Token": "csrf" }, method: "POST" },
   );
 });
@@ -68,7 +68,7 @@ test("lists analyst candidates and assigns tasks with CSRF protection", async ()
   await listAnalystCandidates();
   await assignAnalystTask(
     "ticket-1",
-    "analyst-1",
+    ["analyst-1", "analyst-2"],
     "Maritime Assessment Cell",
     ["Validate scope"],
     "csrf",
@@ -83,7 +83,7 @@ test("lists analyst candidates and assigns tasks with CSRF protection", async ()
     "http://127.0.0.1:8001/api/v1/analyst/tasks/ticket-1/assign",
     expect.objectContaining({
       body: JSON.stringify({
-        analystUserId: "analyst-1",
+        analystUserIds: ["analyst-1", "analyst-2"],
         teamName: "Maritime Assessment Cell",
         workPackages: ["Validate scope"],
       }),
@@ -104,7 +104,7 @@ test("converts analyst API errors", async () => {
     }),
   );
 
-  await expect(submitTaskToQc("ticket-1", "csrf")).rejects.toEqual(
+  await expect(submitTaskForReview("ticket-1", "csrf")).rejects.toEqual(
     new ApiError(409, "draft_required", "Draft required."),
   );
 });

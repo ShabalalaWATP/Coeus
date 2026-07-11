@@ -4,14 +4,8 @@ import { Link } from "react-router-dom";
 
 import { AiModelPanel } from "./AiModelPanel";
 import { RegistrationApprovalsPanel } from "./RegistrationApprovalsPanel";
-import { apiClient } from "../../lib/api-client/client";
+import { getAdminOverview } from "../../lib/api-client/admin";
 import { useAuth } from "../../lib/auth/auth-context";
-
-type AdminOverview = {
-  status: string;
-  scope: string;
-  userId: string;
-};
 
 const adminActions = [
   {
@@ -50,7 +44,7 @@ export default function AdminOverviewPage() {
   const { session } = useAuth();
   const overviewQuery = useQuery({
     queryKey: ["admin-overview"],
-    queryFn: () => apiClient.getJson<AdminOverview>("/api/v1/admin/overview"),
+    queryFn: getAdminOverview,
   });
 
   return (

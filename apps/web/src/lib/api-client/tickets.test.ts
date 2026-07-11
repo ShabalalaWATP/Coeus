@@ -1,8 +1,10 @@
 import { ApiError } from "./client";
 import {
   addTicketCollaborator,
+  chooseCollectOption,
   consentNoMatch,
   confirmTicketDelivery,
+  getTicket,
   listTickets,
   listUserDirectory,
   removeTicketCollaborator,
@@ -71,12 +73,12 @@ test("confirms delivery with a CSRF-protected mutation", async () => {
 test("records no-match consent with a CSRF-protected payload", async () => {
   const fetchMock = vi.fn().mockResolvedValue({
     ok: true,
-    json: () => Promise.resolve({ id: "ticket-1", state: "ROUTE_ASSESSMENT" }),
+    json: () => Promise.resolve({ id: "ticket-1", state: "JIOC_REVIEW" }),
   });
   vi.stubGlobal("fetch", fetchMock);
 
   await expect(consentNoMatch("ticket-1", true, "csrf")).resolves.toMatchObject({
-    state: "ROUTE_ASSESSMENT",
+    state: "JIOC_REVIEW",
   });
 
   expect(fetchMock).toHaveBeenCalledWith(
@@ -87,6 +89,61 @@ test("records no-match consent with a CSRF-protected payload", async () => {
       headers: { "Content-Type": "application/json", "X-CSRF-Token": "csrf" },
       method: "POST",
     },
+  );
+});
+
+test("records the collect choice with a CSRF-protected payload", async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    json: () => Promise.resolve({ id: "ticket-1", state: "ANALYST_ASSIGNMENT" }),
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  await expect(chooseCollectOption("ticket-1", true, "csrf")).resolves.toMatchObject({
+    state: "ANALYST_ASSIGNMENT",
+  });
+  await chooseCollectOption("ticket-1", false, "csrf");
+
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    1,
+    "http://127.0.0.1:8001/api/v1/tickets/ticket-1/collect-choice",
+    {
+      body: JSON.stringify({ analysed: true }),
+      credentials: "include",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": "csrf" },
+      method: "POST",
+    },
+  );
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    2,
+    "http://127.0.0.1:8001/api/v1/tickets/ticket-1/collect-choice",
+    expect.objectContaining({ body: JSON.stringify({ analysed: false }) }),
+  );
+});
+
+test("returns a single-ticket detail response when the id matches", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ id: "ticket-1", state: "COLLECT_CHOICE" }),
+    }),
+  );
+
+  await expect(getTicket("ticket-1")).resolves.toMatchObject({ state: "COLLECT_CHOICE" });
+});
+
+test("rejects a single-ticket detail response for a different ticket", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ id: "ticket-2", state: "COLLECT_CHOICE" }),
+    }),
+  );
+
+  await expect(getTicket("ticket-1")).rejects.toThrow(
+    "Ticket detail response did not match the requested ticket.",
   );
 });
 

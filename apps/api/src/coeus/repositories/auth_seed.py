@@ -19,6 +19,12 @@ def seed_user_specs() -> Iterable[tuple[str, str, frozenset[RoleName], bool]]:
             True,
         ),
         (
+            "jioc.team@example.test",
+            "JIOC Team Member",
+            frozenset({RoleName.JIOC_TEAM_MEMBER}),
+            True,
+        ),
+        (
             "rfa.manager@example.test",
             "RFA Manager",
             frozenset({RoleName.RFA_MANAGER}),
@@ -32,13 +38,13 @@ def seed_user_specs() -> Iterable[tuple[str, str, frozenset[RoleName], bool]]:
         ),
         (
             "collection.manager@example.test",
-            "Collection Manager",
+            "CM Manager",
             frozenset({RoleName.COLLECTION_MANAGER}),
             True,
         ),
         (
             "collection.team@example.test",
-            "Collection Team Member",
+            "CM Team Member",
             frozenset({RoleName.COLLECTION_TEAM_MEMBER}),
             True,
         ),
@@ -50,7 +56,7 @@ def seed_user_specs() -> Iterable[tuple[str, str, frozenset[RoleName], bool]]:
         ),
         (
             "analyst@example.test",
-            "Intelligence Analyst",
+            "Analyst",
             frozenset({RoleName.INTELLIGENCE_ANALYST}),
             True,
         ),

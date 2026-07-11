@@ -1,6 +1,6 @@
 import { apiRequestJson } from "./client";
 
-export type AuditEvent = {
+type AuditEvent = {
   eventId: string;
   eventType: string;
   occurredAt: string;
@@ -8,9 +8,14 @@ export type AuditEvent = {
   metadata: Record<string, string>;
 };
 
-export async function listAuditEvents(): Promise<AuditEvent[]> {
-  const response = await apiRequestJson<{ events: AuditEvent[] }>("/api/v1/audit", {
+export type AuditEventPage = {
+  events: AuditEvent[];
+  nextCursor: string | null;
+};
+
+export async function listAuditEvents(cursor?: string): Promise<AuditEventPage> {
+  const query = cursor ? `?before=${encodeURIComponent(cursor)}` : "";
+  return apiRequestJson<AuditEventPage>(`/api/v1/audit${query}`, {
     method: "GET",
   });
-  return response.events;
 }

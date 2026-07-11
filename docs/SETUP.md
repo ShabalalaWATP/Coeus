@@ -59,8 +59,11 @@ docker compose up -d postgres
 **Terminal 2: API on port 8001**
 
 ```bash
-uv run --directory apps/api uvicorn coeus.main:app --host 127.0.0.1 --port 8001
+uv run --directory apps/api uvicorn coeus.main:app --host 127.0.0.1 --port 8001 --workers 1
 ```
+
+Run one API process only. The current local repositories are deliberately
+single-writer; ADR 0019 defines the future scale-out prerequisites.
 
 **Terminal 3: web app on port 5173**
 
@@ -103,22 +106,47 @@ credential `CoeusLocal1!`. They exist only in `local` and `test` environments.
 | Username | Role | Lands on |
 | --- | --- | --- |
 | `admin@example.test` | Administrator | `/admin/overview` |
-| `user@example.test` | User (Customer) | `/app/requests` |
+| `user@example.test` | Customer | `/app/requests` |
+| `jioc.team@example.test` | JIOC Team Member | `/jioc/queue` |
 | `rfa.manager@example.test` | RFA Manager | `/rfa/queue` |
 | `rfa.team@example.test` | RFA Team Member | `/rfa/products` |
-| `collection.manager@example.test` | Collection Manager | `/collection/queue` |
-| `collection.team@example.test` | Collection Team Member | `/collection/products` |
+| `collection.manager@example.test` | CM Manager | `/collection/queue` |
+| `collection.team@example.test` | CM Team Member | `/collection/products` |
 | `store.manager@example.test` | Intelligence Store Manager | `/store` |
-| `analyst@example.test` | Intelligence Analyst | `/analyst/workbench` |
+| `analyst@example.test` | Analyst | `/analyst/workbench` |
 | `analyst.maritime@example.test` | Maritime Assessment Analyst | `/analyst/workbench` |
 | `analyst.cyber@example.test` | Cyber Threat Analyst | `/analyst/workbench` |
 | `analyst.geo@example.test` | Geospatial Assessment Analyst | `/analyst/workbench` |
 | `qc.manager@example.test` | Quality Control Manager | `/qc/queue` |
 | `disabled@example.test` | (disabled) | Blocked from login |
 
+Four organisational teams are also seeded for the My Team page (`/teams`): the
+RFA Assessment Team (RFA manager plus the analysts), the Collection Management
+Team, the JIOC Routing Cell and the Quality Control Cell. Team members get an
+editable profile and a shared availability calendar.
+
+### Local demo dataset
+
+On a fresh local run the app also loads a rich demo dataset so no queue starts
+empty: ~43 Intelligence Store products across the themed need-to-know groups
+and every canonical product type (standardised reports, intelligence
+summaries, satellite imagery, GeoJSON geographic overlays, database extracts,
+SIGINT datasets, multi-asset bundles and fused outputs) with type-appropriate
+assets, metadata and tags; a ticket in every workflow state (populating the
+customer, JIOC, team, analyst and QC queues); delivered tickets with feedback
+that feed the analytics dashboards; and team calendar entries. It is committed
+as deterministic seed code, so a `git pull` brings it with the repository and
+it repopulates any fresh database automatically. It is auto-on for
+`environment=local` only; override with `COEUS_SEED_DEMO_CONTENT=true|false`.
+The catalogue refreshes on restart even on an existing database; demo tickets
+and calendars seed only on a fresh dataset (clear `.local-data/` or drop the
+`coeus_state` rows to reseed those). See
+[Local Demo Dataset](specs/local-demo-dataset.md).
+
 To exercise the full workflow, sign in as the customer to raise a request, then
-sign in as the RFA manager, analyst and QC manager in turn to move it through the
-pipeline. See the [User Guide](USER_GUIDE.md).
+sign in as the JIOC team member to route it, and as the team manager, analyst
+and QC manager in turn to move it through the pipeline. See the
+[User Guide](USER_GUIDE.md).
 
 ## Running the checks
 
@@ -135,7 +163,8 @@ corepack pnpm --filter @coeus/web test
 uv run --directory apps/api ruff format --check src tests
 uv run --directory apps/api ruff check src tests
 uv run --directory apps/api mypy src
-uv run --directory apps/api pytest
+uv run --directory apps/api pytest --cov-report=json:coverage.json
+uv run --project apps/api python scripts/check_backend_coverage.py apps/api/coverage.json
 
 # API contract: fail if packages/contracts/openapi.json is stale
 corepack pnpm contracts:check

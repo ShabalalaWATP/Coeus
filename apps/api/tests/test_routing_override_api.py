@@ -15,45 +15,43 @@ from coeus.domain.tickets import CmCapabilityReview, RfaCapabilityReview, Routin
 from coeus.main import create_app
 from coeus.services.routing_records import recommend_route
 from rfi_search_helpers import login
-from test_routing_api import _route_assessment_ticket
+from routing_helpers import route_assessment_ticket
 
 
 @pytest.mark.asyncio
-async def test_cross_queue_override_is_rejected() -> None:
-    """A reviewer without the current queue's permission cannot approve, even
-    with an override reason for a route they are allowed to review."""
+async def test_read_all_access_does_not_grant_jioc_decision_rights() -> None:
+    """Broad read access must not let a non-JIOC reviewer decide routes."""
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
         user = await login(client, "user@example.test")
-        ticket_id = await _route_assessment_ticket(
+        ticket_id = await route_assessment_ticket(
             client,
             str(user["csrfToken"]),
             title="Arctic Fisheries Assessment",
             area_or_region="Arctic fisheries",
             output_format="assessment report",
         )
-        manager = await login(client, "rfa.manager@example.test")
+        jioc = await login(client, "jioc.team@example.test")
         routed = await client.post(
             f"/api/v1/routing/{ticket_id}/run",
-            headers={"X-CSRF-Token": str(manager["csrfToken"])},
+            headers={"X-CSRF-Token": str(jioc["csrfToken"])},
         )
     assert routed.status_code == 200
-    assert routed.json()["state"] == "RFA_MANAGER_REVIEW"
+    assert routed.json()["state"] == "JIOC_REVIEW"
 
-    collection_manager = app.state.access_services.repository.get_user_by_username(
+    manager = app.state.access_services.repository.get_user_by_username(
         "collection.manager@example.test"
     )
-    assert collection_manager is not None
-    # Broad read access must not grant decision rights in another queue.
-    cross_queue_actor = replace(
-        collection_manager,
-        permissions=collection_manager.permissions | {Permission.TICKET_READ_ALL},
+    assert manager is not None
+    broad_read_actor = replace(
+        manager,
+        permissions=manager.permissions | {Permission.TICKET_READ_ALL},
     )
     with pytest.raises(AppError) as exc_info:
         app.state.routing_service.approve(
-            cross_queue_actor,
+            broad_read_actor,
             UUID(ticket_id),
             RoutingRoute.CM,
             "Collection wants this work.",
@@ -63,40 +61,42 @@ async def test_cross_queue_override_is_rejected() -> None:
 
 
 @pytest.mark.asyncio
-async def test_same_queue_manager_can_override_to_other_route_with_reason() -> None:
+async def test_jioc_can_override_the_recommendation_with_reason() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
         user = await login(client, "user@example.test")
-        ticket_id = await _route_assessment_ticket(
+        ticket_id = await route_assessment_ticket(
             client,
             str(user["csrfToken"]),
             title="Arctic Fisheries Assessment",
             area_or_region="Arctic fisheries",
             output_format="assessment report",
         )
-        manager = await login(client, "rfa.manager@example.test")
+        jioc = await login(client, "jioc.team@example.test")
         routed = await client.post(
             f"/api/v1/routing/{ticket_id}/run",
-            headers={"X-CSRF-Token": str(manager["csrfToken"])},
+            headers={"X-CSRF-Token": str(jioc["csrfToken"])},
         )
         missing_reason = await client.post(
             f"/api/v1/routing/{ticket_id}/approve",
-            headers={"X-CSRF-Token": str(manager["csrfToken"])},
+            headers={"X-CSRF-Token": str(jioc["csrfToken"])},
             json={"route": "cm"},
         )
         override = await client.post(
             f"/api/v1/routing/{ticket_id}/approve",
-            headers={"X-CSRF-Token": str(manager["csrfToken"])},
+            headers={"X-CSRF-Token": str(jioc["csrfToken"])},
             json={"route": "cm", "overrideReason": "Collection coverage is more suitable."},
         )
 
-    assert routed.json()["state"] == "RFA_MANAGER_REVIEW"
+    assert routed.json()["state"] == "JIOC_REVIEW"
+    assert routed.json()["recommendation"]["recommendedRoute"] == "rfa"
     assert missing_reason.status_code == 422
     assert missing_reason.json()["error"]["code"] == "override_reason_required"
     assert override.status_code == 200
-    assert override.json()["state"] == "ANALYST_ASSIGNMENT"
+    # Overriding to collection pauses for the customer's collect choice.
+    assert override.json()["state"] == "COLLECT_CHOICE"
     assert override.json()["managerDecisions"][-1]["route"] == "cm"
 
 
@@ -109,17 +109,17 @@ async def test_route_reviews_roll_back_when_audit_fails(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
         user = await login(client, "user@example.test")
-        ticket_id = await _route_assessment_ticket(client, str(user["csrfToken"]))
-        manager = await login(client, "rfa.manager@example.test")
+        ticket_id = await route_assessment_ticket(client, str(user["csrfToken"]))
+        jioc = await login(client, "jioc.team@example.test")
         monkeypatch.setattr(app.state.routing_service._audit_log, "record", _fail_audit)
         with pytest.raises(RuntimeError, match="audit unavailable"):
             await client.post(
                 f"/api/v1/routing/{ticket_id}/run",
-                headers={"X-CSRF-Token": str(manager["csrfToken"])},
+                headers={"X-CSRF-Token": str(jioc["csrfToken"])},
             )
 
     ticket = _stored_ticket(app, ticket_id)
-    assert ticket.state == TicketState.ROUTE_ASSESSMENT
+    assert ticket.state == TicketState.JIOC_REVIEW
     assert ticket.rfa_reviews == ()
     assert ticket.cm_reviews == ()
     assert ticket.route_recommendations == ()
@@ -134,22 +134,22 @@ async def test_route_approval_rolls_back_when_audit_fails(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
         user = await login(client, "user@example.test")
-        ticket_id = await _route_assessment_ticket(client, str(user["csrfToken"]))
-        manager = await login(client, "rfa.manager@example.test")
+        ticket_id = await route_assessment_ticket(client, str(user["csrfToken"]))
+        jioc = await login(client, "jioc.team@example.test")
         await client.post(
             f"/api/v1/routing/{ticket_id}/run",
-            headers={"X-CSRF-Token": str(manager["csrfToken"])},
+            headers={"X-CSRF-Token": str(jioc["csrfToken"])},
         )
         monkeypatch.setattr(app.state.routing_service._audit_log, "record", _fail_audit)
         with pytest.raises(RuntimeError, match="audit unavailable"):
             await client.post(
                 f"/api/v1/routing/{ticket_id}/approve",
-                headers={"X-CSRF-Token": str(manager["csrfToken"])},
+                headers={"X-CSRF-Token": str(jioc["csrfToken"])},
                 json={"route": "rfa"},
             )
 
     ticket = _stored_ticket(app, ticket_id)
-    assert ticket.state == TicketState.RFA_MANAGER_REVIEW
+    assert ticket.state == TicketState.JIOC_REVIEW
     assert ticket.manager_decisions == ()
 
 
@@ -162,22 +162,22 @@ async def test_route_rejection_rolls_back_when_audit_fails(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
         user = await login(client, "user@example.test")
-        ticket_id = await _route_assessment_ticket(client, str(user["csrfToken"]))
-        manager = await login(client, "rfa.manager@example.test")
+        ticket_id = await route_assessment_ticket(client, str(user["csrfToken"]))
+        jioc = await login(client, "jioc.team@example.test")
         await client.post(
             f"/api/v1/routing/{ticket_id}/run",
-            headers={"X-CSRF-Token": str(manager["csrfToken"])},
+            headers={"X-CSRF-Token": str(jioc["csrfToken"])},
         )
         monkeypatch.setattr(app.state.routing_service._audit_log, "record", _fail_audit)
         with pytest.raises(RuntimeError, match="audit unavailable"):
             await client.post(
                 f"/api/v1/routing/{ticket_id}/reject",
-                headers={"X-CSRF-Token": str(manager["csrfToken"])},
+                headers={"X-CSRF-Token": str(jioc["csrfToken"])},
                 json={"route": "rfa", "reason": "Not enough scope."},
             )
 
     ticket = _stored_ticket(app, ticket_id)
-    assert ticket.state == TicketState.RFA_MANAGER_REVIEW
+    assert ticket.state == TicketState.JIOC_REVIEW
     assert ticket.manager_decisions == ()
 
 
@@ -190,17 +190,17 @@ async def test_route_clarification_rolls_back_when_audit_fails(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
         user = await login(client, "user@example.test")
-        ticket_id = await _route_assessment_ticket(client, str(user["csrfToken"]))
-        manager = await login(client, "rfa.manager@example.test")
+        ticket_id = await route_assessment_ticket(client, str(user["csrfToken"]))
+        jioc = await login(client, "jioc.team@example.test")
         await client.post(
             f"/api/v1/routing/{ticket_id}/run",
-            headers={"X-CSRF-Token": str(manager["csrfToken"])},
+            headers={"X-CSRF-Token": str(jioc["csrfToken"])},
         )
         monkeypatch.setattr(app.state.routing_service._audit_log, "record", _fail_audit)
         with pytest.raises(RuntimeError, match="audit unavailable"):
             await client.post(
                 f"/api/v1/routing/{ticket_id}/clarification",
-                headers={"X-CSRF-Token": str(manager["csrfToken"])},
+                headers={"X-CSRF-Token": str(jioc["csrfToken"])},
                 json={
                     "route": "rfa",
                     "reason": "Need clearer scope.",
@@ -209,7 +209,7 @@ async def test_route_clarification_rolls_back_when_audit_fails(
             )
 
     ticket = _stored_ticket(app, ticket_id)
-    assert ticket.state == TicketState.RFA_MANAGER_REVIEW
+    assert ticket.state == TicketState.JIOC_REVIEW
     assert ticket.manager_decisions == ()
     assert ticket.clarification_requests == ()
 

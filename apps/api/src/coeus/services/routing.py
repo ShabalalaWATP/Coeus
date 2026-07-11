@@ -14,21 +14,26 @@ from coeus.domain.tickets import (
     TicketRecord,
 )
 from coeus.services.audit import AuditLog
-from coeus.services.capability_catalogue import CapabilityCatalogue
+from coeus.services.capability_catalogue import CapabilityCatalogue, CapabilityCataloguePort
 from coeus.services.orchestration_handoff import (
+    append_collect_choice_handoff,
     append_handoff,
+    collect_choice_handoff,
     manager_clarification_handoff,
 )
-from coeus.services.routing_agents import CmCapabilityAgent, RfaCapabilityAgent
+from coeus.services.prioritisation import priority_sort_key
+from coeus.services.routing_agents import (
+    CmCapabilityAgent,
+    CmReviewAgent,
+    RfaCapabilityAgent,
+    RfaReviewAgent,
+)
 from coeus.services.routing_records import (
     can_review_route,
-    current_queue_permission,
     decision,
     decision_workflow_update,
-    ensure_manager_state,
+    ensure_jioc_state,
     ensure_override,
-    fallback_state,
-    latest_cm_review,
     latest_recommendation,
     timeline,
 )
@@ -36,39 +41,42 @@ from coeus.services.routing_review_updates import build_routing_review_update
 from coeus.services.routing_stats import RoutingStats, routing_stats_from_tickets
 from coeus.services.tickets import TicketServices
 
-ROUTING_READ_PERMISSIONS = frozenset({Permission.RFA_REVIEW, Permission.COLLECTION_REVIEW})
+# JIOC owns route decisions; managers and JIOC share the advisory catalogue
+# and routing statistics views.
+ROUTING_READ_PERMISSIONS = frozenset(
+    {Permission.JIOC_REVIEW, Permission.RFA_REVIEW, Permission.COLLECTION_REVIEW}
+)
 
 
 class RoutingService:
+    """The JIOC decision service: capability advice in, human route decision out."""
+
     def __init__(
         self,
         tickets: TicketServices,
         audit_log: AuditLog,
-        rfa_agent: RfaCapabilityAgent | None = None,
-        cm_agent: CmCapabilityAgent | None = None,
+        catalogue: CapabilityCataloguePort,
+        rfa_agent: RfaReviewAgent,
+        cm_agent: CmReviewAgent,
     ) -> None:
         self._tickets = tickets
         self._audit_log = audit_log
-        self._catalogue = CapabilityCatalogue()
-        self._rfa_agent = rfa_agent or RfaCapabilityAgent(self._catalogue)
-        self._cm_agent = cm_agent or CmCapabilityAgent(self._catalogue)
+        self._catalogue = catalogue
+        self._rfa_agent = rfa_agent
+        self._cm_agent = cm_agent
 
-    def rfa_queue(self, actor: UserAccount) -> tuple[TicketRecord, ...]:
-        self._require(actor, Permission.RFA_REVIEW)
-        return self._queue_for(
-            actor,
-            {TicketState.ROUTE_ASSESSMENT, TicketState.RFA_MANAGER_REVIEW},
+    def jioc_queue(self, actor: UserAccount) -> tuple[TicketRecord, ...]:
+        self._require(actor, Permission.JIOC_REVIEW)
+        tickets = self._tickets.tickets.list_workflow_tickets(actor, ROUTING_READ_PERMISSIONS)
+        queued = (
+            ticket
+            for ticket in tickets
+            if ticket.state in {TicketState.JIOC_REVIEW, TicketState.COLLECT_CHOICE}
         )
-
-    def cm_queue(self, actor: UserAccount) -> tuple[TicketRecord, ...]:
-        self._require(actor, Permission.COLLECTION_REVIEW)
-        return self._queue_for(actor, {TicketState.CM_MANAGER_REVIEW})
+        return tuple(sorted(queued, key=priority_sort_key))
 
     def capability_catalogue(self, actor: UserAccount) -> tuple[CapabilityTeam, ...]:
-        if (
-            Permission.RFA_REVIEW not in actor.permissions
-            and Permission.COLLECTION_REVIEW not in actor.permissions
-        ):
+        if not ROUTING_READ_PERMISSIONS.intersection(actor.permissions):
             raise AppError(403, "forbidden", "Permission denied.")
         return (*self._catalogue.rfa_teams(), *self._catalogue.cm_teams())
 
@@ -81,16 +89,11 @@ class RoutingService:
         return ticket
 
     def run_reviews(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
-        if (
-            Permission.RFA_REVIEW not in actor.permissions
-            and Permission.COLLECTION_REVIEW not in actor.permissions
-        ):
-            raise AppError(403, "forbidden", "Permission denied.")
+        self._require(actor, Permission.JIOC_REVIEW)
         ticket = self._tickets.tickets.get_workflow_ticket(
             actor, ticket_id, ROUTING_READ_PERMISSIONS
         )
-        if ticket.state != TicketState.ROUTE_ASSESSMENT:
-            raise AppError(409, "invalid_ticket_state", "Ticket is not awaiting route assessment.")
+        ensure_jioc_state(ticket)
         rfa_review = self._rfa_agent.review(ticket)
         cm_review = self._cm_agent.review(ticket)
         review_update = build_routing_review_update(ticket, actor.user_id, rfa_review, cm_review)
@@ -110,27 +113,31 @@ class RoutingService:
         route: RoutingRoute,
         override_reason: str | None,
     ) -> TicketRecord:
+        self._require(actor, Permission.JIOC_REVIEW)
         ticket = self.details(actor, ticket_id)
+        ensure_jioc_state(ticket)
         recommendation = latest_recommendation(ticket)
-        # The approving manager must own the queue the ticket currently sits
-        # in; an override changes the route, never which queue can decide.
-        self._require_current_queue_permission(actor, ticket)
-        if recommendation.recommended_route == route:
-            ensure_manager_state(ticket, route)
-        else:
+        if recommendation.recommended_route != route:
             ensure_override(override_reason)
-        self._ensure_transition(ticket.state, TicketState.ANALYST_ASSIGNMENT)
+        collection = route == RoutingRoute.CM
+        target = TicketState.COLLECT_CHOICE if collection else TicketState.ANALYST_ASSIGNMENT
+        self._ensure_transition(ticket.state, target)
+        reason = (
+            "Collection required; awaiting the customer's collect choice."
+            if collection
+            else "Collection not required; approved for RFA analyst assignment."
+        )
         manager_decision = decision(
             ticket.ticket_id,
             actor.user_id,
             route,
             ManagerRoutingDecisionStatus.APPROVED,
-            "Approved for analyst assignment.",
+            reason,
             override_reason,
         )
         event_type = "manager_override" if override_reason else "route_approved"
         return self._save_decision(
-            ticket, manager_decision, TicketState.ANALYST_ASSIGNMENT, event_type
+            ticket, manager_decision, target, event_type, notify_collect_choice=collection
         )
 
     def reject(
@@ -140,11 +147,10 @@ class RoutingService:
         route: RoutingRoute,
         reason: str,
     ) -> TicketRecord:
-        self._require_route_permission(actor, route)
+        self._require(actor, Permission.JIOC_REVIEW)
         ticket = self.details(actor, ticket_id)
-        ensure_manager_state(ticket, route)
-        target_state = fallback_state(route, latest_cm_review(ticket))
-        self._ensure_transition(ticket.state, target_state)
+        ensure_jioc_state(ticket)
+        self._ensure_transition(ticket.state, TicketState.INFO_REQUIRED)
         manager_decision = decision(
             ticket.ticket_id,
             actor.user_id,
@@ -153,7 +159,9 @@ class RoutingService:
             reason,
             None,
         )
-        return self._save_decision(ticket, manager_decision, target_state, "route_rejected")
+        return self._save_decision(
+            ticket, manager_decision, TicketState.INFO_REQUIRED, "route_rejected"
+        )
 
     def request_clarification(
         self,
@@ -163,9 +171,9 @@ class RoutingService:
         reason: str,
         questions: tuple[str, ...],
     ) -> TicketRecord:
-        self._require_route_permission(actor, route)
+        self._require(actor, Permission.JIOC_REVIEW)
         ticket = self.details(actor, ticket_id)
-        ensure_manager_state(ticket, route)
+        ensure_jioc_state(ticket)
         self._ensure_transition(ticket.state, TicketState.INFO_REQUIRED)
         handoff = manager_clarification_handoff(
             ticket.ticket_id, actor.user_id, route, reason, questions
@@ -179,15 +187,7 @@ class RoutingService:
             None,
         )
         proposed = append_handoff(
-            replace(
-                ticket,
-                state=TicketState.INFO_REQUIRED,
-                manager_decisions=(*ticket.manager_decisions, manager_decision),
-                timeline=(
-                    *ticket.timeline,
-                    timeline(ticket.ticket_id, actor.user_id, "clarification_requested", reason),
-                ),
-            ),
+            self._decision_update(ticket, manager_decision, TicketState.INFO_REQUIRED),
             handoff,
         )
         return self._save_with_audit(
@@ -207,41 +207,51 @@ class RoutingService:
         tickets = self._tickets.tickets.list_workflow_tickets(actor, ROUTING_READ_PERMISSIONS)
         return routing_stats_from_tickets(tickets)
 
-    def _queue_for(self, actor: UserAccount, states: set[TicketState]) -> tuple[TicketRecord, ...]:
-        tickets = self._tickets.tickets.list_workflow_tickets(actor, ROUTING_READ_PERMISSIONS)
-        return tuple(ticket for ticket in tickets if ticket.state in states)
-
-    def _save_decision(
+    def _decision_update(
         self,
         ticket: TicketRecord,
-        decision: ManagerRoutingDecision,
+        manager_decision: ManagerRoutingDecision,
         state: TicketState,
-        event_type: str,
     ) -> TicketRecord:
-        proposed = replace(
+        return replace(
             ticket,
             state=state,
-            manager_decisions=(*ticket.manager_decisions, decision),
+            manager_decisions=(*ticket.manager_decisions, manager_decision),
             workflow_plan_updates=(
                 *ticket.workflow_plan_updates,
-                decision_workflow_update(ticket.ticket_id, decision, state),
+                decision_workflow_update(ticket.ticket_id, manager_decision, state),
             ),
             timeline=(
                 *ticket.timeline,
                 timeline(
                     ticket.ticket_id,
-                    decision.actor_user_id,
-                    f"route_{decision.status.value}",
-                    decision.reason,
+                    manager_decision.actor_user_id,
+                    f"route_{manager_decision.status.value}",
+                    manager_decision.reason,
                 ),
             ),
         )
+
+    def _save_decision(
+        self,
+        ticket: TicketRecord,
+        manager_decision: ManagerRoutingDecision,
+        state: TicketState,
+        event_type: str,
+        notify_collect_choice: bool = False,
+    ) -> TicketRecord:
+        proposed = self._decision_update(ticket, manager_decision, state)
+        if notify_collect_choice:
+            proposed = append_collect_choice_handoff(
+                proposed,
+                collect_choice_handoff(ticket.ticket_id, manager_decision.actor_user_id),
+            )
         return self._save_with_audit(
             ticket,
             proposed,
             event_type,
-            decision.actor_user_id,
-            {"ticket_id": str(ticket.ticket_id), "route": decision.route.value},
+            manager_decision.actor_user_id,
+            {"ticket_id": str(ticket.ticket_id), "route": manager_decision.route.value},
         )
 
     def _save_with_audit(
@@ -265,20 +275,18 @@ class RoutingService:
         if permission not in actor.permissions:
             raise AppError(403, "forbidden", "Permission denied.")
 
-    def _require_route_permission(self, actor: UserAccount, route: RoutingRoute) -> None:
-        permission = (
-            Permission.RFA_REVIEW if route == RoutingRoute.RFA else Permission.COLLECTION_REVIEW
-        )
-        self._require(actor, permission)
-
-    def _require_current_queue_permission(self, actor: UserAccount, ticket: TicketRecord) -> None:
-        self._require(actor, current_queue_permission(ticket))
-
     @staticmethod
     def _ensure_transition(current: TicketState, target: TicketState) -> None:
-        if not can_transition(current, target):
+        if current != target and not can_transition(current, target):
             raise AppError(409, "invalid_ticket_state", "Ticket cannot move to that state.")
 
 
 def build_routing_service(ticket_services: TicketServices, audit_log: AuditLog) -> RoutingService:
-    return RoutingService(ticket_services, audit_log)
+    catalogue = CapabilityCatalogue()
+    return RoutingService(
+        ticket_services,
+        audit_log,
+        catalogue,
+        RfaCapabilityAgent(catalogue),
+        CmCapabilityAgent(catalogue),
+    )

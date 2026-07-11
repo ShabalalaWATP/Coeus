@@ -1,12 +1,13 @@
 export const ROLE_OPTIONS = [
   "Administrator",
-  "User",
-  "Request for Assessment Manager",
-  "Request for Assessment Team Member",
-  "Collection Manager",
-  "Collection Team Member",
+  "Customer",
+  "JIOC Team Member",
+  "RFA Manager",
+  "RFA Team Member",
+  "CM Manager",
+  "CM Team Member",
   "Intelligence Store Manager",
-  "Intelligence Analyst",
+  "Analyst",
   "Quality Control Manager",
 ] as const;
 

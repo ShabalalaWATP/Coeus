@@ -14,13 +14,26 @@ from coeus.domain.tickets import (
 )
 
 
-def latest_assignment(ticket: TicketRecord) -> AnalystAssignment | None:
-    return ticket.analyst_assignments[-1] if ticket.analyst_assignments else None
+def active_assignments(ticket: TicketRecord) -> tuple[AnalystAssignment, ...]:
+    return tuple(assignment for assignment in ticket.analyst_assignments if assignment.active)
+
+
+def active_assignments_for_route(
+    ticket: TicketRecord, route: RoutingRoute
+) -> tuple[AnalystAssignment, ...]:
+    return tuple(
+        assignment for assignment in active_assignments(ticket) if assignment.route == route
+    )
 
 
 def assigned_to(ticket: TicketRecord, analyst_user_id: UUID) -> bool:
-    assignment = latest_assignment(ticket)
-    return assignment is not None and assignment.analyst_user_id == analyst_user_id
+    return any(
+        assignment.analyst_user_id == analyst_user_id for assignment in active_assignments(ticket)
+    )
+
+
+def assigned_analyst_ids(ticket: TicketRecord) -> frozenset[UUID]:
+    return frozenset(assignment.analyst_user_id for assignment in active_assignments(ticket))
 
 
 def approved_route(ticket: TicketRecord) -> RoutingRoute | None:

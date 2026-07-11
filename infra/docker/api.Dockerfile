@@ -1,4 +1,4 @@
-FROM python:3.14-slim AS runtime
+FROM python:3.14-slim@sha256:b877e50bd90de10af8d82c57a022fc2e0dc731c5320d762a27986facfc3355c1 AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -18,4 +18,4 @@ RUN addgroup --system coeus && adduser --system --ingroup coeus coeus && chown -
 USER coeus
 
 EXPOSE 8000
-CMD ["sh", "-c", "uv run uvicorn coeus.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "uv run uvicorn coeus.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]

@@ -2,7 +2,7 @@
 
 ## Scope
 
-Sprint 12 GCP dev deployment scaffolding, Terraform, GitHub Actions deployment,
+Inactive Sprint 12 future-migration scaffolding, Terraform, GitHub Actions validation,
 Cloud Run API/web services, Cloud SQL, Cloud Storage, Secret Manager, Pub/Sub,
 Artifact Registry and supported AI provider configuration.
 
@@ -31,7 +31,8 @@ Artifact Registry and supported AI provider configuration.
 | Artifact Registry or Pub/Sub content uses only provider-managed encryption. | Artifact Registry and Pub/Sub topics use a customer-managed KMS key in the dev baseline. |
 | Cloud SQL accepts public network traffic. | Cloud SQL public IPv4 is disabled; Cloud Run uses the Cloud SQL connection mount. |
 | Worker failures are lost. | Pub/Sub worker subscriptions use retry policy and dead-letter topics. |
-| Unconfigured deploy workflow fails protected-main pushes. | Dev deploy auto-run is disabled unless `GCP_DEPLOY_DEV_ENABLED=true`; manual dispatch validates required variables. |
+| A workflow or repository push deploys to an inactive cloud target. | The migration workflow has no cloud credentials, push or deploy step, and Terraform apply has a default-deny readiness gate. |
+| Multiple API replicas accept stale sessions or overwrite security state. | The API module is marked single-writer, pinned to one instance, and protected by a Terraform precondition. |
 
 ## Open Risks
 
@@ -40,3 +41,5 @@ Artifact Registry and supported AI provider configuration.
 - Terraform remote state and state locking are not configured in Sprint 12.
 - Public API ingress is acceptable for dev browser access but must be reviewed
   again before staging or production.
+- GCS, Pub/Sub, worker and distributed security-state adapters remain migration
+  prerequisites. This reference is not a supported current runtime.

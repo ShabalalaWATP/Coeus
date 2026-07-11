@@ -3,11 +3,11 @@ from uuid import UUID
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
 from coeus.domain.auth import UserAccount
-from coeus.repositories.access import SeedAccessRepository
+from coeus.repositories.access import AccessRepository
 
 
 def validate_qc_acg_assignment(
-    access: SeedAccessRepository,
+    access: AccessRepository,
     actor: UserAccount,
     approval_acg_ids: frozenset[UUID],
     inherited_acg_ids: frozenset[UUID],

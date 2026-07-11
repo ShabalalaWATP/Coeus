@@ -24,6 +24,16 @@ export type CredentialReset = {
   temporaryCredential: string;
 };
 
+export type AdminOverview = {
+  status: string;
+  scope: string;
+  userId: string;
+};
+
+export function getAdminOverview(): Promise<AdminOverview> {
+  return apiRequestJson<AdminOverview>("/api/v1/admin/overview", { method: "GET" });
+}
+
 export async function getAiModelState(): Promise<AiModelState> {
   return apiRequestJson<AiModelState>("/api/v1/admin/ai-model", { method: "GET" });
 }

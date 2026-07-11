@@ -23,6 +23,29 @@ variable "container_port" {
   type        = number
 }
 
+variable "min_instance_count" {
+  description = "Minimum Cloud Run instance count."
+  type        = number
+  default     = 0
+}
+
+variable "max_instance_count" {
+  description = "Maximum Cloud Run instance count."
+  type        = number
+  default     = 1
+
+  validation {
+    condition     = var.max_instance_count >= 1
+    error_message = "max_instance_count must be at least one."
+  }
+}
+
+variable "single_writer" {
+  description = "Require exactly one writable service instance."
+  type        = bool
+  default     = false
+}
+
 variable "environment_variables" {
   description = "Plain environment variables."
   type        = map(string)

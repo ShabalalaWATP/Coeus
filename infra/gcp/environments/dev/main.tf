@@ -55,6 +55,15 @@ locals {
   pubsub_service_agent            = "service-${var.project_number}@gcp-sa-pubsub.iam.gserviceaccount.com"
 }
 
+resource "terraform_data" "migration_readiness_gate" {
+  lifecycle {
+    precondition {
+      condition     = var.migration_adapters_ready
+      error_message = "GCP apply is disabled until the GCS, Pub/Sub and distributed-state migration gates are implemented and verified."
+    }
+  }
+}
+
 module "project_services" {
   source = "../../modules/project_services"
 
@@ -188,6 +197,8 @@ module "api" {
   image                 = var.api_image
   service_account_email = module.iam.api_service_account_email
   container_port        = 8000
+  max_instance_count    = 1
+  single_writer         = true
   allow_unauthenticated = true
   cloud_sql_instances   = [module.database.connection_name]
   labels                = local.labels
@@ -216,6 +227,7 @@ module "api" {
   }
 
   depends_on = [
+    terraform_data.migration_readiness_gate,
     google_project_iam_member.api_cloud_sql_client,
     google_secret_manager_secret_iam_member.api_secret_access,
     google_storage_bucket_iam_member.api_bucket_access,
@@ -231,10 +243,14 @@ module "web" {
   image                 = var.web_image
   service_account_email = module.iam.web_service_account_email
   container_port        = 8080
+  max_instance_count    = 3
+  single_writer         = false
   allow_unauthenticated = true
   labels                = local.labels
 
   environment_variables = {
     COEUS_ENVIRONMENT = var.environment
   }
+
+  depends_on = [terraform_data.migration_readiness_gate]
 }

@@ -51,7 +51,36 @@ test("shows the dashboard and opens the new request workspace", async () => {
 
   expect(await screen.findByRole("heading", { name: "Request" })).toBeVisible();
   expect(screen.getByLabelText("Message")).toBeVisible();
-  expect(screen.getByText("No chat transcript")).toBeVisible();
+  expect(screen.getByText(/Hi, I am Istari/)).toBeVisible();
+});
+
+test("loads older compact request summaries through the server cursor", async () => {
+  const older = { ...baseTicket, id: "ticket-older", reference: "TCK-0000" };
+  const fetchMock = vi.fn((url: string) => {
+    if (url.includes("cursor=ticket-1")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ tickets: [older], nextCursor: null }),
+      });
+    }
+    if (url.includes("/api/v1/tickets")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ tickets: [baseTicket], nextCursor: "ticket-1" }),
+      });
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({ requests: [] }) });
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderRequests("/app/requests");
+  await userEvent.click(await screen.findByRole("button", { name: "Load older requests" }));
+
+  expect(await screen.findByRole("button", { name: /TCK-0000/ })).toBeVisible();
+  expect(fetchMock).toHaveBeenCalledWith(
+    expect.stringContaining("cursor=ticket-1"),
+    expect.objectContaining({ method: "GET" }),
+  );
 });
 
 test("shows a missing state for an unknown direct request URL", async () => {
@@ -98,8 +127,8 @@ test("creates a ticket from chat and shows the captured details checklist", asyn
   await userEvent.click(screen.getByRole("button", { name: "Send" }));
 
   expect(await screen.findByText("TCK-0001")).toBeVisible();
-  expect(screen.getByText("Details the assistant needs")).toBeVisible();
-  expect(screen.getByText("5 of 7 captured from the conversation.")).toBeVisible();
+  expect(screen.getByText("Request details")).toBeVisible();
+  expect(screen.getByText("5 of 10 captured from the conversation.")).toBeVisible();
   expect(screen.getByText("Baltic Ports Brief")).toBeVisible();
   expect(fetchMock).toHaveBeenCalledWith(
     "http://127.0.0.1:8001/api/v1/chat/messages",

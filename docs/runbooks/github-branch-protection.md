@@ -52,3 +52,9 @@ Optional future checks:
 ## Notes
 
 Repository settings are GitHub-enforced state and cannot be proved by local files alone. This runbook documents the expected settings; a maintainer must configure or verify them in GitHub.
+
+For Sprint 14B, record a ruleset readback showing that every listed context is
+actually required. The `zap-baseline` context must be tested with the controlled
+warning fixture: the check must fail under the reviewed rules policy and retain
+its evidence. A green workflow file alone is not proof that branch protection
+is active.

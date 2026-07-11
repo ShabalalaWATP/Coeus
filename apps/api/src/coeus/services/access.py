@@ -11,12 +11,12 @@ from coeus.domain.access import (
     ProductStatus,
 )
 from coeus.domain.auth import UserAccount
-from coeus.repositories.access import SeedAccessRepository
+from coeus.repositories.access import AccessRepository
 from coeus.services.audit import AuditLog
 
 
 class AccessControlGroupService:
-    def __init__(self, repository: SeedAccessRepository, audit_log: AuditLog) -> None:
+    def __init__(self, repository: AccessRepository, audit_log: AuditLog) -> None:
         self._repository = repository
         self._audit_log = audit_log
 
@@ -169,7 +169,7 @@ def _can_administer_acgs(user: UserAccount) -> bool:
 
 
 class ProductAccessPolicy:
-    def __init__(self, repository: SeedAccessRepository) -> None:
+    def __init__(self, repository: AccessRepository) -> None:
         self._repository = repository
 
     def evaluate(self, user: UserAccount, product: ProductRecord) -> AccessDecision:
@@ -219,7 +219,7 @@ class ProductAccessPolicy:
 class AccessDiagnosticsService:
     def __init__(
         self,
-        repository: SeedAccessRepository,
+        repository: AccessRepository,
         product_policy: ProductAccessPolicy,
     ) -> None:
         self._repository = repository
@@ -237,13 +237,13 @@ class AccessDiagnosticsService:
 
 @dataclass(frozen=True)
 class AccessServices:
-    repository: SeedAccessRepository
+    repository: AccessRepository
     acgs: AccessControlGroupService
     product_policy: ProductAccessPolicy
     diagnostics: AccessDiagnosticsService
 
 
-def build_access_services(repository: SeedAccessRepository, audit_log: AuditLog) -> AccessServices:
+def build_access_services(repository: AccessRepository, audit_log: AuditLog) -> AccessServices:
     product_policy = ProductAccessPolicy(repository)
     return AccessServices(
         repository=repository,

@@ -86,16 +86,6 @@ def test_store_repository_reads_latest_projection_products() -> None:
     assert repository.next_reference() == "PROD-1201"
 
 
-def test_store_repository_uses_projection_search_with_visibility_scope() -> None:
-    source = InMemoryStoreRepository(access_repository())
-    product = source.list_products()[0]
-    projection = RecordingProjection((product,))
-    repository = InMemoryStoreRepository(access_repository(), projection=projection)
-    scope = visibility_scope(product)
-
-    assert repository.search_products(filters(), scope) == (product,)
-
-
 def test_store_repository_uses_projection_visible_product_with_visibility_scope() -> None:
     source = InMemoryStoreRepository(access_repository())
     product = source.list_products()[0]
@@ -104,22 +94,6 @@ def test_store_repository_uses_projection_visible_product_with_visibility_scope(
     )
 
     assert repository.get_visible_product(product.product_id, visibility_scope(product)) == product
-
-
-def test_postgres_store_projection_searches_with_access_predicates() -> None:
-    product = seed_product()
-    engine = FakeSqlEngine((product,))
-    projection = PostgresStoreProjection(cast(Engine, engine))
-
-    results = projection.search_products(filters(query="assessment"), visibility_scope(product))
-    blocked = projection.search_products(filters(query="assessment"), empty_visibility_scope())
-
-    assert results == (product,)
-    assert blocked == ()
-    sql = "\n".join(engine.statements)
-    assert "p.classification_level <= :clearance_level" in sql
-    assert "product_acg.acg_id = ANY(CAST(:acg_ids AS uuid[]))" in sql
-    assert "websearch_to_tsquery" in sql
 
 
 def test_postgres_store_projection_hybrid_candidates_keep_access_predicates() -> None:

@@ -14,14 +14,20 @@ just in the UI, so hiding a control is a convenience, never the security boundar
 | Role | Default workspace | Purpose |
 | --- | --- | --- |
 | Administrator | `/admin/overview` | Governance: access requests, model selection, ACGs, audit, analytics |
-| User (Customer) | `/app/requests` | Raise and track intelligence requests |
-| Request for Assessment (RFA) Manager | `/rfa/queue` | Approve assessment-led routes, assign analysts, release products |
+| Customer | `/app/requests` | Raise and track intelligence requests |
+| JIOC Team Member | `/jioc/queue` | Decide whether a progressed request needs collection (route to CM) or assessment (route to RFA) |
+| RFA Manager | `/rfa/queue` | Lead the RFA team: assign analysts, approve analyst work, manage the team |
 | RFA Team Member | `/rfa/products` | Contribute assessment products |
-| Collection Manager | `/collection/queue` | Approve collection-led routes, assign analysts, release products |
-| Collection Team Member | `/collection/products` | Contribute collection products |
-| Intelligence Analyst | `/analyst/workbench` | Produce draft products against assigned tasks |
-| Quality Control (QC) Manager | `/qc/queue` | Quality-assure and approve products |
+| CM Manager | `/collection/queue` | Lead the CM team: assign analysts, approve analyst work, manage the team |
+| CM Team Member | `/collection/products` | Contribute collection products |
+| Analyst | `/analyst/workbench` | Produce draft products against assigned tasks |
+| Quality Control (QC) Manager | `/qc/queue` | Quality-assure products and perform the final release |
 | Intelligence Store Manager | `/store` | Administer product metadata, assets and ACG assignment without blanket content access |
+
+Legacy role names ("Request for Assessment Manager", "Collection Manager",
+"Collection Team Member", "Intelligence Analyst", "User") still decode from
+persisted data and are accepted by the admin API, normalising to the names
+above.
 
 A ninth state exists before a role is granted: a **pending registrant** who has
 requested access from the sign-in page and is awaiting administrator approval.
@@ -45,29 +51,37 @@ membership, and reads the audit log and global analytics.
 - Submit feedback and view their own analytics.
 - Cannot see other customers' requests, route tickets, or produce products.
 
-### RFA Manager / Collection Manager
-- Review the capability recommendation and approve, reject or query a route.
-- Assign an analyst and define work packages.
-- Perform the final release of a QC-approved product to the customer.
-- Update product metadata and manage assets, and view team analytics.
-- A manager only sees and acts on their own route's queue.
+### JIOC Team Member
+- Review progressed requests with the capability recommendation beside them.
+- Decide whether collection is required: yes routes to the CM team, no routes
+  to the RFA team; may query the requester instead.
+- Views team analytics. Does not assign analysts or touch products.
 
-### RFA / Collection Team Member
+### RFA Manager / CM Manager
+- Lead their team: assign one to five analysts and define work packages.
+- Approve or return analyst work before it reaches Quality Control.
+- Manage the team roster and calendar, and view team analytics.
+- Do not release products: Quality Control performs the final release.
+- A manager only sees and acts on their own team's queue.
+
+### RFA / CM Team Member
 - Contribute products for their team and manage product metadata and assets.
 - Read and search entitled products.
 - Do not approve routes, assign analysts or release products.
 
 ### Intelligence Analyst
-- See only tasks assigned to them.
+- See only tasks assigned to them; a task may be shared by up to five analysts.
 - Complete work packages, keep working notes, link supporting products and draft
   the product.
-- Submit the draft to QC.
+- Submit the draft to the team manager for approval (QC-requested rework goes
+  straight back to QC).
 - Cannot approve their own work or release it.
 
 ### Quality Control Manager
 - Review submitted drafts and approve or reject them.
-- On approval, ingest the product and hand it to the RFA or Collection manager
-  for release.
+- On approval, ingest the product and perform the final release to the
+  customer; for an analysed collect, forward the ticket to RFA assignment with
+  the collect linked instead of releasing it.
 - Cannot approve a draft they authored (separation of duties is enforced).
 
 ### Intelligence Store Manager
@@ -93,26 +107,31 @@ membership, and reads the audit log and global analytics.
 - As a customer, I want a dashboard of my open requests and a link plus a
   notification when a product is released so that I never miss a delivery.
 
-### RFA / Collection Manager
-- As an RFA or Collection manager, I want capability agents and the orchestrator
-  to assess feasibility and recommend a route so that I can decide quickly with
+### JIOC Team Member
+- As a JIOC team member, I want capability agents and the orchestrator to
+  assess feasibility and recommend a route so that I can decide quickly with
   the reasoning in front of me.
-- As an RFA or Collection manager, I want to query or reject a route with a
-  recorded reason so that the decision trail is auditable.
-- As an RFA or Collection manager, I want to override the recommendation with a
+- As a JIOC team member, I want to query or reject a route with a recorded
+  reason so that the decision trail is auditable.
+- As a JIOC team member, I want to override the recommendation with a
   justification so that I stay in control when the agent is wrong.
-- As an RFA or Collection manager, I want to assign an analyst and enter the
-  analyst team name so that production starts with the right team and scope.
-- As an RFA or Collection manager, I want a final release step so that nothing
-  reaches a customer without a human sign-off.
+
+### RFA / Collection Manager
+- As an RFA or Collection manager, I want to assign one or more analysts with
+  the team availability in front of me so that production starts with people
+  who are actually free.
+- As an RFA or Collection manager, I want to approve or return my analysts'
+  work with a reason so that nothing reaches Quality Control unreviewed.
+- As an RFA or Collection manager, I want to manage my team's roster and
+  calendar so that ownership of my analysts is explicit.
 
 ### Intelligence Analyst
 - As an analyst, I want to see only my assigned tasks so that my workbench is not
   cluttered with everyone else's work.
 - As an analyst, I want work packages, notes and linked products in one place so
   that I can produce the draft efficiently.
-- As an analyst, I want to submit to QC in one action once my checklist is
-  complete so that hand-off is unambiguous.
+- As an analyst, I want to submit for manager approval in one action once my
+  checklist is complete so that hand-off is unambiguous.
 
 ### Quality Control Manager
 - As a QC manager, I want to review a draft against quality and releasability so

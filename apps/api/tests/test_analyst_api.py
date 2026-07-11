@@ -7,7 +7,8 @@ from httpx import ASGITransport, AsyncClient
 
 from coeus.core.config import Settings
 from coeus.main import create_app
-from rfi_search_helpers import login, submitted_ticket
+from rfi_search_helpers import login
+from routing_helpers import analyst_assignment_ticket
 
 
 @pytest.mark.asyncio
@@ -25,7 +26,7 @@ async def test_manager_assigns_analyst_and_workbench_lists_assigned_tasks_only()
             f"/api/v1/analyst/tasks/{ticket_id}/assign",
             headers={"X-CSRF-Token": str(manager["csrfToken"])},
             json={
-                "analystUserId": str(analyst_user.user_id),
+                "analystUserIds": [str(analyst_user.user_id)],
                 "teamName": "Maritime Assessment Cell",
                 "workPackages": ["Review permitted products", "Draft assessment"],
             },
@@ -43,8 +44,8 @@ async def test_manager_assigns_analyst_and_workbench_lists_assigned_tasks_only()
     }.issubset(candidate_names)
     assert assigned.status_code == 200
     assert assigned.json()["state"] == "ANALYST_IN_PROGRESS"
-    assert assigned.json()["assignment"]["analystUserId"] == str(analyst_user.user_id)
-    assert assigned.json()["assignment"]["teamName"] == "Maritime Assessment Cell"
+    assert assigned.json()["assignments"][0]["analystUserId"] == str(analyst_user.user_id)
+    assert assigned.json()["assignments"][0]["teamName"] == "Maritime Assessment Cell"
     assert [package["title"] for package in assigned.json()["workPackages"]] == [
         "Review permitted products",
         "Draft assessment",
@@ -52,8 +53,10 @@ async def test_manager_assigns_analyst_and_workbench_lists_assigned_tasks_only()
     assert analyst["user"]["username"] == "analyst@example.test"
     assert tasks.status_code == 200
     assert [task["ticketId"] for task in tasks.json()["tasks"]] == [ticket_id]
-    assert tasks.json()["tasks"][0]["assignment"]["teamName"] == "Maritime Assessment Cell"
-    assert tasks.json()["tasks"][0]["managerNotes"] == ["Approved for analyst assignment."]
+    assert tasks.json()["tasks"][0]["assignments"][0]["teamName"] == "Maritime Assessment Cell"
+    assert tasks.json()["tasks"][0]["managerNotes"] == [
+        "Collection not required; approved for RFA analyst assignment."
+    ]
 
 
 @pytest.mark.asyncio
@@ -99,7 +102,7 @@ async def test_analyst_adds_note_and_links_only_permitted_store_products() -> No
 
 
 @pytest.mark.asyncio
-async def test_draft_product_versions_and_submit_to_qc_transition() -> None:
+async def test_draft_product_versions_and_submit_to_manager_transition() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
@@ -112,7 +115,7 @@ async def test_draft_product_versions_and_submit_to_qc_transition() -> None:
             json=_draft_payload("Arctic assessment draft"),
         )
         blocked = await client.post(
-            f"/api/v1/analyst/tasks/{ticket_id}/submit-qc",
+            f"/api/v1/analyst/tasks/{ticket_id}/submit",
             headers={"X-CSRF-Token": str(analyst["csrfToken"])},
         )
         task = first_draft.json()
@@ -130,7 +133,7 @@ async def test_draft_product_versions_and_submit_to_qc_transition() -> None:
             json=_draft_payload("Arctic assessment final draft"),
         )
         submitted = await client.post(
-            f"/api/v1/analyst/tasks/{ticket_id}/submit-qc",
+            f"/api/v1/analyst/tasks/{ticket_id}/submit",
             headers={"X-CSRF-Token": str(analyst["csrfToken"])},
         )
         admin = await login(client, "admin@example.test")
@@ -145,10 +148,10 @@ async def test_draft_product_versions_and_submit_to_qc_transition() -> None:
     assert second_draft.status_code == 200
     assert [draft["versionNumber"] for draft in second_draft.json()["drafts"]] == [1, 2]
     assert submitted.status_code == 200
-    assert submitted.json()["state"] == "QC_REVIEW"
+    assert submitted.json()["state"] == "MANAGER_APPROVAL"
     audit_events = [event["eventType"] for event in audit.json()["events"]]
     assert "work_package_updated" in audit_events
-    assert "submitted_to_qc" in audit_events
+    assert "submitted_to_manager" in audit_events
     assert admin["user"]["username"] == "admin@example.test"
 
 
@@ -165,7 +168,7 @@ async def test_non_manager_cannot_assign_and_unassigned_analyst_cannot_open_task
         forbidden = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/assign",
             headers={"X-CSRF-Token": str(customer["csrfToken"])},
-            json={"analystUserId": str(analyst_user.user_id)},
+            json={"analystUserIds": [str(analyst_user.user_id)]},
         )
         await login(client, "analyst@example.test")
         missing_task = await client.get(f"/api/v1/analyst/tasks/{ticket_id}")
@@ -195,12 +198,12 @@ async def test_analyst_workflow_rejects_invalid_inputs_and_duplicate_actions() -
         invalid_analyst = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/assign",
             headers={"X-CSRF-Token": str(manager["csrfToken"])},
-            json={"analystUserId": str(admin_user.user_id)},
+            json={"analystUserIds": [str(admin_user.user_id)]},
         )
         assigned = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/assign",
             headers={"X-CSRF-Token": str(manager["csrfToken"])},
-            json={"analystUserId": str(analyst_user.user_id)},
+            json={"analystUserIds": [str(analyst_user.user_id)]},
         )
         analyst = await login(client, "analyst@example.test")
         candidates = await client.get("/api/v1/analyst/candidates")
@@ -220,7 +223,7 @@ async def test_analyst_workflow_rejects_invalid_inputs_and_duplicate_actions() -
             json={"status": "complete"},
         )
         draft_required = await client.post(
-            f"/api/v1/analyst/tasks/{ticket_id}/submit-qc",
+            f"/api/v1/analyst/tasks/{ticket_id}/submit",
             headers={"X-CSRF-Token": str(analyst["csrfToken"])},
         )
         bad_payload = _draft_payload("Invalid draft")
@@ -243,7 +246,7 @@ async def test_analyst_workflow_rejects_invalid_inputs_and_duplicate_actions() -
                 json={"status": "complete"},
             )
         submitted = await client.post(
-            f"/api/v1/analyst/tasks/{ticket_id}/submit-qc",
+            f"/api/v1/analyst/tasks/{ticket_id}/submit",
             headers={"X-CSRF-Token": str(analyst["csrfToken"])},
         )
         note_after_qc = await client.post(
@@ -277,48 +280,14 @@ async def _assigned_ticket(client: AsyncClient, app: FastAPI) -> str:
     assigned = await client.post(
         f"/api/v1/analyst/tasks/{ticket_id}/assign",
         headers={"X-CSRF-Token": str(manager["csrfToken"])},
-        json={"analystUserId": str(analyst_user.user_id)},
+        json={"analystUserIds": [str(analyst_user.user_id)]},
     )
     assert assigned.status_code == 200
     return ticket_id
 
 
 async def _approved_ticket(client: AsyncClient) -> str:
-    user = await login(client, "user@example.test")
-    ticket_id = await submitted_ticket(
-        client,
-        str(user["csrfToken"]),
-        title="Arctic Fisheries Assessment",
-        area_or_region="Arctic fisheries",
-        output_format="assessment report",
-    )
-    search = await client.post(
-        f"/api/v1/rfi-search/{ticket_id}/run",
-        headers={"X-CSRF-Token": str(user["csrfToken"])},
-    )
-    assert search.status_code == 200
-    if search.json()["ticketState"] == "RFI_MATCH_OFFERED":
-        for offer in search.json()["offers"]:
-            rejected = await client.post(
-                f"/api/v1/rfi-search/{ticket_id}/offers/{offer['productId']}/reject",
-                headers={"X-CSRF-Token": str(user["csrfToken"])},
-                json={"reason": "Need a new assessment route."},
-            )
-            assert rejected.status_code == 200
-    manager = await login(client, "rfa.manager@example.test")
-    routed = await client.post(
-        f"/api/v1/routing/{ticket_id}/run",
-        headers={"X-CSRF-Token": str(manager["csrfToken"])},
-    )
-    approved = await client.post(
-        f"/api/v1/routing/{ticket_id}/approve",
-        headers={"X-CSRF-Token": str(manager["csrfToken"])},
-        json={"route": "rfa"},
-    )
-    assert routed.status_code == 200
-    assert approved.status_code == 200
-    assert approved.json()["state"] == "ANALYST_ASSIGNMENT"
-    return ticket_id
+    return await analyst_assignment_ticket(client)
 
 
 def _draft_payload(title: str) -> dict[str, Any]:

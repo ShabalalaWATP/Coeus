@@ -13,6 +13,7 @@ from coeus.api.presenters.store import (
     product_response,
     store_search_response,
 )
+from coeus.core.async_work import run_bounded_search
 from coeus.domain.access import ProductStatus
 from coeus.domain.auth import AuthenticatedSession
 from coeus.domain.store import StoreSearchFilters
@@ -55,7 +56,8 @@ async def search_products(
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(alias="pageSize", ge=1, le=50)] = 12,
 ) -> StoreSearchResponse:
-    result = store_services.search.search(
+    result = await run_bounded_search(
+        store_services.search.search,
         authenticated.user,
         StoreSearchFilters(
             query=query,

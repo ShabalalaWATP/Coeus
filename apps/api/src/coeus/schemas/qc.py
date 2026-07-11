@@ -3,6 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from coeus.schemas.routing import PriorityAssessmentResponse
+
 
 class QcApprovalRequest(BaseModel):
     checklist: dict[str, bool]
@@ -112,6 +114,9 @@ class QcProductResponse(BaseModel):
     operational_question: str | None = Field(serialization_alias="operationalQuestion")
     area_or_region: str | None = Field(serialization_alias="areaOrRegion")
     priority: str | None
+    priority_assessment: PriorityAssessmentResponse = Field(
+        serialization_alias="priorityAssessment"
+    )
     required_output_format: str | None = Field(serialization_alias="requiredOutputFormat")
     checklist_keys: list[str] = Field(serialization_alias="checklistKeys")
     latest_draft: QcDraftResponse | None = Field(serialization_alias="latestDraft")

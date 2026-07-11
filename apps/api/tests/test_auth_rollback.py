@@ -150,3 +150,47 @@ def test_logout_keeps_session_when_session_persistence_fails(
         service.logout(result.session_token)
 
     assert service.require_session(result.session_token).session == result.session
+
+
+def test_login_restores_attempts_when_session_creation_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = _service()
+    service._login_attempts.record_failure("user@example.test", threshold=3, lockout_seconds=300)
+
+    def fail_session_save(_session: object) -> None:
+        raise RuntimeError("simulated session save failure")
+
+    monkeypatch.setattr(service._sessions, "save", fail_session_save)
+
+    with pytest.raises(RuntimeError, match="simulated session save failure"):
+        service.login("user@example.test", SEED_CREDENTIAL)
+
+    assert service._login_attempts.entry_count == 1
+
+
+def test_login_rollback_does_not_erase_a_following_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = _service()
+    service._login_attempts.record_failure("user@example.test", threshold=3, lockout_seconds=300)
+    original_record = service.audit_log.record
+
+    def fail_after_following_attempt(
+        event_type: str,
+        actor_user_id: str | None = None,
+        metadata: dict[str, str] | None = None,
+    ) -> AuditEvent:
+        if event_type == "login_success":
+            service._login_attempts.record_failure(
+                "user@example.test", threshold=1, lockout_seconds=300
+            )
+            raise RuntimeError("simulated audit failure")
+        return original_record(event_type, actor_user_id, metadata)
+
+    monkeypatch.setattr(service.audit_log, "record", fail_after_following_attempt)
+
+    with pytest.raises(RuntimeError, match="simulated audit failure"):
+        service.login("user@example.test", SEED_CREDENTIAL)
+
+    assert service._login_attempts.get_lockout_until("user@example.test") is not None

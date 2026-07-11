@@ -16,17 +16,20 @@ def matched_tokens(
     query_tokens: tuple[str, ...],
     document_tokens: tuple[str, ...],
 ) -> tuple[str, ...]:
+    document_forms = normalised_token_forms(document_tokens)
     return tuple(
-        token
-        for token in query_tokens
-        if any(tokens_match(token, document_token) for document_token in document_tokens)
+        token for token in query_tokens if _token_forms(token).intersection(document_forms)
     )
 
 
 def token_sets_overlap(left: tuple[str, ...], right: tuple[str, ...]) -> bool:
-    return any(
-        tokens_match(left_token, right_token) for left_token in left for right_token in right
-    )
+    right_forms = normalised_token_forms(right)
+    return any(_token_forms(token).intersection(right_forms) for token in left)
+
+
+def normalised_token_forms(tokens: tuple[str, ...]) -> frozenset[str]:
+    """Expand conservative plural forms once for linear membership checks."""
+    return frozenset(form for token in tokens for form in _token_forms(token))
 
 
 def available_hybrid_legs(

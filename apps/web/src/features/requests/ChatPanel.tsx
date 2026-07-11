@@ -1,7 +1,12 @@
-import { Bot, SendHorizonal } from "lucide-react";
+import { Bot, Mic, MicOff, SendHorizonal } from "lucide-react";
 import { useState } from "react";
 
 import type { Ticket } from "../../lib/api-client/tickets";
+import { useSpeechToText } from "./useSpeechToText";
+
+const GREETING =
+  "Hi, I am Istari. Please tell me about the query you would like to " +
+  "submit and we will take it from there.";
 
 type ChatPanelProps = {
   isSending: boolean;
@@ -12,6 +17,11 @@ type ChatPanelProps = {
 
 export function ChatPanel({ isSending, onSend, readOnly = false, ticket }: ChatPanelProps) {
   const [message, setMessage] = useState("");
+  const speech = useSpeechToText((transcript) => {
+    setMessage((current) =>
+      current.trim() ? `${current.trimEnd()} ${transcript.trim()}` : transcript.trim(),
+    );
+  });
   const clarificationRequests =
     ticket?.state === "INFO_REQUIRED" ? (ticket.clarificationRequests ?? []) : [];
   const trimmedMessage = message.trim();
@@ -22,6 +32,7 @@ export function ChatPanel({ isSending, onSend, readOnly = false, ticket }: ChatP
     if (trimmedMessage.length < 3) {
       return;
     }
+    speech.stop();
     onSend(trimmedMessage);
     setMessage("");
   }
@@ -40,8 +51,13 @@ export function ChatPanel({ isSending, onSend, readOnly = false, ticket }: ChatP
               <p>{item.body}</p>
             </article>
           ))
-        ) : (
+        ) : readOnly ? (
           <p>No chat transcript</p>
+        ) : (
+          <article className="chat-message chat-message--assistant">
+            <strong>Istari</strong>
+            <p>{GREETING}</p>
+          </article>
         )}
         {clarificationRequests.map((request) => (
           <article
@@ -71,6 +87,10 @@ export function ChatPanel({ isSending, onSend, readOnly = false, ticket }: ChatP
       </div>
       {readOnly ? (
         <p className="chat-readonly">The conversation is read-only for this request.</p>
+      ) : ticket?.conversationStatus === "closed" ? (
+        <p className="chat-readonly">
+          The conversation is complete. Review the details and press Submit.
+        </p>
       ) : (
         <form className="chat-form" onSubmit={handleSubmit}>
           <label htmlFor="request-message">Message</label>
@@ -84,10 +104,40 @@ export function ChatPanel({ isSending, onSend, readOnly = false, ticket }: ChatP
           {messageTooShort ? (
             <small className="field-hint">Messages need at least 3 characters.</small>
           ) : null}
-          <button disabled={isSending || trimmedMessage.length < 3} type="submit">
-            <SendHorizonal aria-hidden="true" size={18} />
-            Send
-          </button>
+          {speech.isListening ? (
+            <p className="chat-dictation" role="status">
+              Listening. Speak your message, then press Stop dictation.
+            </p>
+          ) : null}
+          {speech.error ? <small className="field-hint">{speech.error}</small> : null}
+          {speech.isSupported ? (
+            <small className="field-hint" id="dictation-privacy-notice">
+              Dictation is provided by your browser and may process audio remotely. Use synthetic
+              data only.
+            </small>
+          ) : null}
+          <div className="chat-form__actions">
+            {speech.isSupported ? (
+              <button
+                aria-pressed={speech.isListening}
+                aria-describedby="dictation-privacy-notice"
+                className={speech.isListening ? "chat-mic chat-mic--listening" : "chat-mic"}
+                onClick={speech.isListening ? speech.stop : speech.start}
+                type="button"
+              >
+                {speech.isListening ? (
+                  <MicOff aria-hidden="true" size={18} />
+                ) : (
+                  <Mic aria-hidden="true" size={18} />
+                )}
+                {speech.isListening ? "Stop dictation" : "Dictate"}
+              </button>
+            ) : null}
+            <button disabled={isSending || trimmedMessage.length < 3} type="submit">
+              <SendHorizonal aria-hidden="true" size={18} />
+              Send
+            </button>
+          </div>
         </form>
       )}
     </section>

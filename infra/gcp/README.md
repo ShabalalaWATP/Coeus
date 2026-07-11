@@ -4,8 +4,10 @@ Coeus is intended to run locally for day-to-day development. This folder is a
 reference deployment baseline for a future work-owned GCP project, not a
 requirement for using the app.
 
-Terraform creates the development resource shell but does not store application
-secret values in Terraform state.
+Terraform describes the future development resource shell but does not store
+application secret values in Terraform state. A default-deny readiness
+precondition prevents planning or applying it while required adapters and
+distributed controls are absent.
 
 ## Dev Environment
 
@@ -22,6 +24,10 @@ Creates:
 - Pub/Sub topics, worker subscriptions and dead-letter topics
 - Secret Manager placeholders
 - Cloud Run services for API and web containers
+
+The API reference is single-writer and has a maximum of one instance. The web
+reference may scale independently. Terraform rejects any larger API value until
+the future distributed-state readiness gates are implemented.
 
 ## Required Variables
 
@@ -44,9 +50,10 @@ After Terraform creates the secret placeholders, add versions for:
 Use Secret Manager in the GCP console or `gcloud secrets versions add`. Never put
 these values in Terraform variables, GitHub workflow files, Markdown or chat.
 
-## GitHub Variables
+## Future GitHub Variables
 
-After `terraform apply`, copy Terraform outputs into the protected GitHub
+Only after every ADR 0019 readiness gate passes and a supported deployment
+workflow is introduced, copy Terraform outputs into a protected GitHub
 Environment named `dev`:
 
 - `GCP_PROJECT_ID`
@@ -57,7 +64,9 @@ Environment named `dev`:
 - `GCP_API_SERVICE`
 - `GCP_WEB_SERVICE`
 
-Keep `GCP_DEPLOY_DEV_ENABLED=false` until the first manual deployment succeeds.
+The current GitHub migration-reference workflow only validates Terraform and
+builds both images locally. It never authenticates to GCP, pushes images,
+changes infrastructure or deploys traffic. Repository pushes never run it.
 
 ## Commands
 
@@ -66,5 +75,11 @@ cd infra/gcp/environments/dev
 terraform init
 terraform fmt -recursive
 terraform validate
+terraform test
 terraform plan -out coeus-dev.tfplan
 ```
+
+The final plan command is expected to fail while
+`migration_adapters_ready = false`. Do not set it to true until every ADR 0019
+readiness gate is implemented, independently reviewed and authorised for
+staging validation.

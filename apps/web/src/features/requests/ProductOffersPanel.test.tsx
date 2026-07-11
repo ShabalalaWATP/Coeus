@@ -68,7 +68,7 @@ test("does not render RFI metrics when metrics are unavailable", () => {
       onReject={vi.fn()}
       onRun={vi.fn()}
       results={{ ...rfiResults, metrics: null, offers: [] }}
-      ticket={{ ...ticket, state: "ROUTE_ASSESSMENT" }}
+      ticket={{ ...ticket, state: "JIOC_REVIEW" }}
     />,
   );
 

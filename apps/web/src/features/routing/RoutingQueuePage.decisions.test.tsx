@@ -31,7 +31,7 @@ test("requires an override reason when approving against the recommendation", as
     .mockResolvedValue(jsonResponse({ analysts: [] }));
   stubRoutingFetch(fetchMock);
 
-  renderWithProviders(<RoutingQueuePage route="rfa" />, "/rfa/queue");
+  renderWithProviders(<RoutingQueuePage queue="jioc" />, "/rfa/queue");
 
   expect(await screen.findByText("Recommended route: CM")).toBeVisible();
   const approve = screen.getByRole("button", { name: "Approve route" });
@@ -57,7 +57,7 @@ test("requires an override reason when approving against the recommendation", as
 test("keeps clarification disabled until a question is provided", async () => {
   stubRoutingFetch(vi.fn().mockResolvedValueOnce(jsonResponse(queueWith([reviewedTicket]))));
 
-  renderWithProviders(<RoutingQueuePage route="rfa" />, "/rfa/queue");
+  renderWithProviders(<RoutingQueuePage queue="jioc" />, "/rfa/queue");
 
   await screen.findByText("Recommended route: RFA");
   await userEvent.click(screen.getByText("Query or reject this route"));
@@ -80,7 +80,7 @@ test("shows route action failures inline", async () => {
     });
   stubRoutingFetch(fetchMock);
 
-  renderWithProviders(<RoutingQueuePage route="rfa" />, "/rfa/queue");
+  renderWithProviders(<RoutingQueuePage queue="jioc" />, "/rfa/queue");
 
   await screen.findByText("Recommended route: RFA");
   await userEvent.click(screen.getByRole("button", { name: "Approve route" }));
@@ -100,7 +100,7 @@ test("clears decision text areas after a successful rejection", async () => {
     .mockResolvedValueOnce(jsonResponse({ ...reviewedTicket, state: "INFO_REQUIRED" }));
   stubRoutingFetch(fetchMock);
 
-  renderWithProviders(<RoutingQueuePage route="rfa" />, "/rfa/queue");
+  renderWithProviders(<RoutingQueuePage queue="jioc" />, "/rfa/queue");
 
   await screen.findByText("Recommended route: RFA");
   await userEvent.click(screen.getByText("Query or reject this route"));

@@ -6,7 +6,7 @@ import { previewSession } from "../test/test-utils";
 import { AppProviders } from "./providers";
 import { getQueryClient, resetQueryClientForTests } from "./query-client";
 import { useAuth } from "../lib/auth/auth-context";
-import type { ApiClient } from "../lib/api-client/client";
+import type { AuthApi } from "../lib/api-client/auth";
 
 function LogoutProbe() {
   const { logout } = useAuth();
@@ -17,8 +17,8 @@ function LogoutProbe() {
   );
 }
 
-function fakeClient(overrides: Partial<ApiClient>): ApiClient {
-  return overrides as ApiClient;
+function fakeClient(overrides: Partial<AuthApi>): AuthApi {
+  return overrides as AuthApi;
 }
 
 beforeEach(() => {
@@ -34,7 +34,7 @@ test("logout clears protected query cache through the app provider", async () =>
   queryClient.setQueryData(["store-product", "restricted"], { title: "Restricted product" });
 
   render(
-    <AppProviders apiClient={client} initialAuthSession={previewSession}>
+    <AppProviders authApi={client} initialAuthSession={previewSession}>
       <LogoutProbe />
     </AppProviders>,
   );

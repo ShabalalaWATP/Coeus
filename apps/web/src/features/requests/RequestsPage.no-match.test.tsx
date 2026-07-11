@@ -31,7 +31,7 @@ afterEach(() => {
 test("confirms no-match tasking as a new request from the workspace", async () => {
   const confirmedTicket: Ticket = {
     ...noMatchTicket,
-    state: "ROUTE_ASSESSMENT",
+    state: "JIOC_REVIEW",
     timeline: [
       ...noMatchTicket.timeline,
       {
@@ -67,7 +67,7 @@ test("confirms no-match tasking as a new request from the workspace", async () =
       }),
     ),
   );
-  expect((await screen.findAllByText("ROUTE ASSESSMENT"))[0]).toBeVisible();
+  expect((await screen.findAllByText("JIOC REVIEW"))[0]).toBeVisible();
 });
 
 test("declines no-match tasking and cancels the request", async () => {

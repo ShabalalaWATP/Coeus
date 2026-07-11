@@ -5,6 +5,11 @@
 Part C implementation specification. This document was written before the Part C
 code changes.
 
+> **Update (2026-07-11):** the JIOC restructure retired `ROUTE_ASSESSMENT`;
+> consent (and last-offer rejection) now land in `JIOC_REVIEW`, where a JIOC
+> team member decides the route. Read `ROUTE_ASSESSMENT` below as
+> `JIOC_REVIEW`. See `docs/specs/jioc-workflow-restructure.md`.
+
 ## Problem
 
 When RFI search finds no existing product offers, Istari currently moves the

@@ -2,11 +2,12 @@ import json
 from hashlib import sha256
 from pathlib import PurePath
 from typing import Annotated
+from urllib.parse import quote
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, Header, UploadFile
 from pydantic import ValidationError
-from starlette.responses import FileResponse
+from starlette.responses import StreamingResponse
 
 from coeus.api.dependencies import (
     get_asset_token_service,
@@ -23,7 +24,7 @@ from coeus.domain.auth import AuthenticatedSession
 from coeus.domain.store import object_key_segment
 from coeus.schemas.store import StoreProductCreateRequest, StoreProductResponse
 from coeus.services.asset_tokens import AssetTokenService
-from coeus.services.object_storage import LocalObjectStorage
+from coeus.services.object_storage import ObjectStorage
 from coeus.services.store import StoreServices
 
 router = APIRouter(prefix="/store", tags=["store"])
@@ -36,7 +37,7 @@ async def upload_product(
     asset: Annotated[UploadFile, File()],
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
     settings: Annotated[Settings, Depends(get_settings)],
-    storage: Annotated[LocalObjectStorage, Depends(get_object_storage)],
+    storage: Annotated[ObjectStorage, Depends(get_object_storage)],
     store_services: Annotated[StoreServices, Depends(get_store_services)],
 ) -> StoreProductResponse:
     content = await _read_upload(asset, settings.local_upload_max_bytes)
@@ -51,7 +52,10 @@ async def upload_product(
     try:
         storage.write_bytes(product.assets[0].object_key, content)
     except OSError as exc:
-        store_services.repository.delete_product(product.product_id)
+        try:
+            storage.delete_bytes(product.assets[0].object_key)
+        finally:
+            store_services.repository.delete_product(product.product_id)
         raise AppError(
             500,
             "asset_storage_failed",
@@ -74,9 +78,9 @@ def download_asset(
     token: Annotated[str, Header(alias="X-Asset-Token", min_length=20)],
     authenticated: Annotated[AuthenticatedSession, Depends(get_current_session)],
     tokens: Annotated[AssetTokenService, Depends(get_asset_token_service)],
-    storage: Annotated[LocalObjectStorage, Depends(get_object_storage)],
+    storage: Annotated[ObjectStorage, Depends(get_object_storage)],
     store_services: Annotated[StoreServices, Depends(get_store_services)],
-) -> FileResponse:
+) -> StreamingResponse:
     claims = tokens.verify(token)
     if (
         claims.user_id != authenticated.user.user_id
@@ -94,12 +98,15 @@ def download_asset(
         raise AppError(404, "asset_not_found", "Asset was not found.")
     if not storage.exists(selected.object_key):
         raise AppError(404, "asset_bytes_not_found", "Asset bytes were not found.")
-    return FileResponse(
-        storage.path_for(selected.object_key),
-        filename=object_key_segment(selected.name),
+    filename = quote(object_key_segment(selected.name))
+    return StreamingResponse(
+        storage.iter_bytes(selected.object_key, CHUNK_SIZE),
         media_type=selected.mime_type,
         # Controlled downloads must never be served from the browser HTTP cache.
-        headers={"Cache-Control": "no-store"},
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": f"attachment; filename*=UTF-8''{filename}",
+        },
     )
 
 

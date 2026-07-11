@@ -1,5 +1,11 @@
+from dataclasses import replace
+
 from coeus.domain.tickets import IntakeDetails
-from coeus.services.intake import IntakeExtractionService, MockLlmProvider
+from coeus.services.intake import (
+    IntakeExtractionService,
+    MockLlmProvider,
+    RequirementCompletenessService,
+)
 
 
 def test_intake_extraction_handles_natural_demo_phrasing() -> None:
@@ -15,7 +21,12 @@ def test_intake_extraction_handles_natural_demo_phrasing() -> None:
     assert intake.customer_success_criteria == "Include likely origin ports and confidence levels."
     # No question was asked, so none is invented for the customer.
     assert intake.operational_question is None
-    assert intake.missing_information == ("operational_question",)
+    assert intake.missing_information == (
+        "operational_question",
+        "time_period",
+        "requesting_unit",
+        "intelligence_disciplines",
+    )
 
 
 def test_intake_extraction_handles_time_windows_and_decision_phrasing() -> None:
@@ -95,7 +106,115 @@ def test_intake_extraction_handles_date_ranges_regions_and_deadline_clauses() ->
     assert intake.customer_success_criteria == "Success criteria: highlight new crossings."
 
 
-def test_mock_provider_confirms_a_complete_intake() -> None:
+def test_intake_extraction_captures_operation_unit_and_disciplines() -> None:
+    intake = IntakeExtractionService().extract(
+        "Need an urgent report in support of Operation Onyx Talon for Carrier "
+        "Strike Group Atlas; satellite imagery and open source reporting would help."
+    )
+
+    assert intake.priority == "high"
+    assert intake.supported_operation == "Operation Onyx Talon"
+    assert intake.requesting_unit == "Carrier Strike Group Atlas"
+    assert intake.intelligence_disciplines == "IMINT, OSINT"
+    assert intake.urgency_justification is not None
+
+
+def test_intake_extraction_recognises_exercises_and_preceding_unit_names() -> None:
+    intake = IntakeExtractionService().extract(
+        "Need a brief. This supports EX BALTIC RESOLVE for the 4th Armoured Brigade."
+    )
+
+    assert intake.supported_operation == "Exercise Baltic Resolve"
+    assert intake.requesting_unit == "4th Armoured Brigade"
+
+
+def test_new_extractors_stay_silent_without_explicit_cues() -> None:
+    intake = IntakeExtractionService().extract(
+        "Need a report on unusual vessel movements around mock harbours."
+    )
+
+    assert intake.supported_operation is None
+    assert intake.requesting_unit is None
+    assert intake.intelligence_disciplines is None
+    assert intake.urgency_justification is None
+
+
+def test_urgent_priority_expands_the_required_information() -> None:
+    service = RequirementCompletenessService()
+    base = IntakeDetails(
+        title="Harbour Watch",
+        description="Assess mock harbour movements.",
+        operational_question="What changed?",
+        area_or_region="Baltic",
+        time_period_start="next week",
+        requesting_unit="Carrier Strike Group Atlas",
+        intelligence_disciplines="IMINT",
+        required_output_format="Report",
+        customer_success_criteria="Highlight changes.",
+    )
+
+    routine = service.with_completeness(replace(base, priority="routine"))
+    urgent = service.with_completeness(replace(base, priority="critical"))
+
+    assert routine.missing_information == ()
+    assert routine.confidence == 1.0
+    assert urgent.missing_information == (
+        "supported_operation",
+        "urgency_justification",
+        "deadline",
+    )
+    assert urgent.confidence == round(10 / 13, 2)
+
+
+def test_downgrading_priority_removes_the_urgent_requirements() -> None:
+    service = RequirementCompletenessService()
+    urgent = service.with_completeness(IntakeDetails(priority="high"))
+    downgraded = service.with_completeness(IntakeDetails(priority="routine"))
+
+    assert "urgency_justification" in urgent.missing_information
+    assert "urgency_justification" not in downgraded.missing_information
+
+
+def test_mock_provider_offers_to_finish_when_nothing_is_missing() -> None:
     reply = MockLlmProvider().build_assistant_message(IntakeDetails(missing_information=()), ())
 
-    assert reply == "The intake is complete enough to submit for controlled search."
+    assert reply == (
+        "I think I have everything I need. Is there anything else you "
+        "would like to add, or shall we finish here?"
+    )
+
+
+def test_mock_provider_asks_one_question_at_a_time_in_standard_order() -> None:
+    provider = MockLlmProvider()
+
+    first = provider.build_assistant_message(
+        IntakeDetails(missing_information=("operational_question", "priority", "title")),
+        (),
+    )
+    second = provider.build_assistant_message(
+        IntakeDetails(missing_information=("title", "priority")),
+        (),
+    )
+
+    assert first == (
+        "Got it. What is the specific question you would like answered? "
+        "Putting it as a question helps the analysts focus the work."
+    )
+    assert second == "Got it. How urgent is this for you: critical, high, medium, routine or low?"
+
+
+def test_mock_provider_varies_acknowledgements_as_details_accumulate() -> None:
+    provider = MockLlmProvider()
+    sparse = IntakeDetails(missing_information=("priority",))
+    fuller = IntakeDetails(
+        title="Harbour Watch",
+        description="Assess mock harbour movements.",
+        missing_information=("priority",),
+    )
+
+    sparse_reply = provider.build_assistant_message(sparse, ())
+    fuller_reply = provider.build_assistant_message(fuller, ())
+
+    assert sparse_reply != fuller_reply
+    assert sparse_reply.endswith("critical, high, medium, routine or low?")
+    assert fuller_reply.endswith("critical, high, medium, routine or low?")

@@ -28,20 +28,15 @@ async def test_ticket_response_hides_rfi_matches_from_unauthorised_collaborator(
             f"/api/v1/rfi-search/{ticket_id}/run",
             headers={"X-CSRF-Token": str(user["csrfToken"])},
         )
-        owner_tickets = await client.get("/api/v1/tickets")
+        owner_ticket = await client.get(f"/api/v1/tickets/{ticket_id}")
 
         await login(client, "colleague@example.test")
-        collaborator_tickets = await client.get("/api/v1/tickets")
+        collaborator_ticket = await client.get(f"/api/v1/tickets/{ticket_id}")
         collaborator_results = await client.get(f"/api/v1/rfi-search/{ticket_id}/results")
 
     assert tagged.status_code == 200
     assert run.status_code == 200
-    assert owner_tickets.json()["tickets"][0]["visibleProductMatches"] == [
-        "Regional Stability Brief"
-    ]
-    collaborator_ticket = next(
-        ticket for ticket in collaborator_tickets.json()["tickets"] if ticket["id"] == ticket_id
-    )
-    assert collaborator_ticket["visibleProductMatches"] == []
+    assert owner_ticket.json()["visibleProductMatches"] == ["Regional Stability Brief"]
+    assert collaborator_ticket.json()["visibleProductMatches"] == []
     assert collaborator_results.json()["offers"] == []
     assert str(regional_product.product_id) not in collaborator_results.text

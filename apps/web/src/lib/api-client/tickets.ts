@@ -14,9 +14,22 @@ type IntakeDetails = {
   restrictionsOrCaveats: string | null;
   customerSuccessCriteria: string | null;
   suggestedAcgContext: string | null;
+  requestingUnit: string | null;
+  intelligenceDisciplines: string | null;
+  supportedOperation: string | null;
+  urgencyJustification: string | null;
   missingInformation: string[];
   confidence: number;
 };
+
+type IntakeChecklistItem = {
+  key: string;
+  label: string;
+  value: string | null;
+  satisfied: boolean;
+};
+
+type ConversationStatus = "open" | "close_offered" | "closed";
 
 type ChatMessage = {
   id: string;
@@ -79,6 +92,9 @@ export type Ticket = {
   requesterUserId: string;
   state: TicketState;
   intake: IntakeDetails;
+  intakeChecklist: IntakeChecklistItem[];
+  conversationStatus: ConversationStatus;
+  collectDisposition: "raw" | "analysed" | null;
   isReadyForSubmission: boolean;
   visibleProductMatches: string[];
   releasedProductIds: string[];
@@ -92,20 +108,33 @@ export type Ticket = {
   updatedAt: string;
 };
 
+export type TicketSummary = {
+  id: string;
+  reference: string;
+  requesterUserId: string;
+  state: TicketState;
+  title: string | null;
+  priority: string | null;
+  isReadyForSubmission: boolean;
+  collaboratorCount: number;
+  releasedProductId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type TicketState =
   | "DRAFT_INTAKE"
   | "INFO_REQUIRED"
   | "RFI_SEARCHING"
   | "RFI_MATCH_OFFERED"
   | "RFI_NO_MATCH"
-  | "ROUTE_ASSESSMENT"
-  | "RFA_MANAGER_REVIEW"
-  | "CM_MANAGER_REVIEW"
+  | "JIOC_REVIEW"
+  | "COLLECT_CHOICE"
   | "ANALYST_ASSIGNMENT"
   | "ANALYST_IN_PROGRESS"
   | "QC_REVIEW"
   | "REWORK_REQUIRED"
-  | "MANAGER_RELEASE"
+  | "MANAGER_APPROVAL"
   | "DISSEMINATION_READY"
   | "CLOSED_DELIVERED"
   | "CLOSED_EXISTING_PRODUCT_ACCEPTED"
@@ -127,6 +156,10 @@ export type IntakeUpdate = Partial<
     | "restrictionsOrCaveats"
     | "customerSuccessCriteria"
     | "suggestedAcgContext"
+    | "requestingUnit"
+    | "intelligenceDisciplines"
+    | "supportedOperation"
+    | "urgencyJustification"
   >
 >;
 
@@ -136,11 +169,40 @@ export type AttachmentMetadataInput = {
   sourceType: string;
 };
 
-export async function listTickets(): Promise<Ticket[]> {
-  const response = await apiRequestJson<{ tickets: Ticket[] }>("/api/v1/tickets", {
-    method: "GET",
-  });
-  return response.tickets;
+export type TicketSummaryPage = {
+  tickets: TicketSummary[];
+  nextCursor: string | null;
+};
+
+export async function listTickets(cursor?: string): Promise<TicketSummaryPage> {
+  const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
+  const response = await apiRequestJson<{ tickets: TicketSummary[]; nextCursor: string | null }>(
+    `/api/v1/tickets${query}`,
+    {
+      method: "GET",
+    },
+  );
+  return response;
+}
+
+export async function getTicket(ticketId: string): Promise<Ticket> {
+  const response = await apiRequestJson<Ticket | { tickets: Ticket[] }>(
+    `/api/v1/tickets/${pathSegment(ticketId)}`,
+    {
+      method: "GET",
+    },
+  );
+  if ("tickets" in response) {
+    const ticket = response.tickets.find((item) => item.id === ticketId);
+    if (!ticket) {
+      throw new Error("Ticket detail response did not contain the requested ticket.");
+    }
+    return ticket;
+  }
+  if (response.id !== ticketId) {
+    throw new Error("Ticket detail response did not match the requested ticket.");
+  }
+  return response;
 }
 
 export async function sendChatMessage(
@@ -204,6 +266,18 @@ export async function consentNoMatch(
 ): Promise<Ticket> {
   return apiRequestJson<Ticket>(`/api/v1/tickets/${pathSegment(ticketId)}/no-match-consent`, {
     body: JSON.stringify({ taskAsNewRequest }),
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+    method: "POST",
+  });
+}
+
+export async function chooseCollectOption(
+  ticketId: string,
+  analysed: boolean,
+  csrfToken: string,
+): Promise<Ticket> {
+  return apiRequestJson<Ticket>(`/api/v1/tickets/${pathSegment(ticketId)}/collect-choice`, {
+    body: JSON.stringify({ analysed }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
   });

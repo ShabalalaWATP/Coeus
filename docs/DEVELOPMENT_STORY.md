@@ -1,6 +1,42 @@
 # Coeus Development Story
 
-Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVELOPMENT_STORY_SPRINTS_01-13.md).
+Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVELOPMENT_STORY_SPRINTS_01-13.md). The longer 2026-07-06 continuation lives in [DEVELOPMENT_STORY_2026-07-06.md](DEVELOPMENT_STORY_2026-07-06.md).
+
+## 2026-07-11 JIOC workflow restructure, QC release, teams and calendars
+
+- Renamed the workflow roles to plain names (Customer, RFA/CM Manager and Team
+  Member, Analyst) and added the JIOC Team Member role; legacy persisted role
+  strings decode through `RoleName._missing_` aliases.
+- Replaced the manager route-review stage with a single JIOC queue: capability
+  agents advise, a JIOC member decides collection (CM) or assessment (RFA),
+  with recorded override reasons. Retired `ROUTE_ASSESSMENT` and the manager
+  review states via `TicketState` aliases.
+- Added the customer collect choice: a CM-routed ticket pauses in
+  `COLLECT_CHOICE` until the requester picks raw collect only or collect plus
+  RFA analysis (owner-only, CSRF-validated, audited).
+- Added the manager approval chain (`MANAGER_APPROVAL`) with separation of
+  duties and multi-analyst assignment (one to five analysts; reassignment
+  deactivates prior assignments instead of overwriting them), splitting out
+  `services/analyst_assignment_service.py` and `services/manager_approval.py`.
+- Moved the final release from managers to Quality Control: QC approval now
+  publishes, disseminates, raises the feedback request and notifies the
+  requester in one compensated step (`services/qc_release.py`); an analysed
+  collect is instead forwarded to RFA assignment with the collect linked and
+  still DRAFT. Retired `MANAGER_RELEASE` (aliases to `QC_REVIEW`), the release
+  endpoints and the ReleaseQueuePanel; the release hardening tests moved to
+  `test_qc_release_api.py`.
+- Fixed a live-only privilege bug found in the walk-through: restored user
+  records kept the permission snapshot from seed time, so revoked release
+  permissions survived upgrades. `SeedUserRepository` now re-derives
+  permissions from persisted roles on startup, with regression coverage.
+- Added organisational teams, member profiles and team calendars with a
+  deterministic availability service (calendar plus live assignments), the
+  My Team page and availability counts in the assignment panel.
+- Docs: ADR 0022, specs and threat models for the JIOC restructure and for
+  teams/profiles/calendars; superseded the manager-final-release documents;
+  refreshed the workflow architecture, roles, user guide and setup docs.
+- Both suites green at the 95% gates; every phase also verified live in the
+  browser, including the CM-to-RFA analysed-collect journey.
 
 ## 2026-07-09 Access-control audit rollback
 
@@ -71,211 +107,6 @@ Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVEL
   timeline entries on both tickets and `tickets_linked` audit events.
 - Added backend API/scoring tests and frontend Vitest coverage for customer and
   manager panels, including failed join/link actions.
-
-## 2026-07-06 Frontend design and role-view polish
-
-- Reworked the frontend design system for a dark, operational look: expanded
-  colour tokens with graphite surfaces and cyan, teal, green, amber and red
-  accents, a monospace accent face for references and tokens, grouped
-  navigation with section labels, a sticky blurred command bar with a
-  Ctrl+K shortcut, subtle hover and focus motion, and a technical grid
-  backdrop on the auth pages. All animation respects
-  `prefers-reduced-motion` and the light theme remains supported.
-- Completed the manager-to-analyst workflow in the UI: after route approval a
-  ticket now stays in the routing queue with an assign-analyst panel backed by
-  the existing `/analyst/candidates` and `/analyst/tasks/{id}/assign`
-  endpoints, so tickets no longer dead-end in `ANALYST_ASSIGNMENT`.
-- Gated ACG create, update and add-member forms behind `acg:create`,
-  `acg:update` and `acg:assign_user` permissions so view-only roles no longer
-  see actions they cannot use.
-- Added shared `LoadingState`, `ErrorState`, `EmptyState` and `StatusPill`
-  components with styles for the previously unstyled `request-row` and
-  `status-pill` classes, and wired loading, error, empty and success states
-  into the store, analytics, audit, requests, routing, analyst, QC
-  and ACG pages.
-- Preserved product back-navigation context from team workspaces, and relabelled
-  the controlled asset grant with token expiry.
-- Verified all eight role views end to end in the browser, including the full
-  intake, RFI search, routing, assignment, analyst production and QC
-  dissemination pipeline, auth negative states and responsive layouts at
-  1440x900, 1280x720, 768x1024 and 390x844.
-
-## 2026-07-06 Istari rebrand, splash login and access requests
-
-- Rebranded the product from Coeus to Istari across the web UI, page
-  metadata, favicon and the FastAPI docs title, using the supplied logo with
-  resized 64px and 256px assets. Internal package, module and infrastructure
-  identifiers keep the `coeus` working name.
-- Rebuilt the login page as a splash introduction: glowing, gently floating
-  logo, "Task. Assess. Deliver." tagline, a short pitch, three capability
-  points and an access card that switches between sign in and request
-  access. Animations remain CSS-only and respect `prefers-reduced-motion`.
-- Added a self-service registration flow: public `POST /auth/register` with
-  Argon2 hashing at submission, generic anti-enumeration responses, a
-  pending-request cap with `429` throttling, and admin review endpoints
-  gated by `user:create` plus CSRF. Approval creates an active `User`
-  account at clearance level 1; decisions are audit logged.
-- Added an Access Requests panel to the admin overview for approving or
-  rejecting requests with a recorded reason, plus a spec and threat model
-  for the feature.
-- Verified in the browser: request submission, admin approval, first login
-  of the approved account, rejection with generic sign-in failure, splash
-  responsiveness at 390, 768 and 1440 widths and the light theme.
-
-## 2026-07-06 Splash hero, focused customer workspace and collaboration
-
-- Enlarged and centred the Istari splash hero for desktop with a slow
-  radar-sweep ring around the badge, a pulsing glow, a gently floating logo
-  and a gradient title, all CSS-only and reduced-motion safe.
-- Simplified the customer experience into two focused screens: a request
-  dashboard (status metrics, request list with tagged counts and one "Open
-  new request" action) and a chat-first request workspace at
-  `/app/requests/:id`. The workspace shows a live checklist of the seven
-  details the intake assistant needs, keeps the manual intake form and
-  request history behind progressive-disclosure sections, and only shows
-  product offers once a request has been submitted.
-- Added ticket collaborators: requesters tag users from a directory as
-  editors or viewers. Tagged users see shared requests on their dashboard
-  and via direct link from any role; editors can chat and edit within their
-  own permissions while viewers get a read-only conversation. Added a
-  `colleague@example.test` seed user, timeline and audit events, a spec and
-  a threat model.
-- Added administrator AI model selection backed by
-  `GET/PUT /api/v1/admin/ai-model` with an audited, CSRF-protected switch
-  between configured Gemini models, and fixed the CORS method list to allow
-  PUT.
-- Extended the Intelligence Store with coverage date search
-  (`dateFrom`/`dateTo` period-overlap filtering, seeded synthetic coverage
-  periods), product-format icons for geospatial, imagery, SIGINT, database,
-  bundle and report types, and coverage/classification chips on results and
-  detail pages.
-- Verified in the browser: dashboard to chat intake with live checklist,
-  tagging and shared editing as the colleague user, date-filtered store
-  search, the admin model switch persisting to the backend, audit events
-  and responsive layouts at 390 and 1440 widths.
-
-## 2026-07-06 Manager final release, notifications and store polish
-
-- Restricted intelligence product uploads to RFA and Collection managers by
-  moving `product:create_existing` out of the shared product-team
-  permission set; the store upload route and button follow automatically.
-- Added a manager final-release stage: QC approval now ingests and indexes
-  the product as an unpublished draft and moves the ticket to the new
-  `MANAGER_RELEASE` state. The owning RFA or Collection manager releases
-  it from a Final Release panel on their queue page, which publishes the product,
-  disseminates it to the requester, raises the feedback request and moves
-  the ticket to `DISSEMINATION_READY`. Route matching, CSRF, separation of
-  duties and audit events are enforced, with a spec and threat model.
-- Added customer notifications: releases create an in-app notification
-  with a product link and record an email to a bounded local outbox with
-  an `email_recorded` audit event. The shell bell shows an unread badge,
-  lists notifications, marks them read and navigates to the product; the
-  customer dashboard links released products directly.
-- Made the Intelligence Store feel like a professional service: a
-  collapsible search-and-filters panel, a sort control (relevance, title,
-  newest coverage), mono product references, format icons and richer
-  metadata everywhere, including tags, releasability, caveats, source,
-  status and per-asset mime type, size and hash digests.
-- Fixed the CORS allow list to include PUT, which the admin AI model
-  switch needed.
-- Verified in the browser: the full pipeline from chat intake through QC
-  approval and manager release, the customer receiving the bell
-  notification and released-product link, upload visibility per role and
-  the audit trail recording qc_approved, product_released and
-  email_recorded.
-
-## 2026-07-06 Themed ACGs, request journey and agentic UX
-
-- Seeded 43 access control groups: the three workflow groups plus a
-  40-group themed catalogue built from eight regions crossed with five
-  intelligence disciplines (European Cyber, African HUMINT, Maritime
-  GEOINT and so on), with realistic role memberships so store need-to-know
-  filtering demonstrates overlap. No access-control logic changed.
-- Added a transient "Request journey" dialog for requesters that maps
-  every workflow state onto seven plain-language stages with a "you are
-  here" marker. It opens automatically once on ticket submission, on
-  demand from the workspace meta bar, and closes on Escape, overlay click
-  or the close button.
-- Pushed the role screens further towards an AI-first feel: the chat is
-  now the customer chatbot with a typing indicator, machine-generated
-  recommendation cards carry agent chips (orchestrator, capability agent,
-  RFI search agent), the analyst detail collapses notes and linked products
-  behind disclosures, and manager queues collapse the clarification and
-  rejection forms behind "Query or reject this route".
-- Rebuilt the admin AI model chooser as a card catalogue with tier chips
-  (Sovereign, Fast, Advanced, Custom fallback) and per-model descriptions,
-  an Active badge, and a last-changed line backed by new
-  `changedBy`/`changedAt` fields on the admin AI model endpoint.
-- Verified in the browser end to end: customer intake to submission with
-  the journey auto-opening, RFI offer rejection, RFA manager capability
-  checks and approval with agent chips, analyst workbench disclosures,
-  the admin model switch recording the change, and the themed ACG list.
-- Checks: line limit, Prettier, ESLint, tsc, Vitest coverage (99.8% lines,
-  95.9% branches), pytest coverage (95.61%, 139 tests), mypy and ruff all
-  pass.
-
-## 2026-07-06 Quality, security and documentation pass
-
-- Ran code-quality and defensive-security reviews and acted on the findings.
-- Fixed real frontend bugs: the analyst workbench now remounts per task so an
-  unsent note or draft cannot carry across to a different task; the store "My
-  Products" scope maps owner team to role by an explicit matcher (RFA managers
-  previously saw an empty list); the routing queue clears its selection when a
-  ticket is routed away instead of silently showing an unrelated one; the request
-  journey handles cancelled requests; and the admin rejection reason clears after
-  use. Each fix has a regression test.
-- Hardened the backend, secure by design: start-up now fails closed if dev seed
-  users are enabled without overriding the default seed credential (closing a
-  public-deploy admin-access risk); the API sets a narrow CSP always and HSTS
-  over TLS, and the nginx SPA config sets a full CSP plus HSTS; asset object keys
-  are reduced to a safe path segment; and asset size has an upper bound at the
-  schema boundary.
-- Overhauled the documentation: a rewritten README, a docs index, and new Setup,
-  User, Roles and User Stories, and AI Agents guides, with twelve annotated
-  screenshots of every role workspace (all synthetic, MOCK DATA ONLY). Recorded
-  the security changes and remaining deferred risks in the threat model.
-- Checks: line limit, Prettier, ESLint, tsc, Vitest coverage (99.8% lines,
-  95.9% branches), pytest (145 tests, 95.62%), mypy and ruff all pass.
-
-## 2026-07-06 Ambient UI effects
-
-- Adapted React Bits-style ParticleField, SpotlightCard and CountUp effects as
-  dependency-free, reduced-motion-safe components.
-- Added CSS-only shine, stagger, pulse and notification badge effects, refreshed
-  splash screenshots, and passed the frontend gates: 213 tests, 99.75% lines,
-  95.95% branches, ESLint, tsc, Prettier and the line limit.
-
-## 2026-07-06 Request controls and user administration
-
-- Requesters can cancel cancellable requests with a recorded reason, clarification
-  requests surface in chat, and request mutation failures alert.
-- Added `/admin/users` for role assignment, clearance and activation changes,
-  protected by `user:assign_role` and guarded against editing the signed-in
-  account.
-- Browser verification covered admin overview, the Users screen with 10 seeded
-  accounts, and creating then cancelling a request.
-- Checks: Prettier, ESLint, TypeScript, line limit, Ruff, Knip, targeted Vitest
-  coverage, full Vitest coverage (219 tests, 99.71% lines, 95.69% branches) and
-  pytest (151 tests, 95.54%) all pass.
-
-## 2026-07-06 No-GCP hardening and local-first docs
-
-- Added local/test admin reset, store pagination, owner-team filters, a mocked
-  Playwright workflow, tighter intake extraction and local-first GCP docs.
-
-## 2026-07-06 Local persistence, files and integrations
-
-- Added PostgreSQL-backed local persistence, real Store asset bytes, signed
-  downloads, admin-managed Gemini settings and optional SMTP.
-- Mirrored Store products into relational PostgreSQL tables, refreshed Store
-  reads from them, and added SQL-side access predicates for search, detail and
-  asset grants with API policy rechecks.
-
-## 2026-07-06 Agent clarification handoff
-
-- Added explicit orchestrator/customer-chatbot clarification handoff: capability and manager questions now become requester-visible assistant messages, agent runs and a `customer_clarification_sent` event.
-- Added a restricted-read admin break-glass form on denied Store product pages; the UI requires a reason and uses the audited support endpoint.
-- Exposed the synthetic RFA/CM capability catalogue through a manager-only routing endpoint and queue-side panel.
 
 ## 2026-07-07 Full-application audit and remediation
 
@@ -348,3 +179,58 @@ Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVEL
   decoder rejects older retired workspace payloads during local startup.
 - Added ADR 0018 and refreshed the ACG/product access threat model and Sprint 3
   spec to record the retirement decision.
+
+## 2026-07-10 Local-first security and quality remediation
+
+- Replayed the sealed 17-finding assessment and fixed the shared enforcement
+  boundaries rather than patching individual response routes.
+- Added current-policy linked-product projection to every analyst task response,
+  query-level Store paging, similarity budgets, pairwise link scoring and
+  worker-thread execution for synchronous embeddings.
+- Replaced bounded audit evidence with append-only memory, file and PostgreSQL
+  stores; protected login rollback with per-username mutation tokens; made
+  registration capacity and decisions atomic; and made object writes atomic.
+- Kept Coeus local and single-instance. The GCP reference now has no cloud
+  authentication or deployment step, and Terraform fails closed until the
+  future migration gates are deliberately completed.
+- Improved SOLID boundaries through typed composition, narrow repository and
+  storage protocols, a functional frontend API transport, and focused analyst
+  task hooks and rendering panels.
+- Strengthened CI with independent backend line and branch gates, Prettier,
+  Knip, real local-stack Playwright and Terraform readiness tests.
+- Checks before the final security seal: 490 backend tests at 98.28 percent line
+  and 95.05 percent branch coverage; 322 frontend tests at 98.77 percent line
+  and 95.54 percent branch coverage; 3 Playwright flows; Ruff, mypy, Bandit,
+  pip-audit, pnpm audit, Semgrep, Gitleaks, Actionlint, Checkov, Terraform,
+  container build, Trivy, production build and file-line gates all passed.
+
+## 2026-07-10 Sprint 14B post-seal remediation opened
+
+- Sealed a standard whole-repository review of revision `72a0dc58`. It reported
+  16 findings: three medium and thirteen low.
+- Reopened Sprint 14 rather than claiming completion. The new baseline covers
+  local PostgreSQL exposure, async/provider and matcher availability, aggregate
+  metadata/history growth, unpaginated responses, readiness fan-out, audit UI
+  pagination and ZAP fail-open behaviour.
+- Kept local-first and single-writer scope authoritative. The GCP reference
+  remains inactive and every cloud-creating target must retain the migration
+  gate.
+- Defined Sprint 14B completion as fixed-boundary regression evidence, all
+  quality/security gates and a fresh sealed scan of a clean immutable revision.
+- The concurrent intake, prioritisation and capability-recommendation work is
+  unsealed. It must be integrated and scanned explicitly or excluded from the
+  remediation release candidate.
+
+## 2026-07-10 Sprint 14B verification remediation
+
+- Integrated the complete feature and remediation slice as `7165e49e`; full
+  backend, frontend, browser, container and security gates passed before scan.
+- Sealed verification scan `a089e83c-afc7-4213-8763-4a5e5759598d`: all 16
+  baseline findings were closed, while three new Low/P3 integrity findings were
+  reported.
+- Added failure-atomic audited ticket saves, exact rollback for new and existing
+  tickets, repository compare-and-swap, conditional RFI rollback and coordinated
+  concurrency regressions.
+- Closed non-reportable quality debt with compact cursor-paged request summaries,
+  selected-only details, browser dictation disclosure and digest-pinned runtime
+  images. Full post-fix gates and the final immutable scan remain pending.
