@@ -85,6 +85,26 @@ export async function testAiConnection(
   });
 }
 
+export async function refreshAiModels(provider: string, csrfToken: string): Promise<AiModelState> {
+  return apiRequestJson<AiModelState>("/api/v1/admin/ai-model/refresh", {
+    body: JSON.stringify({ provider }),
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+    method: "POST",
+  });
+}
+
+export async function addCustomAiModel(
+  provider: string,
+  model: string,
+  csrfToken: string,
+): Promise<AiModelState> {
+  return apiRequestJson<AiModelState>("/api/v1/admin/ai-model/custom-model", {
+    body: JSON.stringify({ provider, model }),
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+    method: "POST",
+  });
+}
+
 export async function configureAiApiKey(
   apiKey: string,
   provider: string,

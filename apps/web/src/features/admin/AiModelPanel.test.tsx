@@ -2,47 +2,10 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { AiModelPanel } from "./AiModelPanel";
+import { liveRegion, modelState, providers } from "./ai-model.fixtures";
 import { modelInfoFor } from "./model-catalogue";
 import { resetQueryClientForTests } from "../../app/query-client";
 import { renderWithProviders } from "../../test/test-utils";
-
-const liveRegion = () => screen.getByRole("group", { name: "Live AI configuration" });
-
-const providers = [
-  {
-    name: "gemini_api",
-    label: "Gemini API (primary)",
-    models: ["gemma-4-31b", "gemini-2.5-flash", "gemini-2.5-pro"],
-    activeModel: "gemma-4-31b",
-    apiKeyConfigured: false,
-  },
-  {
-    name: "openai_api",
-    label: "OpenAI API",
-    models: ["gpt-5", "gpt-5-mini"],
-    activeModel: "gpt-5-mini",
-    apiKeyConfigured: false,
-  },
-  {
-    name: "mock",
-    label: "Mock (offline)",
-    models: ["mock"],
-    activeModel: "mock",
-    apiKeyConfigured: false,
-  },
-];
-
-const modelState = {
-  provider: "gemini_api",
-  activeModel: "gemma-4-31b",
-  availableModels: ["gemma-4-31b", "gemini-2.5-flash", "gemini-2.5-pro"],
-  apiKeyConfigured: false,
-  embeddingProvider: "mock",
-  embeddedProductCount: 3,
-  changedBy: null,
-  changedAt: null,
-  providers,
-};
 
 beforeEach(() => {
   resetQueryClientForTests();
@@ -167,6 +130,31 @@ test("tests a provider connection and reports the outcome", async () => {
     ),
   );
   expect(await screen.findByText(/Connection failed: No API key is configured/)).toBeVisible();
+});
+
+test("reports a successful connection test", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(modelState) })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          ok: true,
+          provider: "gemini_api",
+          model: "gemma-4-31b",
+          message: "gemma-4-31b answered the test prompt.",
+        }),
+    });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<AiModelPanel csrfToken="test-csrf-token" />, "/admin/overview");
+
+  await userEvent.click(await screen.findByRole("button", { name: "Test connection" }));
+
+  expect(
+    await screen.findByText(/Connection OK: gemma-4-31b answered the test prompt/),
+  ).toBeVisible();
 });
 
 test("activating another provider warns about the app-wide change first", async () => {

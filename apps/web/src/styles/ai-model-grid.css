@@ -1,3 +1,46 @@
+.ai-model-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+}
+
+.ai-custom-model {
+  display: flex;
+  flex: 1 1 320px;
+  gap: 8px;
+}
+
+.ai-custom-model input {
+  flex: 1;
+  min-height: 42px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0 12px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.ai-custom-model input:focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+}
+
+.ai-model-note {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.ai-model-note--ok {
+  color: var(--success);
+}
+
+.ai-model-note--fail {
+  color: color-mix(in srgb, var(--warning) 88%, var(--text));
+}
+
 .ai-model-grid {
   display: grid;
   width: 100%;

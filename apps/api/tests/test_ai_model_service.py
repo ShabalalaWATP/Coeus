@@ -151,3 +151,34 @@ def test_key_configuration_rejects_the_mock_provider() -> None:
 
     with pytest.raises(AppError, match="not available"):
         service.configure_api_key("admin-id", "admin@example.test", "runtime-secret", "mock")
+
+
+def test_custom_models_persist_across_restart_without_touching_changed_by() -> None:
+    state_store = MemoryStateStore()
+    settings = Settings(environment="test", openai_api_key="sk-env")
+    service = AiModelService(settings, AuditLog(), state_store)
+
+    service.add_custom_model("admin-id", "admin@example.test", "openai_api", "gpt-6-omni")
+    assert "gpt-6-omni" in service.state().providers[1].models
+
+    restarted = AiModelService(settings, AuditLog(), state_store)
+    openai = next(p for p in restarted.state().providers if p.name == "openai_api")
+    assert "gpt-6-omni" in openai.models
+    assert openai.active_model == "gpt-6-omni"
+
+
+def test_refresh_rolls_back_extra_models_when_audit_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("coeus.services.ai_models.discover_models", lambda *_args: ("gpt-6-omni",))
+    state_store = MemoryStateStore()
+    service = AiModelService(
+        Settings(environment="test", openai_api_key="sk-env"), FailingAuditLog(), state_store
+    )
+
+    with pytest.raises(RuntimeError, match="audit unavailable"):
+        service.refresh_models("admin-id", "admin@example.test", "openai_api")
+
+    openai = next(p for p in service.state().providers if p.name == "openai_api")
+    assert "gpt-6-omni" not in openai.models
+    assert service.state().changed_by is None

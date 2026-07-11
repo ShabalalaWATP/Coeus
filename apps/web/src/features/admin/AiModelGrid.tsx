@@ -1,23 +1,34 @@
-import { Check, Save } from "lucide-react";
+import { Check, Plus, RefreshCw, Save } from "lucide-react";
+import { useState } from "react";
 
 import { modelInfoFor } from "./model-catalogue";
 import type { AiProviderState } from "../../lib/api-client/admin";
 
 type AiModelGridProps = {
   activeChoice: string;
+  addingCustom: boolean;
+  onAddCustom: (model: string) => void;
   onApply: () => void;
   onChoose: (model: string) => void;
+  onRefresh: () => void;
   pending: boolean;
   provider: AiProviderState;
+  refreshing: boolean;
 };
 
 export function AiModelGrid({
   activeChoice,
+  addingCustom,
+  onAddCustom,
   onApply,
   onChoose,
+  onRefresh,
   pending,
   provider,
+  refreshing,
 }: AiModelGridProps) {
+  const [customModel, setCustomModel] = useState("");
+
   return (
     <form
       onSubmit={(event) => {
@@ -25,6 +36,37 @@ export function AiModelGrid({
         onApply();
       }}
     >
+      <div className="ai-model-tools">
+        <button
+          className="ai-btn-secondary"
+          disabled={refreshing}
+          onClick={onRefresh}
+          type="button"
+        >
+          <RefreshCw aria-hidden="true" size={15} />
+          {refreshing ? "Refreshing" : "Refresh from provider"}
+        </button>
+        <div className="ai-custom-model">
+          <input
+            aria-label="Add a model id"
+            onChange={(event) => setCustomModel(event.target.value)}
+            placeholder="Add a model id (e.g. a brand-new release)"
+            value={customModel}
+          />
+          <button
+            className="ai-btn-secondary"
+            disabled={addingCustom || customModel.trim().length < 2}
+            onClick={() => {
+              onAddCustom(customModel.trim());
+              setCustomModel("");
+            }}
+            type="button"
+          >
+            <Plus aria-hidden="true" size={15} />
+            Add
+          </button>
+        </div>
+      </div>
       <div aria-label="Available models" className="ai-model-grid" role="radiogroup">
         {provider.models.map((model) => {
           const info = modelInfoFor(model);
