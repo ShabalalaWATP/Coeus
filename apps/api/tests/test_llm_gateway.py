@@ -128,10 +128,6 @@ def test_unknown_provider_is_rejected_before_any_network_call() -> None:
 def test_network_failures_surface_as_provider_unavailable(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    class FailingClient:
-        def __init__(self, *, timeout: int) -> None:
-            raise OSError("boom")
-
     class RaisingClient:
         def __init__(self, *, timeout: int) -> None:
             pass
