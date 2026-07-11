@@ -7,9 +7,13 @@ what it returns, and where the human stays in control.
 
 > Agents are deterministic mocks by default in local and test environments
 > (`COEUS_LLM_PROVIDER=mock`): no external calls, no instruction execution,
-> every input treated as synthetic. Admins can configure a Gemini API key
-> locally for the chatbot reply provider; the configured provider setting is
-> authoritative and an environment key never switches the provider by itself.
+> every input treated as synthetic. Admins can configure API keys locally for
+> the chatbot reply provider (Gemini API is primary; OpenAI, GCP Vertex AI and
+> AWS Bedrock are optional alternatives, all behind one gateway). The
+> configured provider setting is authoritative: neither an environment key nor
+> saving a key through the admin panel switches the provider by itself, and
+> activating a provider notifies every administrator because it changes
+> replies for all users at once.
 
 ## Agents at a glance
 

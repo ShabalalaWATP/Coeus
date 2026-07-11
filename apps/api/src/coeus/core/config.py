@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 EnvironmentName = Literal["local", "dev", "staging", "prod", "test"]
 EmailProviderName = Literal["outbox", "smtp"]
 EmbeddingProviderName = Literal["mock", "local", "gemini_api"]
-LlmProviderName = Literal["mock", "gemini_api"]
+LlmProviderName = Literal["mock", "gemini_api", "openai_api", "vertex_ai", "bedrock"]
 ObjectStorageProviderName = Literal["local", "gcs"]
 PersistenceProviderName = Literal["memory", "file", "postgres"]
 SEED_USER_ENVIRONMENTS = frozenset({"local", "test"})
@@ -69,6 +69,32 @@ class Settings(BaseSettings):
             "gemini-2.5-flash",
             "gemini-2.5-pro",
             "gemini-3-flash",
+        ],
+        min_length=1,
+    )
+    # Optional secondary LLM providers. Gemini API remains the primary
+    # provider; these are opt-in alternatives configured the same way
+    # (runtime key via the admin API, or env key plus explicit provider).
+    llm_api_timeout_seconds: int = Field(default=10, ge=1, le=60)
+    openai_api_key: str | None = None
+    openai_api_model: str = "gpt-5-mini"
+    available_openai_models: list[str] = Field(
+        default_factory=lambda: ["gpt-5", "gpt-5-mini", "gpt-4.1"],
+        min_length=1,
+    )
+    vertex_api_key: str | None = None
+    vertex_api_model: str = "gemini-2.5-flash"
+    available_vertex_models: list[str] = Field(
+        default_factory=lambda: ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-3-flash"],
+        min_length=1,
+    )
+    bedrock_api_key: str | None = None
+    bedrock_region: str = "eu-west-2"
+    bedrock_api_model: str = "anthropic.claude-sonnet-4-5-20250929-v1:0"
+    available_bedrock_models: list[str] = Field(
+        default_factory=lambda: [
+            "anthropic.claude-sonnet-4-5-20250929-v1:0",
+            "anthropic.claude-haiku-4-5-20251001-v1:0",
         ],
         min_length=1,
     )
@@ -145,14 +171,32 @@ def _secret_errors(settings: Settings) -> tuple[str, ...]:
     return tuple(errors)
 
 
+_LLM_KEY_ENV_VARS = {
+    "gemini_api": "COEUS_GEMINI_API_KEY",
+    "openai_api": "COEUS_OPENAI_API_KEY",
+    "vertex_ai": "COEUS_VERTEX_API_KEY",
+    "bedrock": "COEUS_BEDROCK_API_KEY",
+}
+
+
+def _llm_env_key(settings: Settings) -> str | None:
+    return {
+        "gemini_api": settings.gemini_api_key,
+        "openai_api": settings.openai_api_key,
+        "vertex_ai": settings.vertex_api_key,
+        "bedrock": settings.bedrock_api_key,
+    }.get(settings.llm_provider)
+
+
 def _integration_errors(settings: Settings) -> tuple[str, ...]:
     errors: list[str] = []
     if (
-        settings.llm_provider == "gemini_api"
-        and not settings.gemini_api_key
+        settings.llm_provider != "mock"
+        and not _llm_env_key(settings)
         and settings.environment in HOSTED_ENVIRONMENTS
     ):
-        errors.append("COEUS_GEMINI_API_KEY is required when COEUS_LLM_PROVIDER=gemini_api.")
+        env_var = _LLM_KEY_ENV_VARS[settings.llm_provider]
+        errors.append(f"{env_var} is required when COEUS_LLM_PROVIDER={settings.llm_provider}.")
     if settings.email_provider == "smtp":
         if not settings.smtp_host:
             errors.append("COEUS_SMTP_HOST is required when COEUS_EMAIL_PROVIDER=smtp.")

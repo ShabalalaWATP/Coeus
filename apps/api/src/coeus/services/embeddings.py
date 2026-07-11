@@ -35,7 +35,7 @@ class EmbeddingProvider(Protocol):
 
 
 class ApiKeyProvider(Protocol):
-    def api_key(self) -> str | None:
+    def api_key(self, provider: str | None = None) -> str | None:
         pass
 
 
@@ -156,7 +156,9 @@ class GeminiApiEmbeddingProvider:
         self._ai_models = ai_models
 
     def embed(self, text: str) -> tuple[float, ...]:
-        api_key = self._ai_models.api_key()
+        # Embeddings always use the Gemini key, whichever chat provider is
+        # active: the embedding provider is a separate configuration switch.
+        api_key = self._ai_models.api_key("gemini_api")
         if not api_key:
             raise EmbeddingUnavailable("gemini api key is not configured")
         payload = {

@@ -4,6 +4,8 @@ import {
   listAdminUsers,
   resetAdminUserCredential,
   selectAiModel,
+  selectAiProvider,
+  testAiConnection,
   updateAdminUserClearance,
   updateAdminUserRoles,
   updateAdminUserStatus,
@@ -14,7 +16,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-test("reads and updates the AI model with CSRF protection", async () => {
+test("reads and updates the AI provider and model with CSRF protection", async () => {
   const fetchMock = vi.fn().mockResolvedValue({
     ok: true,
     json: () =>
@@ -23,13 +25,16 @@ test("reads and updates the AI model with CSRF protection", async () => {
         activeModel: "gemma-4-31b",
         availableModels: [],
         apiKeyConfigured: false,
+        providers: [],
       }),
   });
   vi.stubGlobal("fetch", fetchMock);
 
   await getAiModelState();
-  await selectAiModel("gemini-2.5-pro", "csrf");
-  await configureAiApiKey("gemini-key-value", "csrf");
+  await selectAiModel("gemini-2.5-pro", "gemini_api", "csrf");
+  await configureAiApiKey("gemini-key-value", "gemini_api", "csrf");
+  await selectAiProvider("gemini_api", "csrf");
+  await testAiConnection("gemini_api", "csrf");
 
   expect(fetchMock).toHaveBeenNthCalledWith(1, "http://127.0.0.1:8001/api/v1/admin/ai-model", {
     credentials: "include",
@@ -39,7 +44,7 @@ test("reads and updates the AI model with CSRF protection", async () => {
     2,
     "http://127.0.0.1:8001/api/v1/admin/ai-model",
     expect.objectContaining({
-      body: JSON.stringify({ model: "gemini-2.5-pro" }),
+      body: JSON.stringify({ model: "gemini-2.5-pro", provider: "gemini_api" }),
       headers: { "Content-Type": "application/json", "X-CSRF-Token": "csrf" },
       method: "PUT",
     }),
@@ -48,9 +53,27 @@ test("reads and updates the AI model with CSRF protection", async () => {
     3,
     "http://127.0.0.1:8001/api/v1/admin/ai-model/api-key",
     expect.objectContaining({
-      body: JSON.stringify({ apiKey: "gemini-key-value" }),
+      body: JSON.stringify({ apiKey: "gemini-key-value", provider: "gemini_api" }),
       headers: { "Content-Type": "application/json", "X-CSRF-Token": "csrf" },
       method: "PUT",
+    }),
+  );
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    4,
+    "http://127.0.0.1:8001/api/v1/admin/ai-model/provider",
+    expect.objectContaining({
+      body: JSON.stringify({ provider: "gemini_api" }),
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": "csrf" },
+      method: "PUT",
+    }),
+  );
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    5,
+    "http://127.0.0.1:8001/api/v1/admin/ai-model/test",
+    expect.objectContaining({
+      body: JSON.stringify({ provider: "gemini_api" }),
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": "csrf" },
+      method: "POST",
     }),
   );
 });
@@ -66,7 +89,7 @@ test("converts AI model API errors", async () => {
     }),
   );
 
-  await expect(selectAiModel("bad-model", "csrf")).rejects.toEqual(
+  await expect(selectAiModel("bad-model", "gemini_api", "csrf")).rejects.toEqual(
     new ApiError(422, "model_not_available", "Not available."),
   );
 });

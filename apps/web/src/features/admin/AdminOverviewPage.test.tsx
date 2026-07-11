@@ -24,9 +24,18 @@ test("renders admin action links, approvals and AI model controls", async () => 
           ok: true,
           json: () =>
             Promise.resolve({
-              provider: "mock",
+              provider: "gemini_api",
               activeModel: "gemma-4-31b",
               availableModels: ["gemma-4-31b", "gemini-2.5-pro"],
+              providers: [
+                {
+                  name: "gemini_api",
+                  label: "Gemini API (primary)",
+                  models: ["gemma-4-31b", "gemini-2.5-pro"],
+                  activeModel: "gemma-4-31b",
+                  apiKeyConfigured: false,
+                },
+              ],
             }),
         });
       }

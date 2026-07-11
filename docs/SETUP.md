@@ -201,13 +201,19 @@ coverage. Do not lower the coverage gates.
 - Store uploads write real file bytes under `COEUS_LOCAL_OBJECT_STORAGE_PATH`.
   Downloads require an authenticated session plus the signed, expiring token
   returned by the asset-access endpoint.
-- To use Gemini from your machine without deploying to GCP, an administrator can
-  paste a Gemini API key and choose a model from `/admin/overview`. The key is
-  held by the running API process, never returned to the browser, not persisted
-  to PostgreSQL or fallback state files, and affects future assistant responses
-  for every user until the API restarts. Leave it unset for offline mock
-  behaviour. Use `COEUS_GEMINI_API_KEY` or a future secret manager integration
-  for a persistent provider credential.
+- To use a real LLM from your machine without deploying, an administrator can
+  paste an API key on `/admin/overview`, test the connection, and explicitly
+  activate the provider. Gemini API is the primary provider; OpenAI, GCP
+  Vertex AI (express-mode key) and AWS Bedrock (long-term API key) are
+  optional alternatives. Keys are held by the running API process, never
+  returned to the browser, never persisted, and are gone on restart. Saving a
+  key does not switch the provider: activation is a separate, warned action
+  that applies to every user immediately and notifies all administrators.
+  Leave everything unset for offline mock behaviour. For a persistent
+  credential use `COEUS_LLM_PROVIDER` plus the matching key env var
+  (`COEUS_GEMINI_API_KEY`, `COEUS_OPENAI_API_KEY`, `COEUS_VERTEX_API_KEY` or
+  `COEUS_BEDROCK_API_KEY`, with `COEUS_BEDROCK_REGION` for Bedrock) or a
+  future secret manager integration.
 - To send real emails locally, set `COEUS_EMAIL_PROVIDER=smtp`,
   `COEUS_SMTP_HOST`, `COEUS_SMTP_FROM` and any required username/password. The
   default `outbox` provider records and audits emails without sending them.

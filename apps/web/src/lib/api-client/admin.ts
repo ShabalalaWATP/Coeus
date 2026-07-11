@@ -1,5 +1,13 @@
 import { apiRequestJson, pathSegment } from "./client";
 
+export type AiProviderState = {
+  name: string;
+  label: string;
+  models: string[];
+  activeModel: string;
+  apiKeyConfigured: boolean;
+};
+
 export type AiModelState = {
   provider: string;
   activeModel: string;
@@ -9,6 +17,14 @@ export type AiModelState = {
   embeddedProductCount: number;
   changedBy: string | null;
   changedAt: string | null;
+  providers: AiProviderState[];
+};
+
+export type AiConnectionTest = {
+  ok: boolean;
+  provider: string;
+  model: string;
+  message: string;
 };
 
 export type AdminUser = {
@@ -38,17 +54,44 @@ export async function getAiModelState(): Promise<AiModelState> {
   return apiRequestJson<AiModelState>("/api/v1/admin/ai-model", { method: "GET" });
 }
 
-export async function selectAiModel(model: string, csrfToken: string): Promise<AiModelState> {
+export async function selectAiModel(
+  model: string,
+  provider: string,
+  csrfToken: string,
+): Promise<AiModelState> {
   return apiRequestJson<AiModelState>("/api/v1/admin/ai-model", {
-    body: JSON.stringify({ model }),
+    body: JSON.stringify({ model, provider }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "PUT",
   });
 }
 
-export async function configureAiApiKey(apiKey: string, csrfToken: string): Promise<AiModelState> {
+export async function selectAiProvider(provider: string, csrfToken: string): Promise<AiModelState> {
+  return apiRequestJson<AiModelState>("/api/v1/admin/ai-model/provider", {
+    body: JSON.stringify({ provider }),
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+    method: "PUT",
+  });
+}
+
+export async function testAiConnection(
+  provider: string,
+  csrfToken: string,
+): Promise<AiConnectionTest> {
+  return apiRequestJson<AiConnectionTest>("/api/v1/admin/ai-model/test", {
+    body: JSON.stringify({ provider }),
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+    method: "POST",
+  });
+}
+
+export async function configureAiApiKey(
+  apiKey: string,
+  provider: string,
+  csrfToken: string,
+): Promise<AiModelState> {
   return apiRequestJson<AiModelState>("/api/v1/admin/ai-model/api-key", {
-    body: JSON.stringify({ apiKey }),
+    body: JSON.stringify({ apiKey, provider }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "PUT",
   });
