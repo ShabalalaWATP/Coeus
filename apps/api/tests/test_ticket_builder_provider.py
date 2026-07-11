@@ -14,10 +14,10 @@ PRIORITY_QUESTION = (
 
 
 class ForbiddenClient:
-    """Fails the test if the provider tries to reach the Gemini API."""
+    """Fails the test if the provider tries to reach any external LLM API."""
 
     def __init__(self, *, timeout: int) -> None:
-        raise AssertionError("Gemini API must not be called on this path.")
+        raise AssertionError("No external LLM API may be called on this path.")
 
 
 class FailingClient:
@@ -39,7 +39,7 @@ def _intake() -> IntakeDetails:
 
 
 def test_env_key_alone_never_switches_the_provider(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("coeus.integrations.gemini_api.httpx.Client", ForbiddenClient)
+    monkeypatch.setattr("coeus.integrations.llm_gateway.httpx.Client", ForbiddenClient)
     settings = Settings(environment="test", gemini_api_key="env-secret")
     ai_models = AiModelService(settings, AuditLog())
     provider = ConfigurableIntakeProvider(settings, ai_models)
@@ -50,7 +50,22 @@ def test_env_key_alone_never_switches_the_provider(monkeypatch: pytest.MonkeyPat
     assert message == PRIORITY_QUESTION
 
 
-def test_admin_key_configuration_switches_to_gemini(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_key_configuration_alone_does_not_activate_the_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("coeus.integrations.llm_gateway.httpx.Client", ForbiddenClient)
+    settings = Settings(environment="test")
+    ai_models = AiModelService(settings, AuditLog())
+    ai_models.configure_api_key("admin-id", "admin@example.test", "runtime-secret")
+    provider = ConfigurableIntakeProvider(settings, ai_models)
+
+    assert ai_models.provider() == "mock"
+    assert provider.build_assistant_message(_intake(), ()) == PRIORITY_QUESTION
+
+
+def test_explicit_provider_activation_routes_replies_to_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     class FakeResponse:
         def raise_for_status(self) -> None:
             return None
@@ -71,23 +86,25 @@ def test_admin_key_configuration_switches_to_gemini(monkeypatch: pytest.MonkeyPa
         def post(self, url: str, *, json: object, headers: object) -> FakeResponse:
             return FakeResponse()
 
-    monkeypatch.setattr("coeus.integrations.gemini_api.httpx.Client", FakeClient)
+    monkeypatch.setattr("coeus.integrations.llm_gateway.httpx.Client", FakeClient)
     settings = Settings(environment="test")
     ai_models = AiModelService(settings, AuditLog())
     ai_models.configure_api_key("admin-id", "admin@example.test", "runtime-secret")
+    ai_models.select_provider("admin-id", "admin@example.test", "gemini_api")
     provider = ConfigurableIntakeProvider(settings, ai_models)
 
     assert ai_models.provider() == "gemini_api"
     assert provider.build_assistant_message(_intake(), ()) == "Gemini reply."
 
 
-def test_flagged_messages_are_refused_without_calling_gemini(
+def test_flagged_messages_are_refused_without_calling_any_provider(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("coeus.integrations.gemini_api.httpx.Client", ForbiddenClient)
+    monkeypatch.setattr("coeus.integrations.llm_gateway.httpx.Client", ForbiddenClient)
     settings = Settings(environment="test")
     ai_models = AiModelService(settings, AuditLog())
     ai_models.configure_api_key("admin-id", "admin@example.test", "runtime-secret")
+    ai_models.select_provider("admin-id", "admin@example.test", "gemini_api")
     provider = ConfigurableIntakeProvider(settings, ai_models)
 
     message = provider.build_assistant_message(_intake(), ("prompt_injection_attempt",))
@@ -95,8 +112,8 @@ def test_flagged_messages_are_refused_without_calling_gemini(
     assert message == REFUSAL
 
 
-def test_gemini_failure_degrades_to_the_mock_reply(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("coeus.integrations.gemini_api.httpx.Client", FailingClient)
+def test_provider_failure_degrades_to_the_mock_reply(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("coeus.integrations.llm_gateway.httpx.Client", FailingClient)
     settings = Settings(environment="test", llm_provider="gemini_api", gemini_api_key="env-secret")
     provider = ConfigurableIntakeProvider(settings, None)
 
@@ -105,13 +122,50 @@ def test_gemini_failure_degrades_to_the_mock_reply(monkeypatch: pytest.MonkeyPat
     assert message == PRIORITY_QUESTION
 
 
-def test_gemini_provider_without_key_degrades_to_the_mock_reply(
+def test_provider_without_key_degrades_to_the_mock_reply(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("coeus.integrations.gemini_api.httpx.Client", ForbiddenClient)
+    monkeypatch.setattr("coeus.integrations.llm_gateway.httpx.Client", ForbiddenClient)
     settings = Settings(environment="test", llm_provider="gemini_api")
     provider = ConfigurableIntakeProvider(settings, None)
 
     message = provider.build_assistant_message(_intake(), ())
 
     assert message == PRIORITY_QUESTION
+
+
+def test_settings_driven_openai_provider_is_called_without_ai_models(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    class FakeResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, object]:
+            return {"choices": [{"message": {"content": "OpenAI reply."}}]}
+
+    class FakeClient:
+        def __init__(self, *, timeout: int) -> None:
+            captured["timeout"] = timeout
+
+        def __enter__(self) -> "FakeClient":
+            return self
+
+        def __exit__(self, _exc_type: object, _exc: object, _traceback: object) -> None:
+            return None
+
+        def post(self, url: str, *, json: object, headers: object) -> FakeResponse:
+            captured["url"] = url
+            captured["headers"] = headers
+            return FakeResponse()
+
+    monkeypatch.setattr("coeus.integrations.llm_gateway.httpx.Client", FakeClient)
+    settings = Settings(environment="test", llm_provider="openai_api", openai_api_key="sk-test")
+    provider = ConfigurableIntakeProvider(settings, None)
+
+    message = provider.build_assistant_message(_intake(), ())
+
+    assert message == "OpenAI reply."
+    assert captured["url"] == "https://api.openai.com/v1/chat/completions"

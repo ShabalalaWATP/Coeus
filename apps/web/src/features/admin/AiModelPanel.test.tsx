@@ -6,8 +6,32 @@ import { modelInfoFor } from "./model-catalogue";
 import { resetQueryClientForTests } from "../../app/query-client";
 import { renderWithProviders } from "../../test/test-utils";
 
+const providers = [
+  {
+    name: "gemini_api",
+    label: "Gemini API (primary)",
+    models: ["gemma-4-31b", "gemini-2.5-flash", "gemini-2.5-pro"],
+    activeModel: "gemma-4-31b",
+    apiKeyConfigured: false,
+  },
+  {
+    name: "openai_api",
+    label: "OpenAI API",
+    models: ["gpt-5", "gpt-5-mini"],
+    activeModel: "gpt-5-mini",
+    apiKeyConfigured: false,
+  },
+  {
+    name: "mock",
+    label: "Mock (offline)",
+    models: ["mock"],
+    activeModel: "mock",
+    apiKeyConfigured: false,
+  },
+];
+
 const modelState = {
-  provider: "mock",
+  provider: "gemini_api",
   activeModel: "gemma-4-31b",
   availableModels: ["gemma-4-31b", "gemini-2.5-flash", "gemini-2.5-pro"],
   apiKeyConfigured: false,
@@ -15,6 +39,7 @@ const modelState = {
   embeddedProductCount: 3,
   changedBy: null,
   changedAt: null,
+  providers,
 };
 
 beforeEach(() => {
@@ -27,11 +52,11 @@ afterEach(() => {
 
 test("describes catalogued models and falls back for unknown ones", () => {
   expect(modelInfoFor("gemini-2.5-pro").tier).toBe("Advanced");
-  expect(modelInfoFor("gemini-3-flash").tier).toBe("Fast");
+  expect(modelInfoFor("gpt-5-mini").tier).toBe("Fast");
   expect(modelInfoFor("experimental-model").tier).toBe("Custom");
 });
 
-test("switches the active Gemini model from the card catalogue", async () => {
+test("switches the active model within the live provider", async () => {
   const fetchMock = vi
     .fn()
     .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(modelState) })
@@ -50,7 +75,6 @@ test("switches the active Gemini model from the card catalogue", async () => {
   renderWithProviders(<AiModelPanel csrfToken="test-csrf-token" />, "/admin/overview");
 
   expect(await screen.findByRole("radio", { name: /gemma-4-31b/ })).toBeChecked();
-  expect(screen.getByText("Active")).toBeVisible();
   expect(screen.getByRole("button", { name: "Apply model" })).toBeDisabled();
 
   await userEvent.click(screen.getByRole("radio", { name: /gemini-2.5-pro/ }));
@@ -61,20 +85,18 @@ test("switches the active Gemini model from the card catalogue", async () => {
       2,
       "http://127.0.0.1:8001/api/v1/admin/ai-model",
       expect.objectContaining({
-        body: JSON.stringify({ model: "gemini-2.5-pro" }),
+        body: JSON.stringify({ model: "gemini-2.5-pro", provider: "gemini_api" }),
         headers: { "Content-Type": "application/json", "X-CSRF-Token": "test-csrf-token" },
         method: "PUT",
       }),
     ),
   );
-  expect(await screen.findByText(/mock provider active/)).toBeVisible();
-  expect(screen.getByText(/embeddings: mock/)).toBeVisible();
+  expect(await screen.findByText(/embeddings: mock/)).toBeVisible();
   expect(screen.getByText(/embedded products: 3/)).toBeVisible();
   expect(screen.getByText(/last changed by admin@example.test/)).toBeVisible();
-  expect(screen.getByRole("button", { name: "Apply model" })).toBeDisabled();
 });
 
-test("stores a Gemini API key without rendering the key back", async () => {
+test("stores an API key for the selected provider without rendering it back", async () => {
   const fetchMock = vi
     .fn()
     .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(modelState) })
@@ -83,7 +105,79 @@ test("stores a Gemini API key without rendering the key back", async () => {
       json: () =>
         Promise.resolve({
           ...modelState,
-          apiKeyConfigured: true,
+          providers: providers.map((entry) =>
+            entry.name === "openai_api" ? { ...entry, apiKeyConfigured: true } : entry,
+          ),
+        }),
+    });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<AiModelPanel csrfToken="test-csrf-token" />, "/admin/overview");
+
+  await userEvent.click(await screen.findByRole("tab", { name: /OpenAI API/ }));
+  await userEvent.type(screen.getByLabelText("OpenAI API API key"), "sk-openai-secret");
+  await userEvent.click(screen.getByRole("button", { name: "Save key" }));
+
+  await waitFor(() =>
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "http://127.0.0.1:8001/api/v1/admin/ai-model/api-key",
+      expect.objectContaining({
+        body: JSON.stringify({ apiKey: "sk-openai-secret", provider: "openai_api" }),
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": "test-csrf-token" },
+        method: "PUT",
+      }),
+    ),
+  );
+  expect(await screen.findByPlaceholderText("API key configured")).toBeVisible();
+  expect(screen.queryByDisplayValue("sk-openai-secret")).not.toBeInTheDocument();
+});
+
+test("tests a provider connection and reports the outcome", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(modelState) })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          ok: false,
+          provider: "openai_api",
+          model: "gpt-5-mini",
+          message: "No API key is configured for this provider.",
+        }),
+    });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<AiModelPanel csrfToken="test-csrf-token" />, "/admin/overview");
+
+  await userEvent.click(await screen.findByRole("tab", { name: /OpenAI API/ }));
+  await userEvent.click(screen.getByRole("button", { name: "Test connection" }));
+
+  await waitFor(() =>
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "http://127.0.0.1:8001/api/v1/admin/ai-model/test",
+      expect.objectContaining({
+        body: JSON.stringify({ provider: "openai_api" }),
+        method: "POST",
+      }),
+    ),
+  );
+  expect(await screen.findByText(/Connection failed: No API key is configured/)).toBeVisible();
+});
+
+test("activating another provider warns about the app-wide change first", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(modelState) })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          ...modelState,
+          provider: "openai_api",
+          activeModel: "gpt-5-mini",
           changedBy: "admin@example.test",
           changedAt: "2026-07-06T09:00:00Z",
         }),
@@ -92,22 +186,48 @@ test("stores a Gemini API key without rendering the key back", async () => {
 
   renderWithProviders(<AiModelPanel csrfToken="test-csrf-token" />, "/admin/overview");
 
-  await userEvent.type(await screen.findByLabelText("Gemini API key"), "gemini-secret-key");
-  await userEvent.click(screen.getByRole("button", { name: "Save key" }));
+  await userEvent.click(await screen.findByRole("tab", { name: /OpenAI API/ }));
+  await userEvent.click(screen.getByRole("button", { name: "Make active provider" }));
+
+  // The warning explains the consequence before anything is sent.
+  expect(
+    await screen.findByText("This changes the AI provider for every user immediately."),
+  ).toBeVisible();
+  expect(screen.getByText(/all administrators will be notified/i)).toBeVisible();
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+
+  await userEvent.click(screen.getByRole("button", { name: "Confirm and activate" }));
 
   await waitFor(() =>
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      "http://127.0.0.1:8001/api/v1/admin/ai-model/api-key",
+      "http://127.0.0.1:8001/api/v1/admin/ai-model/provider",
       expect.objectContaining({
-        body: JSON.stringify({ apiKey: "gemini-secret-key" }),
-        headers: { "Content-Type": "application/json", "X-CSRF-Token": "test-csrf-token" },
+        body: JSON.stringify({ provider: "openai_api" }),
         method: "PUT",
       }),
     ),
   );
-  expect(await screen.findByText(/Gemini API key configured/)).toBeVisible();
-  expect(screen.queryByDisplayValue("gemini-secret-key")).not.toBeInTheDocument();
+  expect(await screen.findByText(/live model: gpt-5-mini/)).toBeVisible();
+});
+
+test("cancelling the activation warning sends nothing", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(modelState) });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<AiModelPanel csrfToken="test-csrf-token" />, "/admin/overview");
+
+  await userEvent.click(await screen.findByRole("tab", { name: /Mock \(offline\)/ }));
+  expect(screen.getByText(/answers locally with deterministic replies/)).toBeVisible();
+  await userEvent.click(screen.getByRole("button", { name: "Make active provider" }));
+  await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+  expect(
+    screen.queryByText("This changes the AI provider for every user immediately."),
+  ).not.toBeInTheDocument();
+  expect(fetchMock).toHaveBeenCalledTimes(1);
 });
 
 test("shows a generic error when the switch fails", async () => {
@@ -116,12 +236,7 @@ test("shows a generic error when the switch fails", async () => {
     .mockResolvedValueOnce({
       ok: true,
       json: () =>
-        Promise.resolve({
-          ...modelState,
-          provider: "gemma_vertex",
-          changedBy: "admin@example.test",
-          changedAt: null,
-        }),
+        Promise.resolve({ ...modelState, changedBy: "admin@example.test", changedAt: null }),
     })
     .mockResolvedValue({
       ok: false,
@@ -154,7 +269,10 @@ test("shows a key-specific error when saving the API key fails", async () => {
 
   renderWithProviders(<AiModelPanel csrfToken="test-csrf-token" />, "/admin/overview");
 
-  await userEvent.type(await screen.findByLabelText("Gemini API key"), "gemini-secret-key");
+  await userEvent.type(
+    await screen.findByLabelText("Gemini API (primary) API key"),
+    "gemini-secret-key",
+  );
   await userEvent.click(screen.getByRole("button", { name: "Save key" }));
 
   expect(

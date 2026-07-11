@@ -46,10 +46,41 @@ class RegistrationListResponse(BaseModel):
 
 class AiModelSelectRequest(BaseModel):
     model: str = Field(min_length=3, max_length=80)
+    # None selects a model within the currently active provider.
+    provider: str | None = Field(default=None, min_length=3, max_length=40)
+
+
+class AiProviderSelectRequest(BaseModel):
+    provider: str = Field(min_length=3, max_length=40)
 
 
 class AiModelApiKeyRequest(BaseModel):
     api_key: str = Field(min_length=10, max_length=4096, validation_alias="apiKey")
+    provider: str = Field(default="gemini_api", min_length=3, max_length=40)
+
+
+class AiConnectionTestRequest(BaseModel):
+    # None tests the currently active provider.
+    provider: str | None = Field(default=None, min_length=3, max_length=40)
+
+
+class AiConnectionTestResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    ok: bool
+    provider: str
+    model: str
+    message: str
+
+
+class AiProviderStateResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    name: str
+    label: str
+    models: list[str]
+    active_model: str = Field(serialization_alias="activeModel")
+    api_key_configured: bool = Field(serialization_alias="apiKeyConfigured")
 
 
 class AiModelStateResponse(BaseModel):
@@ -63,3 +94,4 @@ class AiModelStateResponse(BaseModel):
     embedded_product_count: int = Field(serialization_alias="embeddedProductCount")
     changed_by: str | None = Field(default=None, serialization_alias="changedBy")
     changed_at: datetime | None = Field(default=None, serialization_alias="changedAt")
+    providers: list[AiProviderStateResponse] = Field(default_factory=list)

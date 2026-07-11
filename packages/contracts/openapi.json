@@ -266,12 +266,66 @@
         "title": "AgentRunResponse",
         "type": "object"
       },
+      "AiConnectionTestRequest": {
+        "properties": {
+          "provider": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "minLength": 3,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          }
+        },
+        "title": "AiConnectionTestRequest",
+        "type": "object"
+      },
+      "AiConnectionTestResponse": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "provider",
+          "model",
+          "message"
+        ],
+        "title": "AiConnectionTestResponse",
+        "type": "object"
+      },
       "AiModelApiKeyRequest": {
         "properties": {
           "apiKey": {
             "maxLength": 4096,
             "minLength": 10,
             "title": "Apikey",
+            "type": "string"
+          },
+          "provider": {
+            "default": "gemini_api",
+            "maxLength": 40,
+            "minLength": 3,
+            "title": "Provider",
             "type": "string"
           }
         },
@@ -288,6 +342,19 @@
             "minLength": 3,
             "title": "Model",
             "type": "string"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "minLength": 3,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
           }
         },
         "required": [
@@ -347,6 +414,13 @@
           "provider": {
             "title": "Provider",
             "type": "string"
+          },
+          "providers": {
+            "items": {
+              "$ref": "#/components/schemas/AiProviderStateResponse"
+            },
+            "title": "Providers",
+            "type": "array"
           }
         },
         "required": [
@@ -358,6 +432,57 @@
           "embeddedProductCount"
         ],
         "title": "AiModelStateResponse",
+        "type": "object"
+      },
+      "AiProviderSelectRequest": {
+        "properties": {
+          "provider": {
+            "maxLength": 40,
+            "minLength": 3,
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider"
+        ],
+        "title": "AiProviderSelectRequest",
+        "type": "object"
+      },
+      "AiProviderStateResponse": {
+        "properties": {
+          "activeModel": {
+            "title": "Activemodel",
+            "type": "string"
+          },
+          "apiKeyConfigured": {
+            "title": "Apikeyconfigured",
+            "type": "boolean"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "label",
+          "models",
+          "activeModel",
+          "apiKeyConfigured"
+        ],
+        "title": "AiProviderStateResponse",
         "type": "object"
       },
       "AnalystAssignmentRequest": {
@@ -6343,6 +6468,124 @@
           }
         },
         "summary": "Configure Ai Api Key",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/ai-model/provider": {
+      "put": {
+        "operationId": "select_ai_provider_api_v1_admin_ai_model_provider_put",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiProviderSelectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiModelStateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Select Ai Provider",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/ai-model/test": {
+      "post": {
+        "operationId": "test_ai_connection_api_v1_admin_ai_model_test_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiConnectionTestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiConnectionTestResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Ai Connection",
         "tags": [
           "admin"
         ]
