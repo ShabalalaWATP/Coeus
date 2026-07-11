@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ShieldCheck, UserCog } from "lucide-react";
+import { Search, ShieldCheck, UserCog } from "lucide-react";
 import { useState } from "react";
 
 import { CLEARANCE_OPTIONS, ROLE_OPTIONS } from "./user-options";
@@ -23,6 +23,7 @@ export default function UserManagementPage() {
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const csrfToken = session?.csrfToken ?? "";
+  const [filter, setFilter] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const [resetResult, setResetResult] = useState<{
     temporaryCredential: string;
@@ -61,6 +62,13 @@ export default function UserManagementPage() {
       setResetResult({ temporaryCredential: result.temporaryCredential, userId }),
   });
   const isSaving = updateMutation.isPending || resetMutation.isPending;
+  const users = usersQuery.data ?? [];
+  const needle = filter.trim().toLowerCase();
+  const visibleUsers = needle
+    ? users.filter((user) =>
+        [user.displayName, user.username, ...user.roles].join(" ").toLowerCase().includes(needle),
+      )
+    : users;
 
   return (
     <div className="workspace-page">
@@ -73,9 +81,26 @@ export default function UserManagementPage() {
       </section>
 
       <section className="surface admin-users" aria-label="User management">
-        <div className="section-heading access-heading">
+        <div className="section-heading access-heading admin-users__heading">
           <UserCog aria-hidden="true" size={20} />
           <h2>Accounts</h2>
+          {users.length > 0 ? (
+            <div className="admin-users__toolbar">
+              <label className="admin-users__search">
+                <Search aria-hidden="true" size={16} />
+                <input
+                  aria-label="Filter users"
+                  onChange={(event) => setFilter(event.target.value)}
+                  placeholder="Filter by name, username or role"
+                  type="search"
+                  value={filter}
+                />
+              </label>
+              <span className="admin-users__count">
+                {visibleUsers.length} of {users.length}
+              </span>
+            </div>
+          ) : null}
         </div>
         {actionError ? (
           <p className="auth-error" role="alert">
@@ -84,7 +109,7 @@ export default function UserManagementPage() {
         ) : null}
         {usersQuery.isLoading ? <LoadingState label="Loading users" /> : null}
         {usersQuery.isError ? <ErrorState onRetry={() => void usersQuery.refetch()} /> : null}
-        {usersQuery.data?.map((user) => (
+        {visibleUsers.map((user) => (
           <UserManagementRow
             currentUserId={session?.user.id ?? ""}
             isSaving={isSaving}
@@ -97,6 +122,9 @@ export default function UserManagementPage() {
             user={user}
           />
         ))}
+        {users.length > 0 && visibleUsers.length === 0 ? (
+          <p className="admin-users__empty">No accounts match your filter.</p>
+        ) : null}
       </section>
     </div>
   );

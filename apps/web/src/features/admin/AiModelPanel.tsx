@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BrainCircuit, Check, PlugZap, Save, ShieldAlert } from "lucide-react";
+import { BrainCircuit, Check, KeyRound, PlugZap, Save, ShieldAlert, Sparkles } from "lucide-react";
 import { useState } from "react";
 
-import { modelInfoFor } from "./model-catalogue";
+import { AiModelGrid } from "./AiModelGrid";
 import { ErrorState, LoadingState } from "../../components/ui/PageState";
 import {
   configureAiApiKey,
@@ -20,6 +20,13 @@ type AiModelPanelProps = {
   csrfToken: string;
 };
 
+function providerStatus(entry: AiProviderState, liveProvider: string) {
+  if (entry.name === liveProvider) return { label: "Live", tone: "live" as const };
+  if (entry.name === "mock") return { label: "Local", tone: "local" as const };
+  if (entry.apiKeyConfigured) return { label: "Key set", tone: "ready" as const };
+  return { label: "No key", tone: "empty" as const };
+}
+
 export function AiModelPanel({ csrfToken }: AiModelPanelProps) {
   const queryClient = useQueryClient();
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
@@ -32,6 +39,7 @@ export function AiModelPanel({ csrfToken }: AiModelPanelProps) {
   const state = stateQuery.data;
   const providerName = selectedProvider ?? state?.provider ?? "gemini_api";
   const provider = state?.providers.find((entry) => entry.name === providerName);
+  const liveProvider = state?.providers.find((entry) => entry.name === state.provider);
   const applyState = (next: AiModelState) => queryClient.setQueryData(["ai-model"], next);
   const modelMutation = useMutation({
     mutationFn: (model: string) => selectAiModel(model, providerName, csrfToken),
@@ -78,6 +86,8 @@ export function AiModelPanel({ csrfToken }: AiModelPanelProps) {
     clearActionError();
   };
   const activeChoice = selectedModel ?? provider?.activeModel ?? "";
+  const isLive = provider?.name === state?.provider;
+  const isMock = provider?.name === "mock";
 
   return (
     <section className="surface ai-model-panel" aria-labelledby="ai-model-title">
@@ -94,131 +104,187 @@ export function AiModelPanel({ csrfToken }: AiModelPanelProps) {
       {stateQuery.isError ? <ErrorState onRetry={() => void stateQuery.refetch()} /> : null}
       {stateQuery.isLoading ? <LoadingState label="Loading model configuration" /> : null}
       {state && provider ? (
-        <div className="ai-model-form">
-          <div aria-label="Providers" className="ai-provider-row" role="tablist">
-            {state.providers.map((entry) => (
-              <button
-                aria-selected={entry.name === providerName}
-                className={`ai-provider-tab${
-                  entry.name === providerName ? " ai-provider-tab--chosen" : ""
-                }`}
-                key={entry.name}
-                onClick={() => pickProvider(entry.name)}
-                role="tab"
-                type="button"
-              >
-                {entry.label}
-                {entry.name === state.provider ? (
-                  <span className="ai-model-card__active">
-                    <Check aria-hidden="true" size={13} />
-                    Live
-                  </span>
-                ) : null}
-              </button>
-            ))}
-          </div>
-          {provider.name !== "mock" ? (
-            <ModelGrid
-              activeChoice={activeChoice}
-              onApply={() => modelMutation.mutate(activeChoice)}
-              onChoose={setSelectedModel}
-              pending={modelMutation.isPending}
-              provider={provider}
-            />
-          ) : (
-            <p className="ai-model-provider">
-              The mock provider answers locally with deterministic replies and needs no key.
-            </p>
-          )}
-          {provider.name !== "mock" ? (
-            <div className="ai-key-row">
-              <label>
-                {provider.label} API key
-                <input
-                  autoComplete="off"
-                  onChange={(event) => setApiKey(event.target.value)}
-                  placeholder={provider.apiKeyConfigured ? "API key configured" : "Paste API key"}
-                  type="password"
-                  value={apiKey}
-                />
-              </label>
-              <button
-                disabled={keyMutation.isPending || apiKey.trim().length < 10}
-                onClick={() => keyMutation.mutate(apiKey.trim())}
-                type="button"
-              >
-                <Save aria-hidden="true" size={16} />
-                Save key
-              </button>
-            </div>
-          ) : null}
-          <div className="ai-key-row">
-            <button
-              disabled={testMutation.isPending}
-              onClick={() => testMutation.mutate()}
-              type="button"
-            >
-              <PlugZap aria-hidden="true" size={16} />
-              {testMutation.isPending ? "Testing connection" : "Test connection"}
-            </button>
-            {provider.name !== state.provider ? (
-              <button
-                disabled={activateMutation.isPending}
-                onClick={() => setConfirmingActivation(true)}
-                type="button"
-              >
-                Make active provider
-              </button>
-            ) : null}
-          </div>
-          {testResult ? (
-            <p
-              className={testResult.ok ? "ai-test-result ai-test-result--ok" : "auth-error"}
-              role="status"
-            >
-              {testResult.ok ? "Connection OK: " : "Connection failed: "}
-              {testResult.message}
-            </p>
-          ) : null}
-          {confirmingActivation ? (
-            <div
-              aria-label="Confirm provider change"
-              className="ai-activate-warning"
-              role="alertdialog"
-            >
-              <ShieldAlert aria-hidden="true" size={18} />
+        <div className="ai-model-body">
+          <div className="ai-live" role="group" aria-label="Live AI configuration">
+            <div className="ai-live__headline">
+              <span className="ai-live__dot" aria-hidden="true" />
               <div>
-                <strong>This changes the AI provider for every user immediately.</strong>
-                <p>
-                  All intake assistant replies will be produced by {provider.label} and all
-                  administrators will be notified of this change. Test the connection first.
-                </p>
-                <div className="ai-key-row">
-                  <button
-                    disabled={activateMutation.isPending}
-                    onClick={() => activateMutation.mutate()}
-                    type="button"
-                  >
-                    Confirm and activate
-                  </button>
-                  <button onClick={() => setConfirmingActivation(false)} type="button">
-                    Cancel
-                  </button>
-                </div>
+                <span className="ai-live__eyebrow">Live for every user</span>
+                <strong>
+                  {liveProvider?.label ?? state.provider}
+                  <span className="ai-live__model"> · {state.activeModel}</span>
+                </strong>
               </div>
             </div>
-          ) : null}
-          <p className="ai-model-provider">
-            Live provider: <code>{state.provider}</code>
-            {` | live model: ${state.activeModel}`}
-            {` | embeddings: ${state.embeddingProvider}`}
-            {` | embedded products: ${state.embeddedProductCount}`}
-            {state.changedBy
-              ? ` | last changed by ${state.changedBy}${
-                  state.changedAt ? ` on ${new Date(state.changedAt).toLocaleString("en-GB")}` : ""
-                }`
-              : null}
-          </p>
+            <dl className="ai-live__stats">
+              <div>
+                <dt>Embeddings</dt>
+                <dd>{state.embeddingProvider}</dd>
+              </div>
+              <div>
+                <dt>Products embedded</dt>
+                <dd>{state.embeddedProductCount}</dd>
+              </div>
+              {state.changedBy ? (
+                <div>
+                  <dt>Last changed</dt>
+                  <dd>
+                    {state.changedBy}
+                    {state.changedAt
+                      ? ` · ${new Date(state.changedAt).toLocaleString("en-GB")}`
+                      : ""}
+                  </dd>
+                </div>
+              ) : null}
+            </dl>
+          </div>
+
+          <div className="ai-provider-row" role="tablist" aria-label="Providers">
+            {state.providers.map((entry) => {
+              const status = providerStatus(entry, state.provider);
+              const chosen = entry.name === providerName;
+              return (
+                <button
+                  aria-selected={chosen}
+                  className={`ai-provider-tab${chosen ? " ai-provider-tab--chosen" : ""}`}
+                  key={entry.name}
+                  onClick={() => pickProvider(entry.name)}
+                  role="tab"
+                  type="button"
+                >
+                  <span className="ai-provider-tab__name">{entry.label}</span>
+                  <span
+                    className={`ai-provider-tab__status ai-provider-tab__status--${status.tone}`}
+                  >
+                    {status.tone === "live" ? <Check aria-hidden="true" size={12} /> : null}
+                    {status.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="ai-provider-detail">
+            {isMock ? (
+              <p className="ai-hint">
+                The mock provider answers locally with deterministic replies and needs no key. Use
+                it for offline demos and tests.
+              </p>
+            ) : (
+              <>
+                <div className="ai-step">
+                  <span className="ai-step__label">
+                    <KeyRound aria-hidden="true" size={14} />
+                    Step 1 — API key
+                  </span>
+                  <div className="ai-key-row">
+                    <label>
+                      <span className="ai-field-label">API key</span>
+                      <input
+                        autoComplete="off"
+                        onChange={(event) => setApiKey(event.target.value)}
+                        placeholder={
+                          provider.apiKeyConfigured ? "API key configured" : "Paste API key"
+                        }
+                        type="password"
+                        value={apiKey}
+                      />
+                    </label>
+                    <button
+                      className="ai-btn-secondary"
+                      disabled={keyMutation.isPending || apiKey.trim().length < 10}
+                      onClick={() => keyMutation.mutate(apiKey.trim())}
+                      type="button"
+                    >
+                      <Save aria-hidden="true" size={16} />
+                      Save key
+                    </button>
+                  </div>
+                </div>
+                <div className="ai-step">
+                  <span className="ai-step__label">
+                    <Sparkles aria-hidden="true" size={14} />
+                    Step 2 — Model
+                  </span>
+                  <AiModelGrid
+                    activeChoice={activeChoice}
+                    onApply={() => modelMutation.mutate(activeChoice)}
+                    onChoose={setSelectedModel}
+                    pending={modelMutation.isPending}
+                    provider={provider}
+                  />
+                </div>
+              </>
+            )}
+            <div className="ai-actions">
+              <button
+                className="ai-btn-secondary"
+                disabled={testMutation.isPending}
+                onClick={() => testMutation.mutate()}
+                type="button"
+              >
+                <PlugZap aria-hidden="true" size={16} />
+                {testMutation.isPending ? "Testing connection" : "Test connection"}
+              </button>
+              {isLive ? (
+                <span className="ai-live-tag">
+                  <Check aria-hidden="true" size={14} />
+                  This provider is live
+                </span>
+              ) : (
+                <button
+                  className="ai-btn-primary"
+                  disabled={activateMutation.isPending}
+                  onClick={() => setConfirmingActivation(true)}
+                  type="button"
+                >
+                  Make active provider
+                </button>
+              )}
+            </div>
+            {testResult ? (
+              <p
+                className={`ai-test-result ${testResult.ok ? "ai-test-result--ok" : "ai-test-result--fail"}`}
+                role="status"
+              >
+                {testResult.ok ? "Connection OK: " : "Connection failed: "}
+                {testResult.message}
+              </p>
+            ) : null}
+            {confirmingActivation ? (
+              <div
+                aria-label="Confirm provider change"
+                className="ai-activate-warning"
+                role="alertdialog"
+              >
+                <ShieldAlert aria-hidden="true" size={18} />
+                <div>
+                  <strong>This changes the AI provider for every user immediately.</strong>
+                  <p>
+                    All intake assistant replies will be produced by {provider.label} and all
+                    administrators will be notified of this change. Test the connection first.
+                  </p>
+                  <div className="ai-actions">
+                    <button
+                      className="ai-btn-primary"
+                      disabled={activateMutation.isPending}
+                      onClick={() => activateMutation.mutate()}
+                      type="button"
+                    >
+                      Confirm and activate
+                    </button>
+                    <button
+                      className="ai-btn-secondary"
+                      onClick={() => setConfirmingActivation(false)}
+                      type="button"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
       ) : null}
       {actionError ? (
@@ -227,63 +293,5 @@ export function AiModelPanel({ csrfToken }: AiModelPanelProps) {
         </p>
       ) : null}
     </section>
-  );
-}
-
-type ModelGridProps = {
-  activeChoice: string;
-  onApply: () => void;
-  onChoose: (model: string) => void;
-  pending: boolean;
-  provider: AiProviderState;
-};
-
-function ModelGrid({ activeChoice, onApply, onChoose, pending, provider }: ModelGridProps) {
-  return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        onApply();
-      }}
-    >
-      <div aria-label="Available models" className="ai-model-grid" role="radiogroup">
-        {provider.models.map((model) => {
-          const info = modelInfoFor(model);
-          const isActive = model === provider.activeModel;
-          const isChosen = model === activeChoice;
-          return (
-            <label
-              className={`ai-model-card${isChosen ? " ai-model-card--chosen" : ""}`}
-              key={model}
-            >
-              <input
-                checked={isChosen}
-                name="ai-model"
-                onChange={() => onChoose(model)}
-                type="radio"
-                value={model}
-              />
-              <span className="ai-model-card__header">
-                <code>{model}</code>
-                <span className={`ai-model-tier ai-model-tier--${info.tier.toLowerCase()}`}>
-                  {info.tier}
-                </span>
-              </span>
-              <span className="ai-model-card__description">{info.description}</span>
-              {isActive ? (
-                <span className="ai-model-card__active">
-                  <Check aria-hidden="true" size={13} />
-                  Active
-                </span>
-              ) : null}
-            </label>
-          );
-        })}
-      </div>
-      <button disabled={pending || activeChoice === provider.activeModel} type="submit">
-        <Save aria-hidden="true" size={16} />
-        Apply model
-      </button>
-    </form>
   );
 }

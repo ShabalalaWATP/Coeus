@@ -112,6 +112,35 @@ test("renders users and applies role, clearance and status changes", async () =>
   expect(await screen.findByText("Istari-temporary")).toBeVisible();
 });
 
+test("filters the account list by name, username or role", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => {
+      if (url.endsWith("/admin/users")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ users: [adminUser, analystUser] }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    }),
+  );
+
+  renderWithProviders(<UserManagementPage />, "/admin/users");
+
+  expect(await screen.findByText("Analyst Operator")).toBeVisible();
+  expect(screen.getByText("2 of 2")).toBeVisible();
+
+  await userEvent.type(screen.getByLabelText("Filter users"), "analyst");
+  expect(screen.queryByText("Admin Operator")).not.toBeInTheDocument();
+  expect(screen.getByText("Analyst Operator")).toBeVisible();
+  expect(screen.getByText("1 of 2")).toBeVisible();
+
+  await userEvent.clear(screen.getByLabelText("Filter users"));
+  await userEvent.type(screen.getByLabelText("Filter users"), "nobody");
+  expect(await screen.findByText("No accounts match your filter.")).toBeVisible();
+});
+
 test("refuses to remove the last role and explains why", async () => {
   const fetchMock = vi.fn((url: string) => {
     if (url.endsWith("/admin/users")) {
