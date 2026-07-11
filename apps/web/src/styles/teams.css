@@ -97,6 +97,50 @@
   align-items: end;
 }
 
+.team-roster__add {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.team-roster__suggestions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.team-roster__suggestions button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  cursor: pointer;
+  text-align: left;
+}
+
+.team-roster__suggestions button:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+
+.team-roster__suggestions span {
+  display: grid;
+}
+
+.team-roster__suggestions small {
+  color: var(--muted);
+}
+
+.team-roster__hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
 .team-roster__add label,
 .team-calendar__add label,
 .my-profile label {
@@ -104,6 +148,54 @@
   gap: 6px;
   font-size: 0.86rem;
   font-weight: 740;
+}
+
+.team-calendar__day {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.team-calendar__day--today {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.team-calendar__day header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.team-calendar__day h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.team-calendar__day header small {
+  color: var(--muted);
+}
+
+.team-calendar__today {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 20%, var(--surface-muted));
+  font-size: 0.7rem;
+  font-weight: 780;
+  text-transform: uppercase;
+}
+
+.team-calendar__empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
 .team-calendar__list li {

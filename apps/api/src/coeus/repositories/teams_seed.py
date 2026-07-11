@@ -2,9 +2,11 @@
 
 from uuid import UUID, uuid4
 
-from coeus.domain.teams import OrgTeam, TeamKind, UserProfile, team_member_ids
+from coeus.domain.auth import UserAccount
+from coeus.domain.teams import OrgTeam, TeamKind, UserProfile
 from coeus.repositories.auth import SeedUserRepository
 from coeus.repositories.teams import TeamRepository
+from coeus.repositories.teams_seed_profiles import PROFILE_SPECS
 
 # (name, kind, capability team soft link, manager usernames, member usernames)
 _TEAM_SPECS: tuple[tuple[str, TeamKind, str | None, tuple[str, ...], tuple[str, ...]], ...] = (
@@ -67,13 +69,30 @@ def seed_teams(teams: TeamRepository, users: SeedUserRepository) -> None:
 
 
 def _ensure_profiles(teams: TeamRepository, users: SeedUserRepository) -> None:
-    """Every individual on a team gets a profile record."""
-    for team in teams.list_teams():
-        for user_id in sorted(team_member_ids(team), key=str):
-            if teams.get_profile(user_id) is None:
-                user = users.get_by_id(user_id)
-                title = user.display_name if user is not None else ""
-                teams.save_profile(UserProfile(user_id=user_id, title=title))
+    """Every seed user gets a personal profile.
+
+    Existing profiles are upgraded only while still at the bare default
+    (display-name title, no specialisms, no bio), so edits made by real
+    users are never overwritten on restart.
+    """
+    for user in users.list_users():
+        spec = PROFILE_SPECS.get(user.username)
+        existing = teams.get_profile(user.user_id)
+        if existing is not None and not _is_default_profile(existing, user):
+            continue
+        if spec is None:
+            if existing is None:
+                teams.save_profile(UserProfile(user_id=user.user_id, title=user.display_name))
+            continue
+        title, specialisms, bio = spec
+        teams.save_profile(
+            UserProfile(user_id=user.user_id, title=title, specialisms=specialisms, bio=bio)
+        )
+
+
+def _is_default_profile(profile: UserProfile, user: UserAccount) -> bool:
+    bare_title = profile.title in ("", user.display_name)
+    return bare_title and not profile.specialisms and not profile.bio
 
 
 def _user_ids(users: SeedUserRepository, usernames: tuple[str, ...]) -> tuple[UUID, ...]:

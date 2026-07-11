@@ -70,24 +70,30 @@ function teamsFetch(overrides: Record<string, unknown> = {}) {
       return respond(availability);
     }
     if (url.includes("/calendar?")) {
-      return respond({ entries: [entry] });
+      return respond(overrides.calendar ?? { entries: [entry] });
     }
     if (url.includes("/calendar/") && method === "DELETE") {
       return respond(null, 204);
     }
     if (url.includes("/calendar") && method === "POST") {
-      return respond({ ...entry, id: "entry-2" });
+      return overrides.addEntryFails
+        ? respond({ error: { code: "server_error", message: "Failed." } }, 500)
+        : respond({ ...entry, id: "entry-2" });
     }
     if (url.includes("/users/directory")) {
-      return respond({
-        users: [{ id: "user-9", username: "colleague@example.test", displayName: "Colleague" }],
-      });
+      return respond(
+        overrides.directory ?? {
+          users: [{ id: "user-9", username: "colleague@example.test", displayName: "Colleague" }],
+        },
+      );
     }
     if (url.includes("/members/") && method === "DELETE") {
       return respond(team);
     }
     if (url.includes("/members") && method === "POST") {
-      return respond(team);
+      return overrides.addMemberFails
+        ? respond({ error: { code: "server_error", message: "Failed." } }, 500)
+        : respond(team);
     }
     if (url.includes("/users/me/profile")) {
       return respond(profile);
@@ -157,17 +163,14 @@ test("removes a calendar entry it may manage", async () => {
   );
 });
 
-test("manager adds and removes members by username", async () => {
+test("manager adds a member from directory suggestions and removes members", async () => {
   const fetchMock = teamsFetch();
   vi.stubGlobal("fetch", fetchMock);
 
   renderWithProviders(<TeamsPage />, "/teams");
 
-  await userEvent.type(
-    await screen.findByLabelText("Add member by username"),
-    "colleague@example.test",
-  );
-  await userEvent.click(screen.getByRole("button", { name: "Add member" }));
+  await userEvent.type(await screen.findByLabelText("Add member"), "colleague");
+  await userEvent.click(await screen.findByRole("button", { name: /Colleague/ }));
   await waitFor(() =>
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8001/api/v1/teams/team-1/members",
@@ -187,21 +190,17 @@ test("manager adds and removes members by username", async () => {
   );
 });
 
-test("shows an inline error when the username matches nobody", async () => {
-  const fetchMock = teamsFetch();
+test("tells the manager when a search matches nobody addable", async () => {
+  const fetchMock = teamsFetch({
+    directory: { users: [{ id: "analyst-1", username: "analyst@example.test", displayName: "A" }] },
+  });
   vi.stubGlobal("fetch", fetchMock);
 
   renderWithProviders(<TeamsPage />, "/teams");
 
-  await userEvent.type(
-    await screen.findByLabelText("Add member by username"),
-    "nobody@example.test",
-  );
-  await userEvent.click(screen.getByRole("button", { name: "Add member" }));
+  await userEvent.type(await screen.findByLabelText("Add member"), "nobody");
 
-  expect(
-    await screen.findByText("The member could not be added. Check the username."),
-  ).toBeVisible();
+  expect(await screen.findByText("No matching users found.")).toBeVisible();
   expect(fetchMock).not.toHaveBeenCalledWith(
     "http://127.0.0.1:8001/api/v1/teams/team-1/members",
     expect.objectContaining({ method: "POST" }),
@@ -234,6 +233,36 @@ test("saves the caller's own profile", async () => {
     ),
   );
   expect(await screen.findByText("Profile saved.")).toBeVisible();
+});
+
+test("marks today's group and shows the day summary", async () => {
+  const today = new Date().toISOString().slice(0, 10);
+  vi.stubGlobal("fetch", teamsFetch({ calendar: { entries: [{ ...entry, date: today }] } }));
+
+  renderWithProviders(<TeamsPage />, "/teams");
+
+  expect(await screen.findByText("Today")).toBeVisible();
+  expect(screen.getByText("1 on leave")).toBeVisible();
+});
+
+test("shows an empty calendar and surfaces entry failures", async () => {
+  vi.stubGlobal("fetch", teamsFetch({ addEntryFails: true, calendar: { entries: [] } }));
+
+  renderWithProviders(<TeamsPage />, "/teams");
+
+  expect(await screen.findByText("No entries in the next two weeks.")).toBeVisible();
+  await userEvent.click(screen.getByRole("button", { name: "Add entry" }));
+  expect(await screen.findByText("Failed.")).toBeVisible();
+});
+
+test("surfaces a failure when adding a member is rejected", async () => {
+  vi.stubGlobal("fetch", teamsFetch({ addMemberFails: true }));
+
+  renderWithProviders(<TeamsPage />, "/teams");
+
+  await userEvent.type(await screen.findByLabelText("Add member"), "colleague");
+  await userEvent.click(await screen.findByRole("button", { name: /Colleague/ }));
+  expect(await screen.findByText("Failed.")).toBeVisible();
 });
 
 test("shows an empty state for users on no team", async () => {

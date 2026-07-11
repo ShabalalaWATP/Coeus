@@ -65,18 +65,39 @@
   pointer-events: none;
 }
 
-.splash-intro__logo {
+.splash-intro__logo-frame {
   position: relative;
   z-index: 1;
-  display: block;
+  overflow: hidden;
   width: clamp(150px, 16vw, 216px);
   height: clamp(150px, 16vw, 216px);
   border-radius: 50%;
   border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+  background: color-mix(in srgb, var(--surface) 70%, #060d16);
   box-shadow:
     0 0 44px rgb(56 189 248 / 26%),
     0 0 120px rgb(45 212 191 / 10%);
   animation: logo-float 6s ease-in-out infinite;
+}
+
+/* Feather the emblem's rim into the frame so the artwork blends with the
+   splash background instead of showing the source image's hard edge. */
+.splash-intro__logo-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: inset 0 0 26px 14px rgb(6 13 22 / 85%);
+  pointer-events: none;
+}
+
+.splash-intro__logo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* Scale past the source image's white margin and sit the emblem slightly
+     lower in the circle. */
+  transform: scale(1.16) translateY(3.5%);
 }
 
 @keyframes logo-float {
@@ -183,7 +204,7 @@
     width: min(100%, 480px);
   }
 
-  .splash-intro__logo {
+  .splash-intro__logo-frame {
     width: 128px;
     height: 128px;
   }

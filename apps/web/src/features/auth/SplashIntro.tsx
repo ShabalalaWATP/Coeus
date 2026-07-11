@@ -26,14 +26,16 @@ export function SplashIntro() {
     <section className="splash-intro" aria-label="About Istari">
       <ParticleField />
       <div className="splash-intro__logo-wrap">
-        <img
-          alt="Istari logo"
-          className="splash-intro__logo"
-          decoding="async"
-          height={148}
-          src="/istari-logo-256.png"
-          width={148}
-        />
+        <div className="splash-intro__logo-frame">
+          <img
+            alt="Istari logo"
+            className="splash-intro__logo"
+            decoding="async"
+            height={148}
+            src="/istari-logo-256.png"
+            width={148}
+          />
+        </div>
       </div>
       <h1 className="splash-intro__title">Istari</h1>
       <p className="splash-intro__tagline shiny-text">Task. Assess. Deliver.</p>

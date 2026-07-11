@@ -23,6 +23,34 @@ function isoDate(offsetDays: number) {
   return date.toISOString().slice(0, 10);
 }
 
+const DAY_LABEL = new Intl.DateTimeFormat("en-GB", {
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+});
+
+function dayLabel(date: string) {
+  return DAY_LABEL.format(new Date(`${date}T00:00:00Z`));
+}
+
+function groupByDate(entries: CalendarEntry[]): [string, CalendarEntry[]][] {
+  const groups = new Map<string, CalendarEntry[]>();
+  for (const entry of entries) {
+    groups.set(entry.date, [...(groups.get(entry.date) ?? []), entry]);
+  }
+  return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
+}
+
+function daySummary(entries: CalendarEntry[]) {
+  const counts = new Map<CalendarEntry["status"], number>();
+  for (const entry of entries) {
+    counts.set(entry.status, (counts.get(entry.status) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([status, count]) => `${count} ${STATUS_LABELS[status].toLowerCase()}`)
+    .join(", ");
+}
+
 type TeamCalendarPanelProps = {
   csrfToken: string;
   currentUserId: string;
@@ -78,28 +106,44 @@ export function TeamCalendarPanel({ csrfToken, currentUserId, team }: TeamCalend
     <section className="surface team-calendar" aria-label="Team calendar">
       <h2>Calendar (next two weeks)</h2>
       {calendarQuery.isError ? <p role="alert">The calendar could not be loaded.</p> : null}
-      <ul className="team-calendar__list">
-        {(calendarQuery.data?.entries ?? []).map((entry) => (
-          <li key={entry.id}>
-            <span>{entry.date}</span>
-            <strong>{memberName(entry.userId)}</strong>
-            <span className={`team-calendar__status team-calendar__status--${entry.status}`}>
-              {STATUS_LABELS[entry.status]}
-            </span>
-            {entry.note ? <small>{entry.note}</small> : null}
-            {canRemove(entry) ? (
-              <button
-                aria-label={`Remove entry for ${memberName(entry.userId)} on ${entry.date}`}
-                disabled={removeMutation.isPending}
-                onClick={() => removeMutation.mutate(entry.id)}
-                type="button"
-              >
-                <Trash2 aria-hidden="true" size={14} />
-              </button>
-            ) : null}
-          </li>
-        ))}
-      </ul>
+      {calendarQuery.isSuccess && calendarQuery.data.entries.length === 0 ? (
+        <p className="team-calendar__empty">No entries in the next two weeks.</p>
+      ) : null}
+      {groupByDate(calendarQuery.data?.entries ?? []).map(([date, entries]) => (
+        <div
+          className={`team-calendar__day${date === windowFrom ? " team-calendar__day--today" : ""}`}
+          key={date}
+        >
+          <header>
+            <h3>
+              {dayLabel(date)}
+              {date === windowFrom ? <span className="team-calendar__today">Today</span> : null}
+            </h3>
+            <small>{daySummary(entries)}</small>
+          </header>
+          <ul className="team-calendar__list">
+            {entries.map((entry) => (
+              <li key={entry.id}>
+                <strong>{memberName(entry.userId)}</strong>
+                <span className={`team-calendar__status team-calendar__status--${entry.status}`}>
+                  {STATUS_LABELS[entry.status]}
+                </span>
+                {entry.note ? <small>{entry.note}</small> : null}
+                {canRemove(entry) ? (
+                  <button
+                    aria-label={`Remove entry for ${memberName(entry.userId)} on ${entry.date}`}
+                    disabled={removeMutation.isPending}
+                    onClick={() => removeMutation.mutate(entry.id)}
+                    type="button"
+                  >
+                    <Trash2 aria-hidden="true" size={14} />
+                  </button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
       <form
         className="team-calendar__add"
         onSubmit={(event) => {
