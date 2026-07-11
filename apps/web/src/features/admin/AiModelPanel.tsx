@@ -3,16 +3,18 @@ import { BrainCircuit, Check, KeyRound, PlugZap, Save, ShieldAlert, Sparkles } f
 import { useState } from "react";
 
 import { AiModelGrid } from "./AiModelGrid";
+import { errorText, providerStatus, type ModelNote } from "./ai-model-panel-utils";
 import { ErrorState, LoadingState } from "../../components/ui/PageState";
 import {
+  addCustomAiModel,
   configureAiApiKey,
   getAiModelState,
+  refreshAiModels,
   selectAiModel,
   selectAiProvider,
   testAiConnection,
   type AiConnectionTest,
   type AiModelState,
-  type AiProviderState,
 } from "../../lib/api-client/admin";
 import { useActionError } from "../../lib/mutations/action-error";
 
@@ -20,19 +22,13 @@ type AiModelPanelProps = {
   csrfToken: string;
 };
 
-function providerStatus(entry: AiProviderState, liveProvider: string) {
-  if (entry.name === liveProvider) return { label: "Live", tone: "live" as const };
-  if (entry.name === "mock") return { label: "Local", tone: "local" as const };
-  if (entry.apiKeyConfigured) return { label: "Key set", tone: "ready" as const };
-  return { label: "No key", tone: "empty" as const };
-}
-
 export function AiModelPanel({ csrfToken }: AiModelPanelProps) {
   const queryClient = useQueryClient();
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState("");
   const [testResult, setTestResult] = useState<AiConnectionTest | null>(null);
+  const [modelNote, setModelNote] = useState<ModelNote | null>(null);
   const [confirmingActivation, setConfirmingActivation] = useState(false);
   const { actionError, clearActionError, failActionWith } = useActionError();
   const stateQuery = useQuery({ queryKey: ["ai-model"], queryFn: getAiModelState });
@@ -77,11 +73,43 @@ export function AiModelPanel({ csrfToken }: AiModelPanelProps) {
       applyState(next);
     },
   });
+  const refreshMutation = useMutation({
+    mutationFn: () => refreshAiModels(providerName, csrfToken),
+    onMutate: () => {
+      clearActionError();
+      setModelNote(null);
+    },
+    onError: (error) =>
+      setModelNote({ tone: "fail", text: errorText(error, "Could not refresh models.") }),
+    onSuccess: (next: AiModelState) => {
+      applyState(next);
+      const entry = next.providers.find((item) => item.name === providerName);
+      setModelNote({
+        tone: "ok",
+        text: `${entry?.models.length ?? 0} models available for ${entry?.label ?? providerName}.`,
+      });
+    },
+  });
+  const customMutation = useMutation({
+    mutationFn: (model: string) => addCustomAiModel(providerName, model, csrfToken),
+    onMutate: () => {
+      clearActionError();
+      setModelNote(null);
+    },
+    onError: (error) =>
+      setModelNote({ tone: "fail", text: errorText(error, "That model id could not be added.") }),
+    onSuccess: (next: AiModelState, model: string) => {
+      applyState(next);
+      setSelectedModel(null);
+      setModelNote({ tone: "ok", text: `Added ${model} and selected it.` });
+    },
+  });
   const pickProvider = (name: string) => {
     setSelectedProvider(name);
     setSelectedModel(null);
     setApiKey("");
     setTestResult(null);
+    setModelNote(null);
     setConfirmingActivation(false);
     clearActionError();
   };
@@ -97,7 +125,8 @@ export function AiModelPanel({ csrfToken }: AiModelPanelProps) {
           <h2 id="ai-model-title">AI provider and model</h2>
           <p>
             Gemini API is the primary provider; OpenAI, GCP Vertex AI and AWS Bedrock are optional
-            alternatives. Search embeddings are configured separately.
+            alternatives. Refresh the model list from a provider or add a new model id by hand to
+            stay current. Search embeddings are configured separately.
           </p>
         </div>
       </div>
@@ -208,11 +237,20 @@ export function AiModelPanel({ csrfToken }: AiModelPanelProps) {
                   </span>
                   <AiModelGrid
                     activeChoice={activeChoice}
+                    addingCustom={customMutation.isPending}
+                    onAddCustom={(model) => customMutation.mutate(model)}
                     onApply={() => modelMutation.mutate(activeChoice)}
                     onChoose={setSelectedModel}
+                    onRefresh={() => refreshMutation.mutate()}
                     pending={modelMutation.isPending}
                     provider={provider}
+                    refreshing={refreshMutation.isPending}
                   />
+                  {modelNote ? (
+                    <p className={`ai-model-note ai-model-note--${modelNote.tone}`} role="status">
+                      {modelNote.text}
+                    </p>
+                  ) : null}
                 </div>
               </>
             )}

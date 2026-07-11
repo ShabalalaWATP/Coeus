@@ -54,6 +54,15 @@ class AiProviderSelectRequest(BaseModel):
     provider: str = Field(min_length=3, max_length=40)
 
 
+class AiModelRefreshRequest(BaseModel):
+    provider: str = Field(min_length=3, max_length=40)
+
+
+class AiCustomModelRequest(BaseModel):
+    provider: str = Field(min_length=3, max_length=40)
+    model: str = Field(min_length=2, max_length=80, pattern=r"^[A-Za-z0-9._:\-/]+$")
+
+
 class AiModelApiKeyRequest(BaseModel):
     api_key: str = Field(min_length=10, max_length=4096, validation_alias="apiKey")
     provider: str = Field(default="gemini_api", min_length=3, max_length=40)

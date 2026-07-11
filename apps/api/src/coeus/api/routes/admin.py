@@ -19,7 +19,9 @@ from coeus.domain.registration import RegistrationRequest
 from coeus.schemas.registration import (
     AiConnectionTestRequest,
     AiConnectionTestResponse,
+    AiCustomModelRequest,
     AiModelApiKeyRequest,
+    AiModelRefreshRequest,
     AiModelSelectRequest,
     AiModelStateResponse,
     AiProviderSelectRequest,
@@ -78,6 +80,43 @@ async def select_ai_model(
             authenticated.user.username,
             payload.model,
             payload.provider,
+        )
+    )
+
+
+@router.post("/ai-model/refresh", response_model=AiModelStateResponse)
+async def refresh_ai_models(
+    payload: AiModelRefreshRequest,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    permitted: Annotated[
+        AuthenticatedSession,
+        Depends(require_permission(Permission.SYSTEM_CONFIGURE)),
+    ],
+    ai_models: Annotated[AiModelService, Depends(get_ai_model_service)],
+) -> AiModelStateResponse:
+    return _ai_model_response(
+        ai_models.refresh_models(
+            str(authenticated.user.user_id), authenticated.user.username, payload.provider
+        )
+    )
+
+
+@router.post("/ai-model/custom-model", response_model=AiModelStateResponse)
+async def add_custom_ai_model(
+    payload: AiCustomModelRequest,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    permitted: Annotated[
+        AuthenticatedSession,
+        Depends(require_permission(Permission.SYSTEM_CONFIGURE)),
+    ],
+    ai_models: Annotated[AiModelService, Depends(get_ai_model_service)],
+) -> AiModelStateResponse:
+    return _ai_model_response(
+        ai_models.add_custom_model(
+            str(authenticated.user.user_id),
+            authenticated.user.username,
+            payload.provider,
+            payload.model,
         )
     )
 
