@@ -27,7 +27,7 @@ export function AnalystTaskContext({ task }: { task: AnalystTask }) {
         </div>
         <div>
           <dt>Priority</dt>
-          <dd>{task.priority ?? "Not set"}</dd>
+          <dd className="analyst-context__capitalise">{task.priority ?? "Not set"}</dd>
         </div>
       </dl>
       <h3>Tasking question</h3>
