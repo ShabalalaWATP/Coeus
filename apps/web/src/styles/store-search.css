@@ -29,3 +29,63 @@
   font-weight: 700;
   color: color-mix(in srgb, var(--warning) 85%, var(--text));
 }
+
+/* ---- Store identity: the store reads as its own controlled space ---- */
+
+.store-page {
+  --store-gold: #d9a13c;
+}
+
+.store-hero {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--store-gold) 26%, var(--border));
+  border-radius: var(--radius-md);
+  padding: 22px 26px;
+  background:
+    linear-gradient(
+      120deg,
+      color-mix(in srgb, var(--store-gold) 10%, transparent),
+      transparent 45%
+    ),
+    linear-gradient(300deg, color-mix(in srgb, var(--accent) 7%, transparent), transparent 50%);
+}
+
+/* Faint plotting grid, fading out towards the action side. */
+.store-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--store-gold) 8%, transparent) 1px, transparent 1px),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--store-gold) 8%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 26px 26px;
+  mask-image: radial-gradient(460px circle at 12% 0%, black, transparent 72%);
+  pointer-events: none;
+}
+
+.store-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.store-result-spot {
+  border-radius: var(--radius-md);
+}
+
+.store-result-spot .store-result:hover {
+  border-color: color-mix(in srgb, var(--store-gold) 45%, var(--border));
+  transform: translateY(-1px);
+}
+
+.store-search-first svg {
+  border-radius: 999px;
+  color: var(--store-gold);
+  box-shadow:
+    0 0 0 12px color-mix(in srgb, var(--store-gold) 8%, transparent),
+    0 0 36px color-mix(in srgb, var(--store-gold) 16%, transparent);
+}

@@ -8,6 +8,7 @@ import { StoreMatchReasons } from "./StoreMatchReasons";
 import { ProductTypeIcon } from "./ProductTypeIcon";
 import { StoreSearchFiltersPanel, type StoreFilterDraft } from "./StoreSearchFiltersPanel";
 import { productTypeLabel } from "./store-options";
+import { SpotlightCard } from "../../components/effects/SpotlightCard";
 import { EmptyState, ErrorState } from "../../components/ui/PageState";
 import { searchStoreProducts, type StoreSearchFilters } from "../../lib/api-client/store";
 import { useAuth } from "../../lib/auth/auth-context";
@@ -131,7 +132,7 @@ export default function StorePage({
 
   return (
     <div className="store-page">
-      <section className="overview-hero" aria-labelledby="store-title">
+      <section className="overview-hero store-hero" aria-labelledby="store-title">
         <div>
           <h1 id="store-title">
             {title ?? (scope === "mine" ? "My Products" : "Intelligence Store")}
@@ -229,53 +230,56 @@ export default function StorePage({
             ) : (
               <div className="store-result-list">
                 {visibleProducts.map((product) => (
-                  <Link
-                    className="store-result"
-                    key={product.id}
-                    state={{ from: location.pathname }}
-                    to={`/store/products/${encodeURIComponent(product.id)}`}
-                  >
-                    <div>
-                      <div className="store-result__title">
-                        <span className="store-result__format" aria-hidden="true">
-                          <ProductTypeIcon productType={product.productType} />
-                        </span>
-                        <div>
-                          <span className="mono-ref">{product.reference}</span>
-                          <strong>{product.title}</strong>
+                  <SpotlightCard className="store-result-spot" key={product.id}>
+                    <Link
+                      className="store-result"
+                      state={{ from: location.pathname }}
+                      to={`/store/products/${encodeURIComponent(product.id)}`}
+                    >
+                      <div>
+                        <div className="store-result__title">
+                          <span className="store-result__format" aria-hidden="true">
+                            <ProductTypeIcon productType={product.productType} />
+                          </span>
+                          <div>
+                            <span className="mono-ref">{product.reference}</span>
+                            <strong>{product.title}</strong>
+                          </div>
+                        </div>
+                        <p>{product.summary}</p>
+                        <StoreMatchReasons
+                          reasons={product.matchReasons}
+                          show={Boolean(submittedFilters.query)}
+                        />
+                        <div className="store-facets">
+                          <span className="store-chip">
+                            {productTypeLabel(product.productType)}
+                          </span>
+                          <span className="store-chip">Class {product.classificationLevel}</span>
+                          {product.timePeriodStart ? (
+                            <span className="store-chip">
+                              {product.timePeriodStart} to {product.timePeriodEnd ?? "ongoing"}
+                            </span>
+                          ) : null}
+                          {product.tags.slice(0, 4).map((tag) => (
+                            <span className="store-chip store-chip--tag" key={tag}>
+                              {tag}
+                            </span>
+                          ))}
                         </div>
                       </div>
-                      <p>{product.summary}</p>
-                      <StoreMatchReasons
-                        reasons={product.matchReasons}
-                        show={Boolean(submittedFilters.query)}
-                      />
-                      <div className="store-facets">
-                        <span className="store-chip">{productTypeLabel(product.productType)}</span>
-                        <span className="store-chip">Class {product.classificationLevel}</span>
-                        {product.timePeriodStart ? (
-                          <span className="store-chip">
-                            {product.timePeriodStart} to {product.timePeriodEnd ?? "ongoing"}
-                          </span>
-                        ) : null}
-                        {product.tags.slice(0, 4).map((tag) => (
-                          <span className="store-chip store-chip--tag" key={tag}>
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    <dl>
-                      <div>
-                        <dt>Owner</dt>
-                        <dd>{product.ownerTeam}</dd>
-                      </div>
-                      <div>
-                        <dt>Region</dt>
-                        <dd>{product.areaOrRegion}</dd>
-                      </div>
-                    </dl>
-                  </Link>
+                      <dl>
+                        <div>
+                          <dt>Owner</dt>
+                          <dd>{product.ownerTeam}</dd>
+                        </div>
+                        <div>
+                          <dt>Region</dt>
+                          <dd>{product.areaOrRegion}</dd>
+                        </div>
+                      </dl>
+                    </Link>
+                  </SpotlightCard>
                 ))}
                 {visibleProducts.length === 0 ? (
                   <EmptyState
