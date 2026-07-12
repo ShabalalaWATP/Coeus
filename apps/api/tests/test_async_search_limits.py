@@ -1,6 +1,7 @@
 import asyncio
 from dataclasses import replace
-from time import sleep
+from threading import Event, Timer
+from time import monotonic
 from typing import cast
 from uuid import uuid4
 
@@ -24,26 +25,37 @@ _VECTOR = (1.0, *(0.0 for _ in range(EMBEDDING_DIMENSIONS - 1)))
 async def test_delayed_store_embedding_does_not_stall_event_loop() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     embeddings = app.state.store_services.search._embeddings
+    started = Event()
+    release = Event()
 
     def delayed_embed(_text: str, *, purpose: str) -> None:
         assert purpose == "store-browse-query"
-        sleep(0.4)
+        started.set()
+        release.wait(timeout=2)
         return None
 
     embeddings.embed = delayed_embed
+    safety_release = Timer(2, release.set)
+    safety_release.start()
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
         await login(client, "user@example.test")
         request = asyncio.create_task(client.get("/api/v1/store/products?query=regional"))
-        loop = asyncio.get_running_loop()
-        started = loop.time()
-        await asyncio.sleep(0.02)
-        heartbeat_elapsed = loop.time() - started
+        wait_started_at = monotonic()
+        started_in_time = await asyncio.to_thread(started.wait, 1)
+        start_signal_elapsed = monotonic() - wait_started_at
+        try:
+            liveness = await asyncio.wait_for(client.get("/api/v1/health/live"), timeout=1)
+        finally:
+            release.set()
+            safety_release.cancel()
         response = await request
 
+    assert started_in_time
+    assert start_signal_elapsed < 1
+    assert liveness.status_code == 200
     assert response.status_code == 200
-    assert heartbeat_elapsed < 0.2
 
 
 def test_memory_vector_provider_calls_are_capped_and_cached_across_corpus() -> None:
