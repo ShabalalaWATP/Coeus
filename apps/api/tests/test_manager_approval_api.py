@@ -1,11 +1,16 @@
+from datetime import UTC, datetime
+from types import SimpleNamespace
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from coeus.core.config import Settings
+from coeus.core.errors import AppError
+from coeus.domain.enums import TicketState
+from coeus.domain.tickets import AnalystAssignment, RoutingRoute
 from coeus.main import create_app
 from rfi_search_helpers import login
 from routing_helpers import analyst_assignment_ticket, assignment_team_id
@@ -244,6 +249,42 @@ async def test_assignment_rejects_duplicates_and_fresh_double_assignment() -> No
         # assignments exist for the approved route.
         empty = await _assign(client, second_ticket, [])
         assert empty.status_code == 422
+
+
+def test_manager_approval_enforces_assignment_and_transition_edges(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = _app()
+    service = app.state.manager_approval_service
+    manager = app.state.access_services.repository.get_user_by_username("rfa.manager@example.test")
+    assert manager is not None
+
+    with pytest.raises(AppError, match="A rework reason is required"):
+        service.return_for_rework(manager, uuid4(), "x")
+
+    def assignment(team_id: UUID) -> AnalystAssignment:
+        return AnalystAssignment(
+            assignment_id=uuid4(),
+            ticket_id=uuid4(),
+            analyst_user_id=uuid4(),
+            assigned_by_user_id=manager.user_id,
+            route=RoutingRoute.RFA,
+            created_at=datetime.now(UTC),
+            team_id=team_id,
+        )
+
+    conflicting = SimpleNamespace(analyst_assignments=(assignment(uuid4()), assignment(uuid4())))
+    with pytest.raises(AppError, match="Assignment has conflicting teams"):
+        service._ensure_assignment_team(conflicting, RoutingRoute.RFA)
+
+    stale = SimpleNamespace(analyst_assignments=(assignment(uuid4()),))
+    with pytest.raises(AppError, match="Assignment team is no longer valid"):
+        service._ensure_assignment_team(stale, RoutingRoute.RFA)
+
+    monkeypatch.setattr(service, "_teams", None)
+    service._ensure_assignment_team(stale, RoutingRoute.RFA)
+    with pytest.raises(AppError, match="Ticket cannot move to that state"):
+        service._ensure_transition(TicketState.CANCELLED, TicketState.QC_REVIEW)
 
 
 def _make_latest_drafter(app: FastAPI, ticket_id: str, user_id: UUID) -> None:

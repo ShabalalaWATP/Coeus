@@ -282,7 +282,8 @@ Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVEL
   coordinated reset, PostgreSQL exposure, migrations and the documented GCP
   and Kubernetes migration gates. Missing user-uploaded bytes are never
   replaced by synthetic placeholders on restart.
-- Verification passed with 669 backend tests at 97.32 percent coverage and 400
-  frontend tests at 98.60 percent line and 95.07 percent branch coverage, plus
+- Verification passed with 674 backend tests at 98.21 percent line and 95.10
+  percent branch coverage, and 400 frontend tests at 98.60 percent line and
+  95.07 percent branch coverage, plus
   formatting, lint, type, dead-code, contract, build, dependency-audit,
   security-policy and line-limit gates.
