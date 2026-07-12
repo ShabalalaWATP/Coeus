@@ -5,6 +5,13 @@ fixed set of permissions, and every account lands on a default workspace at sign
 in. Permissions are enforced on the server at the object and action level, not
 just in the UI, so hiding a control is a convenience, never the security boundary.
 
+Every active account can open `/access-groups` to browse active ACGs, apply for
+membership with a justification, withdraw a pending application and track its
+status. ACG administration is a delegated responsibility rather than a role:
+up to eight active users from any role or team may administer one ACG.
+Administration permits reviewing other users' applications but does not itself
+grant membership or access to protected product content.
+
 - Role definitions: `apps/api/src/coeus/domain/rbac.py`
 - Permission catalogue: `apps/api/src/coeus/core/permissions.py`
 - Access control groups (need-to-know): [ACGs](#access-control-groups-acgs)
@@ -53,21 +60,26 @@ audit log and global analytics.
 - Search the Intelligence Store and download products they are entitled to.
 - Submit feedback and view their own analytics.
 - Cannot see other customers' requests, route tickets, or produce products.
+- Apply for active ACGs and track or withdraw pending applications.
 
 ### JIOC Team Member
 
 - Review progressed requests with the capability recommendation beside them.
 - Decide whether collection is required: yes routes to the CM team, no routes
   to the RFA team; may query the requester instead.
-- Views team analytics. Does not assign analysts or touch products.
+- Use JIOC Oversight to monitor workflow-state totals, route totals, active area
+  teams, analyst capacity and bounded task ownership across the whole process.
+- Does not assign analysts, edit analyst work or access protected products.
 
 ### RFA Manager / CM Manager
 
-- Lead their team: assign one to five analysts and define work packages.
+- Lead their area: select any active team in RFA or CM respectively, then assign
+  one to five active analysts from that selected team and define work packages.
 - Approve or return analyst work before it reaches Quality Control.
 - Manage the team roster and calendar, and view team analytics.
 - Do not release products: Quality Control performs the final release.
-- A manager only sees and acts on their own team's queue.
+- A manager sees and acts across their route area; the selected team remains the
+  authoritative owner for candidate membership and availability.
 
 ### RFA / CM Team Member
 
@@ -165,6 +177,17 @@ audit log and global analytics.
   the change is accountable.
 - As an administrator, I want realistic need-to-know groups so that product
   visibility reflects how teams are actually organised.
+- As an administrator, I want to delegate each ACG to up to eight active users
+  from any role so access decisions sit with appropriate subject experts.
+
+### Delegated ACG administrator
+
+- As an ACG administrator, I want to review justified applications only for my
+  groups so I can make bounded need-to-know decisions.
+- As an ACG administrator, I want administration to remain separate from my own
+  membership so governance authority does not silently grant content access.
+- As an ACG administrator, I must not decide my own application so another
+  authorised person always confirms my access.
 
 ### Intelligence Store Manager
 
@@ -192,6 +215,8 @@ rules). Istari seeds 43 groups:
   crossed with five disciplines (Cyber, HUMINT, SIGINT, GEOINT, OSINT), for
   example "European Cyber" (`ACG-EU-CYBER`) or "Maritime GEOINT".
 
-Administrators manage groups and membership from the ACGs workspace. See the
-[User Guide](USER_GUIDE.md#administrator) for the screen and
+Every user can request membership from the Access Groups workspace. Delegated
+ACG administrators decide applications for their groups, while platform
+administrators manage group definitions and delegated administrator rosters.
+See the [User Guide](USER_GUIDE.md#access-groups) for the workflow and
 `apps/api/src/coeus/repositories/access.py` for the seed data.

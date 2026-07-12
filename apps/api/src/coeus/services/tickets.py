@@ -34,7 +34,7 @@ from coeus.services.ticket_persistence import (
     save_ticket,
     save_ticket_if_current,
 )
-from coeus.services.ticket_records import is_collaborator, is_editor, is_owner, timeline
+from coeus.services.ticket_records import can_read, is_collaborator, is_editor, is_owner, timeline
 
 if TYPE_CHECKING:
     from coeus.services.ticket_conversations import ConversationService
@@ -99,7 +99,7 @@ class TicketService:
 
     def get_visible_ticket(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         ticket = self._repository.get(ticket_id)
-        if ticket is None or not self._can_read(actor, ticket):
+        if ticket is None or not can_read(actor, ticket):
             raise AppError(404, "ticket_not_found", "Ticket was not found.")
         return ticket
 
@@ -132,13 +132,22 @@ class TicketService:
     ) -> TicketRecord:
         ticket = self.get_editable_ticket(actor, ticket_id)
         intake = self._completeness.with_completeness(merge_intake(ticket.intake, updates))
+        resumed_routing = (
+            ticket.state == TicketState.INFO_REQUIRED
+            and bool(ticket.route_recommendations)
+            and self._completeness.is_complete_enough(intake)
+        )
         entry = timeline(ticket.ticket_id, actor.user_id, "intake_updated", "Intake updated.")
         updated = self._save_audited(
             with_assessment(
                 replace(
                     ticket,
                     intake=intake,
-                    state=self.state_for_intake(ticket.state, intake),
+                    state=(
+                        TicketState.JIOC_REVIEW
+                        if resumed_routing
+                        else self.state_for_intake(ticket.state, intake)
+                    ),
                     timeline=(*ticket.timeline, entry),
                 )
             ),
@@ -337,11 +346,4 @@ class TicketService:
     ) -> TicketRecord:
         return save_audited_ticket(
             self._repository, self._audit_log, ticket, event_type, actor, metadata
-        )
-
-    def _can_read(self, actor: UserAccount, ticket: TicketRecord) -> bool:
-        return (
-            is_owner(actor, ticket)
-            or is_collaborator(actor, ticket)
-            or Permission.TICKET_READ_ALL in actor.permissions
         )

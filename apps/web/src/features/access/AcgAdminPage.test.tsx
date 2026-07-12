@@ -30,6 +30,7 @@ const acg = {
   ownerUserId: null,
   isActive: true,
   memberUserIds: ["user-alpha"],
+  members: [{ id: "user-alpha", displayName: "Alpha Analyst", username: "alpha@example.test" }],
 };
 
 beforeEach(() => {
@@ -93,26 +94,36 @@ test("renders access control groups and allows creating a group", async () => {
 });
 
 test("updates selected access control group membership", async () => {
-  const fetchMock = vi
-    .fn()
-    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ acgs: [acg] }) })
-    .mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({ ...acg, memberUserIds: ["user-alpha", "user-bravo"] }),
-    })
-    .mockResolvedValueOnce({
+  const fetchMock = vi.fn((url: string, init?: RequestInit) =>
+    Promise.resolve({
       ok: true,
       json: () =>
-        Promise.resolve({
-          acgs: [{ ...acg, memberUserIds: ["user-alpha", "user-bravo"] }],
-        }),
-    });
+        Promise.resolve(
+          url.includes("/admin-directory")
+            ? {
+                users: [
+                  {
+                    id: "user-bravo",
+                    username: "bravo@example.test",
+                    displayName: "Bravo User",
+                  },
+                ],
+              }
+            : init?.method === "POST"
+              ? { ...acg, memberUserIds: ["user-alpha", "user-bravo"] }
+              : { acgs: [acg] },
+        ),
+    }),
+  );
   vi.stubGlobal("fetch", fetchMock);
 
   renderWithProviders(<AcgAdminPage />, "/admin/acgs");
 
   expect(await screen.findByRole("heading", { name: "Alpha Regional" })).toBeVisible();
-  await userEvent.type(screen.getByLabelText("User ID"), "user-bravo");
+  await userEvent.type(screen.getByLabelText("Search active users"), "Bravo");
+  await userEvent.click(
+    await screen.findByRole("button", { name: "Bravo User (bravo@example.test)" }),
+  );
   await userEvent.click(screen.getByRole("button", { name: /Add member/i }));
 
   await waitFor(() =>
@@ -125,6 +136,19 @@ test("updates selected access control group membership", async () => {
       }),
     ),
   );
+});
+
+test("shows scoped member identities before any directory search", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ acgs: [acg] }),
+    }),
+  );
+  renderWithProviders(<AcgAdminPage />, "/admin/acgs");
+  expect(await screen.findByText("Alpha Analyst")).toBeVisible();
+  expect(screen.getByText("alpha@example.test")).toBeVisible();
 });
 
 test("hides mutation forms from view-only access", async () => {
@@ -151,7 +175,7 @@ test("hides mutation forms from view-only access", async () => {
   expect(
     screen.queryByRole("form", { name: "Create access control group" }),
   ).not.toBeInTheDocument();
-  expect(screen.queryByLabelText("User ID")).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Search active users")).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /Save/i })).not.toBeInTheDocument();
 });
 

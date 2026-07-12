@@ -44,7 +44,7 @@ test("assigns analysts from the manager team queue and clears the ticket", async
   await userEvent.click(await screen.findByRole("button", { name: /TCK-0001/ }));
   await userEvent.click(await screen.findByRole("checkbox", { name: "Intelligence Analyst" }));
   await userEvent.click(screen.getByRole("checkbox", { name: "Geospatial Assessment Analyst" }));
-  expect(screen.getByLabelText("Team")).toHaveValue("Maritime Assessment Cell");
+  expect(screen.getByLabelText("Team")).toHaveValue("RFA-MARITIME");
   await userEvent.click(screen.getByRole("button", { name: "Assign analysts" }));
 
   expect(await screen.findByText("No tickets in this queue.")).toBeVisible();
@@ -55,7 +55,7 @@ test("assigns analysts from the manager team queue and clears the ticket", async
     expect.objectContaining({
       body: JSON.stringify({
         analystUserIds: ["analyst-1", "analyst-2"],
-        teamName: "Maritime Assessment Cell",
+        teamId: "RFA-MARITIME",
         workPackages: [],
       }),
       method: "POST",
@@ -148,4 +148,22 @@ test("offers analyst assignment without a team suggestion in the collection queu
   expect(await screen.findByRole("heading", { name: "Collection Queue" })).toBeVisible();
   // The CM review offered no collection team, so the suggestion stays empty.
   expect(await screen.findByLabelText("Team")).toHaveValue("");
+});
+
+test("renders a readable routed-team status message", async () => {
+  const routedTicket: RoutingTicket = { ...reviewedTicket, state: "ANALYST_ASSIGNMENT" };
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(jsonResponse(queueWith([routedTicket])))
+    .mockResolvedValue(jsonResponse({ analysts: [] }));
+  stubRoutingFetch(fetchMock);
+
+  renderWithProviders(<RoutingQueuePage queue="rfa" />, "/rfa/queue");
+
+  await userEvent.click(await screen.findByRole("button", { name: /TCK-0001/ }));
+  expect(
+    screen.getByText(
+      "This request is already routed to the RFA team. The recommendations below are retained as decision context.",
+    ),
+  ).toBeVisible();
 });

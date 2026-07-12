@@ -11,6 +11,7 @@ from coeus.core.config import Settings
 from coeus.domain.tickets import ProductDissemination, TicketRecord
 from coeus.main import create_app
 from rfi_search_helpers import login, submitted_ticket
+from routing_helpers import assignment_team_id
 
 
 @pytest.mark.asyncio
@@ -181,10 +182,11 @@ async def _approved_feedback_request(client: AsyncClient, app: FastAPI, acg_id: 
     analyst_user = app.state.access_services.repository.get_user_by_username("analyst@example.test")
     assert analyst_user is not None
     manager = await login(client, "rfa.manager@example.test")
+    team_id = await assignment_team_id(client)
     assigned = await client.post(
         f"/api/v1/analyst/tasks/{ticket_id}/assign",
         headers={"X-CSRF-Token": str(manager["csrfToken"])},
-        json={"analystUserIds": [str(analyst_user.user_id)]},
+        json={"analystUserIds": [str(analyst_user.user_id)], "teamId": team_id},
     )
     analyst = await login(client, "analyst@example.test")
     task = await client.post(

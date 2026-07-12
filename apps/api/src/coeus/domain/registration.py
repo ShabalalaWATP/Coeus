@@ -16,7 +16,7 @@ class RegistrationRequest:
     username: str
     display_name: str
     justification: str
-    password_hash: str
+    password_hash: str | None
     status: RegistrationStatus
     created_at: datetime
     decided_at: datetime | None

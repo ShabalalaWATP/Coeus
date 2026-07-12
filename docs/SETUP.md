@@ -8,20 +8,31 @@ directory for now.
 
 ## Prerequisites
 
-| Tool                             | Version        | Purpose                                      |
-| -------------------------------- | -------------- | -------------------------------------------- |
-| Python                           | 3.12+          | Backend runtime                              |
-| [uv](https://docs.astral.sh/uv/) | latest         | Python dependency and venv manager           |
-| Node.js                          | 22+            | Frontend runtime                             |
-| pnpm                             | via `corepack` | Frontend package manager                     |
-| Docker Desktop                   | latest         | Local PostgreSQL and optional full app stack |
+| Tool                             | Version | Purpose                                      |
+| -------------------------------- | ------- | -------------------------------------------- |
+| Python                           | 3.12+   | Backend runtime                              |
+| [uv](https://docs.astral.sh/uv/) | latest  | Python dependency and venv manager           |
+| Node.js                          | 22.12+  | Frontend runtime required by locked Vite 7   |
+| pnpm                             | 11.11.0 | Frontend package manager                     |
+| Docker Desktop                   | latest  | Local PostgreSQL and optional full app stack |
 
-Enable pnpm through Corepack (it ships with Node) rather than installing it
-globally:
+When Corepack is available, enable the repository-pinned pnpm version:
 
 ```bash
 corepack enable
+corepack prepare pnpm@11.11.0 --activate
 ```
+
+Some newer Node distributions do not bundle Corepack. In that case, install the
+exact pinned pnpm version from npm, then verify both tools:
+
+```bash
+npm install --global --ignore-scripts pnpm@11.11.0
+node --version
+pnpm --version
+```
+
+Node must report `v22.12.0` or newer and pnpm must report `11.11.0`.
 
 ## Install dependencies
 
@@ -95,11 +106,12 @@ This exposes:
 
 - API: <http://localhost:8000/api/v1/health/live>
 - Web: <http://localhost:5173>
-- PostgreSQL: `localhost:5432`
+- PostgreSQL: `127.0.0.1:5432`
 - MinIO console: <http://localhost:9001>
 
 Current uploads use the app's local object-storage adapter rather than MinIO.
 MinIO remains in the stack as future object-storage parity scaffolding.
+Compose waits for the API readiness endpoint before starting the web service.
 
 ## Seed accounts
 
@@ -143,9 +155,31 @@ as deterministic seed code, so a `git pull` brings it with the repository and
 it repopulates any fresh database automatically. It is auto-on for
 `environment=local` only; override with `COEUS_SEED_DEMO_CONTENT=true|false`.
 The catalogue refreshes on restart even on an existing database; demo tickets
-and calendars seed only on a fresh dataset (clear `.local-data/` or drop the
-`coeus_state` rows to reseed those). See
+and calendars seed only on a fresh dataset. See
 [Local Demo Dataset](specs/local-demo-dataset.md).
+
+### Reset local synthetic data safely
+
+PostgreSQL metadata and object bytes form one consistency unit. Never delete
+`.local-data/objects`, the Docker object volume or selected `coeus_state` rows
+on their own. Missing bytes for persisted products can otherwise be replaced by
+synthetic placeholders on restart.
+
+Stop the local-process API first, then choose the mode you actually use. Both
+commands require the explicit destructive confirmation flag and remove the
+PostgreSQL volume and matching object storage together:
+
+```powershell
+# PostgreSQL in Docker, API/web as host processes
+pwsh ./scripts/reset-local.ps1 -Mode LocalProcesses -ConfirmReset
+
+# Entire app in Docker Compose
+pwsh ./scripts/reset-local.ps1 -Mode FullDocker -ConfirmReset
+```
+
+Restart through the normal setup command. The deterministic seed users and demo
+dataset will be recreated. These reset commands are for synthetic local data
+only, not backup or production recovery.
 
 To exercise the full workflow, sign in as the customer to raise a request, then
 sign in as the JIOC team member to route it, and as the team manager, analyst

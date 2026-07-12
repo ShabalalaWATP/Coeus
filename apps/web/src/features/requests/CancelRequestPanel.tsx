@@ -3,7 +3,7 @@ import { useState } from "react";
 
 type CancelRequestPanelProps = {
   isCancelling: boolean;
-  onCancel: (reason: string) => void;
+  onCancel: (reason: string, onSuccess?: () => void) => void;
 };
 
 export function CancelRequestPanel({ isCancelling, onCancel }: CancelRequestPanelProps) {
@@ -15,8 +15,7 @@ export function CancelRequestPanel({ isCancelling, onCancel }: CancelRequestPane
     if (trimmedReason.length < 3) {
       return;
     }
-    onCancel(trimmedReason);
-    setReason("");
+    onCancel(trimmedReason, () => setReason(""));
   }
 
   return (

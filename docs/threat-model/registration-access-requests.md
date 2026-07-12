@@ -30,6 +30,9 @@ administrator review endpoints under `/api/v1/admin/registrations`.
   instead of overwriting the account entry.
 - Auditability: submission, throttling, duplicates, approval and rejection
   all raise audit events; decision events record the acting administrator.
+- Once a request is approved or rejected, its password verifier is removed
+  from registration persistence. Approved accounts retain only their account
+  verifier; rejected requests retain no reusable credential material.
 
 ## Residual risks
 

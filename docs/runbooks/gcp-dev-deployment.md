@@ -28,8 +28,9 @@ All of these conditions must be resolved before the reference can be enabled:
 5. Terraform does not currently inject the required hosted asset-token secret.
 6. The web API origin is compiled into the Vite bundle. The old bootstrap command
    used `https://bootstrap.invalid`, which cannot produce a working UI.
-7. A full apply is stopped by `migration_adapters_ready=false`. Targeted applies
-   can bypass the dependency for resource-shell modules, so they are prohibited.
+7. Full and targeted plans are stopped by `migration_adapters_ready=false`.
+   A regression test protects the root dependency, and targeted applies remain
+   prohibited as an incomplete review surface.
 8. There is no reviewed migration job that can reach Cloud SQL and run Alembic.
 
 ## Values required after readiness approval
@@ -63,8 +64,8 @@ Before changing the readiness flag:
   `alembic upgrade head`;
 - add database/object backup, restore tests, retained audit export, monitoring,
   alerts and rollback;
-- make every cloud-creating Terraform module depend on the readiness gate so
-  `-target` cannot bypass it;
+- retain the root readiness-gate dependency and its targeted-plan regression
+  test so future Terraform changes cannot introduce a `-target` bypass;
 - independently review the threat model and Terraform plan.
 
 ## Migration order after every gate passes

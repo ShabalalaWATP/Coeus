@@ -73,9 +73,9 @@ class TeamWorkspaceService:
         if len(team_member_ids(team)) >= MAX_TEAM_MEMBERS:
             raise AppError(409, "team_full", "The team has reached its member limit.")
         updated = replace(team, member_user_ids=(*team.member_user_ids, user_id))
+        # Profiles are synthesised on read when absent. Avoid a second
+        # persistence transaction after membership has already been audited.
         self._save_team_with_audit(actor, team, updated, "team_member_added", user_id)
-        if self._teams.get_profile(user_id) is None:
-            self._teams.save_profile(UserProfile(user_id=user_id, title=user.display_name))
         return updated
 
     def remove_member(self, actor: UserAccount, team_id: UUID, user_id: UUID) -> OrgTeam:

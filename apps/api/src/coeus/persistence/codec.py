@@ -11,6 +11,8 @@ from coeus.domain.access import (
     AccessControlGroup,
     AccessControlGroupMembership,
     AccessDecision,
+    AcgAccessApplication,
+    AcgApplicationStatus,
     ProductRecord,
     ProductStatus,
 )
@@ -71,6 +73,7 @@ from coeus.domain.tickets import (
 )
 
 _ALLOWED_TYPES = (
+    AcgAccessApplication,
     AccessCheck,
     AccessControlGroup,
     AccessControlGroupMembership,
@@ -120,6 +123,7 @@ _ALLOWED_TYPES = (
 )
 
 _ALLOWED_ENUMS = (
+    AcgApplicationStatus,
     AgentRunStatus,
     CalendarStatus,
     CollaboratorAccess,

@@ -4,6 +4,7 @@ from httpx import ASGITransport, AsyncClient
 from coeus.core.config import Settings
 from coeus.main import create_app
 from rfi_search_helpers import login
+from routing_helpers import assignment_team_id
 from test_analyst_api import _approved_ticket, _assigned_ticket, _draft_payload
 
 
@@ -22,10 +23,11 @@ async def test_manager_can_reassign_in_progress_ticket_to_another_analyst() -> N
         before = await client.get(f"/api/v1/analyst/tasks/{ticket_id}")
         assert analyst["user"]["username"] == "analyst@example.test"
         manager = await login(client, "rfa.manager@example.test")
+        team_id = await assignment_team_id(client)
         reassigned = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/assign",
             headers={"X-CSRF-Token": str(manager["csrfToken"])},
-            json={"analystUserIds": [str(replacement.user_id)]},
+            json={"analystUserIds": [str(replacement.user_id)], "teamId": team_id},
         )
         new_analyst = await login(client, "analyst.maritime@example.test")
         tasks = await client.get("/api/v1/analyst/tasks")
@@ -56,10 +58,11 @@ async def test_reassignment_is_blocked_before_first_assignment_completes() -> No
     ) as client:
         ticket_id = await _approved_ticket(client)
         manager = await login(client, "rfa.manager@example.test")
+        team_id = await assignment_team_id(client)
         assigned = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/assign",
             headers={"X-CSRF-Token": str(manager["csrfToken"])},
-            json={"analystUserIds": [str(analyst_user.user_id)]},
+            json={"analystUserIds": [str(analyst_user.user_id)], "teamId": team_id},
         )
         analyst = await login(client, "analyst@example.test")
         draft = await client.post(
@@ -81,7 +84,7 @@ async def test_reassignment_is_blocked_before_first_assignment_completes() -> No
         after_qc = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/assign",
             headers={"X-CSRF-Token": str(manager["csrfToken"])},
-            json={"analystUserIds": [str(analyst_user.user_id)]},
+            json={"analystUserIds": [str(analyst_user.user_id)], "teamId": team_id},
         )
 
     assert assigned.status_code == 200

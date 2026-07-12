@@ -1,13 +1,14 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { UserCheck } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   assignAnalystTask,
+  getAssignmentTeamAvailability,
   listAnalystCandidates,
+  listAssignmentTeams,
   type AnalystTask,
 } from "../../lib/api-client/analyst";
-import { listTeams, teamAvailability } from "../../lib/api-client/teams";
 import type { RoutingRoute } from "../../lib/api-client/routing";
 
 const MAX_ANALYSTS = 5;
@@ -28,33 +29,34 @@ export function AssignAnalystPanel({
   ticketId,
 }: AssignAnalystPanelProps) {
   const [analystUserIds, setAnalystUserIds] = useState<string[]>([]);
-  const [teamName, setTeamName] = useState(suggestedTeamName ?? "");
+  const [teamId, setTeamId] = useState("");
   const [workPackages, setWorkPackages] = useState("");
-  const candidatesQuery = useQuery({
-    queryKey: ["analyst-candidates", route ?? "rfa"],
-    queryFn: () => listAnalystCandidates(route ?? "rfa"),
+  const areaRoute = route ?? "rfa";
+  const teamsQuery = useQuery({
+    queryKey: ["assignment-teams", areaRoute],
+    queryFn: () => listAssignmentTeams(areaRoute),
   });
-  const teamsQuery = useQuery({ queryKey: ["teams"], queryFn: listTeams });
-  const availableTeams = (teamsQuery.data?.teams ?? []).filter(
-    (team) => team.kind === (route === "cm" ? "cm" : "rfa"),
-  );
-  const orgTeam = (teamsQuery.data?.teams ?? []).find(
-    (team) => team.kind === (route === "cm" ? "cm" : "rfa"),
-  );
+  const availableTeams = useMemo(() => teamsQuery.data ?? [], [teamsQuery.data]);
+  const selectedTeam = availableTeams.find((team) => team.teamId === teamId);
+  useEffect(() => {
+    if (teamId || availableTeams.length === 0) return;
+    const suggested = availableTeams.find((team) => team.name === suggestedTeamName);
+    setTeamId(suggested?.teamId ?? (availableTeams.length === 1 ? availableTeams[0].teamId : ""));
+  }, [availableTeams, suggestedTeamName, teamId]);
+  const candidatesQuery = useQuery({
+    enabled: teamId !== "",
+    queryKey: ["analyst-candidates", areaRoute, teamId],
+    queryFn: () => listAnalystCandidates(areaRoute, teamId),
+  });
   const availabilityQuery = useQuery({
-    enabled: orgTeam !== undefined,
-    queryKey: ["team-availability", orgTeam?.id],
-    queryFn: () => teamAvailability(orgTeam?.id ?? "", new Date().toISOString().slice(0, 10)),
+    enabled: selectedTeam !== undefined,
+    queryKey: ["team-availability", selectedTeam?.teamId],
+    queryFn: () =>
+      getAssignmentTeamAvailability(areaRoute, selectedTeam?.teamId ?? "", localToday()),
   });
   const assignMutation = useMutation({
     mutationFn: () =>
-      assignAnalystTask(
-        ticketId,
-        analystUserIds,
-        teamName.trim(),
-        packageTitles(workPackages),
-        csrfToken,
-      ),
+      assignAnalystTask(ticketId, analystUserIds, teamId, packageTitles(workPackages), csrfToken),
     onSuccess: (task) => onAssigned(task),
   });
   const candidates = candidatesQuery.data?.analysts ?? [];
@@ -68,9 +70,14 @@ export function AssignAnalystPanel({
     <section className="routing-assign" aria-label="Assign analysts">
       <h3>Assign analysts</h3>
       <p>
-        The route is approved. Choose up to {MAX_ANALYSTS} analysts to start production. Work
-        packages default to the approved route plan when left blank.
+        You manage every active team in this area. Select the team that owns this task, then choose
+        up to {MAX_ANALYSTS} of its analysts. Work packages default to the approved route plan when
+        left blank.
       </p>
+      {teamsQuery.isLoading ? <p role="status">Loading area teams…</p> : null}
+      {teamsQuery.isError ? (
+        <p role="alert">Area teams could not be loaded. Refresh to try again.</p>
+      ) : null}
       {availabilityQuery.data ? (
         <p className="routing-assign__availability">
           {availabilityQuery.data.free} of {availabilityQuery.data.members} team members are free
@@ -78,8 +85,12 @@ export function AssignAnalystPanel({
           {availabilityQuery.data.onLeave} on leave).
         </p>
       ) : null}
-      {candidatesQuery.isError ? (
+      {teamId && candidatesQuery.isLoading ? <p role="status">Loading team analysts…</p> : null}
+      {teamId && candidatesQuery.isError ? (
         <p role="alert">Analyst candidates could not be loaded. Refresh to try again.</p>
+      ) : null}
+      {availabilityQuery.isError ? (
+        <p role="alert">Team availability could not be loaded. Refresh to try again.</p>
       ) : null}
       <form
         onSubmit={(event) => {
@@ -87,7 +98,26 @@ export function AssignAnalystPanel({
           assignMutation.mutate();
         }}
       >
-        <fieldset className="routing-assign__analysts">
+        <label>
+          Team
+          <select
+            disabled={assignMutation.isPending || teamsQuery.isLoading}
+            onChange={(event) => {
+              setTeamId(event.target.value);
+              setAnalystUserIds([]);
+            }}
+            value={teamId}
+          >
+            <option value="">Select a team</option>
+            {availableTeams.map((team) => (
+              <option key={team.teamId} value={team.teamId}>
+                {team.name}
+                {suggestedTeamName === team.name ? " (recommended)" : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+        <fieldset className="routing-assign__analysts" disabled={teamId === ""}>
           <legend>Analysts</legend>
           {candidates.map((candidate) => (
             <label key={candidate.userId}>
@@ -106,25 +136,6 @@ export function AssignAnalystPanel({
           ))}
         </fieldset>
         <label>
-          Team
-          <select
-            disabled={assignMutation.isPending}
-            onChange={(event) => setTeamName(event.target.value)}
-            value={teamName}
-          >
-            <option value="">Select a team</option>
-            {suggestedTeamName &&
-            !availableTeams.some((team) => team.name === suggestedTeamName) ? (
-              <option value={suggestedTeamName}>{suggestedTeamName} (recommended)</option>
-            ) : null}
-            {availableTeams.map((team) => (
-              <option key={team.id} value={team.name}>
-                {team.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
           Work packages (one per line)
           <textarea
             disabled={assignMutation.isPending}
@@ -133,7 +144,10 @@ export function AssignAnalystPanel({
             value={workPackages}
           />
         </label>
-        <button disabled={analystUserIds.length === 0 || assignMutation.isPending} type="submit">
+        <button
+          disabled={teamId === "" || analystUserIds.length === 0 || assignMutation.isPending}
+          type="submit"
+        >
           <UserCheck aria-hidden="true" size={18} />
           Assign analysts
         </button>
@@ -143,6 +157,13 @@ export function AssignAnalystPanel({
       ) : null}
     </section>
   );
+}
+
+function localToday() {
+  const today = new Date();
+  return [today.getFullYear(), today.getMonth() + 1, today.getDate()]
+    .map((part, index) => String(part).padStart(index === 0 ? 4 : 2, "0"))
+    .join("-");
 }
 
 function packageTitles(raw: string) {

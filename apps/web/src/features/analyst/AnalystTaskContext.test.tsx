@@ -42,6 +42,7 @@ test("shows the first active assignment's team", () => {
             route: "rfa",
             createdAt: "2026-07-05T00:00:00Z",
             teamName: "Maritime Assessment Cell",
+            teamId: "team-1",
           },
         ],
       }}

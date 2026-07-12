@@ -112,8 +112,9 @@ export function RoutingDetailPanel({
           ) : null}
           {!canDecide ? (
             <p className="workspace-alert" role="status">
-              This request is already routed to the {route === "cm" ? "Collection" : "RFA"}
-              team. The recommendations below are retained as decision context.
+              {`This request is already routed to the ${
+                route === "cm" ? "Collection" : "RFA"
+              } team. The recommendations below are retained as decision context.`}
             </p>
           ) : null}
           <Recommendation ticket={selectedTicket} />

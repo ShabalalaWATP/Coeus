@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { ErrorState } from "../../components/ui/PageState";
+import { ErrorState, LoadingState } from "../../components/ui/PageState";
 import { formatWorkflowState } from "../../lib/workflow/state-format";
 import { listAcgs } from "../../lib/api-client/access";
 import {
@@ -136,6 +136,8 @@ export default function QcQueuePage() {
           </div>
           {queueQuery.isError ? (
             <ErrorState onRetry={() => void queueQuery.refetch()} />
+          ) : queueQuery.isFetching && queueQuery.dataUpdatedAt === 0 ? (
+            <LoadingState label="Loading QC products" />
           ) : (
             <>
               {products.map((product) => (
@@ -177,6 +179,7 @@ export default function QcQueuePage() {
           product={selectedProduct}
           releaseForm={releaseForm}
           requestedMissing={requestedMissing}
+          requestedPending={requestedPending}
         />
       </section>
     </div>

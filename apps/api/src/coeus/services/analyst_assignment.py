@@ -62,6 +62,7 @@ def assignment_change(
     analysts: tuple[UserAccount, ...],
     route: RoutingRoute,
     work_package_titles: tuple[str, ...],
+    team_id: UUID,
     team_name: str | None,
     *,
     reassignment: bool,
@@ -75,12 +76,22 @@ def assignment_change(
         else ticket.analyst_assignments
     )
     new_assignments = tuple(
-        assignment_record(ticket.ticket_id, analyst.user_id, actor.user_id, route, assignment_team)
+        assignment_record(
+            ticket.ticket_id,
+            analyst.user_id,
+            actor.user_id,
+            route,
+            team_name=assignment_team,
+            team_id=team_id,
+        )
         for analyst in analysts
     )
     packages = () if reassignment else work_package_records(ticket.ticket_id, titles)
     metadata = assignment_metadata(
-        ticket.ticket_id, tuple(analyst.user_id for analyst in analysts), assignment_team
+        ticket.ticket_id,
+        tuple(analyst.user_id for analyst in analysts),
+        team_id,
+        assignment_team,
     )
     return AssignmentChange(
         ticket=replace(
@@ -106,11 +117,15 @@ def assignment_change(
 
 
 def assignment_metadata(
-    ticket_id: UUID, analyst_user_ids: tuple[UUID, ...], team_name: str | None
+    ticket_id: UUID,
+    analyst_user_ids: tuple[UUID, ...],
+    team_id: UUID,
+    team_name: str | None,
 ) -> dict[str, str]:
     metadata = {
         "ticket_id": str(ticket_id),
         "analyst_user_ids": ",".join(str(user_id) for user_id in analyst_user_ids),
+        "team_id": str(team_id),
     }
     if team_name:
         metadata["team_name"] = team_name

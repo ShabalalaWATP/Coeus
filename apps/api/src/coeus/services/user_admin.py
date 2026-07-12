@@ -95,14 +95,18 @@ class UserAdminService:
             # A temporary credential must be rotated by the user at next login.
             password_reset_required=True,
         )
-        self._apply_and_audit(
-            user,
-            updated,
-            "user_credential_reset",
-            str(actor.user_id),
-            {"user_id": str(user_id)},
-        )
-        self._login_attempts.reset(user.username)
+        attempt_reset = self._login_attempts.reset(user.username)
+        try:
+            self._apply_and_audit(
+                user,
+                updated,
+                "user_credential_reset",
+                str(actor.user_id),
+                {"user_id": str(user_id)},
+            )
+        except Exception:
+            self._login_attempts.restore_reset(user.username, attempt_reset)
+            raise
         return temporary_credential
 
     def _target(self, actor: UserAccount, user_id: UUID) -> UserAccount:

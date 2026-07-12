@@ -13,7 +13,7 @@ import { RequestRouteMissingState } from "./RequestRouteMissingState";
 import { TicketWorkspace } from "./TicketWorkspace";
 import { SIMILAR_NOTICE_STATES } from "./request-state-sets";
 import { useRequestWorkspaceMutations } from "./useRequestWorkspaceMutations";
-import { ErrorState } from "../../components/ui/PageState";
+import { ErrorState, LoadingState } from "../../components/ui/PageState";
 import { FeedbackPanel } from "../feedback/FeedbackPanel";
 import { getRfiSearchResults } from "../../lib/api-client/rfi-search";
 import { getSimilarRequestNotice } from "../../lib/api-client/similar-requests";
@@ -186,14 +186,17 @@ export default function RequestsPage() {
               </button>
             </div>
           ) : null}
-          <RequestDashboard
-            canCreate={canCreate}
-            currentUserId={session?.user.id ?? ""}
-            isConfirming={mutations.isConfirmingDelivery}
-            onConfirmDelivery={mutations.confirmDelivery}
-            onOpen={(id) => void navigate(`/app/requests/${encodeURIComponent(id)}`)}
-            tickets={tickets}
-          />
+          {ticketsQuery.isLoading ? <LoadingState label="Loading your requests" /> : null}
+          {!ticketsQuery.isLoading ? (
+            <RequestDashboard
+              canCreate={canCreate}
+              currentUserId={session?.user.id ?? ""}
+              isConfirming={mutations.isConfirmingDelivery}
+              onConfirmDelivery={mutations.confirmDelivery}
+              onOpen={(id) => void navigate(`/app/requests/${encodeURIComponent(id)}`)}
+              tickets={tickets}
+            />
+          ) : null}
           {ticketsQuery.hasNextPage ? (
             <button
               className="secondary-action"

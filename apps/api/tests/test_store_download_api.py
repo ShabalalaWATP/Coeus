@@ -73,6 +73,7 @@ async def test_asset_download_rechecks_token_claims_and_asset_state(tmp_path: Pa
     product = next(iter(app.state.store_services.repository.list_products()))
     asset = product.assets[0]
     admin = _admin_user(app)
+    app.state.object_storage.write_bytes(asset.object_key, b"MOCK DATA ONLY test asset")
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"

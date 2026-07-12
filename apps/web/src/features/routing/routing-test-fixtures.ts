@@ -175,6 +175,34 @@ export function stubRoutingFetch(
       if (url.endsWith("/api/v1/teams")) {
         return Promise.resolve(jsonResponse({ teams: [] }));
       }
+      if (url.includes("/api/v1/analyst/assignment-teams?")) {
+        const kind = url.includes("route=cm") ? "cm" : "rfa";
+        return Promise.resolve(
+          jsonResponse({
+            teams: [
+              {
+                teamId: kind === "cm" ? "CM-CYBER-SENSOR" : "RFA-MARITIME",
+                name: kind === "cm" ? "Cyber Sensor Coordination Cell" : "Maritime Assessment Cell",
+                kind,
+              },
+            ],
+          }),
+        );
+      }
+      if (url.includes("/api/v1/analyst/assignment-teams/") && url.includes("/availability?")) {
+        return Promise.resolve(
+          jsonResponse({
+            teamId: url.includes("CM-CYBER-SENSOR") ? "CM-CYBER-SENSOR" : "RFA-MARITIME",
+            date: "2026-07-12",
+            members: 2,
+            onLeave: 0,
+            onTaskCalendar: 0,
+            assignedLive: 0,
+            onTask: 0,
+            free: 2,
+          }),
+        );
+      }
       if (url.includes("capability-catalogue")) {
         return Promise.resolve(jsonResponse(capabilityCatalogue));
       }

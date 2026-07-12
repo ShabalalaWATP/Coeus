@@ -19,7 +19,7 @@ from coeus.domain.tickets import RoutingRoute
 from coeus.main import create_app
 from coeus.services.analyst_records import active_assignments, approved_route
 from rfi_search_helpers import login
-from routing_helpers import route_assessment_ticket
+from routing_helpers import assignment_team_id, route_assessment_ticket
 from test_qc_api import _acg_id, _approval_payload, _draft_payload
 
 
@@ -68,10 +68,12 @@ async def _work_leg(
     analyst_user = app.state.access_services.repository.get_user_by_username("analyst@example.test")
     assert analyst_user is not None
     manager = await login(client, manager_username)
+    route = "cm" if manager_username == "collection.manager@example.test" else "rfa"
+    team_id = await assignment_team_id(client, route)
     assigned = await client.post(
         f"/api/v1/analyst/tasks/{ticket_id}/assign",
         headers={"X-CSRF-Token": str(manager["csrfToken"])},
-        json={"analystUserIds": [str(analyst_user.user_id)]},
+        json={"analystUserIds": [str(analyst_user.user_id)], "teamId": team_id},
     )
     assert assigned.status_code == 200
     analyst = await login(client, "analyst@example.test")

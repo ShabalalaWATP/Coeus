@@ -204,13 +204,16 @@ async def test_availability_combines_calendar_and_live_assignments() -> None:
         # A live in-flight assignment for analyst@example.test.
         ticket_id = await analyst_assignment_ticket(client)
         manager = await login(client, "rfa.manager@example.test")
+        team_id = await _team_id(client, "RFA Assessment Team")
         assigned = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/assign",
             headers={"X-CSRF-Token": str(manager["csrfToken"])},
-            json={"analystUserIds": [_user_id(app, "analyst@example.test")]},
+            json={
+                "analystUserIds": [_user_id(app, "analyst@example.test")],
+                "teamId": team_id,
+            },
         )
         assert assigned.status_code == 200
-        team_id = await _team_id(client, "RFA Assessment Team")
         leave = await client.post(
             f"/api/v1/teams/{team_id}/calendar",
             headers={"X-CSRF-Token": str(manager["csrfToken"])},

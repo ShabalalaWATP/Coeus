@@ -8,6 +8,7 @@ export type AccessControlGroup = {
   ownerUserId: string | null;
   isActive: boolean;
   memberUserIds: string[];
+  members?: { id: string; displayName: string; username: string }[];
 };
 
 export type AccessDiagnostics = {

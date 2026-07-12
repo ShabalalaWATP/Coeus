@@ -50,7 +50,7 @@ test("searches the directory once three characters are typed", async () => {
 
   await userEvent.selectOptions(screen.getByLabelText("Tag a user"), "colleague@example.test");
   await userEvent.click(screen.getByRole("button", { name: "Tag user" }));
-  expect(onAdd).toHaveBeenCalledWith("colleague@example.test", "viewer");
+  expect(onAdd).toHaveBeenCalledWith("colleague@example.test", "viewer", expect.any(Function));
 });
 
 test("reports directory search failures", async () => {

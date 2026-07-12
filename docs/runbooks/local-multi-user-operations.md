@@ -49,6 +49,9 @@ review audit events for the change.
 - Back up both PostgreSQL and the object directory together while writes are
   stopped. This repository does not provide an automated backup/restore command.
 - Test restoration on a separate local instance before relying on a backup.
+- For a destructive synthetic-data reset, use the provider-specific helper in
+  [Setup](../SETUP.md#reset-local-synthetic-data-safely). Never delete an object
+  directory or Docker object volume without resetting its PostgreSQL metadata.
 
 ## Boundaries before real organisational use
 

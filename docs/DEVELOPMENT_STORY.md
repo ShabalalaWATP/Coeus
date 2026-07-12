@@ -266,3 +266,23 @@ Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVEL
   release gates passed with 644 backend tests at 97.64 percent total coverage
   and the complete frontend suite at 98.78 percent line and 95.12 percent
   branch coverage.
+
+## 2026-07-12 Workflow integrity, oversight and delegated ACG access
+
+- Added a universal Access Groups workspace where every active user can browse
+  the bounded catalogue, apply with a justification, track status and withdraw
+  a pending application.
+- Added one-to-eight delegated administrators per active ACG. Platform
+  administrators manage the roster, while delegated administrators can approve
+  or reject only their own groups and cannot decide their own applications.
+- Made analyst assignment team-authoritative across each manager's RFA or CM
+  area, added JIOC-wide read-only ownership and capacity oversight, and repaired
+  rework, clarification, loading, feedback and calendar workflow integrity.
+- Hardened local startup, including a Windows-safe IPv4 database default,
+  coordinated reset, PostgreSQL exposure, migrations and the documented GCP
+  and Kubernetes migration gates. Missing user-uploaded bytes are never
+  replaced by synthetic placeholders on restart.
+- Verification passed with 669 backend tests at 97.32 percent coverage and 400
+  frontend tests at 98.60 percent line and 95.07 percent branch coverage, plus
+  formatting, lint, type, dead-code, contract, build, dependency-audit,
+  security-policy and line-limit gates.

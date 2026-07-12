@@ -173,3 +173,36 @@
     grid-template-columns: 1fr;
   }
 }
+.route-recovery {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 32px;
+  background: var(--background);
+  color: var(--text);
+  text-align: center;
+}
+
+.route-recovery > div {
+  max-width: 620px;
+}
+
+.route-recovery img {
+  width: 120px;
+  margin-bottom: 18px;
+}
+
+.route-recovery__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+.route-recovery__actions a,
+.route-recovery__actions button {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}

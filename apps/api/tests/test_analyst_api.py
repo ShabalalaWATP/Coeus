@@ -11,6 +11,12 @@ from rfi_search_helpers import login
 from routing_helpers import analyst_assignment_ticket
 
 
+def _rfa_team(app: FastAPI):
+    return next(
+        team.team_id for team in app.state.team_repository.list_teams() if team.kind.value == "rfa"
+    )
+
+
 @pytest.mark.asyncio
 async def test_manager_assigns_analyst_and_workbench_lists_assigned_tasks_only() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
@@ -21,13 +27,18 @@ async def test_manager_assigns_analyst_and_workbench_lists_assigned_tasks_only()
     ) as client:
         ticket_id = await _approved_ticket(client)
         manager = await login(client, "rfa.manager@example.test")
-        candidates = await client.get("/api/v1/analyst/candidates?route=rfa")
+        team_id = next(
+            team.team_id
+            for team in app.state.team_repository.list_teams()
+            if team.kind.value == "rfa"
+        )
+        candidates = await client.get(f"/api/v1/analyst/candidates?route=rfa&teamId={team_id}")
         assigned = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/assign",
             headers={"X-CSRF-Token": str(manager["csrfToken"])},
             json={
                 "analystUserIds": [str(analyst_user.user_id)],
-                "teamName": "Maritime Assessment Cell",
+                "teamId": str(team_id),
                 "workPackages": ["Review permitted products", "Draft assessment"],
             },
         )
@@ -45,7 +56,7 @@ async def test_manager_assigns_analyst_and_workbench_lists_assigned_tasks_only()
     assert assigned.status_code == 200
     assert assigned.json()["state"] == "ANALYST_IN_PROGRESS"
     assert assigned.json()["assignments"][0]["analystUserId"] == str(analyst_user.user_id)
-    assert assigned.json()["assignments"][0]["teamName"] == "Maritime Assessment Cell"
+    assert assigned.json()["assignments"][0]["teamName"] == "RFA Assessment Team"
     assert [package["title"] for package in assigned.json()["workPackages"]] == [
         "Review permitted products",
         "Draft assessment",
@@ -53,7 +64,7 @@ async def test_manager_assigns_analyst_and_workbench_lists_assigned_tasks_only()
     assert analyst["user"]["username"] == "analyst@example.test"
     assert tasks.status_code == 200
     assert [task["ticketId"] for task in tasks.json()["tasks"]] == [ticket_id]
-    assert tasks.json()["tasks"][0]["assignments"][0]["teamName"] == "Maritime Assessment Cell"
+    assert tasks.json()["tasks"][0]["assignments"][0]["teamName"] == "RFA Assessment Team"
     assert tasks.json()["tasks"][0]["managerNotes"] == [
         "Collection not required; approved for RFA analyst assignment."
     ]
@@ -168,7 +179,7 @@ async def test_non_manager_cannot_assign_and_unassigned_analyst_cannot_open_task
         forbidden = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/assign",
             headers={"X-CSRF-Token": str(customer["csrfToken"])},
-            json={"analystUserIds": [str(analyst_user.user_id)]},
+            json={"analystUserIds": [str(analyst_user.user_id)], "teamId": str(_rfa_team(app))},
         )
         await login(client, "analyst@example.test")
         missing_task = await client.get(f"/api/v1/analyst/tasks/{ticket_id}")
@@ -198,15 +209,20 @@ async def test_analyst_workflow_rejects_invalid_inputs_and_duplicate_actions() -
         invalid_analyst = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/assign",
             headers={"X-CSRF-Token": str(manager["csrfToken"])},
-            json={"analystUserIds": [str(admin_user.user_id)]},
+            json={"analystUserIds": [str(admin_user.user_id)], "teamId": str(_rfa_team(app))},
         )
         assigned = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/assign",
             headers={"X-CSRF-Token": str(manager["csrfToken"])},
-            json={"analystUserIds": [str(analyst_user.user_id)]},
+            json={"analystUserIds": [str(analyst_user.user_id)], "teamId": str(_rfa_team(app))},
         )
         analyst = await login(client, "analyst@example.test")
-        candidates = await client.get("/api/v1/analyst/candidates?route=rfa")
+        team_id = next(
+            team.team_id
+            for team in app.state.team_repository.list_teams()
+            if team.kind.value == "rfa"
+        )
+        candidates = await client.get(f"/api/v1/analyst/candidates?route=rfa&teamId={team_id}")
         linked = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/products",
             headers={"X-CSRF-Token": str(analyst["csrfToken"])},
@@ -280,7 +296,7 @@ async def _assigned_ticket(client: AsyncClient, app: FastAPI) -> str:
     assigned = await client.post(
         f"/api/v1/analyst/tasks/{ticket_id}/assign",
         headers={"X-CSRF-Token": str(manager["csrfToken"])},
-        json={"analystUserIds": [str(analyst_user.user_id)]},
+        json={"analystUserIds": [str(analyst_user.user_id)], "teamId": str(_rfa_team(app))},
     )
     assert assigned.status_code == 200
     return ticket_id

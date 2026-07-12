@@ -12,7 +12,7 @@ from coeus.main import create_app
 from coeus.services.qc_records import preview_kind
 from coeus.services.quality_control import QcApprovalInput, ReleaseCheckService
 from rfi_search_helpers import login
-from routing_helpers import analyst_assignment_ticket
+from routing_helpers import analyst_assignment_ticket, assignment_team_id
 
 
 @pytest.mark.asyncio
@@ -67,6 +67,10 @@ async def test_qc_rejects_to_rework_and_analyst_can_resubmit() -> None:
         )
         analyst = await login(client, "analyst@example.test")
         tasks = await client.get("/api/v1/analyst/tasks")
+        unchanged = await client.post(
+            f"/api/v1/analyst/tasks/{ticket_id}/submit",
+            headers={"X-CSRF-Token": str(analyst["csrfToken"])},
+        )
         revised = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/drafts",
             headers={"X-CSRF-Token": str(analyst["csrfToken"])},
@@ -82,6 +86,8 @@ async def test_qc_rejects_to_rework_and_analyst_can_resubmit() -> None:
     assert rejected.json()["decisions"][0]["status"] == "rejected"
     assert tasks.status_code == 200
     assert tasks.json()["tasks"][0]["state"] == "REWORK_REQUIRED"
+    assert unchanged.status_code == 409
+    assert unchanged.json()["error"]["code"] == "revised_draft_required"
     assert revised.status_code == 200
     assert revised.json()["drafts"][-1]["title"] == "Revised Arctic product"
     assert resubmitted.status_code == 200
@@ -234,10 +240,11 @@ async def _assigned_ticket(client: AsyncClient, app: FastAPI) -> str:
     analyst_user = app.state.access_services.repository.get_user_by_username("analyst@example.test")
     assert analyst_user is not None
     manager = await login(client, "rfa.manager@example.test")
+    team_id = await assignment_team_id(client)
     assigned = await client.post(
         f"/api/v1/analyst/tasks/{ticket_id}/assign",
         headers={"X-CSRF-Token": str(manager["csrfToken"])},
-        json={"analystUserIds": [str(analyst_user.user_id)]},
+        json={"analystUserIds": [str(analyst_user.user_id)], "teamId": team_id},
     )
     assert assigned.status_code == 200
     return ticket_id

@@ -19,6 +19,8 @@ QC-owned release and the CM-to-RFA leg. Supersedes
 | A non-JIOC user decides routes | `jioc:review` gates the queue and decisions; managers no longer hold route authority |
 | Route decision forged against agent advice without trace | Overrides require a recorded reason; every decision is an audited `ManagerRoutingDecision` |
 | Someone other than the requester chooses the collect disposition | Collect choice is owner-only (collaborators and admins get 404/409), CSRF-validated and audited |
+| JIOC oversight exposes analyst work content | The bounded JIOC-only projection returns identifiers, workflow state, team ownership and aggregate load counts, never intake text, notes, drafts or products. |
+| Rejected work is resubmitted unchanged | Submission requires a draft created after the latest manager return or QC rejection. |
 | A manager approves their own drafted work | `separation_of_duties`: drafting or actively assigned users cannot manager-approve; QC keeps its own drafter check |
 | The wrong team's manager approves work | Approval requires the route's review permission and `product:approve`; the other route's manager gets 403/404 |
 | Release without quality control | Only QC approval releases; managers lost `product:publish` and `product:disseminate` |

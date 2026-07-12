@@ -82,7 +82,7 @@ def test_assignment_candidates_and_state_boundaries(monkeypatch: pytest.MonkeyPa
     assert service.analyst_candidates(manager, RoutingRoute.RFA)
     assert service.analyst_candidates(admin, RoutingRoute.RFA)
     assert service.analyst_candidates(admin, RoutingRoute.CM)
-    with pytest.raises(AppError, match="route team"):
+    with pytest.raises(AppError, match="Permission denied"):
         service.analyst_candidates(manager, RoutingRoute.CM)
     with pytest.raises(AppError, match="one and five"):
         service._resolve_analysts(())

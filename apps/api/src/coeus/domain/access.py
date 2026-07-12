@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from enum import StrEnum
 from uuid import UUID
 
@@ -7,6 +8,13 @@ class ProductStatus(StrEnum):
     DRAFT = "draft"
     PUBLISHED = "published"
     ARCHIVED = "archived"
+
+
+class AcgApplicationStatus(StrEnum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    WITHDRAWN = "withdrawn"
 
 
 @dataclass
@@ -23,6 +31,19 @@ class AccessControlGroup:
 class AccessControlGroupMembership:
     acg_id: UUID
     user_id: UUID
+
+
+@dataclass(frozen=True)
+class AcgAccessApplication:
+    application_id: UUID
+    acg_id: UUID
+    applicant_user_id: UUID
+    justification: str
+    status: AcgApplicationStatus
+    submitted_at: datetime
+    decided_at: datetime | None = None
+    decided_by_user_id: UUID | None = None
+    decision_reason: str | None = None
 
 
 @dataclass(frozen=True)

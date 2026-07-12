@@ -122,6 +122,37 @@ export type RoutingQueue = {
 
 export type RoutingQueueKind = RoutingRoute | "jioc";
 
+type OversightCount = { key: string; count: number };
+export type JiocOversight = {
+  countsByState: OversightCount[];
+  countsByRoute: OversightCount[];
+  teams: {
+    teamId: string;
+    name: string;
+    kind: string;
+    activeMembers: number;
+    availableMembers: number;
+    liveTaskCount: number;
+  }[];
+  analysts: {
+    userId: string;
+    displayName: string;
+    teamIds: string[];
+    liveTaskCount: number;
+  }[];
+  tasks: {
+    ticketId: string;
+    reference: string;
+    state: TicketState;
+    route: string | null;
+    teamId: string | null;
+    teamName: string | null;
+    analystCount: number;
+    workPackageCount: number;
+    completedWorkPackageCount: number;
+  }[];
+};
+
 export async function listRoutingQueue(
   queue: RoutingQueueKind,
   cursor?: string,
@@ -130,6 +161,10 @@ export async function listRoutingQueue(
   return apiRequestJson<RoutingQueue>(`/api/v1/routing/${queue}/queue${query}`, {
     method: "GET",
   });
+}
+
+export async function getJiocOversight(): Promise<JiocOversight> {
+  return apiRequestJson<JiocOversight>("/api/v1/routing/oversight", { method: "GET" });
 }
 
 export async function listCapabilityCatalogue(): Promise<CapabilityCatalogue> {

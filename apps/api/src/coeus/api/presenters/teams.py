@@ -32,7 +32,7 @@ def _member_response(
         username=member.username,
         display_name=member.display_name,
         is_manager=member.user_id in team.manager_user_ids,
-        title=profile.title if profile else "",
+        title=profile.title if profile else member.display_name,
         specialisms=list(profile.specialisms) if profile else [],
         bio=profile.bio if profile else "",
     )

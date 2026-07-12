@@ -249,8 +249,8 @@ class AnalystAssignment:
     assigned_by_user_id: UUID
     route: RoutingRoute
     created_at: datetime
+    team_id: UUID | None = None
     team_name: str | None = None
-    # Reassignment deactivates earlier assignments, keeping history auditable.
     active: bool = True
 
 

@@ -32,7 +32,7 @@ test("assigns multiple analysts with custom work packages", async () => {
   const onAssigned = vi.fn();
   const assignedTask = { ticketId: "ticket-1", state: "ANALYST_IN_PROGRESS" };
   const orgTeams = {
-    teams: [{ id: "team-1", name: "RFA Assessment Team", kind: "rfa", members: [] }],
+    teams: [{ teamId: "team-1", name: "RFA Assessment Team", kind: "rfa" }],
   };
   const availability = {
     teamId: "team-1",
@@ -51,7 +51,7 @@ test("assigns multiple analysts with custom work packages", async () => {
         Promise.resolve(
           url.includes("/candidates")
             ? candidates
-            : url.endsWith("/api/v1/teams")
+            : url.includes("/assignment-teams?")
               ? orgTeams
               : url.includes("/availability")
                 ? availability
@@ -78,7 +78,6 @@ test("assigns multiple analysts with custom work packages", async () => {
 
   await userEvent.click(await screen.findByRole("checkbox", { name: "Intelligence Analyst" }));
   await userEvent.click(screen.getByRole("checkbox", { name: "Geospatial Assessment Analyst" }));
-  await userEvent.selectOptions(screen.getByLabelText("Team"), "RFA Assessment Team");
   await userEvent.type(
     screen.getByLabelText("Work packages (one per line)"),
     "Validate scope; Draft assessment ;",
@@ -91,7 +90,7 @@ test("assigns multiple analysts with custom work packages", async () => {
     {
       body: JSON.stringify({
         analystUserIds: ["analyst-1", "analyst-2"],
-        teamName: "RFA Assessment Team",
+        teamId: "team-1",
         workPackages: ["Validate scope", "Draft assessment"],
       }),
       credentials: "include",
@@ -104,7 +103,28 @@ test("assigns multiple analysts with custom work packages", async () => {
 test("keeps the assign action disabled until an analyst is selected", async () => {
   vi.stubGlobal(
     "fetch",
-    vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(candidates) }),
+    vi.fn((url: string) =>
+      Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve(
+            url.includes("/assignment-teams?")
+              ? { teams: [{ teamId: "team-1", name: "RFA Team", kind: "rfa" }] }
+              : url.includes("/availability")
+                ? {
+                    teamId: "team-1",
+                    date: "2026-07-10",
+                    members: 2,
+                    onLeave: 0,
+                    onTaskCalendar: 0,
+                    assignedLive: 0,
+                    onTask: 0,
+                    free: 2,
+                  }
+                : candidates,
+          ),
+      }),
+    ),
   );
 
   renderWithProviders(
@@ -125,11 +145,33 @@ test("keeps the assign action disabled until an analyst is selected", async () =
 test("shows a candidates error without leaking details", async () => {
   vi.stubGlobal(
     "fetch",
-    vi.fn().mockResolvedValue({
-      ok: false,
-      status: 403,
-      json: () => Promise.resolve({ error: { code: "forbidden", message: "Denied." } }),
-    }),
+    vi.fn((url: string) =>
+      Promise.resolve(
+        url.includes("/assignment-teams?")
+          ? {
+              ok: true,
+              json: () =>
+                Promise.resolve({ teams: [{ teamId: "team-1", name: "RFA Team", kind: "rfa" }] }),
+            }
+          : url.includes("/availability")
+            ? {
+                ok: true,
+                json: () =>
+                  Promise.resolve({
+                    teamId: "team-1",
+                    members: 1,
+                    free: 1,
+                    assignedLive: 0,
+                    onLeave: 0,
+                  }),
+              }
+            : {
+                ok: false,
+                status: 403,
+                json: () => Promise.resolve({ error: { code: "forbidden", message: "Denied." } }),
+              },
+      ),
+    ),
   );
 
   renderWithProviders(
@@ -151,10 +193,19 @@ test("shows a candidates error without leaking details", async () => {
 test("shows an assignment failure message", async () => {
   const fetchMock = vi.fn((url: string) =>
     Promise.resolve(
-      url.includes("/candidates") || url.endsWith("/api/v1/teams")
+      url.includes("/candidates") ||
+        url.includes("/assignment-teams?") ||
+        url.includes("/availability")
         ? {
             ok: true,
-            json: () => Promise.resolve(url.includes("/candidates") ? candidates : { teams: [] }),
+            json: () =>
+              Promise.resolve(
+                url.includes("/candidates")
+                  ? candidates
+                  : url.includes("/assignment-teams?")
+                    ? { teams: [{ teamId: "team-1", name: "RFA Team", kind: "rfa" }] }
+                    : { teamId: "team-1", members: 1, free: 1, assignedLive: 0, onLeave: 0 },
+              ),
           }
         : {
             ok: false,

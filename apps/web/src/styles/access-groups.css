@@ -1,0 +1,52 @@
+.access-groups-page,
+.access-group-list,
+.access-group-reviews,
+.access-group-admins {
+  display: grid;
+  gap: 16px;
+}
+
+.access-group-application,
+.access-group-review-row {
+  display: grid;
+  gap: 12px;
+}
+
+.access-group-application form,
+.access-group-review-row label,
+.access-group-admins label {
+  display: grid;
+  gap: 6px;
+}
+
+.access-group-application__status {
+  color: var(--accent);
+}
+
+.access-group-review-row {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+
+.access-group-review-row > div:last-of-type {
+  display: flex;
+  gap: 10px;
+}
+
+.access-group-admins ul {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.access-group-admins li {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.access-group-admins li span {
+  display: grid;
+}

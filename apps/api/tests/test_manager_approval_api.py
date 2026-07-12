@@ -8,7 +8,7 @@ from httpx import ASGITransport, AsyncClient
 from coeus.core.config import Settings
 from coeus.main import create_app
 from rfi_search_helpers import login
-from routing_helpers import analyst_assignment_ticket
+from routing_helpers import analyst_assignment_ticket, assignment_team_id
 from test_qc_api import _draft_payload
 
 
@@ -27,10 +27,11 @@ def _analyst_ids(app: FastAPI, *usernames: str) -> list[str]:
 
 async def _assign(client: AsyncClient, ticket_id: str, analyst_ids: list[str], **extra: Any):
     manager = await login(client, "rfa.manager@example.test")
+    team_id = await assignment_team_id(client)
     return await client.post(
         f"/api/v1/analyst/tasks/{ticket_id}/assign",
         headers={"X-CSRF-Token": str(manager["csrfToken"])},
-        json={"analystUserIds": analyst_ids, **extra},
+        json={"analystUserIds": analyst_ids, "teamId": team_id, **extra},
     )
 
 
@@ -83,6 +84,12 @@ async def test_manager_can_return_work_for_rework_and_then_approve() -> None:
         assert reworked.json()["state"] == "ANALYST_IN_PROGRESS"
 
         analyst = await login(client, "analyst@example.test")
+        revised = await client.post(
+            f"/api/v1/analyst/tasks/{ticket_id}/drafts",
+            headers={"X-CSRF-Token": str(analyst["csrfToken"])},
+            json=_draft_payload("Revised chain product"),
+        )
+        assert revised.status_code == 200
         resubmitted = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/submit",
             headers={"X-CSRF-Token": str(analyst["csrfToken"])},

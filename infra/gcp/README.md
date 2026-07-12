@@ -5,8 +5,9 @@ reference deployment baseline for a future work-owned GCP project, not a
 requirement for using the app.
 
 Terraform describes the future development resource shell but does not store
-application secret values in Terraform state. A default-deny readiness
-precondition prevents planning or applying it while required adapters and
+application secret values in Terraform state. Every cloud-creating path is
+downstream of a default-deny readiness precondition, including targeted plans
+and applies. The configuration remains blocked while required adapters and
 distributed controls are absent.
 
 ## Dev Environment
@@ -83,3 +84,6 @@ The final plan command is expected to fail while
 `migration_adapters_ready = false`. Do not set it to true until every ADR 0019
 readiness gate is implemented, independently reviewed and authorised for
 staging validation.
+
+Do not use `-target` as a bypass. A regression test targets the database module
+and verifies that the same readiness precondition still blocks the plan.

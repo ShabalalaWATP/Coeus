@@ -66,3 +66,9 @@ async def analyst_assignment_ticket(
     assert approved.status_code == 200
     assert approved.json()["state"] == "ANALYST_ASSIGNMENT"
     return ticket_id
+
+
+async def assignment_team_id(client: AsyncClient, route: str = "rfa") -> str:
+    response = await client.get(f"/api/v1/analyst/assignment-teams?route={route}")
+    assert response.status_code == 200
+    return str(response.json()["teams"][0]["teamId"])

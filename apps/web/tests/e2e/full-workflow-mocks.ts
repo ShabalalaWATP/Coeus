@@ -60,6 +60,21 @@ export async function installApiMocks(page: Page, flow: FlowState) {
     if (method === "GET" && path === "/routing/ticket-e2e/manager-work") {
       return json(route, analystTask(flow, "MANAGER_APPROVAL"));
     }
+    if (method === "GET" && path === "/analyst/assignment-teams") {
+      return json(route, {
+        teams: [{ kind: "rfa", name: "Maritime Assessment Cell", teamId: "rfa-maritime" }],
+      });
+    }
+    if (method === "GET" && path === "/analyst/assignment-teams/rfa-maritime/availability") {
+      return json(route, {
+        assignedLive: 0,
+        date: "2026-07-12",
+        free: 1,
+        members: 1,
+        onLeave: 0,
+        teamId: "rfa-maritime",
+      });
+    }
     if (method === "GET" && path === "/analyst/candidates") {
       return json(route, {
         analysts: [{ displayName: "Analyst Operator", userId: "analyst-user", username: "a.test" }],

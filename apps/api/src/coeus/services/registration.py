@@ -101,6 +101,8 @@ class RegistrationService:
                     {"registration_id": str(registration_id), "reason": "username_taken"},
                 )
                 raise AppError(409, "username_taken", "An account already uses this username.")
+            if not registration.password_hash:
+                raise AppError(409, "registration_invalid", "Registration cannot be approved.")
             account = UserAccount(
                 user_id=uuid4(),
                 username=registration.username,
@@ -156,6 +158,7 @@ class RegistrationService:
     ) -> RegistrationRequest:
         return replace(
             registration,
+            password_hash=None,
             status=status,
             decided_at=datetime.now(UTC),
             decided_by_user_id=actor.user_id,

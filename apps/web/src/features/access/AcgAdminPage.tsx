@@ -22,6 +22,7 @@ export default function AcgAdminPage() {
           {model.actionError}
         </p>
       ) : null}
+      {model.actionSuccess ? <p role="status">{model.actionSuccess}</p> : null}
       <section className="access-grid">
         <AcgSelector
           acgs={model.acgs}
@@ -35,17 +36,23 @@ export default function AcgAdminPage() {
           acg={model.selectedAcg}
           canManageMembers={model.canManageMembers}
           canUpdate={model.canUpdate}
+          directoryError={model.directoryError}
+          directoryLoading={model.directoryLoading}
+          directorySearch={model.directorySearch}
+          directoryTotal={model.directoryTotal}
           editName={model.editName}
           isActive={model.isActive}
           memberUserId={model.memberUserId}
           onAddMember={model.submitMember}
+          onDirectorySearch={model.setDirectorySearch}
           onEditName={model.setEditName}
           onIsActive={model.setIsActive}
           onMemberUserId={model.setMemberUserId}
           onRemoveMember={model.removeMember}
           onUpdate={model.submitUpdate}
+          addPending={model.addMemberPending}
           removePending={model.removeMemberPending}
-          onRequestDirectory={model.requestDirectory}
+          updatePending={model.updatePending}
           users={model.users}
         />
       </section>

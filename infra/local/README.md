@@ -6,7 +6,7 @@ available when you want local PostgreSQL, MinIO and container parity.
 
 Services:
 
-- PostgreSQL with pgvector, exposed on `localhost:5432`.
+- PostgreSQL with pgvector, exposed on `127.0.0.1:5432`.
 - MinIO parity scaffolding, exposed on `localhost:9000` with console on
   `localhost:9001`; current uploads do not use it.
 - FastAPI service, exposed on `localhost:8000`.

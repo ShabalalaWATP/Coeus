@@ -45,7 +45,7 @@ test("disables sending short chat messages and shows a hint", async () => {
   await userEvent.type(screen.getByLabelText("Message"), "w a brief");
   expect(screen.getByRole("button", { name: "Send" })).toBeEnabled();
   await userEvent.click(screen.getByRole("button", { name: "Send" }));
-  expect(onSend).toHaveBeenCalledWith("now a brief");
+  expect(onSend).toHaveBeenCalledWith("now a brief", expect.any(Function));
 });
 
 test("greets the customer when a conversation has not started", () => {
@@ -182,6 +182,7 @@ test("shows empty intake state without attachment controls", () => {
   const onAddAttachment = vi.fn();
   render(
     <IntakePanel
+      isAddingAttachment={false}
       isSaving={false}
       isSubmitting={false}
       onAddAttachment={onAddAttachment}
@@ -197,6 +198,7 @@ test("shows empty intake state without attachment controls", () => {
 test("renders blank editable fields when extraction has no value", () => {
   render(
     <IntakePanel
+      isAddingAttachment={false}
       isSaving={false}
       isSubmitting={false}
       onAddAttachment={vi.fn()}
@@ -252,6 +254,7 @@ test("sends explicit null only when a saved intake field is cleared", async () =
   const onSave = vi.fn();
   render(
     <IntakePanel
+      isAddingAttachment={false}
       isSaving={false}
       isSubmitting={false}
       onAddAttachment={vi.fn()}
@@ -284,6 +287,7 @@ test("sends explicit null only when a saved intake field is cleared", async () =
 test("hints when intake fields are below the minimum length", async () => {
   render(
     <IntakePanel
+      isAddingAttachment={false}
       isSaving={false}
       isSubmitting={false}
       onAddAttachment={vi.fn()}

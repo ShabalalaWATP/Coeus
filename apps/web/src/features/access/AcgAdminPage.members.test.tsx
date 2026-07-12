@@ -54,7 +54,9 @@ test("removes a member from the selected access control group", async () => {
 
   expect(await screen.findByRole("heading", { name: "Alpha Regional" })).toBeVisible();
   const members = within(screen.getByLabelText("Access group members"));
-  expect(members.getByText("user-bravo")).toBeVisible();
+  expect(
+    members.getByRole("button", { name: "Remove user-bravo from Alpha Regional" }),
+  ).toBeVisible();
 
   await userEvent.click(
     members.getByRole("button", { name: "Remove user-bravo from Alpha Regional" }),

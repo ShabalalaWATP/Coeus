@@ -181,7 +181,26 @@ test("reports a successful connection test", async () => {
 test("activating another provider warns about the app-wide change first", async () => {
   const fetchMock = vi
     .fn()
-    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(modelState) })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          ...modelState,
+          providers: modelState.providers.map((provider) =>
+            provider.name === "openai_api" ? { ...provider, apiKeyConfigured: true } : provider,
+          ),
+        }),
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          ok: true,
+          provider: "openai_api",
+          model: "gpt-5-mini",
+          message: "Connection verified.",
+        }),
+    })
     .mockResolvedValueOnce({
       ok: true,
       json: () =>
@@ -198,6 +217,7 @@ test("activating another provider warns about the app-wide change first", async 
   renderWithProviders(<AiModelPanel csrfToken="test-csrf-token" />, "/admin/overview");
 
   await userEvent.click(await screen.findByRole("button", { name: /OpenAI API/ }));
+  await userEvent.click(screen.getByRole("button", { name: "Test connection" }));
   await userEvent.click(screen.getByRole("button", { name: "Make active provider" }));
 
   // The warning explains the consequence before anything is sent.
@@ -205,13 +225,13 @@ test("activating another provider warns about the app-wide change first", async 
     await screen.findByText("This changes the AI provider for every user immediately."),
   ).toBeVisible();
   expect(screen.getByText(/all administrators will be notified/i)).toBeVisible();
-  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(fetchMock).toHaveBeenCalledTimes(2);
 
   await userEvent.click(screen.getByRole("button", { name: "Confirm and activate" }));
 
   await waitFor(() =>
     expect(fetchMock).toHaveBeenNthCalledWith(
-      2,
+      3,
       "http://127.0.0.1:8001/api/v1/admin/ai-model/provider",
       expect.objectContaining({
         body: JSON.stringify({ provider: "openai_api" }),
@@ -225,20 +245,31 @@ test("activating another provider warns about the app-wide change first", async 
 test("cancelling the activation warning sends nothing", async () => {
   const fetchMock = vi
     .fn()
-    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(modelState) });
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(modelState) })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          ok: true,
+          provider: "mock",
+          model: "mock",
+          message: "Connection verified.",
+        }),
+    });
   vi.stubGlobal("fetch", fetchMock);
 
   renderWithProviders(<AiModelPanel csrfToken="test-csrf-token" />, "/admin/overview");
 
   await userEvent.click(await screen.findByRole("button", { name: /Mock \(offline\)/ }));
   expect(screen.getByText(/answers locally with deterministic replies/)).toBeVisible();
+  await userEvent.click(screen.getByRole("button", { name: "Test connection" }));
   await userEvent.click(screen.getByRole("button", { name: "Make active provider" }));
   await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
   expect(
     screen.queryByText("This changes the AI provider for every user immediately."),
   ).not.toBeInTheDocument();
-  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(fetchMock).toHaveBeenCalledTimes(2);
 });
 
 test("shows a generic error when the switch fails", async () => {
