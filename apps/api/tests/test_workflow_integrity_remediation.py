@@ -70,7 +70,6 @@ async def test_rework_requires_a_newer_draft() -> None:
             headers={"X-CSRF-Token": str(worker["csrfToken"])},
         )
         manager = await login(client, "rfa.manager@example.test")
-        team_id = await assignment_team_id(client)
         await client.post(
             f"/api/v1/routing/{ticket_id}/manager-rework",
             headers={"X-CSRF-Token": str(manager["csrfToken"])},
