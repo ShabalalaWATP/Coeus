@@ -128,7 +128,9 @@ export function TeamCalendarPanel({ csrfToken, currentUserId, team }: TeamCalend
           </button>
         </nav>
       </header>
-      {calendarQuery.isError ? (
+      {calendarQuery.isLoading ? (
+        <p role="status">Loading team calendar…</p>
+      ) : calendarQuery.isError ? (
         <p role="alert">The calendar could not be loaded.</p>
       ) : (
         <div aria-label="Month grid" className="cal-grid" role="grid">

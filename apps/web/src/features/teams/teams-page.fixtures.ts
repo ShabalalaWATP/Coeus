@@ -1,6 +1,6 @@
 import type { OrgTeam } from "../../lib/api-client/teams";
 
-export const team: OrgTeam = {
+const team: OrgTeam = {
   id: "team-1",
   name: "RFA Assessment Team",
   kind: "rfa",
@@ -27,7 +27,7 @@ export const team: OrgTeam = {
   ],
 };
 
-export const availability = {
+const availability = {
   teamId: "team-1",
   date: "2026-07-10",
   members: 2,
@@ -54,7 +54,7 @@ export const entry = {
   createdByUserId: "analyst-1",
 };
 
-export const profile = {
+const profile = {
   userId: "preview-user",
   title: "Team Lead",
   specialisms: ["Management"],

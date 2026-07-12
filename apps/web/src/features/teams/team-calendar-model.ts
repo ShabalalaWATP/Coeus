@@ -14,7 +14,7 @@ export const ACTIVITY_LABELS: Record<CalendarActivity, string> = {
 // 62-day calendar window).
 const MAX_BLOCK_DAYS = 62;
 
-export function isoDate(date: Date): string {
+function isoDate(date: Date): string {
   return [
     String(date.getFullYear()).padStart(4, "0"),
     String(date.getMonth() + 1).padStart(2, "0"),

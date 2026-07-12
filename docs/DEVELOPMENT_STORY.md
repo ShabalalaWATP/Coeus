@@ -287,3 +287,18 @@ Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVEL
   95.07 percent branch coverage, plus
   formatting, lint, type, dead-code, contract, build, dependency-audit,
   security-policy and line-limit gates.
+
+## 2026-07-12 Calendar and intelligence-store UX integration
+
+- Integrated Claude's month-grid team calendar onto the current workflow and
+  ACG baseline without replacing the newer team, profile or availability
+  safeguards.
+- Added inclusive multi-day blocks for leave, courses, duty travel,
+  appointments and other commitments, with bounded validation, audited writes
+  and derived availability counts.
+- Made the Intelligence Store search-first for ordinary users while preserving
+  authorised browse-all access for store managers and administrators and
+  owner-team scoped product views.
+- Verification passed with 682 backend tests at 98.22 percent line and 95.05
+  percent branch coverage, 411 frontend tests at 98.61 percent line and 95.10
+  percent branch coverage, and all three Playwright end-to-end journeys.

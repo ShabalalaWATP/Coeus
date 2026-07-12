@@ -97,8 +97,24 @@ test("highlights today in the month grid and shows the month title", async () =>
   renderWithProviders(<TeamsPage />, "/teams");
 
   expect(await screen.findByRole("heading", { name: monthFormat.format(now) })).toBeVisible();
+  await screen.findByLabelText("Month grid");
   const todayCell = screen.getByRole("button", { name: `Plan ${todayIso}` }).closest(".cal-day");
   expect(todayCell?.className).toContain("cal-day--today");
+});
+
+test("shows calendar loading feedback before rendering the month grid", async () => {
+  const fallbackFetch = teamsFetch();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) =>
+      url.includes("/calendar?") ? new Promise(() => undefined) : fallbackFetch(url, init),
+    ),
+  );
+
+  renderWithProviders(<TeamsPage />, "/teams");
+
+  expect(await screen.findByText("Loading team calendar…")).toBeVisible();
+  expect(screen.queryByLabelText("Month grid")).not.toBeInTheDocument();
 });
 
 test("shows an empty grid and surfaces entry failures", async () => {
