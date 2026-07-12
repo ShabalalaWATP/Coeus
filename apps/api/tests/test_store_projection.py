@@ -155,7 +155,9 @@ def test_store_search_rechecks_policy_after_projection_candidates() -> None:
     repository = InMemoryStoreRepository(access_repo, projection=RecordingProjection((restricted,)))
     service = StoreSearchService(repository, StoreProductAccessPolicy(access_repo))
 
-    result = service.search(user, filters())
+    # A structured criterion keeps the search on the projection page path;
+    # unfiltered browsing now requires the curator's browse-all permission.
+    result = service.search(user, filters(product_type=restricted.metadata.product_type))
 
     assert result.total == 0
     assert result.facets.product_types == ()

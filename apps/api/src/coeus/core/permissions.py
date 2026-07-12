@@ -50,6 +50,7 @@ class Permission(StrEnum):
     PRODUCT_PUBLISH = "product:publish"
     PRODUCT_ARCHIVE = "product:archive"
     PRODUCT_SEARCH = "product:search"
+    STORE_BROWSE_ALL = "store:browse_all"
     PRODUCT_DOWNLOAD = "product:download"
     PRODUCT_DISSEMINATE = "product:disseminate"
     FEEDBACK_CREATE = "feedback:create"

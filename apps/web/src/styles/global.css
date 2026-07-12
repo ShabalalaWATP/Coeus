@@ -15,6 +15,7 @@
 @import "./similar-requests.css";
 @import "./analyst.css";
 @import "./teams.css";
+@import "./team-calendar.css";
 @import "./qc.css";
 @import "./feedback.css";
 @import "./analytics.css";
@@ -24,6 +25,7 @@
 @import "./access.css";
 @import "./workspace.css";
 @import "./store.css";
+@import "./store-search.css";
 @import "./store-match-reasons.css";
 @import "./store-assets.css";
 @import "./store-break-glass.css";

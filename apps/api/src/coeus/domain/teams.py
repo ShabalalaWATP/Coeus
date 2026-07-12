@@ -23,6 +23,22 @@ class CalendarStatus(StrEnum):
     AVAILABLE = "available"
     ON_TASK = "on_task"
     LEAVE = "leave"
+    COURSE = "course"
+    DUTY = "duty"
+    APPOINTMENT = "appointment"
+    OTHER = "other"
+
+
+# Statuses that mean the member is committed elsewhere (not leave, not
+# ticket work): courses, duty travel, appointments and ad-hoc blocks.
+OTHER_COMMITMENT_STATUSES = frozenset(
+    {
+        CalendarStatus.COURSE,
+        CalendarStatus.DUTY,
+        CalendarStatus.APPOINTMENT,
+        CalendarStatus.OTHER,
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -50,12 +66,24 @@ class TeamCalendarEntry:
     entry_id: UUID
     team_id: UUID
     user_id: UUID
-    # ISO calendar date the entry applies to, e.g. "2026-07-10".
+    # ISO calendar date the entry starts on, e.g. "2026-07-10".
     entry_date: str
     status: CalendarStatus
     note: str = ""
+    # Inclusive ISO end date for block entries; "" means a single day.
+    end_date: str = ""
     created_by_user_id: UUID | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+
+def entry_end(entry: TeamCalendarEntry) -> str:
+    """The inclusive last day an entry covers."""
+    return entry.end_date or entry.entry_date
+
+
+def entry_covers(entry: TeamCalendarEntry, day: str) -> bool:
+    """Whether an entry covers an ISO date (lexicographic compare is safe)."""
+    return entry.entry_date <= day <= entry_end(entry)
 
 
 def team_member_ids(team: OrgTeam) -> frozenset[UUID]:

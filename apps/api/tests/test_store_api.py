@@ -173,7 +173,11 @@ async def test_search_filters_after_access_checks_without_count_leakage() -> Non
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
         await login(client, "user@example.test")
-        all_products = await client.get("/api/v1/store/products")
+        # Unfiltered browsing is curator-only; a broad type filter still
+        # proves access checks run before filters without leaking counts.
+        all_products = await client.get(
+            "/api/v1/store/products", params={"productType": "assessment_report"}
+        )
         collection_query = await client.get(
             "/api/v1/store/products",
             params={"query": "collection", "sourceType": "sensor"},

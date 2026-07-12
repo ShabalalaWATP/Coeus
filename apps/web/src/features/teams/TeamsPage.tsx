@@ -81,6 +81,10 @@ export default function TeamsPage() {
                   <dd>{availabilityQuery.data.onLeave}</dd>
                 </div>
                 <div>
+                  <dt>Other duties</dt>
+                  <dd>{availabilityQuery.data.otherCommitments}</dd>
+                </div>
+                <div>
                   <dt>Free</dt>
                   <dd>{availabilityQuery.data.free}</dd>
                 </div>

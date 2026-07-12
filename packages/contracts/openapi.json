@@ -1156,6 +1156,10 @@
             "title": "Ontaskcalendar",
             "type": "integer"
           },
+          "otherCommitments": {
+            "title": "Othercommitments",
+            "type": "integer"
+          },
           "teamId": {
             "format": "uuid",
             "title": "Teamid",
@@ -1168,6 +1172,7 @@
           "members",
           "onLeave",
           "onTaskCalendar",
+          "otherCommitments",
           "assignedLive",
           "onTask",
           "free"
@@ -1246,6 +1251,20 @@
             "title": "Date",
             "type": "string"
           },
+          "endDate": {
+            "anyOf": [
+              {
+                "maxLength": 10,
+                "minLength": 10,
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enddate"
+          },
           "note": {
             "default": "",
             "maxLength": 280,
@@ -1253,7 +1272,7 @@
             "type": "string"
           },
           "status": {
-            "pattern": "^(available|on_task|leave)$",
+            "pattern": "^(available|on_task|leave|course|duty|appointment|other)$",
             "title": "Status",
             "type": "string"
           },
@@ -1289,6 +1308,10 @@
             "title": "Date",
             "type": "string"
           },
+          "endDate": {
+            "title": "Enddate",
+            "type": "string"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -1312,6 +1335,7 @@
           "id",
           "userId",
           "date",
+          "endDate",
           "status",
           "note",
           "createdByUserId"

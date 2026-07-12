@@ -2,67 +2,15 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import StorePage from "./StorePage";
+import { collectionProduct, visibleProduct } from "./store-page.fixtures";
 import { resetQueryClientForTests } from "../../app/query-client";
 import type { AuthSession } from "../../lib/api-client/auth";
 import { renderWithProviders } from "../../test/test-utils";
 
-const visibleProduct = {
-  id: "product-regional",
-  reference: "PROD-1001",
-  title: "Regional Stability Brief",
-  summary: "MOCK DATA ONLY assessment summary",
-  description: "Synthetic detail",
-  productType: "assessment_report",
-  sourceType: "finished_assessment",
-  ownerTeam: "RFA",
-  areaOrRegion: "Baltic ports",
-  classificationLevel: 2,
-  releasability: ["MOCK"],
-  handlingCaveats: ["MOCK DATA ONLY"],
-  tags: ["regional"],
-  acgIds: ["acg-alpha"],
-  status: "published",
-  timePeriodStart: null,
-  timePeriodEnd: null,
-  geojsonRef: null,
-  assets: [],
-  matchScore: 1,
-  matchReasons: ["visible"],
-};
-
-const collectionProduct = {
-  ...visibleProduct,
-  id: "product-collection",
-  title: "Collection Sensor Summary",
-  productType: "unmapped_type",
-  ownerTeam: "Collection",
-  areaOrRegion: "North Sea",
-  timePeriodStart: "2026-05-01",
-};
-
-const readOnlyCollectionSession: AuthSession = {
-  csrfToken: "test-csrf-token",
-  user: {
-    id: "collection-user",
-    username: "collection@example.test",
-    displayName: "Collection User",
-    roles: ["Collection Manager"],
-    defaultRoute: "/store",
-    permissions: ["product:read", "product:search"],
-  },
-};
-
-const rfaManagerSession: AuthSession = {
-  csrfToken: "test-csrf-token",
-  user: {
-    id: "rfa-user",
-    username: "rfa.manager@example.test",
-    displayName: "RFA Manager",
-    roles: ["Request for Assessment Manager"],
-    defaultRoute: "/rfa/queue",
-    permissions: ["product:read", "product:search"],
-  },
-};
+async function searchFor(term: string) {
+  await userEvent.type(await screen.findByLabelText("Full text"), term);
+  await userEvent.click(screen.getByRole("button", { name: "Search products" }));
+}
 
 beforeEach(() => {
   resetQueryClientForTests();
@@ -89,6 +37,10 @@ test("renders visible store products and facets only from authorised results", a
   renderWithProviders(<StorePage />, "/store");
 
   expect(await screen.findByRole("heading", { name: "Intelligence Store" })).toBeVisible();
+  // Nothing is listed until the user searches.
+  expect(screen.getByText("Search the Intelligence Store")).toBeVisible();
+  expect(screen.queryByText("Regional Stability Brief")).not.toBeInTheDocument();
+  await searchFor("regional");
   expect(await screen.findByText("Regional Stability Brief")).toBeVisible();
   expect(screen.queryByText("Collection Sensor Summary")).not.toBeInTheDocument();
   expect(
@@ -97,31 +49,20 @@ test("renders visible store products and facets only from authorised results", a
 });
 
 test("submits product search filters", async () => {
-  const fetchMock = vi
-    .fn()
-    .mockResolvedValueOnce({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          products: [],
-          total: 0,
-          facets: { productTypes: [], regions: [], tags: [] },
-        }),
-    })
-    .mockResolvedValueOnce({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          products: [
-            {
-              ...visibleProduct,
-              matchReasons: ["lexical-rank:1", "vector-similarity:0.82", "full-text:harbour"],
-            },
-          ],
-          total: 1,
-          facets: { productTypes: [], regions: [], tags: [] },
-        }),
-    });
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    json: () =>
+      Promise.resolve({
+        products: [
+          {
+            ...visibleProduct,
+            matchReasons: ["lexical-rank:1", "vector-similarity:0.82", "full-text:harbour"],
+          },
+        ],
+        total: 1,
+        facets: { productTypes: [], regions: [], tags: [] },
+      }),
+  });
   vi.stubGlobal("fetch", fetchMock);
 
   renderWithProviders(<StorePage />, "/store");
@@ -184,95 +125,13 @@ test("requests the next store result page", async () => {
 
   renderWithProviders(<StorePage />, "/store");
 
+  await searchFor("brief");
   expect(await screen.findByText("Showing 1-6 of 8")).toBeVisible();
   await userEvent.click(screen.getByRole("button", { name: "Next page" }));
 
   expect(await screen.findByText("Collection Sensor Summary")).toBeVisible();
   const calls = fetchMock.mock.calls as Array<[string, RequestInit]>;
   expect(calls[calls.length - 1][0]).toContain("page=2");
-});
-
-test("filters my products by owner team and hides upload without create permission", async () => {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn().mockResolvedValue({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          products: [visibleProduct, collectionProduct],
-          total: 2,
-          facets: { productTypes: [], regions: [], tags: [] },
-        }),
-    }),
-  );
-
-  renderWithProviders(<StorePage scope="mine" />, "/store/my-products", readOnlyCollectionSession);
-
-  expect(await screen.findByRole("heading", { name: "My Products" })).toBeVisible();
-  expect(await screen.findByText("Collection Sensor Summary")).toBeVisible();
-  expect(screen.getByText("2026-05-01 to ongoing")).toBeVisible();
-  expect(screen.queryByText("Regional Stability Brief")).not.toBeInTheDocument();
-  expect(screen.queryByRole("link", { name: "Upload product" })).not.toBeInTheDocument();
-  expect(screen.getByText("MOCK DATA ONLY")).toBeVisible();
-});
-
-test("scopes my products to the RFA team for an assessment manager", async () => {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn().mockResolvedValue({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          products: [visibleProduct, collectionProduct],
-          total: 2,
-          facets: { productTypes: [], regions: [], tags: [] },
-        }),
-    }),
-  );
-
-  renderWithProviders(<StorePage scope="mine" />, "/store/my-products", rfaManagerSession);
-
-  expect(await screen.findByText("Regional Stability Brief")).toBeVisible();
-  expect(screen.queryByText("Collection Sensor Summary")).not.toBeInTheDocument();
-});
-
-test("keeps counts and pagination consistent when the mine scope filters client-side", async () => {
-  const adminSession: AuthSession = {
-    csrfToken: "test-csrf-token",
-    user: {
-      id: "admin-user",
-      username: "admin@example.test",
-      displayName: "Administrator",
-      roles: ["Administrator"],
-      defaultRoute: "/admin/overview",
-      permissions: ["product:read", "product:search"],
-    },
-  };
-  vi.stubGlobal(
-    "fetch",
-    vi.fn().mockResolvedValue({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          products: [visibleProduct, collectionProduct],
-          total: 8,
-          page: 1,
-          pageSize: 6,
-          totalPages: 2,
-          facets: { productTypes: [], regions: [], tags: [] },
-        }),
-    }),
-  );
-
-  renderWithProviders(<StorePage scope="mine" />, "/store/my-products", adminSession);
-
-  expect(await screen.findByRole("heading", { name: "My Products" })).toBeVisible();
-  // Administrator roles do not map to an owner team, so the client-side
-  // filter yields no owned products; counts must reflect that, not the
-  // server totals for the unfiltered search.
-  expect(await screen.findByRole("heading", { name: "0 products" })).toBeVisible();
-  expect(screen.getByText("No products to show.")).toBeVisible();
-  expect(screen.queryByRole("navigation", { name: "Store pages" })).not.toBeInTheDocument();
 });
 
 test("renders a store search error state", async () => {
@@ -287,36 +146,55 @@ test("renders a store search error state", async () => {
 
   renderWithProviders(<StorePage />, "/store");
 
+  await searchFor("anything");
   expect(
     await screen.findByText("Unable to load data", undefined, { timeout: 5000 }),
   ).toBeVisible();
   await userEvent.click(screen.getByRole("button", { name: "Retry" }));
 });
 
-test("filters team product workspaces by explicit owner team", async () => {
+test("hints when a search is submitted with no criteria", async () => {
+  const fetchMock = vi.fn();
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<StorePage />, "/store");
+
+  await screen.findByText("Search the Intelligence Store");
+  await userEvent.click(screen.getByRole("button", { name: "Search products" }));
+
+  expect(
+    await screen.findByText("Enter a search term or pick at least one filter first."),
+  ).toBeVisible();
+  expect(fetchMock).not.toHaveBeenCalled();
+});
+
+test("catalogue curators still browse without searching", async () => {
+  const curatorSession: AuthSession = {
+    csrfToken: "test-csrf-token",
+    user: {
+      id: "curator-user",
+      username: "store.manager@example.test",
+      displayName: "Store Curator",
+      roles: ["Intelligence Store Manager"],
+      defaultRoute: "/store",
+      permissions: ["product:read", "product:search", "store:browse_all"],
+    },
+  };
   vi.stubGlobal(
     "fetch",
     vi.fn().mockResolvedValue({
       ok: true,
       json: () =>
         Promise.resolve({
-          products: [visibleProduct, collectionProduct],
-          total: 2,
+          products: [visibleProduct],
+          total: 1,
           facets: { productTypes: [], regions: [], tags: [] },
         }),
     }),
   );
 
-  renderWithProviders(
-    <StorePage
-      description="Request for Assessment product workspace."
-      ownerTeam="RFA"
-      title="RFA Products"
-    />,
-    "/rfa/products",
-  );
+  renderWithProviders(<StorePage />, "/store", curatorSession);
 
-  expect(await screen.findByRole("heading", { name: "RFA Products" })).toBeVisible();
   expect(await screen.findByText("Regional Stability Brief")).toBeVisible();
-  expect(screen.queryByText("Collection Sensor Summary")).not.toBeInTheDocument();
+  expect(screen.queryByText("Search the Intelligence Store")).not.toBeInTheDocument();
 });

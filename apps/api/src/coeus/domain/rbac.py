@@ -51,6 +51,8 @@ MANAGER_TEAM_LEAD_PERMISSIONS = frozenset(
 
 STORE_MANAGER_PERMISSIONS = SELF_SERVICE | frozenset(
     {
+        # Curators may browse the whole catalogue; everyone else searches.
+        Permission.STORE_BROWSE_ALL,
         Permission.ACG_VIEW,
         Permission.ACG_ASSIGN_USER,
         Permission.ACG_ASSIGN_PRODUCT,

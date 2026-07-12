@@ -40,6 +40,7 @@ export type Permission =
   | "qc:review"
   | "qc:approve"
   | "qc:reject"
+  | "store:browse_all"
   | "product:create_existing"
   | "product:create_from_qc"
   | "product:read"

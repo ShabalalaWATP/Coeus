@@ -1,7 +1,9 @@
 """Deterministic team calendar demo entries (MOCK DATA ONLY, local only).
 
 Spreads availability across each seed team's members over the coming days so
-the My Team availability tiles and assignment-panel counts look realistic.
+the My Team availability tiles and assignment-panel counts look realistic,
+including block entries (a course and a leave block) so the month view has
+multi-day ranges to show.
 """
 
 from datetime import UTC, date, datetime, timedelta
@@ -15,11 +17,21 @@ from coeus.repositories.access import stable_seed_id
 _STATUS_CYCLE = (
     CalendarStatus.ON_TASK,
     CalendarStatus.AVAILABLE,
+    CalendarStatus.COURSE,
     CalendarStatus.ON_TASK,
     CalendarStatus.LEAVE,
     CalendarStatus.AVAILABLE,
+    CalendarStatus.APPOINTMENT,
 )
 _DAY_SPAN = 5
+_NOTES = {
+    CalendarStatus.ON_TASK: "Assigned to a live task.",
+    CalendarStatus.LEAVE: "Planned leave.",
+    CalendarStatus.COURSE: "Attending a training course.",
+    CalendarStatus.APPOINTMENT: "Medical appointment.",
+    CalendarStatus.DUTY: "Duty travel.",
+    CalendarStatus.OTHER: "Blocked out.",
+}
 
 
 def build_demo_calendar(teams: tuple[OrgTeam, ...]) -> tuple[TeamCalendarEntry, ...]:
@@ -34,20 +46,36 @@ def build_demo_calendar(teams: tuple[OrgTeam, ...]) -> tuple[TeamCalendarEntry, 
                     continue
                 entry_date = today + timedelta(days=day_offset)
                 entries.append(_entry(team, user_id, entry_date, status))
+        # One block entry per team so the calendar shows multi-day ranges:
+        # the first member is away on a course next week.
+        if members:
+            entries.append(
+                _entry(
+                    team,
+                    members[0],
+                    today + timedelta(days=7),
+                    CalendarStatus.COURSE,
+                    end_date=today + timedelta(days=10),
+                )
+            )
     return tuple(entries)
 
 
 def _entry(
-    team: OrgTeam, user_id: UUID, entry_date: date, status: CalendarStatus
+    team: OrgTeam,
+    user_id: UUID,
+    entry_date: date,
+    status: CalendarStatus,
+    end_date: date | None = None,
 ) -> TeamCalendarEntry:
     key = f"demo-cal-{team.team_id}-{user_id}-{entry_date.isoformat()}"
-    note = "Assigned to a live task." if status == CalendarStatus.ON_TASK else "Planned leave."
     return TeamCalendarEntry(
         entry_id=stable_seed_id(key),
         team_id=team.team_id,
         user_id=user_id,
         entry_date=entry_date.isoformat(),
         status=status,
-        note=note,
+        note=_NOTES.get(status, "Blocked out."),
+        end_date=end_date.isoformat() if end_date else "",
         created_by_user_id=user_id,
     )
