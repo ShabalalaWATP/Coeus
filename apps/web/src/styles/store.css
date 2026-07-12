@@ -72,6 +72,9 @@
 .upload-form select,
 .upload-form textarea {
   width: 100%;
+  /* Date inputs carry a UA intrinsic minimum that otherwise bursts the
+     minmax(0, 1fr) columns at narrow widths. */
+  min-width: 0;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px 12px;
