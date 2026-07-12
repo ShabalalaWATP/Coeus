@@ -43,8 +43,11 @@ async def test_demo_store_catalogue_is_broad_and_visible(tmp_path: Path) -> None
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
-        await login(client, "user@example.test")
+        # Catalogue breadth is checked as the curator (browse-all); the demo
+        # customer's visibility is proven through the search path below.
+        await login(client, "store.manager@example.test")
         products = await client.get("/api/v1/store/products?pageSize=50")
+        await login(client, "user@example.test")
         regions = await client.get("/api/v1/store/products?query=Arctic")
 
     assert products.status_code == 200

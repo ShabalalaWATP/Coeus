@@ -25,7 +25,13 @@ seed users (`repositories/teams_seed.py`):
   specialisms, bio per user in `repositories/teams_seed_profiles.py`);
   existing profiles are never overwritten during restart seeding.
 - `TeamCalendarEntry { entry_id, team_id, user_id, entry_date (ISO date),
-  status: available|on_task|leave, note }`.
+  end_date (inclusive ISO date, "" = single day), status, note }`. Statuses
+  cover the activities members block out: `available`, `on_task`, `leave`,
+  `course`, `duty`, `appointment` and `other`. Block entries span
+  `entry_date..end_date`; validation requires end >= start, no past starts,
+  and the block to end within the 62-day window. Where entries overlap for
+  a user on a day, the most recently created entry wins, so a fresh
+  single-day override beats an older block.
 
 ## Rules
 
@@ -45,10 +51,13 @@ seed users (`repositories/teams_seed.py`):
 ## Availability
 
 `TeamAvailabilityService.availability(team, date)` is deterministic: it
-combines the calendar statuses for the date (latest entry per member wins)
+combines the calendar statuses covering the date (latest created entry per
+member wins, including block entries)
 with live analyst assignments on in-flight tickets
 (`ANALYST_IN_PROGRESS`, `MANAGER_APPROVAL`, `QC_REVIEW`, `REWORK_REQUIRED`)
-and reports `{members, onLeave, onTaskCalendar, assignedLive, free}`. The
+and reports `{members, onLeave, onTaskCalendar, otherCommitments,
+assignedLive, free}`, where `otherCommitments` counts courses, duty
+travel, appointments and other blocks. The
 ticket read is a system-level snapshot that only ever surfaces derived counts.
 
 ## API
@@ -64,8 +73,11 @@ ticket read is a system-level snapshot that only ever surfaces derived counts.
 `/teams` ("My Team"): roster with profile titles and specialisms, a manager
 add/remove control (directory search with click-to-add suggestions; the
 search keeps the directory's minimum-three-character, ten-result
-need-to-know posture), the complete two-week calendar with a "Today"
-highlight, empty days and per-day status summaries, an availability tile for today, and
+need-to-know posture), a month-grid calendar (Monday-first
+weeks, previous/next month navigation, a "Today" highlight, entries as
+per-member chips that span block dates, click a day to prefill the form)
+with a block-out form (member for managers, activity, from/to dates, note),
+an availability tile for today including other commitments, and
 the self-service profile editor. The AssignAnalystPanel shows "X of Y team
 members are free today" beside the candidate checkboxes. Non-members see an
 informative empty state.

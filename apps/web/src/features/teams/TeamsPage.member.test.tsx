@@ -40,10 +40,16 @@ const cmTeam: OrgTeam = {
   kind: "cm",
 };
 
+const now = new Date();
+const todayIso = [now.getFullYear(), now.getMonth() + 1, now.getDate()]
+  .map((part, index) => String(part).padStart(index === 0 ? 4 : 2, "0"))
+  .join("-");
+
 const managerEntry = {
   id: "entry-9",
   userId: "manager-1",
-  date: "2026-07-16",
+  date: todayIso,
+  endDate: todayIso,
   status: "on_task" as const,
   note: "",
   createdByUserId: "manager-1",
@@ -64,6 +70,7 @@ function memberFetch({ calendarFails = false } = {}) {
         members: 2,
         onLeave: 0,
         onTaskCalendar: 1,
+        otherCommitments: 0,
         assignedLive: 0,
         onTask: 0,
         free: 1,
@@ -118,7 +125,7 @@ test("members see the roster read-only, switch teams and log their own time", as
   ).not.toBeInTheDocument();
 
   // The member logs their own availability without picking a member.
-  await userEvent.selectOptions(screen.getByLabelText("Status"), "available");
+  await userEvent.selectOptions(screen.getByLabelText("Activity"), "available");
   await userEvent.click(screen.getByRole("button", { name: "Add entry" }));
   await waitFor(() =>
     expect(fetchMock).toHaveBeenCalledWith(

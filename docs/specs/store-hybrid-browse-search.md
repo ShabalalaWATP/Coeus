@@ -88,3 +88,16 @@ search must not fail. It falls back to lexical retrieval and records
 - Provider-degraded browse search returns lexical results rather than an error.
 - Gibberish queries with no lexical or vector signal return zero hits, even
   when every scoped product has an embedding.
+
+## Search-first posture
+
+The store never lists a user's whole visible holdings unprompted. A search
+term or at least one filter (`query`, `productType`, `region`, `tag`,
+`sourceType`, `status`, `dateFrom`, `dateTo`, `ownerTeam`) is required;
+an unfiltered `GET /store/products` returns `422 search_criteria_required`.
+Catalogue curators holding `store:browse_all` (the Intelligence Store
+Manager role, plus administrators) may browse without criteria to
+administer the catalogue. The web store shows a search-first prompt until
+the user submits a search; owner-scoped pages (My Products, RFA and
+Collection product workspaces) carry `ownerTeam` and load as before, and
+RFI search remains the other sanctioned discovery route.

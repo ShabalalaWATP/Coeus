@@ -29,6 +29,8 @@ _VISIBILITY_USERS = (
     "rfa.team@example.test",
     "analyst@example.test",
     "qc.manager@example.test",
+    # The curator must see the catalogue they administer.
+    "store.manager@example.test",
 )
 
 

@@ -65,24 +65,15 @@ test("renders stem-folded hybrid browse results with match reasons", async () =>
 });
 
 function searchResponses(matchReasons: string[]) {
-  return vi
-    .fn()
-    .mockResolvedValueOnce({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          products: [],
-          total: 0,
-          facets: { productTypes: [], regions: [], tags: [] },
-        }),
-    })
-    .mockResolvedValueOnce({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          products: [{ ...baseProduct, matchReasons }],
-          total: 1,
-          facets: { productTypes: [], regions: [], tags: [] },
-        }),
-    });
+  // The store fetches nothing until the search is submitted, so the search
+  // response is the only one needed.
+  return vi.fn().mockResolvedValue({
+    ok: true,
+    json: () =>
+      Promise.resolve({
+        products: [{ ...baseProduct, matchReasons }],
+        total: 1,
+        facets: { productTypes: [], regions: [], tags: [] },
+      }),
+  });
 }

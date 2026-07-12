@@ -54,8 +54,7 @@
   align-items: start;
 }
 
-.team-roster__list,
-.team-calendar__list {
+.team-roster__list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -82,12 +81,6 @@
 .team-roster__bio {
   max-width: 62ch;
   line-height: 1.45;
-}
-
-.team-calendar__free-day {
-  color: var(--muted);
-  font-size: 0.84rem;
-  font-style: italic;
 }
 
 .team-roster__badge {
@@ -159,84 +152,6 @@
   gap: 6px;
   font-size: 0.86rem;
   font-weight: 740;
-}
-
-.team-calendar__day {
-  display: grid;
-  gap: 8px;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-}
-
-.team-calendar__day--today {
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
-}
-
-.team-calendar__day header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.team-calendar__day h3 {
-  margin: 0;
-  font-size: 0.95rem;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.team-calendar__day header small {
-  color: var(--muted);
-}
-
-.team-calendar__today {
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 20%, var(--surface-muted));
-  font-size: 0.7rem;
-  font-weight: 780;
-  text-transform: uppercase;
-}
-
-.team-calendar__empty {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.9rem;
-}
-
-.team-calendar__list li {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 8px 12px;
-}
-
-.team-calendar__status {
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 0.74rem;
-  font-weight: 780;
-  text-transform: uppercase;
-}
-
-.team-calendar__status--available {
-  background: color-mix(in srgb, var(--teal) 16%, var(--surface-muted));
-}
-
-.team-calendar__status--on_task {
-  background: color-mix(in srgb, var(--amber, #b58900) 18%, var(--surface-muted));
-}
-
-.team-calendar__status--leave {
-  background: color-mix(in srgb, var(--muted) 22%, var(--surface-muted));
 }
 
 .my-profile form {
