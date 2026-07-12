@@ -134,7 +134,6 @@ export default function StorePage({
     <div className="store-page">
       <section className="overview-hero store-hero" aria-labelledby="store-title">
         <div>
-          <span className="store-hero__eyebrow">Istari · Controlled holdings</span>
           <h1 id="store-title">
             {title ?? (scope === "mine" ? "My Products" : "Intelligence Store")}
           </h1>

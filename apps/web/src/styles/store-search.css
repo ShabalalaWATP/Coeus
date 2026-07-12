@@ -73,17 +73,6 @@
   z-index: 1;
 }
 
-.store-hero__eyebrow {
-  display: inline-block;
-  margin-bottom: 8px;
-  color: color-mix(in srgb, var(--store-gold) 78%, var(--text));
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 750;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
 .store-result-spot {
   border-radius: var(--radius-md);
 }
