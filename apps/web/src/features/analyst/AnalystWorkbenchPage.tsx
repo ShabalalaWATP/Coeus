@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 
 import AnalystTaskDetail from "./AnalystTaskDetail";
-import { ErrorState } from "../../components/ui/PageState";
+import { ErrorState, LoadingState } from "../../components/ui/PageState";
 import { formatWorkflowState } from "../../lib/workflow/state-format";
 import {
   listAnalystTasks,
@@ -40,7 +40,7 @@ export default function AnalystWorkbenchPage() {
       <section className="overview-hero" aria-labelledby="analyst-title">
         <div>
           <h1 id="analyst-title">Analyst Workbench</h1>
-          <p>Assigned task production and QC submission.</p>
+          <p>Assigned task production and manager review.</p>
         </div>
         <div className="classification-note">MOCK DATA ONLY</div>
       </section>
@@ -58,6 +58,8 @@ export default function AnalystWorkbenchPage() {
           </div>
           {tasksQuery.isError ? (
             <ErrorState onRetry={() => void tasksQuery.refetch()} />
+          ) : tasksQuery.isFetching && tasksQuery.dataUpdatedAt === 0 ? (
+            <LoadingState label="Loading assigned tasks" />
           ) : (
             <>
               {tasks.map((task) => (

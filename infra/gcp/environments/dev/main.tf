@@ -69,6 +69,10 @@ module "project_services" {
 
   project_id = var.project_id
   services   = local.required_services
+
+  # Every cloud-creating path is downstream of project services, so this root
+  # dependency also keeps targeted plans and applies behind the readiness gate.
+  depends_on = [terraform_data.migration_readiness_gate]
 }
 
 module "iam" {

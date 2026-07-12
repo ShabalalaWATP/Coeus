@@ -1,14 +1,19 @@
+from datetime import UTC, datetime
+from types import SimpleNamespace
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from coeus.core.config import Settings
+from coeus.core.errors import AppError
+from coeus.domain.enums import TicketState
+from coeus.domain.tickets import AnalystAssignment, RoutingRoute
 from coeus.main import create_app
 from rfi_search_helpers import login
-from routing_helpers import analyst_assignment_ticket
+from routing_helpers import analyst_assignment_ticket, assignment_team_id
 from test_qc_api import _draft_payload
 
 
@@ -27,10 +32,11 @@ def _analyst_ids(app: FastAPI, *usernames: str) -> list[str]:
 
 async def _assign(client: AsyncClient, ticket_id: str, analyst_ids: list[str], **extra: Any):
     manager = await login(client, "rfa.manager@example.test")
+    team_id = await assignment_team_id(client)
     return await client.post(
         f"/api/v1/analyst/tasks/{ticket_id}/assign",
         headers={"X-CSRF-Token": str(manager["csrfToken"])},
-        json={"analystUserIds": analyst_ids, **extra},
+        json={"analystUserIds": analyst_ids, "teamId": team_id, **extra},
     )
 
 
@@ -83,6 +89,12 @@ async def test_manager_can_return_work_for_rework_and_then_approve() -> None:
         assert reworked.json()["state"] == "ANALYST_IN_PROGRESS"
 
         analyst = await login(client, "analyst@example.test")
+        revised = await client.post(
+            f"/api/v1/analyst/tasks/{ticket_id}/drafts",
+            headers={"X-CSRF-Token": str(analyst["csrfToken"])},
+            json=_draft_payload("Revised chain product"),
+        )
+        assert revised.status_code == 200
         resubmitted = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/submit",
             headers={"X-CSRF-Token": str(analyst["csrfToken"])},
@@ -237,6 +249,42 @@ async def test_assignment_rejects_duplicates_and_fresh_double_assignment() -> No
         # assignments exist for the approved route.
         empty = await _assign(client, second_ticket, [])
         assert empty.status_code == 422
+
+
+def test_manager_approval_enforces_assignment_and_transition_edges(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = _app()
+    service = app.state.manager_approval_service
+    manager = app.state.access_services.repository.get_user_by_username("rfa.manager@example.test")
+    assert manager is not None
+
+    with pytest.raises(AppError, match="A rework reason is required"):
+        service.return_for_rework(manager, uuid4(), "x")
+
+    def assignment(team_id: UUID) -> AnalystAssignment:
+        return AnalystAssignment(
+            assignment_id=uuid4(),
+            ticket_id=uuid4(),
+            analyst_user_id=uuid4(),
+            assigned_by_user_id=manager.user_id,
+            route=RoutingRoute.RFA,
+            created_at=datetime.now(UTC),
+            team_id=team_id,
+        )
+
+    conflicting = SimpleNamespace(analyst_assignments=(assignment(uuid4()), assignment(uuid4())))
+    with pytest.raises(AppError, match="Assignment has conflicting teams"):
+        service._ensure_assignment_team(conflicting, RoutingRoute.RFA)
+
+    stale = SimpleNamespace(analyst_assignments=(assignment(uuid4()),))
+    with pytest.raises(AppError, match="Assignment team is no longer valid"):
+        service._ensure_assignment_team(stale, RoutingRoute.RFA)
+
+    monkeypatch.setattr(service, "_teams", None)
+    service._ensure_assignment_team(stale, RoutingRoute.RFA)
+    with pytest.raises(AppError, match="Ticket cannot move to that state"):
+        service._ensure_transition(TicketState.CANCELLED, TicketState.QC_REVIEW)
 
 
 def _make_latest_drafter(app: FastAPI, ticket_id: str, user_id: UUID) -> None:

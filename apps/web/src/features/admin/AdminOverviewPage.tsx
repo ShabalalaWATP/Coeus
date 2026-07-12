@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 
 import { AiModelPanel } from "./AiModelPanel";
 import { RegistrationApprovalsPanel } from "./RegistrationApprovalsPanel";
+import { ErrorState, LoadingState } from "../../components/ui/PageState";
 import { getAdminOverview } from "../../lib/api-client/admin";
 import { useAuth } from "../../lib/auth/auth-context";
 
@@ -58,12 +59,16 @@ export default function AdminOverviewPage() {
       </section>
 
       <section className="surface workspace-summary" aria-label="Admin service status">
-        <div>
-          <span className="eyebrow">Control plane</span>
-          <h2>{overviewQuery.data?.status === "available" ? "Available" : "Checking status"}</h2>
-          <p>{overviewQuery.data?.scope ?? "Admin overview service health."}</p>
-        </div>
-        <Activity aria-hidden="true" size={24} />
+        {overviewQuery.isLoading ? <LoadingState label="Checking admin service status" /> : null}
+        {overviewQuery.isError ? <ErrorState onRetry={() => void overviewQuery.refetch()} /> : null}
+        {overviewQuery.data ? (
+          <div>
+            <span className="eyebrow">Control plane</span>
+            <h2>{overviewQuery.data?.status === "available" ? "Available" : "Checking status"}</h2>
+            <p>{overviewQuery.data?.scope ?? "Admin overview service health."}</p>
+          </div>
+        ) : null}
+        {overviewQuery.data ? <Activity aria-hidden="true" size={24} /> : null}
       </section>
 
       <RegistrationApprovalsPanel csrfToken={session?.csrfToken ?? ""} />

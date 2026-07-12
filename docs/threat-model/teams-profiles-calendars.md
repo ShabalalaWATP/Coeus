@@ -15,6 +15,8 @@ availability service (`docs/specs/teams-profiles-calendars.md`).
 | Threat | Control |
 | --- | --- |
 | Cross-team user enumeration | Teams and profiles are visible only to that team's managers and members (admins excepted); roster candidate search requires both `team:manage` and object-level manager access |
+| Assignment display labels spoof team ownership | Assignment writes persist an immutable organisational `team_id`; the server derives the display name and restricts candidates to active members of that selected same-area team. |
+| Area manager crosses RFA/CM authority | Assignment team selection and manager review validate the approved route against the team's kind; RFA and CM authority remains area-wide only within its own route kind. |
 | Membership tampering | Roster changes require `team:manage` AND management of that specific team (object-level, not just role-level); targets must be active accounts; every change is audited with rollback on audit failure |
 | A member forges a teammate's availability | Members may only write their own entries; only the team's managers write for others; entries record `created_by_user_id` |
 | Profile impersonation or stored-text abuse | Profiles are self-edit only, with bounded lengths (title 120, specialisms 8x80, bio 1000) validated at the schema boundary; values render as text, never markup |

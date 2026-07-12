@@ -12,6 +12,7 @@
 @import "./manager-review.css";
 @import "./routing-priority.css";
 @import "./routing-override.css";
+@import "./oversight.css";
 @import "./similar-requests.css";
 @import "./analyst.css";
 @import "./teams.css";
@@ -22,6 +23,7 @@
 @import "./ai-model.css";
 @import "./ai-model-grid.css";
 @import "./access.css";
+@import "./access-groups.css";
 @import "./workspace.css";
 @import "./store.css";
 @import "./store-match-reasons.css";

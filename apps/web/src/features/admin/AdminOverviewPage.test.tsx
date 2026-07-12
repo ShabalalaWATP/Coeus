@@ -63,3 +63,36 @@ test("renders admin action links, approvals and AI model controls", async () => 
   expect(screen.getByRole("link", { name: /Users/ })).toHaveAttribute("href", "/admin/users");
   expect(screen.getByRole("link", { name: /Audit log/ })).toHaveAttribute("href", "/audit");
 });
+
+test("shows admin service loading independently of the other controls", () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => {
+      if (url.endsWith("/api/v1/admin/overview")) return new Promise(() => undefined);
+      if (url.includes("/registrations"))
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ registrations: [] }) });
+      return Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            provider: "mock",
+            activeModel: "mock",
+            embeddingProvider: "local",
+            embeddedProductCount: 0,
+            providers: [
+              {
+                name: "mock",
+                label: "Mock",
+                models: ["mock"],
+                activeModel: "mock",
+                apiKeyConfigured: true,
+              },
+            ],
+          }),
+      });
+    }),
+  );
+
+  renderWithProviders(<AdminOverviewPage />, "/admin/overview");
+  expect(screen.getByText("Checking admin service status")).toBeVisible();
+});

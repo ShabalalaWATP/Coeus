@@ -19,20 +19,21 @@ Artifact Registry and supported AI provider configuration.
 
 ## Threats And Controls
 
-| Threat | Control In Sprint 12 |
-|---|---|
-| Long-lived GCP key leaks from GitHub or local machines. | Deployment uses Workload Identity Federation and GitHub OIDC, not service account key JSON. |
-| Secrets enter the public repository or Terraform state. | Terraform creates secret placeholders only; values are added as Secret Manager versions outside Terraform. |
-| GitHub OIDC token is accepted from another repository or branch. | Workload Identity Provider condition restricts `assertion.sub`, repository and repository owner to the configured `main` branch. |
-| Runtime service account has broad cloud access. | API service account receives scoped Cloud SQL, Secret Manager, bucket and Pub/Sub roles needed for dev. AI providers use explicit application configuration rather than broad cloud IAM by default. |
-| Public Cloud Run API bypasses app authorisation. | Cloud Run is publicly invokable for browser access, but backend RBAC and CSRF checks still protect application actions. |
-| Product assets become public. | Buckets enforce public access prevention and uniform bucket-level access. |
-| Bucket access is not auditable. | Cloud Storage buckets write access logs to a dedicated dev access-log bucket. |
-| Artifact Registry or Pub/Sub content uses only provider-managed encryption. | Artifact Registry and Pub/Sub topics use a customer-managed KMS key in the dev baseline. |
-| Cloud SQL accepts public network traffic. | Cloud SQL public IPv4 is disabled; Cloud Run uses the Cloud SQL connection mount. |
-| Worker failures are lost. | Pub/Sub worker subscriptions use retry policy and dead-letter topics. |
-| A workflow or repository push deploys to an inactive cloud target. | The migration workflow has no cloud credentials, push or deploy step, and Terraform apply has a default-deny readiness gate. |
-| Multiple API replicas accept stale sessions or overwrite security state. | The API module is marked single-writer, pinned to one instance, and protected by a Terraform precondition. |
+| Threat                                                                      | Control In Sprint 12                                                                                                                                                                                |
+| --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Long-lived GCP key leaks from GitHub or local machines.                     | Deployment uses Workload Identity Federation and GitHub OIDC, not service account key JSON.                                                                                                         |
+| Secrets enter the public repository or Terraform state.                     | Terraform creates secret placeholders only; values are added as Secret Manager versions outside Terraform.                                                                                          |
+| GitHub OIDC token is accepted from another repository or branch.            | Workload Identity Provider condition restricts `assertion.sub`, repository and repository owner to the configured `main` branch.                                                                    |
+| Runtime service account has broad cloud access.                             | API service account receives scoped Cloud SQL, Secret Manager, bucket and Pub/Sub roles needed for dev. AI providers use explicit application configuration rather than broad cloud IAM by default. |
+| Public Cloud Run API bypasses app authorisation.                            | Cloud Run is publicly invokable for browser access, but backend RBAC and CSRF checks still protect application actions.                                                                             |
+| Product assets become public.                                               | Buckets enforce public access prevention and uniform bucket-level access.                                                                                                                           |
+| Bucket access is not auditable.                                             | Cloud Storage buckets write access logs to a dedicated dev access-log bucket.                                                                                                                       |
+| Artifact Registry or Pub/Sub content uses only provider-managed encryption. | Artifact Registry and Pub/Sub topics use a customer-managed KMS key in the dev baseline.                                                                                                            |
+| Cloud SQL accepts public network traffic.                                   | Cloud SQL public IPv4 is disabled; Cloud Run uses the Cloud SQL connection mount.                                                                                                                   |
+| Worker failures are lost.                                                   | Pub/Sub worker subscriptions use retry policy and dead-letter topics.                                                                                                                               |
+| A workflow or repository push deploys to an inactive cloud target.          | The migration workflow has no cloud credentials, push or deploy step, and Terraform apply has a default-deny readiness gate.                                                                        |
+| A targeted Terraform plan bypasses the inactive-cloud readiness gate.       | All cloud-creating paths are downstream of the root gate, and a targeted database-plan regression test expects the same fail-closed result.                                                         |
+| Multiple API replicas accept stale sessions or overwrite security state.    | The API module is marked single-writer, pinned to one instance, and protected by a Terraform precondition.                                                                                          |
 
 ## Open Risks
 

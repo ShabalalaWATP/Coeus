@@ -207,22 +207,24 @@ export function useRequestWorkspaceMutations({
 
   const actions: TicketWorkspaceActions = {
     onAccept: (productId) => acceptOfferMutation.mutate(productId),
-    onAddAttachment: (payload) => attachmentMutation.mutate(payload),
-    onAddCollaborator: (username, access) => addCollaboratorMutation.mutate({ username, access }),
+    onAddAttachment: (payload, onSuccess) => attachmentMutation.mutate(payload, { onSuccess }),
+    onAddCollaborator: (username, access, onSuccess) =>
+      addCollaboratorMutation.mutate({ username, access }, { onSuccess }),
     onAddInformation: (body) => informationMutation.mutate(body),
-    onCancel: (reason) => cancelMutation.mutate(reason),
+    onCancel: (reason, onSuccess) => cancelMutation.mutate(reason, { onSuccess }),
     onCollectChoice: (analysed) => collectChoiceMutation.mutate(analysed),
     onNoMatchConsent: (taskAsNewRequest) => noMatchConsentMutation.mutate(taskAsNewRequest),
     onReject: (productId, reason) => rejectOfferMutation.mutate({ productId, reason }),
     onRemoveCollaborator: (userId) => removeCollaboratorMutation.mutate(userId),
     onRun: () => runRfiMutation.mutate(),
     onSave: (payload) => intakeMutation.mutate(payload),
-    onSend: (message) => chatMutation.mutate(message),
+    onSend: (message, onSuccess) => chatMutation.mutate(message, { onSuccess }),
     onSubmit: () => submitMutation.mutate(),
   };
   const pending: TicketWorkspacePending = {
     accepting: acceptOfferMutation.isPending,
     adding: informationMutation.isPending,
+    attaching: attachmentMutation.isPending,
     cancelling: cancelMutation.isPending,
     choosingCollect: collectChoiceMutation.isPending,
     collaborating: addCollaboratorMutation.isPending || removeCollaboratorMutation.isPending,

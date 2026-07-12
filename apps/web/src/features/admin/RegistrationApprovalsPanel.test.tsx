@@ -74,7 +74,10 @@ test("rejects a pending access request with a reason", async () => {
   expect(await screen.findByText("New Operator")).toBeVisible();
   expect(screen.queryByText("Mock regional reporting duties.")).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Reject" })).toBeDisabled();
-  await userEvent.type(screen.getByLabelText("Rejection reason"), "Duties not confirmed.");
+  await userEvent.type(
+    screen.getByLabelText("Rejection reason for New Operator"),
+    "Duties not confirmed.",
+  );
   await userEvent.click(screen.getByRole("button", { name: "Reject" }));
 
   expect(await screen.findByText("No pending access requests")).toBeVisible();

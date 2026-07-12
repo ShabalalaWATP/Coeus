@@ -23,6 +23,10 @@ def test_valid_local_and_dev_configurations_pass() -> None:
     valid_dev_settings().require_runtime_security()
 
 
+def test_default_database_url_uses_windows_safe_ipv4_loopback() -> None:
+    assert "@127.0.0.1:" in Settings(environment="test").database_url
+
+
 @pytest.mark.parametrize(
     ("settings", "message"),
     [

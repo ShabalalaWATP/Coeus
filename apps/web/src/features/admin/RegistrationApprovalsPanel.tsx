@@ -103,7 +103,7 @@ function RegistrationRow({
       <label className="approvals-reason">
         Rejection reason for {registration.displayName}
         <input
-          aria-label="Rejection reason"
+          aria-label={`Rejection reason for ${registration.displayName}`}
           disabled={actionPending}
           onChange={(event) => setReason(event.target.value)}
           placeholder="Required before rejecting"

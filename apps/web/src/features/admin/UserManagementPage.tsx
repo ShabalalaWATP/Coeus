@@ -30,6 +30,7 @@ export default function UserManagementPage() {
     temporaryCredential: string;
     userId: string;
   } | null>(null);
+  const [saveResult, setSaveResult] = useState<{ userId: string; message: string } | null>(null);
   const usersQuery = useQuery({ queryKey: ["admin-users"], queryFn: listAdminUsers });
   const updateMutation = useMutation({
     mutationFn: (input: UserMutationInput) => {
@@ -45,11 +46,18 @@ export default function UserManagementPage() {
     onMutate: () => {
       setActionError(null);
       setResetResult(null);
+      setSaveResult(null);
     },
-    onSuccess: (updatedUser) => {
+    onSuccess: (updatedUser, input) => {
       queryClient.setQueryData<AdminUser[]>(["admin-users"], (current) =>
         (current ?? []).map((user) => (user.id === updatedUser.id ? updatedUser : user)),
       );
+      const labels = {
+        roles: "Roles saved.",
+        clearance: "Clearance saved.",
+        status: "Status saved.",
+      };
+      setSaveResult({ userId: updatedUser.id, message: labels[input.type] });
     },
   });
   const resetMutation = useMutation({
@@ -58,6 +66,7 @@ export default function UserManagementPage() {
     onMutate: () => {
       setActionError(null);
       setResetResult(null);
+      setSaveResult(null);
     },
     onSuccess: (result, userId) =>
       setResetResult({ temporaryCredential: result.temporaryCredential, userId }),
@@ -143,6 +152,7 @@ export default function UserManagementPage() {
             resetCredential={
               resetResult?.userId === user.id ? resetResult.temporaryCredential : null
             }
+            saveMessage={saveResult?.userId === user.id ? saveResult.message : null}
             user={user}
           />
         ))}
@@ -157,6 +167,7 @@ type UserManagementRowProps = {
   onReset: (userId: string) => void;
   onUpdate: (input: UserMutationInput) => void;
   resetCredential: string | null;
+  saveMessage: string | null;
   user: AdminUser;
 };
 
@@ -166,6 +177,7 @@ function UserManagementRow({
   onReset,
   onUpdate,
   resetCredential,
+  saveMessage,
   user,
 }: UserManagementRowProps) {
   const self = user.id === currentUserId;
@@ -253,6 +265,11 @@ function UserManagementRow({
       {resetCredential ? (
         <p className="admin-user-row__credential" role="status">
           Temporary credential: <code>{resetCredential}</code>. Shown once.
+        </p>
+      ) : null}
+      {saveMessage ? (
+        <p className="admin-user-row__note" role="status">
+          {saveMessage}
         </p>
       ) : null}
     </article>

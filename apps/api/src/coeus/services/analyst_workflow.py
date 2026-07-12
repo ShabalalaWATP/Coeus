@@ -5,6 +5,7 @@ from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
 from coeus.domain.auth import UserAccount
 from coeus.domain.enums import TicketState
+from coeus.domain.qc import QcDecisionStatus
 from coeus.domain.state_machine import can_transition
 from coeus.domain.tickets import (
     AnalystNote,
@@ -71,7 +72,7 @@ class AnalystWorkflowService:
         ticket = self._tickets.tickets.get_workflow_ticket(
             actor, ticket_id, ANALYST_READ_PERMISSIONS
         )
-        if not assigned_to(ticket, actor.user_id):
+        if not assigned_to(ticket, actor.user_id) or ticket.state not in VISIBLE_ANALYST_STATES:
             raise AppError(404, "task_not_found", "Analyst task was not found.")
         return ticket
 
@@ -238,6 +239,12 @@ class AnalystWorkflowService:
         if not all_work_packages_complete(ticket):
             raise AppError(409, "work_packages_incomplete", "Complete work packages before review.")
         rework = ticket.state == TicketState.REWORK_REQUIRED
+        if not self._has_revised_draft(ticket):
+            raise AppError(
+                409,
+                "revised_draft_required",
+                "Save a revised draft after the latest rework request before resubmitting.",
+            )
         target = TicketState.QC_REVIEW if rework else TicketState.MANAGER_APPROVAL
         event_type = "submitted_to_qc" if rework else "submitted_to_manager"
         summary = "Resubmitted to QC." if rework else "Submitted to the team manager."
@@ -254,6 +261,21 @@ class AnalystWorkflowService:
         )
         self._record_audit_or_rollback(ticket, event_type, actor, {"ticket_id": str(ticket_id)})
         return updated
+
+    @staticmethod
+    def _has_revised_draft(ticket: TicketRecord) -> bool:
+        latest_draft_at = ticket.draft_products[-1].created_at
+        markers = [
+            decision.created_at
+            for decision in ticket.qc_decisions
+            if decision.status == QcDecisionStatus.REJECTED
+        ]
+        markers.extend(
+            entry.created_at
+            for entry in ticket.timeline
+            if entry.event_type == "manager_returned_rework"
+        )
+        return not markers or latest_draft_at > max(markers)
 
     def _active_task(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         ticket = self.task_details(actor, ticket_id)

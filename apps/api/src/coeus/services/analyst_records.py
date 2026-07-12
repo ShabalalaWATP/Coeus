@@ -61,7 +61,8 @@ def assignment_record(
     analyst_user_id: UUID,
     assigned_by_user_id: UUID,
     route: RoutingRoute,
-    team_name: str | None,
+    team_name: str | None = None,
+    team_id: UUID | None = None,
 ) -> AnalystAssignment:
     return AnalystAssignment(
         assignment_id=uuid4(),
@@ -70,6 +71,7 @@ def assignment_record(
         assigned_by_user_id=assigned_by_user_id,
         route=route,
         created_at=datetime.now(UTC),
+        team_id=team_id,
         team_name=team_name,
     )
 

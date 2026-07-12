@@ -124,6 +124,12 @@ export function TeamRosterPanel({ csrfToken, currentUserId, team }: TeamRosterPa
               ))}
             </ul>
           ) : null}
+          {directoryQuery.isLoading ? <p role="status">Searching team members…</p> : null}
+          {directoryQuery.isError ? (
+            <p className="auth-error" role="alert">
+              Team member search could not be loaded. Try again.
+            </p>
+          ) : null}
           {canSearch && directoryQuery.isSuccess && suggestions.length === 0 ? (
             <p className="team-roster__hint">No matching users found.</p>
           ) : null}

@@ -13,12 +13,7 @@ class AnalystAssignmentRequest(BaseModel):
         max_length=5,
         validation_alias="analystUserIds",
     )
-    team_name: str | None = Field(
-        default=None,
-        min_length=2,
-        max_length=120,
-        validation_alias="teamName",
-    )
+    team_id: UUID = Field(validation_alias="teamId")
     work_packages: list[WorkPackageText] = Field(
         default_factory=list,
         max_length=8,
@@ -70,7 +65,22 @@ class AnalystAssignmentResponse(BaseModel):
     assigned_by_user_id: UUID = Field(serialization_alias="assignedByUserId")
     route: str
     created_at: datetime = Field(serialization_alias="createdAt")
+    team_id: UUID | None = Field(serialization_alias="teamId")
     team_name: str | None = Field(serialization_alias="teamName")
+
+
+class AssignmentTeamResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    team_id: UUID = Field(serialization_alias="teamId")
+    name: str
+    kind: str
+
+
+class AssignmentTeamListResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    teams: list[AssignmentTeamResponse]
 
 
 class WorkPackageResponse(BaseModel):

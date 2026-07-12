@@ -61,6 +61,23 @@ def test_approval_rejects_registration_when_username_became_taken() -> None:
     assert decided is not None
     assert decided.status == RegistrationStatus.REJECTED
     assert decided.decided_by_user_id == admin.user_id
+    assert decided.password_hash is None
+
+
+def test_decisions_scrub_registration_password_verifiers() -> None:
+    service, users, registrations, _audit_log = _service()
+    admin = users.get_by_username("admin@example.test")
+    assert admin is not None
+    approved = _pending("approved.operator@example.test")
+    rejected = _pending("rejected.operator@example.test")
+    registrations.save(approved)
+    registrations.save(rejected)
+
+    service.approve(admin, approved.registration_id)
+    service.reject(admin, rejected.registration_id, "Synthetic rejection reason.")
+
+    assert registrations.get(approved.registration_id).password_hash is None  # type: ignore[union-attr]
+    assert registrations.get(rejected.registration_id).password_hash is None  # type: ignore[union-attr]
 
 
 def test_approval_rolls_back_account_when_decision_save_fails(

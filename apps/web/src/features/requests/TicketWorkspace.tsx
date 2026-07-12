@@ -39,17 +39,21 @@ const CANCELABLE_STATES = new Set([
 
 export type TicketWorkspaceActions = {
   onAccept: (productId: string) => void;
-  onAddAttachment: (payload: AttachmentMetadataInput) => void;
-  onAddCollaborator: (username: string, access: "editor" | "viewer") => void;
+  onAddAttachment: (payload: AttachmentMetadataInput, onSuccess?: () => void) => void;
+  onAddCollaborator: (
+    username: string,
+    access: "editor" | "viewer",
+    onSuccess?: () => void,
+  ) => void;
   onAddInformation: (body: string) => void;
-  onCancel: (reason: string) => void;
+  onCancel: (reason: string, onSuccess?: () => void) => void;
   onCollectChoice: (analysed: boolean) => void;
   onNoMatchConsent: (taskAsNewRequest: boolean) => void;
   onReject: (productId: string, reason: string) => void;
   onRemoveCollaborator: (userId: string) => void;
   onRun: () => void;
   onSave: (payload: IntakeUpdate) => void;
-  onSend: (message: string) => void;
+  onSend: (message: string, onSuccess?: () => void) => void;
   onSubmit: () => void;
 };
 
@@ -60,6 +64,7 @@ export type TicketWorkspacePending = Record<
   | "choosingCollect"
   | "consenting"
   | "adding"
+  | "attaching"
   | "rejecting"
   | "running"
   | "saving"
@@ -168,6 +173,7 @@ export function TicketWorkspace({
                 Edit details manually
               </summary>
               <IntakePanel
+                isAddingAttachment={pending.attaching}
                 isSaving={pending.saving}
                 isSubmitting={pending.submitting}
                 onAddAttachment={actions.onAddAttachment}

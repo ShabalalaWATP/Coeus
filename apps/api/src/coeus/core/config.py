@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     )
 
     environment: EnvironmentName = "local"
-    database_url: str = "postgresql+asyncpg://coeus:coeus-local@localhost:5432/coeus"
+    database_url: str = "postgresql+asyncpg://coeus:coeus-local@127.0.0.1:5432/coeus"
     allowed_cors_origins: list[str] = Field(
         default_factory=lambda: ["http://localhost:5173", "http://127.0.0.1:5173"]
     )

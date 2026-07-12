@@ -13,7 +13,7 @@ from coeus.core.permissions import Permission
 from coeus.domain.auth import RoleName, UserAccount
 from coeus.domain.enums import TicketState
 from coeus.domain.state_machine import can_transition
-from coeus.domain.teams import TeamKind, team_member_ids
+from coeus.domain.teams import OrgTeam, TeamKind, team_member_ids
 from coeus.domain.tickets import RoutingRoute, TicketRecord
 from coeus.repositories.access import AccessRepository
 from coeus.repositories.teams import TeamRepository
@@ -41,10 +41,10 @@ class AnalystAssignmentService:
         self._audit_log = audit_log
 
     def analyst_candidates(
-        self, actor: UserAccount, route: RoutingRoute
+        self, actor: UserAccount, route: RoutingRoute, team_id: UUID | None = None
     ) -> tuple[UserAccount, ...]:
-        self._require_any(actor, ASSIGNMENT_READ_PERMISSIONS)
-        eligible_ids = self._eligible_analyst_ids(actor, route)
+        team = self._resolve_assignment_team(actor, route, team_id)
+        eligible_ids = team_member_ids(team)
         return tuple(
             user
             for user in self._access.list_users()
@@ -53,13 +53,27 @@ class AnalystAssignmentService:
             and RoleName.INTELLIGENCE_ANALYST in user.roles
         )
 
+    def assignment_teams(self, actor: UserAccount, route: RoutingRoute) -> tuple[OrgTeam, ...]:
+        self._require_assignment_permission(actor, route)
+        kind = self._team_kind(route)
+        return tuple(
+            team for team in self._teams.list_teams() if team.kind == kind and team.is_active
+        )
+
+    def assignment_team(self, actor: UserAccount, route: RoutingRoute, team_id: UUID) -> OrgTeam:
+        self._require_assignment_permission(actor, route)
+        team = self._teams.get_team(team_id)
+        if team is None or not team.is_active or team.kind != self._team_kind(route):
+            raise AppError(404, "assignment_team_not_found", "Assignment team was not found.")
+        return team
+
     def assign(
         self,
         actor: UserAccount,
         ticket_id: UUID,
         analyst_user_ids: tuple[UUID, ...],
         work_package_titles: tuple[str, ...],
-        team_name: str | None = None,
+        team_id: UUID | None = None,
     ) -> TicketRecord:
         self._require_any(actor, ASSIGNMENT_READ_PERMISSIONS)
         ticket = self._tickets.tickets.get_workflow_ticket(
@@ -79,8 +93,9 @@ class AnalystAssignmentService:
         if not reassignment and active_assignments_for_route(ticket, route):
             raise AppError(409, "analyst_already_assigned", "Ticket already has an analyst.")
         self._require_assignment_permission(actor, route)
+        team = self._resolve_assignment_team(actor, route, team_id)
         analysts = self._resolve_analysts(analyst_user_ids)
-        eligible_ids = self._eligible_analyst_ids(actor, route)
+        eligible_ids = team_member_ids(team)
         if any(analyst.user_id not in eligible_ids for analyst in analysts):
             raise AppError(403, "analyst_outside_team", "Analysts must belong to your route team.")
         if not reassignment:
@@ -91,7 +106,8 @@ class AnalystAssignmentService:
             analysts,
             route,
             work_package_titles,
-            team_name,
+            team.team_id,
+            team.name,
             reassignment=reassignment,
         )
         updated = self._tickets.tickets.save_system_update(change.ticket)
@@ -121,6 +137,16 @@ class AnalystAssignmentService:
             analysts.append(analyst)
         return tuple(analysts)
 
+    def _resolve_assignment_team(
+        self, actor: UserAccount, route: RoutingRoute, team_id: UUID | None
+    ) -> OrgTeam:
+        if team_id is not None:
+            return self.assignment_team(actor, route, team_id)
+        teams = self.assignment_teams(actor, route)
+        if len(teams) != 1:
+            raise AppError(422, "assignment_team_required", "Select an assignment team.")
+        return teams[0]
+
     @staticmethod
     def _require_any(actor: UserAccount, permissions: frozenset[Permission]) -> None:
         if not permissions.intersection(actor.permissions):
@@ -133,20 +159,9 @@ class AnalystAssignmentService:
         if permission not in actor.permissions:
             raise AppError(403, "forbidden", "Permission denied.")
 
-    def _eligible_analyst_ids(self, actor: UserAccount, route: RoutingRoute) -> frozenset[UUID]:
-        kind = TeamKind.RFA if route == RoutingRoute.RFA else TeamKind.CM
-        managed = tuple(
-            team
-            for team in self._teams.list_teams()
-            if team.kind == kind
-            and (
-                Permission.ROLE_MANAGE in actor.permissions
-                or actor.user_id in team.manager_user_ids
-            )
-        )
-        if not managed:
-            raise AppError(403, "forbidden", "You do not manage the route team.")
-        return frozenset().union(*(team_member_ids(team) for team in managed))
+    @staticmethod
+    def _team_kind(route: RoutingRoute) -> TeamKind:
+        return TeamKind.RFA if route == RoutingRoute.RFA else TeamKind.CM
 
     @staticmethod
     def _ensure_transition(current: TicketState, target: TicketState) -> None:

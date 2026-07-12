@@ -148,6 +148,29 @@ compact request summaries and an explicit browser-dictation privacy notice.
 Completion still requires full local gates and a zero-finding sealed scan of a
 clean post-fix revision.
 
+## Sprint 15 Workflow Integrity And Area Oversight
+
+Status: in progress from the July 2026 cross-role workflow audit.
+
+- Make the selected organisational team authoritative for assignment,
+  availability and membership while allowing RFA and CM managers to operate
+  across every team in their respective area.
+- Add bounded, read-only JIOC oversight across queues, teams, analysts and task
+  load without exposing product bodies, analyst notes or draft content.
+- Add self-service ACG applications for every user and delegated, audited
+  approval by up to eight cross-role administrators per ACG.
+- Correct clarification resumption, rework version gates, analyst task access,
+  credential-reset atomicity and release audit compensation.
+- Finish ACG identity administration, mutation recovery, calendar accuracy,
+  branded route recovery and role-specific loading and error states.
+- Repair the local Alembic/reset/Compose workflows and make Node, GCP and
+  Kubernetes guidance match the actual supported boundaries.
+
+The authoritative acceptance criteria are in
+`docs/specs/workflow-integrity-area-oversight-remediation.md` and ADR 0023.
+Sprint 15 is not complete until the full backend/frontend coverage gates,
+browser role walkthroughs and operational verification pass.
+
 ## Sprint 13 Delivered Scope
 
 - CodeQL extended and security-and-quality queries.

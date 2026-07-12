@@ -261,10 +261,8 @@ test("marks today's group and shows the day summary", async () => {
 
   renderWithProviders(<TeamsPage />, "/teams");
 
-  expect((await screen.findAllByText("Today")).some((element) => element.tagName === "SPAN")).toBe(
-    true,
-  );
   expect(await screen.findByText("1 on leave")).toBeVisible();
+  expect(screen.getAllByText("Today").some((element) => element.tagName === "SPAN")).toBe(true);
 });
 
 test("shows an empty calendar and surfaces entry failures", async () => {

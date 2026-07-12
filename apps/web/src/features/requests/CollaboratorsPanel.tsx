@@ -7,7 +7,7 @@ import { listUserDirectory, type Ticket } from "../../lib/api-client/tickets";
 type CollaboratorsPanelProps = {
   isOwner: boolean;
   isPending: boolean;
-  onAdd: (username: string, access: "editor" | "viewer") => void;
+  onAdd: (username: string, access: "editor" | "viewer", onSuccess?: () => void) => void;
   onRemove: (userId: string) => void;
   ticket: Ticket;
 };
@@ -74,8 +74,7 @@ export function CollaboratorsPanel({
           className="collaborators-form"
           onSubmit={(event) => {
             event.preventDefault();
-            onAdd(username, access);
-            setUsername("");
+            onAdd(username, access, () => setUsername(""));
           }}
         >
           <label>

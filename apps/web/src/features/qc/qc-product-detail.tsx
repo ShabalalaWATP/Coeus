@@ -22,6 +22,7 @@ export function QcProductDetail({
   product,
   releaseForm,
   requestedMissing,
+  requestedPending,
 }: {
   actionPending: boolean;
   acgs: AccessControlGroup[] | undefined;
@@ -37,6 +38,7 @@ export function QcProductDetail({
   product: QcProduct | undefined;
   releaseForm: QcReleaseFormState;
   requestedMissing: boolean;
+  requestedPending: boolean;
 }) {
   const missingNotice = requestedMissing ? (
     <p className="workspace-alert" role="alert">
@@ -48,7 +50,9 @@ export function QcProductDetail({
     return (
       <section className="surface qc-detail" aria-label="QC product detail">
         {missingNotice}
-        <p>No QC product selected.</p>
+        <p role={requestedPending ? "status" : undefined}>
+          {requestedPending ? "Loading QC product…" : "No QC product selected."}
+        </p>
       </section>
     );
   }

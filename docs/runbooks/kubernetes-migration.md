@@ -40,6 +40,35 @@ A non-production Kubernetes evaluation can preserve current semantics with:
 This topology is for evaluation only. A local filesystem volume and one API
 replica are deliberate constraints, not a highly available design.
 
+### Exact evaluation runtime settings
+
+The current identity repository always begins with development seed users. A
+Kubernetes evaluation must therefore use the guarded `dev` mode below, not
+`staging` or `prod`:
+
+```text
+COEUS_ENVIRONMENT=dev
+COEUS_ALLOW_DEV_SEED_USERS=true
+COEUS_LOCAL_SEED_CREDENTIAL=<non-default secret, at least 12 characters>
+COEUS_DATABASE_URL=<PostgreSQL URL from a Kubernetes Secret>
+COEUS_SESSION_SECRET=<at least 32 characters from a Kubernetes Secret>
+COEUS_CSRF_SECRET=<at least 32 characters from a Kubernetes Secret>
+COEUS_ASSET_TOKEN_SECRET=<at least 32 characters from a Kubernetes Secret>
+COEUS_SECURE_COOKIES=true
+COEUS_ALLOWED_CORS_ORIGINS=["https://<web-origin>"]
+COEUS_PERSISTENCE_PROVIDER=postgres
+COEUS_OBJECT_STORAGE_PROVIDER=local
+COEUS_LOCAL_OBJECT_STORAGE_PATH=/var/lib/coeus/objects
+COEUS_PUBSUB_ENABLED=false
+```
+
+Keep one API replica and mount the object path on its persistent volume. The
+published local seed credential must never be used. These settings deliberately
+enable development identities and are unsupported for production or real
+organisational users. Renaming the environment to `staging` or `prod` is not an
+identity migration: startup fails closed until a persistent production account
+store or approved identity provider replaces the seed repository.
+
 ## Production readiness gates
 
 Before authoring production manifests or a Helm chart:

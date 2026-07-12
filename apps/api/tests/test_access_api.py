@@ -94,6 +94,7 @@ async def test_admin_can_create_acg_add_member_and_audit_change() -> None:
                 "description": "Synthetic test access group.",
             },
         )
+        initial_admins = await client.get(f"/api/v1/acgs/{created.json()['id']}/admins")
         add_member = await client.post(
             f"/api/v1/acgs/{created.json()['id']}/members",
             headers={"X-CSRF-Token": str(session["csrfToken"])},
@@ -111,12 +112,20 @@ async def test_admin_can_create_acg_add_member_and_audit_change() -> None:
         audit_response = await client.get("/api/v1/audit")
 
     assert created.status_code == 201
+    assert initial_admins.status_code == 200
+    assert [admin["username"] for admin in initial_admins.json()["admins"]] == [
+        "admin@example.test"
+    ]
     assert add_member.status_code == 200
     assert updated.status_code == 200
     assert updated.json()["name"] == "Hotel Test Updated"
     assert updated.json()["isActive"] is False
     assert removed.status_code == 204
     assert customer.user_id in [UUID(value) for value in add_member.json()["memberUserIds"]]
+    assert any(
+        member["id"] == str(customer.user_id) and member["displayName"] == customer.display_name
+        for member in add_member.json()["members"]
+    )
     event_types = [event["eventType"] for event in audit_response.json()["events"]]
     assert "acg_created" in event_types
     assert "acg_updated" in event_types

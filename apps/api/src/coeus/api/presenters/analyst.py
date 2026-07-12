@@ -64,6 +64,7 @@ def _assignment_response(assignment: AnalystAssignment) -> AnalystAssignmentResp
         assigned_by_user_id=assignment.assigned_by_user_id,
         route=assignment.route.value,
         created_at=assignment.created_at,
+        team_id=assignment.team_id,
         team_name=assignment.team_name,
     )
 

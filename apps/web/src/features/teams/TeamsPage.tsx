@@ -87,6 +87,10 @@ export default function TeamsPage() {
               </dl>
             </section>
           ) : null}
+          {availabilityQuery.isLoading ? <LoadingState label="Loading team availability" /> : null}
+          {availabilityQuery.isError ? (
+            <ErrorState onRetry={() => void availabilityQuery.refetch()} />
+          ) : null}
           <div className="teams-grid">
             <TeamRosterPanel csrfToken={csrfToken} currentUserId={userId} team={team} />
             <TeamCalendarPanel csrfToken={csrfToken} currentUserId={userId} team={team} />

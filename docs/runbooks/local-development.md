@@ -34,6 +34,9 @@ Test-NetConnection 127.0.0.1 -Port 5432
 ```
 
 From a second network namespace or LAN host, TCP/5432 must not be reachable.
+`pwsh ./scripts/dev.ps1` performs the force-recreate and refuses to continue if
+Docker still reports anything other than a `127.0.0.1` PostgreSQL binding. The
+named PostgreSQL volume is preserved by this startup repair.
 
 ## Full Docker Stack
 
@@ -45,6 +48,7 @@ pwsh ./scripts/dev.ps1
 ```
 
 Add `-Detached` to keep the stack running in the background.
+Compose waits for `/api/v1/health/ready` before starting the web service.
 
 ## Health Checks
 
@@ -67,6 +71,13 @@ credential `CoeusLocal1!`. These accounts are for local development only.
 
 The current account list is maintained in
 [../SETUP.md#seed-accounts](../SETUP.md#seed-accounts).
+
+## Reset Synthetic Data
+
+Never remove object bytes separately from their PostgreSQL metadata. Stop the
+host API, then run the provider-specific reset described in
+[Setup](../SETUP.md#reset-local-synthetic-data-safely). The helper requires
+`-ConfirmReset` and removes the database and the matching object store together.
 
 ## Local Quality Gates
 

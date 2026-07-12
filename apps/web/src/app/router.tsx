@@ -5,9 +5,11 @@ import { DefaultRouteRedirect } from "../components/auth/DefaultRouteRedirect";
 import { ProtectedRoute } from "../components/auth/ProtectedRoute";
 import { AuthenticatedShell } from "../components/layout/AuthenticatedShell";
 import { RouteFallback } from "../components/layout/RouteFallback";
+import { RouteRecoveryPage } from "../components/layout/RouteRecoveryPage";
 import type { Permission } from "../lib/api-client/auth";
 import {
   AcgAdminPage,
+  AccessGroupsPage,
   AdminOverviewPage,
   AnalystWorkbenchPage,
   AnalyticsDashboardPage,
@@ -15,6 +17,7 @@ import {
   ChangePasswordPage,
   ForbiddenPage,
   LoginPage,
+  JiocOversightPage,
   ProductDetailPage,
   ProductUploadPage,
   QcQueuePage,
@@ -53,6 +56,7 @@ export function createAppRouter() {
     {
       path: "/",
       element: <AuthenticatedShell />,
+      errorElement: <RouteRecoveryPage />,
       children: [
         { index: true, element: <DefaultRouteRedirect /> },
         {
@@ -71,6 +75,10 @@ export function createAppRouter() {
           // Tagged collaborators from any role can follow a shared request link.
           path: "app/requests/:ticketId",
           element: protectedPage(<RequestsPage />, []),
+        },
+        {
+          path: "access-groups",
+          element: protectedPage(<AccessGroupsPage />, ["user:read_self"]),
         },
         {
           path: "store",
@@ -95,6 +103,10 @@ export function createAppRouter() {
         {
           path: "jioc/queue",
           element: protectedPage(<RoutingQueuePage queue="jioc" />, ["jioc:review"]),
+        },
+        {
+          path: "jioc/oversight",
+          element: protectedPage(<JiocOversightPage />, ["jioc:review"]),
         },
         {
           path: "rfa/queue",

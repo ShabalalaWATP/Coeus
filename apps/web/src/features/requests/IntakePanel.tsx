@@ -25,7 +25,8 @@ type EditableFieldKey = (typeof editableFields)[number][0];
 type IntakePanelProps = {
   isSaving: boolean;
   isSubmitting: boolean;
-  onAddAttachment: (payload: AttachmentMetadataInput) => void;
+  isAddingAttachment: boolean;
+  onAddAttachment: (payload: AttachmentMetadataInput, onSuccess?: () => void) => void;
   onSave: (payload: IntakeUpdate) => void;
   onSubmit: () => void;
   ticket?: Ticket;
@@ -34,6 +35,7 @@ type IntakePanelProps = {
 export function IntakePanel({
   isSaving,
   isSubmitting,
+  isAddingAttachment,
   onAddAttachment,
   onSave,
   onSubmit,
@@ -97,8 +99,9 @@ export function IntakePanel({
   function addAttachment(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (attachment.name.trim() && attachment.description.trim()) {
-      onAddAttachment(attachment);
-      setAttachment({ name: "", description: "", sourceType: "metadata-only" });
+      onAddAttachment(attachment, () =>
+        setAttachment({ name: "", description: "", sourceType: "metadata-only" }),
+      );
     }
   }
 
@@ -163,6 +166,7 @@ export function IntakePanel({
             <label>
               Name
               <input
+                disabled={isAddingAttachment}
                 onChange={(event) =>
                   setAttachment((current) => ({ ...current, name: event.target.value }))
                 }
@@ -172,13 +176,14 @@ export function IntakePanel({
             <label>
               Description
               <input
+                disabled={isAddingAttachment}
                 onChange={(event) =>
                   setAttachment((current) => ({ ...current, description: event.target.value }))
                 }
                 value={attachment.description}
               />
             </label>
-            <button type="submit">
+            <button disabled={isAddingAttachment} type="submit">
               <Paperclip aria-hidden="true" size={18} />
               Add metadata
             </button>

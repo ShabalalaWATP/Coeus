@@ -1,5 +1,6 @@
 import { apiRequestJson, pathSegment } from "./client";
 import type { TicketState } from "./tickets";
+import type { TeamAvailability } from "./teams";
 
 type AnalystAssignment = {
   id: string;
@@ -7,6 +8,7 @@ type AnalystAssignment = {
   assignedByUserId: string;
   route: "rfa" | "cm";
   createdAt: string;
+  teamId: string;
   teamName: string | null;
 };
 
@@ -87,13 +89,42 @@ export type AnalystCandidateList = {
   analysts: AnalystCandidate[];
 };
 
+export type AssignmentTeam = {
+  teamId: string;
+  name: string;
+  kind: "rfa" | "cm";
+};
+
 export async function listAnalystTasks(): Promise<AnalystTaskList> {
   return apiRequestJson<AnalystTaskList>("/api/v1/analyst/tasks", { method: "GET" });
 }
 
-export async function listAnalystCandidates(route: "rfa" | "cm"): Promise<AnalystCandidateList> {
-  return apiRequestJson<AnalystCandidateList>(
-    `/api/v1/analyst/candidates?route=${encodeURIComponent(route)}`,
+export async function listAnalystCandidates(
+  route: "rfa" | "cm",
+  teamId: string,
+): Promise<AnalystCandidateList> {
+  const query = new URLSearchParams({ route, teamId });
+  return apiRequestJson<AnalystCandidateList>(`/api/v1/analyst/candidates?${query.toString()}`, {
+    method: "GET",
+  });
+}
+
+export async function listAssignmentTeams(route: "rfa" | "cm"): Promise<AssignmentTeam[]> {
+  const response = await apiRequestJson<{ teams: AssignmentTeam[] }>(
+    `/api/v1/analyst/assignment-teams?route=${encodeURIComponent(route)}`,
+    { method: "GET" },
+  );
+  return response.teams;
+}
+
+export function getAssignmentTeamAvailability(
+  route: "rfa" | "cm",
+  teamId: string,
+  date: string,
+): Promise<TeamAvailability> {
+  const query = new URLSearchParams({ route, date });
+  return apiRequestJson<TeamAvailability>(
+    `/api/v1/analyst/assignment-teams/${pathSegment(teamId)}/availability?${query.toString()}`,
     { method: "GET" },
   );
 }
@@ -101,12 +132,12 @@ export async function listAnalystCandidates(route: "rfa" | "cm"): Promise<Analys
 export async function assignAnalystTask(
   ticketId: string,
   analystUserIds: string[],
-  teamName: string,
+  teamId: string,
   workPackages: string[],
   csrfToken: string,
 ): Promise<AnalystTask> {
   return apiRequestJson<AnalystTask>(`/api/v1/analyst/tasks/${pathSegment(ticketId)}/assign`, {
-    body: JSON.stringify({ analystUserIds, teamName: teamName || undefined, workPackages }),
+    body: JSON.stringify({ analystUserIds, teamId, workPackages }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
   });

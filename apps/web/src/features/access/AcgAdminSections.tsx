@@ -6,7 +6,7 @@ import type {
   AccessControlGroup,
   CreateAccessControlGroupRequest,
 } from "../../lib/api-client/access";
-import type { AdminUser } from "../../lib/api-client/admin";
+import type { AccessGroupDirectoryUser } from "../../lib/api-client/access-groups";
 
 export function AcgSelector({
   acgs,
@@ -51,34 +51,46 @@ export function AcgEditor({
   acg,
   canManageMembers,
   canUpdate,
+  directoryError,
+  directoryLoading,
+  directorySearch,
+  directoryTotal,
   editName,
   isActive,
   memberUserId,
   onAddMember,
+  onDirectorySearch,
   onEditName,
   onIsActive,
   onMemberUserId,
   onRemoveMember,
-  onRequestDirectory,
   onUpdate,
+  addPending,
   removePending,
+  updatePending,
   users,
 }: {
   acg?: AccessControlGroup;
   canManageMembers: boolean;
   canUpdate: boolean;
+  directoryError: boolean;
+  directoryLoading: boolean;
+  directorySearch: string;
+  directoryTotal: number;
   editName: string;
   isActive: boolean;
   memberUserId: string;
   onAddMember: FormEventHandler<HTMLFormElement>;
+  onDirectorySearch: (value: string) => void;
   onEditName: (value: string) => void;
   onIsActive: (value: boolean) => void;
   onMemberUserId: (value: string) => void;
   onRemoveMember: (id: string) => void;
-  onRequestDirectory: () => void;
   onUpdate: FormEventHandler<HTMLFormElement>;
+  addPending: boolean;
   removePending: boolean;
-  users: AdminUser[];
+  updatePending: boolean;
+  users: AccessGroupDirectoryUser[];
 }) {
   return (
     <div className="surface access-detail" aria-label="Selected access group">
@@ -111,9 +123,13 @@ export function AcgEditor({
                 <div className="member-row" key={userId}>
                   <span>
                     <strong>
-                      {users.find((user) => user.id === userId)?.displayName ?? "Unknown user"}
+                      {acg.members?.find((member) => member.id === userId)?.displayName ??
+                        "Identity unavailable"}
                     </strong>
-                    <small>{users.find((user) => user.id === userId)?.username ?? userId}</small>
+                    <small>
+                      {acg.members?.find((member) => member.id === userId)?.username ??
+                        "Contact an administrator"}
+                    </small>
                   </span>
                   {canManageMembers ? (
                     <button
@@ -147,36 +163,52 @@ export function AcgEditor({
                 />
                 Active
               </label>
-              <button type="submit">
+              <button disabled={updatePending} type="submit">
                 <Save aria-hidden="true" size={16} /> Save
               </button>
             </form>
           ) : null}
           {canManageMembers ? (
             <form className="inline-form" onSubmit={onAddMember}>
-              <button onClick={onRequestDirectory} type="button">
-                Load user directory
-              </button>
               <label>
-                Find user
+                Search active users
                 <input
-                  aria-label="User ID"
-                  list="acg-user-options"
-                  onChange={(event) => onMemberUserId(event.target.value)}
-                  placeholder="Search by name, username or select a user"
-                  value={memberUserId}
+                  onChange={(event) => onDirectorySearch(event.target.value)}
+                  placeholder="Name or username"
+                  value={directorySearch}
                 />
-                <datalist id="acg-user-options">
+              </label>
+              {directoryLoading ? <p role="status">Searching active users…</p> : null}
+              {directoryError ? (
+                <p role="alert">The active-user directory could not be loaded.</p>
+              ) : null}
+              {!directoryLoading &&
+              !directoryError &&
+              directorySearch.trim().length >= 3 &&
+              directoryTotal === 0 ? (
+                <p>No active users match this search.</p>
+              ) : null}
+              {directoryTotal > users.length ? (
+                <p>More users match. Refine the name or username to narrow the results.</p>
+              ) : null}
+              {users.length ? (
+                <ul aria-label="Matching active users" className="member-candidates">
                   {users
                     .filter((user) => !acg.memberUserIds.includes(user.id))
                     .map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.displayName} ({user.username})
-                      </option>
+                      <li key={user.id}>
+                        <button
+                          aria-pressed={memberUserId === user.id}
+                          onClick={() => onMemberUserId(user.id)}
+                          type="button"
+                        >
+                          {user.displayName} ({user.username})
+                        </button>
+                      </li>
                     ))}
-                </datalist>
-              </label>
-              <button disabled={memberUserId.trim().length < 3} type="submit">
+                </ul>
+              ) : null}
+              <button disabled={addPending || memberUserId === ""} type="submit">
                 <UserPlus aria-hidden="true" size={16} /> Add member
               </button>
             </form>

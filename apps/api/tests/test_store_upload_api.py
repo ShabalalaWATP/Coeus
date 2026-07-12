@@ -17,6 +17,47 @@ class FailingObjectStorage(LocalObjectStorage):
 
 
 @pytest.mark.asyncio
+async def test_restart_never_substitutes_placeholder_bytes_for_a_missing_upload(
+    tmp_path: Path,
+) -> None:
+    object_root = tmp_path / "objects"
+    settings = Settings(
+        environment="test",
+        argon2_memory_cost=8_192,
+        persistence_provider="file",
+        persistence_path=str(tmp_path / "state.json"),
+        local_object_storage_path=str(object_root),
+    )
+    first_app = create_app(settings)
+    acg_id = str(first_app.state.access_services.repository.list_acgs()[0].acg_id)
+    metadata = product_payload(acg_id)
+    metadata.pop("assets")
+
+    async with AsyncClient(
+        transport=ASGITransport(app=first_app), base_url="http://testserver"
+    ) as client:
+        session = await login(client, "admin@example.test")
+        response = await client.post(
+            "/api/v1/store/products/upload",
+            headers={"X-CSRF-Token": str(session["csrfToken"])},
+            files={
+                "asset": ("uploaded-brief.txt", b"user supplied bytes", "text/plain"),
+                "metadata": (None, json.dumps(metadata), "application/json"),
+            },
+        )
+
+    assert response.status_code == 201
+    product = first_app.state.store_services.repository.list_products()[-1]
+    asset = product.assets[0]
+    first_app.state.object_storage.delete_bytes(asset.object_key)
+
+    restarted_app = create_app(settings)
+
+    assert restarted_app.state.store_services.repository.get_product(product.product_id) is not None
+    assert not restarted_app.state.object_storage.exists(asset.object_key)
+
+
+@pytest.mark.asyncio
 async def test_upload_rolls_back_product_when_asset_storage_fails(tmp_path: Path) -> None:
     app = create_app(
         Settings(

@@ -65,18 +65,18 @@ test("lists analyst candidates and assigns tasks with CSRF protection", async ()
   });
   vi.stubGlobal("fetch", fetchMock);
 
-  await listAnalystCandidates("rfa");
+  await listAnalystCandidates("rfa", "team-1");
   await assignAnalystTask(
     "ticket-1",
     ["analyst-1", "analyst-2"],
-    "Maritime Assessment Cell",
+    "team-1",
     ["Validate scope"],
     "csrf",
   );
 
   expect(fetchMock).toHaveBeenNthCalledWith(
     1,
-    "http://127.0.0.1:8001/api/v1/analyst/candidates?route=rfa",
+    "http://127.0.0.1:8001/api/v1/analyst/candidates?route=rfa&teamId=team-1",
     { credentials: "include", method: "GET" },
   );
   expect(fetchMock).toHaveBeenNthCalledWith(
@@ -85,7 +85,7 @@ test("lists analyst candidates and assigns tasks with CSRF protection", async ()
     expect.objectContaining({
       body: JSON.stringify({
         analystUserIds: ["analyst-1", "analyst-2"],
-        teamName: "Maritime Assessment Cell",
+        teamId: "team-1",
         workPackages: ["Validate scope"],
       }),
       headers: { "Content-Type": "application/json", "X-CSRF-Token": "csrf" },

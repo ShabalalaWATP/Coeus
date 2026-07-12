@@ -6,7 +6,7 @@ import { RoutingDetailPanel } from "./RoutingDetailPanel";
 import { RoutingTicketList } from "./RoutingTicketList";
 import { isRouteOverride, upsertRoutingTicket } from "./routing-model";
 import { RoutingStats } from "./routing-sections";
-import { ErrorState } from "../../components/ui/PageState";
+import { ErrorState, LoadingState } from "../../components/ui/PageState";
 import {
   approveRoute,
   listRoutingQueue,
@@ -213,6 +213,8 @@ export default function RoutingQueuePage({ queue: queueKind }: RoutingQueuePageP
           {isJioc ? <RoutingStats queue={queue} /> : null}
           {queueQuery.isError ? (
             <ErrorState onRetry={() => void queueQuery.refetch()} />
+          ) : queueQuery.isFetching && queueQuery.dataUpdatedAt === 0 ? (
+            <LoadingState label={`Loading ${labels.shortName} queue`} />
           ) : (
             <>
               <RoutingTicketList

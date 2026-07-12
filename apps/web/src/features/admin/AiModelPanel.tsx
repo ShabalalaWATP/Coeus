@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BrainCircuit, Check, KeyRound, PlugZap, Save, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { AiModelGrid } from "./AiModelGrid";
+import { AiConfigurationSummary, AiProviderSelector } from "./AiConfigurationSummary";
 import { AiProviderActivationWarning } from "./AiProviderActivationWarning";
-import { providerStatus, type ModelNote } from "./ai-model-panel-utils";
+import { type ModelNote } from "./ai-model-panel-utils";
 import { ErrorState, LoadingState } from "../../components/ui/PageState";
 import {
   addCustomAiModel,
@@ -31,17 +32,22 @@ export function AiModelPanel({ csrfToken }: AiModelPanelProps) {
   const [testResult, setTestResult] = useState<AiConnectionTest | null>(null);
   const [modelNote, setModelNote] = useState<ModelNote | null>(null);
   const [confirmingActivation, setConfirmingActivation] = useState(false);
+  const [testedConfiguration, setTestedConfiguration] = useState<string | null>(null);
+  const activateButtonRef = useRef<HTMLButtonElement>(null);
   const { actionError, clearActionError, failActionWith } = useActionError();
   const stateQuery = useQuery({ queryKey: ["ai-model"], queryFn: getAiModelState });
   const state = stateQuery.data;
   const providerName = selectedProvider ?? state?.provider ?? "gemini_api";
   const provider = state?.providers.find((entry) => entry.name === providerName);
-  const liveProvider = state?.providers.find((entry) => entry.name === state.provider);
   const applyState = (next: AiModelState) => queryClient.setQueryData(["ai-model"], next);
   const modelMutation = useMutation({
     mutationFn: (model: string) => selectAiModel(model, providerName, csrfToken),
     onError: failActionWith("The model could not be changed. Refresh and try again."),
-    onMutate: clearActionError,
+    onMutate: () => {
+      clearActionError();
+      setTestResult(null);
+      setTestedConfiguration(null);
+    },
     onSuccess: (next: AiModelState) => {
       setSelectedModel(null);
       applyState(next);
@@ -50,7 +56,11 @@ export function AiModelPanel({ csrfToken }: AiModelPanelProps) {
   const keyMutation = useMutation({
     mutationFn: (key: string) => configureAiApiKey(key, providerName, csrfToken),
     onError: failActionWith("The API key could not be saved. Check the key and try again."),
-    onMutate: clearActionError,
+    onMutate: () => {
+      clearActionError();
+      setTestResult(null);
+      setTestedConfiguration(null);
+    },
     onSuccess: (next: AiModelState) => {
       setApiKey("");
       applyState(next);
@@ -62,8 +72,12 @@ export function AiModelPanel({ csrfToken }: AiModelPanelProps) {
     onMutate: () => {
       clearActionError();
       setTestResult(null);
+      setTestedConfiguration(null);
     },
-    onSuccess: setTestResult,
+    onSuccess: (result) => {
+      setTestResult(result);
+      setTestedConfiguration(result.ok ? configurationKey(providerName, result.model) : null);
+    },
   });
   const activateMutation = useMutation({
     mutationFn: () => selectAiProvider(providerName, csrfToken),
@@ -79,6 +93,8 @@ export function AiModelPanel({ csrfToken }: AiModelPanelProps) {
     onMutate: () => {
       clearActionError();
       setModelNote(null);
+      setTestResult(null);
+      setTestedConfiguration(null);
     },
     onError: (error) =>
       setModelNote({
@@ -99,6 +115,8 @@ export function AiModelPanel({ csrfToken }: AiModelPanelProps) {
     onMutate: () => {
       clearActionError();
       setModelNote(null);
+      setTestResult(null);
+      setTestedConfiguration(null);
     },
     onError: (error) =>
       setModelNote({
@@ -119,6 +137,7 @@ export function AiModelPanel({ csrfToken }: AiModelPanelProps) {
     setSelectedModel(null);
     setApiKey("");
     setTestResult(null);
+    setTestedConfiguration(null);
     setModelNote(null);
     setConfirmingActivation(false);
     clearActionError();
@@ -126,6 +145,8 @@ export function AiModelPanel({ csrfToken }: AiModelPanelProps) {
   const activeChoice = selectedModel ?? provider?.activeModel ?? "";
   const isLive = provider?.name === state?.provider;
   const isMock = provider?.name === "mock";
+  const currentConfiguration = provider ? configurationKey(provider.name, activeChoice) : "";
+  const activationTested = testedConfiguration === currentConfiguration;
   const configurationPending =
     modelMutation.isPending ||
     keyMutation.isPending ||
@@ -151,64 +172,13 @@ export function AiModelPanel({ csrfToken }: AiModelPanelProps) {
       {stateQuery.isLoading ? <LoadingState label="Loading model configuration" /> : null}
       {state && provider ? (
         <div className="ai-model-body">
-          <div className="ai-live" role="group" aria-label="Live AI configuration">
-            <div className="ai-live__headline">
-              <span className="ai-live__dot" aria-hidden="true" />
-              <div>
-                <span className="ai-live__eyebrow">Live for every user</span>
-                <strong>
-                  {liveProvider?.label ?? state.provider}
-                  <span className="ai-live__model"> · {state.activeModel}</span>
-                </strong>
-              </div>
-            </div>
-            <dl className="ai-live__stats">
-              <div>
-                <dt>Embeddings</dt>
-                <dd>{state.embeddingProvider}</dd>
-              </div>
-              <div>
-                <dt>Products embedded</dt>
-                <dd>{state.embeddedProductCount}</dd>
-              </div>
-              {state.changedBy ? (
-                <div>
-                  <dt>Last changed</dt>
-                  <dd>
-                    {state.changedBy}
-                    {state.changedAt
-                      ? ` · ${new Date(state.changedAt).toLocaleString("en-GB")}`
-                      : ""}
-                  </dd>
-                </div>
-              ) : null}
-            </dl>
-          </div>
-
-          <div className="ai-provider-row" aria-label="Providers" role="group">
-            {state.providers.map((entry) => {
-              const status = providerStatus(entry, state.provider);
-              const chosen = entry.name === providerName;
-              return (
-                <button
-                  aria-pressed={chosen}
-                  className={`ai-provider-tab${chosen ? " ai-provider-tab--chosen" : ""}`}
-                  disabled={configurationPending}
-                  key={entry.name}
-                  onClick={() => pickProvider(entry.name)}
-                  type="button"
-                >
-                  <span className="ai-provider-tab__name">{entry.label}</span>
-                  <span
-                    className={`ai-provider-tab__status ai-provider-tab__status--${status.tone}`}
-                  >
-                    {status.tone === "live" ? <Check aria-hidden="true" size={12} /> : null}
-                    {status.label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          <AiConfigurationSummary state={state} />
+          <AiProviderSelector
+            disabled={configurationPending}
+            onSelect={pickProvider}
+            selectedProvider={providerName}
+            state={state}
+          />
 
           <div className="ai-provider-detail">
             {isMock ? (
@@ -267,7 +237,11 @@ export function AiModelPanel({ csrfToken }: AiModelPanelProps) {
                       customMutation.mutate(model, { onSuccess: onAdded })
                     }
                     onApply={() => modelMutation.mutate(activeChoice)}
-                    onChoose={setSelectedModel}
+                    onChoose={(model) => {
+                      setSelectedModel(model);
+                      setTestResult(null);
+                      setTestedConfiguration(null);
+                    }}
                     onRefresh={() => refreshMutation.mutate()}
                     pending={configurationPending}
                     provider={provider}
@@ -302,18 +276,28 @@ export function AiModelPanel({ csrfToken }: AiModelPanelProps) {
               ) : (
                 <button
                   className="ai-btn-primary"
-                  disabled={configurationPending}
+                  disabled={
+                    configurationPending ||
+                    (!isMock && !provider.apiKeyConfigured) ||
+                    !activationTested
+                  }
                   onClick={() => setConfirmingActivation(true)}
+                  ref={activateButtonRef}
                   type="button"
                 >
                   Make active provider
                 </button>
               )}
             </div>
+            {!isLive && !activationTested ? (
+              <p className="ai-hint" role="status">
+                Test this provider and its selected model successfully before activation.
+              </p>
+            ) : null}
             {testResult ? (
               <p
                 className={`ai-test-result ${testResult.ok ? "ai-test-result--ok" : "ai-test-result--fail"}`}
-                role="status"
+                role={testResult.ok ? "status" : "alert"}
               >
                 {testResult.ok ? "Connection OK: " : "Connection failed: "}
                 {testResult.message}
@@ -321,7 +305,10 @@ export function AiModelPanel({ csrfToken }: AiModelPanelProps) {
             ) : null}
             {confirmingActivation ? (
               <AiProviderActivationWarning
-                onCancel={() => setConfirmingActivation(false)}
+                onCancel={() => {
+                  setConfirmingActivation(false);
+                  requestAnimationFrame(() => activateButtonRef.current?.focus());
+                }}
                 onConfirm={() => activateMutation.mutate()}
                 pending={activateMutation.isPending}
                 providerLabel={provider.label}
@@ -337,4 +324,8 @@ export function AiModelPanel({ csrfToken }: AiModelPanelProps) {
       ) : null}
     </section>
   );
+}
+
+function configurationKey(provider: string, model: string) {
+  return `${provider}:${model}`;
 }

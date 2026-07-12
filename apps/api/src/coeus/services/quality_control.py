@@ -146,15 +146,17 @@ class QualityControlService:
                 ),
             )
             outcome = self._release.complete(actor, pending, product)
-            self._audit_log.record(
-                "qc_approved",
-                str(actor.user_id),
-                {"ticket_id": str(ticket_id), "product_id": str(product.product_id)},
-            )
+            # One durable success event avoids a partially written audit trail
+            # claiming approval when a second append fails and release is
+            # compensated.
             self._audit_log.record(
                 outcome.audit_event,
                 str(actor.user_id),
-                {"ticket_id": str(ticket_id), "product_id": str(product.product_id)},
+                {
+                    "ticket_id": str(ticket_id),
+                    "product_id": str(product.product_id),
+                    "qc_approved": "true",
+                },
             )
         except Exception:
             # The release step, ticket update or audit failed after ingestion;

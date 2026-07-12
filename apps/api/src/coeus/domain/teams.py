@@ -33,6 +33,7 @@ class OrgTeam:
     manager_user_ids: tuple[UUID, ...] = ()
     member_user_ids: tuple[UUID, ...] = ()
     capability_team_id: str | None = None
+    is_active: bool = True
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 

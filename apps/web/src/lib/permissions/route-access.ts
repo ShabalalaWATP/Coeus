@@ -37,6 +37,13 @@ export const navigationItems: readonly NavigationItem[] = [
     requiredPermissions: ["ticket:read_own"],
   },
   {
+    label: "Access Groups",
+    path: "/access-groups",
+    group: "operations",
+    icon: "admin",
+    requiredPermissions: ["user:read_self"],
+  },
+  {
     label: "Intelligence Store",
     path: "/store",
     group: "operations",
@@ -64,6 +71,13 @@ export const navigationItems: readonly NavigationItem[] = [
     path: "/jioc/queue",
     group: "teams",
     icon: "rfa",
+    requiredPermissions: ["jioc:review"],
+  },
+  {
+    label: "JIOC Oversight",
+    path: "/jioc/oversight",
+    group: "teams",
+    icon: "analytics",
     requiredPermissions: ["jioc:review"],
   },
   {

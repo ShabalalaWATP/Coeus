@@ -9,6 +9,7 @@ from coeus.core.config import Settings
 from coeus.domain.tickets import TicketRecord
 from coeus.main import create_app
 from rfi_search_helpers import login
+from routing_helpers import assignment_team_id
 from test_analyst_api import _approved_ticket, _assigned_ticket, _draft_payload
 
 
@@ -25,6 +26,7 @@ async def test_assignment_audit_failure_rolls_back_ticket(
     ) as client:
         ticket_id = await _approved_ticket(client)
         manager = await login(client, "rfa.manager@example.test")
+        team_id = await assignment_team_id(client)
         original = _stored_ticket(app, ticket_id)
         monkeypatch.setattr(app.state.analyst_workflow_service._audit_log, "record", _fail_audit)
 
@@ -32,7 +34,7 @@ async def test_assignment_audit_failure_rolls_back_ticket(
             await client.post(
                 f"/api/v1/analyst/tasks/{ticket_id}/assign",
                 headers={"X-CSRF-Token": str(manager["csrfToken"])},
-                json={"analystUserIds": [str(analyst_user.user_id)]},
+                json={"analystUserIds": [str(analyst_user.user_id)], "teamId": team_id},
             )
 
     ticket = _stored_ticket(app, ticket_id)

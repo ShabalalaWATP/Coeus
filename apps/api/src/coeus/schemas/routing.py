@@ -191,3 +191,49 @@ class RoutingQueueResponse(BaseModel):
     tickets: list[RoutingTicketResponse]
     stats: RoutingStatsResponse
     next_cursor: str | None = Field(serialization_alias="nextCursor")
+
+
+class OversightCountResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    key: str
+    count: int
+
+
+class OversightTeamResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    team_id: UUID = Field(serialization_alias="teamId")
+    name: str
+    kind: str
+    active_members: int = Field(serialization_alias="activeMembers")
+    available_members: int = Field(serialization_alias="availableMembers")
+    live_task_count: int = Field(serialization_alias="liveTaskCount")
+
+
+class OversightAnalystResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    user_id: UUID = Field(serialization_alias="userId")
+    display_name: str = Field(serialization_alias="displayName")
+    team_ids: list[UUID] = Field(serialization_alias="teamIds")
+    live_task_count: int = Field(serialization_alias="liveTaskCount")
+
+
+class OversightTaskResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    ticket_id: UUID = Field(serialization_alias="ticketId")
+    reference: str
+    state: str
+    route: str | None
+    team_id: UUID | None = Field(serialization_alias="teamId")
+    team_name: str | None = Field(serialization_alias="teamName")
+    analyst_count: int = Field(serialization_alias="analystCount")
+    work_package_count: int = Field(serialization_alias="workPackageCount")
+    completed_work_package_count: int = Field(serialization_alias="completedWorkPackageCount")
+
+
+class RoutingOversightResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    counts_by_state: list[OversightCountResponse] = Field(serialization_alias="countsByState")
+    counts_by_route: list[OversightCountResponse] = Field(serialization_alias="countsByRoute")
+    teams: list[OversightTeamResponse]
+    analysts: list[OversightAnalystResponse]
+    tasks: list[OversightTaskResponse]

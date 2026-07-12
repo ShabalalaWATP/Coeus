@@ -67,6 +67,13 @@
             "title": "Memberuserids",
             "type": "array"
           },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/coeus__schemas__access__DirectoryUserResponse"
+            },
+            "title": "Members",
+            "type": "array"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -91,7 +98,8 @@
           "description",
           "ownerUserId",
           "isActive",
-          "memberUserIds"
+          "memberUserIds",
+          "members"
         ],
         "title": "AccessControlGroupResponse",
         "type": "object"
@@ -134,6 +142,264 @@
           "checks"
         ],
         "title": "AccessDiagnosticsResponse",
+        "type": "object"
+      },
+      "AcgAdminListResponse": {
+        "properties": {
+          "admins": {
+            "items": {
+              "$ref": "#/components/schemas/coeus__schemas__access__DirectoryUserResponse"
+            },
+            "title": "Admins",
+            "type": "array"
+          }
+        },
+        "required": [
+          "admins"
+        ],
+        "title": "AcgAdminListResponse",
+        "type": "object"
+      },
+      "AcgApplicationPageResponse": {
+        "properties": {
+          "applications": {
+            "items": {
+              "$ref": "#/components/schemas/AcgApplicationResponse"
+            },
+            "title": "Applications",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "pageSize": {
+            "title": "Pagesize",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "totalPages": {
+            "title": "Totalpages",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "applications",
+          "page",
+          "pageSize",
+          "total",
+          "totalPages"
+        ],
+        "title": "AcgApplicationPageResponse",
+        "type": "object"
+      },
+      "AcgApplicationResponse": {
+        "properties": {
+          "acgCode": {
+            "title": "Acgcode",
+            "type": "string"
+          },
+          "acgId": {
+            "format": "uuid",
+            "title": "Acgid",
+            "type": "string"
+          },
+          "acgName": {
+            "title": "Acgname",
+            "type": "string"
+          },
+          "applicantDisplayName": {
+            "title": "Applicantdisplayname",
+            "type": "string"
+          },
+          "applicantUserId": {
+            "format": "uuid",
+            "title": "Applicantuserid",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "justification": {
+            "title": "Justification",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AcgApplicationStatus"
+          },
+          "submittedAt": {
+            "format": "date-time",
+            "title": "Submittedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "acgId",
+          "acgCode",
+          "acgName",
+          "applicantUserId",
+          "applicantDisplayName",
+          "justification",
+          "status",
+          "submittedAt"
+        ],
+        "title": "AcgApplicationResponse",
+        "type": "object"
+      },
+      "AcgApplicationStatus": {
+        "enum": [
+          "pending",
+          "approved",
+          "rejected",
+          "withdrawn"
+        ],
+        "title": "AcgApplicationStatus",
+        "type": "string"
+      },
+      "AcgCatalogueItemResponse": {
+        "properties": {
+          "applicationId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applicationid"
+          },
+          "applicationStatus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AcgApplicationStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "canManageAdmins": {
+            "title": "Canmanageadmins",
+            "type": "boolean"
+          },
+          "canReviewApplications": {
+            "title": "Canreviewapplications",
+            "type": "boolean"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "isMember": {
+            "title": "Ismember",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "description",
+          "isMember",
+          "applicationStatus",
+          "applicationId",
+          "canReviewApplications",
+          "canManageAdmins"
+        ],
+        "title": "AcgCatalogueItemResponse",
+        "type": "object"
+      },
+      "AcgCatalogueResponse": {
+        "properties": {
+          "acgs": {
+            "items": {
+              "$ref": "#/components/schemas/AcgCatalogueItemResponse"
+            },
+            "title": "Acgs",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "pageSize": {
+            "title": "Pagesize",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "totalPages": {
+            "title": "Totalpages",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "acgs",
+          "page",
+          "pageSize",
+          "total",
+          "totalPages"
+        ],
+        "title": "AcgCatalogueResponse",
+        "type": "object"
+      },
+      "ActiveUserDirectoryResponse": {
+        "properties": {
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "pageSize": {
+            "title": "Pagesize",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "totalPages": {
+            "title": "Totalpages",
+            "type": "integer"
+          },
+          "users": {
+            "items": {
+              "$ref": "#/components/schemas/coeus__schemas__access__DirectoryUserResponse"
+            },
+            "title": "Users",
+            "type": "array"
+          }
+        },
+        "required": [
+          "users",
+          "page",
+          "pageSize",
+          "total",
+          "totalPages"
+        ],
+        "title": "ActiveUserDirectoryResponse",
         "type": "object"
       },
       "AddAccessControlGroupMemberRequest": {
@@ -524,18 +790,10 @@
             "title": "Analystuserids",
             "type": "array"
           },
-          "teamName": {
-            "anyOf": [
-              {
-                "maxLength": 120,
-                "minLength": 2,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Teamname"
+          "teamId": {
+            "format": "uuid",
+            "title": "Teamid",
+            "type": "string"
           },
           "workPackages": {
             "items": {
@@ -549,7 +807,8 @@
           }
         },
         "required": [
-          "analystUserIds"
+          "analystUserIds",
+          "teamId"
         ],
         "title": "AnalystAssignmentRequest",
         "type": "object"
@@ -580,6 +839,18 @@
             "title": "Route",
             "type": "string"
           },
+          "teamId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Teamid"
+          },
           "teamName": {
             "anyOf": [
               {
@@ -598,6 +869,7 @@
           "assignedByUserId",
           "route",
           "createdAt",
+          "teamId",
           "teamName"
         ],
         "title": "AnalystAssignmentResponse",
@@ -972,6 +1244,46 @@
           "expiresInSeconds"
         ],
         "title": "AssetAccessResponse",
+        "type": "object"
+      },
+      "AssignmentTeamListResponse": {
+        "properties": {
+          "teams": {
+            "items": {
+              "$ref": "#/components/schemas/AssignmentTeamResponse"
+            },
+            "title": "Teams",
+            "type": "array"
+          }
+        },
+        "required": [
+          "teams"
+        ],
+        "title": "AssignmentTeamListResponse",
+        "type": "object"
+      },
+      "AssignmentTeamResponse": {
+        "properties": {
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "teamId": {
+            "format": "uuid",
+            "title": "Teamid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "teamId",
+          "name",
+          "kind"
+        ],
+        "title": "AssignmentTeamResponse",
         "type": "object"
       },
       "AttachmentMetadataRequest": {
@@ -1858,11 +2170,41 @@
         "title": "CredentialResetResponse",
         "type": "object"
       },
+      "DecideAcgApplicationRequest": {
+        "properties": {
+          "decision": {
+            "enum": [
+              "approve",
+              "reject"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 3,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "decision"
+        ],
+        "title": "DecideAcgApplicationRequest",
+        "type": "object"
+      },
       "DirectoryResponse": {
         "properties": {
           "users": {
             "items": {
-              "$ref": "#/components/schemas/DirectoryUserResponse"
+              "$ref": "#/components/schemas/coeus__schemas__tickets__DirectoryUserResponse"
             },
             "title": "Users",
             "type": "array"
@@ -1872,30 +2214,6 @@
           "users"
         ],
         "title": "DirectoryResponse",
-        "type": "object"
-      },
-      "DirectoryUserResponse": {
-        "properties": {
-          "displayName": {
-            "title": "Displayname",
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "username": {
-            "title": "Username",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "username",
-          "displayName"
-        ],
-        "title": "DirectoryUserResponse",
         "type": "object"
       },
       "DraftAssetRequest": {
@@ -3041,6 +3359,172 @@
           "createdAt"
         ],
         "title": "NotificationResponse",
+        "type": "object"
+      },
+      "OversightAnalystResponse": {
+        "properties": {
+          "displayName": {
+            "title": "Displayname",
+            "type": "string"
+          },
+          "liveTaskCount": {
+            "title": "Livetaskcount",
+            "type": "integer"
+          },
+          "teamIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Teamids",
+            "type": "array"
+          },
+          "userId": {
+            "format": "uuid",
+            "title": "Userid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "displayName",
+          "teamIds",
+          "liveTaskCount"
+        ],
+        "title": "OversightAnalystResponse",
+        "type": "object"
+      },
+      "OversightCountResponse": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "count"
+        ],
+        "title": "OversightCountResponse",
+        "type": "object"
+      },
+      "OversightTaskResponse": {
+        "properties": {
+          "analystCount": {
+            "title": "Analystcount",
+            "type": "integer"
+          },
+          "completedWorkPackageCount": {
+            "title": "Completedworkpackagecount",
+            "type": "integer"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "route": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Route"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "teamId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Teamid"
+          },
+          "teamName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Teamname"
+          },
+          "ticketId": {
+            "format": "uuid",
+            "title": "Ticketid",
+            "type": "string"
+          },
+          "workPackageCount": {
+            "title": "Workpackagecount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ticketId",
+          "reference",
+          "state",
+          "route",
+          "teamId",
+          "teamName",
+          "analystCount",
+          "workPackageCount",
+          "completedWorkPackageCount"
+        ],
+        "title": "OversightTaskResponse",
+        "type": "object"
+      },
+      "OversightTeamResponse": {
+        "properties": {
+          "activeMembers": {
+            "title": "Activemembers",
+            "type": "integer"
+          },
+          "availableMembers": {
+            "title": "Availablemembers",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "liveTaskCount": {
+            "title": "Livetaskcount",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "teamId": {
+            "format": "uuid",
+            "title": "Teamid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "teamId",
+          "name",
+          "kind",
+          "activeMembers",
+          "availableMembers",
+          "liveTaskCount"
+        ],
+        "title": "OversightTeamResponse",
         "type": "object"
       },
       "PasswordChangeRequest": {
@@ -4367,6 +4851,54 @@
         "title": "RouteRecommendationResponse",
         "type": "object"
       },
+      "RoutingOversightResponse": {
+        "properties": {
+          "analysts": {
+            "items": {
+              "$ref": "#/components/schemas/OversightAnalystResponse"
+            },
+            "title": "Analysts",
+            "type": "array"
+          },
+          "countsByRoute": {
+            "items": {
+              "$ref": "#/components/schemas/OversightCountResponse"
+            },
+            "title": "Countsbyroute",
+            "type": "array"
+          },
+          "countsByState": {
+            "items": {
+              "$ref": "#/components/schemas/OversightCountResponse"
+            },
+            "title": "Countsbystate",
+            "type": "array"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/OversightTaskResponse"
+            },
+            "title": "Tasks",
+            "type": "array"
+          },
+          "teams": {
+            "items": {
+              "$ref": "#/components/schemas/OversightTeamResponse"
+            },
+            "title": "Teams",
+            "type": "array"
+          }
+        },
+        "required": [
+          "countsByState",
+          "countsByRoute",
+          "teams",
+          "analysts",
+          "tasks"
+        ],
+        "title": "RoutingOversightResponse",
+        "type": "object"
+      },
       "RoutingQueueResponse": {
         "properties": {
           "nextCursor": {
@@ -5301,6 +5833,21 @@
         "title": "StoreSearchResponse",
         "type": "object"
       },
+      "SubmitAcgApplicationRequest": {
+        "properties": {
+          "justification": {
+            "maxLength": 500,
+            "minLength": 10,
+            "title": "Justification",
+            "type": "string"
+          }
+        },
+        "required": [
+          "justification"
+        ],
+        "title": "SubmitAcgApplicationRequest",
+        "type": "object"
+      },
       "TeamListResponse": {
         "properties": {
           "teams": {
@@ -6039,6 +6586,54 @@
         ],
         "title": "WorkflowPlanUpdateResponse",
         "type": "object"
+      },
+      "coeus__schemas__access__DirectoryUserResponse": {
+        "properties": {
+          "displayName": {
+            "title": "Displayname",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "username"
+        ],
+        "title": "DirectoryUserResponse",
+        "type": "object"
+      },
+      "coeus__schemas__tickets__DirectoryUserResponse": {
+        "properties": {
+          "displayName": {
+            "title": "Displayname",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "displayName"
+        ],
+        "title": "DirectoryUserResponse",
+        "type": "object"
       }
     }
   },
@@ -6049,6 +6644,131 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/acg-applications": {
+      "get": {
+        "operationId": "list_acg_applications_api_v1_acg_applications_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Pagesize",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcgApplicationPageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Acg Applications",
+        "tags": [
+          "access-control"
+        ]
+      }
+    },
+    "/api/v1/acg-applications/{application_id}/decision": {
+      "post": {
+        "operationId": "decide_acg_application_api_v1_acg_applications__application_id__decision_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "application_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Application Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecideAcgApplicationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcgApplicationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Decide Acg Application",
+        "tags": [
+          "access-control"
+        ]
+      }
+    },
     "/api/v1/acgs": {
       "get": {
         "operationId": "list_acgs_api_v1_acgs_get",
@@ -6122,6 +6842,129 @@
           }
         },
         "summary": "Create Acg",
+        "tags": [
+          "access-control"
+        ]
+      }
+    },
+    "/api/v1/acgs/admin-directory": {
+      "get": {
+        "operationId": "list_acg_admin_directory_api_v1_acgs_admin_directory_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "query",
+            "required": false,
+            "schema": {
+              "default": "",
+              "maxLength": 100,
+              "title": "Query",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Pagesize",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActiveUserDirectoryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Acg Admin Directory",
+        "tags": [
+          "access-control"
+        ]
+      }
+    },
+    "/api/v1/acgs/catalogue": {
+      "get": {
+        "operationId": "list_acg_catalogue_api_v1_acgs_catalogue_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Pagesize",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcgCatalogueResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Acg Catalogue",
         "tags": [
           "access-control"
         ]
@@ -6232,6 +7075,306 @@
           }
         },
         "summary": "Update Acg",
+        "tags": [
+          "access-control"
+        ]
+      }
+    },
+    "/api/v1/acgs/{acg_id}/admins": {
+      "get": {
+        "operationId": "list_acg_admins_api_v1_acgs__acg_id__admins_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "acg_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Acg Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcgAdminListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Acg Admins",
+        "tags": [
+          "access-control"
+        ]
+      }
+    },
+    "/api/v1/acgs/{acg_id}/admins/{user_id}": {
+      "delete": {
+        "operationId": "remove_acg_admin_api_v1_acgs__acg_id__admins__user_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "acg_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Acg Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcgAdminListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Acg Admin",
+        "tags": [
+          "access-control"
+        ]
+      },
+      "put": {
+        "operationId": "add_acg_admin_api_v1_acgs__acg_id__admins__user_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "acg_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Acg Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcgAdminListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Acg Admin",
+        "tags": [
+          "access-control"
+        ]
+      }
+    },
+    "/api/v1/acgs/{acg_id}/applications": {
+      "post": {
+        "operationId": "submit_acg_application_api_v1_acgs__acg_id__applications_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "acg_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Acg Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitAcgApplicationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcgApplicationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Submit Acg Application",
+        "tags": [
+          "access-control"
+        ]
+      }
+    },
+    "/api/v1/acgs/{acg_id}/applications/mine": {
+      "delete": {
+        "operationId": "withdraw_acg_application_api_v1_acgs__acg_id__applications_mine_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "acg_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Acg Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Withdraw Acg Application",
         "tags": [
           "access-control"
         ]
@@ -7202,6 +8345,108 @@
         ]
       }
     },
+    "/api/v1/analyst/assignment-teams": {
+      "get": {
+        "operationId": "assignment_teams_api_v1_analyst_assignment_teams_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "route",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/RoutingRoute"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignmentTeamListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Assignment Teams",
+        "tags": [
+          "analyst"
+        ]
+      }
+    },
+    "/api/v1/analyst/assignment-teams/{team_id}/availability": {
+      "get": {
+        "operationId": "assignment_team_availability_api_v1_analyst_assignment_teams__team_id__availability_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Team Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "route",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/RoutingRoute"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "title": "Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AvailabilityResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Assignment Team Availability",
+        "tags": [
+          "analyst"
+        ]
+      }
+    },
     "/api/v1/analyst/candidates": {
       "get": {
         "operationId": "analyst_candidates_api_v1_analyst_candidates_get",
@@ -7212,6 +8457,16 @@
             "required": true,
             "schema": {
               "$ref": "#/components/schemas/RoutingRoute"
+            }
+          },
+          {
+            "in": "query",
+            "name": "teamId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Teamid",
+              "type": "string"
             }
           }
         ],
@@ -8949,6 +10204,27 @@
           }
         },
         "summary": "Jioc Queue",
+        "tags": [
+          "routing"
+        ]
+      }
+    },
+    "/api/v1/routing/oversight": {
+      "get": {
+        "operationId": "routing_oversight_api_v1_routing_oversight_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutingOversightResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Routing Oversight",
         "tags": [
           "routing"
         ]

@@ -10,7 +10,7 @@ const GREETING =
 
 type ChatPanelProps = {
   isSending: boolean;
-  onSend: (message: string) => void;
+  onSend: (message: string, onSuccess?: () => void) => void;
   readOnly?: boolean;
   ticket?: Ticket;
 };
@@ -33,8 +33,7 @@ export function ChatPanel({ isSending, onSend, readOnly = false, ticket }: ChatP
       return;
     }
     speech.stop();
-    onSend(trimmedMessage);
-    setMessage("");
+    onSend(trimmedMessage, () => setMessage(""));
   }
 
   return (

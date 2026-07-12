@@ -14,6 +14,7 @@ from coeus.services.analyst_workflow import (
     ANALYST_TASK_LIST_LIMIT,
 )
 from rfi_search_helpers import login, submitted_ticket
+from routing_helpers import assignment_team_id
 from test_analyst_api import _draft_payload
 
 
@@ -60,10 +61,11 @@ async def test_every_task_response_reauthorises_linked_products() -> None:
 
         manager = await login(client, "collection.manager@example.test")
         manager_denied = await client.get(f"/api/v1/store/products/{product_id}")
+        team_id = await assignment_team_id(client, "cm")
         reassigned = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/assign",
             headers={"X-CSRF-Token": str(manager["csrfToken"])},
-            json={"analystUserIds": [str(replacement.user_id)]},
+            json={"analystUserIds": [str(replacement.user_id)], "teamId": team_id},
         )
         assert manager_denied.status_code == 404
         _assert_product_hidden(reassigned, product_id)
@@ -222,10 +224,11 @@ async def _collection_assigned_ticket(client: AsyncClient, app: FastAPI) -> str:
     manager_csrf = str(manager["csrfToken"])
     analyst = app.state.access_services.repository.get_user_by_username("analyst@example.test")
     assert analyst is not None
+    team_id = await assignment_team_id(client, "cm")
     assigned = await client.post(
         f"/api/v1/analyst/tasks/{ticket_id}/assign",
         headers={"X-CSRF-Token": manager_csrf},
-        json={"analystUserIds": [str(analyst.user_id)]},
+        json={"analystUserIds": [str(analyst.user_id)], "teamId": team_id},
     )
     assert assigned.status_code == 200
     return ticket_id

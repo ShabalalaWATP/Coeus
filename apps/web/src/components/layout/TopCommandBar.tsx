@@ -20,6 +20,7 @@ export function TopCommandBar({ onLogout, profile }: TopCommandBarProps) {
   const [openPanel, setOpenPanel] = useState<"notifications" | "profile" | null>(null);
   const commandInputRef = useRef<HTMLInputElement>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
+  const popoverTriggerRef = useRef<HTMLElement | null>(null);
   const ThemeIcon = theme === "dark" ? Sun : Moon;
   const themeLabel = theme === "dark" ? "Switch to light theme" : "Switch to dark theme";
   const commandMatches = useMemo(() => {
@@ -52,6 +53,7 @@ export function TopCommandBar({ onLogout, profile }: TopCommandBarProps) {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setOpenPanel(null);
+        requestAnimationFrame(() => popoverTriggerRef.current?.focus());
       }
     }
     function onPointerDown(event: MouseEvent) {
@@ -149,9 +151,10 @@ export function TopCommandBar({ onLogout, profile }: TopCommandBarProps) {
           <ThemeIcon aria-hidden="true" size={18} strokeWidth={1.8} />
         </IconButton>
         <NotificationsPopover
-          onToggle={() =>
-            setOpenPanel((current) => (current === "notifications" ? null : "notifications"))
-          }
+          onToggle={() => {
+            popoverTriggerRef.current = document.activeElement as HTMLElement;
+            setOpenPanel((current) => (current === "notifications" ? null : "notifications"));
+          }}
           open={openPanel === "notifications"}
         />
         <button
@@ -159,7 +162,10 @@ export function TopCommandBar({ onLogout, profile }: TopCommandBarProps) {
           aria-expanded={openPanel === "profile"}
           aria-label="Profile"
           className="profile-menu"
-          onClick={() => setOpenPanel((current) => (current === "profile" ? null : "profile"))}
+          onClick={(event) => {
+            popoverTriggerRef.current = event.currentTarget;
+            setOpenPanel((current) => (current === "profile" ? null : "profile"));
+          }}
           type="button"
         >
           <UserCircle aria-hidden="true" size={20} strokeWidth={1.8} />

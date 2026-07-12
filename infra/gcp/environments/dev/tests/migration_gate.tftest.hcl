@@ -13,3 +13,103 @@ run "gcp_apply_is_blocked_until_migration_adapters_are_ready" {
 
   expect_failures = [terraform_data.migration_readiness_gate]
 }
+
+run "targeted_project_services_plan_is_also_blocked" {
+  command = plan
+
+  plan_options {
+    target = [module.project_services]
+  }
+
+  expect_failures = [terraform_data.migration_readiness_gate]
+}
+
+run "targeted_iam_plan_is_also_blocked" {
+  command = plan
+
+  plan_options {
+    target = [module.iam]
+  }
+
+  expect_failures = [terraform_data.migration_readiness_gate]
+}
+
+run "targeted_kms_plan_is_also_blocked" {
+  command = plan
+
+  plan_options {
+    target = [module.kms]
+  }
+
+  expect_failures = [terraform_data.migration_readiness_gate]
+}
+
+run "targeted_registry_plan_is_also_blocked" {
+  command = plan
+
+  plan_options {
+    target = [module.artifact_registry]
+  }
+
+  expect_failures = [terraform_data.migration_readiness_gate]
+}
+
+run "targeted_secrets_plan_is_also_blocked" {
+  command = plan
+
+  plan_options {
+    target = [module.secrets]
+  }
+
+  expect_failures = [terraform_data.migration_readiness_gate]
+}
+
+run "targeted_storage_plan_is_also_blocked" {
+  command = plan
+
+  plan_options {
+    target = [module.storage]
+  }
+
+  expect_failures = [terraform_data.migration_readiness_gate]
+}
+
+run "targeted_pubsub_plan_is_also_blocked" {
+  command = plan
+
+  plan_options {
+    target = [module.pubsub]
+  }
+
+  expect_failures = [terraform_data.migration_readiness_gate]
+}
+
+run "targeted_database_plan_is_also_blocked" {
+  command = plan
+
+  plan_options {
+    target = [module.database]
+  }
+
+  expect_failures = [terraform_data.migration_readiness_gate]
+}
+
+run "targeted_api_plan_is_also_blocked" {
+  command = plan
+
+  plan_options {
+    target = [module.api]
+  }
+
+  expect_failures = [terraform_data.migration_readiness_gate]
+}
+
+run "targeted_web_plan_is_also_blocked" {
+  command = plan
+
+  plan_options {
+    target = [module.web]
+  }
+
+  expect_failures = [terraform_data.migration_readiness_gate]
+}

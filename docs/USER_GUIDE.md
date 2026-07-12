@@ -21,6 +21,7 @@ how the agents work see [AI Agents](AI_AGENTS.md).
 - [Intelligence analyst](#intelligence-analyst)
 - [Quality control](#quality-control)
 - [My Team](#my-team)
+- [Access Groups](#access-groups)
 - [Administrator](#administrator)
 - [Users and account lifecycle](#users-and-account-lifecycle)
 
@@ -119,15 +120,20 @@ query/reject the route with a recorded reason. When a request is routed to
 CM, the customer is asked in their workspace whether they want the **raw
 collect only** or the **collect plus an RFA analysis**.
 
+**JIOC Oversight** is the read-only whole-process view. It shows ticket totals
+by state and route, active RFA/CM teams, current availability, live analyst task
+counts and bounded task ownership summaries. It does not expose analyst notes,
+draft bodies or protected product content.
+
 ![JIOC routing queue with agent recommendations](images/07-rfa-queue.png)
 
 ## RFA and Collection managers
 
-Managers work their own team's queue and lead their team:
+Managers work across their whole RFA or CM area:
 
-- **Assign one to five analysts** with a team name and work packages once
-  JIOC approves the route; the panel shows how many team members are free
-  today from the team calendar and live assignments.
+- **Assign one to five analysts** after selecting any active team in their area
+  once JIOC approves the route. Candidate analysts and availability are scoped
+  to that authoritative team, and work packages can be defined for the task.
 - **Approve or return analyst work**: submitted drafts stop at manager
   approval, where the manager forwards them to Quality Control or returns
   them with a rework reason. A manager cannot approve work they drafted.
@@ -165,6 +171,25 @@ profile (title, specialisms, bio) at the bottom of the page.
 
 ---
 
+## Access Groups
+
+Every signed-in user can open **Access Groups** from the navigation. The page
+lists active need-to-know groups and shows whether you are a member or have a
+pending, approved, rejected or withdrawn application.
+
+To apply, enter a concise operational justification and choose **Apply for
+access**. Your text is retained if submission fails. A pending request can be
+withdrawn after confirmation. Membership is granted only after another
+authorised person approves the application.
+
+An account delegated as administrator for one or more ACGs sees an additional
+review queue on the same page. It contains only pending applications for those
+groups. Approval adds membership; rejection requires a reason. You cannot decide
+your own application. ACG administration does not make you a member and does not
+grant access to the group's protected products.
+
+---
+
 ## Administrator
 
 The Admin workspace is the governance control plane. It shows service status,
@@ -186,10 +211,13 @@ or persisted and disappear when the API restarts; model choices are persisted.
 
 ### Access control groups
 
-The **ACGs** workspace manages the 43 seeded need-to-know groups and their
-membership. Groups are themed by region and discipline (for example "European
-Cyber", "Maritime GEOINT") so product visibility reflects how teams are actually
-organised.
+The governance **ACGs** workspace manages the 43 seeded need-to-know groups,
+direct membership and delegated administrators. Each group can have up to eight
+active administrators from any role or team. Adding someone as an ACG
+administrator does not add them as a member. Application decisions are made
+from the universal [Access Groups](#access-groups) workspace. Groups are themed
+by region and discipline (for example "European Cyber", "Maritime GEOINT") so
+product visibility reflects how teams are actually organised.
 
 ![Access control groups](images/11-admin-acgs.png)
 

@@ -12,13 +12,21 @@ from coeus.domain.access import (
 )
 from coeus.domain.auth import UserAccount
 from coeus.repositories.access import AccessRepository
+from coeus.repositories.acg_applications import AcgApplicationRepository
+from coeus.services.acg_applications import AcgApplicationService
 from coeus.services.audit import AuditLog
 
 
 class AccessControlGroupService:
-    def __init__(self, repository: AccessRepository, audit_log: AuditLog) -> None:
+    def __init__(
+        self,
+        repository: AccessRepository,
+        audit_log: AuditLog,
+        workflows: AcgApplicationRepository,
+    ) -> None:
         self._repository = repository
         self._audit_log = audit_log
+        self._workflows = workflows
 
     def list_visible_acgs(self, user: UserAccount) -> tuple[AccessControlGroup, ...]:
         if Permission.ACG_VIEW not in user.permissions:
@@ -45,6 +53,10 @@ class AccessControlGroupService:
         self._require(actor, Permission.ACG_CREATE)
         if any(existing.code == code for existing in self._repository.list_acgs()):
             raise AppError(409, "acg_code_exists", "An ACG already uses this code.")
+        initial_admin_id = owner_user_id or actor.user_id
+        initial_admin = self._repository.get_user(initial_admin_id)
+        if initial_admin is None or not initial_admin.is_active:
+            raise AppError(422, "active_user_required", "The ACG owner must be an active user.")
         acg = AccessControlGroup(
             acg_id=uuid4(),
             code=code,
@@ -53,15 +65,24 @@ class AccessControlGroupService:
             owner_user_id=owner_user_id,
             is_active=True,
         )
+        workflow_snapshot = self._workflows.snapshot()
         self._repository.save_acg(acg)
         try:
+            self._workflows.replace_admins(acg.acg_id, frozenset({initial_admin_id}))
             self._audit_log.record(
                 "acg_created",
                 str(actor.user_id),
-                {"acg_id": str(acg.acg_id), "code": acg.code},
+                {
+                    "acg_id": str(acg.acg_id),
+                    "code": acg.code,
+                    "initial_admin_user_id": str(initial_admin_id),
+                },
             )
         except Exception:
-            self._repository.delete_acg(acg.acg_id)
+            try:
+                self._repository.delete_acg(acg.acg_id)
+            finally:
+                self._workflows.restore(workflow_snapshot)
             raise
         return acg
 
@@ -241,13 +262,20 @@ class AccessServices:
     acgs: AccessControlGroupService
     product_policy: ProductAccessPolicy
     diagnostics: AccessDiagnosticsService
+    applications: AcgApplicationService
 
 
-def build_access_services(repository: AccessRepository, audit_log: AuditLog) -> AccessServices:
+def build_access_services(
+    repository: AccessRepository,
+    audit_log: AuditLog,
+    application_repository: AcgApplicationRepository | None = None,
+) -> AccessServices:
     product_policy = ProductAccessPolicy(repository)
+    workflows = application_repository or AcgApplicationRepository()
     return AccessServices(
         repository=repository,
-        acgs=AccessControlGroupService(repository, audit_log),
+        acgs=AccessControlGroupService(repository, audit_log, workflows),
         product_policy=product_policy,
         diagnostics=AccessDiagnosticsService(repository, product_policy),
+        applications=AcgApplicationService(repository, workflows, audit_log),
     )

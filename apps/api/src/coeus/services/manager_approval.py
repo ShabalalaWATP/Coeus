@@ -14,7 +14,9 @@ from coeus.core.permissions import Permission
 from coeus.domain.auth import UserAccount
 from coeus.domain.enums import TicketState
 from coeus.domain.state_machine import can_transition
+from coeus.domain.teams import TeamKind
 from coeus.domain.tickets import RoutingRoute, TicketRecord
+from coeus.repositories.teams import TeamRepository
 from coeus.services.analyst_records import approved_route, assigned_analyst_ids
 from coeus.services.audit import AuditLog
 from coeus.services.audit_rollback import record_ticket_audit_or_rollback
@@ -29,9 +31,12 @@ ROUTE_PERMISSIONS: dict[RoutingRoute, Permission] = {
 
 
 class ManagerApprovalService:
-    def __init__(self, tickets: TicketServices, audit_log: AuditLog) -> None:
+    def __init__(
+        self, tickets: TicketServices, audit_log: AuditLog, teams: TeamRepository | None = None
+    ) -> None:
         self._tickets = tickets
         self._audit_log = audit_log
+        self._teams = teams
 
     def approve(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         ticket = self._reviewable_ticket(actor, ticket_id)
@@ -102,9 +107,28 @@ class ManagerApprovalService:
             raise AppError(409, "invalid_ticket_state", "Ticket is not awaiting manager approval.")
         route = approved_route(ticket)
         permission = ROUTE_PERMISSIONS.get(route) if route is not None else None
-        if permission is None or permission not in actor.permissions:
+        if route is None or permission is None or permission not in actor.permissions:
             raise AppError(403, "forbidden", "Permission denied.")
+        self._ensure_assignment_team(ticket, route)
         return ticket
+
+    def _ensure_assignment_team(self, ticket: TicketRecord, route: RoutingRoute) -> None:
+        if self._teams is None:
+            return
+        expected_kind = TeamKind.RFA if route == RoutingRoute.RFA else TeamKind.CM
+        team_ids = {
+            assignment.team_id
+            for assignment in ticket.analyst_assignments
+            if assignment.active and assignment.route == route and assignment.team_id is not None
+        }
+        if len(team_ids) > 1:
+            raise AppError(409, "assignment_team_invalid", "Assignment has conflicting teams.")
+        for team_id in team_ids:
+            team = self._teams.get_team(team_id)
+            if team is None or not team.is_active or team.kind != expected_kind:
+                raise AppError(
+                    409, "assignment_team_invalid", "Assignment team is no longer valid."
+                )
 
     @staticmethod
     def _ensure_separation_of_duties(actor: UserAccount, ticket: TicketRecord) -> None:

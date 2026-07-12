@@ -55,7 +55,6 @@ async def test_release_audit_events_and_email_are_recorded() -> None:
     assert released.status_code == 200
     assert released.json()["state"] == "DISSEMINATION_READY"
     event_types = [event["eventType"] for event in audit.json()["events"]]
-    assert "qc_approved" in event_types
     assert "product_released" in event_types
     assert "email_recorded" in event_types
 

@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from coeus.core.config import Settings
 from coeus.persistence.factory import build_audit_event_store, build_state_store
 from coeus.repositories.access import SeedAccessRepository
+from coeus.repositories.acg_applications import AcgApplicationRepository
 from coeus.repositories.auth import LoginAttemptRepository, SeedUserRepository, SessionRepository
 from coeus.repositories.registration import RegistrationRepository
 from coeus.repositories.teams import TeamRepository
@@ -23,7 +24,7 @@ from coeus.services.feedback_analytics import build_feedback_analytics_service
 from coeus.services.manager_approval import ManagerApprovalService
 from coeus.services.manager_queue import ManagerQueueService
 from coeus.services.notifications import NotificationService
-from coeus.services.object_storage import build_object_storage, seed_store_asset_placeholders
+from coeus.services.object_storage import build_object_storage
 from coeus.services.passwords import PasswordHasher
 from coeus.services.quality_control import build_quality_control_service
 from coeus.services.registration import RegistrationService
@@ -93,7 +94,11 @@ def _configure_identity(app: FastAPI, settings: Settings) -> IdentityComponents:
         password_hasher=password_hasher,
         audit_log=audit_log,
     )
-    app.state.access_services = build_access_services(access, audit_log)
+    app.state.access_services = build_access_services(
+        access,
+        audit_log,
+        AcgApplicationRepository(app.state.state_store),
+    )
     app.state.user_admin_service = UserAdminService(
         users=users,
         sessions=sessions,
@@ -122,10 +127,6 @@ def _configure_data_services(
     )
     app.state.ai_model_service.set_embedded_product_count_provider(
         app.state.store_services.repository.embedded_product_count
-    )
-    seed_store_asset_placeholders(
-        app.state.object_storage,
-        app.state.store_services.repository.list_products(),
     )
     app.state.ticket_services = build_ticket_services(
         settings,
@@ -166,7 +167,9 @@ def _configure_workflow_services(
     )
     app.state.routing_service = build_routing_service(tickets, audit_log)
     app.state.manager_queue_service = ManagerQueueService(tickets)
-    app.state.manager_approval_service = ManagerApprovalService(tickets, audit_log)
+    app.state.manager_approval_service = ManagerApprovalService(
+        tickets, audit_log, app.state.team_repository
+    )
     app.state.analyst_assignment_service = AnalystAssignmentService(
         tickets,
         identity.access,

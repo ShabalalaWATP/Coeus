@@ -4,12 +4,16 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 
 from coeus.api.dependencies import (
+    get_access_services,
     get_analyst_workflow_service,
     get_csrf_validated_session,
     get_current_session,
     get_manager_approval_service,
     get_manager_queue_service,
     get_routing_service,
+    get_team_availability_service,
+    get_team_repository,
+    get_ticket_services,
 )
 from coeus.api.presenters.analyst import task_response
 from coeus.api.presenters.routing import (
@@ -20,24 +24,89 @@ from coeus.api.presenters.routing import (
 )
 from coeus.domain.auth import AuthenticatedSession
 from coeus.domain.tickets import RoutingRoute, TicketRecord
+from coeus.repositories.teams import TeamRepository
 from coeus.schemas.analyst import AnalystTaskResponse
 from coeus.schemas.routing import (
     CapabilityCatalogueResponse,
+    OversightAnalystResponse,
+    OversightCountResponse,
+    OversightTaskResponse,
+    OversightTeamResponse,
     RouteApprovalRequest,
     RouteClarificationRequest,
     RouteReasonRequest,
+    RoutingOversightResponse,
     RoutingQueueResponse,
     RoutingStatsResponse,
     RoutingTicketResponse,
 )
+from coeus.services.access import AccessServices
 from coeus.services.analyst_workflow import AnalystWorkflowService
 from coeus.services.manager_approval import ManagerApprovalService
 from coeus.services.manager_queue import ManagerQueueService
 from coeus.services.routing import RoutingService
+from coeus.services.routing_oversight import RoutingOversightService
+from coeus.services.team_availability import TeamAvailabilityService
+from coeus.services.tickets import TicketServices
 
 router = APIRouter(prefix="/routing", tags=["routing"])
 
 QUEUE_PAGE_SIZE = 25
+
+
+@router.get("/oversight", response_model=RoutingOversightResponse)
+async def routing_oversight(
+    authenticated: Annotated[AuthenticatedSession, Depends(get_current_session)],
+    tickets: Annotated[TicketServices, Depends(get_ticket_services)],
+    teams: Annotated[TeamRepository, Depends(get_team_repository)],
+    access: Annotated[AccessServices, Depends(get_access_services)],
+    availability: Annotated[TeamAvailabilityService, Depends(get_team_availability_service)],
+) -> RoutingOversightResponse:
+    view = RoutingOversightService(tickets, teams, access.repository, availability).view(
+        authenticated.user
+    )
+    return RoutingOversightResponse(
+        counts_by_state=[
+            OversightCountResponse(key=key, count=count) for key, count in view.counts_by_state
+        ],
+        counts_by_route=[
+            OversightCountResponse(key=key, count=count) for key, count in view.counts_by_route
+        ],
+        teams=[
+            OversightTeamResponse(
+                team_id=item.team_id,
+                name=item.name,
+                kind=item.kind,
+                active_members=item.active_members,
+                available_members=item.available_members,
+                live_task_count=item.live_task_count,
+            )
+            for item in view.teams
+        ],
+        analysts=[
+            OversightAnalystResponse(
+                user_id=item.user_id,
+                display_name=item.display_name,
+                team_ids=list(item.team_ids),
+                live_task_count=item.live_task_count,
+            )
+            for item in view.analysts
+        ],
+        tasks=[
+            OversightTaskResponse(
+                ticket_id=item.ticket_id,
+                reference=item.reference,
+                state=item.state,
+                route=item.route,
+                team_id=item.team_id,
+                team_name=item.team_name,
+                analyst_count=item.analyst_count,
+                work_package_count=item.work_package_count,
+                completed_work_package_count=item.completed_work_package_count,
+            )
+            for item in view.tasks
+        ],
+    )
 
 
 @router.get("/{ticket_id}/manager-work", response_model=AnalystTaskResponse)
