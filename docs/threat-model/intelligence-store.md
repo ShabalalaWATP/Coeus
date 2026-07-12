@@ -17,6 +17,7 @@ and controlled asset access.
 
 | Threat | Control in Sprint 5 |
 |---|---|
+| Browsing enumerates everything a user's ACGs allow without a stated need. | Unfiltered listing requires the curator-only `store:browse_all` permission (Intelligence Store Manager, administrators); everyone else must supply a search term or filter (`422 search_criteria_required`), so bulk enumeration of visible holdings requires deliberate, logged queries. |
 | Search leaks unauthorised product existence through counts or facets. | Search applies RBAC, active ACG, clearance and status filtering before result counts or facet values are calculated. |
 | PostgreSQL search predicates drift from the API access rules. | SQL search applies shared-ACG, clearance, draft and archive predicates first, then the Store service rechecks the same API policy before producing counts, facets or product results. |
 | Unbounded search text causes expensive database predicates or noisy parser errors. | Search query, metadata filter and pagination inputs are bounded at the FastAPI boundary before they reach PostgreSQL full-text and `ILIKE` predicates. |

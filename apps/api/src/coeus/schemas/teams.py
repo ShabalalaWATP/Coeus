@@ -16,7 +16,14 @@ class CalendarEntryRequest(BaseModel):
     entry_date: str = Field(
         validation_alias="date", pattern=r"^\d{4}-\d{2}-\d{2}$", min_length=10, max_length=10
     )
-    status: str = Field(pattern="^(available|on_task|leave)$")
+    end_date: str | None = Field(
+        default=None,
+        validation_alias="endDate",
+        pattern=r"^\d{4}-\d{2}-\d{2}$",
+        min_length=10,
+        max_length=10,
+    )
+    status: str = Field(pattern="^(available|on_task|leave|course|duty|appointment|other)$")
     note: str = Field(default="", max_length=280)
 
 
@@ -66,6 +73,8 @@ class CalendarEntryResponse(BaseModel):
     entry_id: UUID = Field(serialization_alias="id")
     user_id: UUID = Field(serialization_alias="userId")
     entry_date: str = Field(serialization_alias="date")
+    # Inclusive last covered day; equals `date` for single-day entries.
+    end_date: str = Field(serialization_alias="endDate")
     status: str
     note: str
     created_by_user_id: UUID | None = Field(serialization_alias="createdByUserId")
@@ -85,6 +94,7 @@ class AvailabilityResponse(BaseModel):
     members: int
     on_leave: int = Field(serialization_alias="onLeave")
     on_task_calendar: int = Field(serialization_alias="onTaskCalendar")
+    other_commitments: int = Field(serialization_alias="otherCommitments")
     assigned_live: int = Field(serialization_alias="assignedLive")
     on_task: int = Field(serialization_alias="onTask")
     free: int

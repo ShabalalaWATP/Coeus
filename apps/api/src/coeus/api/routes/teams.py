@@ -131,6 +131,7 @@ async def add_calendar_entry(
         payload.entry_date,
         CalendarStatus(payload.status),
         payload.note,
+        payload.end_date or "",
     )
     return calendar_entry_response(entry)
 

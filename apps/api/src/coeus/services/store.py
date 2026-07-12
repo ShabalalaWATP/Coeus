@@ -226,6 +226,17 @@ class StoreSearchService:
     def search(self, actor: UserAccount, filters: StoreSearchFilters) -> StoreSearchResult:
         if Permission.PRODUCT_SEARCH not in actor.permissions:
             raise AppError(403, "forbidden", "Permission denied.")
+        # Need-to-know: the store never lists a user's whole visible holdings
+        # unprompted. A search term or filter is required first; only
+        # catalogue curators (and administrators) may browse everything.
+        if not _has_search_criteria(filters) and (
+            Permission.STORE_BROWSE_ALL not in actor.permissions
+        ):
+            raise AppError(
+                422,
+                "search_criteria_required",
+                "Enter a search term or filter to view store products.",
+            )
         scope = self._policy.visibility_scope(actor)
         structured_filters = without_text_query(filters)
         projected_page = self._repository.search_product_page(structured_filters, scope)
@@ -302,6 +313,22 @@ class StoreSearchService:
         return tuple(
             candidate for candidate in candidates if self._policy.can_read(actor, candidate.product)
         )
+
+
+def _has_search_criteria(filters: StoreSearchFilters) -> bool:
+    """At least one purposeful criterion beyond pagination."""
+    criteria = (
+        filters.query,
+        filters.product_type,
+        filters.region,
+        filters.tag,
+        filters.source_type,
+        filters.status,
+        filters.date_from,
+        filters.date_to,
+        filters.owner_team,
+    )
+    return any(value not in (None, "") for value in criteria)
 
 
 @dataclass(frozen=True)

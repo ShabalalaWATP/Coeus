@@ -1,5 +1,5 @@
 from coeus.domain.auth import UserAccount
-from coeus.domain.teams import OrgTeam, TeamCalendarEntry, UserProfile
+from coeus.domain.teams import OrgTeam, TeamCalendarEntry, UserProfile, entry_end
 from coeus.repositories.teams import TeamRepository
 from coeus.schemas.teams import (
     AvailabilityResponse,
@@ -43,6 +43,7 @@ def calendar_entry_response(entry: TeamCalendarEntry) -> CalendarEntryResponse:
         entry_id=entry.entry_id,
         user_id=entry.user_id,
         entry_date=entry.entry_date,
+        end_date=entry_end(entry),
         status=entry.status.value,
         note=entry.note,
         created_by_user_id=entry.created_by_user_id,
@@ -56,6 +57,7 @@ def availability_response(availability: TeamAvailability) -> AvailabilityRespons
         members=availability.members,
         on_leave=availability.on_leave,
         on_task_calendar=availability.on_task_calendar,
+        other_commitments=availability.other_commitments,
         assigned_live=availability.assigned_live,
         on_task=availability.on_task,
         free=availability.free,

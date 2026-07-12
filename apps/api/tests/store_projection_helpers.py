@@ -250,8 +250,8 @@ def seed_product() -> StoreProduct:
     return InMemoryStoreRepository(access_repository()).list_products()[0]
 
 
-def filters(query: str | None = None) -> StoreSearchFilters:
-    return StoreSearchFilters(query=query)
+def filters(query: str | None = None, product_type: str | None = None) -> StoreSearchFilters:
+    return StoreSearchFilters(query=query, product_type=product_type)
 
 
 def visibility_scope(product: StoreProduct) -> StoreVisibilityScope:

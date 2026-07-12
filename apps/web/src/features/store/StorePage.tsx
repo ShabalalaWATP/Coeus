@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Upload } from "lucide-react";
+import { SearchCheck, Upload } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 
@@ -75,6 +75,8 @@ export default function StorePage({
   const location = useLocation();
   const [sort, setSort] = useState<StoreSort>("relevance");
   const [page, setPage] = useState(1);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [searchHint, setSearchHint] = useState(false);
   const [draftFilters, setDraftFilters] = useState<StoreFilterDraft>({
     query: "",
     productType: "",
@@ -87,6 +89,11 @@ export default function StorePage({
   const [submittedFilters, setSubmittedFilters] = useState<StoreSearchFilters>({});
   const activeOwnerTeam =
     ownerTeam ?? (scope === "mine" && session ? ownerTeamForRoles(session.user.roles) : undefined);
+  // The store never lists holdings unprompted: catalogue curators may browse
+  // everything, owner-scoped pages carry a criterion, everyone else searches.
+  const canBrowseAll = session !== null && hasPermissions(session.user, ["store:browse_all"]);
+  const queryEnabled =
+    activeOwnerTeam !== undefined || (scope === "all" && (canBrowseAll || hasSearched));
   const searchFilters = useMemo<StoreSearchFilters>(
     () => ({
       ...submittedFilters,
@@ -97,6 +104,7 @@ export default function StorePage({
     [activeOwnerTeam, page, submittedFilters],
   );
   const productsQuery = useQuery({
+    enabled: queryEnabled,
     queryKey: ["store-products", searchFilters],
     queryFn: () => searchStoreProducts(searchFilters),
     placeholderData: emptySearch,
@@ -155,111 +163,136 @@ export default function StorePage({
           filters={draftFilters}
           onFiltersChange={setDraftFilters}
           onSubmit={(filters) => {
-            setSubmittedFilters(cleanFilters(filters));
+            const cleaned = cleanFilters(filters);
+            if (scope === "all" && !canBrowseAll && Object.keys(cleaned).length === 0) {
+              setSearchHint(true);
+              return;
+            }
+            setSearchHint(false);
+            setSubmittedFilters(cleaned);
             setPage(1);
+            setHasSearched(true);
           }}
         />
 
-        <section className="surface store-results" aria-live="polite">
-          <div className="store-results__header">
-            <div>
-              <span className="eyebrow">Visible results</span>
-              <h2>{totalVisible} products</h2>
+        {!queryEnabled && scope === "all" ? (
+          <section className="surface store-results store-search-first" aria-live="polite">
+            <SearchCheck aria-hidden="true" size={30} />
+            <h2>Search the Intelligence Store</h2>
+            <p>
+              Products are shown on a need-to-know basis: enter a search term or filter, or arrive
+              from an RFI search, to view matching holdings you are cleared for.
+            </p>
+            {searchHint ? (
+              <p className="store-search-first__hint" role="alert">
+                Enter a search term or pick at least one filter first.
+              </p>
+            ) : null}
+          </section>
+        ) : null}
+
+        {queryEnabled ? (
+          <section className="surface store-results" aria-live="polite">
+            <div className="store-results__header">
+              <div>
+                <span className="eyebrow">Visible results</span>
+                <h2>{totalVisible} products</h2>
+              </div>
+              <label className="store-sort">
+                Sort by
+                <select onChange={(event) => setSort(event.target.value as StoreSort)} value={sort}>
+                  <option value="relevance">Relevance</option>
+                  <option value="title">Title</option>
+                  <option value="coverage">Newest coverage</option>
+                </select>
+              </label>
+              {productsQuery.isFetching ? <span className="store-chip">Refreshing</span> : null}
             </div>
-            <label className="store-sort">
-              Sort by
-              <select onChange={(event) => setSort(event.target.value as StoreSort)} value={sort}>
-                <option value="relevance">Relevance</option>
-                <option value="title">Title</option>
-                <option value="coverage">Newest coverage</option>
-              </select>
-            </label>
-            {productsQuery.isFetching ? <span className="store-chip">Refreshing</span> : null}
-          </div>
-          <PaginationSummary
-            page={clientScoped ? 1 : (productsQuery.data?.page ?? page)}
-            pageSize={
-              clientScoped
-                ? Math.max(visibleProducts.length, 1)
-                : (productsQuery.data?.pageSize ?? STORE_PAGE_SIZE)
-            }
-            total={totalVisible}
-          />
-          <div className="store-facets" aria-label="Visible facets">
-            {(productsQuery.data?.facets.productTypes ?? []).map((type) => (
-              <span className="store-chip" key={type}>
-                {productTypeLabel(type)}
-              </span>
-            ))}
-          </div>
-          {productsQuery.isError ? (
-            <ErrorState onRetry={() => void productsQuery.refetch()} />
-          ) : (
-            <div className="store-result-list">
-              {visibleProducts.map((product) => (
-                <Link
-                  className="store-result"
-                  key={product.id}
-                  state={{ from: location.pathname }}
-                  to={`/store/products/${encodeURIComponent(product.id)}`}
-                >
-                  <div>
-                    <div className="store-result__title">
-                      <span className="store-result__format" aria-hidden="true">
-                        <ProductTypeIcon productType={product.productType} />
-                      </span>
-                      <div>
-                        <span className="mono-ref">{product.reference}</span>
-                        <strong>{product.title}</strong>
+            <PaginationSummary
+              page={clientScoped ? 1 : (productsQuery.data?.page ?? page)}
+              pageSize={
+                clientScoped
+                  ? Math.max(visibleProducts.length, 1)
+                  : (productsQuery.data?.pageSize ?? STORE_PAGE_SIZE)
+              }
+              total={totalVisible}
+            />
+            <div className="store-facets" aria-label="Visible facets">
+              {(productsQuery.data?.facets.productTypes ?? []).map((type) => (
+                <span className="store-chip" key={type}>
+                  {productTypeLabel(type)}
+                </span>
+              ))}
+            </div>
+            {productsQuery.isError ? (
+              <ErrorState onRetry={() => void productsQuery.refetch()} />
+            ) : (
+              <div className="store-result-list">
+                {visibleProducts.map((product) => (
+                  <Link
+                    className="store-result"
+                    key={product.id}
+                    state={{ from: location.pathname }}
+                    to={`/store/products/${encodeURIComponent(product.id)}`}
+                  >
+                    <div>
+                      <div className="store-result__title">
+                        <span className="store-result__format" aria-hidden="true">
+                          <ProductTypeIcon productType={product.productType} />
+                        </span>
+                        <div>
+                          <span className="mono-ref">{product.reference}</span>
+                          <strong>{product.title}</strong>
+                        </div>
+                      </div>
+                      <p>{product.summary}</p>
+                      <StoreMatchReasons
+                        reasons={product.matchReasons}
+                        show={Boolean(submittedFilters.query)}
+                      />
+                      <div className="store-facets">
+                        <span className="store-chip">{productTypeLabel(product.productType)}</span>
+                        <span className="store-chip">Class {product.classificationLevel}</span>
+                        {product.timePeriodStart ? (
+                          <span className="store-chip">
+                            {product.timePeriodStart} to {product.timePeriodEnd ?? "ongoing"}
+                          </span>
+                        ) : null}
+                        {product.tags.slice(0, 4).map((tag) => (
+                          <span className="store-chip store-chip--tag" key={tag}>
+                            {tag}
+                          </span>
+                        ))}
                       </div>
                     </div>
-                    <p>{product.summary}</p>
-                    <StoreMatchReasons
-                      reasons={product.matchReasons}
-                      show={Boolean(submittedFilters.query)}
-                    />
-                    <div className="store-facets">
-                      <span className="store-chip">{productTypeLabel(product.productType)}</span>
-                      <span className="store-chip">Class {product.classificationLevel}</span>
-                      {product.timePeriodStart ? (
-                        <span className="store-chip">
-                          {product.timePeriodStart} to {product.timePeriodEnd ?? "ongoing"}
-                        </span>
-                      ) : null}
-                      {product.tags.slice(0, 4).map((tag) => (
-                        <span className="store-chip store-chip--tag" key={tag}>
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <dl>
-                    <div>
-                      <dt>Owner</dt>
-                      <dd>{product.ownerTeam}</dd>
-                    </div>
-                    <div>
-                      <dt>Region</dt>
-                      <dd>{product.areaOrRegion}</dd>
-                    </div>
-                  </dl>
-                </Link>
-              ))}
-              {visibleProducts.length === 0 ? (
-                <EmptyState
-                  hint="Try related terms, fewer filters or a broader coverage date range."
-                  title="No visible products match these filters"
-                />
-              ) : null}
-            </div>
-          )}
-          <PaginationControls
-            onNext={() => setPage((current) => current + 1)}
-            onPrevious={() => setPage((current) => Math.max(1, current - 1))}
-            page={productsQuery.data?.page ?? page}
-            totalPages={clientScoped ? 0 : (productsQuery.data?.totalPages ?? 0)}
-          />
-        </section>
+                    <dl>
+                      <div>
+                        <dt>Owner</dt>
+                        <dd>{product.ownerTeam}</dd>
+                      </div>
+                      <div>
+                        <dt>Region</dt>
+                        <dd>{product.areaOrRegion}</dd>
+                      </div>
+                    </dl>
+                  </Link>
+                ))}
+                {visibleProducts.length === 0 ? (
+                  <EmptyState
+                    hint="Try related terms, fewer filters or a broader coverage date range."
+                    title="No visible products match these filters"
+                  />
+                ) : null}
+              </div>
+            )}
+            <PaginationControls
+              onNext={() => setPage((current) => current + 1)}
+              onPrevious={() => setPage((current) => Math.max(1, current - 1))}
+              page={productsQuery.data?.page ?? page}
+              totalPages={clientScoped ? 0 : (productsQuery.data?.totalPages ?? 0)}
+            />
+          </section>
+        ) : null}
       </section>
     </div>
   );

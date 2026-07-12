@@ -28,11 +28,15 @@ export type OrgTeam = {
   members: TeamMember[];
 };
 
+export type CalendarActivity =
+  "available" | "on_task" | "leave" | "course" | "duty" | "appointment" | "other";
+
 export type CalendarEntry = {
   id: string;
   userId: string;
   date: string;
-  status: "available" | "on_task" | "leave";
+  endDate: string;
+  status: CalendarActivity;
   note: string;
   createdByUserId: string | null;
 };
@@ -43,6 +47,7 @@ export type TeamAvailability = {
   members: number;
   onLeave: number;
   onTaskCalendar: number;
+  otherCommitments: number;
   assignedLive: number;
   onTask: number;
   free: number;
@@ -97,7 +102,13 @@ export async function listTeamCalendar(
 
 export async function addCalendarEntry(
   teamId: string,
-  payload: { userId: string; date: string; status: CalendarEntry["status"]; note?: string },
+  payload: {
+    userId: string;
+    date: string;
+    endDate?: string;
+    status: CalendarActivity;
+    note?: string;
+  },
   csrfToken: string,
 ): Promise<CalendarEntry> {
   return apiRequestJson<CalendarEntry>(`/api/v1/teams/${pathSegment(teamId)}/calendar`, {
