@@ -1,5 +1,6 @@
 """Shared fixtures for the AI model and provider tests."""
 
+from collections.abc import Callable
 from typing import Any, ClassVar
 
 from httpx import ASGITransport, AsyncClient
@@ -11,8 +12,10 @@ from coeus.services.audit import AuditEvent, AuditLog
 SEED_CREDENTIAL = "CoeusLocal1!"
 
 
-def make_client() -> AsyncClient:
+def make_client(*, app_wrapper: Callable[[Any], Any] | None = None) -> AsyncClient:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    if app_wrapper is not None:
+        app = app_wrapper(app)
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver")
 
 

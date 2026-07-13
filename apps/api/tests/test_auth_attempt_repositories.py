@@ -83,6 +83,36 @@ def test_source_attempt_repository_reclaims_stale_entries() -> None:
     assert set(attempts._attempts) == {"203.0.113.2"}
 
 
+def test_source_attempt_repository_bounds_denied_history() -> None:
+    now = datetime.now(UTC)
+    attempts = IpAttemptRepository(max_entries=1, clock=lambda: now)
+
+    for _index in range(10_000):
+        attempts.within_budget("203.0.113.1", max_attempts=5, window_seconds=300)
+
+    assert len(attempts._attempts["203.0.113.1"]) == 5
+
+
+def test_source_attempt_repository_prunes_all_expired_sources() -> None:
+    now = datetime.now(UTC)
+    attempts = IpAttemptRepository(max_entries=2, clock=lambda: now)
+    stale = now - timedelta(seconds=301)
+    attempts._attempts = {"203.0.113.1": [stale], "203.0.113.2": []}
+
+    assert attempts.within_budget("203.0.113.3", max_attempts=1, window_seconds=300)
+    assert set(attempts._attempts) == {"203.0.113.3"}
+
+
+def test_source_attempt_repository_capacity_recovers_after_window() -> None:
+    now = datetime.now(UTC)
+    attempts = IpAttemptRepository(max_entries=1, clock=lambda: now)
+    assert attempts.within_budget("203.0.113.1", max_attempts=1, window_seconds=300)
+    now += timedelta(seconds=301)
+
+    assert attempts.within_budget("203.0.113.2", max_attempts=1, window_seconds=300)
+    assert set(attempts._attempts) == {"203.0.113.2"}
+
+
 def test_source_attempt_budget_is_atomic_under_concurrency() -> None:
     attempts = IpAttemptRepository(max_entries=10)
 

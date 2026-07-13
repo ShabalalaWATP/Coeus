@@ -2,9 +2,11 @@
 
 ## Status
 
-Reopened for Sprint 14B. The original 16 findings are closed at `7165e49e`.
-Verification scan `a089e83c` reported three Low/P3 integrity findings whose
-post-scan fixes require a final immutable verification scan.
+Historical Sprint 14B model. The original 16 findings were closed at `7165e49e`
+and verification scan `a089e83c` reported three Low/P3 integrity findings.
+Deep scan `abf0e143` of later revision `3e27c82` supersedes the release state;
+current work is tracked by
+`docs/security/SECURITY_REPAIR_AND_HARDENING_PLAN.md`.
 
 ## Scope
 

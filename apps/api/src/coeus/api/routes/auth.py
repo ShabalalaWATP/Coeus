@@ -1,3 +1,4 @@
+from ipaddress import ip_address, ip_network
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, Response
@@ -34,7 +35,17 @@ def client_ip(request: Request, settings: Settings) -> str | None:
     rate limits by sending forged headers directly.
     """
     direct = request.client.host if request.client else None
-    if settings.trusted_proxy_count < 1:
+    if settings.trusted_proxy_count < 1 or direct is None:
+        return direct
+    try:
+        direct_address = ip_address(direct)
+        trusted_peer = any(
+            direct_address in ip_network(cidr, strict=False)
+            for cidr in settings.trusted_proxy_cidrs
+        )
+    except ValueError:
+        return direct
+    if not trusted_peer:
         return direct
     header = request.headers.get("X-Forwarded-For")
     if not header:

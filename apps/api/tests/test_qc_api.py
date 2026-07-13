@@ -192,6 +192,10 @@ def test_release_checks_validate_metadata_and_preview_kinds() -> None:
         checks.validate_release_metadata(replace(base, releasability=()))
     with pytest.raises(AppError, match="Handling"):
         checks.validate_release_metadata(replace(base, handling_caveats=()))
+    with pytest.raises(AppError, match="synthetic release markers"):
+        checks.validate_release_metadata(replace(base, releasability=("NON-MOCK",)))
+    with pytest.raises(AppError, match="synthetic release markers"):
+        checks.validate_release_metadata(replace(base, handling_caveats=("UNDEFINED CAVEAT",)))
     with pytest.raises(AppError, match="ACG"):
         checks.validate_release_metadata(replace(base, acg_ids=frozenset()))
     with pytest.raises(AppError, match="active ACGs"):

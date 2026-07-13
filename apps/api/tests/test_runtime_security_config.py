@@ -83,6 +83,27 @@ def test_hosted_smtp_requires_starttls() -> None:
         settings.require_runtime_security()
 
 
+@pytest.mark.parametrize(
+    "origin",
+    ("*", "ftp://example.test", "https://user@example.test", "https://example.test/path"),
+)
+def test_credentialed_cors_rejects_unsafe_origins(origin: str) -> None:
+    with pytest.raises(ValueError, match="COEUS_ALLOWED_CORS_ORIGINS"):
+        Settings(environment="local", allowed_cors_origins=[origin]).require_runtime_security()
+
+
+def test_proxy_count_requires_trusted_networks() -> None:
+    with pytest.raises(ValueError, match="COEUS_TRUSTED_PROXY_CIDRS"):
+        Settings(environment="local", trusted_proxy_count=1).require_runtime_security()
+
+
+def test_proxy_networks_must_be_valid() -> None:
+    with pytest.raises(ValueError, match="invalid IP network"):
+        Settings(
+            environment="local", trusted_proxy_cidrs=["not-a-network"]
+        ).require_runtime_security()
+
+
 def test_runtime_errors_are_aggregated_in_stable_rule_order() -> None:
     settings = Settings(
         environment="dev",

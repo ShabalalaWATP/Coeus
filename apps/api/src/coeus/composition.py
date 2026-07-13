@@ -37,6 +37,7 @@ from coeus.services.team_workspace import TeamWorkspaceService
 from coeus.services.ticket_builder import build_ticket_services
 from coeus.services.ticket_collaborators import TicketCollaboratorService
 from coeus.services.ticket_lifecycle import TicketLifecycleService
+from coeus.services.upload_admission import UploadAdmissionController
 from coeus.services.user_admin import UserAdminService
 
 
@@ -56,6 +57,11 @@ def configure_application_state(app: FastAPI, settings: Settings) -> None:
     app.state.state_store = build_state_store(settings)
     app.state.asset_token_service = AssetTokenService(settings.asset_token_secret)
     app.state.object_storage = build_object_storage(settings)
+    app.state.upload_admission = UploadAdmissionController(
+        max_concurrent=settings.upload_max_concurrent,
+        max_per_user=settings.upload_max_concurrent_per_user,
+        max_inflight_bytes=settings.upload_max_inflight_bytes,
+    )
     identity = _configure_identity(app, settings)
     _configure_data_services(app, settings, identity)
     _configure_workflow_services(app, settings, identity)

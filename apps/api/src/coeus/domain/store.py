@@ -6,6 +6,8 @@ from coeus.domain.access import ProductStatus
 
 _UNSAFE_OBJECT_KEY_CHARS = frozenset('<>:"/\\|?*')
 _MAX_OBJECT_KEY_SEGMENT_LENGTH = 180
+SYNTHETIC_RELEASABILITY = ("MOCK",)
+SYNTHETIC_HANDLING_CAVEATS = ("MOCK DATA ONLY",)
 _WINDOWS_RESERVED_BASENAMES = frozenset(
     {
         "CON",
@@ -78,6 +80,25 @@ def object_key_segment(name: str) -> str:
     return segment
 
 
+def normalise_synthetic_release_markers(
+    releasability: list[str] | tuple[str, ...] | frozenset[str],
+    handling_caveats: list[str] | tuple[str, ...] | frozenset[str],
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Validate the only release markers supported by the synthetic runtime."""
+
+    normalised_releasability = tuple(
+        sorted({value.strip().upper() for value in releasability if value.strip()})
+    )
+    normalised_caveats = tuple(
+        sorted({value.strip().upper() for value in handling_caveats if value.strip()})
+    )
+    if normalised_releasability != SYNTHETIC_RELEASABILITY:
+        raise ValueError("releasability must use the synthetic MOCK marker")
+    if normalised_caveats != SYNTHETIC_HANDLING_CAVEATS:
+        raise ValueError("handling caveats must use the synthetic MOCK DATA ONLY marker")
+    return normalised_releasability, normalised_caveats
+
+
 def _is_unsafe_object_key_character(character: str) -> bool:
     return ord(character) < 32 or ord(character) == 127 or character in _UNSAFE_OBJECT_KEY_CHARS
 
@@ -117,6 +138,7 @@ class StoreVisibilityScope:
     acg_ids: frozenset[UUID]
     clearance_level: int
     include_drafts: bool
+    draft_creator_user_id: UUID | None = None
 
 
 def product_in_scope(product: "StoreProduct", scope: StoreVisibilityScope) -> bool:
@@ -132,7 +154,11 @@ def product_in_scope(product: "StoreProduct", scope: StoreVisibilityScope) -> bo
         return False
     if metadata.classification_level > scope.clearance_level:
         return False
-    if metadata.status == ProductStatus.DRAFT and not scope.include_drafts:
+    if (
+        metadata.status == ProductStatus.DRAFT
+        and not scope.include_drafts
+        and scope.draft_creator_user_id != product.created_by_user_id
+    ):
         return False
     return bool(metadata.acg_ids & scope.acg_ids)
 

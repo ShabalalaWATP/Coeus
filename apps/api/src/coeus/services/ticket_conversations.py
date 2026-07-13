@@ -1,3 +1,4 @@
+from contextlib import nullcontext
 from dataclasses import replace
 from datetime import UTC, datetime
 from typing import Protocol
@@ -26,6 +27,8 @@ from coeus.services.audit import AuditLog
 from coeus.services.intake import IntakeAssistantProvider, IntakeExtractionService
 from coeus.services.intake_standard import next_elicitation
 from coeus.services.prioritisation import with_assessment
+from coeus.services.provider_admission import ProviderAdmissionController
+from coeus.services.ticket_admission import TicketAdmissionController
 from coeus.services.ticket_records import message as message_record
 from coeus.services.ticket_records import timeline
 
@@ -55,21 +58,36 @@ class ConversationService:
         extractor: IntakeExtractionService,
         llm_provider: IntakeAssistantProvider,
         audit_log: AuditLog,
+        provider_admission: ProviderAdmissionController | None = None,
+        ticket_admission: TicketAdmissionController | None = None,
     ) -> None:
         self._repository = repository
         self._tickets = tickets
         self._extractor = extractor
         self._llm_provider = llm_provider
         self._audit_log = audit_log
+        self._provider_admission = provider_admission
+        self._ticket_admission = ticket_admission
 
     def send_message(
         self, actor: UserAccount, message: str, ticket_id: UUID | None = None
     ) -> TicketRecord:
-        ticket = (
-            self._tickets.get_editable_ticket(actor, ticket_id)
-            if ticket_id
-            else self._create(actor)
+        reservation = (
+            self._ticket_admission.reserve(actor.user_id)
+            if ticket_id is None and self._ticket_admission is not None
+            else nullcontext(None)
         )
+        with reservation as reference:
+            ticket = (
+                self._tickets.get_editable_ticket(actor, ticket_id)
+                if ticket_id
+                else self._create(actor, reference)
+            )
+            return self._send_to_ticket(actor, message, ticket)
+
+    def _send_to_ticket(
+        self, actor: UserAccount, message: str, ticket: TicketRecord
+    ) -> TicketRecord:
         if ticket.conversation_status == lifecycle.CONVERSATION_CLOSED:
             raise AppError(
                 409,
@@ -83,11 +101,11 @@ class ConversationService:
         # in intake fields; the message, flags and refusal are still recorded.
         intake = ticket.intake if safety_flags else self._extractor.extract(message, ticket.intake)
         if safety_flags:
-            reply = self._llm_provider.build_assistant_message(intake, safety_flags)
+            reply = self._assistant_reply(actor, intake, safety_flags)
             conversation_status = ticket.conversation_status
         else:
             reply, conversation_status = self._reply_and_status(
-                ticket.conversation_status, message, intake
+                actor, ticket.conversation_status, message, intake
             )
         assistant_message = message_record(ticket.ticket_id, MessageAuthor.ASSISTANT, reply)
         if self._chat_bytes(ticket) + text_bytes(message, reply) > MAX_CHAT_HISTORY_BYTES:
@@ -140,7 +158,7 @@ class ConversationService:
             raise AppError(409, "chat_history_limit_reached", "The chat history limit was reached.")
 
     def _reply_and_status(
-        self, status: str, message: str, intake: IntakeDetails
+        self, actor: UserAccount, status: str, message: str, intake: IntakeDetails
     ) -> tuple[str, str]:
         """Deterministic conversation lifecycle; the LLM never decides this."""
         complete = not intake.missing_information
@@ -159,15 +177,26 @@ class ConversationService:
         if complete:
             return lifecycle.CLOSE_OFFER_MESSAGE, lifecycle.CONVERSATION_CLOSE_OFFERED
         return (
-            self._llm_provider.build_assistant_message(intake, ()),
+            self._assistant_reply(actor, intake, ()),
             lifecycle.CONVERSATION_OPEN,
         )
 
-    def _create(self, actor: UserAccount) -> TicketRecord:
+    def _assistant_reply(
+        self, actor: UserAccount, intake: IntakeDetails, safety_flags: tuple[str, ...]
+    ) -> str:
+        uses_remote = getattr(self._llm_provider, "uses_operator_provider", lambda: False)()
+        if not uses_remote or self._provider_admission is None or safety_flags:
+            return self._llm_provider.build_assistant_message(intake, safety_flags)
+        with self._provider_admission.reserve(actor.user_id) as reservation:
+            reply = self._llm_provider.build_assistant_message(intake, safety_flags)
+            reservation.commit()
+            return reply
+
+    def _create(self, actor: UserAccount, reserved_reference: str | None = None) -> TicketRecord:
         ticket_id = uuid4()
         return TicketRecord(
             ticket_id=ticket_id,
-            reference=self._repository.next_reference(),
+            reference=reserved_reference or self._repository.next_reference(),
             requester_user_id=actor.user_id,
             state=TicketState.DRAFT_INTAKE,
             intake=IntakeDetails(),

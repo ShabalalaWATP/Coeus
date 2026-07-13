@@ -31,6 +31,7 @@ from coeus.services.team_workspace import TeamWorkspaceService
 from coeus.services.ticket_collaborators import TicketCollaboratorService
 from coeus.services.ticket_lifecycle import TicketLifecycleService
 from coeus.services.tickets import TicketServices
+from coeus.services.upload_admission import UploadAdmissionController
 from coeus.services.user_admin import UserAdminService
 
 
@@ -142,6 +143,15 @@ def get_object_storage(request: Request) -> ObjectStorage:
     if not isinstance(storage, ObjectStorage):
         raise AppError(500, "object_storage_not_configured", "Object storage is not configured.")
     return storage
+
+
+def get_upload_admission(request: Request) -> UploadAdmissionController:
+    controller = getattr(request.app.state, "upload_admission", None)
+    if not isinstance(controller, UploadAdmissionController):
+        raise AppError(
+            500, "upload_admission_not_configured", "Upload admission is not configured."
+        )
+    return controller
 
 
 def get_asset_token_service(request: Request) -> AssetTokenService:

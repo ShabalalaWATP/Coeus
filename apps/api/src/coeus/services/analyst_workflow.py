@@ -83,7 +83,7 @@ class AnalystWorkflowService:
         visible: list[LinkedAnalystProduct] = []
         for link in ticket.linked_products[:ANALYST_LINKED_PRODUCT_LIMIT]:
             try:
-                self._store.details.get_visible_product(actor, link.product_id)
+                self._store.details.get_workflow_visible_product(actor, link.product_id)
             except AppError:
                 continue
             visible.append(link)
@@ -126,7 +126,7 @@ class AnalystWorkflowService:
             )
         if any(link.product_id == product_id for link in ticket.linked_products):
             raise AppError(409, "product_already_linked", "Product is already linked.")
-        product = self._store.details.get_visible_product(actor, product_id)
+        product = self._store.details.get_workflow_visible_product(actor, product_id)
         link = linked_product_record(
             ticket.ticket_id,
             product.product_id,

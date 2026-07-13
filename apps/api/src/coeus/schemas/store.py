@@ -8,6 +8,7 @@ from coeus.core.resource_limits import (
     MAX_PRODUCT_ASSETS,
     text_bytes,
 )
+from coeus.domain.store import normalise_synthetic_release_markers
 
 ISO_DATE_PATTERN = r"^\d{4}-\d{2}-\d{2}$"
 ReleasabilityText = Annotated[str, Field(min_length=1, max_length=40)]
@@ -79,6 +80,11 @@ class StoreProductCreateRequest(BaseModel):
         )
         if used > MAX_PRODUCT_ASSET_METADATA_BYTES:
             raise ValueError("asset metadata exceeds the product budget")
+        releasability, caveats = normalise_synthetic_release_markers(
+            self.releasability, self.handling_caveats
+        )
+        self.releasability = list(releasability)
+        self.handling_caveats = list(caveats)
         return self
 
 

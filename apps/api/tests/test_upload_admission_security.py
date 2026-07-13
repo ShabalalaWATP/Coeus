@@ -1,0 +1,180 @@
+"""Regression coverage for pre-auth parsing and aggregate upload admission."""
+
+import json
+from collections.abc import AsyncIterator
+from pathlib import Path
+from tempfile import SpooledTemporaryFile
+from uuid import uuid4
+
+import pytest
+from httpx import ASGITransport, AsyncClient
+
+from coeus.api.routes.store_files import CHUNK_SIZE
+from coeus.core.config import Settings
+from coeus.core.errors import AppError
+from coeus.main import create_app
+from coeus.services.upload_admission import UploadAdmissionController
+from store_api_helpers import login, product_payload
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("authenticated", [False, True])
+async def test_security_rejection_happens_before_multipart_spooling(
+    authenticated: bool,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    created_spools: list[object] = []
+
+    def recording_spool(*args: object, **kwargs: object) -> object:
+        spool = SpooledTemporaryFile(*args, **kwargs)  # noqa: SIM115 - parser owns it.
+        created_spools.append(spool)
+        return spool
+
+    monkeypatch.setattr("starlette.formparsers.SpooledTemporaryFile", recording_spool)
+    app = create_app(
+        Settings(
+            environment="test",
+            argon2_memory_cost=8_192,
+            local_object_storage_path=str(tmp_path / "objects"),
+        )
+    )
+    acg_id = str(app.state.access_services.repository.list_acgs()[0].acg_id)
+    metadata = product_payload(acg_id)
+    metadata.pop("assets")
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        if authenticated:
+            await login(client, "admin@example.test")
+        response = await client.post(
+            "/api/v1/store/products/upload",
+            files={
+                "asset": ("blocked.txt", b"blocked bytes", "text/plain"),
+                "metadata": (None, json.dumps(metadata), "application/json"),
+            },
+        )
+
+    assert response.status_code in {401, 403}
+    assert created_spools == []
+
+
+@pytest.mark.asyncio
+async def test_content_length_free_body_stops_at_receive_budget(tmp_path: Path) -> None:
+    settings = Settings(
+        environment="test",
+        argon2_memory_cost=8_192,
+        local_object_storage_path=str(tmp_path / "objects"),
+        local_upload_max_bytes=32,
+        upload_max_inflight_bytes=64,
+    )
+    app = create_app(settings)
+    acg_id = str(app.state.access_services.repository.list_acgs()[0].acg_id)
+    metadata = product_payload(acg_id)
+    metadata.pop("assets")
+    boundary = "coeus-security-boundary"
+    body = _multipart_body(boundary, json.dumps(metadata), b"x" * (300 * 1024))
+    before = len(app.state.store_services.repository.list_products())
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        session = await login(client, "admin@example.test")
+        response = await client.post(
+            "/api/v1/store/products/upload",
+            headers={
+                "Content-Type": f"multipart/form-data; boundary={boundary}",
+                "X-CSRF-Token": str(session["csrfToken"]),
+            },
+            content=_body_chunks(body),
+        )
+
+    assert response.status_code == 413
+    assert response.json()["error"]["code"] == "asset_too_large"
+    assert len(app.state.store_services.repository.list_products()) == before
+    assert not any((tmp_path / "objects").rglob("*"))
+
+
+@pytest.mark.asyncio
+async def test_multichunk_upload_streams_to_storage_and_preserves_bytes(tmp_path: Path) -> None:
+    content = b"M" * (CHUNK_SIZE * 2 + 17)
+    app = create_app(
+        Settings(
+            environment="test",
+            argon2_memory_cost=8_192,
+            local_object_storage_path=str(tmp_path / "objects"),
+            local_upload_max_bytes=len(content) + 1,
+            upload_max_inflight_bytes=(len(content) + 1) * 2,
+        )
+    )
+    acg_id = str(app.state.access_services.repository.list_acgs()[0].acg_id)
+    metadata = product_payload(acg_id)
+    metadata.pop("assets")
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        session = await login(client, "admin@example.test")
+        created = await client.post(
+            "/api/v1/store/products/upload",
+            headers={"X-CSRF-Token": str(session["csrfToken"])},
+            files={
+                "asset": ("streamed.bin", content, "application/octet-stream"),
+                "metadata": (None, json.dumps(metadata), "application/json"),
+            },
+        )
+        product = created.json()
+        asset = product["assets"][0]
+        grant = await client.get(
+            f"/api/v1/store/products/{product['id']}/assets/{asset['id']}/access"
+        )
+        downloaded = await client.get(
+            f"/api/v1/store/products/{product['id']}/assets/{asset['id']}/download",
+            headers={"X-Asset-Token": grant.json()["downloadToken"]},
+        )
+
+    assert created.status_code == 201
+    assert asset["sizeBytes"] == len(content)
+    assert downloaded.status_code == 200
+    assert downloaded.content == content
+
+
+def test_upload_admission_releases_capacity_after_rejection() -> None:
+    controller = UploadAdmissionController(
+        max_concurrent=1,
+        max_per_user=1,
+        max_inflight_bytes=10,
+    )
+    first_user = uuid4()
+
+    with (
+        controller.reserve(first_user, 10),
+        pytest.raises(AppError, match="upload_capacity_exceeded"),
+        controller.reserve(uuid4(), 1),
+    ):
+        pass
+
+    with controller.reserve(first_user, 10):
+        pass
+
+
+async def _body_chunks(body: bytes) -> AsyncIterator[bytes]:
+    for offset in range(0, len(body), 16 * 1024):
+        yield body[offset : offset + 16 * 1024]
+
+
+def _multipart_body(boundary: str, metadata: str, content: bytes) -> bytes:
+    return (
+        (
+            f"--{boundary}\r\n"
+            'Content-Disposition: form-data; name="metadata"\r\n'
+            "Content-Type: application/json\r\n\r\n"
+            f"{metadata}\r\n"
+            f"--{boundary}\r\n"
+            'Content-Disposition: form-data; name="asset"; filename="large.bin"\r\n'
+            "Content-Type: application/octet-stream\r\n\r\n"
+        ).encode()
+        + content
+        + f"\r\n--{boundary}--\r\n".encode()
+    )

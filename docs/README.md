@@ -1,6 +1,7 @@
-# Istari Documentation
+# Istari (Coeus) Documentation
 
-Start here. This index links the guides and the deeper design records.
+Istari is the product name; Coeus is the repository and internal working name.
+This index links the guides and deeper design records.
 
 ## Guides
 
@@ -16,13 +17,14 @@ Start here. This index links the guides and the deeper design records.
 
 ## Repository records
 
-| Record                                                      | Contents                                     |
-| ----------------------------------------------------------- | -------------------------------------------- |
-| [Development Story](DEVELOPMENT_STORY.md)                   | Chronological log of how the app was built   |
-| [Master Implementation Plan](MASTER_IMPLEMENTATION_PLAN.md) | Task tracking and next steps                 |
-| [Specifications](specs/)                                    | One Markdown spec per feature                |
-| [Architecture Decision Records](adr/)                       | Why the significant choices were made        |
-| [Threat Models](threat-model/)                              | Per-feature threat models and residual risks |
+| Record                                                                 | Contents                                                 |
+| ---------------------------------------------------------------------- | -------------------------------------------------------- |
+| [Development Story](DEVELOPMENT_STORY.md)                              | Chronological log of how the app was built               |
+| [Master Implementation Plan](MASTER_IMPLEMENTATION_PLAN.md)            | Task tracking and next steps                             |
+| [Specifications](specs/)                                               | One Markdown spec per feature                            |
+| [Architecture Decision Records](adr/)                                  | Why the significant choices were made                    |
+| [Threat Models](threat-model/)                                         | Per-feature threat models and residual risks             |
+| [Security Repair Plan](security/SECURITY_REPAIR_AND_HARDENING_PLAN.md) | Current finding closure, hardening and verification work |
 
 ## Runbooks
 

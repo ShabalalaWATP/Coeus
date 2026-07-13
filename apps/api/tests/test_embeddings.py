@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
@@ -93,6 +94,31 @@ def test_provider_failure_degrades_to_none() -> None:
     service = EmbeddingService(FailingProvider())
 
     assert service.embed("query", purpose="test") is None
+
+
+def test_cached_embedding_normalises_and_single_flights_concurrent_misses() -> None:
+    class CountingProvider:
+        name = "counting"
+
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def embed(self, _text: str) -> tuple[float, ...]:
+            self.calls += 1
+            return (1.0,)
+
+    provider = CountingProvider()
+    service = EmbeddingService(provider)
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        results = tuple(
+            pool.map(
+                lambda text: service.embed_cached(text, purpose="test"),
+                ["  SAME query ", "same   QUERY"] * 20,
+            )
+        )
+
+    assert results == ((1.0,),) * 40
+    assert provider.calls == 1
 
 
 def test_gemini_provider_requires_runtime_key() -> None:

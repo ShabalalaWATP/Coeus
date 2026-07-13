@@ -309,36 +309,40 @@ class IpAttemptRepository:
     bypassing throttling.
     """
 
-    def __init__(self, max_entries: int = 10_000) -> None:
+    def __init__(
+        self,
+        max_entries: int = 10_000,
+        clock: Callable[[], datetime] | None = None,
+    ) -> None:
         if max_entries < 1:
             raise ValueError("IP attempt max_entries must be at least 1.")
         self._max_entries = max_entries
+        self._clock = clock or (lambda: datetime.now(UTC))
         self._lock = RLock()
         self._attempts: dict[str, list[datetime]] = {}
 
     def within_budget(self, source: str, max_attempts: int, window_seconds: int) -> bool:
         with self._lock:
-            now = datetime.now(UTC)
+            now = self._clock()
             window_start = now - timedelta(seconds=window_seconds)
             recent = [moment for moment in self._attempts.get(source, []) if moment > window_start]
-            if (
-                source not in self._attempts
-                and len(self._attempts) >= self._max_entries
-                and not self._evict_stale(window_start)
-            ):
+            if source not in self._attempts:
+                self._prune_stale(window_start)
+                if len(self._attempts) >= self._max_entries:
+                    return False
+            if len(recent) >= max_attempts:
+                self._attempts[source] = recent[:max_attempts]
                 return False
             recent.append(now)
             self._attempts[source] = recent
-            return len(recent) <= max_attempts
+            return True
 
     @property
     def entry_count(self) -> int:
         with self._lock:
             return len(self._attempts)
 
-    def _evict_stale(self, window_start: datetime) -> bool:
+    def _prune_stale(self, window_start: datetime) -> None:
         for source, moments in list(self._attempts.items()):
             if not moments or moments[-1] <= window_start:
                 self._attempts.pop(source)
-                return True
-        return False

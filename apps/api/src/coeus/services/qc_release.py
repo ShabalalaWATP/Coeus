@@ -79,16 +79,24 @@ class QcReleaseStep:
         self._audit_log = audit_log
 
     def complete(
-        self, actor: UserAccount, ticket: TicketRecord, product: StoreProduct
+        self,
+        actor: UserAccount,
+        expected: TicketRecord,
+        ticket: TicketRecord,
+        product: StoreProduct,
     ) -> QcReleaseOutcome:
         """`ticket` carries the QC decision and index records but not yet the
         release outcome; the outcome's ticket has been saved."""
         if forwards_to_rfa(ticket):
-            return self._forward_to_rfa(actor, ticket, product)
-        return self._release_to_customer(actor, ticket, product)
+            return self._forward_to_rfa(actor, expected, ticket, product)
+        return self._release_to_customer(actor, expected, ticket, product)
 
     def _forward_to_rfa(
-        self, actor: UserAccount, ticket: TicketRecord, product: StoreProduct
+        self,
+        actor: UserAccount,
+        expected: TicketRecord,
+        ticket: TicketRecord,
+        product: StoreProduct,
     ) -> QcReleaseOutcome:
         decision = routing_decision(
             ticket.ticket_id,
@@ -106,7 +114,8 @@ class QcReleaseStep:
             product.metadata.summary,
             actor.user_id,
         )
-        updated = self._tickets.tickets.save_system_update(
+        updated = self._tickets.tickets.save_system_update_if_current(
+            expected,
             replace(
                 ticket,
                 state=TicketState.ANALYST_ASSIGNMENT,
@@ -121,7 +130,7 @@ class QcReleaseStep:
                     *ticket.timeline,
                     timeline(ticket.ticket_id, actor.user_id, "forwarded_to_rfa", FORWARD_REASON),
                 ),
-            )
+            ),
         )
         return QcReleaseOutcome(
             ticket=updated,
@@ -131,7 +140,11 @@ class QcReleaseStep:
         )
 
     def _release_to_customer(
-        self, actor: UserAccount, original_ticket: TicketRecord, original_product: StoreProduct
+        self,
+        actor: UserAccount,
+        expected: TicketRecord,
+        original_ticket: TicketRecord,
+        original_product: StoreProduct,
     ) -> QcReleaseOutcome:
         requester = self._access.get_user(original_ticket.requester_user_id)
         if requester is None or not requester.is_active:
@@ -143,7 +156,8 @@ class QcReleaseStep:
         if not self._store.details.can_read_product(requester, product):
             raise AppError(404, "product_not_found", "Product was not found.")
         self._store.repository.save_product(product)
-        updated = self._tickets.tickets.save_system_update(
+        updated = self._tickets.tickets.save_system_update_if_current(
+            expected,
             replace(
                 original_ticket,
                 state=TicketState.DISSEMINATION_READY,
@@ -178,7 +192,7 @@ class QcReleaseStep:
                         requester.username,
                     ),
                 ),
-            )
+            ),
         )
         return QcReleaseOutcome(
             ticket=updated,

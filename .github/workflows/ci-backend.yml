@@ -11,11 +11,30 @@ permissions:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      COEUS_TEST_DATABASE_URL: postgresql+psycopg://coeus:coeus-test-only@127.0.0.1:5432/coeus_test
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16@sha256:0a07c4114ba6d1d04effcce3385e9f5ce305eb02e56a3d35948a415a52f193ec
+        env:
+          POSTGRES_DB: coeus_test
+          POSTGRES_USER: coeus
+          POSTGRES_PASSWORD: coeus-test-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U coeus -d coeus_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     defaults:
       run:
         working-directory: apps/api
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
       - name: File line limit
         working-directory: .
         run: node scripts/check-file-lines.mjs
@@ -34,10 +53,14 @@ jobs:
       - name: Mypy
         run: uv run mypy src
       - name: OpenAPI contract
-        run: uv run python ../../scripts/generate_openapi.py --check
+        run: |
+          uv run python ../../scripts/generate_openapi.py --check
+          uv run python ../../scripts/check_openapi_compatibility.py --baseline-ref origin/main
+      - name: PostgreSQL migration and concurrency harness
+        run: uv run pytest -m postgres --no-cov tests/postgres
       - name: Pytest with independent line and branch coverage gates
         run: |
-          uv run pytest --cov-report=json:coverage.json
+          uv run pytest -m "not postgres" --cov-report=json:coverage.json
           uv run python ../../scripts/check_backend_coverage.py coverage.json
       - name: Bandit
         run: uv run bandit -r src

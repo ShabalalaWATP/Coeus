@@ -48,18 +48,25 @@ def test_client_ip_ignores_forwarded_header_by_default() -> None:
 
 
 def test_client_ip_uses_rightmost_untrusted_hop_when_proxies_are_trusted() -> None:
-    settings = _settings(trusted_proxy_count=1)
+    settings = _settings(trusted_proxy_count=1, trusted_proxy_cidrs=["203.0.113.0/24"])
     request = _request([(b"x-forwarded-for", b"198.51.100.9, 192.0.2.1")])
 
     assert client_ip(request, settings) == "192.0.2.1"
 
 
 def test_client_ip_falls_back_when_header_is_missing_or_short() -> None:
-    settings = _settings(trusted_proxy_count=2)
+    settings = _settings(trusted_proxy_count=2, trusted_proxy_cidrs=["203.0.113.0/24"])
 
     assert client_ip(_request(), settings) == "203.0.113.7"
     short_header = _request([(b"x-forwarded-for", b"192.0.2.1")])
     assert client_ip(short_header, settings) == "203.0.113.7"
+
+
+def test_client_ip_ignores_forwarded_header_from_untrusted_peer() -> None:
+    settings = _settings(trusted_proxy_count=1, trusted_proxy_cidrs=["192.0.2.0/24"])
+    request = _request([(b"x-forwarded-for", b"198.51.100.9")])
+
+    assert client_ip(request, settings) == "203.0.113.7"
 
 
 def test_removed_gemma_providers_are_rejected() -> None:

@@ -14,6 +14,8 @@ from coeus.services.intake import (
     RequirementCompletenessService,
 )
 from coeus.services.intake_prompt import intake_prompt
+from coeus.services.provider_admission import ProviderAdmissionController
+from coeus.services.ticket_admission import TicketAdmissionController
 from coeus.services.ticket_conversations import ConversationService
 from coeus.services.tickets import TicketService, TicketServices
 
@@ -33,6 +35,17 @@ def build_ticket_services(
         IntakeExtractionService(),
         ConfigurableIntakeProvider(settings, ai_models),
         audit_log,
+        ProviderAdmissionController(
+            max_concurrent=settings.provider_max_concurrent,
+            max_calls_per_window=settings.provider_max_calls_per_window,
+            max_calls_per_principal=settings.provider_max_calls_per_principal,
+            window_seconds=settings.provider_window_seconds,
+        ),
+        TicketAdmissionController(
+            repository,
+            max_retained=settings.ticket_max_retained,
+            max_retained_per_principal=settings.ticket_max_retained_per_principal,
+        ),
     )
     return TicketServices(tickets=tickets, conversations=conversations)
 
@@ -66,6 +79,10 @@ class ConfigurableIntakeProvider:
             )
             return self._mock.build_assistant_message(intake, safety_flags)
         return text or self._mock.build_assistant_message(intake, safety_flags)
+
+    def uses_operator_provider(self) -> bool:
+        """Whether the next unflagged reply can acquire an external provider."""
+        return self._remote_call(IntakeDetails()) is not None
 
     def _remote_call(self, intake: IntakeDetails) -> LlmCall | None:
         # The configured provider is authoritative: an API key alone never

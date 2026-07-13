@@ -48,6 +48,9 @@ packages = ["src/coeus"]
 addopts = "--cov=coeus --cov-report=term-missing --cov-fail-under=95"
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+  "postgres: requires an isolated real PostgreSQL service",
+]
 
 [tool.coverage.run]
 branch = true

@@ -17,6 +17,9 @@ class StoreReadPolicy(Protocol):
     def visibility_scope(self, user: UserAccount) -> StoreVisibilityScope:
         pass
 
+    def can_read_for_workflow(self, user: UserAccount, product: StoreProduct) -> bool:
+        pass
+
 
 class StoreDetailService:
     def __init__(
@@ -39,6 +42,13 @@ class StoreDetailService:
 
     def can_read_product(self, actor: UserAccount, product: StoreProduct) -> bool:
         return self._policy.can_read(actor, product)
+
+    def get_workflow_visible_product(self, actor: UserAccount, product_id: UUID) -> StoreProduct:
+        """Read a product in an already-authorised assigned-workflow context."""
+        product = self._repository.get_product(product_id)
+        if product is None or not self._policy.can_read_for_workflow(actor, product):
+            raise AppError(404, "product_not_found", "Product was not found.")
+        return product
 
     def get_break_glass_product(
         self, actor: UserAccount, product_id: UUID, reason: str

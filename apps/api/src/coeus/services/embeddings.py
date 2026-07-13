@@ -5,6 +5,7 @@ from math import sqrt
 from os import environ
 from pathlib import Path
 from re import findall
+from threading import Event, RLock
 from typing import Protocol, cast
 
 import httpx
@@ -56,6 +57,8 @@ class EmbeddingService:
         self._provider = provider
         self._warned: set[str] = set()
         self._cache: OrderedDict[str, tuple[float, ...] | None] = OrderedDict()
+        self._inflight: dict[str, Event] = {}
+        self._lock = RLock()
 
     @property
     def provider_name(self) -> str:
@@ -69,22 +72,41 @@ class EmbeddingService:
             return None
 
     def embed_cached(self, text: str, *, purpose: str) -> tuple[float, ...] | None:
-        """Embed immutable retrieval text once per provider and process lifetime."""
-        key = f"{self.provider_name}:{blake2b(text.encode('utf-8'), digest_size=16).hexdigest()}"
-        if key in self._cache:
-            self._cache.move_to_end(key)
-            return self._cache[key]
-        vector = self.embed(text, purpose=purpose)
-        self._cache[key] = vector
-        if len(self._cache) > EMBEDDING_CACHE_LIMIT:
-            self._cache.popitem(last=False)
-        return vector
+        """Embed a normalised key once, coalescing concurrent cache misses."""
+        normalised = " ".join(text.split()).casefold()
+        digest = blake2b(normalised.encode("utf-8"), digest_size=16).hexdigest()
+        key = f"{self.provider_name}:{digest}"
+        with self._lock:
+            if key in self._cache:
+                self._cache.move_to_end(key)
+                return self._cache[key]
+            event = self._inflight.get(key)
+            leader = event is None
+            if event is None:
+                event = Event()
+                self._inflight[key] = event
+        if not leader:
+            event.wait()
+            with self._lock:
+                return self._cache.get(key)
+        try:
+            vector = self.embed(text, purpose=purpose)
+            with self._lock:
+                self._cache[key] = vector
+                if len(self._cache) > EMBEDDING_CACHE_LIMIT:
+                    self._cache.popitem(last=False)
+            return vector
+        finally:
+            with self._lock:
+                completed = self._inflight.pop(key)
+                completed.set()
 
     def _warn_once(self, reason: str, purpose: str) -> None:
         key = f"{self.provider_name}:{reason}"
-        if key in self._warned:
-            return
-        self._warned.add(key)
+        with self._lock:
+            if key in self._warned:
+                return
+            self._warned.add(key)
         logger.warning(
             "embedding_provider_unavailable",
             extra={"provider": self.provider_name, "purpose": purpose, "reason": reason},

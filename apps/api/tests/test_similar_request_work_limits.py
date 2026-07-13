@@ -8,6 +8,7 @@ from httpx import ASGITransport, AsyncClient
 
 from coeus.core.config import Settings
 from coeus.main import create_app
+from coeus.services.similar_request_scoring import MAX_VECTOR_CANDIDATES
 from coeus.services.similar_requests import SIMILARITY_CANDIDATE_LIMIT
 from test_similar_requests_api import login, similar_ticket_pair, submitted_ticket
 
@@ -84,7 +85,7 @@ async def test_manager_similarity_caps_scoring_and_link_response_is_pairwise() -
         )
 
     assert listed.status_code == 200
-    assert list_call_count == SIMILARITY_CANDIDATE_LIMIT + 1
+    assert list_call_count == MAX_VECTOR_CANDIDATES + 1
     assert linked.status_code == 200
     assert linked.json()["matches"][0]["ticketId"] == target_id
     assert linked.json()["matches"][0]["alreadyLinked"] is True

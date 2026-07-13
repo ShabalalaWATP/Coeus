@@ -8,7 +8,7 @@ from coeus.domain.auth import UserAccount
 from coeus.domain.enums import TicketState
 from coeus.domain.qc import ProductIndexRecord, QcChecklistItem, QcDecisionStatus
 from coeus.domain.state_machine import can_transition
-from coeus.domain.store import StoreProduct
+from coeus.domain.store import StoreProduct, normalise_synthetic_release_markers
 from coeus.domain.tickets import TicketRecord
 from coeus.repositories.access import AccessRepository
 from coeus.services.audit import AuditLog
@@ -51,6 +51,14 @@ class ReleaseCheckService:
             raise AppError(409, "releasability_required", "Releasability must be confirmed.")
         if not approval.handling_caveats:
             raise AppError(409, "handling_caveats_required", "Handling caveats are required.")
+        try:
+            normalise_synthetic_release_markers(approval.releasability, approval.handling_caveats)
+        except ValueError as exc:
+            raise AppError(
+                409,
+                "release_markers_unsupported",
+                "Only synthetic release markers are supported.",
+            ) from exc
         if not approval.acg_ids:
             raise AppError(409, "product_acg_required", "At least one ACG must be confirmed.")
         for acg_id in approval.acg_ids:
@@ -145,7 +153,7 @@ class QualityControlService:
                     ),
                 ),
             )
-            outcome = self._release.complete(actor, pending, product)
+            outcome = self._release.complete(actor, ticket, pending, product)
             # One durable success event avoids a partially written audit trail
             # claiming approval when a second append fails and release is
             # compensated.
@@ -164,8 +172,9 @@ class QualityControlService:
             # approval can be retried without an orphaned DRAFT product. If
             # persistence itself is down the restore may also fail; the
             # product discard must still run so no orphan survives.
-            with suppress(Exception):
-                self._tickets.tickets.save_system_update(ticket)
+            if "outcome" in locals():
+                with suppress(Exception):
+                    self._tickets.tickets.restore_system_update_if_current(outcome.ticket, ticket)
             self._ingestion.discard(product.product_id)
             raise
         self._release.notify_best_effort(actor, outcome)
@@ -180,7 +189,8 @@ class QualityControlService:
             ticket.ticket_id, QcDecisionStatus.REJECTED, reason, actor.user_id, checklist
         )
         self._ensure_transition(ticket.state, TicketState.REWORK_REQUIRED)
-        updated = self._tickets.tickets.save_system_update(
+        updated = self._tickets.tickets.save_system_update_if_current(
+            ticket,
             replace(
                 ticket,
                 state=TicketState.REWORK_REQUIRED,
@@ -189,12 +199,12 @@ class QualityControlService:
                     *ticket.timeline,
                     timeline(ticket.ticket_id, actor.user_id, "qc_rejected", reason),
                 ),
-            )
+            ),
         )
         try:
             self._audit_log.record("qc_rejected", str(actor.user_id), {"ticket_id": str(ticket_id)})
         except Exception:
-            self._tickets.tickets.save_system_update(ticket)
+            self._tickets.tickets.restore_system_update_if_current(updated, ticket)
             raise
         return updated
 

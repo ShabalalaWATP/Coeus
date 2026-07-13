@@ -24,7 +24,8 @@ class TicketLifecycleService:
             raise AppError(403, "forbidden", "Only the requester can cancel this request.")
         if not can_transition(ticket.state, TicketState.CANCELLED):
             raise AppError(409, "invalid_ticket_state", "This request can no longer be cancelled.")
-        updated = self._tickets.save_system_update(
+        updated = self._tickets.save_system_update_if_current(
+            ticket,
             replace(
                 ticket,
                 state=TicketState.CANCELLED,
@@ -32,9 +33,9 @@ class TicketLifecycleService:
                     *ticket.timeline,
                     timeline(ticket.ticket_id, actor.user_id, "ticket_cancelled", reason),
                 ),
-            )
+            ),
         )
-        self._record_ticket_audit_or_rollback(ticket, "ticket_cancelled", actor)
+        self._record_ticket_audit_or_rollback(ticket, updated, "ticket_cancelled", actor)
         return updated
 
     def no_match_consent(
@@ -57,7 +58,8 @@ class TicketLifecycleService:
             if task_as_new_request
             else "customer declined tasking after no-match"
         )
-        updated = self._tickets.save_system_update(
+        updated = self._tickets.save_system_update_if_current(
+            ticket,
             replace(
                 ticket,
                 state=target_state,
@@ -65,10 +67,11 @@ class TicketLifecycleService:
                     *ticket.timeline,
                     timeline(ticket.ticket_id, actor.user_id, event_type, body),
                 ),
-            )
+            ),
         )
         self._record_ticket_audit_or_rollback(
             ticket,
+            updated,
             "no_match_tasking_confirmed" if task_as_new_request else "no_match_tasking_declined",
             actor,
         )
@@ -91,7 +94,8 @@ class TicketLifecycleService:
             if analysed
             else "Requester chose the raw collect only."
         )
-        updated = self._tickets.save_system_update(
+        updated = self._tickets.save_system_update_if_current(
+            ticket,
             replace(
                 ticket,
                 state=TicketState.ANALYST_ASSIGNMENT,
@@ -100,9 +104,11 @@ class TicketLifecycleService:
                     *ticket.timeline,
                     timeline(ticket.ticket_id, actor.user_id, "collect_choice_recorded", body),
                 ),
-            )
+            ),
         )
-        self._record_ticket_audit_or_rollback(ticket, f"collect_choice_{disposition}", actor)
+        self._record_ticket_audit_or_rollback(
+            ticket, updated, f"collect_choice_{disposition}", actor
+        )
         return updated
 
     def confirm_delivery(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
@@ -116,7 +122,8 @@ class TicketLifecycleService:
             raise AppError(
                 409, "invalid_ticket_state", "This request is not awaiting delivery confirmation."
             )
-        updated = self._tickets.save_system_update(
+        updated = self._tickets.save_system_update_if_current(
+            ticket,
             replace(
                 ticket,
                 state=TicketState.CLOSED_DELIVERED,
@@ -129,13 +136,17 @@ class TicketLifecycleService:
                         "Requester confirmed receipt and closed the request.",
                     ),
                 ),
-            )
+            ),
         )
-        self._record_ticket_audit_or_rollback(ticket, "ticket_delivery_confirmed", actor)
+        self._record_ticket_audit_or_rollback(ticket, updated, "ticket_delivery_confirmed", actor)
         return updated
 
     def _record_ticket_audit_or_rollback(
-        self, original_ticket: TicketRecord, event_type: str, actor: UserAccount
+        self,
+        original_ticket: TicketRecord,
+        updated_ticket: TicketRecord,
+        event_type: str,
+        actor: UserAccount,
     ) -> None:
         try:
             self._audit_log.record(
@@ -144,5 +155,5 @@ class TicketLifecycleService:
                 {"ticket_id": str(original_ticket.ticket_id)},
             )
         except Exception:
-            self._tickets.save_system_update(original_ticket)
+            self._tickets.restore_system_update_if_current(updated_ticket, original_ticket)
             raise

@@ -1,4 +1,6 @@
+from ipaddress import ip_network
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -42,6 +44,7 @@ class Settings(BaseSettings):
     # Number of trusted reverse proxies in front of the API. 0 (default) means
     # X-Forwarded-For is ignored and the socket peer address is used.
     trusted_proxy_count: int = Field(default=0, ge=0, le=10)
+    trusted_proxy_cidrs: list[str] = Field(default_factory=list)
     login_attempt_max_entries: int = Field(default=10_000, ge=1)
     registration_max_pending: int = Field(default=500, ge=1)
     auth_ip_max_attempts: int = Field(default=30, ge=1)
@@ -76,6 +79,12 @@ class Settings(BaseSettings):
     # provider; these are opt-in alternatives configured the same way
     # (runtime key via the admin API, or env key plus explicit provider).
     llm_api_timeout_seconds: int = Field(default=10, ge=1, le=60)
+    provider_max_concurrent: int = Field(default=4, ge=1, le=32)
+    provider_max_calls_per_window: int = Field(default=120, ge=1)
+    provider_max_calls_per_principal: int = Field(default=30, ge=1)
+    provider_window_seconds: int = Field(default=60, ge=1)
+    ticket_max_retained: int = Field(default=10_000, ge=1)
+    ticket_max_retained_per_principal: int = Field(default=50, ge=1)
     openai_api_key: str | None = None
     openai_api_model: str = "gpt-5-mini"
     available_openai_models: list[str] = Field(
@@ -101,6 +110,9 @@ class Settings(BaseSettings):
     object_storage_provider: ObjectStorageProviderName = "local"
     local_object_storage_path: str = ".local-data/objects"
     local_upload_max_bytes: int = Field(default=50_000_000, ge=1)
+    upload_max_concurrent: int = Field(default=2, ge=1, le=32)
+    upload_max_concurrent_per_user: int = Field(default=1, ge=1, le=8)
+    upload_max_inflight_bytes: int = Field(default=100_000_000, ge=1)
     asset_token_secret: str = DEFAULT_ASSET_TOKEN_SECRET
     persistence_provider: PersistenceProviderName = "postgres"
     persistence_path: str = ".local-data/state/coeus-state.json"
@@ -216,6 +228,33 @@ def _transport_errors(settings: Settings) -> tuple[str, ...]:
             "Secure cookies are required for staging/prod environments. "
             "Set COEUS_SECURE_COOKIES=true."
         )
+    if settings.trusted_proxy_count and not settings.trusted_proxy_cidrs:
+        errors.append(
+            "COEUS_TRUSTED_PROXY_CIDRS is required when COEUS_TRUSTED_PROXY_COUNT is non-zero."
+        )
+    for cidr in settings.trusted_proxy_cidrs:
+        try:
+            ip_network(cidr, strict=False)
+        except ValueError:
+            errors.append("COEUS_TRUSTED_PROXY_CIDRS contains an invalid IP network.")
+            break
+    for origin in settings.allowed_cors_origins:
+        parsed = urlsplit(origin)
+        if (
+            origin == "*"
+            or parsed.scheme not in {"http", "https"}
+            or not parsed.netloc
+            or parsed.path not in {"", "/"}
+            or parsed.query
+            or parsed.fragment
+            or parsed.username
+            or parsed.password
+        ):
+            errors.append(
+                "COEUS_ALLOWED_CORS_ORIGINS must contain only absolute HTTP(S) origins "
+                "without wildcards, credentials, paths, queries, or fragments."
+            )
+            break
     return tuple(errors)
 
 
