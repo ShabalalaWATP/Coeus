@@ -52,6 +52,9 @@ jobs:
         run: uv run ruff check src tests
       - name: Mypy
         run: uv run mypy src
+      - name: Architecture boundaries
+        working-directory: .
+        run: uv run --project apps/api python scripts/check_architecture.py
       - name: OpenAPI contract
         run: |
           uv run python ../../scripts/generate_openapi.py --check

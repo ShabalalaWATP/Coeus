@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "pwsh ./scripts/dev.ps1",
     "line-limit": "node scripts/check-file-lines.mjs",
+    "architecture:check": "uv run --project apps/api python scripts/check_architecture.py",
     "security-policy:check": "node scripts/check-security-policy.mjs",
     "lint": "pnpm --filter @coeus/web lint",
     "test": "pnpm --filter @coeus/web test && pnpm test:backend",
