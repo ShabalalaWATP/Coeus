@@ -42,7 +42,9 @@ async def test_customer_join_audit_failure_rolls_back_collaborator(
             output_format="traffic picture",
         )
         original = _stored_ticket(app, target_id)
-        monkeypatch.setattr(app.state.similar_request_service._audit_log, "record", _fail_audit)
+        monkeypatch.setattr(
+            app.state.similar_request_service._audit_log, "record_many", _fail_audit
+        )
 
         with pytest.raises(RuntimeError, match="audit unavailable"):
             await client.post(

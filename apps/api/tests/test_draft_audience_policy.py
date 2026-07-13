@@ -20,7 +20,7 @@ def _user(*roles: RoleName) -> UserAccount:
     )
 
 
-def test_unprojected_relationship_reasons_fail_closed() -> None:
+def test_explicit_workflow_relationship_reasons_support_local_mode() -> None:
     policy = RoleAwareDraftAudiencePolicy()
     actor = _user()
     product = seed_product()
@@ -31,7 +31,7 @@ def test_unprojected_relationship_reasons_fail_closed() -> None:
         DraftAudienceReason.RESPONSIBLE_MANAGER,
         DraftAudienceReason.QUALITY_CONTROL,
     ):
-        assert not policy.permits(actor, product, reason)
+        assert policy.permits(actor, product, reason)
 
 
 def test_privileged_reasons_require_the_corresponding_current_role() -> None:

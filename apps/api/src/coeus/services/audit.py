@@ -61,6 +61,9 @@ class AuditLog:
         """Append a group atomically, or leave both the store and cache unchanged."""
         if not events:
             raise ValueError("Audit event batch must not be empty.")
+        if len(events) == 1:
+            event_type, actor_user_id, metadata = events[0]
+            return (self.record(event_type, actor_user_id, metadata),)
         with self._lock:
             prepared = tuple(
                 AuditEvent(

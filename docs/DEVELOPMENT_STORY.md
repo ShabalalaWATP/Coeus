@@ -20,8 +20,8 @@ Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVEL
   event-ID deduplication for both in-app and email records. Conflicting content
   for the same aggregate version now fails closed.
 - Verified the expanded boundary with Ruff, strict mypy, architecture and line
-  gates, plus 33 focused memory, file and real PostgreSQL tests. The preceding
-  full 820-test backend suite passed at 96.96 percent combined coverage.
+  gates. The full 838-test memory, file and real PostgreSQL backend suite passed
+  at 97.29 percent combined line and branch coverage.
 - Cut persistence writers over to semantic stable type and enum IDs after
   validating dual-format readers and identity goldens. Migration `0012` now
   converts legacy ticket rows and reconciles canonical hashes before relational

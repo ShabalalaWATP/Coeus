@@ -51,9 +51,7 @@ class RoleAwareDraftAudiencePolicy:
         }
         if not relationship:
             return False
-        if reason != DraftAudienceReason.CREATOR and self._projection is None:
-            return False
-        if (require_projection or reason != DraftAudienceReason.CREATOR) and self._projection:
+        if require_projection and self._projection is not None:
             return self._projection.contains(product.product_id, actor.user_id, reason)
         return True
 
