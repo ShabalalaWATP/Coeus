@@ -1,33 +1,8 @@
 import { apiRequestJson, pathSegment } from "./client";
+import type { components } from "./generated/openapi";
 
-type IntakeDetails = {
-  title: string | null;
-  description: string | null;
-  operationalQuestion: string | null;
-  areaOrRegion: string | null;
-  timePeriodStart: string | null;
-  timePeriodEnd: string | null;
-  priority: string | null;
-  deadline: string | null;
-  requiredOutputFormat: string | null;
-  knownContext: string | null;
-  restrictionsOrCaveats: string | null;
-  customerSuccessCriteria: string | null;
-  suggestedAcgContext: string | null;
-  requestingUnit: string | null;
-  intelligenceDisciplines: string | null;
-  supportedOperation: string | null;
-  urgencyJustification: string | null;
-  missingInformation: string[];
-  confidence: number;
-};
-
-type IntakeChecklistItem = {
-  key: string;
-  label: string;
-  value: string | null;
-  satisfied: boolean;
-};
+type ApiSchemas = components["schemas"];
+type IntakeDetails = ApiSchemas["IntakeDetailsResponse"];
 
 type ConversationStatus = "open" | "close_offered" | "closed";
 
@@ -86,40 +61,31 @@ export type DirectoryUser = {
   displayName: string;
 };
 
-export type Ticket = {
-  id: string;
-  reference: string;
-  requesterUserId: string;
+export type Ticket = Omit<
+  ApiSchemas["TicketResponse"],
+  | "state"
+  | "conversationStatus"
+  | "collectDisposition"
+  | "collaborators"
+  | "messages"
+  | "attachments"
+  | "agentRuns"
+  | "clarificationRequests"
+  | "timeline"
+> & {
   state: TicketState;
-  intake: IntakeDetails;
-  intakeChecklist: IntakeChecklistItem[];
   conversationStatus: ConversationStatus;
   collectDisposition: "raw" | "analysed" | null;
-  isReadyForSubmission: boolean;
-  visibleProductMatches: string[];
-  releasedProductIds: string[];
   collaborators: TicketCollaborator[];
   messages: ChatMessage[];
   attachments: AttachmentMetadata[];
   agentRuns: AgentRun[];
   clarificationRequests?: ClarificationRequest[];
   timeline: TimelineEntry[];
-  createdAt: string;
-  updatedAt: string;
 };
 
-export type TicketSummary = {
-  id: string;
-  reference: string;
-  requesterUserId: string;
+export type TicketSummary = Omit<ApiSchemas["TicketSummaryResponse"], "state"> & {
   state: TicketState;
-  title: string | null;
-  priority: string | null;
-  isReadyForSubmission: boolean;
-  collaboratorCount: number;
-  releasedProductId: string | null;
-  createdAt: string;
-  updatedAt: string;
 };
 
 export type TicketState =

@@ -15,6 +15,7 @@
     "format:check": "pnpm --filter @coeus/web format:check && uv run --directory apps/api ruff format --check src tests",
     "dead-code": "knip",
     "contracts:generate": "uv run --project apps/api python scripts/generate_openapi.py",
+    "contracts:types": "pnpm --filter @coeus/web contracts:types",
     "contracts:check": "uv run --project apps/api python scripts/generate_openapi.py --check && uv run --project apps/api python scripts/check_openapi_compatibility.py --baseline-ref origin/main"
   },
   "devDependencies": {

@@ -59,6 +59,13 @@ jobs:
         run: |
           uv run python ../../scripts/generate_openapi.py --check
           uv run python ../../scripts/check_openapi_compatibility.py --baseline-ref origin/main
+      - name: Generated frontend API types
+        working-directory: .
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+          pnpm contracts:types
+          git diff --exit-code -- apps/web/src/lib/api-client/generated/openapi.ts
       - name: PostgreSQL migration and concurrency harness
         run: uv run pytest -m postgres --no-cov tests/postgres
       - name: Pytest with independent line and branch coverage gates
