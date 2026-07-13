@@ -11,6 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from coeus.domain.ticket_retention import ticket_consumes_capacity
 from coeus.domain.tickets import TicketRecord
+from coeus.persistence import ticket_shadow_schema
 from coeus.persistence.codec import decode_value
 from coeus.persistence.database_url import synchronous_database_url
 from coeus.persistence.draft_audience_projection import (
@@ -18,10 +19,6 @@ from coeus.persistence.draft_audience_projection import (
     sync_ticket_draft_audiences,
 )
 from coeus.persistence.relational_schema import ensure_relational_schema
-from coeus.persistence.ticket_shadow_schema import (
-    ensure_ticket_shadow_schema,
-    validate_ticket_shadow,
-)
 
 if TYPE_CHECKING:
     from coeus.application.ports.embeddings import EmbeddingPort
@@ -166,7 +163,7 @@ class PostgresStateStore:
                 ).first()
             payload = dict(row[0]) if row is not None else None
             if namespace == "tickets" and payload is not None and self._ticket_mode != "legacy":
-                validate_ticket_shadow(self._engine, payload)
+                ticket_shadow_schema.validate_ticket_shadow(self._engine, payload)
             return payload
 
     def save(self, namespace: str, payload: dict[str, Any]) -> None:
@@ -218,7 +215,7 @@ class PostgresStateStore:
                     )
                 )
                 ensure_relational_schema(connection)
-                ensure_ticket_shadow_schema(connection)
+                ticket_shadow_schema.ensure_ticket_shadow_schema(connection)
                 count = connection.execute(
                     text("SELECT count(*) FROM coeus_ticket_aggregates")
                 ).scalar_one()
@@ -227,6 +224,8 @@ class PostgresStateStore:
                 ).scalar_one_or_none()
                 if count == 0 and legacy is not None:
                     _shadow_ticket_payload(connection, dict(legacy))
+                if self.ticket_mode == "relational":
+                    ticket_shadow_schema.validate_relational_ticket_rows(connection)
         except SQLAlchemyError as exc:
             raise RuntimeError("Could not initialise local persistence store.") from exc
         self._schema_ready = True

@@ -119,6 +119,28 @@ def test_relational_cutover_reads_and_writes_without_legacy_ticket_namespace(
     assert legacy is None
 
 
+def test_relational_cutover_refuses_a_corrupt_aggregate_at_startup(
+    postgres_database_url: str,
+) -> None:
+    repository = InMemoryTicketRepository(PostgresStateStore(postgres_database_url, "relational"))
+    ticket = TicketRecord(
+        ticket_id=uuid4(),
+        reference="TCK-CORRUPT-CUTOVER",
+        requester_user_id=uuid4(),
+        state=TicketState.DRAFT_INTAKE,
+        intake=IntakeDetails(title="Synthetic corrupt cutover"),
+    )
+    repository.save(ticket)
+    engine = create_engine(postgres_database_url)
+    with engine.begin() as connection:
+        connection.execute(
+            text("UPDATE coeus_ticket_aggregates SET canonical_hash = 'corrupt'")
+        )
+
+    with pytest.raises(RuntimeError, match="aggregate reconciliation failed"):
+        PostgresStateStore(postgres_database_url, "relational").load_ticket_state()
+
+
 def test_relational_compare_and_swap_allows_one_cross_process_winner(
     postgres_database_url: str,
 ) -> None:

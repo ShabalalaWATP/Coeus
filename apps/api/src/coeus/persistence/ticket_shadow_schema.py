@@ -6,6 +6,9 @@ from typing import Any
 
 from sqlalchemy import text
 
+from coeus.domain.ticket_retention import ticket_consumes_capacity
+from coeus.domain.tickets import TicketRecord
+from coeus.persistence.codec import decode_value
 from coeus.persistence.draft_audience_projection import ensure_draft_audience_schema
 
 
@@ -132,3 +135,29 @@ def validate_ticket_shadow(engine: Any, payload: dict[str, Any]) -> None:
         )
     if actual != expected:
         raise RuntimeError("Ticket shadow reconciliation failed; relational cutover is unsafe.")
+
+
+def validate_relational_ticket_rows(connection: Any) -> None:
+    """Fail startup when an aggregate or its admission projection is inconsistent."""
+    rows = connection.execute(
+        text(
+            "SELECT ticket_id::text, requester_user_id::text, state, consumes_capacity, "
+            "payload, canonical_hash FROM coeus_ticket_aggregates ORDER BY ticket_id"
+        )
+    ).mappings()
+    for row in rows:
+        payload = dict(row["payload"])
+        canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        ticket = decode_value(payload)
+        valid = (
+            isinstance(ticket, TicketRecord)
+            and str(ticket.ticket_id) == row["ticket_id"]
+            and str(ticket.requester_user_id) == row["requester_user_id"]
+            and ticket.state.value == row["state"]
+            and ticket_consumes_capacity(ticket.state) is row["consumes_capacity"]
+            and sha256(canonical.encode("utf-8")).hexdigest() == row["canonical_hash"]
+        )
+        if not valid:
+            raise RuntimeError(
+                "Ticket aggregate reconciliation failed; relational cutover is unsafe."
+            )

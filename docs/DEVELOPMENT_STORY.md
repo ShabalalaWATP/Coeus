@@ -25,7 +25,7 @@ Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVEL
 - Cut persistence writers over to semantic stable type and enum IDs after
   validating dual-format readers and identity goldens. Migration `0012` now
   converts legacy ticket rows and reconciles canonical hashes before relational
-  mutation; unknown and ambiguous identities fail closed.
+  mutation; relational startup rejects hash, identity and projection drift.
 - Expanded CI boundaries and config/docs drift gates. Frontend format, lint,
   type, Knip, tests, production audit and build pass at 98.63 percent lines,
   95.10 percent branches and 96.21 percent functions.

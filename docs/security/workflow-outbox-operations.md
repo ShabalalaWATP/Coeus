@@ -95,3 +95,6 @@ Alembic revision `20260713_0012` converts migration-era legacy payloads to stabl
 codec identities and recomputes the runtime SHA-256 canonical digest. The real
 PostgreSQL migration harness proves legacy upgrade, relational validation,
 compare-and-swap mutation and reverse projection as one compatibility chain.
+Relational startup also validates every aggregate ID, canonical hash, requester,
+lifecycle state and capacity flag before making the store available. A mismatch
+is a cutover failure and must be reconciled rather than bypassed.
