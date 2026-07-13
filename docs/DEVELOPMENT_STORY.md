@@ -1,6 +1,6 @@
 # Coeus Development Story
 
-Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVELOPMENT_STORY_SPRINTS_01-13.md). The longer 2026-07-06 continuation lives in [DEVELOPMENT_STORY_2026-07-06.md](DEVELOPMENT_STORY_2026-07-06.md).
+Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVELOPMENT_STORY_SPRINTS_01-13.md). The 2026-07-06 continuation lives in [DEVELOPMENT_STORY_2026-07-06.md](DEVELOPMENT_STORY_2026-07-06.md).
 
 ## 2026-07-13 security repair and hardening
 
@@ -29,10 +29,10 @@ Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVEL
 - Expanded CI boundaries and config/docs drift gates. Frontend format, lint,
   type, Knip, tests, production audit and build pass at 98.63 percent lines,
   95.10 percent branches and 96.21 percent functions.
-- Projected ticket requester, lifecycle state and capacity consumption into
-  indexed relational columns. Store search and detail now consume projected
-  analyst/manager draft audiences with revocation tests; QC assignment and full
-  reconciliation evidence remain open.
+- Projected ticket requester, lifecycle state and capacity into indexed relational columns.
+  Store reads use draft audiences with revocation tests; full reconciliation remains open.
+- Added dry-run-first, advisory-locked ticket-capacity recovery with scoped cleanup, validated
+  projection repair and drained-only release. Mutations are audited and focused tests pass.
 
 ## 2026-07-11 cross-role usability and documentation accuracy
 

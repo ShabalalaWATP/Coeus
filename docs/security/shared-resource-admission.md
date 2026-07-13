@@ -46,6 +46,18 @@ the normal p99 operation time and renew before expiry. A rising
 `renewal_failed` counter indicates an overloaded worker, database delay or an
 incorrect lease duration and should page the service owner.
 
+## Ticket capacity diagnosis and recovery
+
+`ticket_capacity_exhausted` can mean the retained-ticket limit is working as
+configured, an expired creation lease remains visible, or a derived relational
+column has drifted from a valid ticket payload. Use the dry-run-first [Ticket
+Capacity Recovery](../runbooks/ticket-capacity-recovery.md) procedure to tell
+these cases apart. It serialises repairs with live ticket admission, scopes
+lease deletion to ticket creation, derives projections only from validated
+canonical payloads and records every effective mutation atomically. It never
+deletes an aggregate or overrides its workflow state. Normal process crashes
+remain self-healing through automatic lease expiry.
+
 ## Provider circuit breaker
 
 Remote LLM failures also feed a process-local circuit breaker. After

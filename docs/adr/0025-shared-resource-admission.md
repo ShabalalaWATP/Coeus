@@ -41,3 +41,9 @@ scarce resources are shared by a principal and deployment, not by one request.
   switch has a secure default, owner, audit event and tested rollback command.
 - Limits are measured with representative synthetic workloads and committed to
   configuration, tests, threat models and runbooks.
+- Operators diagnose retained-ticket pressure with a dry-run-first command.
+  Repairs share the admission advisory lock and may remove expired creation
+  leases or rebuild derived columns from a validated canonical payload.
+  Aggregate deletion, workflow-state override and bulk live-lease release are
+  prohibited. A single active lease requires a fully drained system, explicit
+  identity, reason and audit evidence.

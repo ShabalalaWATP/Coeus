@@ -127,20 +127,20 @@ Deliver small, independently reviewable patches in this order:
 - Bounded authentication history with an injected clock, empty-key expiry,
   total source-cardinality control and a many-source regression.
 - Compare-and-swap for every ticket transition, release and compensation path.
-- Per-principal and deployment endpoint quotas for chat, Store, similarity and
-  RFI work; single-flight caches and bounded execution for embeddings. Hosted
-  enforcement must be atomic across processes, not process-local state.
+- Per-principal and deployment endpoint quotas for chat, Store, similarity and RFI work;
+  single-flight caches and bounded execution for embeddings, enforced across processes.
 - Principal and deployment ticket-count limits with operator recovery tooling.
 
-Gate: 12 of 12 PoCs fail safely in the supported boundary, paired legitimate
-paths pass and denied work has no expensive or partial side effect. Two-process,
-two-connection PostgreSQL tests cover every expensive endpoint and both orders
-of competing transitions. Closure remains provisional until the relevant
+Implementation note, 2026-07-13: retained-ticket recovery is dry-run first, advisory-locked
+and audited, with scoped repair and a drained-only path. Phase 1 remains open.
+
+Gate: 12 of 12 PoCs fail safely, legitimate paths pass and denied work has no
+expensive or partial side effect. Two-process PostgreSQL tests cover every
+expensive endpoint and both competing orders. Closure remains provisional until the relevant
 structural phase and final sealed scan pass.
 
-Rollback: revert only to the preceding secure tactical boundary. Never restore
-the broad draft Boolean, pre-auth spool, full buffering, unbounded histories,
-unmetered providers or unconditional stale writes.
+Rollback: revert only to the preceding secure tactical boundary. Never restore the broad draft
+Boolean, pre-auth spool, full buffering, unbounded histories, unmetered providers or stale writes.
 
 ### Phase 2: Centralise Draft Audience Authorisation
 

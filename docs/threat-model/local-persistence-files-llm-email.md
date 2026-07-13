@@ -39,6 +39,7 @@ upload/download, optional LLM providers and optional SMTP delivery.
 | One principal exhausts operator-funded LLM or retained-ticket capacity.                                                  | External assistant calls reserve principal and deployment capacity before provider acquisition. Sliding-window and concurrency ceilings are bounded, failed calls refund their reservation, and new retained tickets have atomic principal and deployment admission. |
 | Similar-request scoring fans out one embedding call per retained ticket.                                                 | Query and immutable candidate embeddings use normalised single-flight caching. Candidates are deterministically pre-ranked and semantic work stops at a fixed 32-candidate budget.                                                               |
 | Multiple API processes bypass local upload, search or ticket ceilings.                                                    | Hosted upload, Store, RFI and similarity work uses expiring PostgreSQL leases with atomic deployment, principal, concurrency and unit checks. Ticket creation also allocates references under the shared database lock. Denied work is rejected before provider, worker or multipart acquisition. |
+| Capacity recovery races a live creator or an operator removes unrelated work.                                            | Recovery is read-only by default, shares ticket admission's advisory lock, scopes lease cleanup to ticket creation and records effective mutations in the same transaction. Active lease release requires one named lease and an explicit fully drained system acknowledgement. |
 | A workflow relationship grants draft access after reassignment or deactivation.                                          | Versioned ticket writes transactionally rebuild the indexed product/principal/reason audience projection. Linked-product reads require the persisted assigned-analyst relationship; inactive assignments are removed immediately. Creator and privileged-role decisions still re-check current product and account state. |
 | Failed model configuration leaves an external provider enabled after a rejected admin request.                          | Model selection, catalogue changes and API key configuration restore the previous runtime provider, model, catalogues, key and change metadata if persistence or audit recording fails.                                                           |
 | SMTP credentials are logged or committed.                                                                               | `.env` is ignored, `.env.example` contains names only, and delivery audits record user ID and subject only, not passwords or message bodies.                                                                                                      |
@@ -46,9 +47,10 @@ upload/download, optional LLM providers and optional SMTP delivery.
 
 ## Open Risks
 
-- Provider, upload and retained-ticket admission is process-local in this
-  tactical phase. Hosted multi-instance operation remains disallowed until the
-  shared PostgreSQL reservation ledger in ADR 0025 is implemented.
+- Hosted provider, upload, search and retained-ticket admission now uses the
+  shared PostgreSQL reservation ledger in ADR 0025. Staging must still prove
+  saturation telemetry, ingress enforcement and multi-process behaviour before
+  production use.
 - Upload malware scanning, content inspection and MIME verification remain
   deferred before any untrusted or production file handling.
 - External LLM use sends extracted request text to the selected provider. Keep mock
