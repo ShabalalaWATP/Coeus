@@ -303,3 +303,38 @@ def test_qc_release_compare_and_swap_allows_one_cross_process_winner(
             ).scalar_one()
             == 1
         )
+
+
+def test_ticket_update_rejects_a_stale_snapshot_without_an_audit(
+    postgres_database_url: str,
+) -> None:
+    ticket, product = _seed(postgres_database_url)
+    stale = replace(ticket, state=TicketState.INFO_REQUIRED)
+    audit, _notification = _intents(ticket, product)
+
+    assert not PostgresWorkflowTransaction(postgres_database_url).commit_ticket_update(
+        stale, replace(ticket, state=TicketState.CANCELLED), (audit,)
+    )
+    engine = create_engine(postgres_database_url)
+    with engine.connect() as connection:
+        assert connection.execute(text("SELECT count(*) FROM coeus_audit_events")).scalar_one() == 0
+
+
+def test_qc_release_without_notification_commits_no_outbox_event(
+    postgres_database_url: str,
+) -> None:
+    ticket, product = _seed(postgres_database_url)
+    audit, _notification = _intents(ticket, product)
+
+    assert PostgresWorkflowTransaction(postgres_database_url).commit_qc_release(
+        ticket, replace(ticket, state=TicketState.DISSEMINATION_READY), product, audit, None
+    )
+    engine = create_engine(postgres_database_url)
+    with engine.connect() as connection:
+        count = connection.execute(
+            text(
+                "SELECT count(*) FROM coeus_outbox "
+                "WHERE event_type = 'product_release_notification'"
+            )
+        ).scalar_one()
+    assert count == 0

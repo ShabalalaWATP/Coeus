@@ -11,17 +11,17 @@ Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVEL
   and one conflict.
 - Cut requester cancellation, no-match consent, collect choice and delivery
   confirmation over to the same hosted ticket-and-audit transaction while
-  retaining the existing local compensation behaviour and API responses.
+  retaining API responses and atomic single-process compatibility behaviour.
 - Extracted `TicketMutationService` for collision-safe creation, single-ticket
   updates, deterministic paired links and batched join audits, removing hosted
   save-then-audit compensation while preserving existing audit events.
 - Added hosted outbox delivery for product release notifications with strict
   payload validation, active-requester resolution, fenced retries and durable
-  event-ID deduplication for both in-app and email records. Local and
-  non-relational release behaviour remains unchanged.
-- Verified this slice with Ruff, strict mypy, the architecture and line gates,
-  40 real PostgreSQL tests and the full 814-test backend suite at 97.26 percent
-  combined line and branch coverage.
+  event-ID deduplication for both in-app and email records. Conflicting content
+  for the same aggregate version now fails closed.
+- Verified the expanded boundary with Ruff, strict mypy, architecture and line
+  gates, plus 33 focused memory, file and real PostgreSQL tests. The preceding
+  full 820-test backend suite passed at 96.96 percent combined coverage.
 - Cut persistence writers over to semantic stable type and enum IDs after
   validating dual-format readers and committed identity goldens. Legacy
   snapshots remain readable for rollback compatibility, while unknown and

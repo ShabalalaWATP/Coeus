@@ -51,10 +51,18 @@ attachments, submission, clarification, RFI outcomes, route decisions,
 collaborators, assignment, analyst work, manager review, QC rejection and
 feedback now use the single-ticket update operation.
 
-Memory, file and non-relational modes retain the characterised local
-compensation path. Symmetric related-ticket linking locks both aggregates in
-ticket-ID order and commits both links plus its audit event together. Remaining
-adapter-contract and restore evidence is still release-blocking.
+Memory, file and non-relational modes retain a characterised compatibility
+boundary. Multi-event audit batches commit as one store operation, and paired
+ticket writes execute under one repository lock with rollback on confirmation
+failure. They remain single-process development modes. Hosted symmetric links
+lock both aggregates in ticket-ID order and commit both links plus audit evidence
+together. Audited operations reject empty evidence groups. Cache refresh failure
+after a durable commit is logged for operations, rather than being hidden.
+
+Release notification insertion verifies the stored deterministic event ID and
+payload after a uniqueness conflict. Different content for the same aggregate,
+version and event type fails the database transaction closed. Remaining
+adapter-contract and coordinated restore evidence is release-blocking.
 
 ## Operator checks
 

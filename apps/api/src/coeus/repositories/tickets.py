@@ -56,6 +56,35 @@ class InMemoryTicketRepository:
                 self._persist()
                 raise
 
+    def save_pair_with_confirmation(
+        self,
+        expected: tuple[TicketRecord, TicketRecord],
+        updated: tuple[TicketRecord, TicketRecord],
+        confirm: Callable[[], object],
+    ) -> bool:
+        """Replace two aggregates under one lock, with rollback on confirmation failure."""
+        expected_by_id = {ticket.ticket_id: ticket for ticket in expected}
+        updated_by_id = {ticket.ticket_id: ticket for ticket in updated}
+        if len(expected_by_id) != 2 or set(updated_by_id) != set(expected_by_id):
+            raise ValueError("Paired ticket identities must be distinct and unchanged.")
+        with self._lock:
+            stale = any(
+                self._tickets.get(ticket_id) != ticket
+                for ticket_id, ticket in expected_by_id.items()
+            )
+            if stale:
+                return False
+            tickets = dict(self._tickets)
+            self._tickets.update(updated_by_id)
+            try:
+                self._persist()
+                confirm()
+            except Exception:
+                self._tickets = tickets
+                self._persist()
+                raise
+            return True
+
     def save_if_current(self, expected: TicketRecord, updated: TicketRecord) -> bool:
         """Atomically replace the expected immutable snapshot, or report a conflict."""
         with self._lock:

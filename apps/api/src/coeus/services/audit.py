@@ -47,12 +47,35 @@ class AuditLog:
                 event_type=event_type,
                 occurred_at=datetime.now(UTC),
                 actor_user_id=actor_user_id,
-                metadata=MappingProxyType(metadata or {}),
+                metadata=MappingProxyType(dict(metadata or {})),
             )
             self._event_store.append(_event_payload(event))
             self._events.append(event)
             self._events = self._events[-self._max_events :]
             return event
+
+    def record_many(
+        self,
+        events: tuple[tuple[str, str | None, dict[str, str]], ...],
+    ) -> tuple[AuditEvent, ...]:
+        """Append a group atomically, or leave both the store and cache unchanged."""
+        if not events:
+            raise ValueError("Audit event batch must not be empty.")
+        with self._lock:
+            prepared = tuple(
+                AuditEvent(
+                    event_id=str(uuid4()),
+                    event_type=event_type,
+                    occurred_at=datetime.now(UTC),
+                    actor_user_id=actor_user_id,
+                    metadata=MappingProxyType(dict(metadata)),
+                )
+                for event_type, actor_user_id, metadata in events
+            )
+            self._event_store.append_many(tuple(_event_payload(event) for event in prepared))
+            self._events.extend(prepared)
+            self._events = self._events[-self._max_events :]
+            return prepared
 
     def list_events(self) -> tuple[AuditEvent, ...]:
         with self._lock:

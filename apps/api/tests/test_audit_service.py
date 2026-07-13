@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, cast
+from typing import cast
 
 import pytest
 from sqlalchemy.engine import Engine
@@ -64,6 +64,30 @@ def test_recent_cache_rollover_never_deletes_authoritative_history() -> None:
     assert restored.list_page(10).events[0].event_type == "user_credential_reset"
 
 
+def test_audit_batch_updates_store_and_cache_as_one_group() -> None:
+    store = MemoryAuditEventStore()
+    audit_log = AuditLog(event_store=store)
+
+    recorded = audit_log.record_many(
+        (("first", None, {"sequence": "1"}), ("second", "actor", {"sequence": "2"}))
+    )
+
+    assert [event.event_type for event in recorded] == ["first", "second"]
+    assert [event.event_type for event in audit_log.list_events()] == ["first", "second"]
+    with pytest.raises(ValueError, match="must not be empty"):
+        audit_log.record_many(())
+
+
+def test_audit_metadata_is_an_immutable_snapshot() -> None:
+    metadata = {"decision": "allow"}
+    event = AuditLog().record("decision_recorded", metadata=metadata)
+    metadata["decision"] = "deny"
+
+    assert dict(event.metadata) == {"decision": "allow"}
+    with pytest.raises(TypeError):
+        event.metadata["decision"] = "changed"  # type: ignore[index]
+
+
 def test_concurrent_audit_records_remain_complete_with_a_bounded_cache() -> None:
     store = MemoryAuditEventStore()
     audit_log = AuditLog(max_events=10, event_store=store)
@@ -89,6 +113,16 @@ def test_file_audit_store_is_append_only_across_restart(tmp_path: Path) -> None:
         "public_failure",
     ]
     assert len(path.read_text(encoding="utf-8").splitlines()) == 2
+
+
+def test_file_audit_batch_survives_restart_as_one_group(tmp_path: Path) -> None:
+    path = tmp_path / "audit-batch.jsonl"
+    first = AuditLog(event_store=FileAuditEventStore(path))
+    first.record_many((("first", None, {}), ("second", None, {})))
+
+    restored = AuditLog(event_store=FileAuditEventStore(path))
+
+    assert [event.event_type for event in restored.list_events()] == ["first", "second"]
 
 
 def test_audit_input_bounds_and_payload_shapes_fail_closed() -> None:
@@ -133,7 +167,7 @@ class FakeAuditConnection:
     def __init__(self) -> None:
         self.statements: list[str] = []
 
-    def execute(self, statement: object, _params: dict[str, Any] | None = None) -> FakeAuditResult:
+    def execute(self, statement: object, _params: object = None) -> FakeAuditResult:
         self.statements.append(str(statement))
         return FakeAuditResult()
 
@@ -160,7 +194,7 @@ class FakeAuditEngine:
 def test_postgres_audit_store_initialises_schema_once() -> None:
     engine = FakeAuditEngine()
     store = PostgresAuditEventStore(cast(Engine, engine))
-    event = {
+    event: dict[str, object] = {
         "event_id": "b7e7867e-1e46-401d-8cd5-80cf5b989092",
         "event_type": "test",
         "occurred_at": "2026-07-10T10:00:00+00:00",
@@ -170,5 +204,7 @@ def test_postgres_audit_store_initialises_schema_once() -> None:
 
     store.append(event)
     store.append(event)
+    store.append_many((event, event))
+    store.append_many(())
 
     assert sum("CREATE TABLE" in statement for statement in engine.connection.statements) == 1

@@ -1,6 +1,6 @@
 """Atomic and compatibility-safe ticket persistence operations."""
 
-from contextlib import suppress
+import logging
 from dataclasses import replace
 from datetime import UTC, datetime
 from uuid import UUID
@@ -13,6 +13,8 @@ from coeus.domain.tickets import TicketRecord
 from coeus.domain.workflow_transaction import WorkflowAuditIntent
 from coeus.services.audit import AuditLog
 from coeus.services.ticket_persistence import save_ticket, save_ticket_if_current
+
+LOGGER = logging.getLogger(__name__)
 
 
 class TicketMutationService:
@@ -48,10 +50,7 @@ class TicketMutationService:
         audit = WorkflowAuditIntent(event_type, _actor_id(actor), metadata)
         if not self._transaction.commit_ticket_create(committed, audit):
             raise AppError(409, "ticket_changed", "The ticket already exists.")
-        with suppress(Exception):
-            self.accept_committed(committed)
-        with suppress(Exception):
-            self._audit_log.refresh_from_store()
+        self._accept_many((committed,))
         return committed
 
     def save_if_current(self, expected: TicketRecord, proposed: TicketRecord) -> TicketRecord:
@@ -79,12 +78,18 @@ class TicketMutationService:
         actor: UserAccount | UUID,
         events: tuple[tuple[str, dict[str, str]], ...],
     ) -> TicketRecord:
+        if not events:
+            raise ValueError("Audited ticket mutations require at least one audit event.")
         if self._transaction is not None:
             return self._commit(expected, proposed, actor, events)
         updated = self.save_if_current(expected, proposed)
         try:
-            for event_type, metadata in events:
-                self._audit_log.record(event_type, str(_actor_id(actor)), metadata)
+            self._audit_log.record_many(
+                tuple(
+                    (event_type, str(_actor_id(actor)), metadata)
+                    for event_type, metadata in events
+                )
+            )
         except Exception:
             self.restore_if_current(updated, expected)
             raise
@@ -107,16 +112,13 @@ class TicketMutationService:
                 raise _ticket_changed()
             self._accept_many(committed)
             return committed[0], committed[1]
-        first = self.save_if_current(expected[0], proposed[0])
-        try:
-            second = self.save_if_current(expected[1], proposed[1])
-            self._audit_log.record(event_type, str(_actor_id(actor)), metadata)
-        except Exception:
-            self.restore_if_current(first, expected[0])
-            if "second" in locals():
-                self.restore_if_current(second, expected[1])
-            raise
-        return first, second
+        if not self._repository.save_pair_with_confirmation(
+            expected,
+            (committed[0], committed[1]),
+            lambda: self._audit_log.record(event_type, str(_actor_id(actor)), metadata),
+        ):
+            raise _ticket_changed()
+        return committed[0], committed[1]
 
     def restore_if_current(self, expected: TicketRecord, original: TicketRecord) -> bool:
         return self._repository.save_if_current(expected, original)
@@ -140,18 +142,22 @@ class TicketMutationService:
             expected, committed, audits
         ):
             raise _ticket_changed()
-        with suppress(Exception):
-            self.accept_committed(committed)
-        with suppress(Exception):
-            self._audit_log.refresh_from_store()
+        self._accept_many((committed,))
         return committed
 
     def _accept_many(self, tickets: tuple[TicketRecord, ...]) -> None:
         for ticket in tickets:
-            with suppress(Exception):
+            try:
                 self.accept_committed(ticket)
-        with suppress(Exception):
+            except Exception:
+                LOGGER.exception(
+                    "Durable ticket commit succeeded but the local cache refresh failed.",
+                    extra={"ticket_id": str(ticket.ticket_id)},
+                )
+        try:
             self._audit_log.refresh_from_store()
+        except Exception:
+            LOGGER.exception("Durable audit commit succeeded but the local cache refresh failed.")
 
 
 def _actor_id(actor: UserAccount | UUID) -> UUID:

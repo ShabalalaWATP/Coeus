@@ -16,6 +16,15 @@ class TicketRepository(Protocol):
         """Persist only when the compatibility side effect succeeds."""
         ...
 
+    def save_pair_with_confirmation(
+        self,
+        expected: tuple[TicketRecord, TicketRecord],
+        updated: tuple[TicketRecord, TicketRecord],
+        confirm: Callable[[], object],
+    ) -> bool:
+        """Atomically replace two expected snapshots and run their required confirmation."""
+        ...
+
     def save_if_current(self, expected: TicketRecord, updated: TicketRecord) -> bool: ...
 
     def get(self, ticket_id: UUID) -> TicketRecord | None: ...

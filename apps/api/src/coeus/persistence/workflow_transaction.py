@@ -77,19 +77,20 @@ class PostgresWorkflowTransaction:
         audits: tuple[WorkflowAuditIntent, ...],
     ) -> bool:
         expected_payloads = tuple(encode_value(ticket) for ticket in expected)
+        expected_ids = {_encoded_ticket_id(payload) for payload in expected_payloads}
         updated_by_id = {
             _encoded_ticket_id(payload): payload for payload in map(encode_value, updated)
         }
-        if set(updated_by_id) != {_encoded_ticket_id(payload) for payload in expected_payloads}:
+        if len(expected_ids) != 2 or len(updated_by_id) != 2 or set(updated_by_id) != expected_ids:
             raise ValueError("Updated ticket identities must match expected identities.")
         ordered = tuple(sorted(expected_payloads, key=_encoded_ticket_id))
         with self._engine.begin() as connection:
             self._prepare(connection)
             ticket_ids = tuple(self._lock_current(connection, payload) for payload in ordered)
-            if any(ticket_id is None for ticket_id in ticket_ids):
+            locked_ids = tuple(ticket_id for ticket_id in ticket_ids if ticket_id is not None)
+            if len(locked_ids) != 2:
                 return False
-            for ticket_id in ticket_ids:
-                assert ticket_id is not None
+            for ticket_id in locked_ids:
                 self._write_ticket(connection, updated_by_id[ticket_id], ticket_id)
             self._append_audits(connection, audits)
         return True
@@ -167,7 +168,7 @@ class PostgresWorkflowTransaction:
                 "event_type": audit.event_type,
                 "occurred_at": datetime.now(UTC),
                 "actor_user_id": str(audit.actor_user_id),
-                "metadata": json.dumps(audit.metadata),
+                "metadata": json.dumps(dict(audit.metadata)),
             },
         )
 
@@ -214,3 +215,24 @@ class PostgresWorkflowTransaction:
                 ),
             },
         )
+        stored = connection.execute(
+            text(
+                """
+                SELECT event_id, payload
+                FROM coeus_outbox
+                WHERE aggregate_id = :ticket_id
+                  AND aggregate_version = :version
+                  AND event_type = :event_type
+                """
+            ),
+            {"ticket_id": ticket_id, "version": version, "event_type": event_type},
+        ).mappings().one()
+        expected_payload = {
+            "requester_user_id": str(notification.requester_user_id),
+            "ticket_reference": notification.ticket_reference,
+            "product_id": str(notification.product_id),
+            "product_reference": notification.product_reference,
+            "product_title": notification.product_title,
+        }
+        if stored["event_id"] != event_id or dict(stored["payload"]) != expected_payload:
+            raise RuntimeError("Conflicting release notification intent already exists.")

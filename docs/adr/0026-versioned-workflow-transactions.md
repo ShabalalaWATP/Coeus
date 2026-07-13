@@ -4,8 +4,8 @@
 
 Accepted for Sprint 17, 2026-07-13.
 
-First production adapter slice implemented for QC release on 2026-07-13. The
-broader workflow cutover and restore gates remain in progress.
+The production adapter cutover is implemented for creation, single-ticket
+workflow updates, paired links and QC release. Restore gates remain in progress.
 
 ## Context
 
@@ -58,7 +58,12 @@ succeeding from one snapshot, leaving workflow and publication inconsistent.
   same single-ticket transaction.
 - A failed audit append rolls the complete unit back. Concurrent commits from
   the same expected ticket snapshot yield one winner and one conflict.
+- Memory and file compatibility modes append multi-event evidence as one store
+  operation and replace ticket pairs under one repository lock. They remain
+  deliberately single-process.
+- Notification uniqueness collisions are read back and compared. A different
+  durable event ID or payload for the same aggregate version fails closed.
 - The hosted dispatcher validates the notification payload, resolves an active
   requester and deduplicates in-app and email records by durable event ID.
-- Local and non-relational adapters retain existing behaviour. Remaining
-  transition classes and coordinated restore evidence are not yet complete.
+- Local and non-relational adapters retain existing outcomes. Coordinated
+  restore evidence and final adapter-contract certification remain incomplete.

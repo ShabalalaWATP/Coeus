@@ -36,15 +36,17 @@ across the API and web app.
 | Ticket creation or a staff workflow update commits without its audit evidence. | `TicketMutationService` selects collision-safe create or version-checked update operations. PostgreSQL commits the aggregate, shadow event and audit evidence on one connection; local modes retain the tested compatibility path. |
 | Symmetric related-ticket linking updates only one side or loses its audit event. | The paired transaction locks both ticket IDs in deterministic order and commits both aggregates and audit evidence together. A stale side rolls the complete unit back. |
 | An outbox retry duplicates a release notification after a worker crash. | The durable event ID is reused as the in-app notification and email record ID, so replay returns existing records. Malformed or inactive-requester intents fail into bounded retry and dead-letter handling. |
+| An outbox uniqueness collision hides different release content. | The release transaction reads back the stored deterministic event and payload. A different event ID or payload for the same ticket version fails the whole transaction closed. |
+| Local multi-event or paired mutations leave partial evidence or asymmetric state. | Memory and file modes append audit batches as one store operation and replace paired tickets under one repository lock. Hosted multi-process use remains PostgreSQL-only. |
 | Store search filters act as wildcards. | `%`, `_` and `\` are escaped in ILIKE patterns; date filters parse ISO values and ignore invalid input. |
 | The one CSRF-exempt POST endpoint is used for request forgery. | Access diagnostics now requires the CSRF-validated session like every other mutating route. |
 
 ## Accepted Risks And Deferred Items
 
 - The in-memory and file whole-namespace models remain single-worker only.
-  Hosted PostgreSQL relational mode is the multi-process authority, but only QC
-  release currently uses the complete workflow transaction port. Remaining
-  transition classes retain their tactical compare-and-swap boundaries.
+  Hosted PostgreSQL relational mode is the multi-process authority. Ticket
+  creation, single-ticket workflow updates, paired links and QC release use the
+  workflow transaction port; coordinated restore proof remains outstanding.
 - Memory and file audit caches remain bounded to 10,000 events. PostgreSQL uses
   the durable audit event table; retention and archival policy remain an
   operational decision.
