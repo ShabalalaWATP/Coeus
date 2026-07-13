@@ -9,7 +9,15 @@ from uuid import NAMESPACE_URL, uuid5
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
+from coeus.persistence.draft_audience_projection import (
+    PostgresDraftAudienceProjection,
+    sync_ticket_draft_audiences,
+)
 from coeus.persistence.relational_schema import ensure_relational_schema
+from coeus.persistence.ticket_shadow_schema import (
+    ensure_ticket_shadow_schema,
+    validate_ticket_shadow,
+)
 
 if TYPE_CHECKING:
     from coeus.persistence.audit_store import PostgresAuditEventStore
@@ -76,6 +84,74 @@ class PostgresStateStore:
         self._schema_ready = False
         self._lock = RLock()
 
+    @property
+    def ticket_mode(self) -> str:
+        return self._ticket_mode
+
+    def draft_audience_projection(self) -> PostgresDraftAudienceProjection:
+        self._ensure_schema()
+        return PostgresDraftAudienceProjection(self._engine)
+
+    def load_ticket_state(self) -> dict[str, Any]:
+        """Load relational ticket aggregates and their small reference counter."""
+        with self._lock:
+            self._ensure_schema()
+            with self._engine.connect() as connection:
+                tickets = [
+                    dict(row[0])
+                    for row in connection.execute(
+                        text("SELECT payload FROM coeus_ticket_aggregates ORDER BY ticket_id")
+                    )
+                ]
+                counter = connection.execute(
+                    text(
+                        "SELECT COALESCE((payload ->> 'counter')::bigint, 0) "
+                        "FROM coeus_state WHERE namespace = 'ticket_meta'"
+                    )
+                ).scalar_one_or_none()
+            return {"counter": int(counter or 0), "tickets": tickets}
+
+    def save_ticket_record(self, ticket: dict[str, Any], counter: int) -> None:
+        """Persist one aggregate without rewriting unrelated tickets."""
+        with self._lock:
+            self._ensure_schema()
+            with self._engine.begin() as connection:
+                _shadow_ticket_payload(connection, {"tickets": [ticket]}, reconcile=False)
+                _save_ticket_counter(connection, counter)
+
+    def compare_and_swap_ticket_record(
+        self,
+        expected: dict[str, Any],
+        proposed: dict[str, Any],
+        counter: int,
+    ) -> bool:
+        """Atomically replace one relational aggregate only at the expected hash."""
+        ticket_id = _encoded_ticket_id(expected)
+        expected_hash = _encoded_ticket_hash(expected)
+        with self._lock:
+            self._ensure_schema()
+            with self._engine.begin() as connection:
+                current_hash = connection.execute(
+                    text(
+                        "SELECT canonical_hash FROM coeus_ticket_aggregates "
+                        "WHERE ticket_id = CAST(:ticket_id AS uuid) FOR UPDATE"
+                    ),
+                    {"ticket_id": ticket_id},
+                ).scalar_one_or_none()
+                if current_hash != expected_hash:
+                    return False
+                _shadow_ticket_payload(connection, {"tickets": [proposed]}, reconcile=False)
+                _save_ticket_counter(connection, counter)
+                return True
+
+    def replace_ticket_state(self, payload: dict[str, Any]) -> None:
+        """Replace relational state for recovery and rare compensation paths."""
+        with self._lock:
+            self._ensure_schema()
+            with self._engine.begin() as connection:
+                _shadow_ticket_payload(connection, payload)
+                _save_ticket_counter(connection, int(payload.get("counter", 0)))
+
     def load(self, namespace: str) -> dict[str, Any] | None:
         with self._lock:
             self._ensure_schema()
@@ -86,7 +162,7 @@ class PostgresStateStore:
                 ).first()
             payload = dict(row[0]) if row is not None else None
             if namespace == "tickets" and payload is not None and self._ticket_mode != "legacy":
-                _validate_ticket_shadow(self._engine, payload)
+                validate_ticket_shadow(self._engine, payload)
             return payload
 
     def save(self, namespace: str, payload: dict[str, Any]) -> None:
@@ -138,7 +214,7 @@ class PostgresStateStore:
                     )
                 )
                 ensure_relational_schema(connection)
-                _ensure_ticket_shadow_schema(connection)
+                ensure_ticket_shadow_schema(connection)
                 count = connection.execute(
                     text("SELECT count(*) FROM coeus_ticket_aggregates")
                 ).scalar_one()
@@ -158,18 +234,20 @@ def _sync_database_url(database_url: str) -> str:
     return database_url
 
 
-def _shadow_ticket_payload(connection: Any, payload: dict[str, Any]) -> None:
+def _shadow_ticket_payload(
+    connection: Any, payload: dict[str, Any], *, reconcile: bool = True
+) -> None:
     """Shadow the authoritative namespace into versioned per-ticket rows."""
     tickets = payload.get("tickets", [])
     ticket_ids: list[str] = []
     for ticket in tickets if isinstance(tickets, list) else []:
         try:
-            ticket_id = ticket["fields"]["ticket_id"]["__uuid__"]
+            ticket_id = _encoded_ticket_id(ticket)
         except (KeyError, TypeError):
             continue
         ticket_ids.append(ticket_id)
         serialised = json.dumps(ticket, sort_keys=True, separators=(",", ":"))
-        canonical_hash = sha256(serialised.encode("utf-8")).hexdigest()
+        canonical_hash = _encoded_ticket_hash(ticket)
         row = connection.execute(
             text(
                 """
@@ -221,68 +299,43 @@ def _shadow_ticket_payload(connection: Any, payload: dict[str, Any]) -> None:
                 "event_type": event_type,
             },
         )
+        sync_ticket_draft_audiences(connection, ticket)
+    if reconcile:
+        connection.execute(
+            text(
+                "DELETE FROM coeus_draft_audiences "
+                "WHERE NOT (ticket_id = ANY(CAST(:ticket_ids AS uuid[])))"
+            ),
+            {"ticket_ids": ticket_ids},
+        )
+        connection.execute(
+            text(
+                "DELETE FROM coeus_ticket_aggregates "
+                "WHERE NOT (ticket_id = ANY(CAST(:ticket_ids AS uuid[])))"
+            ),
+            {"ticket_ids": ticket_ids},
+        )
+
+
+def _save_ticket_counter(connection: Any, counter: int) -> None:
     connection.execute(
         text(
-            "DELETE FROM coeus_ticket_aggregates "
-            "WHERE NOT (ticket_id = ANY(CAST(:ticket_ids AS uuid[])))"
+            """
+            INSERT INTO coeus_state(namespace, payload, updated_at)
+            VALUES ('ticket_meta', jsonb_build_object('counter', :counter), now())
+            ON CONFLICT (namespace) DO UPDATE SET
+              payload = EXCLUDED.payload,
+              updated_at = now()
+            """
         ),
-        {"ticket_ids": ticket_ids},
+        {"counter": counter},
     )
 
 
-def _ensure_ticket_shadow_schema(connection: Any) -> None:
-    connection.execute(
-        text(
-            """
-            CREATE TABLE IF NOT EXISTS coeus_ticket_aggregates (
-                ticket_id uuid PRIMARY KEY,
-                version bigint NOT NULL CHECK (version > 0),
-                payload jsonb NOT NULL,
-                canonical_hash text NOT NULL,
-                updated_at timestamptz NOT NULL DEFAULT now()
-            )
-            """
-        )
-    )
-    connection.execute(
-        text(
-            """
-            CREATE TABLE IF NOT EXISTS coeus_outbox (
-                event_id uuid PRIMARY KEY,
-                aggregate_id uuid NOT NULL,
-                aggregate_version bigint NOT NULL,
-                event_type text NOT NULL,
-                payload jsonb NOT NULL,
-                created_at timestamptz NOT NULL DEFAULT now(),
-                delivered_at timestamptz,
-                UNIQUE (aggregate_id, aggregate_version, event_type)
-            )
-            """
-        )
-    )
-    connection.execute(
-        text(
-            "CREATE INDEX IF NOT EXISTS idx_coeus_outbox_pending "
-            "ON coeus_outbox(created_at, event_id) WHERE delivered_at IS NULL"
-        )
-    )
+def _encoded_ticket_id(ticket: dict[str, Any]) -> str:
+    return str(ticket["fields"]["ticket_id"]["__uuid__"])
 
 
-def _validate_ticket_shadow(engine: Any, payload: dict[str, Any]) -> None:
-    expected: dict[str, str] = {}
-    tickets = payload.get("tickets", [])
-    for ticket in tickets if isinstance(tickets, list) else []:
-        try:
-            ticket_id = ticket["fields"]["ticket_id"]["__uuid__"]
-        except (KeyError, TypeError):
-            continue
-        canonical = json.dumps(ticket, sort_keys=True, separators=(",", ":"))
-        expected[ticket_id] = sha256(canonical.encode("utf-8")).hexdigest()
-    with engine.connect() as connection:
-        actual = dict(
-            connection.execute(
-                text("SELECT ticket_id::text, canonical_hash FROM coeus_ticket_aggregates")
-            ).all()
-        )
-    if actual != expected:
-        raise RuntimeError("Ticket shadow reconciliation failed; relational cutover is unsafe.")
+def _encoded_ticket_hash(ticket: dict[str, Any]) -> str:
+    serialised = json.dumps(ticket, sort_keys=True, separators=(",", ":"))
+    return sha256(serialised.encode("utf-8")).hexdigest()

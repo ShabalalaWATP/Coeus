@@ -32,8 +32,8 @@ from coeus.domain.store import object_key_segment
 from coeus.schemas.store import StoreProductCreateRequest, StoreProductResponse
 from coeus.services.asset_tokens import AssetTokenService
 from coeus.services.object_storage import ObjectStorage
+from coeus.services.resource_admission import ResourceAdmission
 from coeus.services.store import StoreServices
-from coeus.services.upload_admission import UploadAdmissionController
 
 router = APIRouter(prefix="/store", tags=["store"])
 CHUNK_SIZE = 1024 * 1024
@@ -88,7 +88,7 @@ async def upload_product(
     settings: Annotated[Settings, Depends(get_settings)],
     storage: Annotated[ObjectStorage, Depends(get_object_storage)],
     store_services: Annotated[StoreServices, Depends(get_store_services)],
-    admission: Annotated[UploadAdmissionController, Depends(get_upload_admission)],
+    admission: Annotated[ResourceAdmission, Depends(get_upload_admission)],
 ) -> StoreProductResponse:
     try:
         with admission.reserve(authenticated.user.user_id, settings.local_upload_max_bytes):

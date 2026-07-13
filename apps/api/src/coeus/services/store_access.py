@@ -19,7 +19,11 @@ class StoreReadPolicy(Protocol):
         pass
 
     def can_read_for_workflow(
-        self, user: UserAccount, product: StoreProduct, reason: DraftAudienceReason
+        self,
+        user: UserAccount,
+        product: StoreProduct,
+        reason: DraftAudienceReason,
+        require_projection: bool = False,
     ) -> bool:
         pass
 
@@ -47,11 +51,18 @@ class StoreDetailService:
         return self._policy.can_read(actor, product)
 
     def get_workflow_visible_product(
-        self, actor: UserAccount, product_id: UUID, reason: DraftAudienceReason
+        self,
+        actor: UserAccount,
+        product_id: UUID,
+        reason: DraftAudienceReason,
+        *,
+        require_projection: bool = False,
     ) -> StoreProduct:
         """Read a product in an already-authorised assigned-workflow context."""
         product = self._repository.get_product(product_id)
-        if product is None or not self._policy.can_read_for_workflow(actor, product, reason):
+        if product is None or not self._policy.can_read_for_workflow(
+            actor, product, reason, require_projection
+        ):
             raise AppError(404, "product_not_found", "Product was not found.")
         return product
 

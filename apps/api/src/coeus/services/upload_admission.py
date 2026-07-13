@@ -27,7 +27,7 @@ class UploadAdmissionController:
         self._reserved_bytes = 0
         self._lock = RLock()
 
-    def reserve(self, user_id: UUID, requested_bytes: int) -> "UploadReservation":
+    def reserve(self, user_id: UUID, requested_bytes: int = 1) -> "UploadReservation":
         return UploadReservation(self, user_id, requested_bytes)
 
     def _acquire(self, user_id: UUID, requested_bytes: int) -> None:

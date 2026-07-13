@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from threading import RLock
+from typing import Any, Protocol, cast
 from uuid import UUID
 
 from coeus.domain.tickets import TicketRecord
@@ -7,9 +8,24 @@ from coeus.persistence.codec import decode_value, encode_value
 from coeus.persistence.state_store import StateStore
 
 
+class RelationalTicketStateStore(Protocol):
+    ticket_mode: str
+
+    def load_ticket_state(self) -> dict[str, Any]: ...
+
+    def save_ticket_record(self, ticket: dict[str, Any], counter: int) -> None: ...
+
+    def replace_ticket_state(self, payload: dict[str, Any]) -> None: ...
+
+    def compare_and_swap_ticket_record(
+        self, expected: dict[str, Any], proposed: dict[str, Any], counter: int
+    ) -> bool: ...
+
+
 class InMemoryTicketRepository:
     def __init__(self, state_store: StateStore | None = None) -> None:
         self._state_store = state_store
+        self._relational_store = _relational_ticket_store(state_store)
         self._tickets: dict[UUID, TicketRecord] = {}
         self._counter = 0
         self._lock = RLock()
@@ -45,6 +61,15 @@ class InMemoryTicketRepository:
         with self._lock:
             if self._tickets.get(expected.ticket_id) != expected:
                 return False
+            if self._relational_store is not None:
+                saved = self._relational_store.compare_and_swap_ticket_record(
+                    encode_value(expected), encode_value(updated), self._counter
+                )
+                if not saved:
+                    self._restore_or_persist()
+                    return False
+                self._tickets[updated.ticket_id] = updated
+                return True
             self._save_locked(updated)
             return True
 
@@ -58,9 +83,10 @@ class InMemoryTicketRepository:
 
     def _save_locked(self, ticket: TicketRecord) -> None:
         tickets = dict(self._tickets)
+        self._counter = max(self._counter, _reference_counter(ticket.reference))
         self._tickets[ticket.ticket_id] = ticket
         try:
-            self._persist()
+            self._persist(ticket)
         except Exception:
             self._tickets = tickets
             raise
@@ -68,7 +94,11 @@ class InMemoryTicketRepository:
     def _restore_or_persist(self) -> None:
         if self._state_store is None:
             return
-        payload = self._state_store.load("tickets")
+        payload = (
+            self._relational_store.load_ticket_state()
+            if self._relational_store is not None
+            else self._state_store.load("tickets")
+        )
         if payload is None:
             self._persist()
             return
@@ -81,23 +111,38 @@ class InMemoryTicketRepository:
             _max_reference_counter(tickets),
         )
 
-    def _persist(self) -> None:
+    def _persist(self, changed: TicketRecord | None = None) -> None:
         if self._state_store is None:
             return
         tickets = sorted(self._tickets.values(), key=lambda ticket: ticket.created_at)
-        self._state_store.save(
-            "tickets",
-            {
-                "counter": self._counter,
-                "tickets": [encode_value(ticket) for ticket in tickets],
-            },
-        )
+        payload = {
+            "counter": self._counter,
+            "tickets": [encode_value(ticket) for ticket in tickets],
+        }
+        if self._relational_store is not None:
+            if changed is None:
+                self._relational_store.replace_ticket_state(payload)
+            else:
+                self._relational_store.save_ticket_record(encode_value(changed), self._counter)
+            return
+        self._state_store.save("tickets", payload)
+
+
+def _relational_ticket_store(
+    state_store: StateStore | None,
+) -> RelationalTicketStateStore | None:
+    if state_store is None or getattr(state_store, "ticket_mode", None) != "relational":
+        return None
+    return cast(RelationalTicketStateStore, state_store)
 
 
 def _max_reference_counter(tickets: tuple[TicketRecord, ...]) -> int:
     counter = 0
     for ticket in tickets:
-        prefix, _, suffix = ticket.reference.partition("-")
-        if prefix == "TCK" and suffix.isdigit():
-            counter = max(counter, int(suffix))
+        counter = max(counter, _reference_counter(ticket.reference))
     return counter
+
+
+def _reference_counter(reference: str) -> int:
+    prefix, _, suffix = reference.partition("-")
+    return int(suffix) if prefix == "TCK" and suffix.isdigit() else 0

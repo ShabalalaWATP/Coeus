@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import Depends, Header, Request
 
@@ -22,6 +22,7 @@ from coeus.services.notifications import NotificationService
 from coeus.services.object_storage import ObjectStorage
 from coeus.services.quality_control import QualityControlService
 from coeus.services.registration import RegistrationService
+from coeus.services.resource_admission import ResourceAdmission
 from coeus.services.rfi_search import RfiSearchService
 from coeus.services.routing import RoutingService
 from coeus.services.similar_requests import SimilarRequestService
@@ -31,7 +32,6 @@ from coeus.services.team_workspace import TeamWorkspaceService
 from coeus.services.ticket_collaborators import TicketCollaboratorService
 from coeus.services.ticket_lifecycle import TicketLifecycleService
 from coeus.services.tickets import TicketServices
-from coeus.services.upload_admission import UploadAdmissionController
 from coeus.services.user_admin import UserAdminService
 
 
@@ -145,13 +145,22 @@ def get_object_storage(request: Request) -> ObjectStorage:
     return storage
 
 
-def get_upload_admission(request: Request) -> UploadAdmissionController:
+def get_upload_admission(request: Request) -> ResourceAdmission:
     controller = getattr(request.app.state, "upload_admission", None)
-    if not isinstance(controller, UploadAdmissionController):
+    if controller is None:
         raise AppError(
             500, "upload_admission_not_configured", "Upload admission is not configured."
         )
-    return controller
+    return cast(ResourceAdmission, controller)
+
+
+def get_search_admission(request: Request) -> ResourceAdmission:
+    controller = getattr(request.app.state, "search_admission", None)
+    if controller is None:
+        raise AppError(
+            500, "search_admission_not_configured", "Search admission is not configured."
+        )
+    return cast(ResourceAdmission, controller)
 
 
 def get_asset_token_service(request: Request) -> AssetTokenService:

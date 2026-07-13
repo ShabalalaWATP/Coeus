@@ -40,9 +40,14 @@ times one persistence write at 10 and 10,000 retained tickets.
 - Whole-corpus ticket persistence scales unacceptably. The 10,000-ticket write
   is over 1,700 times the 10-ticket write, confirming that Phase 4 per-ticket
   relational persistence is release-blocking rather than optional cleanup.
-- Migration 0008 now expands into versioned per-ticket shadow rows and a
-  uniquely keyed outbox. This baseline remains the pre-cutover comparison until
-  relational writes replace whole-corpus mutation and the benchmark is rerun.
+- Migration 0008 expands into versioned per-ticket rows and a uniquely keyed
+  outbox. After two successive 13-test PostgreSQL candidate validations,
+  `relational` became the default. The mutation contract executes five SQL
+  statements at both 10 and 10,000 rows; `shadow_validate` and `legacy` remain
+  explicit rollback modes.
+- Migration 0009 adds the indexed draft-audience projection. Hosted provider,
+  upload, search and ticket admission now share PostgreSQL state across API
+  processes; local/mock operation retains explicit process-local adapters.
 
 Numbers vary with host load. Security gates compare behaviour and asymptotic
 work, not exact millisecond equality.

@@ -85,7 +85,10 @@ class AnalystWorkflowService:
         for link in ticket.linked_products[:ANALYST_LINKED_PRODUCT_LIMIT]:
             try:
                 self._store.details.get_workflow_visible_product(
-                    actor, link.product_id, DraftAudienceReason.ASSIGNED_ANALYST
+                    actor,
+                    link.product_id,
+                    DraftAudienceReason.ASSIGNED_ANALYST,
+                    require_projection=True,
                 )
             except AppError:
                 continue

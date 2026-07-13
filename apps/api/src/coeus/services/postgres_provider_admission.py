@@ -9,7 +9,7 @@ from sqlalchemy import create_engine, text
 from coeus.core.errors import AppError
 from coeus.persistence.state_store import _sync_database_url
 
-_SCHEMA_SQL = """
+RESOURCE_LEASE_SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS coeus_resource_leases (
     lease_id uuid PRIMARY KEY,
     resource_type text NOT NULL,
@@ -39,7 +39,7 @@ class PostgresProviderAdmissionController:
         self._max_calls_per_principal = max_calls_per_principal
         self._window_seconds = window_seconds
         with self._engine.begin() as connection:
-            connection.execute(text(_SCHEMA_SQL))
+            connection.execute(text(RESOURCE_LEASE_SCHEMA_SQL))
 
     def reserve(self, principal_id: UUID) -> "PostgresProviderReservation":
         return PostgresProviderReservation(self, principal_id)

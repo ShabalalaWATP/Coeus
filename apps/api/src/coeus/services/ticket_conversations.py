@@ -28,7 +28,7 @@ from coeus.services.intake import IntakeAssistantProvider, IntakeExtractionServi
 from coeus.services.intake_standard import next_elicitation
 from coeus.services.prioritisation import with_assessment
 from coeus.services.provider_admission import ProviderAdmission
-from coeus.services.ticket_admission import TicketAdmissionController
+from coeus.services.ticket_admission import TicketAdmission
 from coeus.services.ticket_records import message as message_record
 from coeus.services.ticket_records import timeline
 
@@ -59,7 +59,7 @@ class ConversationService:
         llm_provider: IntakeAssistantProvider,
         audit_log: AuditLog,
         provider_admission: ProviderAdmission | None = None,
-        ticket_admission: TicketAdmissionController | None = None,
+        ticket_admission: TicketAdmission | None = None,
     ) -> None:
         self._repository = repository
         self._tickets = tickets

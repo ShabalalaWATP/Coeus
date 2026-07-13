@@ -11,7 +11,7 @@ EmbeddingProviderName = Literal["mock", "local", "gemini_api"]
 LlmProviderName = Literal["mock", "gemini_api", "openai_api", "vertex_ai", "bedrock"]
 ObjectStorageProviderName = Literal["local", "gcs"]
 PersistenceProviderName = Literal["memory", "file", "postgres"]
-TicketPersistenceMode = Literal["legacy", "shadow_validate"]
+TicketPersistenceMode = Literal["legacy", "shadow_validate", "relational"]
 SEED_USER_ENVIRONMENTS = frozenset({"local", "test"})
 SECURE_COOKIE_ENVIRONMENTS = frozenset({"staging", "prod"})
 HOSTED_ENVIRONMENTS = frozenset({"dev", "staging", "prod"})
@@ -84,6 +84,8 @@ class Settings(BaseSettings):
     provider_max_calls_per_window: int = Field(default=120, ge=1)
     provider_max_calls_per_principal: int = Field(default=30, ge=1)
     provider_window_seconds: int = Field(default=60, ge=1)
+    search_max_concurrent: int = Field(default=2, ge=1, le=32)
+    search_max_concurrent_per_principal: int = Field(default=1, ge=1, le=8)
     ticket_max_retained: int = Field(default=10_000, ge=1)
     ticket_max_retained_per_principal: int = Field(default=50, ge=1)
     openai_api_key: str | None = None
@@ -116,7 +118,7 @@ class Settings(BaseSettings):
     upload_max_inflight_bytes: int = Field(default=100_000_000, ge=1)
     asset_token_secret: str = DEFAULT_ASSET_TOKEN_SECRET
     persistence_provider: PersistenceProviderName = "postgres"
-    ticket_persistence_mode: TicketPersistenceMode = "shadow_validate"
+    ticket_persistence_mode: TicketPersistenceMode = "relational"
     persistence_path: str = ".local-data/state/coeus-state.json"
     # Seed the rich local demo dataset (extra products, demo tickets across the
     # workflow, feedback and calendars). None means "auto": on for local only.

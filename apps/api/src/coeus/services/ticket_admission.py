@@ -2,7 +2,7 @@
 
 from threading import RLock
 from types import TracebackType
-from typing import Literal
+from typing import Literal, Protocol
 from uuid import UUID
 
 from coeus.core.errors import AppError
@@ -82,3 +82,18 @@ class TicketReservation:
             self._controller._release(self._principal_id)
             self._active = False
         return False
+
+
+class TicketReservationPort(Protocol):
+    def __enter__(self) -> str: ...
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> bool | None: ...
+
+
+class TicketAdmission(Protocol):
+    def reserve(self, principal_id: UUID) -> TicketReservationPort: ...

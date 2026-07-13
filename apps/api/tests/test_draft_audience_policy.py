@@ -1,5 +1,5 @@
 from dataclasses import replace
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -34,18 +34,21 @@ def _user(*roles: RoleName) -> UserAccount:
 def test_object_relationship_reasons_are_explicitly_permitted(
     reason: DraftAudienceReason,
 ) -> None:
-    assert RoleAwareDraftAudiencePolicy().permits(_user(), reason)
+    assert RoleAwareDraftAudiencePolicy().permits(_user(), seed_product(), reason)
 
 
 def test_privileged_reasons_require_the_corresponding_current_role() -> None:
     policy = RoleAwareDraftAudiencePolicy()
 
-    assert policy.permits(_user(RoleName.ADMINISTRATOR), DraftAudienceReason.ADMINISTRATOR)
+    product = seed_product()
+    assert policy.permits(_user(RoleName.ADMINISTRATOR), product, DraftAudienceReason.ADMINISTRATOR)
     assert policy.permits(
-        _user(RoleName.INTELLIGENCE_STORE_MANAGER), DraftAudienceReason.STORE_MANAGER
+        _user(RoleName.INTELLIGENCE_STORE_MANAGER),
+        product,
+        DraftAudienceReason.STORE_MANAGER,
     )
-    assert not policy.permits(_user(), DraftAudienceReason.ADMINISTRATOR)
-    assert not policy.permits(_user(), None)
+    assert not policy.permits(_user(), product, DraftAudienceReason.ADMINISTRATOR)
+    assert not policy.permits(_user(), product, None)
 
 
 def test_store_read_reason_is_creator_or_current_privileged_role_only() -> None:
@@ -59,3 +62,23 @@ def test_store_read_reason_is_creator_or_current_privileged_role_only() -> None:
         == DraftAudienceReason.ADMINISTRATOR
     )
     assert policy.reason_for_store_read(_user(), product) is None
+
+
+def test_projected_relationship_is_required_when_cutover_guard_requests_it() -> None:
+    class Projection:
+        def contains(
+            self, product_id: UUID, principal_id: UUID, reason: DraftAudienceReason
+        ) -> bool:
+            return False
+
+    actor = _user()
+    product = seed_product()
+    policy = RoleAwareDraftAudiencePolicy(Projection())
+
+    assert policy.permits(actor, product, DraftAudienceReason.ASSIGNED_ANALYST)
+    assert not policy.permits(
+        actor,
+        product,
+        DraftAudienceReason.ASSIGNED_ANALYST,
+        require_projection=True,
+    )

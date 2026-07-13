@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from fastapi import FastAPI
 
-from coeus.core.config import Settings
+from coeus.core.config import HOSTED_ENVIRONMENTS, Settings
 from coeus.persistence.factory import build_audit_event_store, build_state_store
 from coeus.repositories.access import SeedAccessRepository
 from coeus.repositories.acg_applications import AcgApplicationRepository
@@ -26,8 +26,10 @@ from coeus.services.manager_queue import ManagerQueueService
 from coeus.services.notifications import NotificationService
 from coeus.services.object_storage import build_object_storage
 from coeus.services.passwords import PasswordHasher
+from coeus.services.postgres_resource_admission import PostgresResourceAdmissionController
 from coeus.services.quality_control import build_quality_control_service
 from coeus.services.registration import RegistrationService
+from coeus.services.resource_admission import LocalResourceAdmissionController, ResourceAdmission
 from coeus.services.rfi_search import build_rfi_search_service
 from coeus.services.routing import build_routing_service
 from coeus.services.similar_requests import SimilarRequestService
@@ -57,11 +59,8 @@ def configure_application_state(app: FastAPI, settings: Settings) -> None:
     app.state.state_store = build_state_store(settings)
     app.state.asset_token_service = AssetTokenService(settings.asset_token_secret)
     app.state.object_storage = build_object_storage(settings)
-    app.state.upload_admission = UploadAdmissionController(
-        max_concurrent=settings.upload_max_concurrent,
-        max_per_user=settings.upload_max_concurrent_per_user,
-        max_inflight_bytes=settings.upload_max_inflight_bytes,
-    )
+    app.state.upload_admission = _upload_admission(settings)
+    app.state.search_admission = _search_admission(settings)
     identity = _configure_identity(app, settings)
     _configure_data_services(app, settings, identity)
     _configure_workflow_services(app, settings, identity)
@@ -73,6 +72,40 @@ def configure_application_state(app: FastAPI, settings: Settings) -> None:
             app.state.ticket_services,
             app.state.team_repository,
         )
+
+
+def _upload_admission(settings: Settings) -> ResourceAdmission:
+    if settings.environment in HOSTED_ENVIRONMENTS:
+        return PostgresResourceAdmissionController(
+            settings.database_url,
+            resource_type="upload",
+            max_concurrent=settings.upload_max_concurrent,
+            max_concurrent_per_principal=settings.upload_max_concurrent_per_user,
+            max_units=settings.upload_max_inflight_bytes,
+            lease_seconds=300,
+        )
+    return UploadAdmissionController(
+        max_concurrent=settings.upload_max_concurrent,
+        max_per_user=settings.upload_max_concurrent_per_user,
+        max_inflight_bytes=settings.upload_max_inflight_bytes,
+    )
+
+
+def _search_admission(settings: Settings) -> ResourceAdmission:
+    if settings.environment in HOSTED_ENVIRONMENTS:
+        return PostgresResourceAdmissionController(
+            settings.database_url,
+            resource_type="search",
+            max_concurrent=settings.search_max_concurrent,
+            max_concurrent_per_principal=settings.search_max_concurrent_per_principal,
+            max_units=settings.search_max_concurrent,
+            lease_seconds=70,
+        )
+    return LocalResourceAdmissionController(
+        max_concurrent=settings.search_max_concurrent,
+        max_concurrent_per_principal=settings.search_max_concurrent_per_principal,
+        max_units=settings.search_max_concurrent,
+    )
 
 
 def _configure_identity(app: FastAPI, settings: Settings) -> IdentityComponents:

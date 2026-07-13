@@ -215,7 +215,7 @@ async def test_cancel_persistence_failure_rolls_back_ticket(
         ticket_id = created.json()["id"]
         original = _stored_ticket(app, ticket_id)
 
-        def fail_persist() -> None:
+        def fail_persist(_changed: object = None) -> None:
             raise RuntimeError("simulated ticket persistence failure")
 
         monkeypatch.setattr(app.state.ticket_services.tickets._repository, "_persist", fail_persist)

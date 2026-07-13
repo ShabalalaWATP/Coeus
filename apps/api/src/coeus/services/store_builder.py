@@ -3,6 +3,7 @@ from coeus.repositories.access import AccessRepository
 from coeus.repositories.store import InMemoryStoreRepository
 from coeus.services.asset_tokens import AssetTokenService
 from coeus.services.audit import AuditLog
+from coeus.services.draft_audience import RoleAwareDraftAudiencePolicy
 from coeus.services.embeddings import EmbeddingService
 from coeus.services.store import StoreIngestionService, StoreSearchService, StoreServices
 from coeus.services.store_access import StoreAssetService, StoreDetailService
@@ -23,7 +24,14 @@ def build_store_services(
         else None
     )
     repository = InMemoryStoreRepository(access_repository, state_store, projection, embeddings)
-    policy = StoreProductAccessPolicy(access_repository)
+    audience_projection = (
+        state_store.draft_audience_projection()
+        if isinstance(state_store, PostgresStateStore)
+        else None
+    )
+    policy = StoreProductAccessPolicy(
+        access_repository, RoleAwareDraftAudiencePolicy(audience_projection)
+    )
     details = StoreDetailService(repository, policy, audit_log)
     return StoreServices(
         repository=repository,

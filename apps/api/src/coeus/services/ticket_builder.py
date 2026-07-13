@@ -15,6 +15,7 @@ from coeus.services.intake import (
 )
 from coeus.services.intake_prompt import intake_prompt
 from coeus.services.postgres_provider_admission import PostgresProviderAdmissionController
+from coeus.services.postgres_ticket_admission import PostgresTicketAdmissionController
 from coeus.services.provider_admission import ProviderAdmissionController
 from coeus.services.ticket_admission import TicketAdmissionController
 from coeus.services.ticket_conversations import ConversationService
@@ -37,11 +38,7 @@ def build_ticket_services(
         ConfigurableIntakeProvider(settings, ai_models),
         audit_log,
         _provider_admission(settings),
-        TicketAdmissionController(
-            repository,
-            max_retained=settings.ticket_max_retained,
-            max_retained_per_principal=settings.ticket_max_retained_per_principal,
-        ),
+        _ticket_admission(settings, repository),
     )
     return TicketServices(tickets=tickets, conversations=conversations)
 
@@ -62,6 +59,22 @@ def _provider_admission(
         max_calls_per_window=settings.provider_max_calls_per_window,
         max_calls_per_principal=settings.provider_max_calls_per_principal,
         window_seconds=settings.provider_window_seconds,
+    )
+
+
+def _ticket_admission(
+    settings: Settings, repository: InMemoryTicketRepository
+) -> TicketAdmissionController | PostgresTicketAdmissionController:
+    if settings.environment in HOSTED_ENVIRONMENTS:
+        return PostgresTicketAdmissionController(
+            settings.database_url,
+            max_retained=settings.ticket_max_retained,
+            max_retained_per_principal=settings.ticket_max_retained_per_principal,
+        )
+    return TicketAdmissionController(
+        repository,
+        max_retained=settings.ticket_max_retained,
+        max_retained_per_principal=settings.ticket_max_retained_per_principal,
     )
 
 

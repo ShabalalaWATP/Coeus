@@ -21,7 +21,7 @@ class StoreProductAccessPolicy:
             return False
         metadata = product.metadata
         return metadata.status != ProductStatus.DRAFT or self._draft_audience.permits(
-            user, self._draft_audience.reason_for_store_read(user, product)
+            user, product, self._draft_audience.reason_for_store_read(user, product)
         )
 
     def can_read_for_workflow(
@@ -29,10 +29,13 @@ class StoreProductAccessPolicy:
         user: UserAccount,
         product: StoreProduct,
         reason: DraftAudienceReason,
+        require_projection: bool = False,
     ) -> bool:
         return self._can_read_base(user, product) and (
             product.metadata.status != ProductStatus.DRAFT
-            or self._draft_audience.permits(user, reason)
+            or self._draft_audience.permits(
+                user, product, reason, require_projection=require_projection
+            )
         )
 
     def _can_read_base(self, user: UserAccount, product: StoreProduct) -> bool:

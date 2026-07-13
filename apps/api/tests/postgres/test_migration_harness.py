@@ -9,7 +9,7 @@ from alembic.config import Config
 from sqlalchemy import create_engine, inspect, text
 
 API_ROOT = Path(__file__).resolve().parents[2]
-HEAD_REVISION = "20260713_0008"
+HEAD_REVISION = "20260713_0009"
 
 pytestmark = pytest.mark.postgres
 
@@ -49,6 +49,7 @@ def test_empty_database_upgrades_to_head(postgres_database_url: str) -> None:
         "coeus_resource_leases",
         "coeus_ticket_aggregates",
         "coeus_outbox",
+        "coeus_draft_audiences",
         "intelligence_store_products",
         "intelligence_store_assets",
     } <= tables
