@@ -1,15 +1,11 @@
-from contextlib import suppress
 from dataclasses import replace
-from datetime import UTC, datetime
 from uuid import UUID
 
-from coeus.application.ports.workflow_transaction import WorkflowTransactionPort
 from coeus.core.errors import AppError
 from coeus.domain.auth import UserAccount
 from coeus.domain.enums import TicketState
 from coeus.domain.state_machine import can_transition
 from coeus.domain.tickets import TicketRecord
-from coeus.domain.workflow_transaction import WorkflowAuditIntent
 from coeus.services.audit import AuditLog
 from coeus.services.ticket_records import is_owner, timeline
 from coeus.services.tickets import TicketService
@@ -18,15 +14,9 @@ from coeus.services.tickets import TicketService
 class TicketLifecycleService:
     """Requester-driven lifecycle actions that sit outside the intake flow."""
 
-    def __init__(
-        self,
-        tickets: TicketService,
-        audit_log: AuditLog,
-        transaction: WorkflowTransactionPort | None = None,
-    ) -> None:
+    def __init__(self, tickets: TicketService, audit_log: AuditLog) -> None:
         self._tickets = tickets
         self._audit_log = audit_log
-        self._transaction = transaction
 
     def cancel(self, actor: UserAccount, ticket_id: UUID, reason: str) -> TicketRecord:
         ticket = self._tickets.get_visible_ticket(actor, ticket_id)
@@ -151,45 +141,10 @@ class TicketLifecycleService:
         event_type: str,
         actor: UserAccount,
     ) -> TicketRecord:
-        if self._transaction is not None:
-            return self._commit_transaction(original_ticket, proposed_ticket, event_type, actor)
-        updated_ticket = self._tickets.save_system_update_if_current(
-            original_ticket, proposed_ticket
-        )
-        try:
-            self._audit_log.record(
-                event_type,
-                str(actor.user_id),
-                {"ticket_id": str(original_ticket.ticket_id)},
-            )
-        except Exception:
-            self._tickets.restore_system_update_if_current(updated_ticket, original_ticket)
-            raise
-        return updated_ticket
-
-    def _commit_transaction(
-        self,
-        original_ticket: TicketRecord,
-        proposed_ticket: TicketRecord,
-        event_type: str,
-        actor: UserAccount,
-    ) -> TicketRecord:
-        committed = replace(proposed_ticket, updated_at=datetime.now(UTC))
-        audit = WorkflowAuditIntent(
+        return self._tickets.mutations.save_audited_if_current(
+            original_ticket,
+            proposed_ticket,
             event_type,
-            actor.user_id,
+            actor,
             {"ticket_id": str(original_ticket.ticket_id)},
         )
-        if not self._transaction or not self._transaction.commit_ticket_update(
-            original_ticket, committed, audit
-        ):
-            raise AppError(
-                409,
-                "ticket_changed",
-                "The ticket changed while the operation was running. Retry the operation.",
-            )
-        with suppress(Exception):
-            self._tickets.accept_committed_system_update(committed)
-        with suppress(Exception):
-            self._audit_log.refresh_from_store()
-        return committed

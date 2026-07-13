@@ -29,7 +29,6 @@ from coeus.services.analyst_records import (
     next_draft_version,
 )
 from coeus.services.audit import AuditLog
-from coeus.services.audit_rollback import record_ticket_audit_or_rollback
 from coeus.services.prioritisation import priority_sort_key
 from coeus.services.store import StoreServices
 from coeus.services.ticket_records import timeline
@@ -104,7 +103,7 @@ class AnalystWorkflowService:
             created_by_user_id=actor.user_id,
             created_at=now(),
         )
-        updated = self._tickets.tickets.save_system_update_if_current(
+        return self._tickets.mutations.save_audited_if_current(
             ticket,
             replace(
                 ticket,
@@ -114,15 +113,10 @@ class AnalystWorkflowService:
                     timeline(ticket.ticket_id, actor.user_id, "analyst_note_added", body),
                 ),
             ),
-        )
-        self._record_audit_or_rollback(
-            ticket,
-            updated,
             "analyst_note_added",
             actor,
             {"ticket_id": str(ticket_id)},
         )
-        return updated
 
     def link_product(self, actor: UserAccount, ticket_id: UUID, product_id: UUID) -> TicketRecord:
         ticket = self._active_task(actor, ticket_id)
@@ -145,7 +139,7 @@ class AnalystWorkflowService:
             product.metadata.summary,
             actor.user_id,
         )
-        updated = self._tickets.tickets.save_system_update_if_current(
+        return self._tickets.mutations.save_audited_if_current(
             ticket,
             replace(
                 ticket,
@@ -155,15 +149,10 @@ class AnalystWorkflowService:
                     timeline(ticket.ticket_id, actor.user_id, "analyst_product_linked", link.title),
                 ),
             ),
-        )
-        self._record_audit_or_rollback(
-            ticket,
-            updated,
             "analyst_product_linked",
             actor,
             {"ticket_id": str(ticket_id), "product_id": str(product_id)},
         )
-        return updated
 
     def update_work_package(
         self, actor: UserAccount, ticket_id: UUID, package_id: UUID, status: WorkPackageStatus
@@ -182,7 +171,7 @@ class AnalystWorkflowService:
             replace(package, status=status) if package.package_id == package_id else package
             for package in ticket.work_packages
         )
-        updated = self._tickets.tickets.save_system_update_if_current(
+        return self._tickets.mutations.save_audited_if_current(
             ticket,
             replace(
                 ticket,
@@ -192,10 +181,6 @@ class AnalystWorkflowService:
                     timeline(ticket.ticket_id, actor.user_id, "work_package_updated", status.value),
                 ),
             ),
-        )
-        self._record_audit_or_rollback(
-            ticket,
-            updated,
             "work_package_updated",
             actor,
             {
@@ -204,7 +189,6 @@ class AnalystWorkflowService:
                 "status": status.value,
             },
         )
-        return updated
 
     def create_draft(
         self, actor: UserAccount, ticket_id: UUID, draft: DraftProductInput
@@ -222,7 +206,7 @@ class AnalystWorkflowService:
             assets,
             actor.user_id,
         )
-        updated = self._tickets.tickets.save_system_update_if_current(
+        return self._tickets.mutations.save_audited_if_current(
             ticket,
             replace(
                 ticket,
@@ -232,15 +216,10 @@ class AnalystWorkflowService:
                     timeline(ticket.ticket_id, actor.user_id, "draft_product_saved", draft.title),
                 ),
             ),
-        )
-        self._record_audit_or_rollback(
-            ticket,
-            updated,
             "draft_product_saved",
             actor,
             {"ticket_id": str(ticket_id)},
         )
-        return updated
 
     def submit_work(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         """Submit completed work for review.
@@ -265,7 +244,7 @@ class AnalystWorkflowService:
         event_type = "submitted_to_qc" if rework else "submitted_to_manager"
         summary = "Resubmitted to QC." if rework else "Submitted to the team manager."
         self._ensure_transition(ticket.state, target)
-        updated = self._tickets.tickets.save_system_update_if_current(
+        return self._tickets.mutations.save_audited_if_current(
             ticket,
             replace(
                 ticket,
@@ -275,11 +254,10 @@ class AnalystWorkflowService:
                     timeline(ticket.ticket_id, actor.user_id, event_type, summary),
                 ),
             ),
+            event_type,
+            actor,
+            {"ticket_id": str(ticket_id)},
         )
-        self._record_audit_or_rollback(
-            ticket, updated, event_type, actor, {"ticket_id": str(ticket_id)}
-        )
-        return updated
 
     @staticmethod
     def _has_revised_draft(ticket: TicketRecord) -> bool:
@@ -306,24 +284,6 @@ class AnalystWorkflowService:
     def _require(actor: UserAccount, permission: Permission) -> None:
         if permission not in actor.permissions:
             raise AppError(403, "forbidden", "Permission denied.")
-
-    def _record_audit_or_rollback(
-        self,
-        original_ticket: TicketRecord,
-        updated_ticket: TicketRecord,
-        event_type: str,
-        actor: UserAccount,
-        details: dict[str, str],
-    ) -> None:
-        record_ticket_audit_or_rollback(
-            self._tickets.tickets,
-            self._audit_log,
-            original_ticket,
-            updated_ticket,
-            event_type,
-            actor,
-            details,
-        )
 
     @staticmethod
     def _ensure_transition(current: TicketState, target: TicketState) -> None:

@@ -44,9 +44,16 @@ confirmation use the same version-locked ticket and audit transaction. These
 single-ticket transitions create the ordinary `ticket_shadow_changed` event but
 do not create an external notification intent.
 
+Ticket creation uses a separate create-and-audit operation. A transaction-level
+advisory lock protects the generated ticket identity before the insert, and an
+existing identity fails with `409` instead of becoming an upsert. Intake edits,
+attachments, submission, clarification, RFI outcomes, route decisions,
+collaborators, assignment, analyst work, manager review, QC rejection and
+feedback now use the single-ticket update operation.
+
 Memory, file and non-relational modes retain the characterised local
-compensation path. Other staff and agent workflow transitions have not yet
-moved to the transaction port and remain part of the Sprint 17 repair programme.
+compensation path. Symmetric related-ticket linking and remaining multi-record
+boundaries have not yet moved to the transaction port.
 
 ## Operator checks
 

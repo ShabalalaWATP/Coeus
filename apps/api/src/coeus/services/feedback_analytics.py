@@ -10,7 +10,6 @@ from coeus.domain.enums import TicketState
 from coeus.domain.qc import FeedbackRequest, FeedbackRequestStatus, FeedbackSubmission
 from coeus.domain.tickets import ManagerRoutingDecisionStatus, RoutingRoute, TicketRecord
 from coeus.services.audit import AuditLog
-from coeus.services.audit_rollback import record_ticket_audit_or_rollback
 from coeus.services.store import StoreServices
 from coeus.services.ticket_records import timeline
 from coeus.services.tickets import TicketServices
@@ -107,26 +106,21 @@ class FeedbackAnalyticsService:
             created_at=datetime.now(UTC),
         )
         updated_request = replace(request, status=FeedbackRequestStatus.SUBMITTED)
-        updated = self._tickets.tickets.save_system_update_if_current(
+        proposed = replace(
             ticket,
-            replace(
-                ticket,
-                feedback_requests=tuple(
-                    updated_request if item.request_id == request_id else item
-                    for item in ticket.feedback_requests
-                ),
-                feedback_submissions=(*ticket.feedback_submissions, submission),
-                timeline=(
-                    *ticket.timeline,
-                    timeline(ticket.ticket_id, actor.user_id, "feedback_submitted", comment),
-                ),
+            feedback_requests=tuple(
+                updated_request if item.request_id == request_id else item
+                for item in ticket.feedback_requests
+            ),
+            feedback_submissions=(*ticket.feedback_submissions, submission),
+            timeline=(
+                *ticket.timeline,
+                timeline(ticket.ticket_id, actor.user_id, "feedback_submitted", comment),
             ),
         )
-        record_ticket_audit_or_rollback(
-            self._tickets.tickets,
-            self._audit_log,
+        updated = self._tickets.mutations.save_audited_if_current(
             ticket,
-            updated,
+            proposed,
             "feedback_submitted",
             actor,
             {"ticket_id": str(ticket.ticket_id), "request_id": str(request_id)},

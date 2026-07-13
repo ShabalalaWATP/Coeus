@@ -50,6 +50,9 @@ succeeding from one snapshot, leaving workflow and publication inconsistent.
   on one SQLAlchemy connection.
 - Requester cancellation, no-match consent, collect choice and delivery
   confirmation use the same port for atomic ticket and audit persistence.
+- Ticket creation has an explicit collision-safe create operation. Intake, RFI,
+  routing, collaborator, assignment, analyst, manager, QC rejection and
+  feedback mutations use the focused `TicketMutationService` facade.
 - A failed audit append rolls the complete unit back. Concurrent commits from
   the same expected ticket snapshot yield one winner and one conflict.
 - The hosted dispatcher validates the notification payload, resolves an active

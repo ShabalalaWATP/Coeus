@@ -29,6 +29,7 @@ def test_new_chat_does_not_persist_blank_ticket_when_assistant_fails() -> None:
     conversations = ConversationService(
         repository=repository,
         tickets=tickets,
+        mutations=tickets.mutations,
         extractor=IntakeExtractionService(),
         llm_provider=FailingAssistantProvider(),
         audit_log=audit_log,

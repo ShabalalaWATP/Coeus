@@ -65,7 +65,7 @@ class TicketCollaboratorService:
         others = tuple(
             existing for existing in ticket.collaborators if existing.user_id != user.user_id
         )
-        updated = self._tickets.save_system_update_if_current(
+        return self._tickets.mutations.save_audited_if_current(
             ticket,
             replace(
                 ticket,
@@ -80,21 +80,14 @@ class TicketCollaboratorService:
                     ),
                 ),
             ),
+            "ticket_collaborator_added",
+            actor,
+            {
+                "ticket_id": str(ticket.ticket_id),
+                "collaborator_user_id": str(user.user_id),
+                "access": access.value,
+            },
         )
-        try:
-            self._audit_log.record(
-                "ticket_collaborator_added",
-                str(actor.user_id),
-                {
-                    "ticket_id": str(ticket.ticket_id),
-                    "collaborator_user_id": str(user.user_id),
-                    "access": access.value,
-                },
-            )
-        except Exception:
-            self._tickets.restore_system_update_if_current(updated, ticket)
-            raise
-        return updated
 
     def remove(self, actor: UserAccount, ticket_id: UUID, user_id: UUID) -> TicketRecord:
         ticket = self._owned_ticket(actor, ticket_id)
@@ -104,7 +97,7 @@ class TicketCollaboratorService:
         )
         if removed is None:
             raise AppError(404, "collaborator_not_found", "Collaborator was not found.")
-        updated = self._tickets.save_system_update_if_current(
+        return self._tickets.mutations.save_audited_if_current(
             ticket,
             replace(
                 ticket,
@@ -121,17 +114,10 @@ class TicketCollaboratorService:
                     ),
                 ),
             ),
+            "ticket_collaborator_removed",
+            actor,
+            {"ticket_id": str(ticket.ticket_id), "collaborator_user_id": str(user_id)},
         )
-        try:
-            self._audit_log.record(
-                "ticket_collaborator_removed",
-                str(actor.user_id),
-                {"ticket_id": str(ticket.ticket_id), "collaborator_user_id": str(user_id)},
-            )
-        except Exception:
-            self._tickets.restore_system_update_if_current(updated, ticket)
-            raise
-        return updated
 
     def _owned_ticket(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         ticket = self._tickets.get_visible_ticket(actor, ticket_id)

@@ -1,3 +1,4 @@
+from coeus.application.ports.workflow_transaction import WorkflowTransactionPort
 from coeus.core.config import HOSTED_ENVIRONMENTS, Settings
 from coeus.core.errors import AppError
 from coeus.core.logging import get_logger
@@ -28,20 +29,26 @@ def build_ticket_services(
     audit_log: AuditLog,
     state_store: StateStore | None = None,
     ai_models: AiModelService | None = None,
+    transaction: WorkflowTransactionPort | None = None,
 ) -> TicketServices:
     repository = InMemoryTicketRepository(state_store)
     completeness = RequirementCompletenessService()
-    tickets = TicketService(repository, completeness, audit_log)
+    tickets = TicketService(repository, completeness, audit_log, transaction)
     conversations = ConversationService(
         repository,
         tickets,
+        tickets.mutations,
         IntakeExtractionService(),
         ConfigurableIntakeProvider(settings, ai_models),
         audit_log,
         _provider_admission(settings),
         _ticket_admission(settings, repository),
     )
-    return TicketServices(tickets=tickets, conversations=conversations)
+    return TicketServices(
+        tickets=tickets,
+        conversations=conversations,
+        mutations=tickets.mutations,
+    )
 
 
 def _provider_admission(

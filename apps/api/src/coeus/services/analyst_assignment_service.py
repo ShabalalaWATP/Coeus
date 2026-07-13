@@ -20,7 +20,6 @@ from coeus.repositories.teams import TeamRepository
 from coeus.services.analyst_assignment import assignment_change
 from coeus.services.analyst_records import active_assignments_for_route, approved_route
 from coeus.services.audit import AuditLog
-from coeus.services.audit_rollback import record_ticket_audit_or_rollback
 from coeus.services.tickets import TicketServices
 
 ASSIGNMENT_READ_PERMISSIONS = frozenset({Permission.RFA_ASSIGN, Permission.COLLECTION_ASSIGN})
@@ -110,17 +109,13 @@ class AnalystAssignmentService:
             team.name,
             reassignment=reassignment,
         )
-        updated = self._tickets.tickets.save_system_update_if_current(ticket, change.ticket)
-        record_ticket_audit_or_rollback(
-            self._tickets.tickets,
-            self._audit_log,
+        return self._tickets.mutations.save_audited_if_current(
             ticket,
-            updated,
+            change.ticket,
             change.event_type,
             actor,
             change.audit_metadata,
         )
-        return updated
 
     def _resolve_analysts(self, analyst_user_ids: tuple[UUID, ...]) -> tuple[UserAccount, ...]:
         unique_ids = tuple(dict.fromkeys(analyst_user_ids))

@@ -28,6 +28,7 @@ from coeus.services.audit import AuditLog
 from coeus.services.intake import IntakeAssistantProvider, IntakeExtractionService
 from coeus.services.intake_standard import next_elicitation
 from coeus.services.prioritisation import with_assessment
+from coeus.services.ticket_mutations import TicketMutationService
 from coeus.services.ticket_records import message as message_record
 from coeus.services.ticket_records import timeline
 
@@ -39,21 +40,13 @@ class ConversationTicketService(Protocol):
     def state_for_intake(self, current_state: TicketState, intake: IntakeDetails) -> TicketState:
         pass
 
-    def save_audited_system_update(
-        self,
-        ticket: TicketRecord,
-        event_type: str,
-        actor: UserAccount,
-        metadata: dict[str, str],
-    ) -> TicketRecord:
-        pass
-
 
 class ConversationService:
     def __init__(
         self,
         repository: TicketRepository,
         tickets: ConversationTicketService,
+        mutations: TicketMutationService,
         extractor: IntakeExtractionService,
         llm_provider: IntakeAssistantProvider,
         audit_log: AuditLog,
@@ -62,6 +55,7 @@ class ConversationService:
     ) -> None:
         self._repository = repository
         self._tickets = tickets
+        self._mutations = mutations
         self._extractor = extractor
         self._llm_provider = llm_provider
         self._audit_log = audit_log
@@ -82,10 +76,15 @@ class ConversationService:
                 if ticket_id
                 else self._create(actor, reference)
             )
-            return self._send_to_ticket(actor, message, ticket)
+            return self._send_to_ticket(actor, message, ticket, create=ticket_id is None)
 
     def _send_to_ticket(
-        self, actor: UserAccount, message: str, ticket: TicketRecord
+        self,
+        actor: UserAccount,
+        message: str,
+        ticket: TicketRecord,
+        *,
+        create: bool = False,
     ) -> TicketRecord:
         if ticket.conversation_status == lifecycle.CONVERSATION_CLOSED:
             raise AppError(
@@ -123,23 +122,32 @@ class ConversationService:
             created_at=datetime.now(UTC),
         )
         state = self._tickets.state_for_intake(ticket.state, intake)
-        return self._tickets.save_audited_system_update(
-            with_assessment(
-                replace(
-                    ticket,
-                    state=state,
-                    intake=intake,
-                    conversation_status=conversation_status,
-                    messages=(*ticket.messages, user_message, assistant_message),
-                    agent_runs=(*ticket.agent_runs, agent_run),
-                    timeline=(
-                        *ticket.timeline,
-                        timeline(
-                            ticket.ticket_id, actor.user_id, "chat_message", "User chat received."
-                        ),
+        proposed = with_assessment(
+            replace(
+                ticket,
+                state=state,
+                intake=intake,
+                conversation_status=conversation_status,
+                messages=(*ticket.messages, user_message, assistant_message),
+                agent_runs=(*ticket.agent_runs, agent_run),
+                timeline=(
+                    *ticket.timeline,
+                    timeline(
+                        ticket.ticket_id, actor.user_id, "chat_message", "User chat received."
                     ),
-                )
-            ),
+                ),
+            )
+        )
+        if create:
+            return self._mutations.create_audited(
+                proposed,
+                "ticket_chat_message_received",
+                actor,
+                {"ticket_id": str(ticket.ticket_id)},
+            )
+        return self._mutations.save_audited_if_current(
+            ticket,
+            proposed,
             "ticket_chat_message_received",
             actor,
             {"ticket_id": str(ticket.ticket_id)},

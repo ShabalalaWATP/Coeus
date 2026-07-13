@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from coeus.application.ports.tickets import TicketRepository
+from coeus.application.ports.workflow_transaction import WorkflowTransactionPort
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
 from coeus.core.resource_limits import (
@@ -30,11 +31,7 @@ from coeus.services.prioritisation import (
     prioritisation_agent_run,
     with_assessment,
 )
-from coeus.services.ticket_persistence import (
-    save_audited_ticket,
-    save_ticket,
-    save_ticket_if_current,
-)
+from coeus.services.ticket_mutations import TicketMutationService
 from coeus.services.ticket_records import can_read, is_collaborator, is_editor, is_owner, timeline
 
 if TYPE_CHECKING:
@@ -45,6 +42,7 @@ if TYPE_CHECKING:
 class TicketServices:
     tickets: "TicketService"
     conversations: "ConversationService"
+    mutations: TicketMutationService
 
 
 class TicketService:
@@ -53,10 +51,12 @@ class TicketService:
         repository: TicketRepository,
         completeness: RequirementCompletenessService,
         audit_log: AuditLog,
+        transaction: WorkflowTransactionPort | None = None,
     ) -> None:
         self._repository = repository
         self._completeness = completeness
         self._audit_log = audit_log
+        self.mutations = TicketMutationService(repository, audit_log, transaction)
 
     def list_visible_tickets(self, actor: UserAccount) -> tuple[TicketRecord, ...]:
         if Permission.TICKET_READ_ALL in actor.permissions:
@@ -134,6 +134,7 @@ class TicketService:
         )
         entry = timeline(ticket.ticket_id, actor.user_id, "intake_updated", "Intake updated.")
         updated = self._save_audited(
+            ticket,
             with_assessment(
                 replace(
                     ticket,
@@ -182,6 +183,7 @@ class TicketService:
             created_at=datetime.now(UTC),
         )
         return self._save_audited(
+            ticket,
             replace(
                 ticket,
                 attachments=(*ticket.attachments, attachment),
@@ -212,10 +214,12 @@ class TicketService:
             safety_flags=(),
             created_at=datetime.now(UTC),
         )
+        original = ticket
         ticket = with_assessment(ticket)
         assessment = assessment_or_computed(ticket)
         priority_run = prioritisation_agent_run(ticket, assessment)
         updated = self._save_audited(
+            original,
             replace(
                 ticket,
                 state=TicketState.RFI_SEARCHING,
@@ -268,6 +272,7 @@ class TicketService:
                 ),
             )
         return self._save_audited(
+            ticket,
             replace(
                 ticket,
                 state=state,
@@ -294,31 +299,20 @@ class TicketService:
         return ticket
 
     def save_system_update(self, ticket: TicketRecord) -> TicketRecord:
-        return save_ticket(self._repository, ticket)
-
-    def save_audited_system_update(
-        self,
-        ticket: TicketRecord,
-        event_type: str,
-        actor: UserAccount,
-        metadata: dict[str, str],
-    ) -> TicketRecord:
-        return save_audited_ticket(
-            self._repository, self._audit_log, ticket, event_type, actor, metadata
-        )
+        return self.mutations.save(ticket)
 
     def save_system_update_if_current(
         self, expected: TicketRecord, proposed: TicketRecord
     ) -> TicketRecord:
-        return save_ticket_if_current(self._repository, expected, proposed)
+        return self.mutations.save_if_current(expected, proposed)
 
     def restore_system_update_if_current(
         self, expected: TicketRecord, original: TicketRecord
     ) -> bool:
-        return self._repository.save_if_current(expected, original)
+        return self.mutations.restore_if_current(expected, original)
 
     def accept_committed_system_update(self, ticket: TicketRecord) -> None:
-        self._repository.accept_committed(ticket)
+        self.mutations.accept_committed(ticket)
 
     def state_for_intake(self, current: TicketState, intake: IntakeDetails) -> TicketState:
         target = (
@@ -333,15 +327,16 @@ class TicketService:
         return current
 
     def _save(self, ticket: TicketRecord) -> TicketRecord:
-        return save_ticket(self._repository, ticket)
+        return self.mutations.save(ticket)
 
     def _save_audited(
         self,
-        ticket: TicketRecord,
+        expected: TicketRecord,
+        proposed: TicketRecord,
         event_type: str,
         actor: UserAccount,
         metadata: dict[str, str],
     ) -> TicketRecord:
-        return save_audited_ticket(
-            self._repository, self._audit_log, ticket, event_type, actor, metadata
+        return self.mutations.save_audited_if_current(
+            expected, proposed, event_type, actor, metadata
         )

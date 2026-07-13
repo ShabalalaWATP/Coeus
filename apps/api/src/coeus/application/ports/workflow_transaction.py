@@ -8,6 +8,12 @@ from coeus.domain.workflow_transaction import ReleaseNotificationIntent, Workflo
 
 
 class WorkflowTransactionPort(Protocol):
+    def commit_ticket_create(
+        self,
+        ticket: TicketRecord,
+        audit: WorkflowAuditIntent,
+    ) -> bool: ...
+
     def commit_ticket_update(
         self,
         expected: TicketRecord,

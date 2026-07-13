@@ -192,7 +192,7 @@ class QualityControlService:
             ticket.ticket_id, QcDecisionStatus.REJECTED, reason, actor.user_id, checklist
         )
         self._ensure_transition(ticket.state, TicketState.REWORK_REQUIRED)
-        updated = self._tickets.tickets.save_system_update_if_current(
+        return self._tickets.mutations.save_audited_if_current(
             ticket,
             replace(
                 ticket,
@@ -203,13 +203,10 @@ class QualityControlService:
                     timeline(ticket.ticket_id, actor.user_id, "qc_rejected", reason),
                 ),
             ),
+            "qc_rejected",
+            actor,
+            {"ticket_id": str(ticket_id)},
         )
-        try:
-            self._audit_log.record("qc_rejected", str(actor.user_id), {"ticket_id": str(ticket_id)})
-        except Exception:
-            self._tickets.tickets.restore_system_update_if_current(updated, ticket)
-            raise
-        return updated
 
     @staticmethod
     def _require(actor: UserAccount, permission: Permission) -> None:

@@ -214,9 +214,9 @@ the expanded schema, and every adapter passes one transaction contract suite.
 Implementation note, 2026-07-13: hosted PostgreSQL QC release now commits its
 versioned ticket, Store projection, audit evidence and notification intent in
 one transaction. Durable delivery is retry-fenced and event-ID deduplicated.
-Requester lifecycle actions now commit ticket and audit together. Forced
-rollback and concurrent one-winner tests pass. Remaining staff and agent
-transitions, adapter-wide contracts and coordinated restore evidence keep Phase 4 open.
+Ticket creation and single-ticket requester, staff and agent actions now commit
+ticket and audit together. Forced rollback and concurrent one-winner tests pass.
+Multi-ticket transactions, adapter contracts and restore evidence keep Phase 4 open.
 
 ### Phase 5: SOLID And Maintainability Consolidation
 

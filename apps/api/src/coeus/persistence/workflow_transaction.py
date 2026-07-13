@@ -27,6 +27,32 @@ class PostgresWorkflowTransaction:
     def __init__(self, database_url: str) -> None:
         self._engine = create_engine(synchronous_database_url(database_url), pool_pre_ping=True)
 
+    def commit_ticket_create(
+        self,
+        ticket: TicketRecord,
+        audit: WorkflowAuditIntent,
+    ) -> bool:
+        payload = encode_value(ticket)
+        ticket_id = _encoded_ticket_id(payload)
+        with self._engine.begin() as connection:
+            self._prepare(connection)
+            connection.execute(
+                text("SELECT pg_advisory_xact_lock(hashtextextended(:ticket_id, 0))"),
+                {"ticket_id": ticket_id},
+            )
+            exists = connection.execute(
+                text(
+                    "SELECT 1 FROM coeus_ticket_aggregates "
+                    "WHERE ticket_id = CAST(:ticket_id AS uuid)"
+                ),
+                {"ticket_id": ticket_id},
+            ).scalar_one_or_none()
+            if exists is not None:
+                return False
+            self._write_ticket(connection, payload, ticket_id)
+            self._append_audit(connection, audit)
+        return True
+
     def commit_ticket_update(
         self,
         expected: TicketRecord,

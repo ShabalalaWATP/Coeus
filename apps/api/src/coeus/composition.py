@@ -182,6 +182,7 @@ def _configure_data_services(
         identity.audit_log,
         app.state.state_store,
         app.state.ai_model_service,
+        app.state.workflow_transaction,
     )
 
 
@@ -201,7 +202,6 @@ def _configure_workflow_services(
     app.state.ticket_lifecycle_service = TicketLifecycleService(
         tickets=tickets.tickets,
         audit_log=audit_log,
-        transaction=app.state.workflow_transaction,
     )
     app.state.similar_request_service = SimilarRequestService(
         tickets,

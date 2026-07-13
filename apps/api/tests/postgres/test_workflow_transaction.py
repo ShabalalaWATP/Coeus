@@ -84,6 +84,64 @@ def _seed(database_url: str) -> tuple[TicketRecord, StoreProduct]:
     return ticket, _product(ticket)
 
 
+def test_ticket_create_commits_new_aggregate_and_audit_and_rejects_collision(
+    postgres_database_url: str,
+) -> None:
+    ticket = _ticket()
+    audit = WorkflowAuditIntent(
+        "ticket_chat_message_received",
+        ticket.requester_user_id,
+        {"ticket_id": str(ticket.ticket_id)},
+    )
+    transaction = PostgresWorkflowTransaction(postgres_database_url)
+
+    assert transaction.commit_ticket_create(ticket, audit)
+    assert not transaction.commit_ticket_create(ticket, audit)
+
+    restored = InMemoryTicketRepository(
+        PostgresStateStore(postgres_database_url, "relational")
+    ).get(ticket.ticket_id)
+    engine = create_engine(postgres_database_url)
+    with engine.connect() as connection:
+        audit_count = connection.execute(
+            text("SELECT count(*) FROM coeus_audit_events")
+        ).scalar_one()
+    assert restored == ticket
+    assert audit_count == 1
+
+
+def test_ticket_create_rolls_back_aggregate_when_audit_write_fails(
+    postgres_database_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ticket = _ticket()
+    audit = WorkflowAuditIntent(
+        "ticket_chat_message_received",
+        ticket.requester_user_id,
+        {"ticket_id": str(ticket.ticket_id)},
+    )
+
+    def fail_audit(*_args: object) -> None:
+        raise RuntimeError("synthetic audit failure")
+
+    monkeypatch.setattr(PostgresWorkflowTransaction, "_append_audit", fail_audit)
+    with pytest.raises(RuntimeError, match="synthetic audit failure"):
+        PostgresWorkflowTransaction(postgres_database_url).commit_ticket_create(ticket, audit)
+
+    engine = create_engine(postgres_database_url)
+    with engine.connect() as connection:
+        ticket_table = connection.execute(
+            text("SELECT to_regclass('coeus_ticket_aggregates')")
+        ).scalar_one()
+        ticket_count = (
+            0
+            if ticket_table is None
+            else connection.execute(
+                text("SELECT count(*) FROM coeus_ticket_aggregates")
+            ).scalar_one()
+        )
+    assert ticket_count == 0
+
+
 def test_ticket_update_commits_state_and_audit_as_one_unit(
     postgres_database_url: str,
 ) -> None:
