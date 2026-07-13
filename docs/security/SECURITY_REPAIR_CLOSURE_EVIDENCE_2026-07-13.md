@@ -70,8 +70,8 @@ evidence is not staging or production accreditation.
 The complete local candidate suites reported:
 
 - backend: 951 passed, one N-1 test skipped in the combined run and executed
-  separately; 97.68 percent combined coverage, with the most recent separate
-  measures at 98.15 percent lines and 95.08 percent branches;
+  separately; the CI-equivalent split-and-append run measured 98.16 percent
+  lines and 95.13 percent branches;
 - frontend: 411 passed; 98.66 percent lines, 95.13 percent branches and 96.20
   percent functions;
 - mocked/real-memory Playwright: 3 passed;

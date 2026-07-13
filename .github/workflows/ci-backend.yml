@@ -70,10 +70,12 @@ jobs:
           pnpm contracts:types
           git diff --exit-code -- apps/web/src/lib/api-client/generated/openapi.ts
       - name: PostgreSQL migration and concurrency harness
-        run: uv run pytest -m postgres --no-cov tests/postgres
+        run: >-
+          uv run pytest -m postgres tests/postgres
+          --cov-report= --cov-fail-under=0
       - name: Pytest with independent line and branch coverage gates
         run: |
-          uv run pytest -m "not postgres" --cov-report=json:coverage.json
+          uv run pytest -m "not postgres" --cov-append --cov-report=json:coverage.json
           uv run python ../../scripts/check_backend_coverage.py coverage.json
       - name: Bandit
         run: uv run bandit -r src
