@@ -1,3 +1,4 @@
 {
+  "ignore": ["apps/web/src/lib/api-client/generated/**"],
   "ignoreBinaries": ["pwsh", "uv"]
 }

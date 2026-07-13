@@ -26,9 +26,9 @@ Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVEL
   validating dual-format readers and identity goldens. Migration `0012` now
   converts legacy ticket rows and reconciles canonical hashes before relational
   mutation; unknown and ambiguous identities fail closed.
-- Expanded the CI architecture gate across application ports, domain,
-  persistence and repositories; added deterministic Markdown link/image and
-  settings-to-`.env.example` parity gates.
+- Expanded CI boundaries and config/docs drift gates. Frontend format, lint,
+  type, Knip, tests, production audit and build pass at 98.63 percent lines,
+  95.10 percent branches and 96.21 percent functions.
 - Projected ticket requester, lifecycle state and capacity consumption into
   indexed relational columns. Store search and detail now consume projected
   analyst/manager draft audiences with revocation tests; QC assignment and full
