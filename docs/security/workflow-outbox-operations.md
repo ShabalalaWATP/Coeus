@@ -33,3 +33,18 @@ Database restore and object-storage restore must use the same recovery point.
 After restore, compare ticket versions and outbox uniqueness before resuming
 writers or dispatchers. Quiesce dispatchers before rollback or reverse
 projection so no side effect is delivered from an unverified state.
+
+## Relational code rollback
+
+Stop API and worker ticket writers, then run:
+
+```powershell
+uv run --directory apps/api python -m coeus.tools.reverse_ticket_projection --confirm-quiesced
+```
+
+The command verifies every relational aggregate hash and replaces the legacy
+ticket namespace in one database transaction. It refuses to run without the
+explicit quiescence acknowledgement. After it completes, start the rollback
+candidate in legacy read mode, validate ticket counts and sample current states,
+then resume traffic. A reconciliation failure leaves the prior legacy namespace
+unchanged and must not be bypassed.
