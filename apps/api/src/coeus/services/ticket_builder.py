@@ -1,4 +1,4 @@
-from coeus.core.config import Settings
+from coeus.core.config import HOSTED_ENVIRONMENTS, Settings
 from coeus.core.errors import AppError
 from coeus.core.logging import get_logger
 from coeus.domain.tickets import IntakeDetails
@@ -14,6 +14,7 @@ from coeus.services.intake import (
     RequirementCompletenessService,
 )
 from coeus.services.intake_prompt import intake_prompt
+from coeus.services.postgres_provider_admission import PostgresProviderAdmissionController
 from coeus.services.provider_admission import ProviderAdmissionController
 from coeus.services.ticket_admission import TicketAdmissionController
 from coeus.services.ticket_conversations import ConversationService
@@ -35,12 +36,7 @@ def build_ticket_services(
         IntakeExtractionService(),
         ConfigurableIntakeProvider(settings, ai_models),
         audit_log,
-        ProviderAdmissionController(
-            max_concurrent=settings.provider_max_concurrent,
-            max_calls_per_window=settings.provider_max_calls_per_window,
-            max_calls_per_principal=settings.provider_max_calls_per_principal,
-            window_seconds=settings.provider_window_seconds,
-        ),
+        _provider_admission(settings),
         TicketAdmissionController(
             repository,
             max_retained=settings.ticket_max_retained,
@@ -48,6 +44,25 @@ def build_ticket_services(
         ),
     )
     return TicketServices(tickets=tickets, conversations=conversations)
+
+
+def _provider_admission(
+    settings: Settings,
+) -> ProviderAdmissionController | PostgresProviderAdmissionController:
+    if settings.environment in HOSTED_ENVIRONMENTS:
+        return PostgresProviderAdmissionController(
+            settings.database_url,
+            max_concurrent=settings.provider_max_concurrent,
+            max_calls_per_window=settings.provider_max_calls_per_window,
+            max_calls_per_principal=settings.provider_max_calls_per_principal,
+            window_seconds=settings.provider_window_seconds,
+        )
+    return ProviderAdmissionController(
+        max_concurrent=settings.provider_max_concurrent,
+        max_calls_per_window=settings.provider_max_calls_per_window,
+        max_calls_per_principal=settings.provider_max_calls_per_principal,
+        window_seconds=settings.provider_window_seconds,
+    )
 
 
 class ConfigurableIntakeProvider:

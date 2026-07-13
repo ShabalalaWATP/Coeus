@@ -8,6 +8,7 @@ def record_ticket_audit_or_rollback(
     tickets: TicketService,
     audit_log: AuditLog,
     original_ticket: TicketRecord,
+    updated_ticket: TicketRecord,
     event_type: str,
     actor: UserAccount,
     details: dict[str, str],
@@ -15,5 +16,5 @@ def record_ticket_audit_or_rollback(
     try:
         audit_log.record(event_type, str(actor.user_id), details)
     except Exception:
-        tickets.save_system_update(original_ticket)
+        tickets.restore_system_update_if_current(updated_ticket, original_ticket)
         raise

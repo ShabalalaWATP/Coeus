@@ -1,0 +1,46 @@
+"""Central draft-audience decisions shared by Store and workflow reads."""
+
+from typing import Protocol
+
+from coeus.domain.auth import RoleName, UserAccount
+from coeus.domain.draft_audience import DraftAudienceReason
+from coeus.domain.store import StoreProduct
+
+
+class DraftAudiencePolicy(Protocol):
+    def reason_for_store_read(
+        self, actor: UserAccount, product: StoreProduct
+    ) -> DraftAudienceReason | None:
+        pass
+
+    def permits(self, actor: UserAccount, reason: DraftAudienceReason | None) -> bool:
+        pass
+
+
+class RoleAwareDraftAudiencePolicy:
+    """Authorise only a supplied object relationship or an explicit privileged role."""
+
+    def reason_for_store_read(
+        self, actor: UserAccount, product: StoreProduct
+    ) -> DraftAudienceReason | None:
+        if product.created_by_user_id == actor.user_id:
+            return DraftAudienceReason.CREATOR
+        if RoleName.ADMINISTRATOR in actor.roles:
+            return DraftAudienceReason.ADMINISTRATOR
+        if RoleName.INTELLIGENCE_STORE_MANAGER in actor.roles:
+            return DraftAudienceReason.STORE_MANAGER
+        return None
+
+    def permits(self, actor: UserAccount, reason: DraftAudienceReason | None) -> bool:
+        if reason is None:
+            return False
+        if reason == DraftAudienceReason.ADMINISTRATOR:
+            return RoleName.ADMINISTRATOR in actor.roles
+        if reason == DraftAudienceReason.STORE_MANAGER:
+            return RoleName.INTELLIGENCE_STORE_MANAGER in actor.roles
+        return reason in {
+            DraftAudienceReason.CREATOR,
+            DraftAudienceReason.ASSIGNED_ANALYST,
+            DraftAudienceReason.RESPONSIBLE_MANAGER,
+            DraftAudienceReason.QUALITY_CONTROL,
+        }

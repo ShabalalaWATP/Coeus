@@ -91,7 +91,8 @@ class SimilarRequestService:
             added_by_user_id=actor.user_id,
             created_at=datetime.now(UTC),
         )
-        updated = self._tickets.tickets.save_system_update(
+        updated = self._tickets.tickets.save_system_update_if_current(
+            target,
             replace(
                 target,
                 collaborators=(*target.collaborators, collaborator),
@@ -104,7 +105,7 @@ class SimilarRequestService:
                         f"{actor.display_name} joined from {source.reference}.",
                     ),
                 ),
-            )
+            ),
         )
         try:
             self._audit_log.record(
@@ -122,7 +123,7 @@ class SimilarRequestService:
                 {"ticket_id": str(source.ticket_id), "related_ticket_id": str(target.ticket_id)},
             )
         except Exception:
-            self._tickets.tickets.save_system_update(target)
+            self._tickets.tickets.restore_system_update_if_current(updated, target)
             raise
         return updated
 
@@ -171,13 +172,13 @@ class SimilarRequestService:
         try:
             source_updated = self._save_related_link(source, related, actor)
         except Exception:
-            self._tickets.tickets.save_system_update(related)
+            self._tickets.tickets.restore_system_update_if_current(related_updated, related)
             raise
         try:
             self._audit_link(actor, source_updated, related_updated, already_linked=False)
         except Exception:
-            self._tickets.tickets.save_system_update(source)
-            self._tickets.tickets.save_system_update(related)
+            self._tickets.tickets.restore_system_update_if_current(source_updated, source)
+            self._tickets.tickets.restore_system_update_if_current(related_updated, related)
             raise
         return source_updated
 
@@ -224,7 +225,8 @@ class SimilarRequestService:
     def _save_related_link(
         self, target: TicketRecord, related: TicketRecord, actor: UserAccount
     ) -> TicketRecord:
-        return self._tickets.tickets.save_system_update(
+        return self._tickets.tickets.save_system_update_if_current(
+            target,
             replace(
                 target,
                 related_ticket_ids=_append_uuid(target.related_ticket_ids, related.ticket_id),
@@ -237,7 +239,7 @@ class SimilarRequestService:
                         f"Linked as related to {related.reference}.",
                     ),
                 ),
-            )
+            ),
         )
 
     def _audit_link(

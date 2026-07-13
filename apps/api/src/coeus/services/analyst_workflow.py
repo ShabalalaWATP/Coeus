@@ -4,6 +4,7 @@ from uuid import UUID
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
 from coeus.domain.auth import UserAccount
+from coeus.domain.draft_audience import DraftAudienceReason
 from coeus.domain.enums import TicketState
 from coeus.domain.qc import QcDecisionStatus
 from coeus.domain.state_machine import can_transition
@@ -83,7 +84,9 @@ class AnalystWorkflowService:
         visible: list[LinkedAnalystProduct] = []
         for link in ticket.linked_products[:ANALYST_LINKED_PRODUCT_LIMIT]:
             try:
-                self._store.details.get_workflow_visible_product(actor, link.product_id)
+                self._store.details.get_workflow_visible_product(
+                    actor, link.product_id, DraftAudienceReason.ASSIGNED_ANALYST
+                )
             except AppError:
                 continue
             visible.append(link)
@@ -98,7 +101,8 @@ class AnalystWorkflowService:
             created_by_user_id=actor.user_id,
             created_at=now(),
         )
-        updated = self._tickets.tickets.save_system_update(
+        updated = self._tickets.tickets.save_system_update_if_current(
+            ticket,
             replace(
                 ticket,
                 analyst_notes=(*ticket.analyst_notes, note),
@@ -106,10 +110,11 @@ class AnalystWorkflowService:
                     *ticket.timeline,
                     timeline(ticket.ticket_id, actor.user_id, "analyst_note_added", body),
                 ),
-            )
+            ),
         )
         self._record_audit_or_rollback(
             ticket,
+            updated,
             "analyst_note_added",
             actor,
             {"ticket_id": str(ticket_id)},
@@ -126,7 +131,9 @@ class AnalystWorkflowService:
             )
         if any(link.product_id == product_id for link in ticket.linked_products):
             raise AppError(409, "product_already_linked", "Product is already linked.")
-        product = self._store.details.get_workflow_visible_product(actor, product_id)
+        product = self._store.details.get_workflow_visible_product(
+            actor, product_id, DraftAudienceReason.ASSIGNED_ANALYST
+        )
         link = linked_product_record(
             ticket.ticket_id,
             product.product_id,
@@ -135,7 +142,8 @@ class AnalystWorkflowService:
             product.metadata.summary,
             actor.user_id,
         )
-        updated = self._tickets.tickets.save_system_update(
+        updated = self._tickets.tickets.save_system_update_if_current(
+            ticket,
             replace(
                 ticket,
                 linked_products=(*ticket.linked_products, link),
@@ -143,10 +151,11 @@ class AnalystWorkflowService:
                     *ticket.timeline,
                     timeline(ticket.ticket_id, actor.user_id, "analyst_product_linked", link.title),
                 ),
-            )
+            ),
         )
         self._record_audit_or_rollback(
             ticket,
+            updated,
             "analyst_product_linked",
             actor,
             {"ticket_id": str(ticket_id), "product_id": str(product_id)},
@@ -170,7 +179,8 @@ class AnalystWorkflowService:
             replace(package, status=status) if package.package_id == package_id else package
             for package in ticket.work_packages
         )
-        updated = self._tickets.tickets.save_system_update(
+        updated = self._tickets.tickets.save_system_update_if_current(
+            ticket,
             replace(
                 ticket,
                 work_packages=packages,
@@ -178,10 +188,11 @@ class AnalystWorkflowService:
                     *ticket.timeline,
                     timeline(ticket.ticket_id, actor.user_id, "work_package_updated", status.value),
                 ),
-            )
+            ),
         )
         self._record_audit_or_rollback(
             ticket,
+            updated,
             "work_package_updated",
             actor,
             {
@@ -208,7 +219,8 @@ class AnalystWorkflowService:
             assets,
             actor.user_id,
         )
-        updated = self._tickets.tickets.save_system_update(
+        updated = self._tickets.tickets.save_system_update_if_current(
+            ticket,
             replace(
                 ticket,
                 draft_products=(*ticket.draft_products, version),
@@ -216,10 +228,11 @@ class AnalystWorkflowService:
                     *ticket.timeline,
                     timeline(ticket.ticket_id, actor.user_id, "draft_product_saved", draft.title),
                 ),
-            )
+            ),
         )
         self._record_audit_or_rollback(
             ticket,
+            updated,
             "draft_product_saved",
             actor,
             {"ticket_id": str(ticket_id)},
@@ -249,7 +262,8 @@ class AnalystWorkflowService:
         event_type = "submitted_to_qc" if rework else "submitted_to_manager"
         summary = "Resubmitted to QC." if rework else "Submitted to the team manager."
         self._ensure_transition(ticket.state, target)
-        updated = self._tickets.tickets.save_system_update(
+        updated = self._tickets.tickets.save_system_update_if_current(
+            ticket,
             replace(
                 ticket,
                 state=target,
@@ -257,9 +271,11 @@ class AnalystWorkflowService:
                     *ticket.timeline,
                     timeline(ticket.ticket_id, actor.user_id, event_type, summary),
                 ),
-            )
+            ),
         )
-        self._record_audit_or_rollback(ticket, event_type, actor, {"ticket_id": str(ticket_id)})
+        self._record_audit_or_rollback(
+            ticket, updated, event_type, actor, {"ticket_id": str(ticket_id)}
+        )
         return updated
 
     @staticmethod
@@ -291,12 +307,19 @@ class AnalystWorkflowService:
     def _record_audit_or_rollback(
         self,
         original_ticket: TicketRecord,
+        updated_ticket: TicketRecord,
         event_type: str,
         actor: UserAccount,
         details: dict[str, str],
     ) -> None:
         record_ticket_audit_or_rollback(
-            self._tickets.tickets, self._audit_log, original_ticket, event_type, actor, details
+            self._tickets.tickets,
+            self._audit_log,
+            original_ticket,
+            updated_ticket,
+            event_type,
+            actor,
+            details,
         )
 
     @staticmethod

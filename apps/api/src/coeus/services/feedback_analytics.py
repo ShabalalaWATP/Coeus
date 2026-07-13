@@ -107,7 +107,8 @@ class FeedbackAnalyticsService:
             created_at=datetime.now(UTC),
         )
         updated_request = replace(request, status=FeedbackRequestStatus.SUBMITTED)
-        updated = self._tickets.tickets.save_system_update(
+        updated = self._tickets.tickets.save_system_update_if_current(
+            ticket,
             replace(
                 ticket,
                 feedback_requests=tuple(
@@ -119,12 +120,13 @@ class FeedbackAnalyticsService:
                     *ticket.timeline,
                     timeline(ticket.ticket_id, actor.user_id, "feedback_submitted", comment),
                 ),
-            )
+            ),
         )
         record_ticket_audit_or_rollback(
             self._tickets.tickets,
             self._audit_log,
             ticket,
+            updated,
             "feedback_submitted",
             actor,
             {"ticket_id": str(ticket.ticket_id), "request_id": str(request_id)},

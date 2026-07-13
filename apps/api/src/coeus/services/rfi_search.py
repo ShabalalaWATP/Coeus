@@ -160,7 +160,8 @@ class RfiSearchService:
             recipient_user_id=actor.user_id,
             created_at=now,
         )
-        updated = self._tickets.save_system_update(
+        updated = self._tickets.save_system_update_if_current(
+            ticket,
             replace(
                 ticket,
                 state=TicketState.CLOSED_EXISTING_PRODUCT_ACCEPTED,
@@ -176,7 +177,7 @@ class RfiSearchService:
                         f"Accepted existing product {offer.title}.",
                     ),
                 ),
-            )
+            ),
         )
         self._record_audit_or_rollback(
             ticket,
@@ -205,7 +206,8 @@ class RfiSearchService:
             if not any(item.status == ProductOfferStatus.OFFERED for item in offers)
             else TicketState.RFI_MATCH_OFFERED
         )
-        updated = self._tickets.save_system_update(
+        updated = self._tickets.save_system_update_if_current(
+            ticket,
             replace(
                 ticket,
                 state=next_state,
@@ -215,7 +217,7 @@ class RfiSearchService:
                     *ticket.timeline,
                     timeline(ticket.ticket_id, actor.user_id, "product_offer_rejected", reason),
                 ),
-            )
+            ),
         )
         self._record_audit_or_rollback(
             ticket,

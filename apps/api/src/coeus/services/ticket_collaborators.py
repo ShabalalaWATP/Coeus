@@ -65,7 +65,8 @@ class TicketCollaboratorService:
         others = tuple(
             existing for existing in ticket.collaborators if existing.user_id != user.user_id
         )
-        updated = self._tickets.save_system_update(
+        updated = self._tickets.save_system_update_if_current(
+            ticket,
             replace(
                 ticket,
                 collaborators=(*others, collaborator),
@@ -78,7 +79,7 @@ class TicketCollaboratorService:
                         f"{user.display_name} tagged as {access.value}.",
                     ),
                 ),
-            )
+            ),
         )
         try:
             self._audit_log.record(
@@ -91,7 +92,7 @@ class TicketCollaboratorService:
                 },
             )
         except Exception:
-            self._tickets.save_system_update(ticket)
+            self._tickets.restore_system_update_if_current(updated, ticket)
             raise
         return updated
 
@@ -103,7 +104,8 @@ class TicketCollaboratorService:
         )
         if removed is None:
             raise AppError(404, "collaborator_not_found", "Collaborator was not found.")
-        updated = self._tickets.save_system_update(
+        updated = self._tickets.save_system_update_if_current(
+            ticket,
             replace(
                 ticket,
                 collaborators=tuple(
@@ -118,7 +120,7 @@ class TicketCollaboratorService:
                         f"{removed.display_name} untagged.",
                     ),
                 ),
-            )
+            ),
         )
         try:
             self._audit_log.record(
@@ -127,7 +129,7 @@ class TicketCollaboratorService:
                 {"ticket_id": str(ticket.ticket_id), "collaborator_user_id": str(user_id)},
             )
         except Exception:
-            self._tickets.save_system_update(ticket)
+            self._tickets.restore_system_update_if_current(updated, ticket)
             raise
         return updated
 

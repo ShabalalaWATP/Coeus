@@ -42,7 +42,8 @@ class ManagerApprovalService:
         ticket = self._reviewable_ticket(actor, ticket_id)
         self._ensure_separation_of_duties(actor, ticket)
         self._ensure_transition(ticket.state, TicketState.QC_REVIEW)
-        updated = self._tickets.tickets.save_system_update(
+        updated = self._tickets.tickets.save_system_update_if_current(
+            ticket,
             replace(
                 ticket,
                 state=TicketState.QC_REVIEW,
@@ -55,12 +56,13 @@ class ManagerApprovalService:
                         "Manager approved the work and forwarded it to Quality Control.",
                     ),
                 ),
-            )
+            ),
         )
         record_ticket_audit_or_rollback(
             self._tickets.tickets,
             self._audit_log,
             ticket,
+            updated,
             "manager_approved",
             actor,
             {"ticket_id": str(ticket_id)},
@@ -73,7 +75,8 @@ class ManagerApprovalService:
             raise AppError(422, "reason_required", "A rework reason is required.")
         ticket = self._reviewable_ticket(actor, ticket_id)
         self._ensure_transition(ticket.state, TicketState.ANALYST_IN_PROGRESS)
-        updated = self._tickets.tickets.save_system_update(
+        updated = self._tickets.tickets.save_system_update_if_current(
+            ticket,
             replace(
                 ticket,
                 state=TicketState.ANALYST_IN_PROGRESS,
@@ -81,12 +84,13 @@ class ManagerApprovalService:
                     *ticket.timeline,
                     timeline(ticket.ticket_id, actor.user_id, "manager_returned_rework", cleaned),
                 ),
-            )
+            ),
         )
         record_ticket_audit_or_rollback(
             self._tickets.tickets,
             self._audit_log,
             ticket,
+            updated,
             "manager_returned_rework",
             actor,
             {"ticket_id": str(ticket_id)},

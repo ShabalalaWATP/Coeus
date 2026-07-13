@@ -262,11 +262,11 @@ class RoutingService:
         actor_user_id: UUID,
         metadata: dict[str, str],
     ) -> TicketRecord:
-        updated = self._tickets.tickets.save_system_update(proposed)
+        updated = self._tickets.tickets.save_system_update_if_current(original, proposed)
         try:
             self._audit_log.record(event_type, str(actor_user_id), metadata)
         except Exception:
-            self._tickets.tickets.save_system_update(original)
+            self._tickets.tickets.restore_system_update_if_current(updated, original)
             raise
         return updated
 

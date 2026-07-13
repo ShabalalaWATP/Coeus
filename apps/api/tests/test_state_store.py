@@ -121,6 +121,9 @@ class FakeEngine:
     def begin(self) -> "FakeConnection":
         return FakeConnection(self)
 
+    def connect(self) -> "FakeConnection":
+        return FakeConnection(self)
+
 
 class FakeConnection:
     def __init__(self, engine: FakeEngine) -> None:
@@ -135,16 +138,39 @@ class FakeConnection:
     def execute(self, statement: object, params: dict[str, object] | None = None) -> "FakeResult":
         sql = str(statement).strip()
         self._engine.statements.append(sql)
+        if "SELECT count(*) FROM coeus_ticket_aggregates" in sql:
+            return FakeResult(None, scalar=0)
+        if "SELECT payload FROM coeus_state WHERE namespace = 'tickets'" in sql:
+            return FakeResult(None)
+        if "SELECT ticket_id::text, canonical_hash" in sql:
+            return FakeResult(None, rows=[])
         if sql.startswith("SELECT") and params is not None:
             return FakeResult(self._engine.rows.get(str(params["namespace"])))
-        if sql.startswith("INSERT") and params is not None:
+        if sql.startswith("INSERT") and params is not None and "namespace" in params:
             self._engine.rows[str(params["namespace"])] = json.loads(str(params["payload"]))
         return FakeResult(None)
 
 
 class FakeResult:
-    def __init__(self, payload: dict[str, object] | None) -> None:
+    def __init__(
+        self,
+        payload: dict[str, object] | None,
+        *,
+        scalar: object | None = None,
+        rows: list[tuple[object, ...]] | None = None,
+    ) -> None:
         self._payload = payload
+        self._scalar = scalar
+        self._rows = rows or []
 
     def first(self) -> tuple[dict[str, object]] | None:
         return (self._payload,) if self._payload is not None else None
+
+    def scalar_one(self) -> object:
+        return self._scalar
+
+    def scalar_one_or_none(self) -> object | None:
+        return self._scalar
+
+    def all(self) -> list[tuple[object, ...]]:
+        return self._rows

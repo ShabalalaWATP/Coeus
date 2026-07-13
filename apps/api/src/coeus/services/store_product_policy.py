@@ -1,26 +1,41 @@
 from coeus.core.permissions import Permission
 from coeus.domain.access import ProductStatus
 from coeus.domain.auth import RoleName, UserAccount
+from coeus.domain.draft_audience import DraftAudienceReason
 from coeus.domain.store import StoreProduct, StoreVisibilityScope
 from coeus.repositories.access import AccessRepository
+from coeus.services.draft_audience import DraftAudiencePolicy, RoleAwareDraftAudiencePolicy
 
 
 class StoreProductAccessPolicy:
-    def __init__(self, access_repository: AccessRepository) -> None:
+    def __init__(
+        self,
+        access_repository: AccessRepository,
+        draft_audience: DraftAudiencePolicy | None = None,
+    ) -> None:
         self._access_repository = access_repository
+        self._draft_audience = draft_audience or RoleAwareDraftAudiencePolicy()
 
     def can_read(self, user: UserAccount, product: StoreProduct) -> bool:
-        if not self.can_read_for_workflow(user, product):
+        if not self._can_read_base(user, product):
             return False
         metadata = product.metadata
-        return not (
-            metadata.status == ProductStatus.DRAFT
-            and product.created_by_user_id != user.user_id
-            and not _can_read_all_drafts(user)
+        return metadata.status != ProductStatus.DRAFT or self._draft_audience.permits(
+            user, self._draft_audience.reason_for_store_read(user, product)
         )
 
-    def can_read_for_workflow(self, user: UserAccount, product: StoreProduct) -> bool:
-        """Apply all read controls except the draft audience already established by a task."""
+    def can_read_for_workflow(
+        self,
+        user: UserAccount,
+        product: StoreProduct,
+        reason: DraftAudienceReason,
+    ) -> bool:
+        return self._can_read_base(user, product) and (
+            product.metadata.status != ProductStatus.DRAFT
+            or self._draft_audience.permits(user, reason)
+        )
+
+    def _can_read_base(self, user: UserAccount, product: StoreProduct) -> bool:
         metadata = product.metadata
         if Permission.PRODUCT_READ not in user.permissions or not user.is_active:
             return False

@@ -11,6 +11,7 @@ EmbeddingProviderName = Literal["mock", "local", "gemini_api"]
 LlmProviderName = Literal["mock", "gemini_api", "openai_api", "vertex_ai", "bedrock"]
 ObjectStorageProviderName = Literal["local", "gcs"]
 PersistenceProviderName = Literal["memory", "file", "postgres"]
+TicketPersistenceMode = Literal["legacy", "shadow_validate"]
 SEED_USER_ENVIRONMENTS = frozenset({"local", "test"})
 SECURE_COOKIE_ENVIRONMENTS = frozenset({"staging", "prod"})
 HOSTED_ENVIRONMENTS = frozenset({"dev", "staging", "prod"})
@@ -115,6 +116,7 @@ class Settings(BaseSettings):
     upload_max_inflight_bytes: int = Field(default=100_000_000, ge=1)
     asset_token_secret: str = DEFAULT_ASSET_TOKEN_SECRET
     persistence_provider: PersistenceProviderName = "postgres"
+    ticket_persistence_mode: TicketPersistenceMode = "shadow_validate"
     persistence_path: str = ".local-data/state/coeus-state.json"
     # Seed the rich local demo dataset (extra products, demo tickets across the
     # workflow, feedback and calendars). None means "auto": on for local only.

@@ -110,11 +110,12 @@ class AnalystAssignmentService:
             team.name,
             reassignment=reassignment,
         )
-        updated = self._tickets.tickets.save_system_update(change.ticket)
+        updated = self._tickets.tickets.save_system_update_if_current(ticket, change.ticket)
         record_ticket_audit_or_rollback(
             self._tickets.tickets,
             self._audit_log,
             ticket,
+            updated,
             change.event_type,
             actor,
             change.audit_metadata,
