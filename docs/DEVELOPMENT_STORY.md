@@ -9,6 +9,9 @@ Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVEL
   Store product, audit evidence and notification intent. Forced audit failure
   rolls the full unit back, while two concurrent adapters produce one commit
   and one conflict.
+- Cut requester cancellation, no-match consent, collect choice and delivery
+  confirmation over to the same hosted ticket-and-audit transaction while
+  retaining the existing local compensation behaviour and API responses.
 - Added hosted outbox delivery for product release notifications with strict
   payload validation, active-requester resolution, fenced retries and durable
   event-ID deduplication for both in-app and email records. Local and

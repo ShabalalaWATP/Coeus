@@ -63,6 +63,7 @@ def configure_application_state(app: FastAPI, settings: Settings) -> None:
     """Assemble the local-first application through named responsibility groups."""
     app.state.settings = settings
     app.state.state_store = build_state_store(settings)
+    app.state.workflow_transaction = _workflow_transaction(app, settings)
     app.state.asset_token_service = AssetTokenService(settings.asset_token_secret)
     app.state.object_storage = build_object_storage(settings)
     app.state.upload_admission = _upload_admission(settings)
@@ -200,6 +201,7 @@ def _configure_workflow_services(
     app.state.ticket_lifecycle_service = TicketLifecycleService(
         tickets=tickets.tickets,
         audit_log=audit_log,
+        transaction=app.state.workflow_transaction,
     )
     app.state.similar_request_service = SimilarRequestService(
         tickets,
@@ -243,7 +245,7 @@ def _configure_workflow_services(
         audit_log,
         app.state.object_storage,
         app.state.notification_service,
-        _workflow_transaction(app, settings),
+        app.state.workflow_transaction,
     )
     if settings.environment in HOSTED_ENVIRONMENTS:
         app.state.outbox_dispatcher = OutboxDispatcher(

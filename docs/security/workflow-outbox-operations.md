@@ -39,9 +39,14 @@ competitor. Object bytes are ingested before this short database transaction
 and are discarded if the transaction fails. Provider calls and notification
 delivery remain outside it.
 
+Requester cancellation, no-match consent, collect choice and delivery
+confirmation use the same version-locked ticket and audit transaction. These
+single-ticket transitions create the ordinary `ticket_shadow_changed` event but
+do not create an external notification intent.
+
 Memory, file and non-relational modes retain the characterised local
-compensation path. Other workflow transitions have not yet moved to the
-transaction port and remain part of the Sprint 17 repair programme.
+compensation path. Other staff and agent workflow transitions have not yet
+moved to the transaction port and remain part of the Sprint 17 repair programme.
 
 ## Operator checks
 

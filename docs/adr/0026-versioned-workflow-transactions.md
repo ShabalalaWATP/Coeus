@@ -48,6 +48,8 @@ succeeding from one snapshot, leaving workflow and publication inconsistent.
 - PostgreSQL relational QC release owns the ticket row lock and commits the
   ticket, Store projection, audit event and uniquely keyed notification intent
   on one SQLAlchemy connection.
+- Requester cancellation, no-match consent, collect choice and delivery
+  confirmation use the same port for atomic ticket and audit persistence.
 - A failed audit append rolls the complete unit back. Concurrent commits from
   the same expected ticket snapshot yield one winner and one conflict.
 - The hosted dispatcher validates the notification payload, resolves an active

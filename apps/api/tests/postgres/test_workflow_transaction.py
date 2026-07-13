@@ -84,6 +84,51 @@ def _seed(database_url: str) -> tuple[TicketRecord, StoreProduct]:
     return ticket, _product(ticket)
 
 
+def test_ticket_update_commits_state_and_audit_as_one_unit(
+    postgres_database_url: str,
+) -> None:
+    ticket, product = _seed(postgres_database_url)
+    updated = replace(ticket, state=TicketState.CANCELLED)
+    audit, _notification = _intents(ticket, product)
+
+    assert PostgresWorkflowTransaction(postgres_database_url).commit_ticket_update(
+        ticket, updated, audit
+    )
+
+    restored = InMemoryTicketRepository(
+        PostgresStateStore(postgres_database_url, "relational")
+    ).get(ticket.ticket_id)
+    engine = create_engine(postgres_database_url)
+    with engine.connect() as connection:
+        audit_count = connection.execute(
+            text("SELECT count(*) FROM coeus_audit_events")
+        ).scalar_one()
+    assert restored == updated
+    assert audit_count == 1
+
+
+def test_ticket_update_rolls_back_state_when_audit_write_fails(
+    postgres_database_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ticket, product = _seed(postgres_database_url)
+    updated = replace(ticket, state=TicketState.CANCELLED)
+    audit, _notification = _intents(ticket, product)
+
+    def fail_audit(*_args: object) -> None:
+        raise RuntimeError("synthetic audit failure")
+
+    monkeypatch.setattr(PostgresWorkflowTransaction, "_append_audit", fail_audit)
+    with pytest.raises(RuntimeError, match="synthetic audit failure"):
+        PostgresWorkflowTransaction(postgres_database_url).commit_ticket_update(
+            ticket, updated, audit
+        )
+
+    restored = InMemoryTicketRepository(
+        PostgresStateStore(postgres_database_url, "relational")
+    ).get(ticket.ticket_id)
+    assert restored == ticket
+
+
 def test_qc_release_commits_ticket_product_audit_and_notification(
     postgres_database_url: str,
 ) -> None:
