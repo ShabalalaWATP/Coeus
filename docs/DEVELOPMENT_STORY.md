@@ -2,6 +2,20 @@
 
 Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVELOPMENT_STORY_SPRINTS_01-13.md). The longer 2026-07-06 continuation lives in [DEVELOPMENT_STORY_2026-07-06.md](DEVELOPMENT_STORY_2026-07-06.md).
 
+## 2026-07-13 security repair and hardening
+
+- Cut persistence writers over to semantic stable type and enum IDs after
+  validating dual-format readers and committed identity goldens. Legacy
+  snapshots remain readable for rollback compatibility, while unknown and
+  ambiguous identities fail closed.
+- Added a CI architecture gate that prevents domain, persistence and repository
+  layers from importing service or API implementations. Demo ticket assembly
+  moved to the service layer so the gate starts without exceptions.
+- Projected ticket requester, lifecycle state and capacity consumption into
+  indexed relational columns. Shared ticket admission no longer queries codec
+  JSON internals, and memory and PostgreSQL adapters now share one terminal
+  state policy.
+
 ## 2026-07-11 cross-role usability and documentation accuracy
 
 - Completed the desktop cross-role audit across customer, JIOC, team manager,

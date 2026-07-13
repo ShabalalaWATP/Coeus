@@ -6,13 +6,13 @@ import pytest
 from coeus.core.config import Settings
 from coeus.persistence import state_store
 from coeus.persistence.audit_store import PostgresAuditEventStore
+from coeus.persistence.database_url import synchronous_database_url
 from coeus.persistence.factory import build_audit_event_store, build_state_store
 from coeus.persistence.relational_schema import store_schema_statements
 from coeus.persistence.state_store import (
     FileStateStore,
     MemoryStateStore,
     PostgresStateStore,
-    _sync_database_url,
 )
 
 
@@ -96,7 +96,10 @@ def test_store_relational_schema_has_access_and_search_indexes() -> None:
 
 
 def test_sync_database_url_leaves_non_asyncpg_urls() -> None:
-    assert _sync_database_url("postgresql+psycopg://example") == "postgresql+psycopg://example"
+    assert (
+        synchronous_database_url("postgresql+psycopg://example")
+        == "postgresql+psycopg://example"
+    )
 
 
 def test_factory_builds_postgres_state_store(monkeypatch: pytest.MonkeyPatch) -> None:

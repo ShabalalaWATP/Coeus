@@ -26,8 +26,8 @@ def test_postgres_round_trips_legacy_and_stable_codec_payloads(
     store.save(
         "codec_fixture",
         {
-            "legacy": encode_value(update),
-            "stable": encode_value(update, write_format=CodecWriteFormat.STABLE),
+            "legacy": encode_value(update, write_format=CodecWriteFormat.LEGACY),
+            "stable": encode_value(update),
         },
     )
 

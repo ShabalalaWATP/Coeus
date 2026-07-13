@@ -2,7 +2,7 @@
 
 ## Status And Authority
 
-Status: planned and release-blocking from 2026-07-13.
+Status: implementation in progress and release-blocking from 2026-07-13.
 
 This plan is the implementation handoff for Sprint 17. It sits below the
 authoritative root `coeus_spec_driven_implementation_plan.md` and must be kept in

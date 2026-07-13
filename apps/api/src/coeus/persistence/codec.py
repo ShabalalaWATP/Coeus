@@ -28,7 +28,7 @@ class CodecWriteFormat(StrEnum):
 )
 
 
-def encode_value(value: Any, *, write_format: CodecWriteFormat = CodecWriteFormat.LEGACY) -> Any:
+def encode_value(value: Any, *, write_format: CodecWriteFormat = CodecWriteFormat.STABLE) -> Any:
     if not isinstance(value, type) and is_dataclass(value):
         identity_key, identity = _encoded_identity(
             type(value), write_format, _TYPE_ID_BY_CLASS, "__type__", "__type_id__"

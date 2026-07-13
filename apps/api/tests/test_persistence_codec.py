@@ -118,7 +118,7 @@ def test_container_and_scalar_codec_branches_round_trip() -> None:
     assert encode_value({"list": ["value"]}) == {"list": ["value"]}
 
 
-def test_reader_accepts_stable_ids_while_default_writer_remains_legacy() -> None:
+def test_default_writer_uses_stable_ids_and_reader_retains_legacy_compatibility() -> None:
     update = WorkflowPlanUpdate(
         update_id=uuid4(),
         ticket_id=uuid4(),
@@ -129,8 +129,8 @@ def test_reader_accepts_stable_ids_while_default_writer_remains_legacy() -> None
         created_at=datetime.now(UTC),
     )
 
-    legacy = encode_value(update)
-    stable = encode_value(update, write_format=CodecWriteFormat.STABLE)
+    legacy = encode_value(update, write_format=CodecWriteFormat.LEGACY)
+    stable = encode_value(update)
 
     assert legacy["__type__"] == "coeus.domain.tickets.WorkflowPlanUpdate"
     assert "__type_id__" not in legacy
