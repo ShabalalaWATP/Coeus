@@ -2,6 +2,7 @@ from contextlib import suppress
 from dataclasses import replace
 from uuid import UUID
 
+from coeus.application.ports.workflow_transaction import WorkflowTransactionPort
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
 from coeus.domain.auth import UserAccount
@@ -157,15 +158,16 @@ class QualityControlService:
             # One durable success event avoids a partially written audit trail
             # claiming approval when a second append fails and release is
             # compensated.
-            self._audit_log.record(
-                outcome.audit_event,
-                str(actor.user_id),
-                {
-                    "ticket_id": str(ticket_id),
-                    "product_id": str(product.product_id),
-                    "qc_approved": "true",
-                },
-            )
+            if not outcome.audit_committed:
+                self._audit_log.record(
+                    outcome.audit_event,
+                    str(actor.user_id),
+                    {
+                        "ticket_id": str(ticket_id),
+                        "product_id": str(product.product_id),
+                        "qc_approved": "true",
+                    },
+                )
         except Exception:
             # The release step, ticket update or audit failed after ingestion;
             # restore the original workflow state and remove the product so
@@ -177,7 +179,8 @@ class QualityControlService:
                     self._tickets.tickets.restore_system_update_if_current(outcome.ticket, ticket)
             self._ingestion.discard(product.product_id)
             raise
-        self._release.notify_best_effort(actor, outcome)
+        if not outcome.audit_committed:
+            self._release.notify_best_effort(actor, outcome)
         return outcome.ticket
 
     def reject(self, actor: UserAccount, ticket_id: UUID, reason: str) -> TicketRecord:
@@ -231,12 +234,20 @@ def build_quality_control_service(
     audit_log: AuditLog,
     storage: ObjectStorage,
     notifications: NotificationService,
+    transaction: WorkflowTransactionPort | None = None,
 ) -> QualityControlService:
     return QualityControlService(
         tickets,
         ReleaseCheckService(access_repository),
         ProductAutoIngestionService(store, access_repository, storage),
         ProductIndexingService(),
-        QcReleaseStep(tickets, store, access_repository, notifications, audit_log),
+        QcReleaseStep(
+            tickets,
+            store,
+            access_repository,
+            notifications,
+            audit_log,
+            transaction,
+        ),
         audit_log,
     )

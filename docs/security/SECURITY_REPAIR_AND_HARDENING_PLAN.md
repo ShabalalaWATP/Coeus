@@ -212,6 +212,12 @@ coordinated database/object-storage restore all pass with zero reconciliation
 differences, orphan or duplicate records, or data loss. N-1 code runs against
 the expanded schema, and every adapter passes one transaction contract suite.
 
+Implementation note, 2026-07-13: hosted PostgreSQL QC release now commits its
+versioned ticket, Store projection, audit evidence and notification intent in
+one transaction. Durable delivery is retry-fenced and event-ID deduplicated.
+Forced rollback and concurrent one-winner tests pass. Remaining transition
+classes, adapter-wide contracts and coordinated restore evidence keep Phase 4 open.
+
 ### Phase 5: SOLID And Maintainability Consolidation
 
 Refactor only behind the behaviour and security tests established above:

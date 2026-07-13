@@ -15,6 +15,7 @@ from coeus.domain.agent_names import RFI_SEARCH_AGENT
 from coeus.domain.auth import UserAccount
 from coeus.domain.enums import TicketState
 from coeus.domain.state_machine import can_transition
+from coeus.domain.ticket_page import TicketPage
 from coeus.domain.tickets import (
     AgentRun,
     AgentRunStatus,
@@ -44,12 +45,6 @@ if TYPE_CHECKING:
 class TicketServices:
     tickets: "TicketService"
     conversations: "ConversationService"
-
-
-@dataclass(frozen=True)
-class TicketPage:
-    tickets: tuple[TicketRecord, ...]
-    next_cursor: UUID | None
 
 
 class TicketService:
@@ -321,6 +316,9 @@ class TicketService:
         self, expected: TicketRecord, original: TicketRecord
     ) -> bool:
         return self._repository.save_if_current(expected, original)
+
+    def accept_committed_system_update(self, ticket: TicketRecord) -> None:
+        self._repository.accept_committed(ticket)
 
     def state_for_intake(self, current: TicketState, intake: IntakeDetails) -> TicketState:
         target = (

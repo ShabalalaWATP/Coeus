@@ -6,6 +6,8 @@ from coeus.application.ports.admission import ResourceAdmission
 from coeus.core.config import HOSTED_ENVIRONMENTS, Settings
 from coeus.persistence.factory import build_audit_event_store, build_state_store
 from coeus.persistence.outbox import PostgresOutboxStore
+from coeus.persistence.state_store import PostgresStateStore
+from coeus.persistence.workflow_transaction import PostgresWorkflowTransaction
 from coeus.repositories.access import SeedAccessRepository
 from coeus.repositories.acg_applications import AcgApplicationRepository
 from coeus.repositories.auth import LoginAttemptRepository, SeedUserRepository, SessionRepository
@@ -32,6 +34,7 @@ from coeus.services.passwords import PasswordHasher
 from coeus.services.postgres_resource_admission import PostgresResourceAdmissionController
 from coeus.services.quality_control import build_quality_control_service
 from coeus.services.registration import RegistrationService
+from coeus.services.release_notification_handler import ProductReleaseNotificationHandler
 from coeus.services.resource_admission import LocalResourceAdmissionController
 from coeus.services.rfi_search import build_rfi_search_service
 from coeus.services.routing import build_routing_service
@@ -64,14 +67,6 @@ def configure_application_state(app: FastAPI, settings: Settings) -> None:
     app.state.object_storage = build_object_storage(settings)
     app.state.upload_admission = _upload_admission(settings)
     app.state.search_admission = _search_admission(settings)
-    if settings.environment in HOSTED_ENVIRONMENTS:
-        app.state.outbox_dispatcher = OutboxDispatcher(
-            PostgresOutboxStore(settings.database_url),
-            {"ticket_shadow_changed": lambda _message: None},
-            lease_seconds=settings.outbox_lease_seconds,
-            retry_seconds=settings.outbox_retry_seconds,
-            max_attempts=settings.outbox_max_attempts,
-        )
     identity = _configure_identity(app, settings)
     _configure_data_services(app, settings, identity)
     _configure_workflow_services(app, settings, identity)
@@ -248,7 +243,21 @@ def _configure_workflow_services(
         audit_log,
         app.state.object_storage,
         app.state.notification_service,
+        _workflow_transaction(app, settings),
     )
+    if settings.environment in HOSTED_ENVIRONMENTS:
+        app.state.outbox_dispatcher = OutboxDispatcher(
+            PostgresOutboxStore(settings.database_url),
+            {
+                "ticket_shadow_changed": lambda _message: None,
+                "product_release_notification": ProductReleaseNotificationHandler(
+                    identity.users, app.state.notification_service
+                ),
+            },
+            lease_seconds=settings.outbox_lease_seconds,
+            retry_seconds=settings.outbox_retry_seconds,
+            max_attempts=settings.outbox_max_attempts,
+        )
     app.state.feedback_analytics_service = build_feedback_analytics_service(
         tickets,
         store,
@@ -267,3 +276,10 @@ def _configure_workflow_services(
         app.state.team_repository,
         audit_log,
     )
+
+
+def _workflow_transaction(app: FastAPI, settings: Settings) -> PostgresWorkflowTransaction | None:
+    state_store = app.state.state_store
+    if isinstance(state_store, PostgresStateStore) and state_store.ticket_mode == "relational":
+        return PostgresWorkflowTransaction(settings.database_url)
+    return None

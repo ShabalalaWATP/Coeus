@@ -51,6 +51,8 @@ class StoreRepository(Protocol):
 
     def next_reference(self) -> str: ...
 
+    def accept_committed(self, product: StoreProduct) -> None: ...
+
 
 class InMemoryStoreRepository:
     def __init__(
@@ -173,6 +175,10 @@ class InMemoryStoreRepository:
             reference = f"PROD-{self._reference_counter}"
             if reference not in existing:
                 return reference
+
+    def accept_committed(self, product: StoreProduct) -> None:
+        """Update the cache after a transaction port has durably committed."""
+        self._products[product.product_id] = product
 
     def _restore_or_persist(self) -> None:
         if self._restore_from_projection():

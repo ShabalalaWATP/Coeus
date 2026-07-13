@@ -81,6 +81,11 @@ class InMemoryTicketRepository:
         with self._lock:
             return tuple(self._tickets.values())
 
+    def accept_committed(self, ticket: TicketRecord) -> None:
+        """Update the cache after a transaction port has durably committed."""
+        with self._lock:
+            self._tickets[ticket.ticket_id] = ticket
+
     def _save_locked(self, ticket: TicketRecord) -> None:
         tickets = dict(self._tickets)
         self._counter = max(self._counter, _reference_counter(ticket.reference))

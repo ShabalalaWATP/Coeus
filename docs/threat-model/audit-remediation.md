@@ -32,16 +32,20 @@ across the API and web app.
 | A manager approves a route for a queue they do not manage by supplying an override reason. | Route approval requires the review permission of the queue the ticket currently sits in; the override reason remains required off-recommendation. |
 | A read-scoped role silently gains ticket write access. | `TICKET_READ_ALL` no longer confers write. Writes require ownership, editor collaboration or the explicit `TICKET_WRITE_ALL` permission. |
 | Free-text metadata crashes QC approval and leaves an orphaned draft product. | Time periods are ISO-date constrained at the schema boundary, sanitised on QC copy, and approval validates up front and rolls the product back if the ticket update fails. |
+| Concurrent or partially failed QC release publishes a product without matching ticket and audit state. | PostgreSQL relational mode locks and version-checks the ticket, then commits ticket, Store projection, audit evidence and a uniquely keyed notification intent in one transaction. Forced-failure and two-worker tests prove rollback and one-winner behaviour. |
+| An outbox retry duplicates a release notification after a worker crash. | The durable event ID is reused as the in-app notification and email record ID, so replay returns existing records. Malformed or inactive-requester intents fail into bounded retry and dead-letter handling. |
 | Store search filters act as wildcards. | `%`, `_` and `\` are escaped in ILIKE patterns; date filters parse ISO values and ignore invalid input. |
 | The one CSRF-exempt POST endpoint is used for request forgery. | Access diagnostics now requires the CSRF-validated session like every other mutating route. |
 
 ## Accepted Risks And Deferred Items
 
-- The in-memory, whole-namespace JSON persistence model is single-worker only.
-  Running multiple workers or instances remains unsafe and is a documented
-  deployment constraint pending a relational persistence redesign.
-- The audit log remains a bounded ring buffer (10,000 events); oldest events
-  are discarded at capacity. A durable audit store is future work.
+- The in-memory and file whole-namespace models remain single-worker only.
+  Hosted PostgreSQL relational mode is the multi-process authority, but only QC
+  release currently uses the complete workflow transaction port. Remaining
+  transition classes retain their tactical compare-and-swap boundaries.
+- Memory and file audit caches remain bounded to 10,000 events. PostgreSQL uses
+  the durable audit event table; retention and archival policy remain an
+  operational decision.
 - CSRF tokens remain raw in session records because `/auth/me` must return
   them; they are useless without the hashed session cookie.
 - Intake fields cannot be cleared through PATCH once set (nulls are filtered);

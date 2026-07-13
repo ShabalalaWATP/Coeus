@@ -22,6 +22,27 @@ effect and fail before marking the event delivered. The unique aggregate,
 version and event-type key prevents duplicate intent creation, while the
 external provider must use `event_id` as its idempotency key where supported.
 
+The hosted QC release handler uses the durable event identifier for both the
+in-app notification and recorded email. Replaying the same event therefore
+returns the existing records instead of creating duplicates. Missing, inactive
+or malformed requester payloads fail delivery and enter the bounded retry and
+dead-letter path.
+
+## Current transaction boundary
+
+In PostgreSQL relational mode, QC approval commits the version-checked ticket,
+published Store projection, dissemination and feedback records carried by the
+ticket, audit event and release-notification intent through
+`WorkflowTransactionPort`. The transaction locks the expected ticket row before
+writing and returns the existing `409 ticket_changed` contract to a stale
+competitor. Object bytes are ingested before this short database transaction
+and are discarded if the transaction fails. Provider calls and notification
+delivery remain outside it.
+
+Memory, file and non-relational modes retain the characterised local
+compensation path. Other workflow transitions have not yet moved to the
+transaction port and remain part of the Sprint 17 repair programme.
+
 ## Operator checks
 
 Monitor pending age, attempts, expired claims and dead-letter count. A dead

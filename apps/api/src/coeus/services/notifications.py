@@ -36,9 +36,21 @@ class NotificationService:
         title: str,
         body: str,
         link_path: str | None = None,
+        *,
+        notification_id: UUID | None = None,
     ) -> NotificationRecord:
+        existing_record = next(
+            (
+                record
+                for record in self._notifications.get(user.user_id, ())
+                if record.notification_id == notification_id
+            ),
+            None,
+        )
+        if existing_record is not None:
+            return existing_record
         record = NotificationRecord(
-            notification_id=uuid4(),
+            notification_id=notification_id or uuid4(),
             user_id=user.user_id,
             kind=kind,
             title=title,
@@ -58,10 +70,23 @@ class NotificationService:
             raise
         return record
 
-    def record_email(self, user: UserAccount, subject: str, body: str) -> EmailRecord:
+    def record_email(
+        self,
+        user: UserAccount,
+        subject: str,
+        body: str,
+        *,
+        email_id: UUID | None = None,
+    ) -> EmailRecord:
+        existing_email = next(
+            (email for email in self._outbox if email.email_id == email_id),
+            None,
+        )
+        if existing_email is not None:
+            return existing_email
         outbox_snapshot = tuple(self._outbox)
         email = EmailRecord(
-            email_id=uuid4(),
+            email_id=email_id or uuid4(),
             to_username=user.username,
             subject=subject,
             body=body,

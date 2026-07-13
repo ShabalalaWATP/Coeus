@@ -58,6 +58,11 @@ class AuditLog:
         with self._lock:
             return tuple(self._events)
 
+    def refresh_from_store(self) -> None:
+        """Refresh the bounded cache after an external transaction commits."""
+        with self._lock:
+            self._events = list(self.list_page(self._max_events).events)
+
     def list_page(self, limit: int, before_event_id: str | None = None) -> AuditEventPage:
         if limit < 1:
             raise ValueError("Audit page limit must be at least 1.")

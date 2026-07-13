@@ -4,6 +4,19 @@ Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVEL
 
 ## 2026-07-13 security repair and hardening
 
+- Introduced the application-owned workflow transaction port and cut hosted
+  PostgreSQL QC release over to one version-checked transaction for ticket,
+  Store product, audit evidence and notification intent. Forced audit failure
+  rolls the full unit back, while two concurrent adapters produce one commit
+  and one conflict.
+- Added hosted outbox delivery for product release notifications with strict
+  payload validation, active-requester resolution, fenced retries and durable
+  event-ID deduplication for both in-app and email records. Local and
+  non-relational release behaviour remains unchanged.
+- Verified this slice with Ruff, strict mypy, the architecture and line gates,
+  40 real PostgreSQL tests and the full 814-test backend suite at 97.26 percent
+  combined line and branch coverage.
+
 - Cut persistence writers over to semantic stable type and enum IDs after
   validating dual-format readers and committed identity goldens. Legacy
   snapshots remain readable for rollback compatibility, while unknown and

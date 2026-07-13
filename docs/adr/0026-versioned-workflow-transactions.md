@@ -4,6 +4,9 @@
 
 Accepted for Sprint 17, 2026-07-13.
 
+First production adapter slice implemented for QC release on 2026-07-13. The
+broader workflow cutover and restore gates remain in progress.
+
 ## Context
 
 Whole-namespace ticket persistence makes mutation cost grow with retained data.
@@ -39,3 +42,15 @@ succeeding from one snapshot, leaving workflow and publication inconsistent.
   transaction port.
 - Backfill, reconciliation, N-1 code, database/object restore, process restart,
   race ordering and outbox replay become release gates.
+
+## Implemented slice
+
+- PostgreSQL relational QC release owns the ticket row lock and commits the
+  ticket, Store projection, audit event and uniquely keyed notification intent
+  on one SQLAlchemy connection.
+- A failed audit append rolls the complete unit back. Concurrent commits from
+  the same expected ticket snapshot yield one winner and one conflict.
+- The hosted dispatcher validates the notification payload, resolves an active
+  requester and deduplicates in-app and email records by durable event ID.
+- Local and non-relational adapters retain existing behaviour. Remaining
+  transition classes and coordinated restore evidence are not yet complete.
