@@ -9,6 +9,7 @@ from coeus.api.dependencies import (
     get_search_admission,
     get_similar_request_service,
 )
+from coeus.application.ports.admission import ResourceAdmission
 from coeus.domain.auth import AuthenticatedSession
 from coeus.schemas.similar_requests import (
     SimilarRequestJoinResponse,
@@ -16,7 +17,6 @@ from coeus.schemas.similar_requests import (
     SimilarRequestNoticeResponse,
     SimilarRequestResponse,
 )
-from coeus.services.resource_admission import ResourceAdmission
 from coeus.services.similar_request_scoring import SimilarRequestMatch
 from coeus.services.similar_requests import SimilarRequestService
 

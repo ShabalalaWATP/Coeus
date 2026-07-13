@@ -5,7 +5,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from threading import RLock
 from types import TracebackType
-from typing import Literal, Protocol
+from typing import Literal
 from uuid import UUID
 
 from coeus.core.errors import AppError
@@ -103,20 +103,3 @@ class ProviderReservation:
             )
             self._admitted_at = None
         return False
-
-
-class ProviderReservationPort(Protocol):
-    def __enter__(self) -> "ProviderReservationPort": ...
-
-    def commit(self) -> None: ...
-
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc: BaseException | None,
-        traceback: TracebackType | None,
-    ) -> bool | None: ...
-
-
-class ProviderAdmission(Protocol):
-    def reserve(self, principal_id: UUID) -> ProviderReservationPort: ...

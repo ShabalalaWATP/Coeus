@@ -3,6 +3,7 @@ from typing import Annotated, cast
 
 from fastapi import Depends, Header, Request
 
+from coeus.application.ports.admission import ResourceAdmission
 from coeus.core.config import Settings
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
@@ -22,7 +23,6 @@ from coeus.services.notifications import NotificationService
 from coeus.services.object_storage import ObjectStorage
 from coeus.services.quality_control import QualityControlService
 from coeus.services.registration import RegistrationService
-from coeus.services.resource_admission import ResourceAdmission
 from coeus.services.rfi_search import RfiSearchService
 from coeus.services.routing import RoutingService
 from coeus.services.similar_requests import SimilarRequestService

@@ -73,6 +73,10 @@ class UploadReservation:
         self._controller._acquire(self._user_id, self._requested_bytes)
         self._active = True
 
+    def renew(self) -> None:
+        if not self._active:
+            raise RuntimeError("Cannot renew an inactive upload reservation.")
+
     def __exit__(
         self,
         _exc_type: type[BaseException] | None,

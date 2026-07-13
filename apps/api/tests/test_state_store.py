@@ -97,8 +97,7 @@ def test_store_relational_schema_has_access_and_search_indexes() -> None:
 
 def test_sync_database_url_leaves_non_asyncpg_urls() -> None:
     assert (
-        synchronous_database_url("postgresql+psycopg://example")
-        == "postgresql+psycopg://example"
+        synchronous_database_url("postgresql+psycopg://example") == "postgresql+psycopg://example"
     )
 
 

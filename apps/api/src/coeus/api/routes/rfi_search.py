@@ -9,6 +9,7 @@ from coeus.api.dependencies import (
     get_rfi_search_service,
     get_search_admission,
 )
+from coeus.application.ports.admission import ResourceAdmission
 from coeus.core.async_work import run_bounded_search
 from coeus.domain.auth import AuthenticatedSession
 from coeus.domain.tickets import ProductOffer, RfiSearchMetrics
@@ -18,7 +19,6 @@ from coeus.schemas.rfi_search import (
     RfiSearchMetricsResponse,
     RfiSearchResultsResponse,
 )
-from coeus.services.resource_admission import ResourceAdmission
 from coeus.services.rfi_search import RfiSearchResults, RfiSearchService
 
 router = APIRouter(prefix="/rfi-search", tags=["rfi-search"])

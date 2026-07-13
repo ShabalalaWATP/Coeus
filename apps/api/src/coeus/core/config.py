@@ -5,6 +5,8 @@ from urllib.parse import urlsplit
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from coeus.domain.admission import AdmissionMode
+
 EnvironmentName = Literal["local", "dev", "staging", "prod", "test"]
 EmailProviderName = Literal["outbox", "smtp"]
 EmbeddingProviderName = Literal["mock", "local", "gemini_api"]
@@ -84,6 +86,7 @@ class Settings(BaseSettings):
     provider_max_calls_per_window: int = Field(default=120, ge=1)
     provider_max_calls_per_principal: int = Field(default=30, ge=1)
     provider_window_seconds: int = Field(default=60, ge=1)
+    shared_resource_admission_mode: AdmissionMode = AdmissionMode.PRINCIPAL
     search_max_concurrent: int = Field(default=2, ge=1, le=32)
     search_max_concurrent_per_principal: int = Field(default=1, ge=1, le=8)
     ticket_max_retained: int = Field(default=10_000, ge=1)

@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from fastapi import FastAPI
 
+from coeus.application.ports.admission import ResourceAdmission
 from coeus.core.config import HOSTED_ENVIRONMENTS, Settings
 from coeus.persistence.factory import build_audit_event_store, build_state_store
 from coeus.repositories.access import SeedAccessRepository
@@ -29,7 +30,7 @@ from coeus.services.passwords import PasswordHasher
 from coeus.services.postgres_resource_admission import PostgresResourceAdmissionController
 from coeus.services.quality_control import build_quality_control_service
 from coeus.services.registration import RegistrationService
-from coeus.services.resource_admission import LocalResourceAdmissionController, ResourceAdmission
+from coeus.services.resource_admission import LocalResourceAdmissionController
 from coeus.services.rfi_search import build_rfi_search_service
 from coeus.services.routing import build_routing_service
 from coeus.services.similar_requests import SimilarRequestService
@@ -83,6 +84,7 @@ def _upload_admission(settings: Settings) -> ResourceAdmission:
             max_concurrent_per_principal=settings.upload_max_concurrent_per_user,
             max_units=settings.upload_max_inflight_bytes,
             lease_seconds=300,
+            mode=settings.shared_resource_admission_mode,
         )
     return UploadAdmissionController(
         max_concurrent=settings.upload_max_concurrent,
@@ -100,11 +102,13 @@ def _search_admission(settings: Settings) -> ResourceAdmission:
             max_concurrent_per_principal=settings.search_max_concurrent_per_principal,
             max_units=settings.search_max_concurrent,
             lease_seconds=70,
+            mode=settings.shared_resource_admission_mode,
         )
     return LocalResourceAdmissionController(
         max_concurrent=settings.search_max_concurrent,
         max_concurrent_per_principal=settings.search_max_concurrent_per_principal,
         max_units=settings.search_max_concurrent,
+        mode=settings.shared_resource_admission_mode,
     )
 
 

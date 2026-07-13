@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from typing import Protocol
 from uuid import UUID, uuid4
 
+from coeus.application.ports.admission import ProviderAdmission, TicketAdmission
 from coeus.core.errors import AppError
 from coeus.core.resource_limits import (
     MAX_ASSISTANT_REPLY_BYTES,
@@ -27,8 +28,6 @@ from coeus.services.audit import AuditLog
 from coeus.services.intake import IntakeAssistantProvider, IntakeExtractionService
 from coeus.services.intake_standard import next_elicitation
 from coeus.services.prioritisation import with_assessment
-from coeus.services.provider_admission import ProviderAdmission
-from coeus.services.ticket_admission import TicketAdmission
 from coeus.services.ticket_records import message as message_record
 from coeus.services.ticket_records import timeline
 

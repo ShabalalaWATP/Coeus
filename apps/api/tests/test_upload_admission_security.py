@@ -159,6 +159,34 @@ def test_upload_admission_releases_capacity_after_rejection() -> None:
         pass
 
 
+def test_upload_reservation_renewal_requires_an_active_context() -> None:
+    controller = UploadAdmissionController(
+        max_concurrent=1,
+        max_per_user=1,
+        max_inflight_bytes=1,
+    )
+    reservation = controller.reserve(uuid4(), 1)
+
+    with pytest.raises(RuntimeError, match="inactive"):
+        reservation.renew()
+    reservation.__enter__()
+    reservation.renew()
+    reservation.__exit__(None, None, None)
+    reservation.__exit__(None, None, None)
+
+
+def test_upload_admission_tracks_multiple_reservations_for_one_principal() -> None:
+    controller = UploadAdmissionController(
+        max_concurrent=2,
+        max_per_user=2,
+        max_inflight_bytes=2,
+    )
+    principal = uuid4()
+
+    with controller.reserve(principal), controller.reserve(principal):
+        pass
+
+
 async def _body_chunks(body: bytes) -> AsyncIterator[bytes]:
     for offset in range(0, len(body), 16 * 1024):
         yield body[offset : offset + 16 * 1024]
