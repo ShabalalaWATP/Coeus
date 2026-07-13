@@ -64,6 +64,9 @@ were added and are covered by tests.
   before accepting untrusted production files.
 - Native GitHub secret scanning and push protection are repository settings and
   must be confirmed in GitHub, not by local files alone.
+- Intentional empty secret variables in `.env.example` use a narrow inline
+  Gitleaks annotation. Commit-specific fingerprints are reserved for immutable
+  historical findings because squash merges change fingerprints for new work.
 - ZAP is unauthenticated. It does not prove role-protected flows are free from
   dynamic findings.
 - Container scan results depend on the current vulnerability databases and may
