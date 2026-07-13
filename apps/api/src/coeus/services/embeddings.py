@@ -1,18 +1,32 @@
 from collections import OrderedDict
 from collections.abc import Callable, Iterable
 from hashlib import blake2b
-from math import sqrt
 from os import environ
 from pathlib import Path
-from re import findall
+from threading import Event, RLock
 from typing import Protocol, cast
+from uuid import UUID
 
 import httpx
 
+from coeus.application.ports.admission import ProviderAdmission
 from coeus.core.config import Settings
 from coeus.core.logging import get_logger
+from coeus.domain.embedding_math import (
+    EMBEDDING_DIMENSIONS,
+    cosine_similarity,
+    mock_embedding,
+    normalise_vector,
+    vector_to_pg,
+)
 
-EMBEDDING_DIMENSIONS = 384
+__all__ = [
+    "EMBEDDING_DIMENSIONS",
+    "cosine_similarity",
+    "mock_embedding",
+    "vector_to_pg",
+]
+
 EMBEDDING_CACHE_LIMIT = 2048
 GEMINI_EMBEDDING_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/{model}:embedContent"
@@ -52,39 +66,74 @@ class EmbeddingService:
     a vector, which means lexical ranking remains the only active retrieval leg.
     """
 
-    def __init__(self, provider: EmbeddingProvider) -> None:
+    def __init__(
+        self, provider: EmbeddingProvider, admission: ProviderAdmission | None = None
+    ) -> None:
         self._provider = provider
+        self._admission = admission
         self._warned: set[str] = set()
         self._cache: OrderedDict[str, tuple[float, ...] | None] = OrderedDict()
+        self._inflight: dict[str, Event] = {}
+        self._lock = RLock()
 
     @property
     def provider_name(self) -> str:
         return self._provider.name
 
-    def embed(self, text: str, *, purpose: str) -> tuple[float, ...] | None:
+    def embed(
+        self, text: str, *, purpose: str, principal_id: UUID | None = None
+    ) -> tuple[float, ...] | None:
         try:
-            return self._provider.embed(text)
+            if self._admission is None:
+                return self._provider.embed(text)
+            if principal_id is None:
+                raise EmbeddingUnavailable("embedding principal context is missing")
+            with self._admission.reserve(principal_id) as reservation:
+                vector = self._provider.embed(text)
+                reservation.commit()
+                return vector
         except EmbeddingUnavailable as exc:
             self._warn_once(str(exc), purpose)
             return None
 
-    def embed_cached(self, text: str, *, purpose: str) -> tuple[float, ...] | None:
-        """Embed immutable retrieval text once per provider and process lifetime."""
-        key = f"{self.provider_name}:{blake2b(text.encode('utf-8'), digest_size=16).hexdigest()}"
-        if key in self._cache:
-            self._cache.move_to_end(key)
-            return self._cache[key]
-        vector = self.embed(text, purpose=purpose)
-        self._cache[key] = vector
-        if len(self._cache) > EMBEDDING_CACHE_LIMIT:
-            self._cache.popitem(last=False)
-        return vector
+    def embed_cached(
+        self, text: str, *, purpose: str, principal_id: UUID | None = None
+    ) -> tuple[float, ...] | None:
+        """Embed a normalised key once, coalescing concurrent cache misses."""
+        normalised = " ".join(text.split()).casefold()
+        digest = blake2b(normalised.encode("utf-8"), digest_size=16).hexdigest()
+        key = f"{self.provider_name}:{digest}"
+        with self._lock:
+            if key in self._cache:
+                self._cache.move_to_end(key)
+                return self._cache[key]
+            event = self._inflight.get(key)
+            leader = event is None
+            if event is None:
+                event = Event()
+                self._inflight[key] = event
+        if not leader:
+            event.wait()
+            with self._lock:
+                return self._cache.get(key)
+        try:
+            vector = self.embed(text, purpose=purpose, principal_id=principal_id)
+            with self._lock:
+                self._cache[key] = vector
+                if len(self._cache) > EMBEDDING_CACHE_LIMIT:
+                    self._cache.popitem(last=False)
+            return vector
+        finally:
+            with self._lock:
+                completed = self._inflight.pop(key)
+                completed.set()
 
     def _warn_once(self, reason: str, purpose: str) -> None:
         key = f"{self.provider_name}:{reason}"
-        if key in self._warned:
-            return
-        self._warned.add(key)
+        with self._lock:
+            if key in self._warned:
+                return
+            self._warned.add(key)
         logger.warning(
             "embedding_provider_unavailable",
             extra={"provider": self.provider_name, "purpose": purpose, "reason": reason},
@@ -104,13 +153,7 @@ class MockEmbeddingProvider:
     name = "mock"
 
     def embed(self, text: str) -> tuple[float, ...]:
-        values = [0.0] * EMBEDDING_DIMENSIONS
-        for token in _canonical_tokens(text):
-            digest = blake2b(token.encode("utf-8"), digest_size=8).digest()
-            index = int.from_bytes(digest[:4], "big") % EMBEDDING_DIMENSIONS
-            sign = 1.0 if digest[4] % 2 == 0 else -1.0
-            values[index] += sign
-        return _normalise(values)
+        return mock_embedding(text)
 
 
 class LocalFastEmbedProvider:
@@ -126,7 +169,7 @@ class LocalFastEmbedProvider:
             vector = next(iter(model.embed([text])))
         except Exception as exc:  # pragma: no cover - provider boundary
             raise EmbeddingUnavailable("local model embedding failed") from exc
-        return _normalise(_coerce_vector(vector))
+        return normalise_vector(_coerce_vector(vector))
 
     def _load_model(self) -> _FastEmbedModel:
         if self._model is not None:
@@ -179,10 +222,14 @@ class GeminiApiEmbeddingProvider:
         values = data.get("embedding", {}).get("values")
         if not isinstance(values, list):
             raise EmbeddingUnavailable("gemini embedding response was invalid")
-        return _normalise(_coerce_vector(values))
+        return normalise_vector(_coerce_vector(values))
 
 
-def build_embedding_service(settings: Settings, ai_models: ApiKeyProvider) -> EmbeddingService:
+def build_embedding_service(
+    settings: Settings,
+    ai_models: ApiKeyProvider,
+    provider_admission: ProviderAdmission | None = None,
+) -> EmbeddingService:
     provider: EmbeddingProvider
     if settings.embedding_provider == "local":
         provider = LocalFastEmbedProvider(settings.embedding_model_path)
@@ -190,32 +237,8 @@ def build_embedding_service(settings: Settings, ai_models: ApiKeyProvider) -> Em
         provider = GeminiApiEmbeddingProvider(settings, ai_models)
     else:
         provider = MockEmbeddingProvider()
-    return EmbeddingService(provider)
-
-
-def vector_to_pg(vector: tuple[float, ...] | None) -> str | None:
-    if vector is None:
-        return None
-    return "[" + ",".join(f"{value:.8f}" for value in vector[:EMBEDDING_DIMENSIONS]) + "]"
-
-
-def cosine_similarity(left: tuple[float, ...], right: tuple[float, ...]) -> float:
-    if not left or not right:
-        return 0.0
-    length = min(len(left), len(right), EMBEDDING_DIMENSIONS)
-    return max(0.0, min(1.0, sum(left[index] * right[index] for index in range(length))))
-
-
-def _canonical_tokens(text: str) -> tuple[str, ...]:
-    tokens = [token for token in findall(r"[a-z0-9]+", text.casefold()) if len(token) >= 2]
-    return tuple(dict.fromkeys(tokens))
-
-
-def _normalise(values: list[float]) -> tuple[float, ...]:
-    length = sqrt(sum(value * value for value in values))
-    if length == 0:
-        return tuple(0.0 for _ in range(EMBEDDING_DIMENSIONS))
-    return tuple(round(value / length, 8) for value in values[:EMBEDDING_DIMENSIONS])
+    admission = provider_admission if settings.embedding_provider == "gemini_api" else None
+    return EmbeddingService(provider, admission)
 
 
 def _coerce_vector(values: object) -> list[float]:

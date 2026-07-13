@@ -1,5 +1,6 @@
+import asyncio
 from collections.abc import AsyncIterator, Awaitable, Callable
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from uuid import uuid4
 
 from fastapi import FastAPI, Request, Response
@@ -24,6 +25,7 @@ from coeus.api.routes.teams import profile_router as profiles_router
 from coeus.api.routes.teams import router as teams_router
 from coeus.api.routes.tickets import router as tickets_router
 from coeus.api.routes.users_admin import router as users_admin_router
+from coeus.application.ports.outbox import OutboxDispatcherPort
 from coeus.composition import configure_application_state
 from coeus.core.config import Settings
 from coeus.core.errors import AppError, app_error_handler, unhandled_exception_handler
@@ -35,9 +37,37 @@ logger = get_logger(__name__)
 
 
 @asynccontextmanager
-async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    yield
-    await dispose_readiness_engines()
+async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
+    stop = asyncio.Event()
+    dispatcher = getattr(app.state, "outbox_dispatcher", None)
+    task = (
+        asyncio.create_task(_dispatch_outbox(app, dispatcher, stop))
+        if dispatcher is not None
+        else None
+    )
+    try:
+        yield
+    finally:
+        stop.set()
+        if task is not None:
+            await task
+        await dispose_readiness_engines()
+
+
+async def _dispatch_outbox(
+    app: FastAPI, dispatcher: OutboxDispatcherPort, stop: asyncio.Event
+) -> None:
+    worker_id = uuid4()
+    settings: Settings = app.state.settings
+    while not stop.is_set():
+        try:
+            await asyncio.to_thread(
+                dispatcher.dispatch, worker_id, limit=settings.outbox_batch_size
+            )
+        except Exception:
+            logger.exception("outbox_dispatch_failed")
+        with suppress(TimeoutError):
+            await asyncio.wait_for(stop.wait(), timeout=settings.outbox_poll_seconds)
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:

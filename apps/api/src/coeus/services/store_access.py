@@ -4,6 +4,7 @@ from uuid import UUID
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
 from coeus.domain.auth import UserAccount
+from coeus.domain.draft_audience import DraftAudienceReason
 from coeus.domain.store import AssetAccessGrant, StoreProduct, StoreVisibilityScope
 from coeus.repositories.store import StoreRepository
 from coeus.services.asset_tokens import AssetTokenService
@@ -15,6 +16,15 @@ class StoreReadPolicy(Protocol):
         pass
 
     def visibility_scope(self, user: UserAccount) -> StoreVisibilityScope:
+        pass
+
+    def can_read_for_workflow(
+        self,
+        user: UserAccount,
+        product: StoreProduct,
+        reason: DraftAudienceReason,
+        require_projection: bool = False,
+    ) -> bool:
         pass
 
 
@@ -39,6 +49,22 @@ class StoreDetailService:
 
     def can_read_product(self, actor: UserAccount, product: StoreProduct) -> bool:
         return self._policy.can_read(actor, product)
+
+    def get_workflow_visible_product(
+        self,
+        actor: UserAccount,
+        product_id: UUID,
+        reason: DraftAudienceReason,
+        *,
+        require_projection: bool = False,
+    ) -> StoreProduct:
+        """Read a product in an already-authorised assigned-workflow context."""
+        product = self._repository.get_product(product_id)
+        if product is None or not self._policy.can_read_for_workflow(
+            actor, product, reason, require_projection
+        ):
+            raise AppError(404, "product_not_found", "Product was not found.")
+        return product
 
     def get_break_glass_product(
         self, actor: UserAccount, product_id: UUID, reason: str

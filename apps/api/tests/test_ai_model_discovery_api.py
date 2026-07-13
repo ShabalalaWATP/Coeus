@@ -6,6 +6,7 @@ from threading import Event
 from typing import Any, ClassVar
 
 import pytest
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from ai_model_helpers import admin_login, make_client
 from coeus.api.routes.admin import (
@@ -39,6 +40,33 @@ class FakeModelListClient:
 
     def json(self) -> dict[str, object]:
         return {"data": [{"id": "gpt-5"}, {"id": "gpt-6-omni"}, {"id": "text-embedding-3"}]}
+
+
+class LivenessObserver:
+    """Expose deterministic barriers around the live-health ASGI response."""
+
+    def __init__(
+        self,
+        app: ASGIApp,
+        entered: asyncio.Event,
+        completed: asyncio.Event,
+    ) -> None:
+        self._app = app
+        self._entered = entered
+        self._completed = completed
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http" or scope.get("path") != "/api/v1/health/live":
+            await self._app(scope, receive, send)
+            return
+        self._entered.set()
+
+        async def observed_send(message: Message) -> None:
+            await send(message)
+            if message["type"] == "http.response.body" and not message.get("more_body", False):
+                self._completed.set()
+
+        await self._app(scope, receive, observed_send)
 
 
 def test_synchronous_provider_routes_are_offloaded_by_fastapi() -> None:
@@ -181,14 +209,18 @@ async def test_slow_model_refresh_does_not_stall_liveness(
 ) -> None:
     started = Event()
     release = Event()
+    live_entered = asyncio.Event()
+    live_completed = asyncio.Event()
 
     def delayed_discovery(*_args: object) -> tuple[str, ...]:
         started.set()
-        release.wait(timeout=2)
+        release.wait(timeout=10)
         return ("gpt-6-responsive",)
 
     monkeypatch.setattr("coeus.services.ai_models.discover_models", delayed_discovery)
-    async with make_client() as client:
+    async with make_client(
+        app_wrapper=lambda app: LivenessObserver(app, live_entered, live_completed)
+    ) as client:
         csrf = await admin_login(client)
         await client.put(
             "/api/v1/admin/ai-model/api-key",
@@ -203,9 +235,13 @@ async def test_slow_model_refresh_does_not_stall_liveness(
             )
         )
         try:
-            assert await asyncio.to_thread(started.wait, 1)
-            liveness = await asyncio.wait_for(client.get("/api/v1/health/live"), timeout=0.5)
+            assert await asyncio.to_thread(started.wait, 5)
+            liveness_request = asyncio.create_task(client.get("/api/v1/health/live"))
+            await asyncio.wait_for(live_entered.wait(), timeout=5)
+            await asyncio.wait_for(live_completed.wait(), timeout=5)
+            liveness = await liveness_request
             assert liveness.status_code == 200
+            assert not refresh.done()
         finally:
             release.set()
         assert (await refresh).status_code == 200

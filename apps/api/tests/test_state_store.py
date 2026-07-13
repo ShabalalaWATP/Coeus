@@ -6,13 +6,13 @@ import pytest
 from coeus.core.config import Settings
 from coeus.persistence import state_store
 from coeus.persistence.audit_store import PostgresAuditEventStore
+from coeus.persistence.database_url import synchronous_database_url
 from coeus.persistence.factory import build_audit_event_store, build_state_store
 from coeus.persistence.relational_schema import store_schema_statements
 from coeus.persistence.state_store import (
     FileStateStore,
     MemoryStateStore,
     PostgresStateStore,
-    _sync_database_url,
 )
 
 
@@ -96,7 +96,9 @@ def test_store_relational_schema_has_access_and_search_indexes() -> None:
 
 
 def test_sync_database_url_leaves_non_asyncpg_urls() -> None:
-    assert _sync_database_url("postgresql+psycopg://example") == "postgresql+psycopg://example"
+    assert (
+        synchronous_database_url("postgresql+psycopg://example") == "postgresql+psycopg://example"
+    )
 
 
 def test_factory_builds_postgres_state_store(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -121,6 +123,9 @@ class FakeEngine:
     def begin(self) -> "FakeConnection":
         return FakeConnection(self)
 
+    def connect(self) -> "FakeConnection":
+        return FakeConnection(self)
+
 
 class FakeConnection:
     def __init__(self, engine: FakeEngine) -> None:
@@ -135,16 +140,39 @@ class FakeConnection:
     def execute(self, statement: object, params: dict[str, object] | None = None) -> "FakeResult":
         sql = str(statement).strip()
         self._engine.statements.append(sql)
+        if "SELECT count(*) FROM coeus_ticket_aggregates" in sql:
+            return FakeResult(None, scalar=0)
+        if "SELECT payload FROM coeus_state WHERE namespace = 'tickets'" in sql:
+            return FakeResult(None)
+        if "SELECT ticket_id::text, canonical_hash" in sql:
+            return FakeResult(None, rows=[])
         if sql.startswith("SELECT") and params is not None:
             return FakeResult(self._engine.rows.get(str(params["namespace"])))
-        if sql.startswith("INSERT") and params is not None:
+        if sql.startswith("INSERT") and params is not None and "namespace" in params:
             self._engine.rows[str(params["namespace"])] = json.loads(str(params["payload"]))
         return FakeResult(None)
 
 
 class FakeResult:
-    def __init__(self, payload: dict[str, object] | None) -> None:
+    def __init__(
+        self,
+        payload: dict[str, object] | None,
+        *,
+        scalar: object | None = None,
+        rows: list[tuple[object, ...]] | None = None,
+    ) -> None:
         self._payload = payload
+        self._scalar = scalar
+        self._rows = rows or []
 
     def first(self) -> tuple[dict[str, object]] | None:
         return (self._payload,) if self._payload is not None else None
+
+    def scalar_one(self) -> object:
+        return self._scalar
+
+    def scalar_one_or_none(self) -> object | None:
+        return self._scalar
+
+    def all(self) -> list[tuple[object, ...]]:
+        return self._rows

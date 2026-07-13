@@ -1,3 +1,14 @@
 {
-  "ignoreBinaries": ["pwsh", "uv"]
+  "ignore": ["apps/web/src/lib/api-client/generated/**"],
+  "ignoreBinaries": ["pwsh", "uv"],
+  "workspaces": {
+    "apps/web": {
+      "entry": [
+        "playwright.config.ts",
+        "tests/e2e/**/*.spec.ts",
+        "tests/e2e-postgres/**/*.spec.ts"
+      ],
+      "playwright": false
+    }
+  }
 }

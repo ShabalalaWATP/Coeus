@@ -11,7 +11,7 @@ from store_projection_helpers import seed_product
 
 
 class NoEmbeddingService:
-    def embed(self, _text: str, *, purpose: str) -> None:
+    def embed_cached(self, _text: str, *, purpose: str, principal_id: object | None = None) -> None:
         return None
 
 
@@ -20,7 +20,9 @@ class FixedEmbeddingService:
         self.calls = 0
         self.candidate_vector = candidate_vector
 
-    def embed(self, _text: str, *, purpose: str) -> tuple[float, ...] | None:
+    def embed_cached(
+        self, _text: str, *, purpose: str, principal_id: object | None = None
+    ) -> tuple[float, ...] | None:
         self.calls += 1
         return (0.2, 0.4) if self.calls == 1 else self.candidate_vector
 
@@ -126,6 +128,17 @@ def test_similarity_scoring_supports_vector_only_and_missing_candidate_vectors()
         0.0,
     )
     assert "similarity:lexical-only" in lexical_matches[0].reasons
+
+
+def test_similarity_embedding_work_is_bounded_for_large_candidate_corpus() -> None:
+    source = _ticket("Maritime source")
+    candidates = tuple(_ticket(f"Candidate {index}") for index in range(101))
+    embeddings = FixedEmbeddingService()
+
+    score_similar_requests(source, candidates, cast(EmbeddingService, embeddings), 0.0)
+
+    # One query plus the fixed semantic candidate budget.
+    assert embeddings.calls == 33
 
 
 def _ticket(

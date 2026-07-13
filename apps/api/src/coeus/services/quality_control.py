@@ -2,19 +2,21 @@ from contextlib import suppress
 from dataclasses import replace
 from uuid import UUID
 
+from coeus.application.ports.workflow_transaction import WorkflowTransactionPort
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
 from coeus.domain.auth import UserAccount
 from coeus.domain.enums import TicketState
 from coeus.domain.qc import ProductIndexRecord, QcChecklistItem, QcDecisionStatus
 from coeus.domain.state_machine import can_transition
-from coeus.domain.store import StoreProduct
+from coeus.domain.store import StoreProduct, normalise_synthetic_release_markers
 from coeus.domain.tickets import TicketRecord
 from coeus.repositories.access import AccessRepository
+from coeus.repositories.teams import TeamRepository
 from coeus.services.audit import AuditLog
 from coeus.services.notifications import NotificationService
 from coeus.services.object_storage import ObjectStorage
-from coeus.services.prioritisation import priority_sort_key
+from coeus.services.qc_assignment import QcAssignmentService, QcQueueView
 from coeus.services.qc_ingestion import (
     ProductAutoIngestionService,
     QcApprovalInput,
@@ -33,8 +35,6 @@ from coeus.services.tickets import TicketServices
 
 __all__ = ["QcApprovalInput", "QualityControlService", "ReleaseCheckService"]
 
-QC_READ_PERMISSIONS = frozenset({Permission.QC_REVIEW})
-
 
 class ReleaseCheckService:
     def __init__(self, access_repository: AccessRepository) -> None:
@@ -51,6 +51,14 @@ class ReleaseCheckService:
             raise AppError(409, "releasability_required", "Releasability must be confirmed.")
         if not approval.handling_caveats:
             raise AppError(409, "handling_caveats_required", "Handling caveats are required.")
+        try:
+            normalise_synthetic_release_markers(approval.releasability, approval.handling_caveats)
+        except ValueError as exc:
+            raise AppError(
+                409,
+                "release_markers_unsupported",
+                "Only synthetic release markers are supported.",
+            ) from exc
         if not approval.acg_ids:
             raise AppError(409, "product_acg_required", "At least one ACG must be confirmed.")
         for acg_id in approval.acg_ids:
@@ -78,6 +86,7 @@ class QualityControlService:
         indexing: ProductIndexingService,
         release: QcReleaseStep,
         audit_log: AuditLog,
+        assignments: QcAssignmentService,
     ) -> None:
         self._tickets = tickets
         self._release_checks = release_checks
@@ -85,32 +94,25 @@ class QualityControlService:
         self._indexing = indexing
         self._release = release
         self._audit_log = audit_log
+        self._assignments = assignments
 
-    def queue(self, actor: UserAccount) -> tuple[TicketRecord, ...]:
-        self._require(actor, Permission.QC_REVIEW)
-        queued = (
-            ticket
-            for ticket in self._tickets.tickets.list_workflow_tickets(actor, QC_READ_PERMISSIONS)
-            if ticket.state == TicketState.QC_REVIEW
-        )
-        return tuple(sorted(queued, key=priority_sort_key))
+    def queue(self, actor: UserAccount) -> QcQueueView:
+        return self._assignments.queue(actor)
 
     def details(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
-        self._require(actor, Permission.QC_REVIEW)
-        ticket = self._tickets.tickets.get_workflow_ticket(actor, ticket_id, QC_READ_PERMISSIONS)
-        if ticket.state not in {
-            TicketState.QC_REVIEW,
-            TicketState.DISSEMINATION_READY,
-            TicketState.REWORK_REQUIRED,
-        }:
-            raise AppError(404, "product_not_found", "QC product was not found.")
-        return ticket
+        return self._assignments.details(actor, ticket_id)
+
+    def claim(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
+        return self._assignments.claim(actor, ticket_id)
+
+    def release_claim(self, actor: UserAccount, ticket_id: UUID) -> None:
+        self._assignments.release(actor, ticket_id)
 
     def approve(
         self, actor: UserAccount, ticket_id: UUID, approval: QcApprovalInput
     ) -> TicketRecord:
         self._require(actor, Permission.QC_APPROVE)
-        ticket = self.details(actor, ticket_id)
+        ticket = self._assignments.claim_for_action(actor, ticket_id)
         self._ensure_state(ticket, TicketState.QC_REVIEW)
         draft = latest_draft(ticket)
         if draft.created_by_user_id == actor.user_id:
@@ -145,42 +147,46 @@ class QualityControlService:
                     ),
                 ),
             )
-            outcome = self._release.complete(actor, pending, product)
+            outcome = self._release.complete(actor, ticket, pending, product)
             # One durable success event avoids a partially written audit trail
             # claiming approval when a second append fails and release is
             # compensated.
-            self._audit_log.record(
-                outcome.audit_event,
-                str(actor.user_id),
-                {
-                    "ticket_id": str(ticket_id),
-                    "product_id": str(product.product_id),
-                    "qc_approved": "true",
-                },
-            )
+            if not outcome.audit_committed:
+                self._audit_log.record(
+                    outcome.audit_event,
+                    str(actor.user_id),
+                    {
+                        "ticket_id": str(ticket_id),
+                        "product_id": str(product.product_id),
+                        "qc_approved": "true",
+                    },
+                )
         except Exception:
             # The release step, ticket update or audit failed after ingestion;
             # restore the original workflow state and remove the product so
             # approval can be retried without an orphaned DRAFT product. If
             # persistence itself is down the restore may also fail; the
             # product discard must still run so no orphan survives.
-            with suppress(Exception):
-                self._tickets.tickets.save_system_update(ticket)
+            if "outcome" in locals():
+                with suppress(Exception):
+                    self._tickets.tickets.restore_system_update_if_current(outcome.ticket, ticket)
             self._ingestion.discard(product.product_id)
             raise
-        self._release.notify_best_effort(actor, outcome)
+        if not outcome.audit_committed:
+            self._release.notify_best_effort(actor, outcome)
         return outcome.ticket
 
     def reject(self, actor: UserAccount, ticket_id: UUID, reason: str) -> TicketRecord:
         self._require(actor, Permission.QC_REJECT)
-        ticket = self.details(actor, ticket_id)
+        ticket = self._assignments.claim_for_action(actor, ticket_id)
         self._ensure_state(ticket, TicketState.QC_REVIEW)
         checklist = checklist_items({})
         decision = qc_decision(
             ticket.ticket_id, QcDecisionStatus.REJECTED, reason, actor.user_id, checklist
         )
         self._ensure_transition(ticket.state, TicketState.REWORK_REQUIRED)
-        updated = self._tickets.tickets.save_system_update(
+        return self._tickets.mutations.save_audited_if_current(
+            ticket,
             replace(
                 ticket,
                 state=TicketState.REWORK_REQUIRED,
@@ -189,14 +195,11 @@ class QualityControlService:
                     *ticket.timeline,
                     timeline(ticket.ticket_id, actor.user_id, "qc_rejected", reason),
                 ),
-            )
+            ),
+            "qc_rejected",
+            actor,
+            {"ticket_id": str(ticket_id)},
         )
-        try:
-            self._audit_log.record("qc_rejected", str(actor.user_id), {"ticket_id": str(ticket_id)})
-        except Exception:
-            self._tickets.tickets.save_system_update(ticket)
-            raise
-        return updated
 
     @staticmethod
     def _require(actor: UserAccount, permission: Permission) -> None:
@@ -221,12 +224,22 @@ def build_quality_control_service(
     audit_log: AuditLog,
     storage: ObjectStorage,
     notifications: NotificationService,
+    teams: TeamRepository,
+    transaction: WorkflowTransactionPort | None = None,
 ) -> QualityControlService:
     return QualityControlService(
         tickets,
         ReleaseCheckService(access_repository),
         ProductAutoIngestionService(store, access_repository, storage),
         ProductIndexingService(),
-        QcReleaseStep(tickets, store, access_repository, notifications, audit_log),
+        QcReleaseStep(
+            tickets,
+            store,
+            access_repository,
+            notifications,
+            audit_log,
+            transaction,
+        ),
         audit_log,
+        QcAssignmentService(tickets, teams),
     )

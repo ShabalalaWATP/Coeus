@@ -63,6 +63,30 @@ def test_notification_service_delivers_email_to_configured_provider() -> None:
     assert _event_types(audit_log) == ["email_recorded"]
 
 
+def test_notification_and_email_deduplicate_durable_outbox_retry() -> None:
+    audit_log = AuditLog()
+    provider = RecordingEmailProvider()
+    service = NotificationService(audit_log, email_provider=provider)
+    user = _user()
+    event_id = uuid4()
+
+    first_notification = service.notify(
+        user, "release", "Release ready", "Open Istari.", notification_id=event_id
+    )
+    first_email = service.record_email(user, "Release ready", "Open Istari.", email_id=event_id)
+    retried_notification = service.notify(
+        user, "release", "Release ready", "Open Istari.", notification_id=event_id
+    )
+    retried_email = service.record_email(user, "Release ready", "Open Istari.", email_id=event_id)
+
+    assert retried_notification is first_notification
+    assert retried_email is first_email
+    assert service.list_for_user(user) == (first_notification,)
+    assert service.outbox_size() == 1
+    assert provider.sent == [first_email]
+    assert _event_types(audit_log) == ["email_recorded"]
+
+
 def test_notification_service_audits_email_delivery_failure() -> None:
     audit_log = AuditLog()
     service = NotificationService(audit_log, email_provider=FailingEmailProvider())

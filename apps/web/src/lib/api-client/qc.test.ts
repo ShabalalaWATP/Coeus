@@ -1,4 +1,12 @@
-import { approveQcProduct, getQcProduct, listQcQueue, rejectQcProduct, type QcProduct } from "./qc";
+import {
+  approveQcProduct,
+  claimQcProduct,
+  getQcProduct,
+  listQcQueue,
+  rejectQcProduct,
+  releaseQcClaim,
+  type QcProduct,
+} from "./qc";
 
 const product: QcProduct = {
   ticketId: "ticket-1",
@@ -27,11 +35,11 @@ afterEach(() => {
 test("calls QC queue and detail endpoints", async () => {
   const fetchMock = vi
     .fn()
-    .mockResolvedValueOnce(jsonResponse({ products: [product] }))
+    .mockResolvedValueOnce(jsonResponse({ items: [], products: [product] }))
     .mockResolvedValueOnce(jsonResponse(product));
   vi.stubGlobal("fetch", fetchMock);
 
-  await expect(listQcQueue()).resolves.toEqual({ products: [product] });
+  await expect(listQcQueue()).resolves.toEqual({ items: [], products: [product] });
   await expect(getQcProduct("ticket-1")).resolves.toEqual(product);
 
   expect(fetchMock).toHaveBeenNthCalledWith(1, "http://127.0.0.1:8001/api/v1/qc/queue", {
@@ -44,6 +52,33 @@ test("calls QC queue and detail endpoints", async () => {
     {
       credentials: "include",
       method: "GET",
+    },
+  );
+});
+
+test("claims and releases QC ownership with CSRF protection", async () => {
+  const fetchMock = vi.fn().mockResolvedValue(jsonResponse(product));
+  vi.stubGlobal("fetch", fetchMock);
+
+  await expect(claimQcProduct("ticket-1", "csrf-token")).resolves.toEqual(product);
+  await expect(releaseQcClaim("ticket-1", "csrf-token")).resolves.toBeUndefined();
+
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    1,
+    "http://127.0.0.1:8001/api/v1/qc/products/ticket-1/claim",
+    {
+      credentials: "include",
+      headers: { "X-CSRF-Token": "csrf-token" },
+      method: "POST",
+    },
+  );
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    2,
+    "http://127.0.0.1:8001/api/v1/qc/products/ticket-1/claim",
+    {
+      credentials: "include",
+      headers: { "X-CSRF-Token": "csrf-token" },
+      method: "DELETE",
     },
   );
 });

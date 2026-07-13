@@ -55,9 +55,10 @@ object storage, Postgres persistence and an on-disk email outbox. See
 GCP hosting is a reference target, not a requirement, and the Terraform in
 `infra/gcp` builds the resource shell without storing secret values in state.
 In the target design, the API and web run on Cloud Run, state moves to Cloud SQL (with
-pgvector), product bytes move to Cloud Storage buckets, and the language and
-embedding providers remain explicit application settings such as `mock` or
-`gemini_api`. Deployments authenticate from GitHub Actions through Workload
+pgvector), product bytes move to Cloud Storage buckets, and the language
+provider remains an explicit choice among `mock`, `gemini_api`, `openai_api`,
+`vertex_ai` and `bedrock`. Embeddings remain `mock`, `local` or `gemini_api`.
+Deployments authenticate from GitHub Actions through Workload
 Identity Federation, with no long-lived keys.
 
 ```mermaid
@@ -136,7 +137,7 @@ adapters and readiness gates pass.
 | --------------- | ------------------------------- | ---------------------------- | ------------------------------- |
 | Persistence     | `COEUS_PERSISTENCE_PROVIDER`    | `postgres` (local container) | `postgres` (Cloud SQL)          |
 | Object storage  | `COEUS_OBJECT_STORAGE_PROVIDER` | `local` (filesystem)         | `gcs` (Cloud Storage)           |
-| Language model  | `COEUS_LLM_PROVIDER`            | `mock`                       | `mock` or `gemini_api`          |
+| Language model  | `COEUS_LLM_PROVIDER`            | `mock`; four external APIs optional | Same application gateway   |
 | Embeddings      | `COEUS_EMBEDDING_PROVIDER`      | `mock`                       | `mock`, `local` or `gemini_api` |
 | Email           | `COEUS_EMAIL_PROVIDER`          | `outbox` (on disk)           | `smtp`                          |
 | Secrets         | environment / `.env`            | local file                   | Secret Manager                  |

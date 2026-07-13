@@ -1,8 +1,11 @@
+from contextlib import nullcontext
 from dataclasses import replace
 from datetime import UTC, datetime
 from typing import Protocol
 from uuid import UUID, uuid4
 
+from coeus.application.ports.admission import ProviderAdmission, TicketAdmission
+from coeus.application.ports.tickets import TicketRepository
 from coeus.core.errors import AppError
 from coeus.core.resource_limits import (
     MAX_ASSISTANT_REPLY_BYTES,
@@ -20,12 +23,16 @@ from coeus.domain.tickets import (
     MessageAuthor,
     TicketRecord,
 )
-from coeus.repositories.tickets import InMemoryTicketRepository
 from coeus.services import conversation_lifecycle as lifecycle
 from coeus.services.audit import AuditLog
-from coeus.services.intake import IntakeAssistantProvider, IntakeExtractionService
+from coeus.services.intake import (
+    AdmittedAssistantReply,
+    IntakeAssistantProvider,
+    IntakeExtractionService,
+)
 from coeus.services.intake_standard import next_elicitation
 from coeus.services.prioritisation import with_assessment
+from coeus.services.ticket_mutations import TicketMutationService
 from coeus.services.ticket_records import message as message_record
 from coeus.services.ticket_records import timeline
 
@@ -37,39 +44,52 @@ class ConversationTicketService(Protocol):
     def state_for_intake(self, current_state: TicketState, intake: IntakeDetails) -> TicketState:
         pass
 
-    def save_audited_system_update(
-        self,
-        ticket: TicketRecord,
-        event_type: str,
-        actor: UserAccount,
-        metadata: dict[str, str],
-    ) -> TicketRecord:
-        pass
-
 
 class ConversationService:
     def __init__(
         self,
-        repository: InMemoryTicketRepository,
+        repository: TicketRepository,
         tickets: ConversationTicketService,
+        mutations: TicketMutationService,
         extractor: IntakeExtractionService,
         llm_provider: IntakeAssistantProvider,
         audit_log: AuditLog,
+        provider_admission: ProviderAdmission | None = None,
+        ticket_admission: TicketAdmission | None = None,
     ) -> None:
         self._repository = repository
         self._tickets = tickets
+        self._mutations = mutations
         self._extractor = extractor
         self._llm_provider = llm_provider
         self._audit_log = audit_log
+        self._provider_admission = provider_admission
+        self._ticket_admission = ticket_admission
 
     def send_message(
         self, actor: UserAccount, message: str, ticket_id: UUID | None = None
     ) -> TicketRecord:
-        ticket = (
-            self._tickets.get_editable_ticket(actor, ticket_id)
-            if ticket_id
-            else self._create(actor)
+        reservation = (
+            self._ticket_admission.reserve(actor.user_id)
+            if ticket_id is None and self._ticket_admission is not None
+            else nullcontext(None)
         )
+        with reservation as reference:
+            ticket = (
+                self._tickets.get_editable_ticket(actor, ticket_id)
+                if ticket_id
+                else self._create(actor, reference)
+            )
+            return self._send_to_ticket(actor, message, ticket, create=ticket_id is None)
+
+    def _send_to_ticket(
+        self,
+        actor: UserAccount,
+        message: str,
+        ticket: TicketRecord,
+        *,
+        create: bool = False,
+    ) -> TicketRecord:
         if ticket.conversation_status == lifecycle.CONVERSATION_CLOSED:
             raise AppError(
                 409,
@@ -83,11 +103,11 @@ class ConversationService:
         # in intake fields; the message, flags and refusal are still recorded.
         intake = ticket.intake if safety_flags else self._extractor.extract(message, ticket.intake)
         if safety_flags:
-            reply = self._llm_provider.build_assistant_message(intake, safety_flags)
+            reply = self._assistant_reply(actor, intake, safety_flags)
             conversation_status = ticket.conversation_status
         else:
             reply, conversation_status = self._reply_and_status(
-                ticket.conversation_status, message, intake
+                actor, ticket.conversation_status, message, intake
             )
         assistant_message = message_record(ticket.ticket_id, MessageAuthor.ASSISTANT, reply)
         if self._chat_bytes(ticket) + text_bytes(message, reply) > MAX_CHAT_HISTORY_BYTES:
@@ -106,23 +126,32 @@ class ConversationService:
             created_at=datetime.now(UTC),
         )
         state = self._tickets.state_for_intake(ticket.state, intake)
-        return self._tickets.save_audited_system_update(
-            with_assessment(
-                replace(
-                    ticket,
-                    state=state,
-                    intake=intake,
-                    conversation_status=conversation_status,
-                    messages=(*ticket.messages, user_message, assistant_message),
-                    agent_runs=(*ticket.agent_runs, agent_run),
-                    timeline=(
-                        *ticket.timeline,
-                        timeline(
-                            ticket.ticket_id, actor.user_id, "chat_message", "User chat received."
-                        ),
+        proposed = with_assessment(
+            replace(
+                ticket,
+                state=state,
+                intake=intake,
+                conversation_status=conversation_status,
+                messages=(*ticket.messages, user_message, assistant_message),
+                agent_runs=(*ticket.agent_runs, agent_run),
+                timeline=(
+                    *ticket.timeline,
+                    timeline(
+                        ticket.ticket_id, actor.user_id, "chat_message", "User chat received."
                     ),
-                )
-            ),
+                ),
+            )
+        )
+        if create:
+            return self._mutations.create_audited(
+                proposed,
+                "ticket_chat_message_received",
+                actor,
+                {"ticket_id": str(ticket.ticket_id)},
+            )
+        return self._mutations.save_audited_if_current(
+            ticket,
+            proposed,
             "ticket_chat_message_received",
             actor,
             {"ticket_id": str(ticket.ticket_id)},
@@ -140,7 +169,7 @@ class ConversationService:
             raise AppError(409, "chat_history_limit_reached", "The chat history limit was reached.")
 
     def _reply_and_status(
-        self, status: str, message: str, intake: IntakeDetails
+        self, actor: UserAccount, status: str, message: str, intake: IntakeDetails
     ) -> tuple[str, str]:
         """Deterministic conversation lifecycle; the LLM never decides this."""
         complete = not intake.missing_information
@@ -159,15 +188,32 @@ class ConversationService:
         if complete:
             return lifecycle.CLOSE_OFFER_MESSAGE, lifecycle.CONVERSATION_CLOSE_OFFERED
         return (
-            self._llm_provider.build_assistant_message(intake, ()),
+            self._assistant_reply(actor, intake, ()),
             lifecycle.CONVERSATION_OPEN,
         )
 
-    def _create(self, actor: UserAccount) -> TicketRecord:
+    def _assistant_reply(
+        self, actor: UserAccount, intake: IntakeDetails, safety_flags: tuple[str, ...]
+    ) -> str:
+        uses_remote = getattr(self._llm_provider, "uses_operator_provider", lambda: False)()
+        if not uses_remote or self._provider_admission is None or safety_flags:
+            return self._llm_provider.build_assistant_message(intake, safety_flags)
+        with self._provider_admission.reserve(actor.user_id) as reservation:
+            admitted_reply = getattr(self._llm_provider, "build_admitted_assistant_message", None)
+            if admitted_reply is None:
+                reply = self._llm_provider.build_assistant_message(intake, safety_flags)
+                reservation.commit()
+                return reply
+            outcome: AdmittedAssistantReply = admitted_reply(intake, safety_flags)
+            if outcome.provider_succeeded:
+                reservation.commit()
+            return outcome.text
+
+    def _create(self, actor: UserAccount, reserved_reference: str | None = None) -> TicketRecord:
         ticket_id = uuid4()
         return TicketRecord(
             ticket_id=ticket_id,
-            reference=self._repository.next_reference(),
+            reference=reserved_reference or self._repository.next_reference(),
             requester_user_id=actor.user_id,
             state=TicketState.DRAFT_INTAKE,
             intake=IntakeDetails(),

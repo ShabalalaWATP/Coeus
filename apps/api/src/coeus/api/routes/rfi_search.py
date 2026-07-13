@@ -7,7 +7,9 @@ from coeus.api.dependencies import (
     get_csrf_validated_session,
     get_current_session,
     get_rfi_search_service,
+    get_search_admission,
 )
+from coeus.application.ports.admission import ResourceAdmission
 from coeus.core.async_work import run_bounded_search
 from coeus.domain.auth import AuthenticatedSession
 from coeus.domain.tickets import ProductOffer, RfiSearchMetrics
@@ -27,8 +29,10 @@ async def run_rfi_search(
     ticket_id: UUID,
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
     rfi_search: Annotated[RfiSearchService, Depends(get_rfi_search_service)],
+    admission: Annotated[ResourceAdmission, Depends(get_search_admission)],
 ) -> RfiSearchResultsResponse:
-    result = await run_bounded_search(rfi_search.run, authenticated.user, ticket_id)
+    with admission.reserve(authenticated.user.user_id):
+        result = await run_bounded_search(rfi_search.run, authenticated.user, ticket_id)
     return _to_response(result)
 
 

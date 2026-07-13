@@ -1,16 +1,14 @@
 # Istari AI Agents
 
-Istari is an AI-first tasking system: focused agents do the repetitive reasoning
-while a person always makes the decision that changes state. This document describes
-each agent's trigger, inputs, decision, output and human control.
+Istari is an AI-first tasking system: agents do repetitive reasoning while a person
+makes every state-changing decision. This describes their inputs, outputs and controls.
 
-> Agents are deterministic mocks by default in local and test environments
-> (`COEUS_LLM_PROVIDER=mock`): no external calls, no instruction execution,
-> every input treated as synthetic. Admins can configure API keys locally for
-> the chatbot reply provider (Gemini API is primary; OpenAI, GCP Vertex AI and
-> AWS Bedrock are optional alternatives behind one gateway). Neither an
-> environment key nor saving a key switches provider. Activation is explicit
-> and notifies every administrator because it changes replies for all users.
+> Agents are deterministic mocks by default: no external calls or instruction execution.
+> Admins may configure Gemini API, OpenAI, Vertex AI or Bedrock for chatbot replies,
+> but saving a key never activates it. Activation is explicit and notifies administrators.
+
+Remote chat and Gemini embeddings reserve shared capacity before network use;
+success commits one unit, failure refunds it, and `/api/v1/metrics` omits user IDs.
 
 ## Agents at a glance
 

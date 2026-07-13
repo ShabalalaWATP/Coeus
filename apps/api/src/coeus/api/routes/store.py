@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Query, Response
 from coeus.api.dependencies import (
     get_csrf_validated_session,
     get_current_session,
+    get_search_admission,
     get_store_services,
 )
 from coeus.api.presenters.store import (
@@ -13,6 +14,7 @@ from coeus.api.presenters.store import (
     product_response,
     store_search_response,
 )
+from coeus.application.ports.admission import ResourceAdmission
 from coeus.core.async_work import run_bounded_search
 from coeus.domain.access import ProductStatus
 from coeus.domain.auth import AuthenticatedSession
@@ -38,6 +40,7 @@ SEARCH_REGION_MAX_LENGTH = 180
 async def search_products(
     authenticated: Annotated[AuthenticatedSession, Depends(get_current_session)],
     store_services: Annotated[StoreServices, Depends(get_store_services)],
+    admission: Annotated[ResourceAdmission, Depends(get_search_admission)],
     query: Annotated[str | None, Query(max_length=SEARCH_TEXT_MAX_LENGTH)] = None,
     product_type: Annotated[
         str | None, Query(alias="productType", max_length=SEARCH_FIELD_MAX_LENGTH)
@@ -56,23 +59,24 @@ async def search_products(
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(alias="pageSize", ge=1, le=50)] = 12,
 ) -> StoreSearchResponse:
-    result = await run_bounded_search(
-        store_services.search.search,
-        authenticated.user,
-        StoreSearchFilters(
-            query=query,
-            product_type=product_type,
-            region=region,
-            tag=tag,
-            source_type=source_type,
-            status=status,
-            date_from=date_from,
-            date_to=date_to,
-            owner_team=owner_team,
-            page=page,
-            page_size=page_size,
-        ),
-    )
+    with admission.reserve(authenticated.user.user_id):
+        result = await run_bounded_search(
+            store_services.search.search,
+            authenticated.user,
+            StoreSearchFilters(
+                query=query,
+                product_type=product_type,
+                region=region,
+                tag=tag,
+                source_type=source_type,
+                status=status,
+                date_from=date_from,
+                date_to=date_to,
+                owner_team=owner_team,
+                page=page,
+                page_size=page_size,
+            ),
+        )
     return store_search_response(result)
 
 

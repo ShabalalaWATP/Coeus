@@ -1,5 +1,5 @@
 import re
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from typing import Protocol
 
 from coeus.domain.tickets import IntakeDetails
@@ -60,6 +60,14 @@ ACKNOWLEDGEMENTS = (
 class IntakeAssistantProvider(Protocol):
     def build_assistant_message(self, intake: IntakeDetails, safety_flags: tuple[str, ...]) -> str:
         """Build the requester-facing assistant response for extracted intake."""
+
+
+@dataclass(frozen=True)
+class AdmittedAssistantReply:
+    """Assistant text plus whether operator-funded provider work succeeded."""
+
+    text: str
+    provider_succeeded: bool
 
 
 class MockLlmProvider:

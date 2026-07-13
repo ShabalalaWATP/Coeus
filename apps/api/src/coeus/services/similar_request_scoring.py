@@ -1,4 +1,6 @@
+from collections.abc import Callable
 from dataclasses import dataclass
+from typing import cast
 from uuid import UUID
 
 from coeus.core.permissions import Permission
@@ -17,6 +19,7 @@ from coeus.services.rfi_ranking import (
 CUSTOMER_SIMILARITY_THRESHOLD = 0.58
 MANAGER_SIMILARITY_THRESHOLD = 0.50
 MAX_SIMILAR_REQUESTS = 5
+MAX_VECTOR_CANDIDATES = 32
 ROUTING_READ_PERMISSIONS = frozenset(
     {Permission.JIOC_REVIEW, Permission.RFA_REVIEW, Permission.COLLECTION_REVIEW}
 )
@@ -52,6 +55,7 @@ def score_similar_requests(
     candidates: tuple[TicketRecord, ...],
     embeddings: EmbeddingService,
     threshold: float,
+    principal_id: UUID | None = None,
 ) -> tuple[SimilarRequestMatch, ...]:
     """Score open tickets with RRF over lexical and embedding similarity.
 
@@ -70,9 +74,16 @@ def score_similar_requests(
     if not scoped:
         return ()
     source_text = query_text(source.intake)
-    query_embedding = embeddings.embed(source_text, purpose="similar-request-query")
+    embedding_principal = principal_id or source.requester_user_id
+    query_embedding = _embed_cached(
+        embeddings,
+        source_text,
+        purpose="similar-request-query",
+        principal_id=embedding_principal,
+    )
     lexical_rank = _rank_lexical(source_text, scoped)
-    vector_rank = _rank_vector(query_embedding, scoped, embeddings)
+    vector_candidates = _vector_candidates(source_text, scoped)
+    vector_rank = _rank_vector(query_embedding, vector_candidates, embeddings, embedding_principal)
     available = max(1, int(bool(lexical_rank)) + int(bool(vector_rank)))
     matches = tuple(
         _match_for_candidate(
@@ -106,16 +117,36 @@ def _rank_lexical(
     return {ticket.ticket_id: (index + 1, score) for index, (score, ticket) in enumerate(ranked)}
 
 
+def _vector_candidates(
+    source_text: str, candidates: tuple[TicketRecord, ...]
+) -> tuple[TicketRecord, ...]:
+    """Bound semantic work using a deterministic lexical pre-rank."""
+    ranked = sorted(
+        candidates,
+        key=lambda ticket: (
+            -lexical_text_score(source_text, query_text(ticket.intake)),
+            ticket.reference,
+        ),
+    )
+    return tuple(ranked[:MAX_VECTOR_CANDIDATES])
+
+
 def _rank_vector(
     query_embedding: tuple[float, ...] | None,
     candidates: tuple[TicketRecord, ...],
     embeddings: EmbeddingService,
+    principal_id: UUID,
 ) -> dict[UUID, tuple[int, float]]:
     if query_embedding is None:
         return {}
     scored = []
     for ticket in candidates:
-        vector = embeddings.embed(query_text(ticket.intake), purpose="similar-request-candidate")
+        vector = _embed_cached(
+            embeddings,
+            query_text(ticket.intake),
+            purpose="similar-request-candidate",
+            principal_id=principal_id,
+        )
         if vector is not None:
             scored.append((cosine_similarity(query_embedding, vector), ticket))
     ranked = sorted(
@@ -123,6 +154,20 @@ def _rank_vector(
         key=lambda item: (-item[0], item[1].reference),
     )
     return {ticket.ticket_id: (index + 1, score) for index, (score, ticket) in enumerate(ranked)}
+
+
+def _embed_cached(
+    embeddings: EmbeddingService, text: str, *, purpose: str, principal_id: UUID
+) -> tuple[float, ...] | None:
+    """Use the hardened cache while retaining compatibility with narrow test adapters."""
+    cached = getattr(embeddings, "embed_cached", None)
+    if callable(cached):
+        cached_call = cast(
+            Callable[..., tuple[float, ...] | None],
+            cached,
+        )
+        return cached_call(text, purpose=purpose, principal_id=principal_id)
+    return embeddings.embed(text, purpose=purpose, principal_id=principal_id)
 
 
 def _match_for_candidate(

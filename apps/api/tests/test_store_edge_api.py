@@ -12,6 +12,7 @@ from coeus.domain.access import ProductStatus
 from coeus.domain.auth import UserAccount
 from coeus.domain.store import StoreSearchFilters
 from coeus.main import create_app
+from coeus.services.store import StoreIngestionService
 
 SEED_CREDENTIAL = "CoeusLocal1!"
 
@@ -130,7 +131,9 @@ async def test_inactive_acg_rejects_product_creation() -> None:
     assert response.json()["error"]["code"] == "product_acg_required"
 
 
-def test_store_services_cover_restricted_policy_branches() -> None:
+def test_store_services_cover_restricted_policy_branches(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     services = app.state.store_services
     regional = next(
@@ -175,6 +178,15 @@ def test_store_services_cover_restricted_policy_branches() -> None:
         )
     with pytest.raises(AppError, match="product_not_found"):
         services.details.get_visible_product(customer, archived.product_id)
+    with pytest.raises(AppError, match="at least one asset"):
+        StoreIngestionService._validate_assets(())
+    monkeypatch.setattr("coeus.services.store.MAX_PRODUCT_ASSETS", 0)
+    with pytest.raises(AppError, match="metadata exceeds"):
+        StoreIngestionService._validate_assets(regional.assets)
+    with pytest.raises(AppError, match="forbidden"):
+        services.search.hybrid_candidates(
+            no_permissions, StoreSearchFilters(query="synthetic"), "synthetic", None
+        )
 
 
 def preview_assets() -> list[dict[str, object]]:

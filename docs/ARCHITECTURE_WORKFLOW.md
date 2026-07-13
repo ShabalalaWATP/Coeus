@@ -58,6 +58,12 @@ manager review the analysts' work before Quality Control; and QC approval now
 performs the final release itself (for an analysed collect it instead forwards
 the ticket to RFA assignment with the collect product linked).
 
+The QC queue is shared but detail is assigned. Queue items expose only a safe
+reference/state summary until an active QC-team manager atomically claims one.
+The assigned reviewer relationship controls full ticket detail and linked-draft
+audience, persists through rework, and is effectively revoked on release or
+lifecycle exit.
+
 ---
 
 ## 2. End-to-end flow (who does what)

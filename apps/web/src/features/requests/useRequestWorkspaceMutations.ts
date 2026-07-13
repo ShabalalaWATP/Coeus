@@ -1,8 +1,14 @@
-import { type InfiniteData, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Dispatch, SetStateAction } from "react";
 import { useNavigate } from "react-router-dom";
 
 import type { TicketWorkspaceActions, TicketWorkspacePending } from "./TicketWorkspace";
+import {
+  ticketSummary,
+  updateTicketSummary,
+  updateTicketSummaryState,
+  withAcceptedProduct,
+} from "./request-summary-updates";
 import {
   acceptProductOffer,
   rejectProductOffer,
@@ -25,8 +31,6 @@ import {
   type AttachmentMetadataInput,
   type IntakeUpdate,
   type Ticket,
-  type TicketSummary,
-  type TicketSummaryPage,
 } from "../../lib/api-client/tickets";
 import { actionErrorMessage } from "../../lib/mutations/action-error";
 
@@ -244,75 +248,5 @@ export function useRequestWorkspaceMutations({
     isJoiningSimilarRequest: joinSimilarMutation.isPending,
     joinSimilarRequest: (ticketId: string) => joinSimilarMutation.mutate(ticketId),
     pending,
-  };
-}
-
-function withAcceptedProduct(current: string[], acceptedProductId: string | null) {
-  if (acceptedProductId === null || current.includes(acceptedProductId)) {
-    return current;
-  }
-  return [...current, acceptedProductId];
-}
-
-function updateTicketSummary(
-  queryClient: ReturnType<typeof useQueryClient>,
-  summary: TicketSummary,
-) {
-  queryClient.setQueryData<InfiniteData<TicketSummaryPage>>(["tickets"], (current) => {
-    if (!current) return current;
-    let found = false;
-    const pages = current.pages.map((page) => ({
-      ...page,
-      tickets: page.tickets.map((ticket) => {
-        if (ticket.id !== summary.id) return ticket;
-        found = true;
-        return summary;
-      }),
-    }));
-    if (!found && pages[0]) pages[0] = { ...pages[0], tickets: [summary, ...pages[0].tickets] };
-    return { ...current, pages };
-  });
-}
-
-function updateTicketSummaryState(
-  queryClient: ReturnType<typeof useQueryClient>,
-  ticketId: string,
-  state: Ticket["state"],
-  releasedProductId: string | null,
-) {
-  queryClient.setQueryData<InfiniteData<TicketSummaryPage>>(["tickets"], (current) =>
-    current
-      ? {
-          ...current,
-          pages: current.pages.map((page) => ({
-            ...page,
-            tickets: page.tickets.map((ticket) =>
-              ticket.id === ticketId
-                ? {
-                    ...ticket,
-                    state,
-                    releasedProductId: releasedProductId ?? ticket.releasedProductId,
-                  }
-                : ticket,
-            ),
-          })),
-        }
-      : current,
-  );
-}
-
-function ticketSummary(ticket: Ticket): TicketSummary {
-  return {
-    id: ticket.id,
-    reference: ticket.reference,
-    requesterUserId: ticket.requesterUserId,
-    state: ticket.state,
-    title: ticket.intake.title,
-    priority: ticket.intake.priority,
-    isReadyForSubmission: ticket.isReadyForSubmission,
-    collaboratorCount: ticket.collaborators.length,
-    releasedProductId: ticket.releasedProductIds[0] ?? null,
-    createdAt: ticket.createdAt,
-    updatedAt: ticket.updatedAt,
   };
 }

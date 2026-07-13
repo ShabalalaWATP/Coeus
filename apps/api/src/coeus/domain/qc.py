@@ -9,6 +9,12 @@ class QcDecisionStatus(StrEnum):
     REJECTED = "rejected"
 
 
+class QcClaimStatus(StrEnum):
+    AVAILABLE = "available"
+    CLAIMED_BY_YOU = "claimed_by_you"
+    CLAIMED = "claimed"
+
+
 class ProductIndexStatus(StrEnum):
     QUEUED = "queued"
     INDEXED = "indexed"

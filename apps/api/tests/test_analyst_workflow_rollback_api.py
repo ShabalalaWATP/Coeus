@@ -28,7 +28,9 @@ async def test_assignment_audit_failure_rolls_back_ticket(
         manager = await login(client, "rfa.manager@example.test")
         team_id = await assignment_team_id(client)
         original = _stored_ticket(app, ticket_id)
-        monkeypatch.setattr(app.state.analyst_workflow_service._audit_log, "record", _fail_audit)
+        monkeypatch.setattr(
+            app.state.analyst_workflow_service._audit_log, "record_many", _fail_audit
+        )
 
         with pytest.raises(RuntimeError, match="audit unavailable"):
             await client.post(

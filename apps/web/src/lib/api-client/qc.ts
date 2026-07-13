@@ -1,4 +1,4 @@
-import { apiRequestJson, pathSegment } from "./client";
+import { apiRequestJson, apiRequestNoContent, pathSegment } from "./client";
 import type { TicketState } from "./tickets";
 
 type QcDraft = {
@@ -55,6 +55,14 @@ export type QcProduct = {
 
 export type QcQueue = {
   products: QcProduct[];
+  items: QcQueueItem[];
+};
+
+export type QcQueueItem = {
+  ticketId: string;
+  reference: string;
+  state: TicketState;
+  claimStatus: "available" | "claimed_by_you" | "claimed";
 };
 
 export type QcApprovalInput = {
@@ -73,6 +81,20 @@ export async function listQcQueue(): Promise<QcQueue> {
 export async function getQcProduct(ticketId: string): Promise<QcProduct> {
   return apiRequestJson<QcProduct>(`/api/v1/qc/products/${pathSegment(ticketId)}`, {
     method: "GET",
+  });
+}
+
+export async function claimQcProduct(ticketId: string, csrfToken: string): Promise<QcProduct> {
+  return apiRequestJson<QcProduct>(`/api/v1/qc/products/${pathSegment(ticketId)}/claim`, {
+    headers: { "X-CSRF-Token": csrfToken },
+    method: "POST",
+  });
+}
+
+export async function releaseQcClaim(ticketId: string, csrfToken: string): Promise<void> {
+  await apiRequestNoContent(`/api/v1/qc/products/${pathSegment(ticketId)}/claim`, {
+    headers: { "X-CSRF-Token": csrfToken },
+    method: "DELETE",
   });
 }
 

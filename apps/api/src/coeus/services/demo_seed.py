@@ -14,8 +14,8 @@ progress and user-added entries are never reset on a persisted store.
 from coeus.repositories.access import AccessRepository
 from coeus.repositories.demo_calendar import build_demo_calendar
 from coeus.repositories.demo_catalogue import DemoCatalogue, build_demo_catalogue
-from coeus.repositories.demo_tickets import build_demo_tickets
 from coeus.repositories.teams import TeamRepository
+from coeus.services.demo_tickets import build_demo_tickets
 from coeus.services.object_storage import ObjectStorage, seed_store_asset_placeholders
 from coeus.services.store import StoreServices
 from coeus.services.tickets import TicketServices

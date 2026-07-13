@@ -86,7 +86,9 @@ class FakeEmbeddingService:
         self._vector = vector
         self.calls: list[tuple[str, str]] = []
 
-    def embed(self, text: str, *, purpose: str) -> tuple[float, ...] | None:
+    def embed(
+        self, text: str, *, purpose: str, principal_id: object | None = None
+    ) -> tuple[float, ...] | None:
         self.calls.append((text, purpose))
         return self._vector
 

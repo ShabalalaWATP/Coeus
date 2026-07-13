@@ -1,0 +1,2 @@
+# False positive: empty example variable followed by a public Bedrock model ID.
+78bf90f02aa0d69f86205ab589cedbe26a96815c:.env.example:generic-api-key:40

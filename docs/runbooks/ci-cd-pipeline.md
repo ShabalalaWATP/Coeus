@@ -10,8 +10,8 @@ The repository uses GitHub Actions for pull-request and `main` branch checks.
 
 | Workflow | Trigger | Purpose |
 |---|---|---|
-| `Backend CI` | pull request, push to `main` | Ruff format, Ruff lint, mypy, OpenAPI contract drift, pytest coverage, Bandit and pip-audit. |
-| `Frontend CI` | pull request, push to `main` | ESLint, TypeScript, Vitest coverage, Vite build and Playwright Chromium smoke. |
+| `Backend CI` | pull request, push to `main` | File limits, Markdown links/images, Ruff, mypy, architecture boundaries, semantic OpenAPI compatibility, generated type drift, real PostgreSQL migration/concurrency tests, independent line/branch coverage, Bandit and pip-audit. |
+| `Frontend CI` | pull request, push to `main` | Prettier, ESLint, TypeScript, Knip, all Vitest coverage gates, production audit, Vite build, fast Playwright journeys and the disposable-PostgreSQL security workflow. |
 | `CodeQL` | pull request, push to `main`, weekly schedule | GitHub CodeQL analysis for Python and JavaScript/TypeScript. |
 | `Semgrep` | pull request, push to `main`, weekly schedule | Semgrep SAST over application source, Dockerfiles and GitHub config, with SARIF upload. |
 | `Terraform IaC` | pull request, push to `main` | Terraform fmt, init without backend and validate for the dev environment. |
@@ -19,7 +19,15 @@ The repository uses GitHub Actions for pull-request and `main` branch checks.
 | `Container Security` | pull request, push to `main`, weekly schedule | Docker image build and Trivy vulnerability scanning for API and web images. |
 | `Supply Chain Security` | pull request, push to `main`, weekly schedule | Gitleaks committed-history scan and CycloneDX SBOM artifact generation. |
 | `DAST Security` | pull request, push to `main`, weekly schedule | Fail-closed ZAP baseline scan against a local CI-hosted web target using a reviewed rules file. |
-| `Deploy Dev` | manual dispatch, optional push to `main` | Future-migration validation and local image builds only. It does not authenticate, push, change infrastructure or deploy. |
+| `Future GCP Migration Reference` | manual dispatch only | Future-migration Terraform tests and local image builds. It does not authenticate, push, change infrastructure or deploy. |
+
+The PostgreSQL browser gate is `pnpm playwright:postgres`. It creates a unique
+database from `COEUS_TEST_DATABASE_URL`, migrates it to Alembic head, runs the
+real API and web applications, exercises draft denial, `413` and `429` recovery
+through release and verifies downloaded bytes, then terminates connections and
+drops the database.
+The ordinary `test:e2e` suite remains the faster memory-backed compatibility
+and UI smoke gate. Neither local gate is staging evidence.
 
 Dependabot runs weekly for GitHub Actions, npm, pip, Docker and Terraform
 dependencies. Each ecosystem has a 7-day cooldown for version updates. npm

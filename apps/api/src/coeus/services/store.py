@@ -21,6 +21,7 @@ from coeus.domain.store import (
     StoreProductMetadata,
     StoreSearchFilters,
     StoreSearchResult,
+    normalise_synthetic_release_markers,
     object_key_segment,
 )
 from coeus.domain.store_filters import structured_filter_match
@@ -95,6 +96,12 @@ class StoreIngestionService:
         require_owner_permission(actor, owner_team)
         self._validate_acgs(actor, draft.acg_ids)
         self._validate_assets(draft.assets)
+        try:
+            releasability, handling_caveats = normalise_synthetic_release_markers(
+                draft.releasability, draft.handling_caveats
+            )
+        except ValueError as exc:
+            raise AppError(422, "unsupported_release_marker", str(exc)) from exc
         if draft.product_type == "geographic_product" and not (
             draft.geojson_ref or draft.bounding_box
         ):
@@ -127,8 +134,8 @@ class StoreIngestionService:
                 owner_team=owner_team,
                 area_or_region=draft.area_or_region,
                 classification_level=draft.classification_level,
-                releasability=draft.releasability,
-                handling_caveats=draft.handling_caveats,
+                releasability=frozenset(releasability),
+                handling_caveats=frozenset(handling_caveats),
                 tags=draft.tags,
                 acg_ids=draft.acg_ids,
                 status=draft.status,
@@ -249,7 +256,9 @@ class StoreSearchService:
         if has_text_query(filters):
             query = filters.query.strip() if filters.query else ""
             query_embedding = (
-                self._embeddings.embed(query, purpose="store-browse-query")
+                self._embeddings.embed_cached(
+                    query, purpose="store-browse-query", principal_id=actor.user_id
+                )
                 if self._embeddings is not None
                 else None
             )

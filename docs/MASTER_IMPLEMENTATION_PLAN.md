@@ -6,11 +6,19 @@ the concise delivery tracker and must stay within the repository line limit.
 
 ## Current Stage
 
-Sprint 15 and the follow-on cross-role usability remediation are delivered.
-Local development remains the supported runtime. GCP and Kubernetes are explicit
-migration targets, not active deployments. Sprint 14B security-remediation
-closure continues in parallel; do not represent it as sealed until a final scan
-actually completes.
+Sprint 15 implementation and Sprint 16 are delivered; Sprint 15's full-role
+browser acceptance evidence is carried into Sprint 17. Sprint 17 implementation
+is in progress and release-blocking from the sealed deep scan of revision
+`3e27c82`, which reported 12 findings and four deferred questions. Local
+controls, N-1 reconciliation and a ten-stage PostgreSQL browser workflow are
+green, and PR 109 protected GitHub gates passed on substantive candidate
+`a02fd6d3`. Assigned-QC self-claim and object-aware audience enforcement are
+implemented with memory and PostgreSQL regression evidence. The remaining
+authorised staging checks remain open. The final local candidate passes 962
+backend tests, 414 frontend tests and the ten-stage PostgreSQL browser workflow.
+The repository owner deferred the fresh sealed scan on 2026-07-13, so
+fresh-scan closure is not claimed. Local
+development remains supported; GCP and Kubernetes remain migration targets.
 
 ## Delivery Ledger
 
@@ -29,10 +37,11 @@ actually completes.
 | 11     | Feedback submission, admin/RFA/CM dashboards, product reuse analytics and Trends Analysis Agent.                                                                                                                                                                                                          | Complete                     | Local backend, frontend, Semgrep and security gates passed on 2026-07-05.                                                                                                                                            |
 | 12     | Inactive future GCP migration reference: Terraform, Cloud Run, Cloud SQL, Cloud Storage, Secret Manager, Pub/Sub, Artifact Registry and AI provider configuration.                                                                                                                                        | Reference complete, inactive | Reference validation passed on 2026-07-05; no live GCP runtime is supported or required.                                                                                                                             |
 | 13     | Security hardening, container scans, SBOM, DAST, Terraform scanning, prompt-injection suite and air-gapped notes.                                                                                                                                                                                         | Complete                     | Local backend, frontend, Semgrep, Checkov and Gitleaks gates passed on 2026-07-05; Docker-backed checks run in GitHub Actions.                                                                                       |
-| 14     | Close the original 2026-07-10 security findings and improve SOLID boundaries, maintainability, independent coverage gates and real integration testing.                                                                                                                                                   | Reopened by sealed scan      | The implementation gates passed, but the sealed scan of `72a0dc58` reported 16 new reportable findings.                                                                                                              |
-| 14B    | Remediate the sealed 16-finding baseline, verification findings and quality debt, then produce a clean immutable release candidate.                                                                                                                                                                       | In progress                  | The original 16 are closed at `7165e49e`. Verification scan `a089e83c` found three Low/P3 findings; their post-scan fixes await full gates and a final seal.                                                         |
-| 15     | JIOC workflow restructure: role renames plus JIOC Team Member, JIOC routing queue, customer collect choice, manager approval chain, QC-owned release with the CM-to-RFA analysed-collect leg, multi-analyst assignment, teams/profiles/availability calendars, and the permission-refresh-on-restore fix. | Complete                     | Backend and web suites green at the 95% gates on 2026-07-11; contracts, line-limit, lint and format clean; all four phases verified live in the browser. See ADR 0022 and `docs/specs/jioc-workflow-restructure.md`. |
+| 14     | Close the original 2026-07-10 security findings and improve SOLID boundaries, maintainability, independent coverage gates and real integration testing.                                                                                                                                                   | Historical, superseded       | Its later release obligation moved through Sprint 14B and is now owned only by Sprint 17.                                                                                                                             |
+| 14B    | Remediate the sealed 16-finding baseline and its verification findings.                                                                                                                                                                                                                                    | Superseded by Sprint 17      | The original baseline was closed, but deep scan `abf0e143` of later revision `3e27c82` established the current 12-finding baseline.                                                                                  |
+| 15     | JIOC workflow restructure: role renames plus JIOC Team Member, JIOC routing queue, customer collect choice, manager approval chain, QC-owned release with the CM-to-RFA analysed-collect leg, multi-analyst assignment, teams/profiles/availability calendars, and the permission-refresh-on-restore fix. | Implementation delivered     | Backend and web suites passed; the complete eight-role real-browser acceptance evidence is carried into Sprint 17. See ADR 0022 and the workflow specifications.                                                     |
 | 16     | Cross-role desktop usability, multi-provider AI administration and documentation/deployment accuracy.                                                                                                                                                                                                     | Complete                     | PRs #98-#100 passed protected GitHub checks; coverage remained above 95%; current guides distinguish the supported local runtime from GCP/Kubernetes migration targets.                                              |
+| 17     | Close the current security baseline, introduce secure control ownership, improve SOLID boundaries and reconcile all active documentation without breaking intended behaviour.                                                                                                                            | Implementation in progress   | Local controls, logical restore, N-1 reconciliation, final PostgreSQL browser evidence and protected GitHub gates pass. Assigned-QC claims and audience isolation are implemented; external staging remains open. The owner deferred the fresh sealed scan, so scan closure remains unclaimed. |
 
 ## Sprint 11 Delivered Scope
 
@@ -145,12 +154,13 @@ and closed all 16 baseline findings. The sealed verification scan
 The current fix uses a repository-locked save-plus-confirmation boundary,
 optimistic ticket snapshot compare-and-swap, conditional rollback, cursor-based
 compact request summaries and an explicit browser-dictation privacy notice.
-Completion still requires full local gates and a zero-finding sealed scan of a
-clean post-fix revision.
+This is historical Sprint 14B evidence. Deep scan `abf0e143` of later revision
+`3e27c82` supersedes its release-closure state and defines Sprint 17.
 
 ## Sprint 15 Workflow Integrity And Area Oversight
 
-Status: in progress from the July 2026 cross-role workflow audit.
+Status: implementation delivered; full-role browser acceptance evidence is
+carried into Sprint 17.
 
 - Make the selected organisational team authoritative for assignment,
   availability and membership while allowing RFA and CM managers to operate
@@ -166,10 +176,10 @@ Status: in progress from the July 2026 cross-role workflow audit.
 - Repair the local Alembic/reset/Compose workflows and make Node, GCP and
   Kubernetes guidance match the actual supported boundaries.
 
-The authoritative acceptance criteria are in
-`docs/specs/workflow-integrity-area-oversight-remediation.md` and ADR 0023.
-Sprint 15 is not complete until the full backend/frontend coverage gates,
-browser role walkthroughs and operational verification pass.
+The acceptance criteria are in
+`docs/specs/workflow-integrity-area-oversight-remediation.md` and ADR 0023. The
+delivery and role-walkthrough evidence is recorded in
+`docs/DEVELOPMENT_STORY.md`.
 
 ## Sprint 13 Delivered Scope
 

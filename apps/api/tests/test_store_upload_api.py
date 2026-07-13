@@ -11,7 +11,7 @@ from store_api_helpers import login, product_payload
 
 
 class FailingObjectStorage(LocalObjectStorage):
-    def write_bytes(self, object_key: str, content: bytes) -> None:
+    def write_file(self, object_key: str, source: Path) -> None:
         super().write_bytes(object_key, b"partial")
         raise OSError("synthetic storage failure")
 

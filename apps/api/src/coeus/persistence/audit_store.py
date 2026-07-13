@@ -1,4 +1,5 @@
 import json
+import os
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
@@ -19,6 +20,9 @@ class AuditEventStore(Protocol):
     def append(self, event: dict[str, object]) -> None:
         pass
 
+    def append_many(self, events: tuple[dict[str, object], ...]) -> None:
+        pass
+
     def list_page(self, limit: int, before_event_id: str | None = None) -> StoredAuditPage:
         pass
 
@@ -31,6 +35,10 @@ class MemoryAuditEventStore:
     def append(self, event: dict[str, object]) -> None:
         with self._lock:
             self._events.append(deepcopy(event))
+
+    def append_many(self, events: tuple[dict[str, object], ...]) -> None:
+        with self._lock:
+            self._events.extend(deepcopy(events))
 
     def list_page(self, limit: int, before_event_id: str | None = None) -> StoredAuditPage:
         with self._lock:
@@ -49,6 +57,23 @@ class FileAuditEventStore:
             with self._path.open("a", encoding="utf-8", newline="\n") as stream:
                 stream.write(f"{line}\n")
                 stream.flush()
+
+    def append_many(self, events: tuple[dict[str, object], ...]) -> None:
+        if not events:
+            return
+        with self._lock:
+            existing = self._read()
+            lines = tuple(
+                json.dumps(event, separators=(",", ":"), sort_keys=True)
+                for event in (*existing, *events)
+            )
+            self._path.parent.mkdir(parents=True, exist_ok=True)
+            temporary = self._path.with_suffix(f"{self._path.suffix}.tmp")
+            try:
+                temporary.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+                os.replace(temporary, self._path)
+            finally:
+                temporary.unlink(missing_ok=True)
 
     def list_page(self, limit: int, before_event_id: str | None = None) -> StoredAuditPage:
         with self._lock:
@@ -102,6 +127,25 @@ class PostgresAuditEventStore:
                     "actor_user_id": event["actor_user_id"],
                     "metadata": json.dumps(event["metadata"]),
                 },
+            )
+
+    def append_many(self, events: tuple[dict[str, object], ...]) -> None:
+        if not events:
+            return
+        with self._lock, self._engine.begin() as connection:
+            self._ensure_schema(connection)
+            connection.execute(
+                text(
+                    """
+                    INSERT INTO coeus_audit_events(
+                        event_id, event_type, occurred_at, actor_user_id, metadata
+                    ) VALUES (
+                        CAST(:event_id AS uuid), :event_type, CAST(:occurred_at AS timestamptz),
+                        :actor_user_id, CAST(:metadata AS jsonb)
+                    )
+                    """
+                ),
+                [_event_parameters(event) for event in events],
             )
 
     def list_page(self, limit: int, before_event_id: str | None = None) -> StoredAuditPage:
@@ -181,4 +225,14 @@ def _row_payload(row: Any) -> dict[str, object]:
         "occurred_at": row["occurred_at"].isoformat(),
         "actor_user_id": str(row["actor_user_id"]) if row["actor_user_id"] else None,
         "metadata": dict(row["metadata"]),
+    }
+
+
+def _event_parameters(event: dict[str, object]) -> dict[str, object]:
+    return {
+        "event_id": event["event_id"],
+        "event_type": event["event_type"],
+        "occurred_at": event["occurred_at"],
+        "actor_user_id": event["actor_user_id"],
+        "metadata": json.dumps(event["metadata"]),
     }

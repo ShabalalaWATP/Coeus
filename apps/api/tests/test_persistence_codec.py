@@ -1,4 +1,7 @@
+import json
 from datetime import UTC, datetime
+from hashlib import sha256
+from pathlib import Path
 from types import MappingProxyType
 from uuid import uuid4
 
@@ -7,7 +10,8 @@ import pytest
 from coeus.core.permissions import Permission
 from coeus.domain.auth import RoleName, UserAccount
 from coeus.domain.tickets import WorkflowPlanUpdate
-from coeus.persistence.codec import decode_value, encode_value
+from coeus.persistence.codec import CodecWriteFormat, decode_value, encode_value
+from coeus.persistence.codec_registry import ENUM_IDENTITIES, TYPE_IDENTITIES
 
 
 def test_workflow_plan_update_round_trips() -> None:
@@ -112,3 +116,85 @@ def test_container_and_scalar_codec_branches_round_trip() -> None:
     assert decoded["items"][1] == "plain"
     assert decode_value([{"value": 1}]) == [{"value": 1}]
     assert encode_value({"list": ["value"]}) == {"list": ["value"]}
+
+
+def test_default_writer_uses_stable_ids_and_reader_retains_legacy_compatibility() -> None:
+    update = WorkflowPlanUpdate(
+        update_id=uuid4(),
+        ticket_id=uuid4(),
+        title="Preserve codec compatibility",
+        owner_role="JIOC",
+        status="in_progress",
+        note="Reader-first rollout",
+        created_at=datetime.now(UTC),
+    )
+
+    legacy = encode_value(update, write_format=CodecWriteFormat.LEGACY)
+    stable = encode_value(update)
+
+    assert legacy["__type__"] == "coeus.domain.tickets.WorkflowPlanUpdate"
+    assert "__type_id__" not in legacy
+    assert stable["__type_id__"] == "tickets.workflow_plan_update"
+    assert "__type__" not in stable
+    assert decode_value(legacy) == update
+    assert decode_value(stable) == update
+
+
+def test_stable_writer_uses_semantic_enum_ids_recursively() -> None:
+    user = UserAccount(
+        user_id=uuid4(),
+        username="stable@example.test",
+        display_name="Stable Identity",
+        roles=frozenset({RoleName.ADMINISTRATOR}),
+        permissions=frozenset({Permission.SYSTEM_CONFIGURE}),
+        password_hash="codec-test-hash",  # noqa: S106 - synthetic hash fixture.
+        is_active=True,
+        clearance_level=3,
+    )
+
+    payload = encode_value(user, write_format=CodecWriteFormat.STABLE)
+
+    role = payload["fields"]["roles"]["__frozenset__"][0]
+    permission = payload["fields"]["permissions"]["__frozenset__"][0]
+    assert payload["__type_id__"] == "auth.user_account"
+    assert role["__enum_id__"] == "auth.role_name"
+    assert permission["__enum_id__"] == "core.permission"
+    assert decode_value(payload) == user
+
+
+@pytest.mark.parametrize("kind", ["type", "enum"])
+def test_ambiguous_persistence_identities_fail_closed(kind: str) -> None:
+    payload = {
+        f"__{kind}__": "legacy.value",
+        f"__{kind}_id__": "stable.value",
+        "fields": {},
+        "value": "unused",
+    }
+
+    with pytest.raises(ValueError, match="exactly one identity format"):
+        decode_value(payload)
+
+
+def test_complete_codec_identity_registry_matches_committed_golden() -> None:
+    fixture_path = (
+        Path(__file__).parents[3]
+        / "packages"
+        / "test-fixtures"
+        / "persistence-codec-identities.json"
+    )
+    golden = json.loads(fixture_path.read_text(encoding="utf-8"))
+    payload = {
+        "types": {
+            stable_id: f"{python_type.__module__}.{python_type.__name__}"
+            for python_type, stable_id in TYPE_IDENTITIES
+        },
+        "enums": {
+            stable_id: f"{python_type.__module__}.{python_type.__name__}"
+            for python_type, stable_id in ENUM_IDENTITIES
+        },
+    }
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+
+    assert len(TYPE_IDENTITIES) == golden["typeCount"]
+    assert len(ENUM_IDENTITIES) == golden["enumCount"]
+    assert sha256(canonical).hexdigest() == golden["sha256"]

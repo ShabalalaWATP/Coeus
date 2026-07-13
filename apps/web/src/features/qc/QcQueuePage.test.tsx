@@ -237,7 +237,7 @@ test("notes when the requested QC product cannot be found", async () => {
   expect(
     within(screen.getByLabelText("QC product detail")).getByText("No QC product selected."),
   ).toBeVisible();
-  expect(screen.getAllByText("Arctic QC product")).toHaveLength(1);
+  expect(screen.getByText("Assigned to you")).toBeVisible();
 });
 
 test("shows QC action failures inline", async () => {

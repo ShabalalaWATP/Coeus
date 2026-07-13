@@ -30,6 +30,7 @@ const INCLUDED_FILENAMES = new Set([
 
 const EXCLUDED_PATHS = new Set([
   "apps/api/uv.lock",
+  "apps/web/src/lib/api-client/generated/openapi.ts",
   "coeus_spec_driven_implementation_plan.md",
   "packages/contracts/openapi.json",
   "pnpm-lock.yaml",

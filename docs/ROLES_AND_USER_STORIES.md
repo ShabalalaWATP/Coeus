@@ -98,6 +98,9 @@ audit log and global analytics.
 
 ### Quality Control Manager
 
+- See safe summaries in the shared QC queue, claim one review atomically and
+  release the claim deliberately when a hand-off is needed.
+- See full product detail and linked drafts only while assigned to that review.
 - Review submitted drafts and approve or reject them.
 - On approval, ingest the product and perform the final release to the
   customer; for an analysed collect, forward the ticket to RFA assignment with
@@ -160,6 +163,10 @@ audit log and global analytics.
 
 ### Quality Control Manager
 
+- As a QC manager, I want to claim one queued review before seeing its detail so
+  that review ownership and need-to-know access are explicit.
+- As a QC manager, I want competing claims to fail safely and released claims to
+  return to the shared queue so that hand-offs cannot create two reviewers.
 - As a QC manager, I want to review a draft against quality and releasability so
   that only sound products progress.
 - As a QC manager, I want to be blocked from approving my own draft so that

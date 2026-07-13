@@ -1,5 +1,4 @@
 from math import sqrt
-from re import findall
 
 from coeus.domain.search_relevance import (
     LEXICAL_SCORE_FLOOR,
@@ -8,34 +7,20 @@ from coeus.domain.search_relevance import (
     available_hybrid_legs,
     hybrid_rrf_score,
     matched_tokens,
-    token_sets_overlap,
 )
 from coeus.domain.store import StoreHybridCandidate, StoreProduct, StoreSearchHit
+from coeus.domain.store_ranking import (
+    lexical_score_for_product,
+    lexical_text_score,
+    token_overlap,
+    tokenize,
+)
 from coeus.domain.tickets import IntakeDetails, ProductOffer, ProductOfferStatus
 from coeus.services.store_semantics import product_semantic_text, semantic_label_reasons
 
 RFI_OFFER_THRESHOLD = 0.34
 RFI_MAX_OFFERS = 5
 RFI_RANKING_WORK_LIMIT = 100
-STOP_WORDS = frozenset(
-    {
-        "a",
-        "an",
-        "and",
-        "for",
-        "in",
-        "is",
-        "mock",
-        "of",
-        "on",
-        "or",
-        "synthetic",
-        "the",
-        "to",
-        "what",
-        "with",
-    }
-)
 __all__ = [
     "LEXICAL_SCORE_FLOOR",
     "RRF_K",
@@ -130,21 +115,6 @@ def query_text(intake: IntakeDetails) -> str:
     )
 
 
-def tokenize(text: str) -> tuple[str, ...]:
-    """Canonical retrieval tokeniser shared by every lexical scoring path."""
-    return tuple(
-        dict.fromkeys(
-            token
-            for token in findall(r"[a-z0-9]+", text.casefold())
-            if len(token) >= 2 and token not in STOP_WORDS
-        )
-    )
-
-
-def token_overlap(left: str, right: str) -> bool:
-    return token_sets_overlap(tokenize(left), tokenize(right))
-
-
 def _tokens(text: str) -> tuple[str, ...]:
     return tokenize(text)
 
@@ -153,26 +123,8 @@ def _matched_tokens(query_tokens: tuple[str, ...], document: str) -> tuple[str, 
     return matched_tokens(query_tokens, tokenize(document))
 
 
-def lexical_text_score(query: str, document: str) -> float:
-    """Fraction of distinct query tokens present in ``document``.
-
-    This is the single lexical scoring formula, calibrated against
-    ``LEXICAL_SCORE_FLOOR``. Both RFI product ranking and similar-request
-    ranking route through it so equivalent text scores identically.
-    """
-    query_tokens = tokenize(query)
-    if not query_tokens:
-        return 0.0
-    matches = _matched_tokens(query_tokens, document)
-    return min(len(matches) / len(query_tokens), 1.0)
-
-
 def _product_text(product: StoreProduct) -> str:
     return product_semantic_text(product)
-
-
-def lexical_score_for_product(product: StoreProduct, query: str) -> float:
-    return lexical_text_score(query, _product_text(product))
 
 
 def _full_text_score(

@@ -25,22 +25,31 @@ across the API and web app.
 | A Gemini outage or missing key breaks intake capture and drops customer messages. | Provider errors degrade to the deterministic mock reply; the customer message, flags and reply are always persisted. Logs carry error codes only, never keys or message content. |
 | Any authenticated user enumerates the full staff roster. | The user directory requires a search term of three or more characters and returns at most ten active accounts, excluding the caller. |
 | A database backup or state file replays live sessions. | Session identifiers are stored as SHA-256 hashes at rest; the raw token exists only in the cookie and login response. |
-| A shared proxy IP triggers an organisation-wide login lockout, or a trickle of failures keeps an account locked forever. | `COEUS_TRUSTED_PROXY_COUNT` (default 0) controls X-Forwarded-For trust explicitly; per-username failure records decay once older than the lockout window. |
+| A forged forwarded address bypasses throttling, or denied attempts grow memory without bound. | Forwarded addresses are accepted only when both `COEUS_TRUSTED_PROXY_COUNT` and matching `COEUS_TRUSTED_PROXY_CIDRS` identify the socket peer. Username and source histories decay, have fixed entry ceilings and never append denied attempts. |
+| Credentialed cross-origin requests are exposed by wildcard or malformed origins. | Startup rejects wildcards, credentials, paths, queries, fragments and non-HTTP(S) values in `COEUS_ALLOWED_CORS_ORIGINS`. |
 | Admin-reset credentials remain in long-term use. | Admin resets set `password_reset_required`; all endpoints except me/logout/password-change return 403 until the user changes the password via the new CSRF-protected self-service endpoint, which rotates the session and invalidates all others. |
 | Asset download tokens leak through access logs, proxies or browser history. | Tokens moved from the URL query string to the `X-Asset-Token` request header; the web app downloads via fetch and blob. Token HMAC binding and 15-minute expiry are unchanged. |
 | A manager approves a route for a queue they do not manage by supplying an override reason. | Route approval requires the review permission of the queue the ticket currently sits in; the override reason remains required off-recommendation. |
 | A read-scoped role silently gains ticket write access. | `TICKET_READ_ALL` no longer confers write. Writes require ownership, editor collaboration or the explicit `TICKET_WRITE_ALL` permission. |
 | Free-text metadata crashes QC approval and leaves an orphaned draft product. | Time periods are ISO-date constrained at the schema boundary, sanitised on QC copy, and approval validates up front and rolls the product back if the ticket update fails. |
+| Concurrent or partially failed QC release publishes a product without matching ticket and audit state. | PostgreSQL relational mode locks and version-checks the ticket, then commits ticket, Store projection, audit evidence and a uniquely keyed notification intent in one transaction. Forced-failure and two-worker tests prove rollback and one-winner behaviour. |
+| Ticket creation or a staff workflow update commits without its audit evidence. | `TicketMutationService` selects collision-safe create or version-checked update operations. PostgreSQL commits the aggregate, shadow event and audit evidence on one connection; local modes retain the tested compatibility path. |
+| Symmetric related-ticket linking updates only one side or loses its audit event. | The paired transaction locks both ticket IDs in deterministic order and commits both aggregates and audit evidence together. A stale side rolls the complete unit back. |
+| An outbox retry duplicates a release notification after a worker crash. | The durable event ID is reused as the in-app notification and email record ID, so replay returns existing records. Malformed or inactive-requester intents fail into bounded retry and dead-letter handling. |
+| An outbox uniqueness collision hides different release content. | The release transaction reads back the stored deterministic event and payload. A different event ID or payload for the same ticket version fails the whole transaction closed. |
+| Local multi-event or paired mutations leave partial evidence or asymmetric state. | Memory and file modes append audit batches as one store operation and replace paired tickets under one repository lock. Hosted multi-process use remains PostgreSQL-only. |
 | Store search filters act as wildcards. | `%`, `_` and `\` are escaped in ILIKE patterns; date filters parse ISO values and ignore invalid input. |
 | The one CSRF-exempt POST endpoint is used for request forgery. | Access diagnostics now requires the CSRF-validated session like every other mutating route. |
 
 ## Accepted Risks And Deferred Items
 
-- The in-memory, whole-namespace JSON persistence model is single-worker only.
-  Running multiple workers or instances remains unsafe and is a documented
-  deployment constraint pending a relational persistence redesign.
-- The audit log remains a bounded ring buffer (10,000 events); oldest events
-  are discarded at capacity. A durable audit store is future work.
+- The in-memory and file whole-namespace models remain single-worker only.
+  Hosted PostgreSQL relational mode is the multi-process authority. Ticket
+  creation, single-ticket workflow updates, paired links and QC release use the
+  workflow transaction port; coordinated restore proof remains outstanding.
+- Memory and file audit caches remain bounded to 10,000 events. PostgreSQL uses
+  the durable audit event table; retention and archival policy remain an
+  operational decision.
 - CSRF tokens remain raw in session records because `/auth/me` must return
   them; they are useless without the hashed session cookie.
 - Intake fields cannot be cleared through PATCH once set (nulls are filtered);

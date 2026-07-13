@@ -19,7 +19,6 @@ from coeus.domain.tickets import RoutingRoute, TicketRecord
 from coeus.repositories.teams import TeamRepository
 from coeus.services.analyst_records import approved_route, assigned_analyst_ids
 from coeus.services.audit import AuditLog
-from coeus.services.audit_rollback import record_ticket_audit_or_rollback
 from coeus.services.ticket_records import timeline
 from coeus.services.tickets import TicketServices
 
@@ -42,30 +41,26 @@ class ManagerApprovalService:
         ticket = self._reviewable_ticket(actor, ticket_id)
         self._ensure_separation_of_duties(actor, ticket)
         self._ensure_transition(ticket.state, TicketState.QC_REVIEW)
-        updated = self._tickets.tickets.save_system_update(
-            replace(
-                ticket,
-                state=TicketState.QC_REVIEW,
-                timeline=(
-                    *ticket.timeline,
-                    timeline(
-                        ticket.ticket_id,
-                        actor.user_id,
-                        "manager_approved",
-                        "Manager approved the work and forwarded it to Quality Control.",
-                    ),
-                ),
-            )
-        )
-        record_ticket_audit_or_rollback(
-            self._tickets.tickets,
-            self._audit_log,
+        proposed = replace(
             ticket,
+            state=TicketState.QC_REVIEW,
+            timeline=(
+                *ticket.timeline,
+                timeline(
+                    ticket.ticket_id,
+                    actor.user_id,
+                    "manager_approved",
+                    "Manager approved the work and forwarded it to Quality Control.",
+                ),
+            ),
+        )
+        return self._tickets.mutations.save_audited_if_current(
+            ticket,
+            proposed,
             "manager_approved",
             actor,
             {"ticket_id": str(ticket_id)},
         )
-        return updated
 
     def return_for_rework(self, actor: UserAccount, ticket_id: UUID, reason: str) -> TicketRecord:
         cleaned = reason.strip()
@@ -73,25 +68,21 @@ class ManagerApprovalService:
             raise AppError(422, "reason_required", "A rework reason is required.")
         ticket = self._reviewable_ticket(actor, ticket_id)
         self._ensure_transition(ticket.state, TicketState.ANALYST_IN_PROGRESS)
-        updated = self._tickets.tickets.save_system_update(
-            replace(
-                ticket,
-                state=TicketState.ANALYST_IN_PROGRESS,
-                timeline=(
-                    *ticket.timeline,
-                    timeline(ticket.ticket_id, actor.user_id, "manager_returned_rework", cleaned),
-                ),
-            )
-        )
-        record_ticket_audit_or_rollback(
-            self._tickets.tickets,
-            self._audit_log,
+        proposed = replace(
             ticket,
+            state=TicketState.ANALYST_IN_PROGRESS,
+            timeline=(
+                *ticket.timeline,
+                timeline(ticket.ticket_id, actor.user_id, "manager_returned_rework", cleaned),
+            ),
+        )
+        return self._tickets.mutations.save_audited_if_current(
+            ticket,
+            proposed,
             "manager_returned_rework",
             actor,
             {"ticket_id": str(ticket_id)},
         )
-        return updated
 
     def review_work(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         """Return the submitted work only to the manager authorised to decide it."""

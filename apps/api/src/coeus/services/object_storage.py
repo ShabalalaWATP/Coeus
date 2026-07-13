@@ -1,3 +1,4 @@
+import shutil
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Protocol, runtime_checkable
@@ -13,6 +14,9 @@ class ObjectStorage(Protocol):
         pass
 
     def read_bytes(self, object_key: str) -> bytes:
+        pass
+
+    def write_file(self, object_key: str, source: Path) -> None:
         pass
 
     def iter_bytes(self, object_key: str, chunk_size: int) -> Iterator[bytes]:
@@ -35,6 +39,17 @@ class LocalObjectStorage:
         temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
         try:
             temporary.write_bytes(content)
+            temporary.replace(path)
+        finally:
+            temporary.unlink(missing_ok=True)
+
+    def write_file(self, object_key: str, source: Path) -> None:
+        path = self.path_for(object_key)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
+        try:
+            with source.open("rb") as reader, temporary.open("xb") as writer:
+                shutil.copyfileobj(reader, writer, length=1024 * 1024)
             temporary.replace(path)
         finally:
             temporary.unlink(missing_ok=True)

@@ -1,7 +1,11 @@
+from ipaddress import ip_network
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from coeus.domain.admission import AdmissionMode
 
 EnvironmentName = Literal["local", "dev", "staging", "prod", "test"]
 EmailProviderName = Literal["outbox", "smtp"]
@@ -9,6 +13,7 @@ EmbeddingProviderName = Literal["mock", "local", "gemini_api"]
 LlmProviderName = Literal["mock", "gemini_api", "openai_api", "vertex_ai", "bedrock"]
 ObjectStorageProviderName = Literal["local", "gcs"]
 PersistenceProviderName = Literal["memory", "file", "postgres"]
+TicketPersistenceMode = Literal["legacy", "shadow_validate", "relational"]
 SEED_USER_ENVIRONMENTS = frozenset({"local", "test"})
 SECURE_COOKIE_ENVIRONMENTS = frozenset({"staging", "prod"})
 HOSTED_ENVIRONMENTS = frozenset({"dev", "staging", "prod"})
@@ -42,6 +47,7 @@ class Settings(BaseSettings):
     # Number of trusted reverse proxies in front of the API. 0 (default) means
     # X-Forwarded-For is ignored and the socket peer address is used.
     trusted_proxy_count: int = Field(default=0, ge=0, le=10)
+    trusted_proxy_cidrs: list[str] = Field(default_factory=list)
     login_attempt_max_entries: int = Field(default=10_000, ge=1)
     registration_max_pending: int = Field(default=500, ge=1)
     auth_ip_max_attempts: int = Field(default=30, ge=1)
@@ -76,6 +82,24 @@ class Settings(BaseSettings):
     # provider; these are opt-in alternatives configured the same way
     # (runtime key via the admin API, or env key plus explicit provider).
     llm_api_timeout_seconds: int = Field(default=10, ge=1, le=60)
+    provider_max_concurrent: int = Field(default=4, ge=1, le=32)
+    provider_max_calls_per_window: int = Field(default=120, ge=1)
+    provider_max_calls_per_principal: int = Field(default=30, ge=1)
+    provider_window_seconds: int = Field(default=60, ge=1)
+    provider_admission_mode: AdmissionMode = AdmissionMode.PRINCIPAL
+    provider_circuit_failure_threshold: int = Field(default=3, ge=1, le=20)
+    provider_circuit_cooldown_seconds: int = Field(default=30, ge=1, le=600)
+    shared_resource_admission_mode: AdmissionMode = AdmissionMode.PRINCIPAL
+    search_max_concurrent: int = Field(default=2, ge=1, le=32)
+    search_max_concurrent_per_principal: int = Field(default=1, ge=1, le=8)
+    ticket_max_retained: int = Field(default=10_000, ge=1)
+    ticket_max_retained_per_principal: int = Field(default=50, ge=1)
+    ticket_admission_mode: AdmissionMode = AdmissionMode.PRINCIPAL
+    outbox_batch_size: int = Field(default=50, ge=1, le=500)
+    outbox_poll_seconds: int = Field(default=2, ge=1, le=60)
+    outbox_lease_seconds: int = Field(default=60, ge=5, le=600)
+    outbox_retry_seconds: int = Field(default=30, ge=1, le=3600)
+    outbox_max_attempts: int = Field(default=5, ge=1, le=50)
     openai_api_key: str | None = None
     openai_api_model: str = "gpt-5-mini"
     available_openai_models: list[str] = Field(
@@ -101,8 +125,12 @@ class Settings(BaseSettings):
     object_storage_provider: ObjectStorageProviderName = "local"
     local_object_storage_path: str = ".local-data/objects"
     local_upload_max_bytes: int = Field(default=50_000_000, ge=1)
+    upload_max_concurrent: int = Field(default=2, ge=1, le=32)
+    upload_max_concurrent_per_user: int = Field(default=1, ge=1, le=8)
+    upload_max_inflight_bytes: int = Field(default=100_000_000, ge=1)
     asset_token_secret: str = DEFAULT_ASSET_TOKEN_SECRET
     persistence_provider: PersistenceProviderName = "postgres"
+    ticket_persistence_mode: TicketPersistenceMode = "relational"
     persistence_path: str = ".local-data/state/coeus-state.json"
     # Seed the rich local demo dataset (extra products, demo tickets across the
     # workflow, feedback and calendars). None means "auto": on for local only.
@@ -216,6 +244,33 @@ def _transport_errors(settings: Settings) -> tuple[str, ...]:
             "Secure cookies are required for staging/prod environments. "
             "Set COEUS_SECURE_COOKIES=true."
         )
+    if settings.trusted_proxy_count and not settings.trusted_proxy_cidrs:
+        errors.append(
+            "COEUS_TRUSTED_PROXY_CIDRS is required when COEUS_TRUSTED_PROXY_COUNT is non-zero."
+        )
+    for cidr in settings.trusted_proxy_cidrs:
+        try:
+            ip_network(cidr, strict=False)
+        except ValueError:
+            errors.append("COEUS_TRUSTED_PROXY_CIDRS contains an invalid IP network.")
+            break
+    for origin in settings.allowed_cors_origins:
+        parsed = urlsplit(origin)
+        if (
+            origin == "*"
+            or parsed.scheme not in {"http", "https"}
+            or not parsed.netloc
+            or parsed.path not in {"", "/"}
+            or parsed.query
+            or parsed.fragment
+            or parsed.username
+            or parsed.password
+        ):
+            errors.append(
+                "COEUS_ALLOWED_CORS_ORIGINS must contain only absolute HTTP(S) origins "
+                "without wildcards, credentials, paths, queries, or fragments."
+            )
+            break
     return tuple(errors)
 
 

@@ -28,13 +28,13 @@ async def test_delayed_store_embedding_does_not_stall_event_loop() -> None:
     started = Event()
     release = Event()
 
-    def delayed_embed(_text: str, *, purpose: str) -> None:
+    def delayed_embed(_text: str, *, purpose: str, principal_id: object | None = None) -> None:
         assert purpose == "store-browse-query"
         started.set()
         release.wait(timeout=2)
         return None
 
-    embeddings.embed = delayed_embed
+    embeddings.embed_cached = delayed_embed
     safety_release = Timer(2, release.set)
     safety_release.start()
     async with AsyncClient(
@@ -64,7 +64,9 @@ def test_memory_vector_provider_calls_are_capped_and_cached_across_corpus() -> N
             self.calls = 0
             self.cache: dict[str, tuple[float, ...]] = {}
 
-        def embed_cached(self, text: str, *, purpose: str) -> tuple[float, ...]:
+        def embed_cached(
+            self, text: str, *, purpose: str, principal_id: object | None = None
+        ) -> tuple[float, ...]:
             assert purpose == "memory-candidate"
             if text not in self.cache:
                 self.calls += 1

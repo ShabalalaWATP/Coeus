@@ -1,6 +1,8 @@
 from typing import Protocol
 from uuid import UUID
 
+from coeus.application.ports.draft_audience import DraftAudienceProjection
+from coeus.application.ports.embeddings import EmbeddingPort
 from coeus.domain.store import (
     StoreHybridCandidate,
     StoreProduct,
@@ -16,7 +18,6 @@ from coeus.repositories.store_hybrid import memory_hybrid_candidates
 from coeus.repositories.store_ids import max_store_reference_counter
 from coeus.repositories.store_projection import StoreProjection
 from coeus.repositories.store_seed import STORE_SEED_REFERENCE_COUNTER, seed_store_products
-from coeus.services.embeddings import EmbeddingService
 
 
 class StoreRepository(Protocol):
@@ -51,6 +52,8 @@ class StoreRepository(Protocol):
 
     def next_reference(self) -> str: ...
 
+    def accept_committed(self, product: StoreProduct) -> None: ...
+
 
 class InMemoryStoreRepository:
     def __init__(
@@ -58,12 +61,14 @@ class InMemoryStoreRepository:
         access_repository: AccessRepository,
         state_store: StateStore | None = None,
         projection: StoreProjection | None = None,
-        embeddings: EmbeddingService | None = None,
+        embeddings: EmbeddingPort | None = None,
+        draft_audience: DraftAudienceProjection | None = None,
     ) -> None:
         self._access_repository = access_repository
         self._state_store = state_store
         self._projection = projection
         self._embeddings = embeddings
+        self._draft_audience = draft_audience
         self._initialising = True
         self._products: dict[UUID, StoreProduct] = {}
         self._reference_counter = 1000
@@ -105,7 +110,7 @@ class InMemoryStoreRepository:
             )
             return candidates
         scoped = tuple(
-            product for product in self.list_products() if product_in_scope(product, scope)
+            product for product in self.list_products() if self._in_scope(product, scope)
         )
         return memory_hybrid_candidates(
             scoped,
@@ -115,6 +120,15 @@ class InMemoryStoreRepository:
             filters,
             leg_limit,
         )
+
+    def _in_scope(self, product: StoreProduct, scope: StoreVisibilityScope) -> bool:
+        principal_id = scope.draft_principal_user_id
+        audience_match = bool(
+            self._draft_audience is not None
+            and principal_id is not None
+            and self._draft_audience.reasons_for(product.product_id, principal_id)
+        )
+        return product_in_scope(product, scope, draft_audience_match=audience_match)
 
     def get_visible_product(
         self, product_id: UUID, scope: StoreVisibilityScope
@@ -173,6 +187,10 @@ class InMemoryStoreRepository:
             reference = f"PROD-{self._reference_counter}"
             if reference not in existing:
                 return reference
+
+    def accept_committed(self, product: StoreProduct) -> None:
+        """Update the cache after a transaction port has durably committed."""
+        self._products[product.product_id] = product
 
     def _restore_or_persist(self) -> None:
         if self._restore_from_projection():

@@ -138,6 +138,12 @@ def _scope_params(scope: StoreVisibilityScope) -> dict[str, object]:
         "acg_ids": [str(acg_id) for acg_id in sorted(scope.acg_ids, key=str)],
         "clearance_level": scope.clearance_level,
         "include_drafts": scope.include_drafts,
+        "draft_creator_user_id": (
+            str(scope.draft_creator_user_id) if scope.draft_creator_user_id else None
+        ),
+        "draft_principal_user_id": (
+            str(scope.draft_principal_user_id) if scope.draft_principal_user_id else None
+        ),
         "archived_status": ProductStatus.ARCHIVED.value,
         "draft_status": ProductStatus.DRAFT.value,
     }

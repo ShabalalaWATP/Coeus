@@ -30,6 +30,7 @@ from coeus.services.rfi_records import (
 )
 from coeus.services.store import StoreSearchService, StoreServices
 from coeus.services.store_access import StoreDetailService
+from coeus.services.ticket_mutations import TicketMutationService
 from coeus.services.ticket_records import is_editor, is_owner
 from coeus.services.tickets import TicketService, TicketServices
 
@@ -62,6 +63,7 @@ class RfiSearchService:
         access_repository: AccessRepository,
         audit_log: AuditLog,
         embeddings: EmbeddingService,
+        mutations: TicketMutationService,
     ) -> None:
         self._tickets = tickets
         self._store_search = store_search
@@ -69,6 +71,7 @@ class RfiSearchService:
         self._access_repository = access_repository
         self._audit_log = audit_log
         self._embeddings = embeddings
+        self._mutations = mutations
 
     def run(self, actor: UserAccount, ticket_id: UUID) -> RfiSearchResults:
         self._require(actor, Permission.RFI_SEARCH)
@@ -86,7 +89,9 @@ class RfiSearchService:
             ),
         )
         query = query_text(ticket.intake)
-        query_embedding = self._embeddings.embed(query, purpose="rfi-query")
+        query_embedding = self._embeddings.embed_cached(
+            query, purpose="rfi-query", principal_id=actor.user_id
+        )
         candidates = self._store_search.hybrid_candidates(
             requester,
             StoreSearchFilters(
@@ -122,7 +127,7 @@ class RfiSearchService:
             accepted_product_id=None,
             created_at=now,
         )
-        updated = self._tickets.save_system_update_if_current(
+        updated = self._mutations.save_audited_if_current(
             ticket,
             replace(
                 ticket,
@@ -133,10 +138,6 @@ class RfiSearchService:
                 visible_product_matches=tuple(offer.title for offer in offers),
                 timeline=(*ticket.timeline, *search_timeline),
             ),
-        )
-        self._record_audit_or_rollback(
-            ticket,
-            updated,
             "rfi_search_completed",
             actor,
             {"ticket_id": str(ticket.ticket_id), "offered_count": str(len(offers))},
@@ -160,7 +161,8 @@ class RfiSearchService:
             recipient_user_id=actor.user_id,
             created_at=now,
         )
-        updated = self._tickets.save_system_update(
+        updated = self._mutations.save_audited_if_current(
+            ticket,
             replace(
                 ticket,
                 state=TicketState.CLOSED_EXISTING_PRODUCT_ACCEPTED,
@@ -176,11 +178,7 @@ class RfiSearchService:
                         f"Accepted existing product {offer.title}.",
                     ),
                 ),
-            )
-        )
-        self._record_audit_or_rollback(
-            ticket,
-            updated,
+            ),
             "product_offer_accepted",
             actor,
             {"ticket_id": str(ticket.ticket_id), "product_id": str(product_id)},
@@ -205,7 +203,8 @@ class RfiSearchService:
             if not any(item.status == ProductOfferStatus.OFFERED for item in offers)
             else TicketState.RFI_MATCH_OFFERED
         )
-        updated = self._tickets.save_system_update(
+        updated = self._mutations.save_audited_if_current(
+            ticket,
             replace(
                 ticket,
                 state=next_state,
@@ -215,11 +214,7 @@ class RfiSearchService:
                     *ticket.timeline,
                     timeline(ticket.ticket_id, actor.user_id, "product_offer_rejected", reason),
                 ),
-            )
-        )
-        self._record_audit_or_rollback(
-            ticket,
-            updated,
+            ),
             "product_offer_rejected",
             actor,
             {"ticket_id": str(ticket.ticket_id), "product_id": str(product_id)},
@@ -283,20 +278,6 @@ class RfiSearchService:
             return False
         return True
 
-    def _record_audit_or_rollback(
-        self,
-        original_ticket: TicketRecord,
-        updated_ticket: TicketRecord,
-        event_type: str,
-        actor: UserAccount,
-        details: dict[str, str],
-    ) -> None:
-        try:
-            self._audit_log.record(event_type, str(actor.user_id), details)
-        except Exception:
-            self._tickets.restore_system_update_if_current(updated_ticket, original_ticket)
-            raise
-
     @staticmethod
     def _require(actor: UserAccount, permission: Permission) -> None:
         if permission not in actor.permissions:
@@ -317,4 +298,5 @@ def build_rfi_search_service(
         access_repository,
         audit_log,
         embeddings,
+        ticket_services.mutations,
     )

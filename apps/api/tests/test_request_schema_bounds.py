@@ -17,6 +17,32 @@ def test_store_metadata_list_items_are_bounded() -> None:
         StoreProductCreateRequest.model_validate(payload)
 
 
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("releasability", ["NON-MOCK"]),
+        ("handlingCaveats", ["UNDEFINED CAVEAT"]),
+    ],
+)
+def test_store_rejects_undefined_release_markers(field: str, value: list[str]) -> None:
+    payload = _store_payload()
+    payload[field] = value
+
+    with pytest.raises(ValidationError, match="synthetic"):
+        StoreProductCreateRequest.model_validate(payload)
+
+
+def test_store_normalises_supported_synthetic_release_markers() -> None:
+    payload = _store_payload()
+    payload["releasability"] = [" mock "]
+    payload["handlingCaveats"] = [" mock data only "]
+
+    request = StoreProductCreateRequest.model_validate(payload)
+
+    assert request.releasability == ["MOCK"]
+    assert request.handling_caveats == ["MOCK DATA ONLY"]
+
+
 def test_routing_clarification_questions_are_bounded() -> None:
     with pytest.raises(ValidationError):
         RouteClarificationRequest.model_validate(

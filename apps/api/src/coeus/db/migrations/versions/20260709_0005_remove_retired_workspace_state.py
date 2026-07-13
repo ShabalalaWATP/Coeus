@@ -40,9 +40,20 @@ _RETIRED_TYPES = frozenset(
 )
 _DROP = object()
 
+_STATE_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS coeus_state (
+    namespace text PRIMARY KEY,
+    payload jsonb NOT NULL,
+    updated_at timestamptz NOT NULL DEFAULT now()
+)
+"""
+
 
 def upgrade() -> None:
     connection = op.get_bind()
+    # Older runtimes created this table lazily. Alembic must also own the empty
+    # database path so a clean upgrade never depends on application start-up.
+    connection.execute(text(_STATE_TABLE_SQL))
     rows = connection.execute(text("SELECT namespace, payload FROM coeus_state")).mappings()
     for row in rows:
         payload = row["payload"]

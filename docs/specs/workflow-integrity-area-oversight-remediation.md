@@ -2,7 +2,10 @@
 
 ## Status
 
-In progress (2026-07-12).
+Implementation delivered (2026-07-12). The full eight-role real-browser
+acceptance evidence remains outstanding and is carried into Sprint 17. Delivery
+evidence is recorded in `docs/DEVELOPMENT_STORY.md`; remaining verification is
+tracked by `docs/security/SECURITY_REPAIR_AND_HARDENING_PLAN.md`.
 
 ## Purpose
 

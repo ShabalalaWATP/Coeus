@@ -19,9 +19,20 @@ from coeus.schemas.qc import (
     QcIndexRecordResponse,
     QcProductResponse,
     QcProductSummaryResponse,
+    QcQueueItemResponse,
 )
+from coeus.services.qc_assignment import QcQueueItem
 from coeus.services.qc_records import QC_CHECKLIST_KEYS
 from coeus.services.store import StoreServices
+
+
+def queue_item_response(item: QcQueueItem) -> QcQueueItemResponse:
+    return QcQueueItemResponse(
+        ticket_id=item.ticket_id,
+        reference=item.reference,
+        state=item.state.value,
+        claim_status=item.claim_status.value,
+    )
 
 
 def product_response(ticket: TicketRecord, store: StoreServices) -> QcProductResponse:

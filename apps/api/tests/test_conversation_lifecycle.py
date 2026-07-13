@@ -42,6 +42,7 @@ def _conversations() -> tuple[ConversationService, UserAccount]:
         ConversationService(
             repository=repository,
             tickets=tickets,
+            mutations=tickets.mutations,
             extractor=IntakeExtractionService(),
             llm_provider=MockLlmProvider(),
             audit_log=audit_log,

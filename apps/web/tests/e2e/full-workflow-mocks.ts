@@ -99,8 +99,26 @@ export async function installApiMocks(page: Page, flow: FlowState) {
       flow.draftSaved = true;
       return json(route, analystTask(flow));
     }
-    if (method === "GET" && path === "/qc/queue")
-      return json(route, { products: [qcProduct(flow)] });
+    if (method === "GET" && path === "/qc/queue") {
+      return json(route, {
+        items: [
+          {
+            claimStatus: flow.qcClaimed ? "claimed_by_you" : "available",
+            reference: "TCK-E2E",
+            state: "QC_REVIEW",
+            ticketId: "ticket-e2e",
+          },
+        ],
+        products: flow.qcClaimed ? [qcProduct(flow)] : [],
+      });
+    }
+    if (method === "POST" && path === "/qc/products/ticket-e2e/claim") {
+      flow.qcClaimed = true;
+      return json(route, qcProduct(flow));
+    }
+    if (method === "GET" && path === "/qc/products/ticket-e2e") {
+      return json(route, qcProduct(flow));
+    }
     if (method === "GET" && path === "/acgs") return json(route, { acgs: [acg] });
     if (method === "POST" && path === "/qc/products/ticket-e2e/approve") {
       // QC approval performs the final release to the customer.

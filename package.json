@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "pwsh ./scripts/dev.ps1",
     "line-limit": "node scripts/check-file-lines.mjs",
+    "docs:check": "node scripts/check-doc-links.mjs",
+    "architecture:check": "uv run --project apps/api python scripts/check_architecture.py",
     "security-policy:check": "node scripts/check-security-policy.mjs",
     "lint": "pnpm --filter @coeus/web lint",
     "test": "pnpm --filter @coeus/web test && pnpm test:backend",
@@ -14,7 +16,10 @@
     "format:check": "pnpm --filter @coeus/web format:check && uv run --directory apps/api ruff format --check src tests",
     "dead-code": "knip",
     "contracts:generate": "uv run --project apps/api python scripts/generate_openapi.py",
-    "contracts:check": "uv run --project apps/api python scripts/generate_openapi.py --check"
+    "contracts:types": "pnpm --filter @coeus/web contracts:types",
+    "n-minus-one:check": "uv run --directory apps/api python ../../scripts/run_n_minus_one_compatibility.py",
+    "playwright:postgres": "uv run --directory apps/api python ../../scripts/run_postgres_playwright.py",
+    "contracts:check": "uv run --project apps/api python scripts/generate_openapi.py --check && uv run --project apps/api python scripts/check_openapi_compatibility.py --baseline-ref origin/main"
   },
   "devDependencies": {
     "knip": "^6.24.0"

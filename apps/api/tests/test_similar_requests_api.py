@@ -283,7 +283,7 @@ async def test_manager_lists_and_links_similar_requests_idempotently() -> None:
     assert audit_types.count("tickets_linked") == 2
 
 
-async def test_manager_link_failure_rolls_back_related_ticket(
+async def test_manager_link_persistence_failure_leaves_both_tickets_unchanged(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     app = create_app(
@@ -295,19 +295,13 @@ async def test_manager_link_failure_rolls_back_related_ticket(
         user = await login(client, "user@example.test")
         source_id, target_id = await similar_ticket_pair(client, str(user["csrfToken"]))
         manager = await login(client, "rfa.manager@example.test")
-        tickets = app.state.ticket_services.tickets
-        original_save = tickets.save_system_update
-        calls = 0
+        repository = app.state.ticket_services.mutations._repository
 
-        def fail_second_save(ticket: TicketRecord) -> TicketRecord:
-            nonlocal calls
-            calls += 1
-            if calls == 2:
-                raise RuntimeError("simulated source save failure")
-            return cast(TicketRecord, original_save(ticket))
+        def fail_pair(*_args: object) -> bool:
+            raise RuntimeError("simulated paired persistence failure")
 
-        monkeypatch.setattr(tickets, "save_system_update", fail_second_save)
-        with pytest.raises(RuntimeError, match="simulated source save failure"):
+        monkeypatch.setattr(repository, "save_pair_with_confirmation", fail_pair)
+        with pytest.raises(RuntimeError, match="paired persistence failure"):
             await client.post(
                 f"/api/v1/similar-requests/routing/{source_id}/link/{target_id}",
                 headers={"X-CSRF-Token": str(manager["csrfToken"])},

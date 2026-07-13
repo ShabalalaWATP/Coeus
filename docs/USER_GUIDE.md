@@ -152,7 +152,14 @@ action below (QC-requested rework resubmits straight to QC).
 
 ## Quality control
 
-The QC manager reviews submitted drafts and approves or rejects them. Approval
+The QC queue shows safe submission summaries. An eligible QC manager selects
+**Claim review** before full draft details are shown. Only that assigned
+reviewer can approve or reject the item, and **Release claim** returns it to the
+shared queue without changing the product. Rejected work returns to the same
+reviewer after resubmission. A reviewer cannot claim work they authored or
+actively analysed.
+
+The assigned QC manager reviews submitted drafts and approves or rejects them. Approval
 now performs the final release: the product is published, disseminated to the
 requester with a notification and a recorded email, and a feedback request is
 raised. For a collect the customer asked to have analysed, approval instead

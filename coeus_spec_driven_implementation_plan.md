@@ -2540,6 +2540,67 @@ stale-snapshot lost update. Their definition of done is exact rollback on audit
 failure, explicit optimistic conflict on stale work, preservation of concurrent
 authorised state, focused regression tests and a later zero-finding sealed scan.
 
+### Sprint 15: JIOC workflow integrity and area oversight
+
+Implementation delivered; the complete eight-role real-browser acceptance
+evidence is carried into Sprint 17.
+
+- JIOC routing and oversight, area-wide RFA and CM management, and selected-team
+  ownership for membership, availability and assignment.
+- Multi-analyst work, ACG applications and delegated administration.
+- Clarification, rework, credential-reset, release-audit and interface recovery.
+- Local migration, reset, Compose and deployment-document accuracy repairs.
+
+The accepted behaviour is in
+`docs/specs/workflow-integrity-area-oversight-remediation.md`, ADR 0023 and the
+corresponding threat models. Delivery evidence is in
+`docs/DEVELOPMENT_STORY.md`.
+
+### Sprint 16: Cross-role usability and multi-provider administration
+
+Delivered:
+
+- Cross-role desktop usability and visual-fidelity improvements.
+- Multi-provider AI administration for supported local provider integrations.
+- Current-versus-migration deployment guidance and operational documentation.
+
+Protected GitHub checks for PRs #98 to #100, #103, #104, #106 and #108 record
+delivery evidence.
+
+### Sprint 17: Security repair and secure-design hardening
+
+The sealed deep scan `abf0e143-4656-4646-b133-6fea0d6661ee` of revision
+`3e27c82d4b62efb683b3fbb81d2486bccafd8fb0` reported 12 findings and deferred
+four deployment or undefined-policy questions. Sprint 17 is release-blocking.
+
+Implementation is in progress. Local tactical and structural controls, N-1
+forward reconciliation, logical restore and a ten-stage PostgreSQL browser
+workflow pass. Atomic assigned-QC self-claim and object-aware QC draft audience
+are implemented. The remaining audience and recovery browser matrix and
+authorised staging evidence remain release-blocking. Final protected GitHub
+checks pass on the assigned-QC candidate. The repository owner explicitly
+deferred the fresh sealed candidate scan, so this work does not claim scan
+closure.
+
+Deliver:
+
+- Close every current finding with exploit-path and legitimate-path evidence.
+- Introduce persisted object-aware draft audiences, shared principal and
+  deployment resource admission, and versioned workflow transactions.
+- Improve dependency inversion, responsibility boundaries, persistence type
+  stability, API contract ownership and frontend orchestration.
+- Reconcile active project, architecture, API, security and operational
+  documentation without changing intended application functionality.
+- Pass all compatibility, migration, coverage, browser and security gates, then
+  seal a fresh deep scan of the exact clean release candidate.
+
+The authoritative acceptance contract is
+`docs/specs/security-repair-and-hardening.md`. The ordered implementation,
+migration, rollback and verification work is in
+`docs/security/SECURITY_REPAIR_AND_HARDENING_PLAN.md`.
+Current finding traceability is in
+`docs/security/SECURITY_REPAIR_CLOSURE_EVIDENCE_2026-07-13.md`.
+
 ## 20. Definition of done for MVP
 
 The MVP is done when:

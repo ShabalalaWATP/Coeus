@@ -262,13 +262,9 @@ class RoutingService:
         actor_user_id: UUID,
         metadata: dict[str, str],
     ) -> TicketRecord:
-        updated = self._tickets.tickets.save_system_update(proposed)
-        try:
-            self._audit_log.record(event_type, str(actor_user_id), metadata)
-        except Exception:
-            self._tickets.tickets.save_system_update(original)
-            raise
-        return updated
+        return self._tickets.mutations.save_audited_if_current(
+            original, proposed, event_type, actor_user_id, metadata
+        )
 
     @staticmethod
     def _require(actor: UserAccount, permission: Permission) -> None:

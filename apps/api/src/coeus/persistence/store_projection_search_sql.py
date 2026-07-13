@@ -27,7 +27,16 @@ FROM intelligence_store_products p
 WHERE p.product_id = CAST(:product_id AS uuid)
   AND p.status <> :archived_status
   AND p.classification_level <= :clearance_level
-  AND (:include_drafts OR p.status <> :draft_status)
+  AND (
+      :include_drafts
+      OR p.status <> :draft_status
+      OR p.created_by_user_id = CAST(:draft_creator_user_id AS uuid)
+      OR EXISTS (
+          SELECT 1 FROM coeus_draft_audiences audience
+          WHERE audience.product_id = p.product_id
+            AND audience.principal_id = CAST(:draft_principal_user_id AS uuid)
+      )
+  )
   AND EXISTS (
       SELECT 1
       FROM intelligence_store_product_acgs product_acg
@@ -64,7 +73,16 @@ SELECT
 FROM intelligence_store_products p
 WHERE p.status <> :archived_status
   AND p.classification_level <= :clearance_level
-  AND (:include_drafts OR p.status <> :draft_status)
+  AND (
+      :include_drafts
+      OR p.status <> :draft_status
+      OR p.created_by_user_id = CAST(:draft_creator_user_id AS uuid)
+      OR EXISTS (
+          SELECT 1 FROM coeus_draft_audiences audience
+          WHERE audience.product_id = p.product_id
+            AND audience.principal_id = CAST(:draft_principal_user_id AS uuid)
+      )
+  )
   AND EXISTS (
       SELECT 1
       FROM intelligence_store_product_acgs product_acg
@@ -204,7 +222,16 @@ WITH scoped AS (
     FROM intelligence_store_products p
     WHERE p.status <> :archived_status
       AND p.classification_level <= :clearance_level
-      AND (:include_drafts OR p.status <> :draft_status)
+      AND (
+          :include_drafts
+          OR p.status <> :draft_status
+          OR p.created_by_user_id = CAST(:draft_creator_user_id AS uuid)
+          OR EXISTS (
+              SELECT 1 FROM coeus_draft_audiences audience
+              WHERE audience.product_id = p.product_id
+                AND audience.principal_id = CAST(:draft_principal_user_id AS uuid)
+          )
+      )
       AND EXISTS (
           SELECT 1
           FROM intelligence_store_product_acgs product_acg

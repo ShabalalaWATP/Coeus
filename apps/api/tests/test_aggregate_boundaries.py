@@ -42,7 +42,7 @@ def test_chat_count_limit_rejects_before_provider_persistence_and_audit(monkeypa
     assistant = CountingAssistant()
     tickets = TicketService(repository, RequirementCompletenessService(), audit)
     conversations = ConversationService(
-        repository, tickets, IntakeExtractionService(), assistant, audit
+        repository, tickets, tickets.mutations, IntakeExtractionService(), assistant, audit
     )
     ticket = conversations.send_message(actor, "Need a regional port activity brief.")
     calls = assistant.calls
