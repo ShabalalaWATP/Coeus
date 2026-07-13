@@ -85,15 +85,26 @@ def ensure_ticket_shadow_schema(connection: Any) -> None:
             """
         )
     )
-    for definition in (
-        "available_at timestamptz NOT NULL DEFAULT now()",
-        "attempt_count integer NOT NULL DEFAULT 0",
-        "claimed_by uuid",
-        "claim_expires_at timestamptz",
-        "last_error text",
-        "dead_lettered_at timestamptz",
-    ):
-        connection.execute(text(f"ALTER TABLE coeus_outbox ADD COLUMN IF NOT EXISTS {definition}"))
+    connection.execute(
+        text(
+            "ALTER TABLE coeus_outbox ADD COLUMN IF NOT EXISTS "
+            "available_at timestamptz NOT NULL DEFAULT now()"
+        )
+    )
+    connection.execute(
+        text(
+            "ALTER TABLE coeus_outbox ADD COLUMN IF NOT EXISTS "
+            "attempt_count integer NOT NULL DEFAULT 0"
+        )
+    )
+    connection.execute(text("ALTER TABLE coeus_outbox ADD COLUMN IF NOT EXISTS claimed_by uuid"))
+    connection.execute(
+        text("ALTER TABLE coeus_outbox ADD COLUMN IF NOT EXISTS claim_expires_at timestamptz")
+    )
+    connection.execute(text("ALTER TABLE coeus_outbox ADD COLUMN IF NOT EXISTS last_error text"))
+    connection.execute(
+        text("ALTER TABLE coeus_outbox ADD COLUMN IF NOT EXISTS dead_lettered_at timestamptz")
+    )
     connection.execute(
         text(
             "CREATE INDEX IF NOT EXISTS idx_coeus_outbox_pending "
