@@ -17,6 +17,7 @@ export function QcProductDetail({
   onApprove,
   onChecklistChange,
   onReject,
+  onReleaseClaim,
   onRetryAcgs,
   onReleaseFormChange,
   product,
@@ -33,6 +34,7 @@ export function QcProductDetail({
   onApprove: () => void;
   onChecklistChange: (checklist: Record<string, boolean>) => void;
   onReject: () => void;
+  onReleaseClaim: () => void;
   onRetryAcgs: () => void;
   onReleaseFormChange: (form: QcReleaseFormState) => void;
   product: QcProduct | undefined;
@@ -78,8 +80,15 @@ export function QcProductDetail({
     <section className="surface qc-detail" aria-label="QC product detail">
       {missingNotice}
       <div className="section-heading">
-        <h2>{product.reference}</h2>
-        <p>{product.title}</p>
+        <div>
+          <h2>{product.reference}</h2>
+          <p>{product.title}</p>
+        </div>
+        {product.state === "QC_REVIEW" || product.state === "REWORK_REQUIRED" ? (
+          <button disabled={actionPending} onClick={onReleaseClaim} type="button">
+            Release claim
+          </button>
+        ) : null}
       </div>
       <ProductPreview product={product} />
       <MetadataChecks acgId={releaseAcgId} form={releaseForm} product={product} />

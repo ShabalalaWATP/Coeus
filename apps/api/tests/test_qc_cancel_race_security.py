@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from pathlib import Path
 from threading import Event, Thread
 from typing import cast
@@ -48,27 +49,48 @@ async def test_qc_approval_and_cancellation_cannot_both_win(
     requester = users.get_user_by_username("user@example.test")
     qc_manager = users.get_user_by_username("qc.manager@example.test")
     assert requester is not None and qc_manager is not None
+    app.state.quality_control_service.claim(qc_manager, ticket_uuid)
     repository = app.state.ticket_services.tickets._repository
     original_save = repository.save_if_current
+    original_confirmed_save = repository.save_if_current_with_confirmation
     loser_reached_save = Event()
     winner_committed = Event()
 
-    def coordinated_save(expected: TicketRecord, proposed: TicketRecord) -> bool:
+    def coordinate(
+        expected: TicketRecord,
+        proposed: TicketRecord,
+        commit: Callable[[], bool],
+    ) -> bool:
         if expected.ticket_id != ticket_uuid or proposed.state not in {
             TicketState.CANCELLED,
             TicketState.DISSEMINATION_READY,
         }:
-            return bool(original_save(expected, proposed))
+            return commit()
         if proposed.state != winner_state:
             loser_reached_save.set()
             assert winner_committed.wait(timeout=5)
-            return bool(original_save(expected, proposed))
+            return commit()
         assert loser_reached_save.wait(timeout=5)
-        committed = bool(original_save(expected, proposed))
+        committed = commit()
         winner_committed.set()
         return committed
 
+    def coordinated_save(expected: TicketRecord, proposed: TicketRecord) -> bool:
+        return coordinate(expected, proposed, lambda: bool(original_save(expected, proposed)))
+
+    def coordinated_confirmed_save(
+        expected: TicketRecord,
+        proposed: TicketRecord,
+        confirm: Callable[[], object],
+    ) -> bool:
+        return coordinate(
+            expected,
+            proposed,
+            lambda: bool(original_confirmed_save(expected, proposed, confirm)),
+        )
+
     monkeypatch.setattr(repository, "save_if_current", coordinated_save)
+    monkeypatch.setattr(repository, "save_if_current_with_confirmation", coordinated_confirmed_save)
     outcomes: list[TicketRecord | AppError] = []
 
     def approve() -> None:

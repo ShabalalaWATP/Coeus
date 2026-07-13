@@ -118,8 +118,8 @@ async def test_demo_tickets_populate_every_queue(tmp_path: Path) -> None:
 
     analyst_states = {task["state"] for task in analyst.json()["tasks"]}
     assert {"ANALYST_IN_PROGRESS", "MANAGER_APPROVAL", "QC_REVIEW"} <= analyst_states
-    qc_refs = {product["reference"] for product in qc.json()["products"]}
-    assert qc_refs, "QC queue should have a demo product under review"
+    qc_refs = {item["reference"] for item in qc.json()["items"]}
+    assert qc_refs, "QC queue should have a safe demo summary under review"
 
 
 @pytest.mark.asyncio

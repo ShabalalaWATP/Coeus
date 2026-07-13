@@ -102,6 +102,26 @@ class InMemoryTicketRepository:
             self._save_locked(updated)
             return True
 
+    def save_if_current_with_confirmation(
+        self,
+        expected: TicketRecord,
+        updated: TicketRecord,
+        confirm: Callable[[], object],
+    ) -> bool:
+        """Keep compare-and-swap plus its required audit under one lock."""
+        with self._lock:
+            if self._tickets.get(expected.ticket_id) != expected:
+                return False
+            previous = dict(self._tickets)
+            self._save_locked(updated)
+            try:
+                confirm()
+            except Exception:
+                self._tickets = previous
+                self._persist()
+                raise
+            return True
+
     def get(self, ticket_id: UUID) -> TicketRecord | None:
         with self._lock:
             return self._tickets.get(ticket_id)

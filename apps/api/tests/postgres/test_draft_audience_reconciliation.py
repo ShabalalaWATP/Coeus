@@ -20,8 +20,14 @@ from coeus.repositories.tickets import InMemoryTicketRepository
 pytestmark = pytest.mark.postgres
 
 
-def _ticket(database_url: str) -> tuple[TicketRecord, object, object, object]:
-    ticket_id, analyst_id, manager_id, product_id = uuid4(), uuid4(), uuid4(), uuid4()
+def _ticket(database_url: str) -> tuple[TicketRecord, object, object, object, object]:
+    ticket_id, analyst_id, manager_id, reviewer_id, product_id = (
+        uuid4(),
+        uuid4(),
+        uuid4(),
+        uuid4(),
+        uuid4(),
+    )
     assignment = AnalystAssignment(
         assignment_id=uuid4(),
         ticket_id=ticket_id,
@@ -44,19 +50,21 @@ def _ticket(database_url: str) -> tuple[TicketRecord, object, object, object]:
         ticket_id=ticket_id,
         reference="TCK-RECONCILE",
         requester_user_id=uuid4(),
-        state=TicketState.ANALYST_IN_PROGRESS,
+        state=TicketState.QC_REVIEW,
         intake=IntakeDetails(title="Audience reconciliation"),
         analyst_assignments=(assignment,),
         linked_products=(link,),
+        qc_reviewer_user_id=reviewer_id,
+        qc_claimed_at=datetime.now(UTC),
     )
     InMemoryTicketRepository(PostgresStateStore(database_url, "relational")).save(ticket)
-    return ticket, analyst_id, manager_id, product_id
+    return ticket, analyst_id, manager_id, reviewer_id, product_id
 
 
 def test_dry_run_and_apply_converge_without_duplicate_audit(
     postgres_database_url: str,
 ) -> None:
-    ticket, analyst_id, manager_id, product_id = _ticket(postgres_database_url)
+    ticket, analyst_id, manager_id, reviewer_id, product_id = _ticket(postgres_database_url)
     engine = create_engine(postgres_database_url)
     extra_principal = uuid4()
     with engine.begin() as connection:
@@ -81,8 +89,8 @@ def test_dry_run_and_apply_converge_without_duplicate_audit(
 
     dry_run = reconcile_draft_audiences(postgres_database_url)
 
-    assert dry_run.expected_count == 2
-    assert dry_run.actual_count == 2
+    assert dry_run.expected_count == 3
+    assert dry_run.actual_count == 3
     assert len(dry_run.missing) == 1
     assert len(dry_run.extra) == 1
     assert dry_run.changed_count == 0
@@ -106,6 +114,7 @@ def test_dry_run_and_apply_converge_without_duplicate_audit(
         assert rows == {
             (str(analyst_id), DraftAudienceReason.ASSIGNED_ANALYST.value),
             (str(manager_id), DraftAudienceReason.RESPONSIBLE_MANAGER.value),
+            (str(reviewer_id), DraftAudienceReason.QUALITY_CONTROL.value),
         }
         assert (
             connection.execute(

@@ -263,6 +263,7 @@ def test_draft_audience_projection_tracks_and_revokes_ticket_relationships(
 ) -> None:
     analyst_id = uuid4()
     manager_id = uuid4()
+    reviewer_id = uuid4()
     product_id = uuid4()
     ticket_id = uuid4()
     assignment = AnalystAssignment(
@@ -331,3 +332,15 @@ def test_draft_audience_projection_tracks_and_revokes_ticket_relationships(
     assert repository.save_if_current(ticket, updated)
     assert not projection.contains(product_id, analyst_id, DraftAudienceReason.ASSIGNED_ANALYST)
     assert store_projection.get_visible_product(product_id, analyst_scope) is None
+
+    claimed = replace(
+        updated,
+        state=TicketState.QC_REVIEW,
+        qc_reviewer_user_id=reviewer_id,
+        qc_claimed_at=datetime.now(UTC),
+    )
+    assert repository.save_if_current(updated, claimed)
+    assert projection.contains(product_id, reviewer_id, DraftAudienceReason.QUALITY_CONTROL)
+    released = replace(claimed, qc_reviewer_user_id=None, qc_claimed_at=None)
+    assert repository.save_if_current(claimed, released)
+    assert not projection.contains(product_id, reviewer_id, DraftAudienceReason.QUALITY_CONTROL)

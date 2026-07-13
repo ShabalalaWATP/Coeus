@@ -4232,8 +4232,44 @@
         "title": "QcProductSummaryResponse",
         "type": "object"
       },
+      "QcQueueItemResponse": {
+        "properties": {
+          "claimStatus": {
+            "title": "Claimstatus",
+            "type": "string"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "ticketId": {
+            "format": "uuid",
+            "title": "Ticketid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticketId",
+          "reference",
+          "state",
+          "claimStatus"
+        ],
+        "title": "QcQueueItemResponse",
+        "type": "object"
+      },
       "QcQueueResponse": {
         "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/QcQueueItemResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
           "products": {
             "items": {
               "$ref": "#/components/schemas/QcProductResponse"
@@ -9736,6 +9772,115 @@
           }
         },
         "summary": "Approve Qc Product",
+        "tags": [
+          "qc"
+        ]
+      }
+    },
+    "/api/v1/qc/products/{ticket_id}/claim": {
+      "delete": {
+        "operationId": "release_qc_claim_api_v1_qc_products__ticket_id__claim_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Release Qc Claim",
+        "tags": [
+          "qc"
+        ]
+      },
+      "post": {
+        "operationId": "claim_qc_product_api_v1_qc_products__ticket_id__claim_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QcProductResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Claim Qc Product",
         "tags": [
           "qc"
         ]

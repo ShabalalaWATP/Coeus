@@ -4,6 +4,7 @@ Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVEL
 
 ## 2026-07-13 security repair and hardening
 
+- Added atomic assigned-QC self-claim. Safe summaries precede assignment; one eligible reviewer owns detail, decisions and linked-draft audience. Audited release, rework retention, separation of duties, one-winner memory/PostgreSQL tests and local/relational Store-search parity close the audience gap. The final candidate passes 960 backend tests at 97.61 percent total coverage, 414 frontend tests at 98.69 percent line and 95.00 percent branch coverage, and all ten disposable-PostgreSQL browser stages.
 - Introduced the application-owned workflow transaction port and cut hosted PostgreSQL QC
   release over to one version-checked ticket, Store, audit and notification transaction.
   Audit failure rolls the unit back; concurrent adapters produce one commit and one conflict.

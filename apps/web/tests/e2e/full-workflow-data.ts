@@ -12,6 +12,7 @@ export const acg = {
 
 export type FlowState = {
   draftSaved: boolean;
+  qcClaimed: boolean;
   released: boolean;
   stage:
     | "empty"
@@ -30,6 +31,7 @@ export type FlowState = {
 export function createFlowState(): FlowState {
   return {
     draftSaved: false,
+    qcClaimed: false,
     released: false,
     stage: "empty",
     ticketCreated: false,

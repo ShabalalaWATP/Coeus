@@ -17,11 +17,11 @@ The default is read-only. Use `--json` to preserve machine-readable cutover
 evidence. A non-zero exit means the indexed projection has missing or extra
 relationships and cutover must remain blocked.
 
-Expected rows currently cover active analyst assignments and the responsible
-manager who made each assignment for every linked draft product. Creator and
-privileged-role access are validated directly from the current product and user
-objects. The workflow does not yet represent an assigned QC principal, so QC
-projection remains a documented acceptance gap rather than an inferred grant.
+Expected rows cover active analyst assignments, the responsible manager who
+made each assignment and the active assigned QC reviewer for every linked draft
+product. Creator and privileged-role access are validated directly from the
+current product and user objects. Legacy unclaimed QC tickets intentionally
+produce no QC audience row and must never be widened to every QC-role user.
 
 ## Apply a reviewed repair
 
@@ -48,7 +48,8 @@ Before approval, preserve:
   user and multi-role test matrix;
 - explicit denial evidence for absent or inactive relationships;
 - ACG removal, clearance reduction, publication and archive tests; and
-- the open assigned-QC modelling decision, unless implemented and retested.
+- atomic QC claim/release, competing-reviewer denial and QC audience revocation
+  evidence.
 
 Do not treat a zero-drift report as proof that the whole authorisation matrix
 passes. It proves only that the implemented relational reasons match their

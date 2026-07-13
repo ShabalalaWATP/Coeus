@@ -21,9 +21,9 @@ evidence is not staging or production accreditation.
 
 | Finding | Implemented control | Primary regression evidence | Current state |
 | --- | --- | --- | --- |
-| `COEUS-CAN-001` draft search | One object-aware draft policy plus indexed principal projection and query prefilter. | `test_draft_audience_security.py`; PostgreSQL browser test `denies an unrelated same-ACG user access to a PostgreSQL draft`; `postgres/test_ticket_shadow.py`. | Implemented and locally exercised. The assigned-QC policy decision remains open; fresh-scan closure is deferred. |
+| `COEUS-CAN-001` draft search | One object-aware draft policy plus indexed principal projection and query prefilter, including an atomically assigned QC reviewer. | `test_draft_audience_security.py`; `test_qc_draft_audience_api.py`; PostgreSQL claim/projection tests; PostgreSQL browser same-ACG denial; `postgres/test_ticket_shadow.py`. | Implemented and locally exercised for assigned QC and unrelated-reviewer denial; fresh-scan closure is deferred. |
 | `COEUS-CAN-002` draft detail | Repository prefilter and selected-object checks consume the same audience policy and return non-enumerating errors. | `test_draft_audience_security.py`; `test_store_projection.py`; browser known-UUID draft denial. | Implemented and locally exercised. The full intended-audience matrix remains open; fresh-scan closure is deferred. |
-| `COEUS-CAN-006` draft asset | Grant and redemption reauthorise ACG, clearance, lifecycle, audience and user-bound token authority. | `test_draft_audience_security.py`; `test_analyst_linked_product_reauthorisation.py`; browser known-asset grant denial and released-byte download. | Implemented. The assigned-QC audience decision remains open. |
+| `COEUS-CAN-006` draft asset | Grant and redemption reauthorise permission, ACG, clearance, lifecycle, audience and user-bound token authority. QC review grants product detail but does not add `PRODUCT_DOWNLOAD`. | `test_draft_audience_security.py`; `test_analyst_linked_product_reauthorisation.py`; `test_qc_draft_audience_api.py`; browser known-asset grant denial and released-byte download. | Implemented. Assigned QC draft visibility does not broaden asset-download permission. |
 | `COEUS-CAN-012` upload memory | Authentication-first parsing, cumulative receive cap, incremental hashing, staged promotion, deterministic cleanup and shared byte leases. | `test_upload_admission_security.py`; `postgres/test_shared_resource_admission.py`; browser `413` recovery with retained form input and no product; `SECURITY_REPAIR_BASELINE_2026-07-13.md`. | Implemented. Authorised ingress and multi-size staging measurements remain external release evidence. |
 | `COEUS-CAN-026` chat cost | Principal and deployment provider leases, retained-ticket admission, bounded drafts, circuit breaker and exact refund semantics. | `test_provider_admission.py`; `test_ticket_admission.py`; `test_conversation_service.py`; PostgreSQL shared-admission suites; browser `429` recovery with retained message. | Implemented and locally exercised; fresh-scan closure is deferred. |
 | `COEUS-CAN-027` corpus rewrite | Versioned per-ticket relational aggregate, compare-and-swap, ticket quotas and audited recovery. | `postgres/test_ticket_shadow.py::test_relational_mutation_statement_count_is_stable_at_ten_thousand_rows`; ticket-capacity recovery suites. | Implemented with stable-cost proof; fresh-scan closure is deferred. |
@@ -45,6 +45,10 @@ evidence is not staging or production accreditation.
 
 ## Structural And Compatibility Evidence
 
+- `QcAssignmentService` owns eligibility, safe queue summaries, atomic
+  self-claim, release, separation of duties and assigned-only detail. The
+  existing QC service delegates assignment policy and retains its release
+  orchestration responsibility.
 - Application ports own draft audience, admission, ticket repository, workflow
   transaction, audit and outbox contracts. The architecture import gate rejects
   lower-layer dependencies on service or API modules.
@@ -68,10 +72,10 @@ evidence is not staging or production accreditation.
 
 The complete local candidate suites reported:
 
-- backend: 951 passed, one N-1 test skipped in the combined run and executed
-  separately; the CI-equivalent split-and-append run measured 98.16 percent
-  lines and 95.13 percent branches;
-- frontend: 411 passed; 98.66 percent lines, 95.13 percent branches and 96.20
+- backend: 960 passed, one N-1 test skipped in the combined run and executed
+  separately; the database-enabled full run measured 97.61 percent total
+  coverage;
+- frontend: 414 passed; 98.69 percent lines, 95.00 percent branches and 96.25
   percent functions;
 - mocked/real-memory Playwright: 3 passed;
 - PostgreSQL Playwright: 10 passed;
@@ -102,9 +106,7 @@ this evidence.
 
 ## Explicit Open Items
 
-- Choose and document how a specific QC reviewer becomes the draft-audience
-  principal. The current workflow has a QC queue but no assigned reviewer.
-  Broad access for every QC-role user is not an acceptable substitute.
+- Complete the protected GitHub gates for the final assigned-QC candidate.
 - Run authorised staging proxy, CORS, CSRF and ingress checks. No local result
   can replace these topology-dependent checks.
 - Record a managed or physical PostgreSQL and object-store restore in staging.

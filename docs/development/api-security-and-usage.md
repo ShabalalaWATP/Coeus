@@ -29,6 +29,12 @@ Validation failures use `422`; authentication and CSRF failures use `401` or
 `403`; hidden object denials may intentionally use `404`. Error bodies expose a
 stable code and safe message, not database detail, payloads or secrets.
 
+QC claim and release use `POST` and `DELETE` respectively at
+`/api/v1/qc/products/{ticket_id}/claim`, and therefore require the session CSRF
+header. A competing reviewer receives `409 qc_already_claimed`; clients should
+refresh the queue and must not retry approval or rejection against that item.
+Unassigned and other-assigned product detail deliberately returns `404`.
+
 ## Upload, search and provider boundaries
 
 Authenticate before multipart parsing. Upload clients provide bounded content

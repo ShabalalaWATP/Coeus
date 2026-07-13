@@ -1,11 +1,13 @@
 """Persist and query ticket-derived draft-product audience relationships."""
 
+from collections.abc import Callable
 from typing import Any
 from uuid import UUID
 
 from sqlalchemy import text
 
 from coeus.domain.draft_audience import DraftAudienceReason
+from coeus.domain.qc_assignment import active_qc_reviewer_id
 from coeus.domain.tickets import TicketRecord
 from coeus.persistence.codec import decode_value
 
@@ -49,6 +51,27 @@ class PostgresDraftAudienceProjection:
                     },
                 ).scalar_one()
             )
+
+
+class LocalDraftAudienceProjection:
+    """Derive local-mode relationships from authoritative ticket snapshots."""
+
+    def __init__(self, ticket_provider: Callable[[], tuple[TicketRecord, ...]]) -> None:
+        self._ticket_provider = ticket_provider
+
+    def reasons_for(self, product_id: UUID, principal_id: UUID) -> tuple[DraftAudienceReason, ...]:
+        reasons = {
+            reason
+            for ticket in self._ticket_provider()
+            for related_product_id, related_principal_id, reason in (
+                ticket_draft_audience_relationships(ticket)
+            )
+            if related_product_id == product_id and related_principal_id == principal_id
+        }
+        return tuple(sorted(reasons))
+
+    def contains(self, product_id: UUID, principal_id: UUID, reason: DraftAudienceReason) -> bool:
+        return reason in self.reasons_for(product_id, principal_id)
 
 
 def ensure_draft_audience_schema(connection: Any) -> None:
@@ -118,4 +141,10 @@ def ticket_draft_audience_relationships(
         for assignment in ticket.analyst_assignments
         if assignment.active
     )
+    reviewer_id = active_qc_reviewer_id(ticket)
+    if reviewer_id is not None:
+        relationships.update(
+            (link.product_id, reviewer_id, DraftAudienceReason.QUALITY_CONTROL)
+            for link in ticket.linked_products
+        )
     return relationships

@@ -3,7 +3,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 import QcQueuePage from "./QcQueuePage";
 import { AppProviders } from "../../app/providers";
-import type { QcProduct } from "../../lib/api-client/qc";
+import type { QcProduct, QcQueueItem } from "../../lib/api-client/qc";
 import { previewSession } from "../../test/test-utils";
 
 export const baseProduct: QcProduct = {
@@ -116,18 +116,32 @@ export function fetchByUrl({
   acgs = defaultAcgs,
   approve = approvedProduct,
   detail = baseProduct,
+  queueItems,
   queueProducts = [baseProduct],
   reject = baseProduct,
 }: {
   acgs?: typeof defaultAcgs;
   approve?: QcProduct;
   detail?: QcProduct;
+  queueItems?: QcQueueItem[];
   queueProducts?: QcProduct[];
   reject?: QcProduct;
 }) {
   return (url: string) => {
     if (url.endsWith("/api/v1/qc/queue")) {
-      return Promise.resolve(jsonResponse({ products: queueProducts }));
+      return Promise.resolve(
+        jsonResponse({
+          items:
+            queueItems ??
+            queueProducts.map((product) => ({
+              ticketId: product.ticketId,
+              reference: product.reference,
+              state: product.state,
+              claimStatus: "claimed_by_you" as const,
+            })),
+          products: queueProducts,
+        }),
+      );
     }
     if (url.endsWith("/api/v1/qc/products/ticket-1")) {
       return Promise.resolve(jsonResponse(detail));

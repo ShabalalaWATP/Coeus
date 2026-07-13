@@ -1,6 +1,7 @@
 from typing import Protocol
 from uuid import UUID
 
+from coeus.application.ports.draft_audience import DraftAudienceProjection
 from coeus.application.ports.embeddings import EmbeddingPort
 from coeus.domain.store import (
     StoreHybridCandidate,
@@ -61,11 +62,13 @@ class InMemoryStoreRepository:
         state_store: StateStore | None = None,
         projection: StoreProjection | None = None,
         embeddings: EmbeddingPort | None = None,
+        draft_audience: DraftAudienceProjection | None = None,
     ) -> None:
         self._access_repository = access_repository
         self._state_store = state_store
         self._projection = projection
         self._embeddings = embeddings
+        self._draft_audience = draft_audience
         self._initialising = True
         self._products: dict[UUID, StoreProduct] = {}
         self._reference_counter = 1000
@@ -107,7 +110,7 @@ class InMemoryStoreRepository:
             )
             return candidates
         scoped = tuple(
-            product for product in self.list_products() if product_in_scope(product, scope)
+            product for product in self.list_products() if self._in_scope(product, scope)
         )
         return memory_hybrid_candidates(
             scoped,
@@ -117,6 +120,15 @@ class InMemoryStoreRepository:
             filters,
             leg_limit,
         )
+
+    def _in_scope(self, product: StoreProduct, scope: StoreVisibilityScope) -> bool:
+        principal_id = scope.draft_principal_user_id
+        audience_match = bool(
+            self._draft_audience is not None
+            and principal_id is not None
+            and self._draft_audience.reasons_for(product.product_id, principal_id)
+        )
+        return product_in_scope(product, scope, draft_audience_match=audience_match)
 
     def get_visible_product(
         self, product_id: UUID, scope: StoreVisibilityScope

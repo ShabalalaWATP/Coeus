@@ -82,17 +82,19 @@ class TicketMutationService:
             raise ValueError("Audited ticket mutations require at least one audit event.")
         if self._transaction is not None:
             return self._commit(expected, proposed, actor, events)
-        updated = self.save_if_current(expected, proposed)
-        try:
-            self._audit_log.record_many(
+        committed = replace(proposed, updated_at=datetime.now(UTC))
+        confirmed = self._repository.save_if_current_with_confirmation(
+            expected,
+            committed,
+            lambda: self._audit_log.record_many(
                 tuple(
                     (event_type, str(_actor_id(actor)), metadata) for event_type, metadata in events
                 )
-            )
-        except Exception:
-            self.restore_if_current(updated, expected)
-            raise
-        return updated
+            ),
+        )
+        if not confirmed:
+            raise _ticket_changed()
+        return committed
 
     def save_pair_audited(
         self,

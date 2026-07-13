@@ -226,9 +226,12 @@ test("sends the draft to QC as the responsible manager", async ({ page }) => {
 
 test("releases the product as QC", async ({ page }) => {
   await login(page, "qc.manager@example.test", "QC Queue");
-  await page.getByRole("link", { name: new RegExp(reference) }).click();
-  for (const checkbox of await page.getByRole("checkbox").all()) {
+  await page.getByRole("button", { name: new RegExp(reference) }).click();
+  const checklist = page.getByRole("region", { name: "QC product detail" }).getByRole("checkbox");
+  await expect(checklist.first()).toBeVisible();
+  for (const checkbox of await checklist.all()) {
     await checkbox.check();
+    await expect(checkbox).toBeChecked();
   }
   await page
     .getByRole("combobox", { name: "ACG", exact: true })

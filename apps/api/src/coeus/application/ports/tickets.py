@@ -27,6 +27,15 @@ class TicketRepository(Protocol):
 
     def save_if_current(self, expected: TicketRecord, updated: TicketRecord) -> bool: ...
 
+    def save_if_current_with_confirmation(
+        self,
+        expected: TicketRecord,
+        updated: TicketRecord,
+        confirm: Callable[[], object],
+    ) -> bool:
+        """Replace one expected snapshot and roll back if confirmation fails."""
+        ...
+
     def get(self, ticket_id: UUID) -> TicketRecord | None: ...
 
     def list_tickets(self) -> tuple[TicketRecord, ...]: ...

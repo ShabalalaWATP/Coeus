@@ -178,16 +178,6 @@ def _configure_data_services(
         app.state.ai_model_service,
         app.state.provider_admission,
     )
-    app.state.store_services = build_store_services(
-        identity.access,
-        identity.audit_log,
-        app.state.asset_token_service,
-        app.state.state_store,
-        app.state.embedding_service,
-    )
-    app.state.ai_model_service.set_embedded_product_count_provider(
-        app.state.store_services.repository.embedded_product_count
-    )
     app.state.ticket_services = build_ticket_services(
         settings,
         identity.audit_log,
@@ -196,6 +186,17 @@ def _configure_data_services(
         app.state.workflow_transaction,
         app.state.admission_metrics,
         app.state.provider_admission,
+    )
+    app.state.store_services = build_store_services(
+        identity.access,
+        identity.audit_log,
+        app.state.asset_token_service,
+        app.state.state_store,
+        app.state.embedding_service,
+        app.state.ticket_services.tickets.assignment_snapshot,
+    )
+    app.state.ai_model_service.set_embedded_product_count_provider(
+        app.state.store_services.repository.embedded_product_count
     )
 
 
@@ -258,6 +259,7 @@ def _configure_workflow_services(
         audit_log,
         app.state.object_storage,
         app.state.notification_service,
+        app.state.team_repository,
         app.state.workflow_transaction,
     )
     if settings.environment in HOSTED_ENVIRONMENTS:

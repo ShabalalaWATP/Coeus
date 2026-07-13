@@ -48,6 +48,7 @@ test("drives request, JIOC routing, analyst, manager approval and QC release", a
 
   await page.goto("/qc/queue");
   await expect(page.getByRole("heading", { name: "QC Queue" })).toBeVisible();
+  await page.getByRole("button", { name: /TCK-E2E/ }).click();
   await page.getByRole("checkbox", { name: "source checked" }).check();
   await page.getByRole("checkbox", { name: "classification checked" }).check();
   await page.getByLabel("ACG").selectOption("acg-alpha");

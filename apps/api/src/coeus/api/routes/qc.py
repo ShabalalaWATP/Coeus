@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 
 from coeus.api.dependencies import (
     get_csrf_validated_session,
@@ -9,7 +9,7 @@ from coeus.api.dependencies import (
     get_quality_control_service,
     get_store_services,
 )
-from coeus.api.presenters.qc import product_response
+from coeus.api.presenters.qc import product_response, queue_item_response
 from coeus.domain.auth import AuthenticatedSession
 from coeus.schemas.qc import (
     QcApprovalRequest,
@@ -29,8 +29,10 @@ async def qc_queue(
     qc: Annotated[QualityControlService, Depends(get_quality_control_service)],
     store: Annotated[StoreServices, Depends(get_store_services)],
 ) -> QcQueueResponse:
+    queue = qc.queue(authenticated.user)
     return QcQueueResponse(
-        products=[product_response(ticket, store) for ticket in qc.queue(authenticated.user)]
+        products=[product_response(ticket, store) for ticket in queue.assigned_products],
+        items=[queue_item_response(item) for item in queue.items],
     )
 
 
@@ -42,6 +44,26 @@ async def qc_product(
     store: Annotated[StoreServices, Depends(get_store_services)],
 ) -> QcProductResponse:
     return product_response(qc.details(authenticated.user, ticket_id), store)
+
+
+@router.post("/products/{ticket_id}/claim", response_model=QcProductResponse)
+async def claim_qc_product(
+    ticket_id: UUID,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    qc: Annotated[QualityControlService, Depends(get_quality_control_service)],
+    store: Annotated[StoreServices, Depends(get_store_services)],
+) -> QcProductResponse:
+    return product_response(qc.claim(authenticated.user, ticket_id), store)
+
+
+@router.delete("/products/{ticket_id}/claim", status_code=204)
+async def release_qc_claim(
+    ticket_id: UUID,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    qc: Annotated[QualityControlService, Depends(get_quality_control_service)],
+) -> Response:
+    qc.release_claim(authenticated.user, ticket_id)
+    return Response(status_code=204)
 
 
 @router.post("/products/{ticket_id}/approve", response_model=QcProductResponse)

@@ -1,3 +1,7 @@
+from collections.abc import Callable
+
+from coeus.domain.tickets import TicketRecord
+from coeus.persistence.draft_audience_projection import LocalDraftAudienceProjection
 from coeus.persistence.state_store import PostgresStateStore, StateStore
 from coeus.repositories.access import AccessRepository
 from coeus.repositories.store import InMemoryStoreRepository
@@ -17,17 +21,26 @@ def build_store_services(
     asset_tokens: AssetTokenService,
     state_store: StateStore | None = None,
     embeddings: EmbeddingService | None = None,
+    ticket_provider: Callable[[], tuple[TicketRecord, ...]] | None = None,
 ) -> StoreServices:
     projection = (
         state_store.store_projection(embeddings)
         if isinstance(state_store, PostgresStateStore)
         else None
     )
-    repository = InMemoryStoreRepository(access_repository, state_store, projection, embeddings)
     audience_projection = (
         state_store.draft_audience_projection()
         if isinstance(state_store, PostgresStateStore)
+        else LocalDraftAudienceProjection(ticket_provider)
+        if ticket_provider is not None
         else None
+    )
+    repository = InMemoryStoreRepository(
+        access_repository,
+        state_store,
+        projection,
+        embeddings,
+        audience_projection,
     )
     policy = StoreProductAccessPolicy(
         access_repository, RoleAwareDraftAudiencePolicy(audience_projection)

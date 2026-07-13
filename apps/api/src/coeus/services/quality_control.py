@@ -12,10 +12,11 @@ from coeus.domain.state_machine import can_transition
 from coeus.domain.store import StoreProduct, normalise_synthetic_release_markers
 from coeus.domain.tickets import TicketRecord
 from coeus.repositories.access import AccessRepository
+from coeus.repositories.teams import TeamRepository
 from coeus.services.audit import AuditLog
 from coeus.services.notifications import NotificationService
 from coeus.services.object_storage import ObjectStorage
-from coeus.services.prioritisation import priority_sort_key
+from coeus.services.qc_assignment import QcAssignmentService, QcQueueView
 from coeus.services.qc_ingestion import (
     ProductAutoIngestionService,
     QcApprovalInput,
@@ -33,8 +34,6 @@ from coeus.services.ticket_records import timeline
 from coeus.services.tickets import TicketServices
 
 __all__ = ["QcApprovalInput", "QualityControlService", "ReleaseCheckService"]
-
-QC_READ_PERMISSIONS = frozenset({Permission.QC_REVIEW})
 
 
 class ReleaseCheckService:
@@ -87,6 +86,7 @@ class QualityControlService:
         indexing: ProductIndexingService,
         release: QcReleaseStep,
         audit_log: AuditLog,
+        assignments: QcAssignmentService,
     ) -> None:
         self._tickets = tickets
         self._release_checks = release_checks
@@ -94,32 +94,25 @@ class QualityControlService:
         self._indexing = indexing
         self._release = release
         self._audit_log = audit_log
+        self._assignments = assignments
 
-    def queue(self, actor: UserAccount) -> tuple[TicketRecord, ...]:
-        self._require(actor, Permission.QC_REVIEW)
-        queued = (
-            ticket
-            for ticket in self._tickets.tickets.list_workflow_tickets(actor, QC_READ_PERMISSIONS)
-            if ticket.state == TicketState.QC_REVIEW
-        )
-        return tuple(sorted(queued, key=priority_sort_key))
+    def queue(self, actor: UserAccount) -> QcQueueView:
+        return self._assignments.queue(actor)
 
     def details(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
-        self._require(actor, Permission.QC_REVIEW)
-        ticket = self._tickets.tickets.get_workflow_ticket(actor, ticket_id, QC_READ_PERMISSIONS)
-        if ticket.state not in {
-            TicketState.QC_REVIEW,
-            TicketState.DISSEMINATION_READY,
-            TicketState.REWORK_REQUIRED,
-        }:
-            raise AppError(404, "product_not_found", "QC product was not found.")
-        return ticket
+        return self._assignments.details(actor, ticket_id)
+
+    def claim(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
+        return self._assignments.claim(actor, ticket_id)
+
+    def release_claim(self, actor: UserAccount, ticket_id: UUID) -> None:
+        self._assignments.release(actor, ticket_id)
 
     def approve(
         self, actor: UserAccount, ticket_id: UUID, approval: QcApprovalInput
     ) -> TicketRecord:
         self._require(actor, Permission.QC_APPROVE)
-        ticket = self.details(actor, ticket_id)
+        ticket = self._assignments.claim_for_action(actor, ticket_id)
         self._ensure_state(ticket, TicketState.QC_REVIEW)
         draft = latest_draft(ticket)
         if draft.created_by_user_id == actor.user_id:
@@ -185,7 +178,7 @@ class QualityControlService:
 
     def reject(self, actor: UserAccount, ticket_id: UUID, reason: str) -> TicketRecord:
         self._require(actor, Permission.QC_REJECT)
-        ticket = self.details(actor, ticket_id)
+        ticket = self._assignments.claim_for_action(actor, ticket_id)
         self._ensure_state(ticket, TicketState.QC_REVIEW)
         checklist = checklist_items({})
         decision = qc_decision(
@@ -231,6 +224,7 @@ def build_quality_control_service(
     audit_log: AuditLog,
     storage: ObjectStorage,
     notifications: NotificationService,
+    teams: TeamRepository,
     transaction: WorkflowTransactionPort | None = None,
 ) -> QualityControlService:
     return QualityControlService(
@@ -247,4 +241,5 @@ def build_quality_control_service(
             transaction,
         ),
         audit_log,
+        QcAssignmentService(tickets, teams),
     )

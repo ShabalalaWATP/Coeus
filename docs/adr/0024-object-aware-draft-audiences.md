@@ -27,12 +27,14 @@ an action, but it cannot prove an actor-to-product relationship.
   are reauthorised at redemption and cannot preserve revoked draft access.
 - Ambiguous backfill or projection failure denies access and blocks cutover.
 
-The current relational projection records assigned analysts and the manager who
-made each active assignment. Store search, detail and selected-object policy now
-consume that projection and revoke access when the assignment becomes inactive.
-Creator access remains an object field. A distinct assigned-QC relationship is
-not represented by the current workflow model, so that reason remains an
-acceptance criterion rather than a claimed implemented projection.
+The relational projection records assigned analysts, the manager who made each
+active assignment and the QC reviewer who atomically claimed the submission.
+Store search, detail and selected-object policy consume that projection and
+revoke access when the relationship becomes inactive. Creator access remains
+an object field. The shared QC queue exposes only reference, state and claim
+status until an eligible QC manager claims an item. Only that reviewer receives
+full detail and object-specific draft authority. Claims are retained through
+rework and revoked effectively on release, approval or another lifecycle exit.
 
 ## Consequences
 
@@ -43,6 +45,6 @@ acceptance criterion rather than a claimed implemented projection.
 - Workflow transactions own assignment-derived audience maintenance. Backfill
   reconciliation is dry-run first, serializable and atomically audited. A
   zero-drift release-candidate report and the full matrix remain release gates.
-- Tests cover projected analyst/manager access, unrelated denial and revocation.
-  QC assignment, ACG removal, clearance reduction, publication and archive stay
-  in the full Phase 2 acceptance matrix and must not be inferred from this slice.
+- Tests cover projected analyst, manager and QC access, competing QC claims,
+  unrelated denial and revocation. ACG removal, clearance reduction,
+  publication and archive remain part of the full Phase 2 acceptance matrix.

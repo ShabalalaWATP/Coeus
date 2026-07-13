@@ -142,7 +142,12 @@ class StoreVisibilityScope:
     draft_principal_user_id: UUID | None = None
 
 
-def product_in_scope(product: "StoreProduct", scope: StoreVisibilityScope) -> bool:
+def product_in_scope(
+    product: "StoreProduct",
+    scope: StoreVisibilityScope,
+    *,
+    draft_audience_match: bool = False,
+) -> bool:
     """Mirror the SQL projection scope predicate for the in-memory fallback path.
 
     Keeps the memory retrieval leg from ranking over products the requester
@@ -159,6 +164,7 @@ def product_in_scope(product: "StoreProduct", scope: StoreVisibilityScope) -> bo
         metadata.status == ProductStatus.DRAFT
         and not scope.include_drafts
         and scope.draft_creator_user_id != product.created_by_user_id
+        and not draft_audience_match
     ):
         return False
     return bool(metadata.acg_ids & scope.acg_ids)

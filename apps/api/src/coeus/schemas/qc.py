@@ -130,7 +130,17 @@ class QcProductResponse(BaseModel):
     ingested_product: QcProductSummaryResponse | None = Field(serialization_alias="ingestedProduct")
 
 
+class QcQueueItemResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    ticket_id: UUID = Field(serialization_alias="ticketId")
+    reference: str
+    state: str
+    claim_status: str = Field(serialization_alias="claimStatus")
+
+
 class QcQueueResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     products: list[QcProductResponse]
+    items: list[QcQueueItemResponse] = Field(default_factory=list)

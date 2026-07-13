@@ -2,9 +2,9 @@
 
 ## Scope
 
-Sprint 10 QC review, checklist approval, rejection to analyst rework,
-automatic Intelligence Store ingestion, local indexing, dissemination and
-feedback request creation.
+Sprint 10 QC review, extended by Sprint 17 assigned-reviewer self-claim,
+checklist approval, rejection to analyst rework, automatic Intelligence Store
+ingestion, local indexing, dissemination and feedback request creation.
 
 ## Assets
 
@@ -19,6 +19,10 @@ feedback request creation.
 | Threat | Control In Sprint 10 |
 | --- | --- |
 | Analyst approves their own draft. | `QualityControlService` compares the latest draft author with the QC actor and blocks self-approval. |
+| Every QC-role user can read every submitted draft. | The shared queue contains only a non-sensitive summary. Full detail and linked-draft audience require an atomic claim by one active QC-team manager. Direct routes return a non-enumerating `404` to other reviewers. |
+| Two reviewers concurrently claim or decide the same submission. | Ticket compare-and-swap produces one claimant. Claim and audit commit atomically in local mode and with the relational workflow transaction in PostgreSQL. Competing reviewers receive `409 qc_already_claimed`. |
+| A reviewer claims work they authored or analysed. | Claim, detail and decision paths reject any reviewer who authored a draft or holds an active analyst assignment. |
+| A released claim leaves stale draft authority. | Draft audiences are derived from the active reviewer and lifecycle. Release or lifecycle exit removes the relationship, and subsequent search/detail checks deny access. |
 | Non-QC user approves or disseminates a product. | QC approval, rejection, product creation and dissemination each check explicit permissions. |
 | Product is released without complete QC checks. | `ReleaseCheckService` requires all nine checklist keys to pass before approval. |
 | Product is disseminated but the requester cannot read it. | `DisseminationService` calls Store visibility checks for the requester before recording dissemination. |
@@ -30,8 +34,9 @@ feedback request creation.
 
 ## Residual Risks
 
-- Local indexing is a deterministic in-process simulation. Production needs an
-  idempotent outbox-backed worker with retry and dead-letter handling.
+- Local indexing is deterministic and in-process. Hosted release notifications
+  use the durable outbox, while a production search-index worker still needs
+  operational retry and dead-letter evidence.
 - Feedback submission, feedback abuse controls and trend analytics are deferred
   to Sprint 11.
 - Persistent audit immutability depends on later database-backed storage.

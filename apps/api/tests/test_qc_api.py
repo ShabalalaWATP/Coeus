@@ -35,9 +35,22 @@ async def test_qc_approval_releases_the_product_to_the_customer() -> None:
         notifications = await client.get("/api/v1/notifications")
 
     assert queue.status_code == 200
-    assert queue.json()["products"][0]["ticketId"] == ticket_id
-    assert queue.json()["products"][0]["latestDraft"]["title"] == "Approved Arctic QC product"
-    assert len(queue.json()["products"][0]["checklistKeys"]) == 9
+    assert queue.json()["products"] == []
+    assert queue.json()["items"] == [
+        {
+            "ticketId": ticket_id,
+            "reference": queue.json()["items"][0]["reference"],
+            "state": "QC_REVIEW",
+            "claimStatus": "available",
+        }
+    ]
+    assert not {
+        "requesterUserId",
+        "latestDraft",
+        "operationalQuestion",
+        "managerNotes",
+        "decisions",
+    }.intersection(queue.json()["items"][0])
     assert approved.status_code == 200
     body = approved.json()
     assert body["state"] == "DISSEMINATION_READY"
@@ -80,6 +93,8 @@ async def test_qc_rejects_to_rework_and_analyst_can_resubmit() -> None:
             f"/api/v1/analyst/tasks/{ticket_id}/submit",
             headers={"X-CSRF-Token": str(analyst["csrfToken"])},
         )
+        await login(client, "qc.manager@example.test")
+        retained_queue = await client.get("/api/v1/qc/queue")
 
     assert rejected.status_code == 200
     assert rejected.json()["state"] == "REWORK_REQUIRED"
@@ -92,6 +107,8 @@ async def test_qc_rejects_to_rework_and_analyst_can_resubmit() -> None:
     assert revised.json()["drafts"][-1]["title"] == "Revised Arctic product"
     assert resubmitted.status_code == 200
     assert resubmitted.json()["state"] == "QC_REVIEW"
+    assert retained_queue.json()["items"][0]["claimStatus"] == "claimed_by_you"
+    assert retained_queue.json()["products"][0]["ticketId"] == ticket_id
 
 
 @pytest.mark.asyncio
