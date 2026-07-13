@@ -29,6 +29,14 @@ def test_reverse_projection_restores_current_state_for_legacy_reader(
     assert relational.save_if_current(original, updated)
 
     assert reverse_project_ticket_state(postgres_database_url) == 1
+    engine = create_engine(postgres_database_url)
+    with engine.connect() as connection:
+        rollback_payload = connection.execute(
+            text("SELECT payload FROM coeus_state WHERE namespace = 'tickets'")
+        ).scalar_one()
+    encoded_ticket = rollback_payload["tickets"][0]
+    assert encoded_ticket["__type__"] == "coeus.domain.tickets.TicketRecord"
+    assert "__type_id__" not in encoded_ticket
     legacy = InMemoryTicketRepository(PostgresStateStore(postgres_database_url, "legacy"))
 
     assert legacy.get(original.ticket_id) == updated

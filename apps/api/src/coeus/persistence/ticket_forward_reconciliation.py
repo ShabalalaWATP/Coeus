@@ -4,13 +4,14 @@ import json
 import re
 from dataclasses import dataclass
 from hashlib import sha256
+from typing import cast
 from uuid import UUID, uuid4
 
 from sqlalchemy import create_engine, text
 
 from coeus.domain.tickets import TicketRecord
 from coeus.persistence.audit_store import AUDIT_ORDER_INDEX_SQL, AUDIT_TABLE_SQL
-from coeus.persistence.codec import decode_value
+from coeus.persistence.codec import decode_value, encode_value
 from coeus.persistence.database_url import synchronous_database_url
 from coeus.persistence.state_store import _save_ticket_counter, _shadow_ticket_payload
 from coeus.persistence.ticket_rollback_checkpoint import (
@@ -154,6 +155,7 @@ def _validated_legacy_payload(
     if not isinstance(tickets, list) or not isinstance(counter, int) or counter < 0:
         raise RuntimeError("Legacy ticket state shape is invalid.")
     hashes: dict[str, str] = {}
+    stable_tickets: list[dict[str, object]] = []
     for encoded in tickets:
         if not isinstance(encoded, dict):
             raise RuntimeError("Legacy ticket state contains an invalid aggregate.")
@@ -166,6 +168,8 @@ def _validated_legacy_payload(
         ticket_id = str(decoded.ticket_id)
         if ticket_id in hashes:
             raise RuntimeError("Legacy ticket state contains duplicate ticket IDs.")
-        canonical = json.dumps(encoded, sort_keys=True, separators=(",", ":"))
+        stable_encoded = cast(dict[str, object], encode_value(decoded))
+        stable_tickets.append(stable_encoded)
+        canonical = json.dumps(stable_encoded, sort_keys=True, separators=(",", ":"))
         hashes[ticket_id] = sha256(canonical.encode("utf-8")).hexdigest()
-    return {"counter": counter, "tickets": tickets}, hashes, counter
+    return {"counter": counter, "tickets": stable_tickets}, hashes, counter

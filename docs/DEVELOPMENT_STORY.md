@@ -4,24 +4,20 @@ Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVEL
 
 ## 2026-07-13 security repair and hardening
 
-- Introduced the application-owned workflow transaction port and cut hosted
-  PostgreSQL QC release over to one version-checked transaction for ticket,
-  Store product, audit evidence and notification intent. Forced audit failure
-  rolls the full unit back, while two concurrent adapters produce one commit
-  and one conflict.
+- Introduced the application-owned workflow transaction port and cut hosted PostgreSQL QC
+  release over to one version-checked ticket, Store, audit and notification transaction.
+  Audit failure rolls the unit back; concurrent adapters produce one commit and one conflict.
 - Cut requester cancellation, no-match consent, collect choice and delivery
   confirmation over to the same hosted ticket-and-audit transaction while
   retaining API responses and atomic single-process compatibility behaviour.
 - Extracted `TicketMutationService` for collision-safe creation, single-ticket
   updates, deterministic paired links and batched join audits, removing hosted
   save-then-audit compensation while preserving existing audit events.
-- Added hosted outbox delivery for product release notifications with strict
-  payload validation, active-requester resolution, fenced retries and durable
-  event-ID deduplication for both in-app and email records. Conflicting content
-  for the same aggregate version now fails closed.
-- Verified the expanded boundary with Ruff, strict mypy, architecture and line
-  gates. The full 838-test memory, file and real PostgreSQL backend suite passed
-  at 97.29 percent combined line and branch coverage.
+- Added hosted outbox delivery with strict payload validation, requester resolution,
+  fenced retries and durable in-app/email event-ID deduplication. Conflicting
+  content for the same aggregate version fails closed.
+- Verified Ruff, strict mypy, architecture and line gates. The full 838-test memory,
+  file and PostgreSQL suite passed at 97.29 percent combined line and branch coverage.
 - Cut persistence writers over to semantic stable type and enum IDs after
   validating dual-format readers and identity goldens. Migration `0012` now
   converts legacy ticket rows and reconciles canonical hashes before relational
@@ -33,6 +29,10 @@ Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVEL
   Store reads use draft audiences with revocation tests; full reconciliation remains open.
 - Added dry-run-first, advisory-locked ticket-capacity recovery with scoped cleanup, validated
   projection repair and drained-only release. Mutations are audited and focused tests pass.
+- Added a quiesced N-1 compatibility bridge. It verifies relational hashes,
+  emits legacy IDs, rejects drift or malformed state and normalises N-1 writes
+  back to stable IDs. A detached immutable N-1 worktree proved old and current
+  writes against a disposable PostgreSQL database.
 
 ## 2026-07-11 cross-role usability and documentation accuracy
 

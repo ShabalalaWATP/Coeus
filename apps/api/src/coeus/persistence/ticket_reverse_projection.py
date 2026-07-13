@@ -6,6 +6,8 @@ from uuid import uuid4
 
 from sqlalchemy import create_engine, text
 
+from coeus.domain.tickets import TicketRecord
+from coeus.persistence.codec import CodecWriteFormat, decode_value, encode_value
 from coeus.persistence.database_url import synchronous_database_url
 from coeus.persistence.ticket_rollback_checkpoint import (
     ROLLBACK_CHECKPOINT_FORMAT_VERSION,
@@ -29,13 +31,25 @@ def reverse_project_ticket_state(database_url: str) -> int:
                     "ORDER BY ticket_id FOR SHARE"
                 )
             ).all()
-            tickets = [dict(row.payload) for row in rows]
-            for ticket, row in zip(tickets, rows, strict=True):
-                canonical = json.dumps(ticket, sort_keys=True, separators=(",", ":"))
+            tickets: list[dict[str, object]] = []
+            for row in rows:
+                relational_payload = dict(row.payload)
+                canonical = json.dumps(relational_payload, sort_keys=True, separators=(",", ":"))
                 if sha256(canonical.encode("utf-8")).hexdigest() != row.canonical_hash:
                     raise RuntimeError(
                         "Ticket reconciliation failed; legacy rollback namespace was not changed."
                     )
+                decoded = decode_value(relational_payload)
+                if not isinstance(decoded, TicketRecord):
+                    raise RuntimeError(
+                        "Ticket reconciliation failed; relational payload is not a ticket."
+                    )
+                legacy_payload = encode_value(decoded, write_format=CodecWriteFormat.LEGACY)
+                if not isinstance(legacy_payload, dict):
+                    raise RuntimeError(
+                        "Ticket reconciliation failed; legacy payload is not an object."
+                    )
+                tickets.append(legacy_payload)
             counter = connection.execute(
                 text(
                     "SELECT COALESCE((payload ->> 'counter')::bigint, 0) "

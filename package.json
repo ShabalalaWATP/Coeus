@@ -17,6 +17,7 @@
     "dead-code": "knip",
     "contracts:generate": "uv run --project apps/api python scripts/generate_openapi.py",
     "contracts:types": "pnpm --filter @coeus/web contracts:types",
+    "n-minus-one:check": "uv run --directory apps/api python ../../scripts/run_n_minus_one_compatibility.py",
     "contracts:check": "uv run --project apps/api python scripts/generate_openapi.py --check && uv run --project apps/api python scripts/check_openapi_compatibility.py --baseline-ref origin/main"
   },
   "devDependencies": {

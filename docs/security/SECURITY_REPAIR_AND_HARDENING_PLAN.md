@@ -216,7 +216,7 @@ versioned ticket, Store projection, audit evidence and notification intent in
 one transaction. Durable delivery is retry-fenced and event-ID deduplicated.
 Ticket creation and workflow actions now commit ticket and audit together.
 Paired links lock deterministically; local batches and pairs are single-process
-atomic. Outbox conflicts fail closed. Restore evidence keeps Phase 4 open.
+atomic. Outbox conflicts fail closed. The N-1 revision mutates the expanded schema; forward reconciliation normalises it and the next current write succeeds. A second clean candidate, final adapter and staging restore keep Phase 4 open.
 
 ### Phase 5: SOLID And Maintainability Consolidation
 

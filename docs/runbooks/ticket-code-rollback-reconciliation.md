@@ -78,3 +78,21 @@ Never delete the checkpoint manually, edit either representation by hand or
 bypass a reconciliation refusal. A relational-change refusal means the
 quiescence boundary was violated and requires investigation and recovery from a
 known coherent recovery point.
+
+## Release compatibility gate
+
+Set `COEUS_TEST_DATABASE_URL` to a PostgreSQL base database on an isolated test
+instance, then run:
+
+```powershell
+pnpm n-minus-one:check
+```
+
+The gate creates a disposable database and detached worktree at immutable N-1
+revision `3e27c82d4b62efb683b3fbb81d2486bccafd8fb0`. It seeds the current
+relational authority, reverse-projects legacy codec identities, executes an
+actual N-1 repository mutation, reconciles it forward, verifies exact current
+state and proves a subsequent current compare-and-swap mutation succeeds. The
+worktree and database are removed even when the test fails. A different N-1
+candidate must be supplied explicitly with `--revision` and recorded in release
+evidence.
