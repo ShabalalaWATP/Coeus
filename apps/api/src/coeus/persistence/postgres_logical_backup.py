@@ -135,11 +135,7 @@ def export_tables(database_url: str, root: Path) -> tuple[str, tuple[TableBackup
         revision = str(revision_row[0])
         for spec in TABLES:
             _require_table(connection, spec.name)
-            row = connection.execute(
-                sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(spec.name))
-            ).fetchone()
-            assert row is not None
-            row_count = int(row[0])
+            row_count = _table_count(connection, spec.name, operation="export")
             relative = f"tables/{spec.name}.copy"
             path = root / safe_relative_path(relative)
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -156,19 +152,11 @@ def import_tables(database_url: str, bundle: Path, backups: tuple[TableBackup, .
     with psycopg.connect(_dsn(database_url)) as connection, connection.transaction():
         for spec, backup in zip(TABLES, backups, strict=True):
             _require_table(connection, spec.name)
-            count_row = connection.execute(
-                sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(spec.name))
-            ).fetchone()
-            assert count_row is not None
-            count = int(count_row[0])
+            count = _table_count(connection, spec.name, operation="restore preflight")
             if count:
                 raise RuntimeError(f"Restore target table {spec.name} is not empty.")
             _copy_in(connection, spec, bundle / safe_relative_path(backup.file))
-            restored_row = connection.execute(
-                sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(spec.name))
-            ).fetchone()
-            assert restored_row is not None
-            restored = int(restored_row[0])
+            restored = _table_count(connection, spec.name, operation="restore verification")
             if restored != backup.row_count:
                 raise RuntimeError(f"Restore row count differs for {spec.name}.")
         connection.execute("DELETE FROM coeus_resource_leases")
@@ -216,6 +204,18 @@ def _require_table(connection: psycopg.Connection[Any], table: str) -> None:
     row = connection.execute("SELECT to_regclass(%s)", (table,)).fetchone()
     if row is None or row[0] is None:
         raise RuntimeError(f"Required recovery table {table} does not exist.")
+
+
+def _table_count(connection: psycopg.Connection[Any], table: str, *, operation: str) -> int:
+    # Names come only from TABLES and psycopg Identifier quotes them. This is
+    # not SQLAlchemy or raw interpolation, despite the generic Semgrep match.
+    # nosemgrep
+    row = connection.execute(
+        sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(table))
+    ).fetchone()
+    if row is None:
+        raise RuntimeError(f"Could not count {operation} table {table}.")
+    return int(row[0])
 
 
 def _dsn(database_url: str) -> str:

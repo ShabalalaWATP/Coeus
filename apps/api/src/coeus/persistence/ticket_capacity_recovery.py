@@ -4,7 +4,7 @@ import json
 from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime
 from hashlib import sha256
-from typing import Literal
+from typing import Literal, cast
 from uuid import UUID, uuid4
 
 from sqlalchemy import create_engine, text
@@ -71,8 +71,7 @@ def recover_ticket_capacity(
             changed_ids = _repair_projection(connection, before)
             event_type = "ticket_capacity_projection_repaired"
         elif action == "release-lease":
-            assert lease_id is not None
-            changed_ids = _release_active_lease(connection, lease_id)
+            changed_ids = _release_active_lease(connection, cast(UUID, lease_id))
             event_type = "ticket_capacity_active_lease_force_released"
         if event_type and changed_ids:
             _append_audit(connection, event_type, operator or "", reason or "", changed_ids)
@@ -165,8 +164,7 @@ def _repair_projection(connection: Connection, report: CapacityReport) -> tuple[
             text("SELECT payload FROM coeus_ticket_aggregates WHERE ticket_id = CAST(:id AS uuid)"),
             {"id": issue.ticket_id},
         ).scalar_one()
-        ticket = decode_value(dict(row))
-        assert isinstance(ticket, TicketRecord)
+        ticket = cast(TicketRecord, decode_value(dict(row)))
         connection.execute(
             text(
                 "UPDATE coeus_ticket_aggregates SET requester_user_id=:requester, state=:state, "

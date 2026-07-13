@@ -88,5 +88,12 @@ def test_required_table_check_fails_closed(row: tuple[object, ...] | None) -> No
         backup._require_table(connection, "required_table")
 
 
+def test_table_count_fails_closed_when_postgres_returns_no_row() -> None:
+    connection = Connection([None])
+
+    with pytest.raises(RuntimeError, match="export table example"):
+        backup._table_count(connection, "example", operation="export")
+
+
 def test_database_name_uses_parsed_url() -> None:
     assert backup.database_name("postgresql://user:password@localhost/example") == "example"
