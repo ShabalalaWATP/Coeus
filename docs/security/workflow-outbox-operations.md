@@ -76,6 +76,11 @@ After restore, compare ticket versions and outbox uniqueness before resuming
 writers or dispatchers. Quiesce dispatchers before rollback or reverse
 projection so no side effect is delivered from an unverified state.
 
+The [coordinated backup and restore drill](../runbooks/coordinated-backup-restore.md)
+supplies application-level evidence for exact manifests, claim reset,
+canonical ticket validation and audience reconciliation. Production physical
+or managed-backup evidence remains a separate staging gate.
+
 ## Relational code rollback
 
 Stop API and worker ticket writers, then run:

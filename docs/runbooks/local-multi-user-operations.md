@@ -46,9 +46,9 @@ review audit events for the change.
 - PostgreSQL holds the compatibility state and relational Store projection.
 - Uploaded bytes use the configured local object directory.
 - The default email provider is an audited local outbox.
-- Back up both PostgreSQL and the object directory together while writes are
-  stopped. This repository does not provide an automated backup/restore command.
-- Test restoration on a separate local instance before relying on a backup.
+- Back up PostgreSQL and the matching object root only while every writer is
+  stopped. Use the [coordinated restore drill](coordinated-backup-restore.md)
+  against a disposable target before relying on a recovery point.
 - For a destructive synthetic-data reset, use the provider-specific helper in
   [Setup](../SETUP.md#reset-local-synthetic-data-safely). Never delete an object
   directory or Docker object volume without resetting its PostgreSQL metadata.

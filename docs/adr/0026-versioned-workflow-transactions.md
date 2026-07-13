@@ -65,5 +65,6 @@ succeeding from one snapshot, leaving workflow and publication inconsistent.
   durable event ID or payload for the same aggregate version fails closed.
 - The hosted dispatcher validates the notification payload, resolves an active
   requester and deduplicates in-app and email records by durable event ID.
-- Local and non-relational adapters retain existing outcomes. Coordinated
-  restore evidence and final adapter-contract certification remain incomplete.
+- Local and non-relational adapters retain existing outcomes. Logical
+  PostgreSQL/local-object restore evidence is executable in CI. Staging physical
+  or managed-backup evidence and final adapter certification remain open.
