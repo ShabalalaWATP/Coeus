@@ -2,10 +2,15 @@
 
 import json
 from hashlib import sha256
+from uuid import uuid4
 
 from sqlalchemy import create_engine, text
 
 from coeus.persistence.database_url import synchronous_database_url
+from coeus.persistence.ticket_rollback_checkpoint import (
+    ROLLBACK_CHECKPOINT_FORMAT_VERSION,
+    ROLLBACK_CHECKPOINT_NAMESPACE,
+)
 
 
 def reverse_project_ticket_state(database_url: str) -> int:
@@ -19,7 +24,8 @@ def reverse_project_ticket_state(database_url: str) -> int:
         with engine.begin() as connection:
             rows = connection.execute(
                 text(
-                    "SELECT payload, canonical_hash FROM coeus_ticket_aggregates "
+                    "SELECT ticket_id::text, payload, canonical_hash "
+                    "FROM coeus_ticket_aggregates "
                     "ORDER BY ticket_id FOR SHARE"
                 )
             ).all()
@@ -37,6 +43,11 @@ def reverse_project_ticket_state(database_url: str) -> int:
                 )
             ).scalar_one_or_none()
             payload = {"counter": int(counter or 0), "tickets": tickets}
+            checkpoint = {
+                "format_version": ROLLBACK_CHECKPOINT_FORMAT_VERSION,
+                "checkpoint_id": str(uuid4()),
+                "ticket_hashes": {str(row.ticket_id): str(row.canonical_hash) for row in rows},
+            }
             connection.execute(
                 text(
                     """
@@ -47,6 +58,20 @@ def reverse_project_ticket_state(database_url: str) -> int:
                     """
                 ),
                 {"payload": json.dumps(payload)},
+            )
+            connection.execute(
+                text(
+                    """
+                    INSERT INTO coeus_state(namespace, payload, updated_at)
+                    VALUES (:namespace, CAST(:payload AS jsonb), now())
+                    ON CONFLICT (namespace) DO UPDATE SET
+                      payload = EXCLUDED.payload, updated_at = now()
+                    """
+                ),
+                {
+                    "namespace": ROLLBACK_CHECKPOINT_NAMESPACE,
+                    "payload": json.dumps(checkpoint),
+                },
             )
         return len(tickets)
     finally:

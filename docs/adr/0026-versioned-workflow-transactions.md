@@ -32,7 +32,10 @@ succeeding from one snapshot, leaving workflow and publication inconsistent.
   but PostgreSQL is the durable multi-process authority.
 - Migration uses expand, backfill, shadow, cutover and later contraction with one
   authoritative writer. Rollback reverse-projects current data while writers are
-  quiesced; a stale snapshot is never used as current state.
+  quiesced; a stale snapshot is never used as current state. Reverse projection
+  records the relational hash baseline. Returning from N-1 reconciles legacy-only
+  writes forward only when that baseline is unchanged, validates the complete
+  result and commits one audit event atomically.
 
 ## Consequences
 
@@ -68,3 +71,7 @@ succeeding from one snapshot, leaving workflow and publication inconsistent.
 - Local and non-relational adapters retain existing outcomes. Logical
   PostgreSQL/local-object restore evidence is executable in CI. Staging physical
   or managed-backup evidence and final adapter certification remain open.
+- The N-1 compatibility bridge is fail closed in both directions. A quiesced
+  reverse projection creates a checkpoint; forward reconciliation consumes it
+  once, rejects relational drift or malformed legacy state and retains the
+  expanded schema throughout the compatibility window.

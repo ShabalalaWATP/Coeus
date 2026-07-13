@@ -90,16 +90,34 @@ uv run --directory apps/api python -m coeus.tools.reverse_ticket_projection --co
 ```
 
 The command verifies every relational aggregate hash and replaces the legacy
-ticket namespace in one database transaction. It refuses to run without the
-explicit quiescence acknowledgement. After it completes, start the rollback
-candidate in legacy read mode, validate ticket counts and sample current states,
-then resume traffic. A reconciliation failure leaves the prior legacy namespace
-unchanged and must not be bypassed.
+ticket namespace and records its relational baseline in one database
+transaction. It refuses to run without the explicit quiescence acknowledgement.
+After it completes, start the rollback candidate in legacy read mode, validate
+ticket counts and sample current states, then resume traffic. A reconciliation
+failure leaves the prior legacy namespace unchanged and must not be bypassed.
+
+Before returning from N-1, quiesce its writers and reconcile any legacy-only
+writes into the relational authority:
+
+```powershell
+uv run --directory apps/api python -m coeus.tools.reconcile_legacy_tickets `
+  --confirm-quiesced --operator "change-operator" `
+  --reason "Return from approved N-1 compatibility window"
+```
+
+The operation refuses stale relational baselines, malformed legacy aggregates
+and replay, then commits the relational replacement, counter, validation and
+audit evidence atomically. The complete stop, validation and restart sequence
+is in the [ticket rollback and reconciliation runbook](../runbooks/ticket-code-rollback-reconciliation.md).
 
 Alembic revision `20260713_0012` converts migration-era legacy payloads to stable
 codec identities and recomputes the runtime SHA-256 canonical digest. The real
 PostgreSQL migration harness proves legacy upgrade, relational validation,
 compare-and-swap mutation and reverse projection as one compatibility chain.
+The forward-reconciliation PostgreSQL suite additionally proves that N-1-only
+writes become current relational state, a concurrent relational write fails
+closed, corrupt legacy input is rejected and a completed checkpoint cannot be
+replayed.
 Relational startup also validates every aggregate ID, canonical hash, requester,
 lifecycle state and capacity flag before making the store available. A mismatch
 is a cutover failure and must be reconciled rather than bypassed.

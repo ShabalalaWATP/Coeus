@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned and release-blocking from 2026-07-13.
+Implementation in progress and release-blocking from 2026-07-13.
 
 ## Purpose
 
