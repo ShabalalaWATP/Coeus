@@ -45,3 +45,13 @@ Crash recovery relies on lease expiry. Operators must set lease duration above
 the normal p99 operation time and renew before expiry. A rising
 `renewal_failed` counter indicates an overloaded worker, database delay or an
 incorrect lease duration and should page the service owner.
+
+## Provider circuit breaker
+
+Remote LLM failures also feed a process-local circuit breaker. After
+`COEUS_PROVIDER_CIRCUIT_FAILURE_THRESHOLD` consecutive failures, calls fall
+back to the deterministic local provider without acquiring the remote service.
+After `COEUS_PROVIDER_CIRCUIT_COOLDOWN_SECONDS`, one recovery probe is allowed;
+other callers continue to fall back until that probe succeeds. Metrics expose
+opens, rejections, probes, failures and successes without provider keys or
+principal identifiers.

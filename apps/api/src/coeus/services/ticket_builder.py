@@ -17,6 +17,7 @@ from coeus.services.intake_prompt import intake_prompt
 from coeus.services.postgres_provider_admission import PostgresProviderAdmissionController
 from coeus.services.postgres_ticket_admission import PostgresTicketAdmissionController
 from coeus.services.provider_admission import ProviderAdmissionController
+from coeus.services.provider_circuit import ProviderCircuitBreaker
 from coeus.services.ticket_admission import TicketAdmissionController
 from coeus.services.ticket_conversations import ConversationService
 from coeus.services.tickets import TicketService, TicketServices
@@ -94,27 +95,36 @@ class ConfigurableIntakeProvider:
         self._settings = settings
         self._ai_models = ai_models
         self._mock = MockLlmProvider()
+        self._circuit = ProviderCircuitBreaker(
+            failure_threshold=settings.provider_circuit_failure_threshold,
+            cooldown_seconds=settings.provider_circuit_cooldown_seconds,
+        )
         self._logger = get_logger(__name__)
 
     def build_assistant_message(self, intake: IntakeDetails, safety_flags: tuple[str, ...]) -> str:
         if safety_flags:
             return self._mock.build_assistant_message(intake, safety_flags)
         call = self._remote_call(intake)
-        if call is None:
+        if call is None or not self._circuit.try_acquire():
             return self._mock.build_assistant_message(intake, safety_flags)
         try:
             text = generate_text(call)
         except AppError as error:
+            self._circuit.record_failure()
             self._logger.warning(
                 "LLM provider unavailable; falling back to mock reply.",
                 extra={"error_code": error.code, "provider": call.provider},
             )
             return self._mock.build_assistant_message(intake, safety_flags)
+        except Exception:
+            self._circuit.record_failure()
+            raise
+        self._circuit.record_success()
         return text or self._mock.build_assistant_message(intake, safety_flags)
 
     def uses_operator_provider(self) -> bool:
         """Whether the next unflagged reply can acquire an external provider."""
-        return self._remote_call(IntakeDetails()) is not None
+        return self._circuit.can_attempt() and self._remote_call(IntakeDetails()) is not None
 
     def _remote_call(self, intake: IntakeDetails) -> LlmCall | None:
         # The configured provider is authoritative: an API key alone never

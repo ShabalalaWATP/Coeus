@@ -2,6 +2,7 @@ import httpx
 import pytest
 
 from coeus.core.config import Settings
+from coeus.core.errors import AppError
 from coeus.domain.tickets import IntakeDetails
 from coeus.services.ai_models import AiModelService
 from coeus.services.audit import AuditLog
@@ -120,6 +121,54 @@ def test_provider_failure_degrades_to_the_mock_reply(monkeypatch: pytest.MonkeyP
     message = provider.build_assistant_message(_intake(), ())
 
     assert message == PRIORITY_QUESTION
+
+
+def test_provider_circuit_stops_repeated_failed_remote_calls(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = 0
+
+    def fail(_call: object) -> str:
+        nonlocal calls
+        calls += 1
+        raise AppError(503, "provider_unavailable", "Synthetic provider failure.")
+
+    monkeypatch.setattr("coeus.services.ticket_builder.generate_text", fail)
+    settings = Settings(
+        environment="test",
+        llm_provider="gemini_api",
+        gemini_api_key="env-secret",
+        provider_circuit_failure_threshold=2,
+    )
+    provider = ConfigurableIntakeProvider(settings, None)
+
+    assert provider.build_assistant_message(_intake(), ()) == PRIORITY_QUESTION
+    assert provider.build_assistant_message(_intake(), ()) == PRIORITY_QUESTION
+    assert provider.build_assistant_message(_intake(), ()) == PRIORITY_QUESTION
+    assert calls == 2
+    assert not provider.uses_operator_provider()
+
+
+def test_unexpected_provider_failure_is_recorded_and_propagated(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail(_call: object) -> str:
+        raise RuntimeError("synthetic unexpected failure")
+
+    monkeypatch.setattr("coeus.services.ticket_builder.generate_text", fail)
+    provider = ConfigurableIntakeProvider(
+        Settings(
+            environment="test",
+            llm_provider="gemini_api",
+            gemini_api_key="env-secret",
+            provider_circuit_failure_threshold=1,
+        ),
+        None,
+    )
+
+    with pytest.raises(RuntimeError, match="unexpected"):
+        provider.build_assistant_message(_intake(), ())
+    assert not provider.uses_operator_provider()
 
 
 def test_provider_without_key_degrades_to_the_mock_reply(

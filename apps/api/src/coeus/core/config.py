@@ -87,6 +87,8 @@ class Settings(BaseSettings):
     provider_max_calls_per_principal: int = Field(default=30, ge=1)
     provider_window_seconds: int = Field(default=60, ge=1)
     provider_admission_mode: AdmissionMode = AdmissionMode.PRINCIPAL
+    provider_circuit_failure_threshold: int = Field(default=3, ge=1, le=20)
+    provider_circuit_cooldown_seconds: int = Field(default=30, ge=1, le=600)
     shared_resource_admission_mode: AdmissionMode = AdmissionMode.PRINCIPAL
     search_max_concurrent: int = Field(default=2, ge=1, le=32)
     search_max_concurrent_per_principal: int = Field(default=1, ge=1, le=8)
