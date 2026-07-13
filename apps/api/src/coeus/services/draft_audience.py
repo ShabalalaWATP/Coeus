@@ -1,28 +1,9 @@
 """Central draft-audience decisions shared by Store and workflow reads."""
 
-from typing import Protocol
-
 from coeus.application.ports.draft_audience import DraftAudienceProjection
 from coeus.domain.auth import RoleName, UserAccount
 from coeus.domain.draft_audience import DraftAudienceReason
 from coeus.domain.store import StoreProduct
-
-
-class DraftAudiencePolicy(Protocol):
-    def reason_for_store_read(
-        self, actor: UserAccount, product: StoreProduct
-    ) -> DraftAudienceReason | None:
-        pass
-
-    def permits(
-        self,
-        actor: UserAccount,
-        product: StoreProduct,
-        reason: DraftAudienceReason | None,
-        *,
-        require_projection: bool = False,
-    ) -> bool:
-        pass
 
 
 class RoleAwareDraftAudiencePolicy:

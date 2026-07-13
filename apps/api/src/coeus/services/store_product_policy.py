@@ -1,10 +1,11 @@
+from coeus.application.ports.draft_audience import DraftAudiencePolicy
 from coeus.core.permissions import Permission
 from coeus.domain.access import ProductStatus
 from coeus.domain.auth import RoleName, UserAccount
 from coeus.domain.draft_audience import DraftAudienceReason
 from coeus.domain.store import StoreProduct, StoreVisibilityScope
 from coeus.repositories.access import AccessRepository
-from coeus.services.draft_audience import DraftAudiencePolicy, RoleAwareDraftAudiencePolicy
+from coeus.services.draft_audience import RoleAwareDraftAudiencePolicy
 
 
 class StoreProductAccessPolicy:
