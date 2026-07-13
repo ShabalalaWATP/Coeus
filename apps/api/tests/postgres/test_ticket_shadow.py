@@ -133,9 +133,7 @@ def test_relational_cutover_refuses_a_corrupt_aggregate_at_startup(
     repository.save(ticket)
     engine = create_engine(postgres_database_url)
     with engine.begin() as connection:
-        connection.execute(
-            text("UPDATE coeus_ticket_aggregates SET canonical_hash = 'corrupt'")
-        )
+        connection.execute(text("UPDATE coeus_ticket_aggregates SET canonical_hash = 'corrupt'"))
 
     with pytest.raises(RuntimeError, match="aggregate reconciliation failed"):
         PostgresStateStore(postgres_database_url, "relational").load_ticket_state()
@@ -301,9 +299,7 @@ def test_draft_audience_projection_tracks_and_revokes_ticket_relationships(
 
     assert projection.contains(product_id, analyst_id, DraftAudienceReason.ASSIGNED_ANALYST)
     assert projection.contains(product_id, manager_id, DraftAudienceReason.RESPONSIBLE_MANAGER)
-    assert projection.reasons_for(product_id, analyst_id) == (
-        DraftAudienceReason.ASSIGNED_ANALYST,
-    )
+    assert projection.reasons_for(product_id, analyst_id) == (DraftAudienceReason.ASSIGNED_ANALYST,)
 
     product = seed_product()
     product = replace(
@@ -324,9 +320,12 @@ def test_draft_audience_projection_tracks_and_revokes_ticket_relationships(
     assert visible is not None
     assert visible.product_id == product.product_id
     assert visible.metadata.status == ProductStatus.DRAFT
-    assert store_projection.get_visible_product(
-        product_id, replace(analyst_scope, draft_principal_user_id=uuid4())
-    ) is None
+    assert (
+        store_projection.get_visible_product(
+            product_id, replace(analyst_scope, draft_principal_user_id=uuid4())
+        )
+        is None
+    )
 
     updated = replace(ticket, analyst_assignments=(replace(assignment, active=False),))
     assert repository.save_if_current(ticket, updated)

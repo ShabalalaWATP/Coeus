@@ -86,8 +86,7 @@ class TicketMutationService:
         try:
             self._audit_log.record_many(
                 tuple(
-                    (event_type, str(_actor_id(actor)), metadata)
-                    for event_type, metadata in events
+                    (event_type, str(_actor_id(actor)), metadata) for event_type, metadata in events
                 )
             )
         except Exception:

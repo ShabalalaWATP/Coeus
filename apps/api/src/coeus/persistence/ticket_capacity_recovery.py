@@ -15,8 +15,8 @@ from coeus.domain.tickets import TicketRecord
 from coeus.persistence.audit_store import AUDIT_ORDER_INDEX_SQL, AUDIT_TABLE_SQL
 from coeus.persistence.codec import decode_value
 from coeus.persistence.database_url import synchronous_database_url
+from coeus.persistence.resource_lease_schema import RESOURCE_LEASE_SCHEMA_SQL
 from coeus.persistence.ticket_shadow_schema import validate_relational_ticket_rows
-from coeus.services.postgres_provider_admission import RESOURCE_LEASE_SCHEMA_SQL
 
 RecoveryAction = Literal["inspect", "remove-expired", "repair-projection", "release-lease"]
 

@@ -23,9 +23,7 @@ class StubWorkflowTransaction:
         self.updated: TicketRecord | None = None
         self.paired: tuple[TicketRecord, TicketRecord] | None = None
 
-    def commit_ticket_create(
-        self, ticket: TicketRecord, _audit: WorkflowAuditIntent
-    ) -> bool:
+    def commit_ticket_create(self, ticket: TicketRecord, _audit: WorkflowAuditIntent) -> bool:
         self.created = ticket
         return self.create_result
 
@@ -195,9 +193,7 @@ def test_audited_update_rejects_an_empty_event_group() -> None:
     service = TicketMutationService(repository, AuditLog())
 
     with pytest.raises(ValueError, match="at least one audit event"):
-        service.save_with_audits_if_current(
-            expected, expected, expected.requester_user_id, ()
-        )
+        service.save_with_audits_if_current(expected, expected, expected.requester_user_id, ())
 
 
 def test_hosted_audited_update_handles_success_conflict_and_cache_failures(

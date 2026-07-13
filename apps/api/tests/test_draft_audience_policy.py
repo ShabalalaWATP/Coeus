@@ -77,9 +77,7 @@ def test_projected_relationship_drives_store_reason_and_permission() -> None:
     product = seed_product()
     policy = RoleAwareDraftAudiencePolicy(Projection())
 
-    assert (
-        policy.reason_for_store_read(actor, product) == DraftAudienceReason.ASSIGNED_ANALYST
-    )
+    assert policy.reason_for_store_read(actor, product) == DraftAudienceReason.ASSIGNED_ANALYST
     assert policy.permits(
         actor,
         product,

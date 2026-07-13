@@ -91,9 +91,7 @@ def test_ticket_pair_rejects_identity_changes_and_duplicate_aggregates(
             (first, second), (first, _ticket("TCK-PAIR-0003")), (_audit(first, second),)
         )
     with pytest.raises(ValueError, match="identities"):
-        transaction.commit_ticket_pair(
-            (first, first), (first, first), (_audit(first, second),)
-        )
+        transaction.commit_ticket_pair((first, first), (first, first), (_audit(first, second),))
 
 
 def test_ticket_pair_rolls_back_both_aggregates_when_audit_fails(

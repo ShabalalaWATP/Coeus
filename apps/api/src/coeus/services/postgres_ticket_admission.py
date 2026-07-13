@@ -9,8 +9,8 @@ from sqlalchemy import create_engine, text
 from coeus.core.errors import AppError
 from coeus.domain.admission import AdmissionMode, admission_denial_scope
 from coeus.persistence.database_url import synchronous_database_url
+from coeus.persistence.resource_lease_schema import RESOURCE_LEASE_SCHEMA_SQL
 from coeus.services.admission_metrics import AdmissionMetrics
-from coeus.services.postgres_provider_admission import RESOURCE_LEASE_SCHEMA_SQL
 
 
 class PostgresTicketAdmissionController:

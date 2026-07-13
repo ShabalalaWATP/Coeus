@@ -215,18 +215,22 @@ class PostgresWorkflowTransaction:
                 ),
             },
         )
-        stored = connection.execute(
-            text(
-                """
+        stored = (
+            connection.execute(
+                text(
+                    """
                 SELECT event_id, payload
                 FROM coeus_outbox
                 WHERE aggregate_id = :ticket_id
                   AND aggregate_version = :version
                   AND event_type = :event_type
                 """
-            ),
-            {"ticket_id": ticket_id, "version": version, "event_type": event_type},
-        ).mappings().one()
+                ),
+                {"ticket_id": ticket_id, "version": version, "event_type": event_type},
+            )
+            .mappings()
+            .one()
+        )
         expected_payload = {
             "requester_user_id": str(notification.requester_user_id),
             "ticket_reference": notification.ticket_reference,
