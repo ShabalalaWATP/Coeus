@@ -6,33 +6,34 @@ Status: provisional implementation evidence, not release closure.
 
 Applicable branch: `codex/security-repair-hardening-plan`.
 
-Evidence revision at last update: working candidate after `f09411d1`.
+Evidence revision at last update: working candidate after `33b059e3` plus the
+static recovery-query allow-list repair prompted by GitHub Semgrep.
 
 Last verified: 2026-07-13 on Windows with PostgreSQL 16 plus pgvector, local
 object storage and mock AI providers.
 
 This ledger traces the baseline from deep scan
-`abf0e143-4656-4646-b133-6fea0d6661ee`. A row is formally closed only after
-the final immutable candidate passes every required local and protected GitHub
-gate and a fresh sealed scan finds no unresolved occurrence. Local evidence is
-not staging or production accreditation.
+`abf0e143-4656-4646-b133-6fea0d6661ee`. The repository owner explicitly
+deferred the fresh sealed scan on 2026-07-13. Consequently, this ledger records
+implemented and verified controls but does not claim fresh-scan closure. Local
+evidence is not staging or production accreditation.
 
 ## Reportable Finding Traceability
 
 | Finding | Implemented control | Primary regression evidence | Current state |
 | --- | --- | --- | --- |
-| `COEUS-CAN-001` draft search | One object-aware draft policy plus indexed principal projection and query prefilter. | `test_draft_audience_security.py`; PostgreSQL browser test `denies an unrelated same-ACG user access to a PostgreSQL draft`; `postgres/test_ticket_shadow.py`. | Implemented and locally exercised. Assigned-QC policy decision and final scan remain open. |
-| `COEUS-CAN-002` draft detail | Repository prefilter and selected-object checks consume the same audience policy and return non-enumerating errors. | `test_draft_audience_security.py`; `test_store_projection.py`; browser known-UUID draft denial. | Implemented and locally exercised. Full intended-audience matrix and final scan remain open. |
+| `COEUS-CAN-001` draft search | One object-aware draft policy plus indexed principal projection and query prefilter. | `test_draft_audience_security.py`; PostgreSQL browser test `denies an unrelated same-ACG user access to a PostgreSQL draft`; `postgres/test_ticket_shadow.py`. | Implemented and locally exercised. The assigned-QC policy decision remains open; fresh-scan closure is deferred. |
+| `COEUS-CAN-002` draft detail | Repository prefilter and selected-object checks consume the same audience policy and return non-enumerating errors. | `test_draft_audience_security.py`; `test_store_projection.py`; browser known-UUID draft denial. | Implemented and locally exercised. The full intended-audience matrix remains open; fresh-scan closure is deferred. |
 | `COEUS-CAN-006` draft asset | Grant and redemption reauthorise ACG, clearance, lifecycle, audience and user-bound token authority. | `test_draft_audience_security.py`; `test_analyst_linked_product_reauthorisation.py`; browser known-asset grant denial and released-byte download. | Implemented. The assigned-QC audience decision remains open. |
 | `COEUS-CAN-012` upload memory | Authentication-first parsing, cumulative receive cap, incremental hashing, staged promotion, deterministic cleanup and shared byte leases. | `test_upload_admission_security.py`; `postgres/test_shared_resource_admission.py`; browser `413` recovery with retained form input and no product; `SECURITY_REPAIR_BASELINE_2026-07-13.md`. | Implemented. Authorised ingress and multi-size staging measurements remain external release evidence. |
-| `COEUS-CAN-026` chat cost | Principal and deployment provider leases, retained-ticket admission, bounded drafts, circuit breaker and exact refund semantics. | `test_provider_admission.py`; `test_ticket_admission.py`; `test_conversation_service.py`; PostgreSQL shared-admission suites; browser `429` recovery with retained message. | Implemented and locally exercised; final scan remains open. |
-| `COEUS-CAN-027` corpus rewrite | Versioned per-ticket relational aggregate, compare-and-swap, ticket quotas and audited recovery. | `postgres/test_ticket_shadow.py::test_relational_mutation_statement_count_is_stable_at_ten_thousand_rows`; ticket-capacity recovery suites. | Implemented with stable-cost proof; final scan remains open. |
+| `COEUS-CAN-026` chat cost | Principal and deployment provider leases, retained-ticket admission, bounded drafts, circuit breaker and exact refund semantics. | `test_provider_admission.py`; `test_ticket_admission.py`; `test_conversation_service.py`; PostgreSQL shared-admission suites; browser `429` recovery with retained message. | Implemented and locally exercised; fresh-scan closure is deferred. |
+| `COEUS-CAN-027` corpus rewrite | Versioned per-ticket relational aggregate, compare-and-swap, ticket quotas and audited recovery. | `postgres/test_ticket_shadow.py::test_relational_mutation_statement_count_is_stable_at_ten_thousand_rows`; ticket-capacity recovery suites. | Implemented with stable-cost proof; fresh-scan closure is deferred. |
 | `COEUS-CAN-028` pre-auth spool | Session and CSRF rejection occur before explicit multipart parsing; bodies without content length remain capped. | `test_upload_admission_security.py::test_security_rejection_happens_before_multipart_spooling`; content-length-free rejection test. | Implemented with zero-spool proof; staging ingress remains open. |
-| `COEUS-CAN-030` auth history | Atomic bounded username and source histories with injected clocks, expiry and cardinality limits. | `test_auth_attempt_repositories.py::test_source_attempt_repository_bounds_denied_history`; `test_auth_service.py`. | Implemented with 10,000-attempt proof; final scan remains open. |
-| `COEUS-CAN-035` embedding fan-out | Fixed candidate work limit, normalised single-flight cache and shared provider admission. | `test_similar_request_scoring.py::test_similarity_embedding_work_is_bounded_for_large_candidate_corpus`; provider-admission suites. | Implemented and bounded; final scan remains open. |
-| `COEUS-CAN-036` Store embeddings | Store queries use normalised cached embeddings before shared provider reservation. | `test_embedding_admission_security.py::test_store_normalises_and_caches_queries_before_provider_admission`; `test_embeddings.py`. | Implemented with endpoint-level cache proof; final scan remains open. |
-| `COEUS-CAN-037` RFI embeddings | One-run state gate, bounded ranking, ticket quotas and principal/deployment provider admission precede mutation. | `test_embedding_admission_security.py::test_rfi_one_run_gate_and_provider_budget_precede_mutation`; `test_async_search_limits.py`; PostgreSQL shared-admission suites. | Implemented and locally exercised; final scan remains open. |
-| `COEUS-CAN-044` QC/cancel race | Every competing transition uses version predicates; QC release commits ticket, product, audit and outbox atomically. | Parametrised `test_qc_cancel_race_security.py`; `postgres/test_workflow_transaction.py`; PostgreSQL browser release. | Implemented with both winner orders and atomic transaction proof; final scan remains open. |
+| `COEUS-CAN-030` auth history | Atomic bounded username and source histories with injected clocks, expiry and cardinality limits. | `test_auth_attempt_repositories.py::test_source_attempt_repository_bounds_denied_history`; `test_auth_service.py`. | Implemented with 10,000-attempt proof; fresh-scan closure is deferred. |
+| `COEUS-CAN-035` embedding fan-out | Fixed candidate work limit, normalised single-flight cache and shared provider admission. | `test_similar_request_scoring.py::test_similarity_embedding_work_is_bounded_for_large_candidate_corpus`; provider-admission suites. | Implemented and bounded; fresh-scan closure is deferred. |
+| `COEUS-CAN-036` Store embeddings | Store queries use normalised cached embeddings before shared provider reservation. | `test_embedding_admission_security.py::test_store_normalises_and_caches_queries_before_provider_admission`; `test_embeddings.py`. | Implemented with endpoint-level cache proof; fresh-scan closure is deferred. |
+| `COEUS-CAN-037` RFI embeddings | One-run state gate, bounded ranking, ticket quotas and principal/deployment provider admission precede mutation. | `test_embedding_admission_security.py::test_rfi_one_run_gate_and_provider_budget_precede_mutation`; `test_async_search_limits.py`; PostgreSQL shared-admission suites. | Implemented and locally exercised; fresh-scan closure is deferred. |
+| `COEUS-CAN-044` QC/cancel race | Every competing transition uses version predicates; QC release commits ticket, product, audit and outbox atomically. | Parametrised `test_qc_cancel_race_security.py`; `postgres/test_workflow_transaction.py`; PostgreSQL browser release. | Implemented with both winner orders and atomic transaction proof; fresh-scan closure is deferred. |
 
 ## Deferred Decision Traceability
 
@@ -66,23 +67,29 @@ not staging or production accreditation.
 
 ## Verification Snapshot
 
-Before the PostgreSQL browser delta, the complete suites reported:
+The complete local candidate suites reported:
 
-- backend: 949 passed plus the separately executed N-1 compatibility gate;
-  98.15 percent line coverage and 95.08 percent branch coverage;
-- frontend: 98.64 percent lines and 95.09 percent branches;
+- backend: 951 passed, one N-1 test skipped in the combined run and executed
+  separately; 97.68 percent combined coverage, with the most recent separate
+  measures at 98.15 percent lines and 95.08 percent branches;
+- frontend: 411 passed; 98.66 percent lines, 95.13 percent branches and 96.20
+  percent functions;
 - mocked/real-memory Playwright: 3 passed;
-- Bandit, pip-audit, Semgrep, Gitleaks, Checkov, container builds and Trivy:
-  passed with no reportable local result.
-
-On the working candidate after `f09411d1`, the delta gates reported:
-
 - PostgreSQL Playwright: 10 passed;
-- Store upload component: 9 passed;
-- Prettier, ESLint, TypeScript, Ruff, mypy and the 350-line gate: passed.
+- Bandit, pip-audit, Semgrep, Gitleaks and Checkov: passed with no actionable
+  local result;
+- API and web production container builds: passed; current-image Trivy scans
+  reported zero high or critical vulnerabilities.
 
-These are interim facts. The final candidate still requires a complete rerun,
-protected GitHub results and a fresh sealed deep scan on one immutable revision.
+After the final test-tool isolation and static recovery-query repair, the delta
+gates reported:
+
+- recovery backup unit tests: 9 passed;
+- focused Semgrep Python rules: zero findings;
+- Ruff formatting and linting: passed.
+
+The protected GitHub results are still running on PR 109. A fresh sealed deep
+scan is deliberately deferred and therefore absent from this evidence.
 
 ## Explicit Open Items
 
@@ -93,6 +100,7 @@ protected GitHub results and a fresh sealed deep scan on one immutable revision.
   can replace these topology-dependent checks.
 - Record a managed or physical PostgreSQL and object-store restore in staging.
   The current automated drill proves logical application restore only.
-- Run all final local gates, the protected GitHub workflows and the fresh sealed
-  deep scan against the exact release candidate, then replace provisional
-  statuses with immutable scan and check identities.
+- Complete the protected GitHub workflows against the exact candidate and
+  record their immutable check identities.
+- Run a fresh sealed deep scan when the repository owner resumes that work. No
+  claim of fresh-scan closure is made in the meantime.

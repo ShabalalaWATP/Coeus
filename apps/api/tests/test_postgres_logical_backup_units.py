@@ -59,6 +59,7 @@ def test_import_rejects_nonempty_or_mismatched_targets(
     table = TableBackup("example", ("id",), 1, "tables/example.copy", "a" * 64)
     connection = Connection([(before,), (after,)])
     monkeypatch.setattr(backup, "TABLES", (spec,))
+    monkeypatch.setattr(backup, "_COUNT_QUERIES", {"example": "SELECT count(*) FROM example"})
     monkeypatch.setattr(backup.psycopg, "connect", lambda *_args, **_kwargs: connection)
     monkeypatch.setattr(backup, "_require_table", lambda *_args: None)
     monkeypatch.setattr(backup, "_copy_in", lambda *_args: None)
@@ -91,7 +92,14 @@ def test_required_table_check_fails_closed(row: tuple[object, ...] | None) -> No
 def test_table_count_fails_closed_when_postgres_returns_no_row() -> None:
     connection = Connection([None])
 
-    with pytest.raises(RuntimeError, match="export table example"):
+    with pytest.raises(RuntimeError, match="export table coeus_state"):
+        backup._table_count(connection, "coeus_state", operation="export")
+
+
+def test_table_count_rejects_names_outside_the_release_allowlist() -> None:
+    connection = Connection([(0,)])
+
+    with pytest.raises(ValueError, match="not in the recovery allow-list"):
         backup._table_count(connection, "example", operation="export")
 
 

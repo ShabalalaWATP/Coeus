@@ -11,9 +11,10 @@ browser acceptance evidence is carried into Sprint 17. Sprint 17 implementation
 is in progress and release-blocking from the sealed deep scan of revision
 `3e27c82`, which reported 12 findings and four deferred questions. Local
 controls, N-1 reconciliation and a ten-stage PostgreSQL browser workflow are
-green. Assigned-QC policy, the remaining browser matrix, authorised staging,
-protected GitHub gates and a fresh sealed scan remain open. Local development
-remains supported; GCP and Kubernetes remain migration targets.
+green. Assigned-QC policy, the remaining browser matrix, authorised staging and
+protected GitHub gates remain open. The repository owner deferred the fresh
+sealed scan on 2026-07-13, so fresh-scan closure is not claimed. Local
+development remains supported; GCP and Kubernetes remain migration targets.
 
 ## Delivery Ledger
 
@@ -36,7 +37,7 @@ remains supported; GCP and Kubernetes remain migration targets.
 | 14B    | Remediate the sealed 16-finding baseline and its verification findings.                                                                                                                                                                                                                                    | Superseded by Sprint 17      | The original baseline was closed, but deep scan `abf0e143` of later revision `3e27c82` established the current 12-finding baseline.                                                                                  |
 | 15     | JIOC workflow restructure: role renames plus JIOC Team Member, JIOC routing queue, customer collect choice, manager approval chain, QC-owned release with the CM-to-RFA analysed-collect leg, multi-analyst assignment, teams/profiles/availability calendars, and the permission-refresh-on-restore fix. | Implementation delivered     | Backend and web suites passed; the complete eight-role real-browser acceptance evidence is carried into Sprint 17. See ADR 0022 and the workflow specifications.                                                     |
 | 16     | Cross-role desktop usability, multi-provider AI administration and documentation/deployment accuracy.                                                                                                                                                                                                     | Complete                     | PRs #98-#100 passed protected GitHub checks; coverage remained above 95%; current guides distinguish the supported local runtime from GCP/Kubernetes migration targets.                                              |
-| 17     | Close the current security baseline, introduce secure control ownership, improve SOLID boundaries and reconcile all active documentation without breaking intended behaviour.                                                                                                                            | Implementation in progress   | Local controls, logical restore, N-1 reconciliation and the PostgreSQL draft-to-release browser path pass. Assigned-QC policy, full recovery/audience browser evidence, authorised staging, protected GitHub gates and a fresh sealed scan remain release-blocking.                       |
+| 17     | Close the current security baseline, introduce secure control ownership, improve SOLID boundaries and reconcile all active documentation without breaking intended behaviour.                                                                                                                            | Implementation in progress   | Local controls, logical restore, N-1 reconciliation and the PostgreSQL draft-to-release browser path pass. Assigned-QC policy, external staging evidence and protected GitHub gates remain open. The owner deferred the fresh sealed scan, so scan closure remains unclaimed.               |
 
 ## Sprint 11 Delivered Scope
 

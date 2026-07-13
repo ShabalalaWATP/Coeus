@@ -123,6 +123,20 @@ TABLES = (
     ),
 )
 
+_COUNT_QUERIES = {
+    "coeus_state": "SELECT count(*) FROM coeus_state",
+    "coeus_audit_events": "SELECT count(*) FROM coeus_audit_events",
+    "coeus_ticket_aggregates": "SELECT count(*) FROM coeus_ticket_aggregates",
+    "coeus_outbox": "SELECT count(*) FROM coeus_outbox",
+    "coeus_draft_audiences": "SELECT count(*) FROM coeus_draft_audiences",
+    "intelligence_store_products": "SELECT count(*) FROM intelligence_store_products",
+    "intelligence_store_assets": "SELECT count(*) FROM intelligence_store_assets",
+    "intelligence_store_product_acgs": "SELECT count(*) FROM intelligence_store_product_acgs",
+    "intelligence_store_semantic_labels": (
+        "SELECT count(*) FROM intelligence_store_semantic_labels"
+    ),
+}
+
 
 def export_tables(database_url: str, root: Path) -> tuple[str, tuple[TableBackup, ...]]:
     root.mkdir(parents=True, exist_ok=False)
@@ -207,12 +221,11 @@ def _require_table(connection: psycopg.Connection[Any], table: str) -> None:
 
 
 def _table_count(connection: psycopg.Connection[Any], table: str, *, operation: str) -> int:
-    # Names come only from TABLES and psycopg Identifier quotes them. This is
-    # not SQLAlchemy or raw interpolation, despite the generic Semgrep match.
-    # nosemgrep
-    row = connection.execute(
-        sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(table))
-    ).fetchone()
+    try:
+        query = _COUNT_QUERIES[table]
+    except KeyError as exc:
+        raise ValueError(f"Table {table} is not in the recovery allow-list.") from exc
+    row = connection.execute(query).fetchone()
     if row is None:
         raise RuntimeError(f"Could not count {operation} table {table}.")
     return int(row[0])
