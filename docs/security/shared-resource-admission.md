@@ -1,12 +1,14 @@
 # Shared Resource Admission
 
-Coeus reserves scarce upload and search capacity before starting expensive
-work. Hosted environments use atomic PostgreSQL leases. Local and test
-environments use process-local reservations with the same policy semantics.
+Coeus reserves scarce upload, search, provider-call and retained-ticket
+capacity before starting work. Hosted environments use atomic PostgreSQL
+leases. Local and test environments use process-local reservations with the
+same policy semantics.
 
 ## Enforcement modes
 
-`COEUS_SHARED_RESOURCE_ADMISSION_MODE` has three explicit values:
+`COEUS_SHARED_RESOURCE_ADMISSION_MODE`, `COEUS_PROVIDER_ADMISSION_MODE` and
+`COEUS_TICKET_ADMISSION_MODE` each have three explicit values:
 
 - `observe`: admit work, record any limit that would have denied it, and use
   only during a measured rollout window.
@@ -31,10 +33,13 @@ than adding actor labels.
 
 ## Lease lifecycle
 
-PostgreSQL reservations receive an opaque lease identifier. Long-running work
-can renew an active lease. Renewal is fenced by both lease identity and expiry,
-so an expired lease cannot be revived after another worker has acquired freed
-capacity. Context exit deletes an active lease and remains safe after expiry.
+PostgreSQL resource and provider reservations receive an opaque lease
+identifier. Long-running work can renew an active lease. Renewal is fenced by
+both lease identity and expiry, so an expired lease cannot be revived after
+another worker has acquired freed capacity. Context exit releases an active
+lease and remains safe after expiry. Ticket-creation reservations are short and
+bounded by the provider timeout, then released as soon as the aggregate commit
+finishes.
 
 Crash recovery relies on lease expiry. Operators must set lease duration above
 the normal p99 operation time and renew before expiry. A rising

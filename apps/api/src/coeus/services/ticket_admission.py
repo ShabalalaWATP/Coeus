@@ -7,7 +7,9 @@ from uuid import UUID
 
 from coeus.application.ports.tickets import TicketRepository
 from coeus.core.errors import AppError
+from coeus.domain.admission import AdmissionMode, admission_denial_scope
 from coeus.domain.ticket_retention import ticket_consumes_capacity
+from coeus.services.admission_metrics import AdmissionMetrics
 
 
 class TicketAdmissionController:
@@ -17,10 +19,14 @@ class TicketAdmissionController:
         *,
         max_retained: int,
         max_retained_per_principal: int,
+        mode: AdmissionMode = AdmissionMode.PRINCIPAL,
+        metrics: AdmissionMetrics | None = None,
     ) -> None:
         self._repository = repository
         self._max_retained = max_retained
         self._max_retained_per_principal = max_retained_per_principal
+        self._mode = mode
+        self._metrics = metrics or AdmissionMetrics()
         self._pending: dict[UUID, int] = {}
         self._lock = RLock()
 
@@ -38,15 +44,24 @@ class TicketAdmissionController:
             principal_total = sum(
                 ticket.requester_user_id == principal_id for ticket in retained
             ) + self._pending.get(principal_id, 0)
-            if (
-                len(retained) + pending_total >= self._max_retained
-                or principal_total >= self._max_retained_per_principal
-            ):
+            deployment_exceeded = len(retained) + pending_total >= self._max_retained
+            principal_exceeded = principal_total >= self._max_retained_per_principal
+            denial_scope = admission_denial_scope(
+                self._mode,
+                deployment_exceeded=deployment_exceeded,
+                principal_exceeded=principal_exceeded,
+            )
+            if denial_scope:
+                self._metrics.record("ticket", f"denied_{denial_scope}")
                 raise AppError(
                     429,
                     "ticket_capacity_exhausted",
                     "Ticket capacity is temporarily unavailable.",
                 )
+            self._metrics.record(
+                "ticket",
+                "observed_denial" if deployment_exceeded or principal_exceeded else "admitted",
+            )
             self._pending[principal_id] = self._pending.get(principal_id, 0) + 1
             return self._repository.next_reference()
 
@@ -57,6 +72,9 @@ class TicketAdmissionController:
                 self._pending[principal_id] = remaining
             else:
                 self._pending.pop(principal_id)
+
+    def metrics_snapshot(self) -> dict[str, int]:
+        return self._metrics.snapshot()
 
 
 class TicketReservation:

@@ -27,6 +27,8 @@ class ProviderReservation(Protocol):
 
     def commit(self) -> None: ...
 
+    def renew(self) -> None: ...
+
     def __exit__(
         self,
         exc_type: type[BaseException] | None,

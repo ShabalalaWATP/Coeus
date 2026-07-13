@@ -4,6 +4,7 @@ from uuid import uuid4
 import pytest
 
 from coeus.core.errors import AppError
+from coeus.domain.admission import AdmissionMode
 from coeus.domain.enums import TicketState
 from coeus.domain.tickets import IntakeDetails, TicketRecord
 from coeus.persistence.state_store import PostgresStateStore
@@ -66,3 +67,31 @@ def test_terminal_ticket_releases_durable_principal_capacity(
     repository.save_if_current(ticket, replace(ticket, state=terminal_state))
     with controller.reserve(principal) as reference:
         assert reference == "TCK-0002"
+
+
+@pytest.mark.parametrize(
+    ("mode", "denied"),
+    [
+        (AdmissionMode.OBSERVE, False),
+        (AdmissionMode.DEPLOYMENT, False),
+        (AdmissionMode.PRINCIPAL, True),
+    ],
+)
+def test_postgres_ticket_modes_stage_principal_enforcement(
+    postgres_database_url: str, mode: AdmissionMode, denied: bool
+) -> None:
+    PostgresStateStore(postgres_database_url, "relational").load_ticket_state()
+    controller = PostgresTicketAdmissionController(
+        postgres_database_url,
+        max_retained=2,
+        max_retained_per_principal=1,
+        mode=mode,
+    )
+    principal = uuid4()
+    with controller.reserve(principal):
+        if denied:
+            with pytest.raises(AppError), controller.reserve(principal):
+                pass
+        else:
+            with controller.reserve(principal):
+                pass

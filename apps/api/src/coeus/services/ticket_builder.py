@@ -53,12 +53,14 @@ def _provider_admission(
             max_calls_per_window=settings.provider_max_calls_per_window,
             max_calls_per_principal=settings.provider_max_calls_per_principal,
             window_seconds=settings.provider_window_seconds,
+            mode=settings.provider_admission_mode,
         )
     return ProviderAdmissionController(
         max_concurrent=settings.provider_max_concurrent,
         max_calls_per_window=settings.provider_max_calls_per_window,
         max_calls_per_principal=settings.provider_max_calls_per_principal,
         window_seconds=settings.provider_window_seconds,
+        mode=settings.provider_admission_mode,
     )
 
 
@@ -70,11 +72,13 @@ def _ticket_admission(
             settings.database_url,
             max_retained=settings.ticket_max_retained,
             max_retained_per_principal=settings.ticket_max_retained_per_principal,
+            mode=settings.ticket_admission_mode,
         )
     return TicketAdmissionController(
         repository,
         max_retained=settings.ticket_max_retained,
         max_retained_per_principal=settings.ticket_max_retained_per_principal,
+        mode=settings.ticket_admission_mode,
     )
 
 

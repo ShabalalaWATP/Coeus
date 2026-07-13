@@ -7,7 +7,9 @@ from uuid import UUID, uuid4
 from sqlalchemy import create_engine, text
 
 from coeus.core.errors import AppError
+from coeus.domain.admission import AdmissionMode, admission_denial_scope
 from coeus.persistence.database_url import synchronous_database_url
+from coeus.services.admission_metrics import AdmissionMetrics
 from coeus.services.postgres_provider_admission import RESOURCE_LEASE_SCHEMA_SQL
 
 
@@ -19,11 +21,15 @@ class PostgresTicketAdmissionController:
         max_retained: int,
         max_retained_per_principal: int,
         lease_seconds: int = 60,
+        mode: AdmissionMode = AdmissionMode.PRINCIPAL,
+        metrics: AdmissionMetrics | None = None,
     ) -> None:
         self._engine = create_engine(synchronous_database_url(database_url), pool_pre_ping=True)
         self._max_retained = max_retained
         self._max_retained_per_principal = max_retained_per_principal
         self._lease_seconds = lease_seconds
+        self._mode = mode
+        self._metrics = metrics or AdmissionMetrics()
         with self._engine.begin() as connection:
             connection.execute(text(RESOURCE_LEASE_SCHEMA_SQL))
 
@@ -32,7 +38,8 @@ class PostgresTicketAdmissionController:
 
     def _acquire(self, principal_id: UUID) -> tuple[UUID, str]:
         lease_id = uuid4()
-        denied = False
+        denial_scope: str | None = None
+        observed_denial = False
         reference = ""
         with self._engine.begin() as connection:
             connection.execute(text("SELECT pg_advisory_xact_lock(hashtext('coeus:tickets'))"))
@@ -61,13 +68,20 @@ class PostgresTicketAdmissionController:
                 ),
                 {"principal_id": principal_id},
             ).one()
-            if (
+            deployment_exceeded = (
                 retained.deployment_count + pending.deployment_count >= self._max_retained
-                or retained.principal_count + pending.principal_count
+            )
+            principal_exceeded = (
+                retained.principal_count + pending.principal_count
                 >= self._max_retained_per_principal
-            ):
-                denied = True
-            else:
+            )
+            denial_scope = admission_denial_scope(
+                self._mode,
+                deployment_exceeded=deployment_exceeded,
+                principal_exceeded=principal_exceeded,
+            )
+            observed_denial = deployment_exceeded or principal_exceeded
+            if denial_scope is None:
                 counter = connection.execute(
                     text(
                         """
@@ -100,8 +114,10 @@ class PostgresTicketAdmissionController:
                         "lease_seconds": self._lease_seconds,
                     },
                 )
-        if denied:
+        if denial_scope:
+            self._metrics.record("ticket", f"denied_{denial_scope}")
             raise AppError(429, "ticket_capacity_exhausted", "Ticket capacity is unavailable.")
+        self._metrics.record("ticket", "observed_denial" if observed_denial else "admitted")
         return lease_id, reference
 
     def _release(self, lease_id: UUID) -> None:
@@ -110,6 +126,9 @@ class PostgresTicketAdmissionController:
                 text("DELETE FROM coeus_resource_leases WHERE lease_id = :lease_id"),
                 {"lease_id": lease_id},
             )
+
+    def metrics_snapshot(self) -> dict[str, int]:
+        return self._metrics.snapshot()
 
 
 class PostgresTicketReservation:
