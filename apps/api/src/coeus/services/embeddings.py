@@ -1,10 +1,8 @@
 from collections import OrderedDict
 from collections.abc import Callable, Iterable
 from hashlib import blake2b
-from math import sqrt
 from os import environ
 from pathlib import Path
-from re import findall
 from threading import Event, RLock
 from typing import Protocol, cast
 
@@ -12,8 +10,21 @@ import httpx
 
 from coeus.core.config import Settings
 from coeus.core.logging import get_logger
+from coeus.domain.embedding_math import (
+    EMBEDDING_DIMENSIONS,
+    cosine_similarity,
+    mock_embedding,
+    normalise_vector,
+    vector_to_pg,
+)
 
-EMBEDDING_DIMENSIONS = 384
+__all__ = [
+    "EMBEDDING_DIMENSIONS",
+    "cosine_similarity",
+    "mock_embedding",
+    "vector_to_pg",
+]
+
 EMBEDDING_CACHE_LIMIT = 2048
 GEMINI_EMBEDDING_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/{model}:embedContent"
@@ -126,13 +137,7 @@ class MockEmbeddingProvider:
     name = "mock"
 
     def embed(self, text: str) -> tuple[float, ...]:
-        values = [0.0] * EMBEDDING_DIMENSIONS
-        for token in _canonical_tokens(text):
-            digest = blake2b(token.encode("utf-8"), digest_size=8).digest()
-            index = int.from_bytes(digest[:4], "big") % EMBEDDING_DIMENSIONS
-            sign = 1.0 if digest[4] % 2 == 0 else -1.0
-            values[index] += sign
-        return _normalise(values)
+        return mock_embedding(text)
 
 
 class LocalFastEmbedProvider:
@@ -148,7 +153,7 @@ class LocalFastEmbedProvider:
             vector = next(iter(model.embed([text])))
         except Exception as exc:  # pragma: no cover - provider boundary
             raise EmbeddingUnavailable("local model embedding failed") from exc
-        return _normalise(_coerce_vector(vector))
+        return normalise_vector(_coerce_vector(vector))
 
     def _load_model(self) -> _FastEmbedModel:
         if self._model is not None:
@@ -201,7 +206,7 @@ class GeminiApiEmbeddingProvider:
         values = data.get("embedding", {}).get("values")
         if not isinstance(values, list):
             raise EmbeddingUnavailable("gemini embedding response was invalid")
-        return _normalise(_coerce_vector(values))
+        return normalise_vector(_coerce_vector(values))
 
 
 def build_embedding_service(settings: Settings, ai_models: ApiKeyProvider) -> EmbeddingService:
@@ -213,31 +218,6 @@ def build_embedding_service(settings: Settings, ai_models: ApiKeyProvider) -> Em
     else:
         provider = MockEmbeddingProvider()
     return EmbeddingService(provider)
-
-
-def vector_to_pg(vector: tuple[float, ...] | None) -> str | None:
-    if vector is None:
-        return None
-    return "[" + ",".join(f"{value:.8f}" for value in vector[:EMBEDDING_DIMENSIONS]) + "]"
-
-
-def cosine_similarity(left: tuple[float, ...], right: tuple[float, ...]) -> float:
-    if not left or not right:
-        return 0.0
-    length = min(len(left), len(right), EMBEDDING_DIMENSIONS)
-    return max(0.0, min(1.0, sum(left[index] * right[index] for index in range(length))))
-
-
-def _canonical_tokens(text: str) -> tuple[str, ...]:
-    tokens = [token for token in findall(r"[a-z0-9]+", text.casefold()) if len(token) >= 2]
-    return tuple(dict.fromkeys(tokens))
-
-
-def _normalise(values: list[float]) -> tuple[float, ...]:
-    length = sqrt(sum(value * value for value in values))
-    if length == 0:
-        return tuple(0.0 for _ in range(EMBEDDING_DIMENSIONS))
-    return tuple(round(value / length, 8) for value in values[:EMBEDDING_DIMENSIONS])
 
 
 def _coerce_vector(values: object) -> list[float]:

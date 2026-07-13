@@ -20,9 +20,9 @@ from coeus.persistence.ticket_shadow_schema import (
 )
 
 if TYPE_CHECKING:
+    from coeus.application.ports.embeddings import EmbeddingPort
     from coeus.persistence.audit_store import PostgresAuditEventStore
     from coeus.persistence.store_projection import PostgresStoreProjection
-    from coeus.services.embeddings import EmbeddingService
 
 
 class StateStore(Protocol):
@@ -184,7 +184,7 @@ class PostgresStateStore:
                     _shadow_ticket_payload(connection, payload)
 
     def store_projection(
-        self, embeddings: "EmbeddingService | None" = None
+        self, embeddings: "EmbeddingPort | None" = None
     ) -> "PostgresStoreProjection":
         from coeus.persistence.store_projection import PostgresStoreProjection
 

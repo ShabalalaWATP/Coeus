@@ -6,8 +6,10 @@ from uuid import UUID
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
+from coeus.application.ports.embeddings import EmbeddingPort
+from coeus.domain.embedding_math import vector_to_pg
 from coeus.domain.store import BoundingBox, StoreProduct
-from coeus.domain.store_semantics import effective_semantic_labels
+from coeus.domain.store_semantics import effective_semantic_labels, product_semantic_text
 from coeus.persistence.store_projection_sql import (
     DELETE_ACGS_SQL,
     DELETE_ASSETS_SQL,
@@ -18,14 +20,12 @@ from coeus.persistence.store_projection_sql import (
     SELECT_EMBEDDING_HASHES_SQL,
     UPSERT_PRODUCT_SQL,
 )
-from coeus.services.embeddings import EmbeddingService, vector_to_pg
-from coeus.services.store_semantics import product_semantic_text
 
 
 def save_product(
     connection: Connection,
     product: StoreProduct,
-    embeddings: EmbeddingService | None = None,
+    embeddings: EmbeddingPort | None = None,
     existing_hashes: Mapping[str, str | None] | None = None,
 ) -> None:
     connection.execute(
@@ -105,7 +105,7 @@ def _replace_product_children(
 
 def _product_params(
     product: StoreProduct,
-    embeddings: EmbeddingService | None = None,
+    embeddings: EmbeddingPort | None = None,
     existing_hashes: Mapping[str, str | None] | None = None,
 ) -> dict[str, object]:
     metadata = product.metadata

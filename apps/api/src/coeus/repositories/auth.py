@@ -4,13 +4,13 @@ from datetime import UTC, datetime, timedelta
 from threading import RLock
 from uuid import UUID, uuid4
 
+from coeus.application.ports.passwords import PasswordHashPort
 from coeus.core.config import Settings
 from coeus.domain.auth import SessionRecord, UserAccount
 from coeus.domain.rbac import permissions_for_roles
 from coeus.persistence.codec import decode_value, encode_value
 from coeus.persistence.state_store import StateStore
 from coeus.repositories.auth_seed import seed_user_specs
-from coeus.services.passwords import PasswordHasher
 
 
 class AttemptStoreFull(RuntimeError):
@@ -30,7 +30,7 @@ class SeedUserRepository:
     def __init__(
         self,
         settings: Settings,
-        password_hasher: PasswordHasher,
+        password_hasher: PasswordHashPort,
         state_store: StateStore | None = None,
     ) -> None:
         self._state_store = state_store
@@ -42,7 +42,7 @@ class SeedUserRepository:
         self._initialising = False
         self._restore_or_persist()
 
-    def _seed_users(self, seed_credential: str, password_hasher: PasswordHasher) -> None:
+    def _seed_users(self, seed_credential: str, password_hasher: PasswordHashPort) -> None:
         for username, display_name, roles, is_active in seed_user_specs():
             account = UserAccount(
                 user_id=uuid4(),

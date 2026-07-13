@@ -4,6 +4,8 @@ from uuid import UUID
 from sqlalchemy import text
 from sqlalchemy.engine import Connection, Engine, Result
 
+from coeus.application.ports.embeddings import EmbeddingPort
+from coeus.domain.embedding_math import vector_to_pg
 from coeus.domain.store import (
     StoreHybridCandidate,
     StoreProduct,
@@ -11,6 +13,7 @@ from coeus.domain.store import (
     StoreSearchFilters,
     StoreVisibilityScope,
 )
+from coeus.domain.store_semantics import product_semantic_text
 from coeus.persistence.relational_schema import ensure_relational_schema
 from coeus.persistence.store_projection_decode import decode_product
 from coeus.persistence.store_projection_sql import (
@@ -27,12 +30,10 @@ from coeus.persistence.store_projection_write import (
     save_product,
     semantic_hash,
 )
-from coeus.services.embeddings import EmbeddingService, vector_to_pg
-from coeus.services.store_semantics import product_semantic_text
 
 
 class PostgresStoreProjection:
-    def __init__(self, engine: Engine, embeddings: EmbeddingService | None = None) -> None:
+    def __init__(self, engine: Engine, embeddings: EmbeddingPort | None = None) -> None:
         self._engine = engine
         self._embeddings = embeddings
 

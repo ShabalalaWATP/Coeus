@@ -1,12 +1,13 @@
 from collections.abc import Callable
 from uuid import UUID
 
+from coeus.application.ports.embeddings import EmbeddingPort
+from coeus.domain.embedding_math import cosine_similarity, mock_embedding
 from coeus.domain.search_relevance import VECTOR_SIMILARITY_FLOOR
 from coeus.domain.store import StoreHybridCandidate, StoreProduct, StoreSearchFilters
 from coeus.domain.store_filters import structured_filter_match
-from coeus.services.embeddings import EmbeddingService, MockEmbeddingProvider, cosine_similarity
-from coeus.services.rfi_ranking import lexical_score_for_product
-from coeus.services.store_semantics import product_semantic_text
+from coeus.domain.store_ranking import lexical_score_for_product
+from coeus.domain.store_semantics import product_semantic_text
 
 MEMORY_VECTOR_WORK_LIMIT = 64
 
@@ -15,7 +16,7 @@ def memory_hybrid_candidates(
     products: tuple[StoreProduct, ...],
     query: str,
     query_embedding: tuple[float, ...] | None,
-    embeddings: EmbeddingService | None = None,
+    embeddings: EmbeddingPort | None = None,
     filters: StoreSearchFilters | None = None,
     leg_limit: int = 50,
 ) -> tuple[StoreHybridCandidate, ...]:
@@ -84,7 +85,7 @@ def _rank_lexical(
 def _rank_vector(
     products: tuple[StoreProduct, ...],
     query_embedding: tuple[float, ...] | None,
-    embeddings: EmbeddingService | None,
+    embeddings: EmbeddingPort | None,
 ) -> tuple[tuple[int, float, StoreProduct], ...]:
     if query_embedding is None:
         return ()
@@ -113,11 +114,11 @@ def _structured_products(
 
 
 def _product_embedder(
-    embeddings: EmbeddingService | None,
+    embeddings: EmbeddingPort | None,
 ) -> Callable[[str], tuple[float, ...] | None]:
     if embeddings is not None:
         cached = getattr(embeddings, "embed_cached", None)
         if cached is not None:
             return lambda text: cached(text, purpose="memory-candidate")
         return lambda text: embeddings.embed(text, purpose="memory-candidate")
-    return MockEmbeddingProvider().embed
+    return mock_embedding

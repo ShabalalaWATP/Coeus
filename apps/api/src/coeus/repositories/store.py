@@ -1,6 +1,7 @@
 from typing import Protocol
 from uuid import UUID
 
+from coeus.application.ports.embeddings import EmbeddingPort
 from coeus.domain.store import (
     StoreHybridCandidate,
     StoreProduct,
@@ -16,7 +17,6 @@ from coeus.repositories.store_hybrid import memory_hybrid_candidates
 from coeus.repositories.store_ids import max_store_reference_counter
 from coeus.repositories.store_projection import StoreProjection
 from coeus.repositories.store_seed import STORE_SEED_REFERENCE_COUNTER, seed_store_products
-from coeus.services.embeddings import EmbeddingService
 
 
 class StoreRepository(Protocol):
@@ -58,7 +58,7 @@ class InMemoryStoreRepository:
         access_repository: AccessRepository,
         state_store: StateStore | None = None,
         projection: StoreProjection | None = None,
-        embeddings: EmbeddingService | None = None,
+        embeddings: EmbeddingPort | None = None,
     ) -> None:
         self._access_repository = access_repository
         self._state_store = state_store
