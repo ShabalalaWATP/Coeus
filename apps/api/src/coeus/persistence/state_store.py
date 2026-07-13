@@ -9,6 +9,10 @@ from uuid import NAMESPACE_URL, uuid5
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
+from coeus.domain.ticket_retention import ticket_consumes_capacity
+from coeus.domain.tickets import TicketRecord
+from coeus.persistence.codec import decode_value
+from coeus.persistence.database_url import synchronous_database_url
 from coeus.persistence.draft_audience_projection import (
     PostgresDraftAudienceProjection,
     sync_ticket_draft_audiences,
@@ -79,7 +83,7 @@ class FileStateStore:
 
 class PostgresStateStore:
     def __init__(self, database_url: str, ticket_mode: str = "shadow_validate") -> None:
-        self._engine = create_engine(_sync_database_url(database_url), pool_pre_ping=True)
+        self._engine = create_engine(synchronous_database_url(database_url), pool_pre_ping=True)
         self._ticket_mode = ticket_mode
         self._schema_ready = False
         self._lock = RLock()
@@ -228,12 +232,6 @@ class PostgresStateStore:
         self._schema_ready = True
 
 
-def _sync_database_url(database_url: str) -> str:
-    if database_url.startswith("postgresql+asyncpg://"):
-        return database_url.replace("postgresql+asyncpg://", "postgresql+psycopg://", 1)
-    return database_url
-
-
 def _shadow_ticket_payload(
     connection: Any, payload: dict[str, Any], *, reconcile: bool = True
 ) -> None:
@@ -248,15 +246,23 @@ def _shadow_ticket_payload(
         ticket_ids.append(ticket_id)
         serialised = json.dumps(ticket, sort_keys=True, separators=(",", ":"))
         canonical_hash = _encoded_ticket_hash(ticket)
+        decoded_ticket = decode_value(ticket)
+        if not isinstance(decoded_ticket, TicketRecord):
+            continue
         row = connection.execute(
             text(
                 """
                 INSERT INTO coeus_ticket_aggregates(
-                  ticket_id, version, payload, canonical_hash, updated_at
+                  ticket_id, requester_user_id, state, consumes_capacity,
+                  version, payload, canonical_hash, updated_at
                 ) VALUES (
-                  CAST(:ticket_id AS uuid), 1, CAST(:payload AS jsonb), :canonical_hash, now()
+                  CAST(:ticket_id AS uuid), :requester_user_id, :state, :consumes_capacity,
+                  1, CAST(:payload AS jsonb), :canonical_hash, now()
                 )
                 ON CONFLICT (ticket_id) DO UPDATE SET
+                  requester_user_id = EXCLUDED.requester_user_id,
+                  state = EXCLUDED.state,
+                  consumes_capacity = EXCLUDED.consumes_capacity,
                   version = CASE
                     WHEN coeus_ticket_aggregates.canonical_hash <> EXCLUDED.canonical_hash
                     THEN coeus_ticket_aggregates.version + 1
@@ -274,6 +280,9 @@ def _shadow_ticket_payload(
             ),
             {
                 "ticket_id": ticket_id,
+                "requester_user_id": decoded_ticket.requester_user_id,
+                "state": decoded_ticket.state.value,
+                "consumes_capacity": ticket_consumes_capacity(decoded_ticket.state),
                 "payload": serialised,
                 "canonical_hash": canonical_hash,
             },

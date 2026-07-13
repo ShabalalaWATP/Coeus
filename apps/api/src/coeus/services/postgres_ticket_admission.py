@@ -7,10 +7,8 @@ from uuid import UUID, uuid4
 from sqlalchemy import create_engine, text
 
 from coeus.core.errors import AppError
-from coeus.persistence.state_store import _sync_database_url
+from coeus.persistence.database_url import synchronous_database_url
 from coeus.services.postgres_provider_admission import RESOURCE_LEASE_SCHEMA_SQL
-
-_TERMINAL_STATES = ("CANCELLED", "CLOSED_DELIVERED", "CLOSED_EXISTING_PRODUCT_ACCEPTED")
 
 
 class PostgresTicketAdmissionController:
@@ -22,7 +20,7 @@ class PostgresTicketAdmissionController:
         max_retained_per_principal: int,
         lease_seconds: int = 60,
     ) -> None:
-        self._engine = create_engine(_sync_database_url(database_url), pool_pre_ping=True)
+        self._engine = create_engine(synchronous_database_url(database_url), pool_pre_ping=True)
         self._max_retained = max_retained
         self._max_retained_per_principal = max_retained_per_principal
         self._lease_seconds = lease_seconds
@@ -43,20 +41,14 @@ class PostgresTicketAdmissionController:
                 text(
                     """
                     SELECT
+                      count(*) FILTER (WHERE consumes_capacity) AS deployment_count,
                       count(*) FILTER (
-                        WHERE payload -> 'fields' -> 'state' ->> 'value'
-                              <> ALL(CAST(:terminal_states AS text[]))
-                      ) AS deployment_count,
-                      count(*) FILTER (
-                        WHERE payload -> 'fields' -> 'state' ->> 'value'
-                              <> ALL(CAST(:terminal_states AS text[]))
-                          AND payload -> 'fields' -> 'requester_user_id' ->> '__uuid__'
-                              = :principal_id
+                        WHERE consumes_capacity AND requester_user_id = :principal_id
                       ) AS principal_count
                     FROM coeus_ticket_aggregates
                     """
                 ),
-                {"terminal_states": list(_TERMINAL_STATES), "principal_id": str(principal_id)},
+                {"principal_id": principal_id},
             ).one()
             pending = connection.execute(
                 text(

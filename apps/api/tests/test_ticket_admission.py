@@ -20,7 +20,17 @@ def _ticket(principal_id: UUID, reference: str) -> TicketRecord:
     )
 
 
-def test_ticket_admission_enforces_principal_quota_and_recovers_terminal_capacity() -> None:
+@pytest.mark.parametrize(
+    "terminal_state",
+    [
+        TicketState.CANCELLED,
+        TicketState.CLOSED_DELIVERED,
+        TicketState.CLOSED_EXISTING_PRODUCT_ACCEPTED,
+    ],
+)
+def test_ticket_admission_enforces_principal_quota_and_recovers_terminal_capacity(
+    terminal_state: TicketState,
+) -> None:
     repository = InMemoryTicketRepository()
     principal = uuid4()
     existing = _ticket(principal, "TCK-0001")
@@ -32,7 +42,7 @@ def test_ticket_admission_enforces_principal_quota_and_recovers_terminal_capacit
     with pytest.raises(AppError, match="Ticket capacity"), controller.reserve(principal):
         pass
 
-    repository.save(replace(existing, state=TicketState.CANCELLED))
+    repository.save(replace(existing, state=terminal_state))
     with controller.reserve(principal) as reference:
         assert reference == "TCK-0002"
 

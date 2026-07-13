@@ -185,9 +185,11 @@ def test_relational_mutation_statement_count_is_stable_at_ten_thousand_rows(
             text(
                 """
                 INSERT INTO coeus_ticket_aggregates(
-                  ticket_id, version, payload, canonical_hash
+                  ticket_id, requester_user_id, state, consumes_capacity,
+                  version, payload, canonical_hash
                 )
-                SELECT md5(value::text)::uuid, 1, '{}'::jsonb, md5(value::text)
+                SELECT md5(value::text)::uuid, md5((value + 10000)::text)::uuid,
+                       'DRAFT_INTAKE', true, 1, '{}'::jsonb, md5(value::text)
                 FROM generate_series(1, 9999) AS value
                 ON CONFLICT DO NOTHING
                 """

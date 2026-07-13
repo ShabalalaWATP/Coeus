@@ -16,12 +16,51 @@ def ensure_ticket_shadow_schema(connection: Any) -> None:
             """
             CREATE TABLE IF NOT EXISTS coeus_ticket_aggregates (
                 ticket_id uuid PRIMARY KEY,
+                requester_user_id uuid NOT NULL,
+                state text NOT NULL,
+                consumes_capacity boolean NOT NULL,
                 version bigint NOT NULL CHECK (version > 0),
                 payload jsonb NOT NULL,
                 canonical_hash text NOT NULL,
                 updated_at timestamptz NOT NULL DEFAULT now()
             )
             """
+        )
+    )
+    connection.execute(
+        text("ALTER TABLE coeus_ticket_aggregates ADD COLUMN IF NOT EXISTS requester_user_id uuid")
+    )
+    connection.execute(
+        text("ALTER TABLE coeus_ticket_aggregates ADD COLUMN IF NOT EXISTS state text")
+    )
+    connection.execute(
+        text(
+            "ALTER TABLE coeus_ticket_aggregates ADD COLUMN IF NOT EXISTS consumes_capacity boolean"
+        )
+    )
+    connection.execute(
+        text(
+            """
+            UPDATE coeus_ticket_aggregates SET
+              requester_user_id = (payload -> 'fields' -> 'requester_user_id' ->> '__uuid__')::uuid,
+              state = payload -> 'fields' -> 'state' ->> 'value',
+              consumes_capacity = payload -> 'fields' -> 'state' ->> 'value'
+                NOT IN ('CANCELLED', 'CLOSED_DELIVERED', 'CLOSED_EXISTING_PRODUCT_ACCEPTED')
+            WHERE requester_user_id IS NULL OR state IS NULL OR consumes_capacity IS NULL
+            """
+        )
+    )
+    connection.execute(
+        text("ALTER TABLE coeus_ticket_aggregates ALTER COLUMN requester_user_id SET NOT NULL")
+    )
+    connection.execute(text("ALTER TABLE coeus_ticket_aggregates ALTER COLUMN state SET NOT NULL"))
+    connection.execute(
+        text("ALTER TABLE coeus_ticket_aggregates ALTER COLUMN consumes_capacity SET NOT NULL")
+    )
+    connection.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS idx_coeus_ticket_capacity "
+            "ON coeus_ticket_aggregates(requester_user_id) WHERE consumes_capacity"
         )
     )
     connection.execute(

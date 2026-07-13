@@ -7,7 +7,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import create_engine, text
 
 from coeus.core.errors import AppError
-from coeus.persistence.state_store import _sync_database_url
+from coeus.persistence.database_url import synchronous_database_url
 
 RESOURCE_LEASE_SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS coeus_resource_leases (
@@ -33,7 +33,7 @@ class PostgresProviderAdmissionController:
         max_calls_per_principal: int,
         window_seconds: int,
     ) -> None:
-        self._engine = create_engine(_sync_database_url(database_url), pool_pre_ping=True)
+        self._engine = create_engine(synchronous_database_url(database_url), pool_pre_ping=True)
         self._max_concurrent = max_concurrent
         self._max_calls_per_window = max_calls_per_window
         self._max_calls_per_principal = max_calls_per_principal

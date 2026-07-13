@@ -6,10 +6,8 @@ from typing import Literal, Protocol
 from uuid import UUID
 
 from coeus.core.errors import AppError
-from coeus.domain.enums import TicketState
+from coeus.domain.ticket_retention import ticket_consumes_capacity
 from coeus.repositories.tickets import InMemoryTicketRepository
-
-TERMINAL_TICKET_STATES = frozenset({TicketState.CANCELLED, TicketState.CLOSED_DELIVERED})
 
 
 class TicketAdmissionController:
@@ -34,7 +32,7 @@ class TicketAdmissionController:
             retained = tuple(
                 ticket
                 for ticket in self._repository.list_tickets()
-                if ticket.state not in TERMINAL_TICKET_STATES
+                if ticket_consumes_capacity(ticket.state)
             )
             pending_total = sum(self._pending.values())
             principal_total = sum(

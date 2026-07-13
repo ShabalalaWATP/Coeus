@@ -35,8 +35,17 @@ def test_two_instances_share_pending_quota_and_allocate_unique_references(
             pass
 
 
+@pytest.mark.parametrize(
+    "terminal_state",
+    [
+        TicketState.CANCELLED,
+        TicketState.CLOSED_DELIVERED,
+        TicketState.CLOSED_EXISTING_PRODUCT_ACCEPTED,
+    ],
+)
 def test_terminal_ticket_releases_durable_principal_capacity(
     postgres_database_url: str,
+    terminal_state: TicketState,
 ) -> None:
     store = PostgresStateStore(postgres_database_url, "relational")
     repository = InMemoryTicketRepository(store)
@@ -54,6 +63,6 @@ def test_terminal_ticket_releases_durable_principal_capacity(
     with pytest.raises(AppError, match="Ticket capacity"), controller.reserve(principal):
         pass
 
-    repository.save_if_current(ticket, replace(ticket, state=TicketState.CANCELLED))
+    repository.save_if_current(ticket, replace(ticket, state=terminal_state))
     with controller.reserve(principal) as reference:
         assert reference == "TCK-0002"
