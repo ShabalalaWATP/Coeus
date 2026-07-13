@@ -6,7 +6,7 @@ Status: provisional implementation evidence, not release closure.
 
 Applicable branch: `codex/security-repair-hardening-plan`.
 
-Evidence revision at last update: substantive candidate `0246d4d2`.
+Evidence revision at last update: substantive candidate `a02fd6d3`.
 
 Last verified: 2026-07-13 on Windows with PostgreSQL 16 plus pgvector, local
 object storage and mock AI providers.
@@ -91,13 +91,13 @@ gates reported:
 - focused Semgrep Python rules: zero findings;
 - Ruff formatting and linting: passed.
 
-PR 109 protected GitHub results passed on substantive candidate `0246d4d2`:
+PR 109 protected GitHub results passed on substantive candidate `a02fd6d3`:
 
-- backend run `29271925745` and frontend run `29271925746`;
-- CodeQL run `29271925750`, Semgrep run `29271926083`, Checkov run
-  `29271926086` and Terraform run `29271925765`;
-- Trivy run `29271925725`, ZAP run `29271925821`, and Gitleaks plus SBOM run
-  `29271925715`;
+- backend run `29277762013` and frontend run `29277762093`;
+- CodeQL run `29277762096`, Semgrep run `29277762047`, Checkov run
+  `29277762048` and Terraform run `29277762045`;
+- Trivy run `29277762074`, ZAP run `29277762215`, and Gitleaks plus SBOM run
+  `29277762280`;
 - GitHub code-scanning checks for CodeQL, Semgrep OSS, Trivy and Checkov also
   passed.
 
@@ -106,7 +106,6 @@ this evidence.
 
 ## Explicit Open Items
 
-- Complete the protected GitHub gates for the final assigned-QC candidate.
 - Run authorised staging proxy, CORS, CSRF and ingress checks. No local result
   can replace these topology-dependent checks.
 - Record a managed or physical PostgreSQL and object-store restore in staging.

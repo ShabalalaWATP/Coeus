@@ -2576,10 +2576,11 @@ four deployment or undefined-policy questions. Sprint 17 is release-blocking.
 Implementation is in progress. Local tactical and structural controls, N-1
 forward reconciliation, logical restore and a ten-stage PostgreSQL browser
 workflow pass. Atomic assigned-QC self-claim and object-aware QC draft audience
-are implemented. The remaining audience and recovery browser matrix,
-authorised staging evidence and final protected GitHub checks remain
-release-blocking. The repository owner explicitly deferred the fresh sealed
-candidate scan, so this work does not claim scan closure.
+are implemented. The remaining audience and recovery browser matrix and
+authorised staging evidence remain release-blocking. Final protected GitHub
+checks pass on the assigned-QC candidate. The repository owner explicitly
+deferred the fresh sealed candidate scan, so this work does not claim scan
+closure.
 
 Deliver:
 

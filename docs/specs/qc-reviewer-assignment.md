@@ -3,7 +3,7 @@
 ## Status
 
 Implemented and locally verified for Sprint 17. Protected GitHub verification
-of the final candidate remains in progress.
+passes on the final substantive candidate.
 
 ## Purpose
 

@@ -45,7 +45,7 @@ Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVEL
 - Added the provisional per-finding closure ledger. Formal closure still needs
   the remaining audience/recovery browser matrix and authorised staging
   topology. PR 109 protected checks passed on substantive candidate
-  `0246d4d2`. The repository owner explicitly deferred the fresh sealed scan on
+  `a02fd6d3`. The repository owner explicitly deferred the fresh sealed scan on
   2026-07-13, so fresh-scan closure is not claimed.
 
 ## 2026-07-11 cross-role usability and documentation accuracy
