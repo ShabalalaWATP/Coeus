@@ -10,6 +10,7 @@ export const initialProductUploadForm = {
   ownerTeam: "RFA",
   areaOrRegion: "Baltic ports",
   classificationLevel: "2",
+  status: "published" as "draft" | "published",
   tags: "ports, activity",
   assetName: "harbour-brief.pdf",
   assetType: "pdf",
@@ -37,7 +38,7 @@ export function productUploadMetadata(
     handlingCaveats: ["MOCK DATA ONLY"],
     tags: csvToValues(form.tags),
     acgIds: [form.acgId],
-    status: "published",
+    status: form.status,
     geojsonRef: form.productType === "geographic_product" ? "mock://geojson/layer" : null,
   };
 }

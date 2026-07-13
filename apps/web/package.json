@@ -12,6 +12,7 @@
     "test": "vitest run --coverage",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:postgres": "playwright test --config=playwright.postgres.config.ts",
     "typecheck": "tsc -b",
     "contracts:types": "openapi-typescript ../../packages/contracts/openapi.json -o src/lib/api-client/generated/openapi.ts && prettier --write src/lib/api-client/generated/openapi.ts"
   },

@@ -19,5 +19,11 @@
     "jsx": "react-jsx",
     "types": ["vitest/globals", "@testing-library/jest-dom", "jest-axe"]
   },
-  "include": ["src", "tests", "vite.config.ts", "playwright.config.ts"]
+  "include": [
+    "src",
+    "tests",
+    "vite.config.ts",
+    "playwright.config.ts",
+    "playwright.postgres.config.ts"
+  ]
 }

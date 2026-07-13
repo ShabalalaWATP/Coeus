@@ -58,10 +58,12 @@ test("suggests metadata and submits a controlled product registration", async ()
 
   renderWithProviders(<ProductUploadPage />, "/store/upload");
   expect(await screen.findByLabelText("ACG")).toBeVisible();
+  expect(screen.getByLabelText("Status")).toHaveValue("published");
   await userEvent.click(screen.getByRole("button", { name: "Suggest metadata" }));
   expect(await screen.findByDisplayValue("baltic, geographic, mock")).toBeVisible();
   expect(screen.getByLabelText("Suggested semantic labels")).toHaveTextContent("maritime");
   await userEvent.selectOptions(screen.getByLabelText("ACG"), "acg-alpha");
+  await userEvent.selectOptions(screen.getByLabelText("Status"), "draft");
   await userEvent.click(screen.getByRole("button", { name: "Register product" }));
 
   expect(await screen.findByText("Created PROD-2001: Mock Harbour Activity Brief")).toBeVisible();
@@ -75,6 +77,7 @@ test("suggests metadata and submits a controlled product registration", async ()
     throw new TypeError("Expected JSON request body.");
   }
   expect(init.body).toContain('"acgIds":["acg-alpha"]');
+  expect(init.body).toContain('"status":"draft"');
 });
 
 test("shows the API validation message when product registration fails", async () => {

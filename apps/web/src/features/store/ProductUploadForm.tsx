@@ -131,6 +131,13 @@ export function ProductUploadForm({
           />
         </label>
         <label>
+          Status
+          <select name="status" onChange={handleChange(onSetForm)} value={form.status}>
+            <option value="draft">Draft</option>
+            <option value="published">Published</option>
+          </select>
+        </label>
+        <label>
           Tags
           <input name="tags" onChange={handleChange(onSetForm)} value={form.tags} />
         </label>
