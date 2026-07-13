@@ -6,8 +6,7 @@ Status: provisional implementation evidence, not release closure.
 
 Applicable branch: `codex/security-repair-hardening-plan`.
 
-Evidence revision at last update: working candidate after `33b059e3` plus the
-static recovery-query allow-list repair prompted by GitHub Semgrep.
+Evidence revision at last update: substantive candidate `0246d4d2`.
 
 Last verified: 2026-07-13 on Windows with PostgreSQL 16 plus pgvector, local
 object storage and mock AI providers.
@@ -88,8 +87,18 @@ gates reported:
 - focused Semgrep Python rules: zero findings;
 - Ruff formatting and linting: passed.
 
-The protected GitHub results are still running on PR 109. A fresh sealed deep
-scan is deliberately deferred and therefore absent from this evidence.
+PR 109 protected GitHub results passed on substantive candidate `0246d4d2`:
+
+- backend run `29271925745` and frontend run `29271925746`;
+- CodeQL run `29271925750`, Semgrep run `29271926083`, Checkov run
+  `29271926086` and Terraform run `29271925765`;
+- Trivy run `29271925725`, ZAP run `29271925821`, and Gitleaks plus SBOM run
+  `29271925715`;
+- GitHub code-scanning checks for CodeQL, Semgrep OSS, Trivy and Checkov also
+  passed.
+
+A fresh sealed deep scan is deliberately deferred and therefore absent from
+this evidence.
 
 ## Explicit Open Items
 
@@ -100,7 +109,5 @@ scan is deliberately deferred and therefore absent from this evidence.
   can replace these topology-dependent checks.
 - Record a managed or physical PostgreSQL and object-store restore in staging.
   The current automated drill proves logical application restore only.
-- Complete the protected GitHub workflows against the exact candidate and
-  record their immutable check identities.
 - Run a fresh sealed deep scan when the repository owner resumes that work. No
   claim of fresh-scan closure is made in the meantime.
