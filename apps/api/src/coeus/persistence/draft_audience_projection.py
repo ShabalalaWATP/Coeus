@@ -14,9 +14,7 @@ class PostgresDraftAudienceProjection:
     def __init__(self, engine: Any) -> None:
         self._engine = engine
 
-    def reasons_for(
-        self, product_id: UUID, principal_id: UUID
-    ) -> tuple[DraftAudienceReason, ...]:
+    def reasons_for(self, product_id: UUID, principal_id: UUID) -> tuple[DraftAudienceReason, ...]:
         with self._engine.connect() as connection:
             reasons = connection.execute(
                 text(
@@ -84,18 +82,7 @@ def sync_ticket_draft_audiences(connection: Any, encoded_ticket: dict[str, Any])
         text("DELETE FROM coeus_draft_audiences WHERE ticket_id = :ticket_id"),
         {"ticket_id": ticket.ticket_id},
     )
-    relationships = {
-        (link.product_id, assignment.analyst_user_id, DraftAudienceReason.ASSIGNED_ANALYST)
-        for link in ticket.linked_products
-        for assignment in ticket.analyst_assignments
-        if assignment.active
-    }
-    relationships.update(
-        (link.product_id, assignment.assigned_by_user_id, DraftAudienceReason.RESPONSIBLE_MANAGER)
-        for link in ticket.linked_products
-        for assignment in ticket.analyst_assignments
-        if assignment.active
-    )
+    relationships = ticket_draft_audience_relationships(ticket)
     for product_id, principal_id, reason in relationships:
         connection.execute(
             text(
@@ -113,3 +100,22 @@ def sync_ticket_draft_audiences(connection: Any, encoded_ticket: dict[str, Any])
                 "ticket_id": ticket.ticket_id,
             },
         )
+
+
+def ticket_draft_audience_relationships(
+    ticket: TicketRecord,
+) -> set[tuple[UUID, UUID, DraftAudienceReason]]:
+    """Derive indexed object relationships from one authoritative ticket."""
+    relationships = {
+        (link.product_id, assignment.analyst_user_id, DraftAudienceReason.ASSIGNED_ANALYST)
+        for link in ticket.linked_products
+        for assignment in ticket.analyst_assignments
+        if assignment.active
+    }
+    relationships.update(
+        (link.product_id, assignment.assigned_by_user_id, DraftAudienceReason.RESPONSIBLE_MANAGER)
+        for link in ticket.linked_products
+        for assignment in ticket.analyst_assignments
+        if assignment.active
+    )
+    return relationships

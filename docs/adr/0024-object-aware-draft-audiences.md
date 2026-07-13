@@ -41,7 +41,8 @@ acceptance criterion rather than a claimed implemented projection.
 - Store repository queries need actor-specific draft predicates rather than one
   `include_drafts` Boolean.
 - Workflow transactions own assignment-derived audience maintenance. Backfill
-  reconciliation and shadow-comparison evidence remain release gates.
+  reconciliation is dry-run first, serializable and atomically audited. A
+  zero-drift release-candidate report and the full matrix remain release gates.
 - Tests cover projected analyst/manager access, unrelated denial and revocation.
   QC assignment, ACG removal, clearance reduction, publication and archive stay
   in the full Phase 2 acceptance matrix and must not be inferred from this slice.

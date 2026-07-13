@@ -41,6 +41,7 @@ README.
 | [Local Multi-User Operations](runbooks/local-multi-user-operations.md) | Local onboarding, role, team, ACG and account lifecycle                      |
 | [Air-Gapped Deployment](runbooks/air-gapped-deployment.md)             | Offline evidence bundle and restricted-environment notes                     |
 | [Ticket Capacity Recovery](runbooks/ticket-capacity-recovery.md)       | Dry-run diagnosis and audited PostgreSQL capacity repairs                     |
+| [Draft Audience Reconciliation](runbooks/draft-audience-reconciliation.md) | Backfill, zero-drift checks and cutover evidence                          |
 
 ## Screenshots
 
