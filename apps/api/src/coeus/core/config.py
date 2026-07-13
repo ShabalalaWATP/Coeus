@@ -91,6 +91,11 @@ class Settings(BaseSettings):
     search_max_concurrent_per_principal: int = Field(default=1, ge=1, le=8)
     ticket_max_retained: int = Field(default=10_000, ge=1)
     ticket_max_retained_per_principal: int = Field(default=50, ge=1)
+    outbox_batch_size: int = Field(default=50, ge=1, le=500)
+    outbox_poll_seconds: int = Field(default=2, ge=1, le=60)
+    outbox_lease_seconds: int = Field(default=60, ge=5, le=600)
+    outbox_retry_seconds: int = Field(default=30, ge=1, le=3600)
+    outbox_max_attempts: int = Field(default=5, ge=1, le=50)
     openai_api_key: str | None = None
     openai_api_model: str = "gpt-5-mini"
     available_openai_models: list[str] = Field(

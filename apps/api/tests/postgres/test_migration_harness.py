@@ -9,7 +9,7 @@ from alembic.config import Config
 from sqlalchemy import create_engine, inspect, text
 
 API_ROOT = Path(__file__).resolve().parents[2]
-HEAD_REVISION = "20260713_0010"
+HEAD_REVISION = "20260713_0011"
 
 pytestmark = pytest.mark.postgres
 

@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from coeus.application.ports.admission import ResourceAdmission
 from coeus.core.config import HOSTED_ENVIRONMENTS, Settings
 from coeus.persistence.factory import build_audit_event_store, build_state_store
+from coeus.persistence.outbox import PostgresOutboxStore
 from coeus.repositories.access import SeedAccessRepository
 from coeus.repositories.acg_applications import AcgApplicationRepository
 from coeus.repositories.auth import LoginAttemptRepository, SeedUserRepository, SessionRepository
@@ -26,6 +27,7 @@ from coeus.services.manager_approval import ManagerApprovalService
 from coeus.services.manager_queue import ManagerQueueService
 from coeus.services.notifications import NotificationService
 from coeus.services.object_storage import build_object_storage
+from coeus.services.outbox_dispatcher import OutboxDispatcher
 from coeus.services.passwords import PasswordHasher
 from coeus.services.postgres_resource_admission import PostgresResourceAdmissionController
 from coeus.services.quality_control import build_quality_control_service
@@ -62,6 +64,14 @@ def configure_application_state(app: FastAPI, settings: Settings) -> None:
     app.state.object_storage = build_object_storage(settings)
     app.state.upload_admission = _upload_admission(settings)
     app.state.search_admission = _search_admission(settings)
+    if settings.environment in HOSTED_ENVIRONMENTS:
+        app.state.outbox_dispatcher = OutboxDispatcher(
+            PostgresOutboxStore(settings.database_url),
+            {"ticket_shadow_changed": lambda _message: None},
+            lease_seconds=settings.outbox_lease_seconds,
+            retry_seconds=settings.outbox_retry_seconds,
+            max_attempts=settings.outbox_max_attempts,
+        )
     identity = _configure_identity(app, settings)
     _configure_data_services(app, settings, identity)
     _configure_workflow_services(app, settings, identity)

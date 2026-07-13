@@ -73,16 +73,32 @@ def ensure_ticket_shadow_schema(connection: Any) -> None:
                 event_type text NOT NULL,
                 payload jsonb NOT NULL,
                 created_at timestamptz NOT NULL DEFAULT now(),
+                available_at timestamptz NOT NULL DEFAULT now(),
+                attempt_count integer NOT NULL DEFAULT 0 CHECK (attempt_count >= 0),
+                claimed_by uuid,
+                claim_expires_at timestamptz,
+                last_error text,
                 delivered_at timestamptz,
+                dead_lettered_at timestamptz,
                 UNIQUE (aggregate_id, aggregate_version, event_type)
             )
             """
         )
     )
+    for definition in (
+        "available_at timestamptz NOT NULL DEFAULT now()",
+        "attempt_count integer NOT NULL DEFAULT 0",
+        "claimed_by uuid",
+        "claim_expires_at timestamptz",
+        "last_error text",
+        "dead_lettered_at timestamptz",
+    ):
+        connection.execute(text(f"ALTER TABLE coeus_outbox ADD COLUMN IF NOT EXISTS {definition}"))
     connection.execute(
         text(
             "CREATE INDEX IF NOT EXISTS idx_coeus_outbox_pending "
-            "ON coeus_outbox(created_at, event_id) WHERE delivered_at IS NULL"
+            "ON coeus_outbox(available_at, created_at, event_id) "
+            "WHERE delivered_at IS NULL AND dead_lettered_at IS NULL"
         )
     )
 
