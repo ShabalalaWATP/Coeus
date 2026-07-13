@@ -14,6 +14,9 @@ This index links the guides and deeper design records.
 | [User Guide](USER_GUIDE.md)                            | Current key-workspace screenshots and role workflows              |
 | [Roles and User Stories](ROLES_AND_USER_STORIES.md)    | Roles, permissions, need-to-know groups and user stories          |
 | [AI Agents](AI_AGENTS.md)                              | Exactly what each agent reads, decides and returns                |
+| [API Security And Usage](development/api-security-and-usage.md) | Authentication, errors, limits and safe automation        |
+| [Backend Boundaries](development/backend-boundaries.md) | Layering, transaction and verification rules                     |
+| [Frontend Boundaries](development/frontend-boundaries.md) | React, API contract and accessibility rules                     |
 
 ## Repository records
 

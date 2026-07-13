@@ -28,8 +28,9 @@ controlled. Every diagram reflects the shipped code.
 - **Thin edges, rich core.** Route handlers stay thin; business logic lives in
   services, domain modules and repositories.
 - **Provider boundaries.** Persistence, object storage, the language model, the
-  embedding model and email are selected by configuration. Local providers are
-  implemented; managed adapters must be implemented and tested before cloud use.
+  embedding model and email are selected by configuration. Chat supports mock,
+  Gemini API, OpenAI API, Vertex AI and Bedrock. Embeddings support mock,
+  offline local and Gemini API. GCS object storage is not implemented.
 
 ---
 
@@ -43,35 +44,41 @@ an email provider, both of which default to offline stand-ins.
 flowchart TB
     subgraph people["People (role-based access)"]
         CUST["Customer"]
+        JIOC["JIOC Team Member"]
         RFA["RFA Manager"]
         CM["Collection Manager"]
         AN["Intelligence Analyst"]
         QC["QC Manager"]
+        STORE["Intelligence Store Manager"]
         ADM["Administrator"]
     end
 
     IST["<b>Istari</b><br/>Tasking and product orchestration<br/>React SPA + FastAPI"]
 
     subgraph ext["External services (optional, off by default)"]
-        GEM["Gemini API<br/>chat + embeddings"]
+        LLM["LLM gateway<br/>Gemini, OpenAI, Vertex, Bedrock"]
+        EMB["Embedding provider<br/>Gemini API when selected"]
         SMTP["SMTP relay<br/>release notifications"]
     end
 
     CUST --> IST
+    JIOC --> IST
     RFA --> IST
     CM --> IST
     AN --> IST
     QC --> IST
+    STORE --> IST
     ADM --> IST
-    IST -.->|"only if configured"| GEM
+    IST -.->|"only if configured"| LLM
+    IST -.->|"only if configured"| EMB
     IST -.->|"only if configured"| SMTP
 
     classDef actor fill:#2563eb,stroke:#1e3a8a,color:#fff,stroke-width:1px
     classDef core fill:#4f46e5,stroke:#3730a3,color:#fff,stroke-width:2px
     classDef ext fill:#64748b,stroke:#334155,color:#fff,stroke-width:1px
-    class CUST,RFA,CM,AN,QC,ADM actor
+    class CUST,JIOC,RFA,CM,AN,QC,STORE,ADM actor
     class IST core
-    class GEM,SMTP ext
+    class LLM,EMB,SMTP ext
 ```
 
 The default local configuration uses a deterministic mock language model, a
@@ -108,7 +115,7 @@ flowchart TB
         REPOS["repositories<br/>in-memory aggregates"]
         DOMAIN["domain<br/>dataclasses, enums, state machine"]
         PERSIST["persistence<br/>PostgreSQL state + projection + codec"]
-        INTEG["integrations<br/>gemini_api, gcp adapters"]
+        INTEG["integrations<br/>LLM HTTP gateway + provider catalogue"]
         ROUTES --> SERVICES
         SERVICES --> AGENTS
         SERVICES --> REPOS
