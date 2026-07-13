@@ -56,6 +56,7 @@ class StoreProductAccessPolicy:
             clearance_level=user.clearance_level,
             include_drafts=_can_read_all_drafts(user),
             draft_creator_user_id=user.user_id,
+            draft_principal_user_id=user.user_id,
         )
 
 

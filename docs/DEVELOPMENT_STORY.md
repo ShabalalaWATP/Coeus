@@ -23,16 +23,16 @@ Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVEL
   gates, plus 33 focused memory, file and real PostgreSQL tests. The preceding
   full 820-test backend suite passed at 96.96 percent combined coverage.
 - Cut persistence writers over to semantic stable type and enum IDs after
-  validating dual-format readers and committed identity goldens. Legacy
-  snapshots remain readable for rollback compatibility, while unknown and
-  ambiguous identities fail closed.
+  validating dual-format readers and identity goldens. Migration `0012` now
+  converts legacy ticket rows and reconciles canonical hashes before relational
+  mutation; unknown and ambiguous identities fail closed.
 - Added a CI architecture gate that prevents domain, persistence and repository
   layers from importing service or API implementations. Demo ticket assembly
   moved to the service layer so the gate starts without exceptions.
 - Projected ticket requester, lifecycle state and capacity consumption into
-  indexed relational columns. Shared ticket admission no longer queries codec
-  JSON internals, and memory and PostgreSQL adapters now share one terminal
-  state policy.
+  indexed relational columns. Store search and detail now consume projected
+  analyst/manager draft audiences with revocation tests; QC assignment and full
+  reconciliation evidence remain open.
 
 ## 2026-07-11 cross-role usability and documentation accuracy
 

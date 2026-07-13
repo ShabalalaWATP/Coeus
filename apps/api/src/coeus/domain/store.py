@@ -139,6 +139,7 @@ class StoreVisibilityScope:
     clearance_level: int
     include_drafts: bool
     draft_creator_user_id: UUID | None = None
+    draft_principal_user_id: UUID | None = None
 
 
 def product_in_scope(product: "StoreProduct", scope: StoreVisibilityScope) -> bool:

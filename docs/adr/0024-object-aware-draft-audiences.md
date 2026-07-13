@@ -27,13 +27,21 @@ an action, but it cannot prove an actor-to-product relationship.
   are reauthorised at redemption and cannot preserve revoked draft access.
 - Ambiguous backfill or projection failure denies access and blocks cutover.
 
+The current relational projection records assigned analysts and the manager who
+made each active assignment. Store search, detail and selected-object policy now
+consume that projection and revoke access when the assignment becomes inactive.
+Creator access remains an object field. A distinct assigned-QC relationship is
+not represented by the current workflow model, so that reason remains an
+acceptance criterion rather than a claimed implemented projection.
+
 ## Consequences
 
 - Unrelated same-ACG users lose access that was never intended need-to-know
   access; published-product behaviour remains unchanged.
 - Store repository queries need actor-specific draft predicates rather than one
   `include_drafts` Boolean.
-- Workflow transactions will own audience maintenance. Until then, the secure
-  live guard remains the rollback boundary.
-- Tests cover every audience reason, unrelated and multi-role users, revocation,
-  ACG removal, clearance reduction, publication and archive.
+- Workflow transactions own assignment-derived audience maintenance. Backfill
+  reconciliation and shadow-comparison evidence remain release gates.
+- Tests cover projected analyst/manager access, unrelated denial and revocation.
+  QC assignment, ACG removal, clearance reduction, publication and archive stay
+  in the full Phase 2 acceptance matrix and must not be inferred from this slice.

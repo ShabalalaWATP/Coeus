@@ -31,6 +31,11 @@ WHERE p.product_id = CAST(:product_id AS uuid)
       :include_drafts
       OR p.status <> :draft_status
       OR p.created_by_user_id = CAST(:draft_creator_user_id AS uuid)
+      OR EXISTS (
+          SELECT 1 FROM coeus_draft_audiences audience
+          WHERE audience.product_id = p.product_id
+            AND audience.principal_id = CAST(:draft_principal_user_id AS uuid)
+      )
   )
   AND EXISTS (
       SELECT 1
@@ -72,6 +77,11 @@ WHERE p.status <> :archived_status
       :include_drafts
       OR p.status <> :draft_status
       OR p.created_by_user_id = CAST(:draft_creator_user_id AS uuid)
+      OR EXISTS (
+          SELECT 1 FROM coeus_draft_audiences audience
+          WHERE audience.product_id = p.product_id
+            AND audience.principal_id = CAST(:draft_principal_user_id AS uuid)
+      )
   )
   AND EXISTS (
       SELECT 1
@@ -216,6 +226,11 @@ WITH scoped AS (
           :include_drafts
           OR p.status <> :draft_status
           OR p.created_by_user_id = CAST(:draft_creator_user_id AS uuid)
+          OR EXISTS (
+              SELECT 1 FROM coeus_draft_audiences audience
+              WHERE audience.product_id = p.product_id
+                AND audience.principal_id = CAST(:draft_principal_user_id AS uuid)
+          )
       )
       AND EXISTS (
           SELECT 1

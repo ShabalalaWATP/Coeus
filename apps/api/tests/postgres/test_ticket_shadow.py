@@ -6,8 +6,10 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import create_engine, event, text
 
+from coeus.domain.access import ProductStatus
 from coeus.domain.draft_audience import DraftAudienceReason
 from coeus.domain.enums import TicketState
+from coeus.domain.store import StoreVisibilityScope
 from coeus.domain.tickets import (
     AnalystAssignment,
     IntakeDetails,
@@ -18,6 +20,7 @@ from coeus.domain.tickets import (
 from coeus.persistence.codec import encode_value
 from coeus.persistence.state_store import PostgresStateStore
 from coeus.repositories.tickets import InMemoryTicketRepository
+from store_projection_helpers import seed_product
 
 pytestmark = pytest.mark.postgres
 
@@ -276,7 +279,34 @@ def test_draft_audience_projection_tracks_and_revokes_ticket_relationships(
 
     assert projection.contains(product_id, analyst_id, DraftAudienceReason.ASSIGNED_ANALYST)
     assert projection.contains(product_id, manager_id, DraftAudienceReason.RESPONSIBLE_MANAGER)
+    assert projection.reasons_for(product_id, analyst_id) == (
+        DraftAudienceReason.ASSIGNED_ANALYST,
+    )
+
+    product = seed_product()
+    product = replace(
+        product,
+        product_id=product_id,
+        created_by_user_id=uuid4(),
+        metadata=replace(product.metadata, status=ProductStatus.DRAFT),
+    )
+    store_projection = store.store_projection()
+    store_projection.save_product(product)
+    analyst_scope = StoreVisibilityScope(
+        acg_ids=product.metadata.acg_ids,
+        clearance_level=product.metadata.classification_level,
+        include_drafts=False,
+        draft_principal_user_id=analyst_id,
+    )
+    visible = store_projection.get_visible_product(product_id, analyst_scope)
+    assert visible is not None
+    assert visible.product_id == product.product_id
+    assert visible.metadata.status == ProductStatus.DRAFT
+    assert store_projection.get_visible_product(
+        product_id, replace(analyst_scope, draft_principal_user_id=uuid4())
+    ) is None
 
     updated = replace(ticket, analyst_assignments=(replace(assignment, active=False),))
     assert repository.save_if_current(ticket, updated)
     assert not projection.contains(product_id, analyst_id, DraftAudienceReason.ASSIGNED_ANALYST)
+    assert store_projection.get_visible_product(product_id, analyst_scope) is None

@@ -141,6 +141,9 @@ def _scope_params(scope: StoreVisibilityScope) -> dict[str, object]:
         "draft_creator_user_id": (
             str(scope.draft_creator_user_id) if scope.draft_creator_user_id else None
         ),
+        "draft_principal_user_id": (
+            str(scope.draft_principal_user_id) if scope.draft_principal_user_id else None
+        ),
         "archived_status": ProductStatus.ARCHIVED.value,
         "draft_status": ProductStatus.DRAFT.value,
     }

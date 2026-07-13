@@ -14,6 +14,22 @@ class PostgresDraftAudienceProjection:
     def __init__(self, engine: Any) -> None:
         self._engine = engine
 
+    def reasons_for(
+        self, product_id: UUID, principal_id: UUID
+    ) -> tuple[DraftAudienceReason, ...]:
+        with self._engine.connect() as connection:
+            reasons = connection.execute(
+                text(
+                    """
+                    SELECT DISTINCT reason FROM coeus_draft_audiences
+                    WHERE product_id = :product_id AND principal_id = :principal_id
+                    ORDER BY reason
+                    """
+                ),
+                {"product_id": product_id, "principal_id": principal_id},
+            ).scalars()
+            return tuple(DraftAudienceReason(reason) for reason in reasons)
+
     def contains(self, product_id: UUID, principal_id: UUID, reason: DraftAudienceReason) -> bool:
         with self._engine.connect() as connection:
             return bool(

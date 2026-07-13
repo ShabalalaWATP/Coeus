@@ -90,3 +90,8 @@ explicit quiescence acknowledgement. After it completes, start the rollback
 candidate in legacy read mode, validate ticket counts and sample current states,
 then resume traffic. A reconciliation failure leaves the prior legacy namespace
 unchanged and must not be bypassed.
+
+Alembic revision `20260713_0012` converts migration-era legacy payloads to stable
+codec identities and recomputes the runtime SHA-256 canonical digest. The real
+PostgreSQL migration harness proves legacy upgrade, relational validation,
+compare-and-swap mutation and reverse projection as one compatibility chain.

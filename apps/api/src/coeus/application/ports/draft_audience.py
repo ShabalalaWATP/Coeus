@@ -9,6 +9,10 @@ from coeus.domain.store import StoreProduct
 
 
 class DraftAudienceProjection(Protocol):
+    def reasons_for(
+        self, product_id: UUID, principal_id: UUID
+    ) -> tuple[DraftAudienceReason, ...]: ...
+
     def contains(
         self, product_id: UUID, principal_id: UUID, reason: DraftAudienceReason
     ) -> bool: ...

@@ -18,6 +18,15 @@ class RoleAwareDraftAudiencePolicy:
             return DraftAudienceReason.ADMINISTRATOR
         if RoleName.INTELLIGENCE_STORE_MANAGER in actor.roles:
             return DraftAudienceReason.STORE_MANAGER
+        if self._projection is not None:
+            reasons = self._projection.reasons_for(product.product_id, actor.user_id)
+            for reason in (
+                DraftAudienceReason.ASSIGNED_ANALYST,
+                DraftAudienceReason.RESPONSIBLE_MANAGER,
+                DraftAudienceReason.QUALITY_CONTROL,
+            ):
+                if reason in reasons:
+                    return reason
         return None
 
     def permits(
@@ -42,7 +51,9 @@ class RoleAwareDraftAudiencePolicy:
         }
         if not relationship:
             return False
-        if require_projection and self._projection is not None:
+        if reason != DraftAudienceReason.CREATOR and self._projection is None:
+            return False
+        if (require_projection or reason != DraftAudienceReason.CREATOR) and self._projection:
             return self._projection.contains(product.product_id, actor.user_id, reason)
         return True
 
