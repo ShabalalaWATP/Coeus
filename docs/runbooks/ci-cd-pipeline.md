@@ -10,8 +10,8 @@ The repository uses GitHub Actions for pull-request and `main` branch checks.
 
 | Workflow | Trigger | Purpose |
 |---|---|---|
-| `Backend CI` | pull request, push to `main` | Ruff format, Ruff lint, mypy, OpenAPI contract drift, pytest coverage, Bandit and pip-audit. |
-| `Frontend CI` | pull request, push to `main` | ESLint, TypeScript, Vitest coverage, Vite build and Playwright Chromium smoke. |
+| `Backend CI` | pull request, push to `main` | File limits, Markdown links/images, Ruff, mypy, architecture boundaries, semantic OpenAPI compatibility, generated type drift, real PostgreSQL migration/concurrency tests, independent line/branch coverage, Bandit and pip-audit. |
+| `Frontend CI` | pull request, push to `main` | Prettier, ESLint, TypeScript, Knip, all Vitest coverage gates, production audit, Vite build and Playwright real-stack plus UI journeys. |
 | `CodeQL` | pull request, push to `main`, weekly schedule | GitHub CodeQL analysis for Python and JavaScript/TypeScript. |
 | `Semgrep` | pull request, push to `main`, weekly schedule | Semgrep SAST over application source, Dockerfiles and GitHub config, with SARIF upload. |
 | `Terraform IaC` | pull request, push to `main` | Terraform fmt, init without backend and validate for the dev environment. |

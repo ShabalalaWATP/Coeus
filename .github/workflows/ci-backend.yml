@@ -38,6 +38,9 @@ jobs:
       - name: File line limit
         working-directory: .
         run: node scripts/check-file-lines.mjs
+      - name: Documentation links and images
+        working-directory: .
+        run: node scripts/check-doc-links.mjs
       - name: Install uv
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
       - name: Set up Python

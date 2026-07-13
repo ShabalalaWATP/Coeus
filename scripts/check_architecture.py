@@ -29,6 +29,16 @@ def imported_modules(path: Path) -> set[str]:
 
 
 def forbidden(source: str, target: str) -> bool:
+    if source.startswith("coeus.application."):
+        return target.startswith(
+            (
+                "coeus.api",
+                "coeus.integrations",
+                "coeus.persistence",
+                "coeus.repositories",
+                "coeus.services",
+            )
+        )
     if source.startswith("coeus.domain."):
         return target.startswith(
             (
