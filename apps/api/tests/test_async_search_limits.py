@@ -34,7 +34,7 @@ async def test_delayed_store_embedding_does_not_stall_event_loop() -> None:
         release.wait(timeout=2)
         return None
 
-    embeddings.embed = delayed_embed
+    embeddings.embed_cached = delayed_embed
     safety_release = Timer(2, release.set)
     safety_release.start()
     async with AsyncClient(

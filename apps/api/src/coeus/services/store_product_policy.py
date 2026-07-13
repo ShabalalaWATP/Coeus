@@ -3,7 +3,11 @@ from coeus.core.permissions import Permission
 from coeus.domain.access import ProductStatus
 from coeus.domain.auth import RoleName, UserAccount
 from coeus.domain.draft_audience import DraftAudienceReason
-from coeus.domain.store import StoreProduct, StoreVisibilityScope
+from coeus.domain.store import (
+    StoreProduct,
+    StoreVisibilityScope,
+    normalise_synthetic_release_markers,
+)
 from coeus.repositories.access import AccessRepository
 from coeus.services.draft_audience import RoleAwareDraftAudiencePolicy
 
@@ -44,6 +48,10 @@ class StoreProductAccessPolicy:
         if Permission.PRODUCT_READ not in user.permissions or not user.is_active:
             return False
         if metadata.status == ProductStatus.ARCHIVED:
+            return False
+        try:
+            normalise_synthetic_release_markers(metadata.releasability, metadata.handling_caveats)
+        except ValueError:
             return False
         if user.clearance_level < metadata.classification_level:
             return False

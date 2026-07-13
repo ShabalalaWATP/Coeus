@@ -123,6 +123,35 @@ def test_provider_failure_degrades_to_the_mock_reply(monkeypatch: pytest.MonkeyP
     assert message == PRIORITY_QUESTION
 
 
+def test_admitted_reply_reports_remote_fallback_and_success(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    responses: list[object] = [
+        AppError(503, "provider_unavailable", "Synthetic failure."),
+        "Remote response.",
+    ]
+
+    def reply(_call: object) -> str:
+        response = responses.pop(0)
+        if isinstance(response, Exception):
+            raise response
+        return str(response)
+
+    monkeypatch.setattr("coeus.services.ticket_builder.generate_text", reply)
+    provider = ConfigurableIntakeProvider(
+        Settings(environment="test", llm_provider="gemini_api", gemini_api_key="synthetic"),
+        None,
+    )
+
+    fallback = provider.build_admitted_assistant_message(_intake(), ())
+    success = provider.build_admitted_assistant_message(_intake(), ())
+
+    assert fallback.text == PRIORITY_QUESTION
+    assert not fallback.provider_succeeded
+    assert success.text == "Remote response."
+    assert success.provider_succeeded
+
+
 def test_provider_circuit_stops_repeated_failed_remote_calls(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

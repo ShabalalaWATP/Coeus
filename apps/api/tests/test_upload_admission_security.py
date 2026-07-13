@@ -2,14 +2,21 @@
 
 import json
 from collections.abc import AsyncIterator
+from io import BytesIO
 from pathlib import Path
 from tempfile import SpooledTemporaryFile
 from uuid import uuid4
 
 import pytest
+from fastapi import Request
 from httpx import ASGITransport, AsyncClient
 
-from coeus.api.routes.store_files import CHUNK_SIZE
+from coeus.api.routes.store_files import (
+    CHUNK_SIZE,
+    UploadWireLimitExceeded,
+    _install_receive_limit,
+    _stage_upload,
+)
 from coeus.core.config import Settings
 from coeus.core.errors import AppError
 from coeus.main import create_app
@@ -138,6 +145,64 @@ async def test_multichunk_upload_streams_to_storage_and_preserves_bytes(tmp_path
     assert asset["sizeBytes"] == len(content)
     assert downloaded.status_code == 200
     assert downloaded.content == content
+
+
+@pytest.mark.asyncio
+async def test_upload_rejects_incomplete_multipart_form(tmp_path: Path) -> None:
+    app = create_app(
+        Settings(
+            environment="test",
+            argon2_memory_cost=8_192,
+            local_object_storage_path=str(tmp_path / "objects"),
+        )
+    )
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        session = await login(client, "admin@example.test")
+        response = await client.post(
+            "/api/v1/store/products/upload",
+            headers={"X-CSRF-Token": str(session["csrfToken"])},
+            files={"asset": ("incomplete.bin", b"bytes", "application/octet-stream")},
+        )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "product_upload_invalid"
+
+
+@pytest.mark.parametrize("declared", ["invalid", "-1", str(1024 * 1024)])
+def test_receive_limit_rejects_invalid_or_oversized_declared_lengths(declared: str) -> None:
+    request = Request(
+        {"type": "http", "headers": [(b"content-length", declared.encode())]},
+        receive=lambda: None,
+    )
+
+    expected = AppError if declared in {"invalid", "-1"} else UploadWireLimitExceeded
+    with pytest.raises(expected):
+        _install_receive_limit(request, 10)
+
+
+@pytest.mark.asyncio
+async def test_receive_limit_preserves_non_body_asgi_messages() -> None:
+    async def disconnect() -> dict[str, str]:
+        return {"type": "http.disconnect"}
+
+    request = Request({"type": "http", "headers": []}, receive=disconnect)
+    _install_receive_limit(request, 1)
+
+    assert await request._receive() == {"type": "http.disconnect"}
+
+
+def test_staging_failure_before_file_creation_has_no_cleanup_side_effect(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "coeus.api.routes.store_files.NamedTemporaryFile",
+        lambda **_kwargs: (_ for _ in ()).throw(OSError("temporary storage unavailable")),
+    )
+
+    with pytest.raises(OSError, match="unavailable"):
+        _stage_upload(BytesIO(b"synthetic"), "asset.bin", "application/octet-stream", 20)
 
 
 def test_upload_admission_releases_capacity_after_rejection() -> None:

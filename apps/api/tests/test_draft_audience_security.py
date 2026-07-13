@@ -1,6 +1,7 @@
 """Regression coverage for object-aware Store draft audiences."""
 
 from dataclasses import replace
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi import FastAPI
@@ -55,6 +56,15 @@ async def test_unrelated_same_acg_and_multi_role_users_cannot_read_draft() -> No
         creator_grant = await client.get(
             f"/api/v1/store/products/{product['id']}/assets/{asset_id}/access"
         )
+        stored = app.state.store_services.repository.get_product(UUID(product["id"]))
+        assert stored is not None
+        app.state.store_services.repository.save_product(
+            replace(stored, created_by_user_id=uuid4())
+        )
+        revoked_download = await client.get(
+            f"/api/v1/store/products/{product['id']}/assets/{asset_id}/download",
+            headers={"X-Asset-Token": creator_grant.json()["downloadToken"]},
+        )
 
     assert created.status_code == 201
     assert product["status"] == "draft"
@@ -68,6 +78,8 @@ async def test_unrelated_same_acg_and_multi_role_users_cannot_read_draft() -> No
     assert unrelated_grant.json()["error"]["code"] == "product_not_found"
     assert creator_grant.status_code == 200
     assert creator_grant.json()["downloadToken"].startswith("asset-token-")
+    assert revoked_download.status_code == 404
+    assert revoked_download.json()["error"]["code"] == "product_not_found"
 
 
 def _add_user_role(app: FastAPI, username: str, role: RoleName) -> None:

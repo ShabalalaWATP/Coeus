@@ -12,6 +12,7 @@ from coeus.services.ai_models import AiModelService
 from coeus.services.ai_provider_catalog import initial_api_keys, spec_for
 from coeus.services.audit import AuditLog
 from coeus.services.intake import (
+    AdmittedAssistantReply,
     IntakeExtractionService,
     MockLlmProvider,
     RequirementCompletenessService,
@@ -119,11 +120,21 @@ class ConfigurableIntakeProvider:
         self._logger = get_logger(__name__)
 
     def build_assistant_message(self, intake: IntakeDetails, safety_flags: tuple[str, ...]) -> str:
+        return self.build_admitted_assistant_message(intake, safety_flags).text
+
+    def build_admitted_assistant_message(
+        self, intake: IntakeDetails, safety_flags: tuple[str, ...]
+    ) -> AdmittedAssistantReply:
+        """Report whether a reserved external call completed successfully."""
         if safety_flags:
-            return self._mock.build_assistant_message(intake, safety_flags)
+            return AdmittedAssistantReply(
+                self._mock.build_assistant_message(intake, safety_flags), False
+            )
         call = self._remote_call(intake)
         if call is None or not self._circuit.try_acquire():
-            return self._mock.build_assistant_message(intake, safety_flags)
+            return AdmittedAssistantReply(
+                self._mock.build_assistant_message(intake, safety_flags), False
+            )
         try:
             text = generate_text(call)
         except AppError as error:
@@ -132,12 +143,16 @@ class ConfigurableIntakeProvider:
                 "LLM provider unavailable; falling back to mock reply.",
                 extra={"error_code": error.code, "provider": call.provider},
             )
-            return self._mock.build_assistant_message(intake, safety_flags)
+            return AdmittedAssistantReply(
+                self._mock.build_assistant_message(intake, safety_flags), False
+            )
         except Exception:
             self._circuit.record_failure()
             raise
         self._circuit.record_success()
-        return text or self._mock.build_assistant_message(intake, safety_flags)
+        return AdmittedAssistantReply(
+            text or self._mock.build_assistant_message(intake, safety_flags), True
+        )
 
     def uses_operator_provider(self) -> bool:
         """Whether the next unflagged reply can acquire an external provider."""

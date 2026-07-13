@@ -1,5 +1,5 @@
 from pathlib import Path
-from threading import Barrier, Thread
+from threading import Event, Thread
 from typing import cast
 from uuid import UUID
 
@@ -28,8 +28,9 @@ def _approval_input(acg_id: str) -> QcApprovalInput:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("winner_state", [TicketState.CANCELLED, TicketState.DISSEMINATION_READY])
 async def test_qc_approval_and_cancellation_cannot_both_win(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, winner_state: TicketState
 ) -> None:
     app = create_app(
         Settings(
@@ -49,15 +50,23 @@ async def test_qc_approval_and_cancellation_cannot_both_win(
     assert requester is not None and qc_manager is not None
     repository = app.state.ticket_services.tickets._repository
     original_save = repository.save_if_current
-    barrier = Barrier(2)
+    loser_reached_save = Event()
+    winner_committed = Event()
 
     def coordinated_save(expected: TicketRecord, proposed: TicketRecord) -> bool:
-        if expected.ticket_id == ticket_uuid and proposed.state in {
+        if expected.ticket_id != ticket_uuid or proposed.state not in {
             TicketState.CANCELLED,
             TicketState.DISSEMINATION_READY,
         }:
-            barrier.wait(timeout=5)
-        return bool(original_save(expected, proposed))
+            return bool(original_save(expected, proposed))
+        if proposed.state != winner_state:
+            loser_reached_save.set()
+            assert winner_committed.wait(timeout=5)
+            return bool(original_save(expected, proposed))
+        assert loser_reached_save.wait(timeout=5)
+        committed = bool(original_save(expected, proposed))
+        winner_committed.set()
+        return committed
 
     monkeypatch.setattr(repository, "save_if_current", coordinated_save)
     outcomes: list[TicketRecord | AppError] = []
@@ -96,10 +105,10 @@ async def test_qc_approval_and_cancellation_cannot_both_win(
     assert len(errors) == 1 and errors[0].code == "ticket_changed"
     current = repository.get(ticket_uuid)
     assert current is not None
-    assert current.state in {TicketState.CANCELLED, TicketState.DISSEMINATION_READY}
+    assert current.state == winner_state
     products = tuple(
         product
         for product in app.state.store_services.repository.list_products()
         if product.metadata.title == "Concurrent QC product"
     )
-    assert len(products) == int(current.state == TicketState.DISSEMINATION_READY)
+    assert len(products) == int(winner_state == TicketState.DISSEMINATION_READY)

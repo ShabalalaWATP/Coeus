@@ -1,4 +1,5 @@
-from uuid import uuid4
+from dataclasses import replace
+from uuid import UUID, uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -132,3 +133,67 @@ async def test_asset_access_rejects_missing_asset_after_product_authorisation() 
 
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "asset_not_found"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("field", "invalid_value"),
+    [
+        ("releasability", frozenset({"NON-MOCK"})),
+        ("handling_caveats", frozenset({"UNDEFINED CAVEAT"})),
+    ],
+)
+async def test_unsupported_persisted_release_markers_fail_closed_in_search_and_detail(
+    field: str, invalid_value: frozenset[str]
+) -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        await login(client, "user@example.test")
+        visible = await client.get("/api/v1/store/products", params={"query": "Mock"})
+        product_id = visible.json()["products"][0]["id"]
+        product = app.state.store_services.repository.get_product(UUID(product_id))
+        assert product is not None
+        app.state.store_services.repository.save_product(
+            replace(product, metadata=replace(product.metadata, **{field: invalid_value}))
+        )
+
+        detail = await client.get(f"/api/v1/store/products/{product_id}")
+        search = await client.get(
+            "/api/v1/store/products", params={"query": product.metadata.title}
+        )
+
+    assert detail.status_code == 404
+    assert product_id not in {item["id"] for item in search.json()["products"]}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("field", "invalid_value"),
+    [
+        ("releasability", ["NON-MOCK"]),
+        ("handlingCaveats", ["UNDEFINED CAVEAT"]),
+    ],
+)
+async def test_product_creation_rejects_unsupported_release_markers_atomically(
+    field: str, invalid_value: list[str]
+) -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    acg_id = str(app.state.access_services.repository.list_acgs()[0].acg_id)
+    before = app.state.store_services.repository.list_products()
+    payload = {**product_payload(acg_id), field: invalid_value}
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        session = await login(client, "admin@example.test")
+        response = await client.post(
+            "/api/v1/store/products",
+            headers={"X-CSRF-Token": str(session["csrfToken"])},
+            json=payload,
+        )
+
+    assert response.status_code == 422
+    assert app.state.store_services.repository.list_products() == before

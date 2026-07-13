@@ -25,7 +25,11 @@ from coeus.domain.tickets import (
 )
 from coeus.services import conversation_lifecycle as lifecycle
 from coeus.services.audit import AuditLog
-from coeus.services.intake import IntakeAssistantProvider, IntakeExtractionService
+from coeus.services.intake import (
+    AdmittedAssistantReply,
+    IntakeAssistantProvider,
+    IntakeExtractionService,
+)
 from coeus.services.intake_standard import next_elicitation
 from coeus.services.prioritisation import with_assessment
 from coeus.services.ticket_mutations import TicketMutationService
@@ -195,9 +199,15 @@ class ConversationService:
         if not uses_remote or self._provider_admission is None or safety_flags:
             return self._llm_provider.build_assistant_message(intake, safety_flags)
         with self._provider_admission.reserve(actor.user_id) as reservation:
-            reply = self._llm_provider.build_assistant_message(intake, safety_flags)
-            reservation.commit()
-            return reply
+            admitted_reply = getattr(self._llm_provider, "build_admitted_assistant_message", None)
+            if admitted_reply is None:
+                reply = self._llm_provider.build_assistant_message(intake, safety_flags)
+                reservation.commit()
+                return reply
+            outcome: AdmittedAssistantReply = admitted_reply(intake, safety_flags)
+            if outcome.provider_succeeded:
+                reservation.commit()
+            return outcome.text
 
     def _create(self, actor: UserAccount, reserved_reference: str | None = None) -> TicketRecord:
         ticket_id = uuid4()

@@ -1,5 +1,7 @@
+import json
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from hashlib import sha256
 from uuid import uuid4
 
 import pytest
@@ -7,6 +9,7 @@ from sqlalchemy import create_engine, text
 
 from coeus.domain.enums import TicketState
 from coeus.domain.tickets import IntakeDetails, TicketRecord
+from coeus.persistence.codec import encode_value
 from coeus.persistence.state_store import PostgresStateStore
 from coeus.persistence.ticket_capacity_recovery import recover_ticket_capacity
 from coeus.repositories.tickets import InMemoryTicketRepository
@@ -158,6 +161,33 @@ def test_projection_repair_rejects_hash_mismatch_atomically(postgres_database_ur
             ).scalar_one()
             is False
         )
+
+
+def test_inspection_rejects_a_valid_payload_with_mismatched_aggregate_identity(
+    postgres_database_url: str,
+) -> None:
+    ticket = _ticket(postgres_database_url)
+    other = replace(ticket, ticket_id=uuid4())
+    payload = encode_value(other)
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    engine = create_engine(postgres_database_url)
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "UPDATE coeus_ticket_aggregates SET payload=CAST(:payload AS jsonb), "
+                "canonical_hash=:digest WHERE ticket_id=:ticket_id"
+            ),
+            {
+                "payload": canonical,
+                "digest": sha256(canonical.encode()).hexdigest(),
+                "ticket_id": ticket.ticket_id,
+            },
+        )
+
+    report = recover_ticket_capacity(postgres_database_url)
+
+    assert report.projection_issues[0].reason == "aggregate identity mismatch"
+    assert not report.projection_issues[0].repairable
 
 
 def test_active_lease_release_requires_named_ticket_lease(postgres_database_url: str) -> None:

@@ -18,7 +18,7 @@ async def test_rfi_search_rejects_stale_snapshot_and_preserves_concurrent_update
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     started = Event()
     release = Event()
-    original_embed = app.state.rfi_search_service._embeddings.embed
+    original_embed = app.state.rfi_search_service._embeddings.embed_cached
 
     def delayed_embed(
         text: str, *, purpose: str, principal_id: object | None = None
@@ -30,7 +30,7 @@ async def test_rfi_search_rejects_stale_snapshot_and_preserves_concurrent_update
             original_embed(text, purpose=purpose, principal_id=principal_id),
         )
 
-    monkeypatch.setattr(app.state.rfi_search_service._embeddings, "embed", delayed_embed)
+    monkeypatch.setattr(app.state.rfi_search_service._embeddings, "embed_cached", delayed_embed)
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:

@@ -3,7 +3,7 @@ from uuid import uuid4
 
 import pytest
 
-from coeus.persistence.ticket_capacity_recovery import CapacityReport
+from coeus.persistence.ticket_capacity_recovery import CapacityReport, recover_ticket_capacity
 from coeus.tools import ticket_capacity_recovery
 
 
@@ -63,3 +63,18 @@ def test_cli_reports_fail_closed_recovery_without_credentials(
     output = capsys.readouterr()
     assert "unsafe projection" in output.err
     assert "secret-url" not in output.err
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"action": "remove-expired"},
+        {"operator": "o" * 201},
+        {"reason": "r" * 1001},
+    ],
+)
+def test_recovery_rejects_missing_or_unbounded_audit_attribution(
+    kwargs: dict[str, object],
+) -> None:
+    with pytest.raises(ValueError):
+        recover_ticket_capacity("postgresql://unused", **kwargs)

@@ -78,3 +78,39 @@ def test_manifest_rejects_duplicate_and_invalid_entries(tmp_path: Path) -> None:
     path.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(ValueError, match="non-negative"):
         read_manifest(path)
+
+
+@pytest.mark.parametrize(
+    ("section", "entry", "message"),
+    [
+        ("tables", None, "table manifest entry"),
+        (
+            "tables",
+            {
+                "name": "state",
+                "columns": [1],
+                "row_count": 0,
+                "file": "tables/state.copy",
+                "sha256": "a" * 64,
+            },
+            "columns",
+        ),
+        ("objects", None, "object manifest entry"),
+        (
+            "objects",
+            {"key": "object", "size_bytes": 1, "sha256": "invalid"},
+            "SHA-256",
+        ),
+    ],
+)
+def test_manifest_rejects_malformed_entries(
+    tmp_path: Path, section: str, entry: object, message: str
+) -> None:
+    path = tmp_path / "manifest.json"
+    write_manifest(path, _manifest())
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload[section] = [entry]
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=message):
+        read_manifest(path)

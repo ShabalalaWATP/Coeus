@@ -163,6 +163,20 @@ def test_store_search_rechecks_policy_after_projection_candidates() -> None:
     assert result.facets.product_types == ()
 
 
+def test_store_search_returns_an_authorised_projection_page() -> None:
+    access_repo = access_repository()
+    admin = access_repo.get_user_by_username("admin@example.test")
+    assert admin is not None
+    product = seed_product()
+    repository = InMemoryStoreRepository(access_repo, projection=RecordingProjection((product,)))
+    service = StoreSearchService(repository, StoreProductAccessPolicy(access_repo))
+
+    result = service.search(admin, filters(product_type=product.metadata.product_type))
+
+    assert result.total == 1
+    assert result.hits[0].product.product_id == product.product_id
+
+
 def test_store_detail_and_download_recheck_policy_after_projection_candidate() -> None:
     access_repo = access_repository()
     user = access_repo.get_user_by_username("user@example.test")

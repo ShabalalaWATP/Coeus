@@ -1,4 +1,5 @@
 from dataclasses import replace
+from typing import cast
 from uuid import UUID, uuid4
 
 from coeus.domain.auth import RoleName, UserAccount
@@ -83,4 +84,36 @@ def test_projected_relationship_drives_store_reason_and_permission() -> None:
         product,
         DraftAudienceReason.ASSIGNED_ANALYST,
         require_projection=True,
+    )
+
+
+def test_projected_reason_order_and_unknown_reasons_fail_closed() -> None:
+    class Projection:
+        def __init__(self, reasons: tuple[DraftAudienceReason, ...]) -> None:
+            self._reasons = reasons
+
+        def reasons_for(
+            self, _product_id: UUID, _principal_id: UUID
+        ) -> tuple[DraftAudienceReason, ...]:
+            return self._reasons
+
+        def contains(
+            self, _product_id: UUID, _principal_id: UUID, reason: DraftAudienceReason
+        ) -> bool:
+            return reason in self._reasons
+
+    actor = _user()
+    product = seed_product()
+
+    assert (
+        RoleAwareDraftAudiencePolicy(
+            Projection((DraftAudienceReason.RESPONSIBLE_MANAGER,))
+        ).reason_for_store_read(actor, product)
+        == DraftAudienceReason.RESPONSIBLE_MANAGER
+    )
+    assert (
+        RoleAwareDraftAudiencePolicy(Projection(())).reason_for_store_read(actor, product) is None
+    )
+    assert not RoleAwareDraftAudiencePolicy().permits(
+        actor, product, cast(DraftAudienceReason, "unsupported")
     )
