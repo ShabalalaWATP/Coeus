@@ -1,8 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const databaseUrl = process.env.COEUS_PLAYWRIGHT_DATABASE_URL;
+const objectStoragePath = process.env.COEUS_PLAYWRIGHT_OBJECT_STORAGE_PATH;
 if (!databaseUrl) {
   throw new Error("COEUS_PLAYWRIGHT_DATABASE_URL is required");
+}
+if (!objectStoragePath) {
+  throw new Error("COEUS_PLAYWRIGHT_OBJECT_STORAGE_PATH is required");
 }
 
 export default defineConfig({
@@ -25,11 +29,14 @@ export default defineConfig({
         COEUS_ARGON2_MEMORY_COST: "8192",
         COEUS_DATABASE_URL: databaseUrl,
         COEUS_ENVIRONMENT: "test",
-        COEUS_LOCAL_OBJECT_STORAGE_PATH: "../api/.local-data/playwright-postgres-objects",
+        COEUS_LOCAL_OBJECT_STORAGE_PATH: objectStoragePath,
+        COEUS_LOCAL_UPLOAD_MAX_BYTES: "1024",
         COEUS_OBJECT_STORAGE_PROVIDER: "local",
         COEUS_PERSISTENCE_PROVIDER: "postgres",
         COEUS_SEED_DEMO_CONTENT: "false",
+        COEUS_TICKET_MAX_RETAINED_PER_PRINCIPAL: "1",
         COEUS_TICKET_PERSISTENCE_MODE: "relational",
+        COEUS_UPLOAD_MAX_INFLIGHT_BYTES: "4096",
       },
       reuseExistingServer: false,
       timeout: 120_000,

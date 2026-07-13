@@ -4,9 +4,9 @@
 
 Status: implementation in progress and release-blocking from 2026-07-13.
 
-This plan is the implementation handoff for Sprint 17. It sits below the
-authoritative root `coeus_spec_driven_implementation_plan.md` and must be kept in
+This plan is the Sprint 17 handoff below `coeus_spec_driven_implementation_plan.md` and must stay in
 step with `docs/MASTER_IMPLEMENTATION_PLAN.md` and `docs/DEVELOPMENT_STORY.md`.
+See `SECURITY_REPAIR_CLOSURE_EVIDENCE_2026-07-13.md` for current evidence.
 
 The evidence baseline is the completed deep scan of immutable revision
 `3e27c82d4b62efb683b3fbb81d2486bccafd8fb0`:

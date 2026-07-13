@@ -92,7 +92,10 @@ The detailed implementation sequence is in
 - Empty and seeded PostgreSQL migration, repeatable backfill, reconciliation,
   concurrency, code rollback and backup-restore tests pass.
 - A real-stack browser workflow covers request creation through publication and
-  asset access, plus draft denial and concurrent conflict recovery.
+  exact asset-byte access. The current PostgreSQL workflow also covers one
+  unrelated same-ACG search, known-object detail and asset-grant denials plus
+  `413` and `429` input-preserving recovery. The remaining audience matrix and
+  concurrent `409` browser journey remain release gates.
 - All formatting, linting, typing, contract, dead-code, build, dependency,
   security, container, infrastructure and 350-line checks pass.
 - A fresh sealed deep scan of the exact clean release candidate has no unresolved

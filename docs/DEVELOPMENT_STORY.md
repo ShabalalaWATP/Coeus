@@ -33,6 +33,17 @@ Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVEL
   emits legacy IDs, rejects drift or malformed state and normalises N-1 writes
   back to stable IDs. A detached immutable N-1 worktree proved old and current
   writes against a disposable PostgreSQL database.
+- Removed the local scanner findings: Bandit, pip-audit, Semgrep, Gitleaks,
+  Checkov and high/critical Trivy image checks are clean on the candidate.
+- Added a digest-pinned PostgreSQL browser gate. Ten real Chromium stages now
+  prove explicit draft registration, same-ACG search, known-detail and asset
+  grant denial, `413` recovery without mutation, `429` recovery without lost
+  input, customer intake, JIOC routing, RFA assignment, analyst production,
+  manager approval, QC release, Store search and exact downloaded asset bytes.
+  Published remains the upload default, preserving existing registration.
+- Added the provisional per-finding closure ledger. Formal closure still needs
+  the remaining audience/recovery browser matrix, authorised staging topology,
+  protected GitHub results and a fresh sealed scan of one immutable candidate.
 
 ## 2026-07-11 cross-role usability and documentation accuracy
 
@@ -334,17 +345,3 @@ Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVEL
 - Verification passed with 682 backend tests at 98.22 percent line and 95.05
   percent branch coverage, 411 frontend tests at 98.61 percent line and 95.10
   percent branch coverage, and all three Playwright end-to-end journeys.
-
-## 2026-07-13 Security repair and hardening plan opened
-
-- Confirmed Claude's visual-fidelity work is merged through PR #108 and local
-  `main` matches `origin/main` at `3e27c82`.
-- Completed deep scan `abf0e143-4656-4646-b133-6fea0d6661ee`: eight Medium/P2
-  and four Low/P3 findings remain, with four deployment or policy questions
-  deferred for explicit closure.
-- Opened release-blocking Sprint 17 for tactical finding closure, persisted
-  draft audiences, shared resource admission, versioned workflow persistence,
-  SOLID boundary improvements and documentation reconciliation.
-- Recorded compatibility, migration, rollback, coverage, browser and fresh-scan
-  gates in `docs/security/SECURITY_REPAIR_AND_HARDENING_PLAN.md`. This entry
-  records planning only and does not claim that any finding is remediated.

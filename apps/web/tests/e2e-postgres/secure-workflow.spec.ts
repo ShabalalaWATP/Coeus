@@ -2,8 +2,11 @@ import { expect, type Page, test } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 
 const PASSWORD = "CoeusLocal1!";
+const API_BASE_URL = "http://127.0.0.1:8022";
 const assessmentTitle = "North Atlantic Assessment";
 let reference = "";
+let draftProductId = "";
+let draftAssetId = "";
 
 test.describe.configure({ mode: "serial" });
 
@@ -44,7 +47,20 @@ test("denies an unrelated same-ACG user access to a PostgreSQL draft", async ({ 
     mimeType: "text/plain",
     buffer: Buffer.from("MOCK DATA ONLY\nDraft byte evidence\n"),
   });
+  const createResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/v1/store/products/upload") &&
+      response.request().method() === "POST",
+  );
   await page.getByRole("button", { name: "Register product" }).click();
+  const created = (await (await createResponsePromise).json()) as {
+    assets: { id: string }[];
+    id: string;
+  };
+  draftProductId = created.id;
+  draftAssetId = created.assets[0]?.id ?? "";
+  expect(draftProductId).not.toBe("");
+  expect(draftAssetId).not.toBe("");
   await expect(page.getByText(/Created .*PostgreSQL draft isolation proof/)).toBeVisible();
   await logout(page);
 
@@ -53,8 +69,55 @@ test("denies an unrelated same-ACG user access to a PostgreSQL draft", async ({ 
   await page
     .getByPlaceholder("Search title, summary, tags")
     .fill("PostgreSQL draft isolation proof");
+  const searchResponsePromise = page.waitForResponse((response) =>
+    response.url().includes("/api/v1/store/products?"),
+  );
   await page.getByRole("button", { name: "Search products" }).click();
+  await searchResponsePromise;
   await expect(page.getByText("PostgreSQL draft isolation proof")).toHaveCount(0);
+  const deniedStatuses = await page.evaluate(
+    async ({ apiBaseUrl, assetId, productId }) => {
+      const detail = await fetch(`${apiBaseUrl}/api/v1/store/products/${productId}`, {
+        credentials: "include",
+      });
+      const grant = await fetch(
+        `${apiBaseUrl}/api/v1/store/products/${productId}/assets/${assetId}/access`,
+        { credentials: "include" },
+      );
+      return [detail.status, grant.status];
+    },
+    { apiBaseUrl: API_BASE_URL, assetId: draftAssetId, productId: draftProductId },
+  );
+  expect(deniedStatuses).toEqual([404, 404]);
+});
+
+test("rejects an oversized upload without losing form input or creating a product", async ({
+  page,
+}) => {
+  await login(page, "store.manager@example.test", "Intelligence Store");
+  await page.goto("/store/upload");
+  await page.getByRole("textbox", { name: "Title", exact: true }).fill("Oversized browser proof");
+  await page
+    .getByRole("combobox", { name: "ACG", exact: true })
+    .selectOption({ label: "ACG-EU-CYBER" });
+  await page.getByLabel("Asset file", { exact: true }).setInputFiles({
+    name: "oversized.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.alloc(2048, 65),
+  });
+  await page.getByRole("button", { name: "Register product" }).click();
+  await expect(page.getByRole("alert")).toHaveText("Asset exceeds the local upload limit.");
+  await expect(page.getByRole("textbox", { name: "Title", exact: true })).toHaveValue(
+    "Oversized browser proof",
+  );
+  const search = await page.evaluate(async (apiBaseUrl) => {
+    const response = await fetch(
+      `${apiBaseUrl}/api/v1/store/products?query=Oversized%20browser%20proof`,
+      { credentials: "include" },
+    );
+    return (await response.json()) as { products: unknown[] };
+  }, API_BASE_URL);
+  expect(search.products).toHaveLength(0);
 });
 
 test("creates and submits a customer request through PostgreSQL", async ({ page }) => {
@@ -96,6 +159,18 @@ test("creates and submits a customer request through PostgreSQL", async ({ page 
   await page.getByRole("button", { name: "Run search" }).click();
   await page.getByRole("button", { name: "Yes, task as new request" }).click();
   await expect(page.getByText("JIOC review", { exact: true })).toBeVisible();
+});
+
+test("recovers from a retained-ticket 429 without losing the message", async ({ page }) => {
+  await login(page, "user@example.test", "My Requests");
+  await page.getByRole("button", { name: "Open new request" }).click();
+  const message = "A second synthetic request that must remain in the browser.";
+  await page.getByLabel("Message").fill(message);
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Ticket capacity is temporarily unavailable.",
+  );
+  await expect(page.getByLabel("Message")).toHaveValue(message);
 });
 
 test("routes the request as the JIOC user", async ({ page }) => {

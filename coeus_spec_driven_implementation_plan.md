@@ -2573,6 +2573,12 @@ The sealed deep scan `abf0e143-4656-4646-b133-6fea0d6661ee` of revision
 `3e27c82d4b62efb683b3fbb81d2486bccafd8fb0` reported 12 findings and deferred
 four deployment or undefined-policy questions. Sprint 17 is release-blocking.
 
+Implementation is in progress. Local tactical and structural controls, N-1
+forward reconciliation, logical restore and a ten-stage PostgreSQL browser
+workflow pass. Assigned-QC audience policy, the remaining audience and recovery
+browser matrix, authorised staging evidence, protected GitHub checks and the
+fresh sealed candidate scan remain release-blocking.
+
 Deliver:
 
 - Close every current finding with exploit-path and legitimate-path evidence.
@@ -2589,6 +2595,8 @@ The authoritative acceptance contract is
 `docs/specs/security-repair-and-hardening.md`. The ordered implementation,
 migration, rollback and verification work is in
 `docs/security/SECURITY_REPAIR_AND_HARDENING_PLAN.md`.
+Current finding traceability is in
+`docs/security/SECURITY_REPAIR_CLOSURE_EVIDENCE_2026-07-13.md`.
 
 ## 20. Definition of done for MVP
 

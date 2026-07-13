@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from uuid import uuid4
 
 import psycopg
@@ -73,30 +74,32 @@ def main(argv: list[str] | None = None) -> int:
     env["COEUS_DATABASE_URL"] = test_url
     env["COEUS_PLAYWRIGHT_DATABASE_URL"] = test_url
     try:
-        _run(
-            [
-                sys.executable,
-                "-m",
-                "alembic",
-                "-c",
-                "apps/api/alembic.ini",
-                "upgrade",
-                "head",
-            ],
-            env,
-        )
-        _run(
-            [
-                "pnpm.cmd" if os.name == "nt" else "pnpm",
-                "--filter",
-                "@coeus/web",
-                "exec",
-                "playwright",
-                "test",
-                "--config=playwright.postgres.config.ts",
-            ],
-            env,
-        )
+        with tempfile.TemporaryDirectory(prefix="coeus-playwright-objects-") as object_root:
+            env["COEUS_PLAYWRIGHT_OBJECT_STORAGE_PATH"] = object_root
+            _run(
+                [
+                    sys.executable,
+                    "-m",
+                    "alembic",
+                    "-c",
+                    "apps/api/alembic.ini",
+                    "upgrade",
+                    "head",
+                ],
+                env,
+            )
+            _run(
+                [
+                    "pnpm.cmd" if os.name == "nt" else "pnpm",
+                    "--filter",
+                    "@coeus/web",
+                    "exec",
+                    "playwright",
+                    "test",
+                    "--config=playwright.postgres.config.ts",
+                ],
+                env,
+            )
     finally:
         with psycopg.connect(admin_dsn, autocommit=True) as connection:
             connection.execute(
