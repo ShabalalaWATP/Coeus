@@ -6,10 +6,12 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
+from uuid import uuid4
 
 import pytest
 
 from coeus.core.config import Settings
+from coeus.core.errors import AppError
 from coeus.services.ai_models import AiModelService
 from coeus.services.audit import AuditLog
 from coeus.services.embeddings import (
@@ -25,6 +27,7 @@ from coeus.services.embeddings import (
     cosine_similarity,
     vector_to_pg,
 )
+from coeus.services.provider_admission import ProviderAdmissionController
 from store_projection_helpers import seed_product
 
 
@@ -119,6 +122,50 @@ def test_cached_embedding_normalises_and_single_flights_concurrent_misses() -> N
 
     assert results == ((1.0,),) * 40
     assert provider.calls == 1
+
+
+def test_remote_embedding_reserves_and_commits_shared_provider_capacity() -> None:
+    class CountingProvider:
+        name = "remote"
+
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def embed(self, _text: str) -> tuple[float, ...]:
+            self.calls += 1
+            return (1.0,)
+
+    provider = CountingProvider()
+    admission = ProviderAdmissionController(
+        max_concurrent=1,
+        max_calls_per_window=2,
+        max_calls_per_principal=1,
+        window_seconds=60,
+    )
+    service = EmbeddingService(provider, admission)
+    principal = uuid4()
+
+    assert service.embed("first", purpose="test", principal_id=principal) == (1.0,)
+    with pytest.raises(AppError, match="Provider capacity"):
+        service.embed("second", purpose="test", principal_id=principal)
+    assert provider.calls == 1
+
+
+def test_admitted_embedding_fails_closed_without_principal_context() -> None:
+    class Provider:
+        name = "remote"
+
+        def embed(self, _text: str) -> tuple[float, ...]:
+            raise AssertionError("provider must not be called")
+
+    admission = ProviderAdmissionController(
+        max_concurrent=1,
+        max_calls_per_window=1,
+        max_calls_per_principal=1,
+        window_seconds=60,
+    )
+
+    assert EmbeddingService(Provider(), admission).embed("query", purpose="test") is None
 
 
 def test_gemini_provider_requires_runtime_key() -> None:

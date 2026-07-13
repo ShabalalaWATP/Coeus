@@ -15,6 +15,7 @@ from coeus.repositories.registration import RegistrationRepository
 from coeus.repositories.teams import TeamRepository
 from coeus.repositories.teams_seed import seed_teams
 from coeus.services.access import build_access_services
+from coeus.services.admission_metrics import AdmissionMetrics
 from coeus.services.ai_models import AiModelService
 from coeus.services.analyst_assignment_service import AnalystAssignmentService
 from coeus.services.analyst_workflow import AnalystWorkflowService
@@ -42,7 +43,7 @@ from coeus.services.similar_requests import SimilarRequestService
 from coeus.services.store_builder import build_store_services
 from coeus.services.team_availability import TeamAvailabilityService, TeamCalendarService
 from coeus.services.team_workspace import TeamWorkspaceService
-from coeus.services.ticket_builder import build_ticket_services
+from coeus.services.ticket_builder import build_provider_admission, build_ticket_services
 from coeus.services.ticket_collaborators import TicketCollaboratorService
 from coeus.services.ticket_lifecycle import TicketLifecycleService
 from coeus.services.upload_admission import UploadAdmissionController
@@ -66,8 +67,10 @@ def configure_application_state(app: FastAPI, settings: Settings) -> None:
     app.state.workflow_transaction = _workflow_transaction(app, settings)
     app.state.asset_token_service = AssetTokenService(settings.asset_token_secret)
     app.state.object_storage = build_object_storage(settings)
-    app.state.upload_admission = _upload_admission(settings)
-    app.state.search_admission = _search_admission(settings)
+    app.state.admission_metrics = AdmissionMetrics()
+    app.state.upload_admission = _upload_admission(settings, app.state.admission_metrics)
+    app.state.search_admission = _search_admission(settings, app.state.admission_metrics)
+    app.state.provider_admission = build_provider_admission(settings, app.state.admission_metrics)
     identity = _configure_identity(app, settings)
     _configure_data_services(app, settings, identity)
     _configure_workflow_services(app, settings, identity)
@@ -81,7 +84,7 @@ def configure_application_state(app: FastAPI, settings: Settings) -> None:
         )
 
 
-def _upload_admission(settings: Settings) -> ResourceAdmission:
+def _upload_admission(settings: Settings, metrics: AdmissionMetrics) -> ResourceAdmission:
     if settings.environment in HOSTED_ENVIRONMENTS:
         return PostgresResourceAdmissionController(
             settings.database_url,
@@ -91,15 +94,17 @@ def _upload_admission(settings: Settings) -> ResourceAdmission:
             max_units=settings.upload_max_inflight_bytes,
             lease_seconds=300,
             mode=settings.shared_resource_admission_mode,
+            metrics=metrics,
         )
     return UploadAdmissionController(
         max_concurrent=settings.upload_max_concurrent,
         max_per_user=settings.upload_max_concurrent_per_user,
         max_inflight_bytes=settings.upload_max_inflight_bytes,
+        metrics=metrics,
     )
 
 
-def _search_admission(settings: Settings) -> ResourceAdmission:
+def _search_admission(settings: Settings, metrics: AdmissionMetrics) -> ResourceAdmission:
     if settings.environment in HOSTED_ENVIRONMENTS:
         return PostgresResourceAdmissionController(
             settings.database_url,
@@ -109,12 +114,14 @@ def _search_admission(settings: Settings) -> ResourceAdmission:
             max_units=settings.search_max_concurrent,
             lease_seconds=70,
             mode=settings.shared_resource_admission_mode,
+            metrics=metrics,
         )
     return LocalResourceAdmissionController(
         max_concurrent=settings.search_max_concurrent,
         max_concurrent_per_principal=settings.search_max_concurrent_per_principal,
         max_units=settings.search_max_concurrent,
         mode=settings.shared_resource_admission_mode,
+        metrics=metrics,
     )
 
 
@@ -166,7 +173,11 @@ def _configure_data_services(
         identity.audit_log,
         app.state.state_store,
     )
-    app.state.embedding_service = build_embedding_service(settings, app.state.ai_model_service)
+    app.state.embedding_service = build_embedding_service(
+        settings,
+        app.state.ai_model_service,
+        app.state.provider_admission,
+    )
     app.state.store_services = build_store_services(
         identity.access,
         identity.audit_log,
@@ -183,6 +194,8 @@ def _configure_data_services(
         app.state.state_store,
         app.state.ai_model_service,
         app.state.workflow_transaction,
+        app.state.admission_metrics,
+        app.state.provider_admission,
     )
 
 

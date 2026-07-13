@@ -11,6 +11,7 @@ from coeus.db.session import DatabaseReadinessChecker, readiness_checker_for
 from coeus.domain.auth import AuthenticatedSession
 from coeus.repositories.teams import TeamRepository
 from coeus.services.access import AccessServices
+from coeus.services.admission_metrics import AdmissionMetrics
 from coeus.services.ai_models import AiModelService
 from coeus.services.analyst_assignment_service import AnalystAssignmentService
 from coeus.services.analyst_workflow import AnalystWorkflowService
@@ -50,6 +51,13 @@ def get_readiness_checker(
 
 def get_request_id(request: Request) -> str:
     return str(getattr(request.state, "request_id", "unknown"))
+
+
+def get_admission_metrics(request: Request) -> AdmissionMetrics:
+    metrics = getattr(request.app.state, "admission_metrics", None)
+    if not isinstance(metrics, AdmissionMetrics):
+        raise AppError(500, "metrics_not_configured", "Admission metrics are not configured.")
+    return metrics
 
 
 def get_auth_service(request: Request) -> AuthService:

@@ -11,7 +11,7 @@ from store_projection_helpers import seed_product
 
 
 class NoEmbeddingService:
-    def embed_cached(self, _text: str, *, purpose: str) -> None:
+    def embed_cached(self, _text: str, *, purpose: str, principal_id: object | None = None) -> None:
         return None
 
 
@@ -20,7 +20,9 @@ class FixedEmbeddingService:
         self.calls = 0
         self.candidate_vector = candidate_vector
 
-    def embed_cached(self, _text: str, *, purpose: str) -> tuple[float, ...] | None:
+    def embed_cached(
+        self, _text: str, *, purpose: str, principal_id: object | None = None
+    ) -> tuple[float, ...] | None:
         self.calls += 1
         return (0.2, 0.4) if self.calls == 1 else self.candidate_vector
 

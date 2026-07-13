@@ -89,7 +89,9 @@ class RfiSearchService:
             ),
         )
         query = query_text(ticket.intake)
-        query_embedding = self._embeddings.embed(query, purpose="rfi-query")
+        query_embedding = self._embeddings.embed(
+            query, purpose="rfi-query", principal_id=actor.user_id
+        )
         candidates = self._store_search.hybrid_candidates(
             requester,
             StoreSearchFilters(

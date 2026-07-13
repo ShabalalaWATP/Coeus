@@ -94,7 +94,9 @@ def test_memory_lexical_only_when_query_not_embedded() -> None:
 
 def test_memory_lexical_only_when_query_embeds_but_no_candidate_vector() -> None:
     class NoneService:
-        def embed(self, _text: str, *, purpose: str) -> tuple[float, ...] | None:
+        def embed(
+            self, _text: str, *, purpose: str, principal_id: object | None = None
+        ) -> tuple[float, ...] | None:
             return None
 
     product = seed_product()
@@ -114,7 +116,9 @@ def test_memory_uses_supplied_provider_for_product_vectors() -> None:
     calls: list[str] = []
 
     class StubService:
-        def embed(self, text: str, *, purpose: str) -> tuple[float, ...] | None:
+        def embed(
+            self, text: str, *, purpose: str, principal_id: object | None = None
+        ) -> tuple[float, ...] | None:
             calls.append(purpose)
             return _UNIT_VECTOR
 

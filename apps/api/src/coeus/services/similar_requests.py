@@ -57,7 +57,9 @@ class SimilarRequestService:
         )
         visible = tuple(
             match
-            for match in self._score(source, candidates, CUSTOMER_SIMILARITY_THRESHOLD)
+            for match in self._score(
+                source, candidates, CUSTOMER_SIMILARITY_THRESHOLD, actor.user_id
+            )
             if self._customer_can_see(actor, match.ticket_id)
         )
         if visible:
@@ -78,7 +80,7 @@ class SimilarRequestService:
         if not is_owner(actor, source):
             raise AppError(404, "ticket_not_found", "Ticket was not found.")
         target = self._tickets.tickets.get_visible_ticket(actor, related_ticket_id)
-        match = self._find_match(source, target, CUSTOMER_SIMILARITY_THRESHOLD)
+        match = self._find_match(source, target, CUSTOMER_SIMILARITY_THRESHOLD, actor.user_id)
         if match is None:
             raise AppError(404, "similar_request_not_found", "Similar request was not found.")
         if is_owner(actor, target) or is_collaborator(actor, target):
@@ -137,7 +139,7 @@ class SimilarRequestService:
             source,
             self._tickets.tickets.list_workflow_tickets(actor, ROUTING_READ_PERMISSIONS),
         )
-        return self._score(source, candidates, MANAGER_SIMILARITY_THRESHOLD)
+        return self._score(source, candidates, MANAGER_SIMILARITY_THRESHOLD, actor.user_id)
 
     def manager_match(
         self, actor: UserAccount, ticket_id: UUID, related_ticket_id: UUID
@@ -149,7 +151,7 @@ class SimilarRequestService:
         related = self._tickets.tickets.get_workflow_ticket(
             actor, related_ticket_id, ROUTING_READ_PERMISSIONS
         )
-        return self._find_match(source, related, MANAGER_SIMILARITY_THRESHOLD)
+        return self._find_match(source, related, MANAGER_SIMILARITY_THRESHOLD, actor.user_id)
 
     def link_related(
         self, actor: UserAccount, ticket_id: UUID, related_ticket_id: UUID
@@ -188,18 +190,24 @@ class SimilarRequestService:
         source: TicketRecord,
         candidates: tuple[TicketRecord, ...],
         threshold: float,
+        principal_id: UUID,
     ) -> tuple[SimilarRequestMatch, ...]:
         return score_similar_requests(
             source,
             candidates,
             self._embeddings,
             threshold,
+            principal_id,
         )
 
     def _find_match(
-        self, source: TicketRecord, related: TicketRecord, threshold: float
+        self,
+        source: TicketRecord,
+        related: TicketRecord,
+        threshold: float,
+        principal_id: UUID,
     ) -> SimilarRequestMatch | None:
-        return next(iter(self._score(source, (related,), threshold)), None)
+        return next(iter(self._score(source, (related,), threshold, principal_id)), None)
 
     @staticmethod
     def _bounded_candidates(

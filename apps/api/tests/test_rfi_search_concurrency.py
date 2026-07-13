@@ -20,10 +20,15 @@ async def test_rfi_search_rejects_stale_snapshot_and_preserves_concurrent_update
     release = Event()
     original_embed = app.state.rfi_search_service._embeddings.embed
 
-    def delayed_embed(text: str, *, purpose: str) -> tuple[float, ...]:
+    def delayed_embed(
+        text: str, *, purpose: str, principal_id: object | None = None
+    ) -> tuple[float, ...]:
         started.set()
         assert release.wait(5)
-        return cast(tuple[float, ...], original_embed(text, purpose=purpose))
+        return cast(
+            tuple[float, ...],
+            original_embed(text, purpose=purpose, principal_id=principal_id),
+        )
 
     monkeypatch.setattr(app.state.rfi_search_service._embeddings, "embed", delayed_embed)
     async with AsyncClient(

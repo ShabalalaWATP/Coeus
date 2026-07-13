@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 import pytest
 from httpx import AsyncClient
 
@@ -24,6 +26,26 @@ async def test_liveness_returns_request_id(api_client: AsyncClient) -> None:
     assert response.headers["X-Request-ID"] == "req-live"
     assert response.json()["request_id"] == "req-live"
     assert response.json()["status"] == "ok"
+
+
+@pytest.mark.asyncio
+async def test_metrics_exposes_low_cardinality_admission_counters() -> None:
+    app = create_app()
+    app.state.admission_metrics.record("search", "denied_principal")
+    with app.state.provider_admission.reserve(uuid4()):
+        pass
+    from httpx import ASGITransport
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        response = await client.get("/api/v1/metrics")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/plain")
+    assert 'coeus_admission_total{resource="search",outcome="denied_principal"} 1' in response.text
+    assert "principal_id" not in response.text
+    assert 'coeus_admission_total{resource="provider",outcome="admitted"} 1' in response.text
 
 
 @pytest.mark.asyncio

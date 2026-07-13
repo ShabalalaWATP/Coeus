@@ -28,8 +28,9 @@ Controllers record low-cardinality counters by resource and outcome:
 `admitted`, `observed_denial`, `denied_deployment`, `denied_principal`,
 `denied_invalid`, `renewed` and `renewal_failed`. Principal identifiers are
 deliberately excluded from metric labels. Hosted telemetry exporters should
-scrape these counters through the application observability integration rather
-than adding actor labels.
+scrape `/api/v1/metrics`, which emits OpenMetrics-compatible counters without
+actor labels. Keep that route reachable only from the monitoring network at
+hosted ingress.
 
 ## Lease lifecycle
 
@@ -40,6 +41,12 @@ another worker has acquired freed capacity. Context exit releases an active
 lease and remains safe after expiry. Ticket-creation reservations are short and
 bounded by the provider timeout, then released as soon as the aggregate commit
 finishes.
+
+Remote embedding cache misses use the same provider reservation ledger as chat
+calls. The caller's principal is required before provider acquisition, a
+successful response commits one call, and provider failure refunds it. Cache
+hits make no remote call. Mock and local embeddings remain offline and do not
+consume an operator-funded provider reservation.
 
 Crash recovery relies on lease expiry. Operators must set lease duration above
 the normal p99 operation time and renew before expiry. A rising

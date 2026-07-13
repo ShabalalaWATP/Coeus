@@ -17,15 +17,19 @@ class RecordingEmbeddings:
     def __init__(self) -> None:
         self.calls: list[tuple[str, str]] = []
 
-    def embed(self, text: str, *, purpose: str) -> tuple[float, ...]:
+    def embed(
+        self, text: str, *, purpose: str, principal_id: object | None = None
+    ) -> tuple[float, ...]:
         self.calls.append((text, purpose))
         return (1.0,) * 384
 
 
 class SlowEmbeddings(RecordingEmbeddings):
-    def embed(self, text: str, *, purpose: str) -> tuple[float, ...]:
+    def embed(
+        self, text: str, *, purpose: str, principal_id: object | None = None
+    ) -> tuple[float, ...]:
         time.sleep(0.02)
-        return super().embed(text, purpose=purpose)
+        return super().embed(text, purpose=purpose, principal_id=principal_id)
 
 
 @pytest.mark.asyncio

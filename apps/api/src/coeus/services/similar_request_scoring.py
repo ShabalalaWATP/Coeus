@@ -55,6 +55,7 @@ def score_similar_requests(
     candidates: tuple[TicketRecord, ...],
     embeddings: EmbeddingService,
     threshold: float,
+    principal_id: UUID | None = None,
 ) -> tuple[SimilarRequestMatch, ...]:
     """Score open tickets with RRF over lexical and embedding similarity.
 
@@ -73,10 +74,16 @@ def score_similar_requests(
     if not scoped:
         return ()
     source_text = query_text(source.intake)
-    query_embedding = _embed_cached(embeddings, source_text, purpose="similar-request-query")
+    embedding_principal = principal_id or source.requester_user_id
+    query_embedding = _embed_cached(
+        embeddings,
+        source_text,
+        purpose="similar-request-query",
+        principal_id=embedding_principal,
+    )
     lexical_rank = _rank_lexical(source_text, scoped)
     vector_candidates = _vector_candidates(source_text, scoped)
-    vector_rank = _rank_vector(query_embedding, vector_candidates, embeddings)
+    vector_rank = _rank_vector(query_embedding, vector_candidates, embeddings, embedding_principal)
     available = max(1, int(bool(lexical_rank)) + int(bool(vector_rank)))
     matches = tuple(
         _match_for_candidate(
@@ -128,13 +135,17 @@ def _rank_vector(
     query_embedding: tuple[float, ...] | None,
     candidates: tuple[TicketRecord, ...],
     embeddings: EmbeddingService,
+    principal_id: UUID,
 ) -> dict[UUID, tuple[int, float]]:
     if query_embedding is None:
         return {}
     scored = []
     for ticket in candidates:
         vector = _embed_cached(
-            embeddings, query_text(ticket.intake), purpose="similar-request-candidate"
+            embeddings,
+            query_text(ticket.intake),
+            purpose="similar-request-candidate",
+            principal_id=principal_id,
         )
         if vector is not None:
             scored.append((cosine_similarity(query_embedding, vector), ticket))
@@ -146,7 +157,7 @@ def _rank_vector(
 
 
 def _embed_cached(
-    embeddings: EmbeddingService, text: str, *, purpose: str
+    embeddings: EmbeddingService, text: str, *, purpose: str, principal_id: UUID
 ) -> tuple[float, ...] | None:
     """Use the hardened cache while retaining compatibility with narrow test adapters."""
     cached = getattr(embeddings, "embed_cached", None)
@@ -155,8 +166,8 @@ def _embed_cached(
             Callable[..., tuple[float, ...] | None],
             cached,
         )
-        return cached_call(text, purpose=purpose)
-    return embeddings.embed(text, purpose=purpose)
+        return cached_call(text, purpose=purpose, principal_id=principal_id)
+    return embeddings.embed(text, purpose=purpose, principal_id=principal_id)
 
 
 def _match_for_candidate(

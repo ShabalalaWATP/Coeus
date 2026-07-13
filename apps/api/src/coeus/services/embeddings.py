@@ -5,9 +5,11 @@ from os import environ
 from pathlib import Path
 from threading import Event, RLock
 from typing import Protocol, cast
+from uuid import UUID
 
 import httpx
 
+from coeus.application.ports.admission import ProviderAdmission
 from coeus.core.config import Settings
 from coeus.core.logging import get_logger
 from coeus.domain.embedding_math import (
@@ -64,8 +66,11 @@ class EmbeddingService:
     a vector, which means lexical ranking remains the only active retrieval leg.
     """
 
-    def __init__(self, provider: EmbeddingProvider) -> None:
+    def __init__(
+        self, provider: EmbeddingProvider, admission: ProviderAdmission | None = None
+    ) -> None:
         self._provider = provider
+        self._admission = admission
         self._warned: set[str] = set()
         self._cache: OrderedDict[str, tuple[float, ...] | None] = OrderedDict()
         self._inflight: dict[str, Event] = {}
@@ -75,14 +80,25 @@ class EmbeddingService:
     def provider_name(self) -> str:
         return self._provider.name
 
-    def embed(self, text: str, *, purpose: str) -> tuple[float, ...] | None:
+    def embed(
+        self, text: str, *, purpose: str, principal_id: UUID | None = None
+    ) -> tuple[float, ...] | None:
         try:
-            return self._provider.embed(text)
+            if self._admission is None:
+                return self._provider.embed(text)
+            if principal_id is None:
+                raise EmbeddingUnavailable("embedding principal context is missing")
+            with self._admission.reserve(principal_id) as reservation:
+                vector = self._provider.embed(text)
+                reservation.commit()
+                return vector
         except EmbeddingUnavailable as exc:
             self._warn_once(str(exc), purpose)
             return None
 
-    def embed_cached(self, text: str, *, purpose: str) -> tuple[float, ...] | None:
+    def embed_cached(
+        self, text: str, *, purpose: str, principal_id: UUID | None = None
+    ) -> tuple[float, ...] | None:
         """Embed a normalised key once, coalescing concurrent cache misses."""
         normalised = " ".join(text.split()).casefold()
         digest = blake2b(normalised.encode("utf-8"), digest_size=16).hexdigest()
@@ -101,7 +117,7 @@ class EmbeddingService:
             with self._lock:
                 return self._cache.get(key)
         try:
-            vector = self.embed(text, purpose=purpose)
+            vector = self.embed(text, purpose=purpose, principal_id=principal_id)
             with self._lock:
                 self._cache[key] = vector
                 if len(self._cache) > EMBEDDING_CACHE_LIMIT:
@@ -209,7 +225,11 @@ class GeminiApiEmbeddingProvider:
         return normalise_vector(_coerce_vector(values))
 
 
-def build_embedding_service(settings: Settings, ai_models: ApiKeyProvider) -> EmbeddingService:
+def build_embedding_service(
+    settings: Settings,
+    ai_models: ApiKeyProvider,
+    provider_admission: ProviderAdmission | None = None,
+) -> EmbeddingService:
     provider: EmbeddingProvider
     if settings.embedding_provider == "local":
         provider = LocalFastEmbedProvider(settings.embedding_model_path)
@@ -217,7 +237,8 @@ def build_embedding_service(settings: Settings, ai_models: ApiKeyProvider) -> Em
         provider = GeminiApiEmbeddingProvider(settings, ai_models)
     else:
         provider = MockEmbeddingProvider()
-    return EmbeddingService(provider)
+    admission = provider_admission if settings.embedding_provider == "gemini_api" else None
+    return EmbeddingService(provider, admission)
 
 
 def _coerce_vector(values: object) -> list[float]:

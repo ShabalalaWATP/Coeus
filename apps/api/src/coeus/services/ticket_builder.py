@@ -1,3 +1,4 @@
+from coeus.application.ports.admission import ProviderAdmission
 from coeus.application.ports.workflow_transaction import WorkflowTransactionPort
 from coeus.core.config import HOSTED_ENVIRONMENTS, Settings
 from coeus.core.errors import AppError
@@ -6,6 +7,7 @@ from coeus.domain.tickets import IntakeDetails
 from coeus.integrations.llm_gateway import LlmCall, generate_text
 from coeus.persistence.state_store import StateStore
 from coeus.repositories.tickets import InMemoryTicketRepository
+from coeus.services.admission_metrics import AdmissionMetrics
 from coeus.services.ai_models import AiModelService
 from coeus.services.ai_provider_catalog import initial_api_keys, spec_for
 from coeus.services.audit import AuditLog
@@ -30,7 +32,10 @@ def build_ticket_services(
     state_store: StateStore | None = None,
     ai_models: AiModelService | None = None,
     transaction: WorkflowTransactionPort | None = None,
+    admission_metrics: AdmissionMetrics | None = None,
+    provider_admission: ProviderAdmission | None = None,
 ) -> TicketServices:
+    metrics = admission_metrics or AdmissionMetrics()
     repository = InMemoryTicketRepository(state_store)
     completeness = RequirementCompletenessService()
     tickets = TicketService(repository, completeness, audit_log, transaction)
@@ -41,8 +46,8 @@ def build_ticket_services(
         IntakeExtractionService(),
         ConfigurableIntakeProvider(settings, ai_models),
         audit_log,
-        _provider_admission(settings),
-        _ticket_admission(settings, repository),
+        provider_admission or build_provider_admission(settings, metrics),
+        _ticket_admission(settings, repository, metrics),
     )
     return TicketServices(
         tickets=tickets,
@@ -51,8 +56,9 @@ def build_ticket_services(
     )
 
 
-def _provider_admission(
+def build_provider_admission(
     settings: Settings,
+    metrics: AdmissionMetrics,
 ) -> ProviderAdmissionController | PostgresProviderAdmissionController:
     if settings.environment in HOSTED_ENVIRONMENTS:
         return PostgresProviderAdmissionController(
@@ -62,6 +68,7 @@ def _provider_admission(
             max_calls_per_principal=settings.provider_max_calls_per_principal,
             window_seconds=settings.provider_window_seconds,
             mode=settings.provider_admission_mode,
+            metrics=metrics,
         )
     return ProviderAdmissionController(
         max_concurrent=settings.provider_max_concurrent,
@@ -69,11 +76,12 @@ def _provider_admission(
         max_calls_per_principal=settings.provider_max_calls_per_principal,
         window_seconds=settings.provider_window_seconds,
         mode=settings.provider_admission_mode,
+        metrics=metrics,
     )
 
 
 def _ticket_admission(
-    settings: Settings, repository: InMemoryTicketRepository
+    settings: Settings, repository: InMemoryTicketRepository, metrics: AdmissionMetrics
 ) -> TicketAdmissionController | PostgresTicketAdmissionController:
     if settings.environment in HOSTED_ENVIRONMENTS:
         return PostgresTicketAdmissionController(
@@ -81,12 +89,14 @@ def _ticket_admission(
             max_retained=settings.ticket_max_retained,
             max_retained_per_principal=settings.ticket_max_retained_per_principal,
             mode=settings.ticket_admission_mode,
+            metrics=metrics,
         )
     return TicketAdmissionController(
         repository,
         max_retained=settings.ticket_max_retained,
         max_retained_per_principal=settings.ticket_max_retained_per_principal,
         mode=settings.ticket_admission_mode,
+        metrics=metrics,
     )
 
 

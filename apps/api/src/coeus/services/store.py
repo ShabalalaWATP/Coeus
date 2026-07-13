@@ -249,7 +249,9 @@ class StoreSearchService:
         if has_text_query(filters):
             query = filters.query.strip() if filters.query else ""
             query_embedding = (
-                self._embeddings.embed(query, purpose="store-browse-query")
+                self._embeddings.embed(
+                    query, purpose="store-browse-query", principal_id=actor.user_id
+                )
                 if self._embeddings is not None
                 else None
             )
