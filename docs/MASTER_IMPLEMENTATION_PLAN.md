@@ -14,7 +14,7 @@ controls, N-1 reconciliation and a ten-stage PostgreSQL browser workflow are
 green, and PR 109 protected GitHub gates passed on substantive candidate
 `0246d4d2`. Assigned-QC self-claim and object-aware audience enforcement are
 implemented with memory and PostgreSQL regression evidence. The remaining
-authorised staging checks remain open. The final local candidate passes 960
+authorised staging checks remain open. The final local candidate passes 962
 backend tests, 414 frontend tests and the ten-stage PostgreSQL browser workflow.
 The repository owner deferred the fresh sealed scan on 2026-07-13, so
 fresh-scan closure is not claimed. Local
