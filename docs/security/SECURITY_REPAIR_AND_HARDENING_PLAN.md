@@ -216,7 +216,7 @@ versioned ticket, Store projection, audit evidence and notification intent in
 one transaction. Durable delivery is retry-fenced and event-ID deduplicated.
 Ticket creation and single-ticket requester, staff and agent actions now commit
 ticket and audit together. Forced rollback and concurrent one-winner tests pass.
-Multi-ticket transactions, adapter contracts and restore evidence keep Phase 4 open.
+Paired links lock deterministically. Adapter contracts and restore evidence keep Phase 4 open.
 
 ### Phase 5: SOLID And Maintainability Consolidation
 

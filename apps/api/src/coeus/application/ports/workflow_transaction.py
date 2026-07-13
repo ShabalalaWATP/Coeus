@@ -18,7 +18,14 @@ class WorkflowTransactionPort(Protocol):
         self,
         expected: TicketRecord,
         updated: TicketRecord,
-        audit: WorkflowAuditIntent,
+        audits: tuple[WorkflowAuditIntent, ...],
+    ) -> bool: ...
+
+    def commit_ticket_pair(
+        self,
+        expected: tuple[TicketRecord, TicketRecord],
+        updated: tuple[TicketRecord, TicketRecord],
+        audits: tuple[WorkflowAuditIntent, ...],
     ) -> bool: ...
 
     def commit_qc_release(

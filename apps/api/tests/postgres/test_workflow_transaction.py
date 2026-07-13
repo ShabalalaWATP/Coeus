@@ -150,7 +150,7 @@ def test_ticket_update_commits_state_and_audit_as_one_unit(
     audit, _notification = _intents(ticket, product)
 
     assert PostgresWorkflowTransaction(postgres_database_url).commit_ticket_update(
-        ticket, updated, audit
+        ticket, updated, (audit,)
     )
 
     restored = InMemoryTicketRepository(
@@ -178,7 +178,7 @@ def test_ticket_update_rolls_back_state_when_audit_write_fails(
     monkeypatch.setattr(PostgresWorkflowTransaction, "_append_audit", fail_audit)
     with pytest.raises(RuntimeError, match="synthetic audit failure"):
         PostgresWorkflowTransaction(postgres_database_url).commit_ticket_update(
-            ticket, updated, audit
+            ticket, updated, (audit,)
         )
 
     restored = InMemoryTicketRepository(

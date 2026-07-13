@@ -295,8 +295,8 @@ async def test_manager_link_failure_rolls_back_related_ticket(
         user = await login(client, "user@example.test")
         source_id, target_id = await similar_ticket_pair(client, str(user["csrfToken"]))
         manager = await login(client, "rfa.manager@example.test")
-        tickets = app.state.ticket_services.tickets
-        original_save = tickets.save_system_update_if_current
+        mutations = app.state.ticket_services.mutations
+        original_save = mutations.save_if_current
         calls = 0
 
         def fail_second_save(expected: TicketRecord, proposed: TicketRecord) -> TicketRecord:
@@ -306,7 +306,7 @@ async def test_manager_link_failure_rolls_back_related_ticket(
                 raise RuntimeError("simulated source save failure")
             return cast(TicketRecord, original_save(expected, proposed))
 
-        monkeypatch.setattr(tickets, "save_system_update_if_current", fail_second_save)
+        monkeypatch.setattr(mutations, "save_if_current", fail_second_save)
         with pytest.raises(RuntimeError, match="simulated source save failure"):
             await client.post(
                 f"/api/v1/similar-requests/routing/{source_id}/link/{target_id}",

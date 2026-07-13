@@ -91,41 +91,41 @@ class SimilarRequestService:
             added_by_user_id=actor.user_id,
             created_at=datetime.now(UTC),
         )
-        updated = self._tickets.tickets.save_system_update_if_current(
+        proposed = replace(
             target,
-            replace(
-                target,
-                collaborators=(*target.collaborators, collaborator),
-                timeline=(
-                    *target.timeline,
-                    timeline(
-                        target.ticket_id,
-                        actor.user_id,
-                        "similar_request_joined",
-                        f"{actor.display_name} joined from {source.reference}.",
-                    ),
+            collaborators=(*target.collaborators, collaborator),
+            timeline=(
+                *target.timeline,
+                timeline(
+                    target.ticket_id,
+                    actor.user_id,
+                    "similar_request_joined",
+                    f"{actor.display_name} joined from {source.reference}.",
                 ),
             ),
         )
-        try:
-            self._audit_log.record(
-                "ticket_collaborator_added",
-                str(actor.user_id),
-                {
-                    "ticket_id": str(target.ticket_id),
-                    "collaborator_user_id": str(actor.user_id),
-                    "access": CollaboratorAccess.VIEWER.value,
-                },
-            )
-            self._audit_log.record(
-                "similar_request_joined",
-                str(actor.user_id),
-                {"ticket_id": str(source.ticket_id), "related_ticket_id": str(target.ticket_id)},
-            )
-        except Exception:
-            self._tickets.tickets.restore_system_update_if_current(updated, target)
-            raise
-        return updated
+        return self._tickets.mutations.save_with_audits_if_current(
+            target,
+            proposed,
+            actor,
+            (
+                (
+                    "ticket_collaborator_added",
+                    {
+                        "ticket_id": str(target.ticket_id),
+                        "collaborator_user_id": str(actor.user_id),
+                        "access": CollaboratorAccess.VIEWER.value,
+                    },
+                ),
+                (
+                    "similar_request_joined",
+                    {
+                        "ticket_id": str(source.ticket_id),
+                        "related_ticket_id": str(target.ticket_id),
+                    },
+                ),
+            ),
+        )
 
     def manager_matches(
         self, actor: UserAccount, ticket_id: UUID
@@ -168,18 +168,19 @@ class SimilarRequestService:
         if already:
             self._audit_link(actor, source, related, already_linked=True)
             return source
-        related_updated = self._save_related_link(related, source, actor)
-        try:
-            source_updated = self._save_related_link(source, related, actor)
-        except Exception:
-            self._tickets.tickets.restore_system_update_if_current(related_updated, related)
-            raise
-        try:
-            self._audit_link(actor, source_updated, related_updated, already_linked=False)
-        except Exception:
-            self._tickets.tickets.restore_system_update_if_current(source_updated, source)
-            self._tickets.tickets.restore_system_update_if_current(related_updated, related)
-            raise
+        source_proposed = self._related_link(source, related, actor)
+        related_proposed = self._related_link(related, source, actor)
+        source_updated, _related_updated = self._tickets.mutations.save_pair_audited(
+            (source, related),
+            (source_proposed, related_proposed),
+            "tickets_linked",
+            actor,
+            {
+                "ticket_id": str(source.ticket_id),
+                "related_ticket_id": str(related.ticket_id),
+                "already_linked": "false",
+            },
+        )
         return source_updated
 
     def _score(
@@ -222,22 +223,20 @@ class SimilarRequestService:
     def _is_open(ticket: TicketRecord) -> bool:
         return ticket.state in OPEN_SIMILARITY_STATES
 
-    def _save_related_link(
-        self, target: TicketRecord, related: TicketRecord, actor: UserAccount
+    @staticmethod
+    def _related_link(
+        target: TicketRecord, related: TicketRecord, actor: UserAccount
     ) -> TicketRecord:
-        return self._tickets.tickets.save_system_update_if_current(
+        return replace(
             target,
-            replace(
-                target,
-                related_ticket_ids=_append_uuid(target.related_ticket_ids, related.ticket_id),
-                timeline=(
-                    *target.timeline,
-                    timeline(
-                        target.ticket_id,
-                        actor.user_id,
-                        "related_ticket_linked",
-                        f"Linked as related to {related.reference}.",
-                    ),
+            related_ticket_ids=_append_uuid(target.related_ticket_ids, related.ticket_id),
+            timeline=(
+                *target.timeline,
+                timeline(
+                    target.ticket_id,
+                    actor.user_id,
+                    "related_ticket_linked",
+                    f"Linked as related to {related.reference}.",
                 ),
             ),
         )

@@ -12,9 +12,9 @@ Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVEL
 - Cut requester cancellation, no-match consent, collect choice and delivery
   confirmation over to the same hosted ticket-and-audit transaction while
   retaining the existing local compensation behaviour and API responses.
-- Extracted `TicketMutationService` for collision-safe creation plus intake,
-  RFI, routing, collaborator, analyst, manager, QC and feedback updates, removing
-  their save-then-audit compensation in hosted mode.
+- Extracted `TicketMutationService` for collision-safe creation, single-ticket
+  updates, deterministic paired links and batched join audits, removing hosted
+  save-then-audit compensation while preserving existing audit events.
 - Added hosted outbox delivery for product release notifications with strict
   payload validation, active-requester resolution, fenced retries and durable
   event-ID deduplication for both in-app and email records. Local and

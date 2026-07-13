@@ -57,7 +57,7 @@ class PostgresWorkflowTransaction:
         self,
         expected: TicketRecord,
         updated: TicketRecord,
-        audit: WorkflowAuditIntent,
+        audits: tuple[WorkflowAuditIntent, ...],
     ) -> bool:
         expected_payload = encode_value(expected)
         updated_payload = encode_value(updated)
@@ -67,7 +67,31 @@ class PostgresWorkflowTransaction:
             if ticket_id is None:
                 return False
             self._write_ticket(connection, updated_payload, ticket_id)
-            self._append_audit(connection, audit)
+            self._append_audits(connection, audits)
+        return True
+
+    def commit_ticket_pair(
+        self,
+        expected: tuple[TicketRecord, TicketRecord],
+        updated: tuple[TicketRecord, TicketRecord],
+        audits: tuple[WorkflowAuditIntent, ...],
+    ) -> bool:
+        expected_payloads = tuple(encode_value(ticket) for ticket in expected)
+        updated_by_id = {
+            _encoded_ticket_id(payload): payload for payload in map(encode_value, updated)
+        }
+        if set(updated_by_id) != {_encoded_ticket_id(payload) for payload in expected_payloads}:
+            raise ValueError("Updated ticket identities must match expected identities.")
+        ordered = tuple(sorted(expected_payloads, key=_encoded_ticket_id))
+        with self._engine.begin() as connection:
+            self._prepare(connection)
+            ticket_ids = tuple(self._lock_current(connection, payload) for payload in ordered)
+            if any(ticket_id is None for ticket_id in ticket_ids):
+                return False
+            for ticket_id in ticket_ids:
+                assert ticket_id is not None
+                self._write_ticket(connection, updated_by_id[ticket_id], ticket_id)
+            self._append_audits(connection, audits)
         return True
 
     def commit_qc_release(
@@ -146,6 +170,13 @@ class PostgresWorkflowTransaction:
                 "metadata": json.dumps(audit.metadata),
             },
         )
+
+    @classmethod
+    def _append_audits(
+        cls, connection: Connection, audits: tuple[WorkflowAuditIntent, ...]
+    ) -> None:
+        for audit in audits:
+            cls._append_audit(connection, audit)
 
     @staticmethod
     def _append_notification(

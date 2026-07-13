@@ -53,6 +53,9 @@ succeeding from one snapshot, leaving workflow and publication inconsistent.
 - Ticket creation has an explicit collision-safe create operation. Intake, RFI,
   routing, collaborator, assignment, analyst, manager, QC rejection and
   feedback mutations use the focused `TicketMutationService` facade.
+- Related-ticket linking uses a paired operation with deterministic ticket-ID
+  lock ordering. Customer join preserves both existing audit events in the
+  same single-ticket transaction.
 - A failed audit append rolls the complete unit back. Concurrent commits from
   the same expected ticket snapshot yield one winner and one conflict.
 - The hosted dispatcher validates the notification payload, resolves an active

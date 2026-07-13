@@ -52,8 +52,9 @@ collaborators, assignment, analyst work, manager review, QC rejection and
 feedback now use the single-ticket update operation.
 
 Memory, file and non-relational modes retain the characterised local
-compensation path. Symmetric related-ticket linking and remaining multi-record
-boundaries have not yet moved to the transaction port.
+compensation path. Symmetric related-ticket linking locks both aggregates in
+ticket-ID order and commits both links plus its audit event together. Remaining
+adapter-contract and restore evidence is still release-blocking.
 
 ## Operator checks
 

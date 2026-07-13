@@ -65,15 +65,58 @@ class TicketMutationService:
         actor: UserAccount | UUID,
         metadata: dict[str, str],
     ) -> TicketRecord:
+        return self.save_with_audits_if_current(
+            expected,
+            proposed,
+            actor,
+            ((event_type, metadata),),
+        )
+
+    def save_with_audits_if_current(
+        self,
+        expected: TicketRecord,
+        proposed: TicketRecord,
+        actor: UserAccount | UUID,
+        events: tuple[tuple[str, dict[str, str]], ...],
+    ) -> TicketRecord:
         if self._transaction is not None:
-            return self._commit(expected, proposed, event_type, actor, metadata)
+            return self._commit(expected, proposed, actor, events)
         updated = self.save_if_current(expected, proposed)
         try:
-            self._audit_log.record(event_type, str(_actor_id(actor)), metadata)
+            for event_type, metadata in events:
+                self._audit_log.record(event_type, str(_actor_id(actor)), metadata)
         except Exception:
             self.restore_if_current(updated, expected)
             raise
         return updated
+
+    def save_pair_audited(
+        self,
+        expected: tuple[TicketRecord, TicketRecord],
+        proposed: tuple[TicketRecord, TicketRecord],
+        event_type: str,
+        actor: UserAccount | UUID,
+        metadata: dict[str, str],
+    ) -> tuple[TicketRecord, TicketRecord]:
+        committed = tuple(replace(ticket, updated_at=datetime.now(UTC)) for ticket in proposed)
+        if self._transaction is not None:
+            audit = WorkflowAuditIntent(event_type, _actor_id(actor), metadata)
+            if not self._transaction.commit_ticket_pair(
+                expected, (committed[0], committed[1]), (audit,)
+            ):
+                raise _ticket_changed()
+            self._accept_many(committed)
+            return committed[0], committed[1]
+        first = self.save_if_current(expected[0], proposed[0])
+        try:
+            second = self.save_if_current(expected[1], proposed[1])
+            self._audit_log.record(event_type, str(_actor_id(actor)), metadata)
+        except Exception:
+            self.restore_if_current(first, expected[0])
+            if "second" in locals():
+                self.restore_if_current(second, expected[1])
+            raise
+        return first, second
 
     def restore_if_current(self, expected: TicketRecord, original: TicketRecord) -> bool:
         return self._repository.save_if_current(expected, original)
@@ -85,26 +128,39 @@ class TicketMutationService:
         self,
         expected: TicketRecord,
         proposed: TicketRecord,
-        event_type: str,
         actor: UserAccount | UUID,
-        metadata: dict[str, str],
+        events: tuple[tuple[str, dict[str, str]], ...],
     ) -> TicketRecord:
         committed = replace(proposed, updated_at=datetime.now(UTC))
-        audit = WorkflowAuditIntent(event_type, _actor_id(actor), metadata)
+        audits = tuple(
+            WorkflowAuditIntent(event_type, _actor_id(actor), metadata)
+            for event_type, metadata in events
+        )
         if not self._transaction or not self._transaction.commit_ticket_update(
-            expected, committed, audit
+            expected, committed, audits
         ):
-            raise AppError(
-                409,
-                "ticket_changed",
-                "The ticket changed while the operation was running. Retry the operation.",
-            )
+            raise _ticket_changed()
         with suppress(Exception):
             self.accept_committed(committed)
         with suppress(Exception):
             self._audit_log.refresh_from_store()
         return committed
 
+    def _accept_many(self, tickets: tuple[TicketRecord, ...]) -> None:
+        for ticket in tickets:
+            with suppress(Exception):
+                self.accept_committed(ticket)
+        with suppress(Exception):
+            self._audit_log.refresh_from_store()
+
 
 def _actor_id(actor: UserAccount | UUID) -> UUID:
     return actor.user_id if isinstance(actor, UserAccount) else actor
+
+
+def _ticket_changed() -> AppError:
+    return AppError(
+        409,
+        "ticket_changed",
+        "The ticket changed while the operation was running. Retry the operation.",
+    )
