@@ -5,6 +5,7 @@ from typing import Protocol
 from uuid import UUID, uuid4
 
 from coeus.application.ports.admission import ProviderAdmission, TicketAdmission
+from coeus.application.ports.tickets import TicketRepository
 from coeus.core.errors import AppError
 from coeus.core.resource_limits import (
     MAX_ASSISTANT_REPLY_BYTES,
@@ -22,7 +23,6 @@ from coeus.domain.tickets import (
     MessageAuthor,
     TicketRecord,
 )
-from coeus.repositories.tickets import InMemoryTicketRepository
 from coeus.services import conversation_lifecycle as lifecycle
 from coeus.services.audit import AuditLog
 from coeus.services.intake import IntakeAssistantProvider, IntakeExtractionService
@@ -52,7 +52,7 @@ class ConversationTicketService(Protocol):
 class ConversationService:
     def __init__(
         self,
-        repository: InMemoryTicketRepository,
+        repository: TicketRepository,
         tickets: ConversationTicketService,
         extractor: IntakeExtractionService,
         llm_provider: IntakeAssistantProvider,

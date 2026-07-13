@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
+from coeus.application.ports.tickets import TicketRepository
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
 from coeus.core.resource_limits import (
@@ -21,7 +22,6 @@ from coeus.domain.tickets import (
     IntakeDetails,
     TicketRecord,
 )
-from coeus.repositories.tickets import InMemoryTicketRepository
 from coeus.services.audit import AuditLog
 from coeus.services.intake import RequirementCompletenessService, merge_intake
 from coeus.services.prioritisation import (
@@ -55,7 +55,7 @@ class TicketPage:
 class TicketService:
     def __init__(
         self,
-        repository: InMemoryTicketRepository,
+        repository: TicketRepository,
         completeness: RequirementCompletenessService,
         audit_log: AuditLog,
     ) -> None:

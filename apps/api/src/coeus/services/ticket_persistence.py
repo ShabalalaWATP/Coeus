@@ -1,21 +1,21 @@
 from dataclasses import replace
 from datetime import UTC, datetime
 
+from coeus.application.ports.tickets import TicketRepository
 from coeus.core.errors import AppError
 from coeus.domain.auth import UserAccount
 from coeus.domain.tickets import TicketRecord
-from coeus.repositories.tickets import InMemoryTicketRepository
 from coeus.services.audit import AuditLog
 
 
-def save_ticket(repository: InMemoryTicketRepository, ticket: TicketRecord) -> TicketRecord:
+def save_ticket(repository: TicketRepository, ticket: TicketRecord) -> TicketRecord:
     updated = replace(ticket, updated_at=datetime.now(UTC))
     repository.save(updated)
     return updated
 
 
 def save_audited_ticket(
-    repository: InMemoryTicketRepository,
+    repository: TicketRepository,
     audit_log: AuditLog,
     ticket: TicketRecord,
     event_type: str,
@@ -31,7 +31,7 @@ def save_audited_ticket(
 
 
 def save_ticket_if_current(
-    repository: InMemoryTicketRepository,
+    repository: TicketRepository,
     expected: TicketRecord,
     proposed: TicketRecord,
 ) -> TicketRecord:

@@ -5,15 +5,15 @@ from types import TracebackType
 from typing import Literal
 from uuid import UUID
 
+from coeus.application.ports.tickets import TicketRepository
 from coeus.core.errors import AppError
 from coeus.domain.ticket_retention import ticket_consumes_capacity
-from coeus.repositories.tickets import InMemoryTicketRepository
 
 
 class TicketAdmissionController:
     def __init__(
         self,
-        repository: InMemoryTicketRepository,
+        repository: TicketRepository,
         *,
         max_retained: int,
         max_retained_per_principal: int,
