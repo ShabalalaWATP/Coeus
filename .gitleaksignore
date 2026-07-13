@@ -1,2 +1,4 @@
-# False positive: empty example variable followed by a public Bedrock model ID.
+# Historical false positive from the PR 109 squash commit. The current empty
+# example assignment uses an inline annotation, so future commits are stable.
 78bf90f02aa0d69f86205ab589cedbe26a96815c:.env.example:generic-api-key:40
+963a69ee2d649821afd4f799b35ef3eb531b5045:.env.example:generic-api-key:40
