@@ -2,7 +2,8 @@
 
 ## Status
 
-Implemented (2026-07-11). See ADR 0022.
+Implemented (2026-07-11), with the generic analyst seed refresh completed on
+2026-07-14. See ADR 0022 and ADR 0029.
 
 ## Problem
 
@@ -17,7 +18,7 @@ namespaces (`teams`, `team_calendar`, `user_profiles`) and seeded from the
 seed users (`repositories/teams_seed.py`):
 
 - `OrgTeam { team_id, name, kind: rfa|cm|jioc|qc, manager_user_ids,
-  member_user_ids, capability_team_id }`. Organisational teams hold people and
+member_user_ids, capability_team_id }`. Organisational teams hold people and
   access; the advisory capability catalogue stays separate, with the optional
   `capability_team_id` soft link for the UI.
 - `UserProfile { user_id, title, specialisms, bio }` — created for every
@@ -25,7 +26,7 @@ seed users (`repositories/teams_seed.py`):
   specialisms, bio per user in `repositories/teams_seed_profiles.py`);
   existing profiles are never overwritten during restart seeding.
 - `TeamCalendarEntry { entry_id, team_id, user_id, entry_date (ISO date),
-  end_date (inclusive ISO date, "" = single day), status, note }`. Statuses
+end_date (inclusive ISO date, "" = single day), status, note }`. Statuses
   cover the activities members block out: `available`, `on_task`, `leave`,
   `course`, `duty`, `appointment` and `other`. Block entries span
   `entry_date..end_date`; validation requires end >= start, no past starts,
@@ -45,8 +46,23 @@ seed users (`repositories/teams_seed.py`):
   bounded window, bounded note length) and audited.
 - Profiles are self-edited (`user:update_self`) with bounded fields, and
   readable by the owner, teammates and administrators only.
+- Profile titles, specialisms and biographies are descriptive only. They never
+  grant a role, clearance, product access, team membership or assignment
+  eligibility.
+- Analysts use one generic role and may belong to more than one organisational
+  team. Active status, that role and selected-team membership are the
+  authoritative assignment boundary.
 - Analyst candidates and assignments are restricted to the manager's
   organisational team for the approved RFA or collection route.
+- A team is capped at 50 people and directory search returns at most ten
+  matches. Server-side pagination is required before raising those bounds.
+
+## Synthetic workforce reconciliation
+
+Local startup reconciles recognised legacy seed identities and untouched seed
+profiles to the current fictional workforce. User IDs, credentials, credential
+versions, roles, clearance, account status, sessions and team relationships are
+preserved. Display names or profiles edited by a user are not overwritten.
 
 ## Availability
 

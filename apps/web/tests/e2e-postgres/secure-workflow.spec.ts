@@ -185,7 +185,7 @@ test("routes the request as the JIOC user", async ({ page }) => {
 test("assigns the request as the RFA manager", async ({ page }) => {
   await login(page, "rfa.manager@example.test", "RFA Queue");
   await page.getByRole("button", { name: new RegExp(reference) }).click();
-  await page.getByRole("checkbox", { name: "Analyst", exact: true }).check();
+  await page.getByRole("checkbox", { name: "Lewis Ferguson", exact: true }).check();
   await page.getByRole("button", { name: "Assign analysts" }).click();
   await expect(page.getByText("No tickets in this queue.")).toBeVisible();
 });

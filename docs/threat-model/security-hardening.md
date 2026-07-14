@@ -33,7 +33,7 @@ injection regression coverage.
 | QC approval assigns arbitrary active ACGs. | Auto-ingestion accepts only active ACGs that the QC actor can legitimately use, either through active ACG membership or a restricted-read role. |
 | Non-canonical owner-team input bypasses team permissions. | Product creation normalises managed owner teams and rejects unknown owner-team values before permission checks. |
 | Username spraying clears active lockouts. | Bounded login-attempt eviction skips unexpired lockout records and drops only unlocked or expired entries. |
-| Shared browser sessions expose cached protected data. | The app-level auth provider clears the React Query cache on login, logout and session expiry transitions. |
+| Shared browser sessions expose cached protected data. | The app-level auth provider clears the React Query cache on login, logout and session expiry transitions. Logout start and outcome use a non-secret persistent marker and browser storage events so every tab hides its session and cache before revocation is confirmed. Public and protected routes remain blocked while sign-out is unresolved. |
 
 ## Cross-Cutting Review
 

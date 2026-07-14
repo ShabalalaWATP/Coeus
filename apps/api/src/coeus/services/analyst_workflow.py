@@ -3,6 +3,7 @@ from uuid import UUID
 
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
+from coeus.domain.access import ProductStatus
 from coeus.domain.auth import UserAccount
 from coeus.domain.draft_audience import DraftAudienceReason
 from coeus.domain.enums import TicketState
@@ -128,9 +129,9 @@ class AnalystWorkflowService:
             )
         if any(link.product_id == product_id for link in ticket.linked_products):
             raise AppError(409, "product_already_linked", "Product is already linked.")
-        product = self._store.details.get_workflow_visible_product(
-            actor, product_id, DraftAudienceReason.ASSIGNED_ANALYST
-        )
+        product = self._store.details.get_visible_product(actor, product_id)
+        if product.metadata.status is not ProductStatus.PUBLISHED:
+            raise AppError(404, "product_not_found", "Product was not found.")
         link = linked_product_record(
             ticket.ticket_id,
             product.product_id,

@@ -20,6 +20,9 @@ administrator review endpoints under `/api/v1/admin/registrations`.
 - Memory exhaustion through unauthenticated submissions: pending requests
   are capped by `registration_max_pending`; excess submissions receive
   `429` and an audit event.
+- Argon2 CPU or memory exhaustion: registration hash work shares the bounded
+  password-work semaphore used by login and administration. A saturated pool
+  fails before a second Argon2 call and releases the registration reservation.
 - Privilege escalation through approval: approval always grants only the
   `User` role at clearance level 1; role changes remain an administrator
   action outside this flow. Review endpoints require `user:create`, and
@@ -40,3 +43,5 @@ administrator review endpoints under `/api/v1/admin/registrations`.
   Administrators must verify identity out of band before approving.
 - In-memory storage: pending requests are lost on restart, consistent with
   the local-first seed architecture.
+- The Argon2 limiter is per process. Hosted worker counts must be included in
+  the aggregate memory budget.

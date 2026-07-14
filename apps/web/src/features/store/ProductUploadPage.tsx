@@ -33,6 +33,7 @@ export default function ProductUploadPage() {
   const hasVisibleAcgs = acgs.length > 0;
   const hasSelectedVisibleAcg = acgs.some((acg) => acg.id === form.acgId);
   const csrfToken = session?.csrfToken ?? "";
+  const canPublish = session?.user.permissions.includes("product:publish") ?? false;
   const { actionError, clearActionError, failActionWith } = useActionError();
   const createMutation = useMutation({
     onError: failActionWith("Product registration failed. Check the metadata and try again."),
@@ -82,6 +83,7 @@ export default function ProductUploadPage() {
         acgsFailed={acgsQuery.isError}
         acgsLoading={acgsQuery.isLoading}
         actionError={actionError}
+        canPublish={canPublish}
         created={created}
         createPending={createMutation.isPending}
         form={form}

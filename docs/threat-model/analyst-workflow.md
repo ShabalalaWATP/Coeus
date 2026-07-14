@@ -19,8 +19,10 @@ to QC review.
 | Threat | Control in Sprint 9 |
 |---|---|
 | A customer assigns analysts or mutates analyst work. | Assignment requires RFA or collection assignment permissions. Analyst mutations require analyst permissions and assignment ownership. |
+| A descriptive analyst profile is treated as authority. | Assignment validates active status, the generic Analyst role and selected-team membership independently of display name, title, biography or specialisms. |
 | An analyst sees another analyst's task. | Workbench listing and task detail require the latest assignment to match the actor's user ID. |
-| A linked product bypasses ACG or clearance checks. | Product links call `StoreDetailService.get_visible_product`, reusing Store access policy. |
+| A linked product bypasses ACG or clearance checks. | Product links call `StoreDetailService.get_visible_product`, reusing Store access policy, and accept only published products. |
+| Linking a readable draft grants another task participant a new draft audience. | External Store links reject every draft, including creator-visible and relationship-visible drafts. Ticket-local analyst drafts remain in the dedicated versioned draft workflow, so a link cannot manufacture access authority. |
 | Draft product data leaks through published store search. | Sprint 9 draft products remain ticket-local and are not indexed or published. |
 | Incomplete work reaches QC. | QC submission requires at least one draft and all work packages marked complete. |
 | Notes or drafts are modified after QC submission. | Analyst mutations require `ANALYST_IN_PROGRESS`; submitted tasks enter `QC_REVIEW`. |

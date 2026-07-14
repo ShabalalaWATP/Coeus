@@ -22,6 +22,7 @@ async def test_product_with_multiple_acgs_is_visible_when_user_has_one_acg() -> 
         **product_payload(str(regional_acg.acg_id)),
         "title": "Mock Shared ACG Brief",
         "acgIds": [str(regional_acg.acg_id), str(collection_acg.acg_id)],
+        "status": "published",
     }
 
     async with AsyncClient(

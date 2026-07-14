@@ -99,6 +99,11 @@ DRAFT product, then completes in one compensated step:
   leg's assignments and move to `ANALYST_ASSIGNMENT`. The collect stays DRAFT
   and is never released to the customer. The QC approval's ACGs must include a
   group the RFA analysts hold or the linked collect is invisible to them
+
+Existing-product ingestion is a separate privileged path, but it cannot bypass
+QC-owned release accidentally: omitted creation status defaults to draft and
+explicit published creation requires `product:publish` in the shared service
+used by JSON and multipart routes.
   (covered by tests).
 
 Any failure after ingestion restores the original ticket and discards the

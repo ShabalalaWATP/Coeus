@@ -23,6 +23,7 @@ const editableFields = [
 type EditableFieldKey = (typeof editableFields)[number][0];
 
 type IntakePanelProps = {
+  canSubmit: boolean;
   isSaving: boolean;
   isSubmitting: boolean;
   isAddingAttachment: boolean;
@@ -33,6 +34,7 @@ type IntakePanelProps = {
 };
 
 export function IntakePanel({
+  canSubmit,
   isSaving,
   isSubmitting,
   isAddingAttachment,
@@ -144,14 +146,16 @@ export function IntakePanel({
                 <Save aria-hidden="true" size={18} />
                 Save
               </button>
-              <button
-                disabled={!ticket.isReadyForSubmission || isSubmitting}
-                onClick={onSubmit}
-                type="button"
-              >
-                <Play aria-hidden="true" size={18} />
-                Submit
-              </button>
+              {canSubmit ? (
+                <button
+                  disabled={!ticket.isReadyForSubmission || isSubmitting}
+                  onClick={onSubmit}
+                  type="button"
+                >
+                  <Play aria-hidden="true" size={18} />
+                  Submit
+                </button>
+              ) : null}
             </div>
           </form>
           <div className="missing-fields">

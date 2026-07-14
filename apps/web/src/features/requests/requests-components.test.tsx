@@ -182,6 +182,7 @@ test("shows empty intake state without attachment controls", () => {
   const onAddAttachment = vi.fn();
   render(
     <IntakePanel
+      canSubmit
       isAddingAttachment={false}
       isSaving={false}
       isSubmitting={false}
@@ -198,6 +199,7 @@ test("shows empty intake state without attachment controls", () => {
 test("renders blank editable fields when extraction has no value", () => {
   render(
     <IntakePanel
+      canSubmit
       isAddingAttachment={false}
       isSaving={false}
       isSubmitting={false}
@@ -254,6 +256,7 @@ test("sends explicit null only when a saved intake field is cleared", async () =
   const onSave = vi.fn();
   render(
     <IntakePanel
+      canSubmit
       isAddingAttachment={false}
       isSaving={false}
       isSubmitting={false}
@@ -287,6 +290,7 @@ test("sends explicit null only when a saved intake field is cleared", async () =
 test("hints when intake fields are below the minimum length", async () => {
   render(
     <IntakePanel
+      canSubmit
       isAddingAttachment={false}
       isSaving={false}
       isSubmitting={false}

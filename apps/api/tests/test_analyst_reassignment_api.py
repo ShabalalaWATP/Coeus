@@ -12,7 +12,7 @@ from test_analyst_api import _approved_ticket, _assigned_ticket, _draft_payload
 async def test_manager_can_reassign_in_progress_ticket_to_another_analyst() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     repository = app.state.access_services.repository
-    replacement = repository.get_user_by_username("analyst.maritime@example.test")
+    replacement = repository.get_user_by_username("analyst.2@example.test")
     assert replacement is not None
 
     async with AsyncClient(
@@ -29,7 +29,7 @@ async def test_manager_can_reassign_in_progress_ticket_to_another_analyst() -> N
             headers={"X-CSRF-Token": str(manager["csrfToken"])},
             json={"analystUserIds": [str(replacement.user_id)], "teamId": team_id},
         )
-        new_analyst = await login(client, "analyst.maritime@example.test")
+        new_analyst = await login(client, "analyst.2@example.test")
         tasks = await client.get("/api/v1/analyst/tasks")
         admin = await login(client, "admin@example.test")
         audit = await client.get("/api/v1/audit")
@@ -41,7 +41,7 @@ async def test_manager_can_reassign_in_progress_ticket_to_another_analyst() -> N
     ]
     # Existing work packages carry over; reassignment does not add more.
     assert reassigned.json()["workPackages"] == before.json()["workPackages"]
-    assert new_analyst["user"]["username"] == "analyst.maritime@example.test"
+    assert new_analyst["user"]["username"] == "analyst.2@example.test"
     assert [task["ticketId"] for task in tasks.json()["tasks"]] == [ticket_id]
     assert admin["user"]["username"] == "admin@example.test"
     assert "analyst_reassigned" in [event["eventType"] for event in audit.json()["events"]]

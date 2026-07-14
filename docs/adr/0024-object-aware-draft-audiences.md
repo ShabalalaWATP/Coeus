@@ -26,6 +26,11 @@ an action, but it cannot prove an actor-to-product relationship.
 - Removing an audience reason invalidates authority immediately. Signed tokens
   are reauthorised at redemption and cannot preserve revoked draft access.
 - Ambiguous backfill or projection failure denies access and blocks cutover.
+- A relationship-creating mutation cannot use the relationship it is about to
+  create as its own authority. External analyst Store links are limited to
+  currently visible published products. Ticket-local drafts use the dedicated
+  analyst draft workflow, because the current audience projection cannot prove
+  that an arbitrary readable draft belongs to the target ticket.
 
 The relational projection records assigned analysts, the manager who made each
 active assignment and the QC reviewer who atomically claimed the submission.
@@ -48,3 +53,6 @@ rework and revoked effectively on release, approval or another lifecycle exit.
 - Tests cover projected analyst, manager and QC access, competing QC claims,
   unrelated denial and revocation. ACG removal, clearance reduction,
   publication and archive remain part of the full Phase 2 acceptance matrix.
+- Supporting external draft links in future requires a target-ticket-scoped
+  source relationship and atomic projection update. Actor-level draft
+  visibility alone is insufficient.

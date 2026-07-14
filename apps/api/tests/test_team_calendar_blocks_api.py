@@ -134,9 +134,9 @@ async def test_every_new_activity_type_is_accepted_and_reduces_free_count() -> N
         headers = {"X-CSRF-Token": str(manager["csrfToken"])}
         members = {
             "analyst@example.test": "course",
-            "analyst.maritime@example.test": "duty",
-            "analyst.cyber@example.test": "appointment",
-            "analyst.geo@example.test": "other",
+            "analyst.2@example.test": "duty",
+            "analyst.3@example.test": "appointment",
+            "analyst.4@example.test": "other",
         }
         for username, status in members.items():
             created = await client.post(

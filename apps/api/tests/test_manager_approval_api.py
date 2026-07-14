@@ -200,13 +200,13 @@ async def test_multiple_analysts_share_the_task_and_reassignment_deactivates() -
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
         ticket_id = await analyst_assignment_ticket(client)
-        pair = _analyst_ids(app, "analyst@example.test", "analyst.geo@example.test")
+        pair = _analyst_ids(app, "analyst@example.test", "analyst.4@example.test")
         assigned = await _assign(client, ticket_id, pair)
         assert assigned.status_code == 200
         assert len(assigned.json()["assignments"]) == 2
 
         # Both assigned analysts see the shared task.
-        for username in ("analyst@example.test", "analyst.geo@example.test"):
+        for username in ("analyst@example.test", "analyst.4@example.test"):
             await login(client, username)
             tasks = await client.get("/api/v1/analyst/tasks")
             assert ticket_id in [task["ticketId"] for task in tasks.json()["tasks"]]
@@ -217,7 +217,7 @@ async def test_multiple_analysts_share_the_task_and_reassignment_deactivates() -
         assert reassigned.status_code == 200
         assert len(reassigned.json()["assignments"]) == 1
 
-        await login(client, "analyst.geo@example.test")
+        await login(client, "analyst.4@example.test")
         removed_tasks = await client.get("/api/v1/analyst/tasks")
         assert ticket_id not in [task["ticketId"] for task in removed_tasks.json()["tasks"]]
 

@@ -53,6 +53,7 @@ class UserAccount:
     is_active: bool
     clearance_level: int
     password_reset_required: bool = False
+    credential_version: int = 0
 
 
 @dataclass(frozen=True)
@@ -62,6 +63,7 @@ class SessionRecord:
     csrf_token: str
     expires_at: datetime
     created_at: datetime
+    credential_version: int = 0
 
 
 @dataclass(frozen=True)

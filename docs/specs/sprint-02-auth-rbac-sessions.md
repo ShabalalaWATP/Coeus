@@ -54,6 +54,15 @@ These are mock development credentials, not production credentials.
 - Repeated login failures trigger lockout.
 - Disabled users cannot log in.
 - Logout requires CSRF and revokes the session.
+- Session rotation atomically consumes its source. Concurrent logout, password
+  change or another rotation cannot recreate the consumed session.
+- Password changes and administrative resets advance a persisted credential
+  version. Sessions and stale old-password login attempts from an earlier
+  version cannot authorise requests.
+- Login, registration and administrative password work share the configured
+  bounded Argon2 capacity.
+- A browser logout failure hides protected data and blocks sign-in across app
+  routes until revocation is confirmed or retried.
 - Expired sessions return `401` with `session_expired`.
 - Direct API calls without permission return `403`.
 - Frontend direct unauthorised routes show `/forbidden`.

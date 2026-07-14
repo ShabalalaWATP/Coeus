@@ -19,6 +19,9 @@ Approved requests become active `User` accounts.
   to bound memory use.
 - Passwords are hashed with Argon2 at submission time; plaintext is never
   stored and hashes are never returned by any endpoint.
+- Registration hashing shares the same bounded Argon2 admission pool as login
+  verification and administrative credential operations. Saturation returns a
+  generic `429 password_capacity_exhausted` and releases the pending slot.
 - `GET /api/v1/admin/registrations` lists pending requests and requires the
   `user:create` permission.
 - `POST /api/v1/admin/registrations/{id}/approve` and

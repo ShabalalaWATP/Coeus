@@ -7,7 +7,9 @@ import { ApiError, apiRequestJson } from "../api-client/client";
 import { previewSession } from "../../test/test-utils";
 
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  window.localStorage.clear();
 });
 
 function AuthProbe() {
@@ -19,7 +21,9 @@ function AuthProbe() {
       <p>{session?.passwordResetRequired === true ? "reset-required" : "reset-not-required"}</p>
       <button
         type="button"
-        onClick={() => void login({ username: "admin@example.test", password: "mock" })}
+        onClick={() =>
+          void login({ username: "admin@example.test", password: "mock" }).catch(() => undefined)
+        }
       >
         Login
       </button>
@@ -68,6 +72,20 @@ test("marks expired backend sessions distinctly", async () => {
   await waitFor(() => expect(screen.getByText("expired")).toBeVisible());
 });
 
+test("treats a generic initial session lookup failure as anonymous", async () => {
+  const client = fakeClient({
+    getCurrentUser: vi.fn().mockRejectedValue(new Error("network unavailable")),
+  });
+
+  render(
+    <AuthProvider authApi={client}>
+      <AuthProbe />
+    </AuthProvider>,
+  );
+
+  await waitFor(() => expect(screen.getByText("anonymous")).toBeVisible());
+});
+
 test("login and logout update session state without local storage tokens", async () => {
   const user = userEvent.setup();
   const nextSession: AuthSession = {
@@ -94,6 +112,131 @@ test("login and logout update session state without local storage tokens", async
   expect(logout).toHaveBeenCalledWith(nextSession.csrfToken);
   expect(window.localStorage.getItem("token")).toBeNull();
   expect(window.localStorage.getItem("coeus_session")).toBeNull();
+});
+
+test("blocks login while a persisted logout remains unconfirmed", async () => {
+  window.localStorage.setItem("coeus.logout.pending", "unconfirmed");
+  const user = userEvent.setup();
+  const login = vi.fn().mockResolvedValue(previewSession);
+
+  render(
+    <AuthProvider authApi={fakeClient({ login })} initialSession={previewSession}>
+      <AuthProbe />
+    </AuthProvider>,
+  );
+
+  await user.click(screen.getByRole("button", { name: "Login" }));
+  expect(login).not.toHaveBeenCalled();
+  expect(screen.getByText("logout_unconfirmed")).toBeVisible();
+});
+
+test("confirms session absence when logout or its private refresh returns 401", async () => {
+  const user = userEvent.setup();
+  const direct401 = fakeClient({
+    getCurrentUser: vi.fn().mockRejectedValue(new ApiError(401, "not_authenticated", "Gone.")),
+    logout: vi.fn().mockRejectedValue(new ApiError(401, "not_authenticated", "Gone.")),
+  });
+  const first = render(
+    <AuthProvider authApi={direct401} initialSession={previewSession}>
+      <AuthProbe />
+    </AuthProvider>,
+  );
+  await user.click(screen.getByRole("button", { name: "Logout" }));
+  await waitFor(() => expect(screen.getByText("expired")).toBeVisible());
+  first.unmount();
+
+  const refreshed401 = fakeClient({
+    getCurrentUser: vi.fn().mockRejectedValue(new ApiError(401, "not_authenticated", "Gone.")),
+    logout: vi.fn().mockRejectedValue(new ApiError(500, "server_error", "Failed.")),
+  });
+  render(
+    <AuthProvider authApi={refreshed401} initialSession={previewSession}>
+      <AuthProbe />
+    </AuthProvider>,
+  );
+  await user.click(screen.getByRole("button", { name: "Logout" }));
+  await waitFor(() => expect(screen.getByText("expired")).toBeVisible());
+});
+
+test("confirms an already absent reloaded session without a CSRF token", async () => {
+  window.localStorage.setItem("coeus.logout.pending", "unconfirmed");
+  const user = userEvent.setup();
+  const getCurrentUser = vi.fn().mockRejectedValue(new ApiError(401, "not_authenticated", "Gone."));
+
+  render(
+    <AuthProvider authApi={fakeClient({ getCurrentUser })} initialSession={null}>
+      <AuthProbe />
+    </AuthProvider>,
+  );
+  await user.click(screen.getByRole("button", { name: "Logout" }));
+  await waitFor(() => expect(screen.getByText("expired")).toBeVisible());
+});
+
+test("keeps fail-closed in memory when browser storage is unavailable", async () => {
+  const getItem = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+    throw new Error("storage unavailable");
+  });
+  const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+    throw new Error("storage unavailable");
+  });
+  const user = userEvent.setup();
+  const logout = vi.fn().mockRejectedValue(new Error("network unavailable"));
+
+  render(
+    <AuthProvider
+      authApi={fakeClient({ getCurrentUser: vi.fn().mockRejectedValue(new Error()), logout })}
+      initialSession={previewSession}
+    >
+      <AuthProbe />
+    </AuthProvider>,
+  );
+  await user.click(screen.getByRole("button", { name: "Logout" }));
+  await waitFor(() => expect(screen.getByText("logout_unconfirmed")).toBeVisible());
+  expect(getItem).toHaveBeenCalled();
+  expect(setItem).toHaveBeenCalled();
+});
+
+test("synchronises logout state from another browser tab", () => {
+  const clearSensitiveCache = vi.fn();
+
+  render(
+    <AuthProvider
+      authApi={fakeClient({})}
+      clearSensitiveCache={clearSensitiveCache}
+      initialSession={previewSession}
+    >
+      <AuthProbe />
+    </AuthProvider>,
+  );
+
+  expect(screen.getByText("authenticated")).toBeVisible();
+  act(() => {
+    window.dispatchEvent(new StorageEvent("storage", { key: "unrelated", newValue: "pending" }));
+  });
+  expect(screen.getByText("authenticated")).toBeVisible();
+
+  act(() => {
+    window.dispatchEvent(
+      new StorageEvent("storage", { key: "coeus.logout.pending", newValue: "pending" }),
+    );
+  });
+  expect(screen.getByText("logging_out")).toBeVisible();
+  expect(screen.getByText("No user")).toBeVisible();
+
+  act(() => {
+    window.dispatchEvent(
+      new StorageEvent("storage", { key: "coeus.logout.pending", newValue: "unconfirmed" }),
+    );
+  });
+  expect(screen.getByText("logout_unconfirmed")).toBeVisible();
+
+  act(() => {
+    window.dispatchEvent(
+      new StorageEvent("storage", { key: "coeus.logout.pending", newValue: null }),
+    );
+  });
+  expect(screen.getByText("anonymous")).toBeVisible();
+  expect(clearSensitiveCache).toHaveBeenCalledTimes(3);
 });
 
 test("moves an authenticated session to expired when any API call returns 401", async () => {

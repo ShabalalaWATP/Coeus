@@ -34,6 +34,9 @@ LLM provider is deterministic and must not require network access.
 - `ticket:read_all` lets administrators read all tickets.
 - `ticket:add_information` lets a ticket owner add timeline information after
   submission.
+- Submission requires requester ownership or the explicit `ticket:transition`
+  permission. Editor collaboration and `ticket:write_all` do not imply this
+  lifecycle capability.
 - Missing or unauthorised ticket reads return not-found style errors.
 
 ## Acceptance Criteria
@@ -43,6 +46,7 @@ LLM provider is deterministic and must not require network access.
 - Extracted intake fields are shown in an editable panel.
 - Submit stays blocked until minimum required fields are present.
 - Submission moves the ticket to `RFI_SEARCHING` and records a search agent run.
+- A denied submission makes no ticket, timeline or audit mutation.
 - Additional information after submission appears in the ticket timeline.
 - Attachment metadata placeholders can be added without storing file bytes.
 - Prompt-injection tests prove user text cannot bypass RBAC, reveal hidden

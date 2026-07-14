@@ -3,7 +3,8 @@ import userEvent from "@testing-library/user-event";
 
 import ProductUploadPage from "./ProductUploadPage";
 import { getQueryClient, resetQueryClientForTests } from "../../app/query-client";
-import { renderWithProviders } from "../../test/test-utils";
+import type { AuthSession } from "../../lib/api-client/auth";
+import { previewSession, renderWithProviders } from "../../test/test-utils";
 
 beforeEach(() => {
   resetQueryClientForTests();
@@ -58,7 +59,8 @@ test("suggests metadata and submits a controlled product registration", async ()
 
   renderWithProviders(<ProductUploadPage />, "/store/upload");
   expect(await screen.findByLabelText("ACG")).toBeVisible();
-  expect(screen.getByLabelText("Status")).toHaveValue("published");
+  expect(screen.getByLabelText("Status")).toHaveValue("draft");
+  expect(screen.queryByRole("option", { name: "Published" })).not.toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "Suggest metadata" }));
   expect(await screen.findByDisplayValue("baltic, geographic, mock")).toBeVisible();
   expect(screen.getByLabelText("Suggested semantic labels")).toHaveTextContent("maritime");
@@ -98,6 +100,39 @@ test("shows the API validation message when product registration fails", async (
   await userEvent.click(screen.getByRole("button", { name: "Register product" }));
 
   expect(await screen.findByText("Invalid metadata.")).toBeVisible();
+});
+
+test("allows an authorised publisher to select the published state", async () => {
+  const publisherSession: AuthSession = {
+    ...previewSession,
+    user: {
+      ...previewSession.user,
+      permissions: [...previewSession.user.permissions, "product:publish"],
+    },
+  };
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(acgResponse()) })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          id: "product-published",
+          reference: "PROD-RELEASED",
+          title: "Mock Harbour Activity Brief",
+        }),
+    });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<ProductUploadPage />, "/store/upload", publisherSession);
+  await screen.findByRole("option", { name: "ACG-ALPHA-REGIONAL" });
+  await userEvent.selectOptions(screen.getByLabelText("ACG"), "acg-alpha");
+  await userEvent.selectOptions(screen.getByLabelText("Status"), "published");
+  await userEvent.click(screen.getByRole("button", { name: "Register product" }));
+
+  expect(await screen.findByText(/Created PROD-RELEASED/)).toBeVisible();
+  const [, init] = fetchMock.mock.calls.at(-1) as [string, RequestInit];
+  expect(init.body).toContain('"status":"published"');
 });
 
 test("requires an explicit visible ACG before product registration", async () => {

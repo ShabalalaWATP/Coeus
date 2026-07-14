@@ -119,6 +119,10 @@ export function TicketWorkspace({
     );
   const canWriteAll = session !== null && hasPermissions(session.user, ["ticket:write_all"]);
   const canEdit = ticket === undefined || isOwner || isEditor || canWriteAll;
+  const canSubmit =
+    ticket === undefined ||
+    isOwner ||
+    (session !== null && hasPermissions(session.user, ["ticket:transition"]));
   const canAddInformation =
     canEdit && session !== null && hasPermissions(session.user, ["ticket:add_information"]);
   const canRunRfiSearch =
@@ -173,6 +177,7 @@ export function TicketWorkspace({
                 Edit details manually
               </summary>
               <IntakePanel
+                canSubmit={canSubmit}
                 isAddingAttachment={pending.attaching}
                 isSaving={pending.saving}
                 isSubmitting={pending.submitting}
@@ -182,6 +187,18 @@ export function TicketWorkspace({
                 ticket={ticket}
               />
             </details>
+          ) : null}
+          {ticket && showIntakeTools && canSubmit && !canEdit ? (
+            <section className="workspace-panel" aria-label="Request submission">
+              <p>You can submit this request when all required details are complete.</p>
+              <button
+                disabled={!ticket.isReadyForSubmission || pending.submitting}
+                onClick={() => void actions.onSubmit()}
+                type="button"
+              >
+                {pending.submitting ? "Submitting..." : "Submit"}
+              </button>
+            </section>
           ) : null}
           {ticket && isOwner && similarNotice && SIMILAR_NOTICE_STATES.has(ticket.state) ? (
             <SimilarRequestNoticePanel

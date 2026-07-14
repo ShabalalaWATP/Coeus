@@ -184,6 +184,12 @@ flowchart LR
 
 A person can have multiple roles. The permission system must support multiple role assignments per user.
 
+Analyst disciplines are not roles or account types. All analysts use the single
+Intelligence Analyst role; bounded profile specialisms describe expertise and
+organisational team membership controls assignment eligibility. Local seed
+identities use neutral analyst logons so the workforce can grow without adding
+discipline-specific authorisation concepts. See ADR 0029.
+
 ### 7.2 RBAC permissions
 
 Minimum permissions:
@@ -2600,6 +2606,20 @@ migration, rollback and verification work is in
 `docs/security/SECURITY_REPAIR_AND_HARDENING_PLAN.md`.
 Current finding traceability is in
 `docs/security/SECURITY_REPAIR_CLOSURE_EVIDENCE_2026-07-13.md`.
+
+A later sealed standard review `87a10d13-14af-48cc-a361-72470abc8d8d` of
+revision `752d32a` validated eight additional application findings and is the
+current application baseline. The 2026-07-14 remediation slice adds atomic and
+credential-versioned revocation, shared Argon2 admission, create/publish and
+edit/transition separation, fail-closed browser logout, and published-only
+external analyst links. Its acceptance contract and evidence are in
+`docs/specs/security-review-remediation-2026-07-14.md` and
+`docs/security/SECURITY_REVIEW_REMEDIATION_2026-07-14.md`. This slice does not
+waive the Sprint 17 clean-candidate deep-scan requirement. Its final local
+gates pass 68 PostgreSQL and 915 non-PostgreSQL backend tests at 98.13 percent
+line and 95.01 percent branch coverage, plus 432 frontend tests at 98.51 percent
+line and 95.01 percent branch coverage. Dependency audits report no known
+vulnerabilities.
 
 ## 20. Definition of done for MVP
 

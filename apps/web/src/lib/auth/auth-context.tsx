@@ -14,17 +14,26 @@ import {
   defaultAuthApi,
   type AuthApi,
   type AuthSession,
+  type ChangePasswordRequest,
   type LoginRequest,
 } from "../api-client/auth";
 import { ApiError, setAuthEventHandlers } from "../api-client/client";
+import {
+  LOGOUT_MARKER_KEY,
+  logoutTransitionError,
+  readLogoutMarker,
+  writeLogoutMarker,
+} from "./logout-state";
 
-type AuthStatus = "loading" | "authenticated" | "anonymous" | "expired";
+type AuthStatus =
+  "loading" | "authenticated" | "anonymous" | "expired" | "logging_out" | "logout_unconfirmed";
 
 type AuthContextValue = {
   status: AuthStatus;
   session: AuthSession | null;
   login: (request: LoginRequest) => Promise<AuthSession>;
-  logout: () => Promise<void>;
+  changePassword: (request: ChangePasswordRequest) => Promise<AuthSession>;
+  logout: () => Promise<boolean>;
   refreshSession: () => Promise<AuthSession>;
 };
 
@@ -42,31 +51,44 @@ export function AuthProvider({
   authApi = defaultAuthApi,
   initialSession,
 }: AuthProviderProps) {
-  const [session, setSession] = useState<AuthSession | null>(initialSession ?? null);
-  const [status, setStatus] = useState<AuthStatus>(() =>
-    initialSession === undefined
+  const logoutWasPending = useRef(readLogoutMarker() !== null).current;
+  const [session, setSession] = useState<AuthSession | null>(
+    logoutWasPending ? null : (initialSession ?? null),
+  );
+  const [status, setStatus] = useState<AuthStatus>(() => {
+    if (logoutWasPending) {
+      return "logout_unconfirmed";
+    }
+    return initialSession === undefined
       ? "loading"
       : initialSession === null
         ? "anonymous"
-        : "authenticated",
-  );
+        : "authenticated";
+  });
   const statusRef = useRef(status);
+  const authEpochRef = useRef(0);
+  const logoutCsrfRef = useRef<string | undefined>(undefined);
+  const logoutPromiseRef = useRef<Promise<boolean> | null>(null);
   statusRef.current = status;
 
   useEffect(() => {
-    if (initialSession !== undefined) {
+    if (initialSession !== undefined || logoutWasPending) {
+      if (logoutWasPending) {
+        clearSensitiveCache();
+      }
       return;
     }
     let active = true;
+    const operationEpoch = authEpochRef.current;
     async function loadCurrentUser() {
       try {
         const currentSession = await authApi.getCurrentUser();
-        if (active) {
+        if (active && authEpochRef.current === operationEpoch) {
           setSession(currentSession);
           setStatus("authenticated");
         }
       } catch (error) {
-        if (active) {
+        if (active && authEpochRef.current === operationEpoch) {
           setSession(null);
           setStatus(
             error instanceof ApiError && error.code === "session_expired" ? "expired" : "anonymous",
@@ -79,7 +101,48 @@ export function AuthProvider({
     return () => {
       active = false;
     };
-  }, [authApi, clearSensitiveCache, initialSession]);
+  }, [authApi, clearSensitiveCache, initialSession, logoutWasPending]);
+
+  useEffect(() => {
+    function handleLogoutMarker(event: StorageEvent) {
+      if (event.key !== LOGOUT_MARKER_KEY) {
+        return;
+      }
+      authEpochRef.current += 1;
+      setSession(null);
+      clearSensitiveCache();
+      const nextStatus =
+        event.newValue === null
+          ? "anonymous"
+          : event.newValue.startsWith("pending")
+            ? "logging_out"
+            : "logout_unconfirmed";
+      statusRef.current = nextStatus;
+      setStatus(nextStatus);
+    }
+    window.addEventListener("storage", handleLogoutMarker);
+    return () => window.removeEventListener("storage", handleLogoutMarker);
+  }, [clearSensitiveCache]);
+
+  const markLogoutUnconfirmed = useCallback(
+    (csrfToken?: string) => {
+      authEpochRef.current += 1;
+      if (csrfToken !== undefined) {
+        logoutCsrfRef.current = csrfToken;
+      }
+      writeLogoutMarker("unconfirmed");
+      clearSensitiveCache();
+      setSession(null);
+      statusRef.current = "logout_unconfirmed";
+      setStatus("logout_unconfirmed");
+    },
+    [clearSensitiveCache],
+  );
+
+  const quarantineStaleSession = useCallback(
+    (staleSession: AuthSession) => markLogoutUnconfirmed(staleSession.csrfToken),
+    [markLogoutUnconfirmed],
+  );
 
   // Mirror the initial-load handling for calls made after login: a 401 from
   // any endpoint means the backend session is gone, and a password-change
@@ -90,6 +153,7 @@ export function AuthProvider({
         if (statusRef.current !== "authenticated") {
           return;
         }
+        authEpochRef.current += 1;
         setSession(null);
         setStatus("expired");
         clearSensitiveCache();
@@ -107,44 +171,161 @@ export function AuthProvider({
 
   const login = useCallback(
     async (request: LoginRequest) => {
+      if (
+        statusRef.current === "logging_out" ||
+        statusRef.current === "logout_unconfirmed" ||
+        readLogoutMarker() !== null
+      ) {
+        throw logoutTransitionError();
+      }
+      const operationEpoch = ++authEpochRef.current;
       const nextSession = await authApi.login(request);
+      if (authEpochRef.current !== operationEpoch) {
+        quarantineStaleSession(nextSession);
+        throw logoutTransitionError();
+      }
+      logoutCsrfRef.current = undefined;
+      writeLogoutMarker(null);
       clearSensitiveCache();
       setSession(nextSession);
+      statusRef.current = "authenticated";
       setStatus("authenticated");
       return nextSession;
     },
-    [authApi, clearSensitiveCache],
+    [authApi, clearSensitiveCache, quarantineStaleSession],
   );
 
-  const logout = useCallback(async () => {
-    const csrfToken = session?.csrfToken;
-    try {
-      if (csrfToken !== undefined) {
-        await authApi.logout(csrfToken);
+  const changePassword = useCallback(
+    async (request: ChangePasswordRequest) => {
+      if (
+        statusRef.current !== "authenticated" ||
+        session === null ||
+        readLogoutMarker() !== null
+      ) {
+        throw logoutTransitionError();
       }
-    } finally {
+      const operationEpoch = ++authEpochRef.current;
+      const nextSession = await authApi.changePassword(request, session.csrfToken);
+      if (authEpochRef.current !== operationEpoch) {
+        quarantineStaleSession(nextSession);
+        throw logoutTransitionError();
+      }
+      logoutCsrfRef.current = undefined;
+      writeLogoutMarker(null);
+      clearSensitiveCache();
+      setSession(nextSession);
+      statusRef.current = "authenticated";
+      setStatus("authenticated");
+      return nextSession;
+    },
+    [authApi, clearSensitiveCache, quarantineStaleSession, session],
+  );
+
+  const logout = useCallback(() => {
+    if (logoutPromiseRef.current !== null) {
+      return logoutPromiseRef.current;
+    }
+    authEpochRef.current += 1;
+    const operation = (async () => {
+      let csrfToken = logoutCsrfRef.current ?? session?.csrfToken;
+      writeLogoutMarker("pending");
       clearSensitiveCache();
       setSession(null);
-      setStatus("anonymous");
-    }
-  }, [authApi, clearSensitiveCache, session?.csrfToken]);
+      statusRef.current = "logging_out";
+      setStatus("logging_out");
+      if (csrfToken === undefined) {
+        const verificationEpoch = authEpochRef.current;
+        try {
+          const currentSession = await authApi.getCurrentUser();
+          if (authEpochRef.current !== verificationEpoch) {
+            markLogoutUnconfirmed();
+            return false;
+          }
+          csrfToken = currentSession.csrfToken;
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 401) {
+            if (authEpochRef.current !== verificationEpoch) {
+              markLogoutUnconfirmed();
+              return false;
+            }
+            logoutCsrfRef.current = undefined;
+            writeLogoutMarker(null);
+            statusRef.current = "expired";
+            setStatus("expired");
+            return false;
+          }
+          markLogoutUnconfirmed();
+          return false;
+        }
+      }
+      logoutCsrfRef.current = csrfToken;
+      try {
+        await authApi.logout(csrfToken);
+        logoutCsrfRef.current = undefined;
+        writeLogoutMarker(null);
+        statusRef.current = "anonymous";
+        setStatus("anonymous");
+        return true;
+      } catch {
+        const verificationEpoch = authEpochRef.current;
+        try {
+          const currentSession = await authApi.getCurrentUser();
+          if (authEpochRef.current !== verificationEpoch) {
+            markLogoutUnconfirmed();
+            return false;
+          }
+          logoutCsrfRef.current = currentSession.csrfToken;
+        } catch (refreshError) {
+          if (refreshError instanceof ApiError && refreshError.status === 401) {
+            if (authEpochRef.current !== verificationEpoch) {
+              markLogoutUnconfirmed();
+              return false;
+            }
+            logoutCsrfRef.current = undefined;
+            writeLogoutMarker(null);
+            statusRef.current = "expired";
+            setStatus("expired");
+            return false;
+          }
+        }
+        markLogoutUnconfirmed();
+        return false;
+      }
+    })();
+    logoutPromiseRef.current = operation;
+    void operation.finally(() => {
+      if (logoutPromiseRef.current === operation) {
+        logoutPromiseRef.current = null;
+      }
+    });
+    return operation;
+  }, [authApi, clearSensitiveCache, markLogoutUnconfirmed, session?.csrfToken]);
 
   const refreshSession = useCallback(async () => {
+    if (statusRef.current !== "authenticated" || readLogoutMarker() !== null) {
+      throw logoutTransitionError();
+    }
+    const operationEpoch = ++authEpochRef.current;
     const currentSession = await authApi.getCurrentUser();
+    if (authEpochRef.current !== operationEpoch) {
+      quarantineStaleSession(currentSession);
+      throw logoutTransitionError();
+    }
     setSession(currentSession);
     setStatus("authenticated");
     return currentSession;
-  }, [authApi]);
+  }, [authApi, quarantineStaleSession]);
 
   const value = useMemo(
     () => ({
       status,
       session,
       login,
+      changePassword,
       logout,
       refreshSession,
     }),
-    [login, logout, refreshSession, session, status],
+    [changePassword, login, logout, refreshSession, session, status],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

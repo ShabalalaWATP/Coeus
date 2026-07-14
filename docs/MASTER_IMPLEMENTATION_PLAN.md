@@ -20,6 +20,30 @@ The repository owner deferred the fresh sealed scan on 2026-07-13, so
 fresh-scan closure is not claimed. Local
 development remains supported; GCP and Kubernetes remain migration targets.
 
+A sealed standard review `87a10d13-14af-48cc-a361-72470abc8d8d` of later
+revision `752d32a` validated eight additional application findings and is the
+current application baseline. The 2026-07-14 remediation candidate
+separates create/publish and edit/transition authority, makes credential and
+session revocation monotonic, bounds shared Argon2 work, makes failed logout
+fail closed in the browser, and prevents draft links creating audience
+authority. The final local gates pass 68 PostgreSQL and 915 non-PostgreSQL
+backend tests at 98.13 percent line and 95.01 percent branch coverage, plus 432
+frontend tests at 98.51 percent line and 95.01 percent branch coverage.
+Dependency audits report no known vulnerabilities. The immutable-candidate
+deep scan and authorised staging evidence remain open, so release closure is
+not claimed.
+
+An approved local-demo workforce refinement is tracked separately from Sprint
+17 security closure. It keeps one generic Analyst role, replaces specialist
+analyst seed identities with neutral numbered logons, adds realistic but wholly
+synthetic Scottish-footballer-named profiles, preserves team-authoritative
+assignment and reconciles existing local seed state without a destructive
+reset. Its contract is `docs/specs/generic-analyst-seed-personas.md` and its
+architecture decision is ADR 0029. The slice is implemented: 68 PostgreSQL and
+919 non-PostgreSQL backend tests pass at 98.13 per cent line and 95.04 per cent
+branch coverage; the full frontend suite passes at 98.51 per cent line and
+95.01 per cent branch coverage, and live local reconciliation was verified.
+
 ## Delivery Ledger
 
 | Sprint | Scope                                                                                                                                                                                                                                                                                                     | Status                       | Verification                                                                                                                                                                                                         |
@@ -41,7 +65,7 @@ development remains supported; GCP and Kubernetes remain migration targets.
 | 14B    | Remediate the sealed 16-finding baseline and its verification findings.                                                                                                                                                                                                                                    | Superseded by Sprint 17      | The original baseline was closed, but deep scan `abf0e143` of later revision `3e27c82` established the current 12-finding baseline.                                                                                  |
 | 15     | JIOC workflow restructure: role renames plus JIOC Team Member, JIOC routing queue, customer collect choice, manager approval chain, QC-owned release with the CM-to-RFA analysed-collect leg, multi-analyst assignment, teams/profiles/availability calendars, and the permission-refresh-on-restore fix. | Implementation delivered     | Backend and web suites passed; the complete eight-role real-browser acceptance evidence is carried into Sprint 17. See ADR 0022 and the workflow specifications.                                                     |
 | 16     | Cross-role desktop usability, multi-provider AI administration and documentation/deployment accuracy.                                                                                                                                                                                                     | Complete                     | PRs #98-#100 passed protected GitHub checks; coverage remained above 95%; current guides distinguish the supported local runtime from GCP/Kubernetes migration targets.                                              |
-| 17     | Close the current security baseline, introduce secure control ownership, improve SOLID boundaries and reconcile all active documentation without breaking intended behaviour.                                                                                                                            | Implementation in progress   | Local controls, logical restore, N-1 reconciliation, final PostgreSQL browser evidence and protected GitHub gates pass. Assigned-QC claims and audience isolation are implemented; external staging remains open. The owner deferred the fresh sealed scan, so scan closure remains unclaimed. |
+| 17     | Close the current security baseline, introduce secure control ownership, improve SOLID boundaries and reconcile all active documentation without breaking intended behaviour.                                                                                                                            | Implementation in progress   | Earlier local controls, logical restore, N-1 reconciliation, PostgreSQL browser evidence and protected GitHub gates pass. The 2026-07-14 eight-finding remediation candidate passes full local coverage and dependency gates; external staging and a fresh sealed deep scan remain open. |
 
 ## Sprint 11 Delivered Scope
 

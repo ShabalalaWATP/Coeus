@@ -13,7 +13,9 @@ version draft products and submit completed work to QC review.
 - Analyst task records on the ticket aggregate.
 - Work package checklist creation and completion.
 - Analyst note creation with audit trail.
-- Linking existing Intelligence Store products after product access checks.
+- Linking currently visible, published Intelligence Store products after
+  product access checks. Ticket-local drafts use the analyst draft workflow and
+  cannot be linked as external Store sources.
 - Draft product versions with metadata, content and optional asset metadata.
 - Analyst workbench frontend at `/analyst/workbench` and
   `/analyst/tasks/:taskId`.
@@ -29,10 +31,13 @@ version draft products and submit completed work to QC review.
 ## Acceptance Criteria
 
 - Only RFA or collection managers can assign analysts for approved routed work.
-- Assigned users must be active Intelligence Analyst seed users.
+- Assigned users must be active, hold the generic Intelligence Analyst role and
+  belong to the selected organisational team. Profile titles and specialisms
+  are descriptive and cannot grant assignment authority.
 - Analysts can list and open only tasks assigned to them.
 - Analysts can add timestamped notes only while the task is in progress.
-- Analysts can link only products visible through existing Store access policy.
+- Analysts can link only published products visible through existing Store
+  access policy.
 - Draft products are versioned and can include asset metadata.
 - Submission to QC requires at least one draft and completed work packages.
 - Submission transitions the ticket to `QC_REVIEW`.

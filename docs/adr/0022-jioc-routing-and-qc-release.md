@@ -50,6 +50,10 @@ manager review of analyst work before QC.
    team calendar; managers write for their own team; a deterministic
    availability service combines the calendar with live analyst assignments so
    assignment decisions can see who is free.
+7. **Creation and publication are separate capabilities.** Existing-product
+   creation defaults to draft. An explicit published initial state requires
+   `product:publish`, including through multipart upload. Manager upload rights
+   therefore cannot bypass QC-owned release.
 
 ## Consequences
 

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { createBrowserRouter } from "react-router-dom";
 
 import { DefaultRouteRedirect } from "../components/auth/DefaultRouteRedirect";
+import { AuthTransitionBoundary } from "../components/auth/AuthTransitionBoundary";
 import { ProtectedRoute } from "../components/auth/ProtectedRoute";
 import { AuthenticatedShell } from "../components/layout/AuthenticatedShell";
 import { RouteFallback } from "../components/layout/RouteFallback";
@@ -39,19 +40,23 @@ function protectedPage(element: React.ReactNode, requiredPermissions: readonly P
   );
 }
 
+function publicPage(element: React.ReactNode) {
+  return <AuthTransitionBoundary>{withSuspense(element)}</AuthTransitionBoundary>;
+}
+
 export function createAppRouter() {
   return createBrowserRouter([
     {
       path: "/login",
-      element: withSuspense(<LoginPage />),
+      element: publicPage(<LoginPage />),
     },
     {
       path: "/forbidden",
-      element: withSuspense(<ForbiddenPage />),
+      element: publicPage(<ForbiddenPage />),
     },
     {
       path: "/session-expired",
-      element: withSuspense(<SessionExpiredPage />),
+      element: publicPage(<SessionExpiredPage />),
     },
     {
       path: "/",

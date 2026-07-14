@@ -15,6 +15,7 @@ from coeus.services.analyst_workflow import (
 )
 from rfi_search_helpers import login, submitted_ticket
 from routing_helpers import assignment_team_id
+from store_api_helpers import product_payload
 from test_analyst_api import _draft_payload
 
 
@@ -31,25 +32,28 @@ async def test_every_task_response_reauthorises_linked_products() -> None:
     access = app.state.access_services.repository
     original_user = access.get_user_by_username("analyst@example.test")
     assert original_user is not None
-    product = next(
-        item
-        for item in app.state.store_services.repository.list_products()
-        if item.metadata.title == "Assessment Draft Pack"
-    )
-    product_id = str(product.product_id)
     replacement = next(
         user
         for user in access.list_users()
         if RoleName.INTELLIGENCE_ANALYST in user.roles
         and user.user_id != original_user.user_id
-        and user.username == "analyst.cyber@example.test"
-        and not _can_read_product(app, user, product.product_id)
+        and user.username == "analyst.3@example.test"
     )
+    original_acg_ids = access.active_acg_ids_for_user(original_user.user_id)
+    replacement_acg_ids = access.active_acg_ids_for_user(replacement.user_id)
+    product_acg_id = next(iter(original_acg_ids - replacement_acg_ids))
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
         ticket_id = await _collection_assigned_ticket(client, app)
+        product_id = await _create_published_product(
+            client,
+            app,
+            original_user,
+            "Mock Reauthorised Published Product",
+            product_acg_id,
+        )
         original = await login(client, "analyst@example.test")
         linked = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/products",
@@ -119,25 +123,111 @@ def _can_read_product(app: FastAPI, user: UserAccount, product_id: UUID) -> bool
     return True
 
 
+async def _create_published_product(
+    client: AsyncClient, app: FastAPI, actor: UserAccount, title: str, acg_id: UUID | None = None
+) -> str:
+    access = app.state.access_services.repository
+    target_acg_id = acg_id or next(iter(access.active_acg_ids_for_user(actor.user_id)))
+    session = await login(client, "admin@example.test")
+    response = await client.post(
+        "/api/v1/store/products",
+        headers={"X-CSRF-Token": str(session["csrfToken"])},
+        json={
+            **product_payload(str(target_acg_id)),
+            "title": title,
+            "description": "Synthetic published product for visibility regression coverage.",
+            "status": "published",
+        },
+    )
+    assert response.status_code == 201, response.text
+    return str(response.json()["id"])
+
+
+@pytest.mark.asyncio
+async def test_linking_cannot_create_its_own_draft_audience_authority() -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    access = app.state.access_services.repository
+    analyst = access.get_user_by_username("analyst@example.test")
+    creator = access.get_user_by_username("rfa.manager@example.test")
+    assert analyst is not None
+    assert creator is not None
+    shared_acg_ids = access.active_acg_ids_for_user(analyst.user_id).intersection(
+        access.active_acg_ids_for_user(creator.user_id)
+    )
+    shared_acg = next(acg for acg in access.list_acgs() if acg.acg_id in shared_acg_ids)
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        ticket_id = await _collection_assigned_ticket(client, app)
+        admin_session = await login(client, "admin@example.test")
+        published = await client.post(
+            "/api/v1/store/products",
+            headers={"X-CSRF-Token": str(admin_session["csrfToken"])},
+            json={
+                **product_payload(str(shared_acg.acg_id)),
+                "title": "Mock Readable Published Product",
+                "description": "Synthetic published product visible to the assigned analyst.",
+                "status": "published",
+            },
+        )
+        readable_product_id = published.json()["id"]
+        creator_session = await login(client, creator.username)
+        created = await client.post(
+            "/api/v1/store/products",
+            headers={"X-CSRF-Token": str(creator_session["csrfToken"])},
+            json={
+                **product_payload(str(shared_acg.acg_id)),
+                "title": "Mock Unrelated Same-ACG Draft",
+                "description": "Synthetic draft hidden from the assigned analyst.",
+                "status": "draft",
+            },
+        )
+        product_id = created.json()["id"]
+
+        analyst_session = await login(client, analyst.username)
+        before = await client.get(f"/api/v1/store/products/{product_id}")
+        denied = await client.post(
+            f"/api/v1/analyst/tasks/{ticket_id}/products",
+            headers={"X-CSRF-Token": str(analyst_session["csrfToken"])},
+            json={"productId": product_id},
+        )
+        after = await client.get(f"/api/v1/store/products/{product_id}")
+        allowed = await client.post(
+            f"/api/v1/analyst/tasks/{ticket_id}/products",
+            headers={"X-CSRF-Token": str(analyst_session["csrfToken"])},
+            json={"productId": readable_product_id},
+        )
+
+    ticket = app.state.ticket_services.tickets._repository.get(UUID(ticket_id))
+    assert published.status_code == 201
+    assert created.status_code == 201
+    assert before.status_code == 404
+    assert denied.status_code == 404
+    assert denied.json()["error"]["code"] == "product_not_found"
+    assert after.status_code == 404
+    assert ticket is not None
+    assert all(str(link.product_id) != product_id for link in ticket.linked_products)
+    assert allowed.status_code == 200
+    assert readable_product_id in {item["productId"] for item in allowed.json()["linkedProducts"]}
+
+
 @pytest.mark.asyncio
 async def test_analyst_task_and_link_reauthorisation_work_is_bounded() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     actor = app.state.access_services.repository.get_user_by_username("analyst@example.test")
     assert actor is not None
-    product = next(
-        item
-        for item in app.state.store_services.repository.list_products()
-        if item.metadata.title == "Assessment Draft Pack"
-    )
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
         ticket_id = await _collection_assigned_ticket(client, app)
+        product_id = await _create_published_product(
+            client, app, actor, "Mock Bounded Published Product"
+        )
         session = await login(client, actor.username)
         linked = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/products",
             headers={"X-CSRF-Token": str(session["csrfToken"])},
-            json={"productId": str(product.product_id)},
+            json={"productId": product_id},
         )
     assert linked.status_code == 200
 

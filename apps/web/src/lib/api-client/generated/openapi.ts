@@ -3949,7 +3949,7 @@ export interface components {
       sourceType: string;
       /**
        * Status
-       * @default published
+       * @default draft
        */
       status: string;
       /** Summary */

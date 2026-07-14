@@ -25,6 +25,11 @@ access through an older token.
 | `413` | Upload wire bytes or declared size exceed the supported boundary | Keep the form state and select a smaller synthetic file |
 | `429` | Principal or deployment admission is saturated | Honour `Retry-After` when present; do not fan out retries or change identifiers to evade the limit |
 
+Authentication endpoints may return `429 password_capacity_exhausted`. The
+capacity is shared across login verification, registration hashing, password
+change and administrative reset. Treat the response as non-enumerating, use
+bounded backoff and never switch usernames or endpoints to evade it.
+
 Validation failures use `422`; authentication and CSRF failures use `401` or
 `403`; hidden object denials may intentionally use `404`. Error bodies expose a
 stable code and safe message, not database detail, payloads or secrets.

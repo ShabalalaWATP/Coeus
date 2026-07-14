@@ -87,6 +87,14 @@ class AuthService:
             attempts_reset = self._login_attempts.reset(username)
             session_token, session = self._create_session(user)
             new_session = session
+            current_user = self._users.get_by_id(user.user_id)
+            if (
+                current_user is None
+                or not current_user.is_active
+                or current_user.credential_version != user.credential_version
+                or current_user.password_hash != user.password_hash
+            ):
+                raise self._auth_failed()
             self._audit_log.record("login_success", str(user.user_id))
         except Exception:
             if new_session is not None:
@@ -107,12 +115,10 @@ class AuthService:
 
     def logout(self, session_id: str) -> None:
         authenticated = self.require_session(session_id)
-        self._sessions.delete(authenticated.session.session_id)
-        try:
-            self._audit_log.record("logout", str(authenticated.user.user_id))
-        except Exception:
-            self._sessions.save(authenticated.session)
-            raise
+        deleted = self._sessions.delete(authenticated.session.session_id)
+        if deleted is None:
+            raise AppError(401, "not_authenticated", "Authentication is required.")
+        self._audit_log.record("logout", str(authenticated.user.user_id))
 
     def require_session(self, session_id: str | None) -> AuthenticatedSession:
         if session_id is None or session_id == "":
@@ -125,6 +131,9 @@ class AuthService:
             raise AppError(401, "session_expired", "Session expired.")
         user = self._users.get_by_id(session.user_id)
         if user is None or not user.is_active:
+            self._sessions.delete(session.session_id)
+            raise AppError(401, "not_authenticated", "Authentication is required.")
+        if session.credential_version != user.credential_version:
             self._sessions.delete(session.session_id)
             raise AppError(401, "not_authenticated", "Authentication is required.")
         return AuthenticatedSession(session=session, user=user)
@@ -148,8 +157,13 @@ class AuthService:
 
     def rotate_session(self, session_id: str) -> tuple[str, SessionRecord]:
         authenticated = self.require_session(session_id)
-        self._sessions.delete(authenticated.session.session_id)
-        return self._create_session(authenticated.user)
+        session_token, replacement = self._prepare_session(authenticated.user)
+        if not self._sessions.replace_if_current(
+            authenticated.session.session_id,
+            replacement,
+        ):
+            raise AppError(401, "not_authenticated", "Authentication is required.")
+        return session_token, replacement
 
     def change_password(
         self, session_id: str | None, current_password: str, new_password: str
@@ -167,6 +181,7 @@ class AuthService:
             user,
             password_hash=self._password_hasher.hash(new_password),
             password_reset_required=False,
+            credential_version=user.credential_version + 1,
         )
         attempts_reset = None
         revoked_sessions: tuple[SessionRecord, ...] = ()
@@ -203,6 +218,11 @@ class AuthService:
         return self._audit_log
 
     def _create_session(self, user: UserAccount) -> tuple[str, SessionRecord]:
+        session_token, session = self._prepare_session(user)
+        self._sessions.save(session)
+        return session_token, session
+
+    def _prepare_session(self, user: UserAccount) -> tuple[str, SessionRecord]:
         now = datetime.now(UTC)
         session_token = token_urlsafe(32)
         session = SessionRecord(
@@ -211,8 +231,8 @@ class AuthService:
             csrf_token=token_urlsafe(32),
             created_at=now,
             expires_at=now + timedelta(seconds=self._settings.session_ttl_seconds),
+            credential_version=user.credential_version,
         )
-        self._sessions.save(session)
         return session_token, session
 
     def throttle_source(self, client_ip: str | None) -> None:

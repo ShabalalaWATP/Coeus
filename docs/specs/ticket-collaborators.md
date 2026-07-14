@@ -20,10 +20,15 @@ users can either edit the request alongside them or follow it read-only.
 - Tagged users see the ticket in `GET /api/v1/tickets` regardless of their
   role. Editors can use ticket chat, edit intake and add timeline
   information, still subject to their own permissions (for example chat
-  requires `chat:use`). Viewers can only read.
+  requires `chat:use`). Editors cannot submit the request merely because they
+  can edit it. Submission is reserved to the requester or an actor with the
+  explicit `ticket:transition` permission. Viewers can only read.
 - Tagging and untagging create timeline entries and audit events.
 - If collaborator add or remove audit recording fails after the ticket is
   saved, the original ticket record is restored and the caller must retry.
+- The web workspace exposes submission independently from editing: editors and
+  `ticket:write_all` actors do not receive it, while a transition-authorised
+  reviewer can submit a complete visible ticket without gaining edit controls.
 
 ## Out of scope
 

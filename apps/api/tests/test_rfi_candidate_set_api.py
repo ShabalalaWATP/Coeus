@@ -22,6 +22,7 @@ def _filler_payload(acg_id: str, index: int) -> dict[str, object]:
         "handlingCaveats": ["MOCK DATA ONLY"],
         "tags": ["filler"],
         "acgIds": [acg_id],
+        "status": "published",
         "assets": [
             {
                 "name": "filler.pdf",

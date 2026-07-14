@@ -36,6 +36,9 @@ download tokens only, not real product bytes.
 - `product:read` is required to search and view product details.
 - `product:create_existing` plus the relevant team permission is required to add
   existing products unless the actor has `system:configure`.
+- New products default to `draft`. An explicit initial `published` state also
+  requires `product:publish`; `archived` and other initial states are rejected.
+  The rule is shared by JSON and multipart creation paths.
 - Users only see products whose active ACGs intersect their active ACG
   memberships, unless they have `product:read_restricted`.
 - Draft products require `product:manage_assets`; archived products are hidden
@@ -50,6 +53,8 @@ download tokens only, not real product bytes.
 - RFA and collection product roles can add products only within active ACGs they
   belong to.
 - Required metadata and at least one ACG are enforced before publication.
+- A create-capable actor without publication authority cannot create a
+  published product, including through multipart upload.
 - Each asset records name, MIME type, size, SHA-256 hash and object key.
 - Metadata suggestions propose tags and entities but never auto-assign ACGs.
 - Search returns only authorised products and does not leak unauthorised counts
