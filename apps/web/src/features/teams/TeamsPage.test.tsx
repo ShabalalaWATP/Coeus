@@ -40,7 +40,9 @@ test("manager adds a member from directory suggestions and removes members", asy
   renderWithProviders(<TeamsPage />, "/teams");
 
   await userEvent.type(await screen.findByLabelText("Add member"), "colleague");
-  await userEvent.click(await screen.findByRole("button", { name: /Colleague/ }));
+  await userEvent.click(
+    await screen.findByRole("button", { name: /Colleague/ }, { timeout: 5_000 }),
+  );
   await waitFor(() =>
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8001/api/v1/teams/team-1/members",

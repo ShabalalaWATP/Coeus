@@ -94,6 +94,7 @@ class UserAdminService:
             password_hash=self._password_hasher.hash(temporary_credential),
             # A temporary credential must be rotated by the user at next login.
             password_reset_required=True,
+            credential_version=user.credential_version + 1,
         )
         attempt_reset = self._login_attempts.reset(user.username)
         try:

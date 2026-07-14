@@ -75,6 +75,7 @@ def product_payload(acg_id: str, *, title: str, classification: int = 2) -> dict
         "handlingCaveats": ["MOCK DATA ONLY"],
         "tags": ["baltic", "ports"],
         "acgIds": [acg_id],
+        "status": "published",
         "assets": [
             {
                 "name": "supporting-brief.pdf",

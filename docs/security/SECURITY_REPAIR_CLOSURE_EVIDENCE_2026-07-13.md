@@ -4,6 +4,14 @@
 
 Status: provisional implementation evidence, not release closure.
 
+> Historical evidence notice: sealed standard review
+> `87a10d13-14af-48cc-a361-72470abc8d8d` of later revision `752d32a`
+> reopened the application baseline with eight findings. Current remediation
+> evidence is in `SECURITY_REVIEW_REMEDIATION_2026-07-14.md`. In particular,
+> the historical statement below that uploads default to published is
+> superseded: current creation defaults to draft and explicit publication
+> requires `product:publish`.
+
 Applicable branch: `codex/security-repair-hardening-plan`.
 
 Evidence revision at last update: substantive candidate `a02fd6d3`.

@@ -12,6 +12,7 @@ type ProductUploadFormProps = {
   acgsLoading: boolean;
   actionError: string | null;
   created: StoreProduct | undefined;
+  canPublish: boolean;
   createPending: boolean;
   form: ProductUploadFormState;
   hasSelectedVisibleAcg: boolean;
@@ -31,6 +32,7 @@ export function ProductUploadForm({
   acgsLoading,
   actionError,
   created,
+  canPublish,
   createPending,
   form,
   hasSelectedVisibleAcg,
@@ -134,7 +136,7 @@ export function ProductUploadForm({
           Status
           <select name="status" onChange={handleChange(onSetForm)} value={form.status}>
             <option value="draft">Draft</option>
-            <option value="published">Published</option>
+            {canPublish ? <option value="published">Published</option> : null}
           </select>
         </label>
         <label>

@@ -10,7 +10,12 @@ from coeus.domain.tickets import TicketRecord
 from coeus.main import create_app
 from rfi_search_helpers import login
 from routing_helpers import assignment_team_id
-from test_analyst_api import _approved_ticket, _assigned_ticket, _draft_payload
+from test_analyst_api import (
+    _approved_ticket,
+    _assigned_ticket,
+    _draft_payload,
+    _published_for_analyst,
+)
 
 
 @pytest.mark.asyncio
@@ -74,15 +79,11 @@ async def test_product_link_audit_failure_rolls_back_ticket(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
-    product = next(
-        item
-        for item in app.state.store_services.repository.list_products()
-        if item.metadata.title == "Assessment Draft Pack"
-    )
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
         ticket_id = await _assigned_ticket(client, app)
+        product = await _published_for_analyst(client, app)
         analyst = await login(client, "analyst@example.test")
         original = _stored_ticket(app, ticket_id)
         monkeypatch.setattr(app.state.analyst_workflow_service._audit_log, "record", _fail_audit)
@@ -91,7 +92,7 @@ async def test_product_link_audit_failure_rolls_back_ticket(
             await client.post(
                 f"/api/v1/analyst/tasks/{ticket_id}/products",
                 headers={"X-CSRF-Token": str(analyst["csrfToken"])},
-                json={"productId": str(product.product_id)},
+                json={"productId": product["id"]},
             )
 
     ticket = _stored_ticket(app, ticket_id)

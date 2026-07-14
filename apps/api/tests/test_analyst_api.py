@@ -9,12 +9,33 @@ from coeus.core.config import Settings
 from coeus.main import create_app
 from rfi_search_helpers import login
 from routing_helpers import analyst_assignment_ticket
+from store_api_helpers import product_payload
 
 
 def _rfa_team(app: FastAPI):
     return next(
         team.team_id for team in app.state.team_repository.list_teams() if team.kind.value == "rfa"
     )
+
+
+async def _published_for_analyst(client: AsyncClient, app: FastAPI) -> dict[str, Any]:
+    analyst = app.state.access_services.repository.get_user_by_username("analyst@example.test")
+    assert analyst is not None
+    acg_id = next(
+        iter(app.state.access_services.repository.active_acg_ids_for_user(analyst.user_id))
+    )
+    admin = await login(client, "admin@example.test")
+    response = await client.post(
+        "/api/v1/store/products",
+        headers={"X-CSRF-Token": str(admin["csrfToken"])},
+        json={
+            **product_payload(str(acg_id)),
+            "title": "Mock Published Analyst Source",
+            "status": "published",
+        },
+    )
+    assert response.status_code == 201
+    return response.json()
 
 
 @pytest.mark.asyncio
@@ -48,11 +69,7 @@ async def test_manager_assigns_analyst_and_workbench_lists_assigned_tasks_only()
     assert candidates.status_code == 200
     assert candidates.json()["analysts"][0]["username"] == "analyst@example.test"
     candidate_names = {candidate["displayName"] for candidate in candidates.json()["analysts"]}
-    assert {
-        "Maritime Assessment Analyst",
-        "Cyber Threat Analyst",
-        "Geospatial Assessment Analyst",
-    }.issubset(candidate_names)
+    assert {"Nathan Patterson", "Ben Doak", "Che Adams"}.issubset(candidate_names)
     assert assigned.status_code == 200
     assert assigned.json()["state"] == "ANALYST_IN_PROGRESS"
     assert assigned.json()["assignments"][0]["analystUserId"] == str(analyst_user.user_id)
@@ -73,11 +90,6 @@ async def test_manager_assigns_analyst_and_workbench_lists_assigned_tasks_only()
 @pytest.mark.asyncio
 async def test_analyst_adds_note_and_links_only_permitted_store_products() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
-    permitted = next(
-        product
-        for product in app.state.store_services.repository.list_products()
-        if product.metadata.title == "Assessment Draft Pack"
-    )
     denied = next(
         product
         for product in app.state.store_services.repository.list_products()
@@ -87,6 +99,7 @@ async def test_analyst_adds_note_and_links_only_permitted_store_products() -> No
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
         ticket_id = await _assigned_ticket(client, app)
+        permitted = await _published_for_analyst(client, app)
         analyst = await login(client, "analyst@example.test")
         note = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/notes",
@@ -96,7 +109,7 @@ async def test_analyst_adds_note_and_links_only_permitted_store_products() -> No
         linked = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/products",
             headers={"X-CSRF-Token": str(analyst["csrfToken"])},
-            json={"productId": str(permitted.product_id)},
+            json={"productId": permitted["id"]},
         )
         denied_link = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/products",
@@ -107,7 +120,7 @@ async def test_analyst_adds_note_and_links_only_permitted_store_products() -> No
     assert note.status_code == 200
     assert note.json()["notes"][0]["body"] == "Checked the permitted assessment pack."
     assert linked.status_code == 200
-    assert linked.json()["linkedProducts"][0]["title"] == "Assessment Draft Pack"
+    assert linked.json()["linkedProducts"][0]["title"] == "Mock Published Analyst Source"
     assert denied_link.status_code == 404
     assert denied_link.json()["error"]["code"] == "product_not_found"
 
@@ -194,11 +207,6 @@ async def test_analyst_workflow_rejects_invalid_inputs_and_duplicate_actions() -
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     analyst_user = app.state.access_services.repository.get_user_by_username("analyst@example.test")
     admin_user = app.state.access_services.repository.get_user_by_username("admin@example.test")
-    product = next(
-        item
-        for item in app.state.store_services.repository.list_products()
-        if item.metadata.title == "Assessment Draft Pack"
-    )
     assert analyst_user is not None
     assert admin_user is not None
     async with AsyncClient(
@@ -216,6 +224,7 @@ async def test_analyst_workflow_rejects_invalid_inputs_and_duplicate_actions() -
             headers={"X-CSRF-Token": str(manager["csrfToken"])},
             json={"analystUserIds": [str(analyst_user.user_id)], "teamId": str(_rfa_team(app))},
         )
+        product = await _published_for_analyst(client, app)
         analyst = await login(client, "analyst@example.test")
         team_id = next(
             team.team_id
@@ -226,12 +235,12 @@ async def test_analyst_workflow_rejects_invalid_inputs_and_duplicate_actions() -
         linked = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/products",
             headers={"X-CSRF-Token": str(analyst["csrfToken"])},
-            json={"productId": str(product.product_id)},
+            json={"productId": product["id"]},
         )
         duplicate_link = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/products",
             headers={"X-CSRF-Token": str(analyst["csrfToken"])},
-            json={"productId": str(product.product_id)},
+            json={"productId": product["id"]},
         )
         missing_package = await client.patch(
             f"/api/v1/analyst/tasks/{ticket_id}/work-packages/{uuid4()}",

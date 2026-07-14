@@ -21,6 +21,7 @@ metadata placeholders, agent-run records and ticket timeline.
 | User fabricates existing product matches through chat text. | Sprint 4 records only intake/search agent runs. Product matches are not accepted from user text and real search is deferred to Sprint 5. |
 | Broken object-level authorisation exposes another user's ticket. | Ticket service checks owner access and returns not-found style errors for missing or unauthorised tickets. |
 | Incomplete requirements trigger downstream search too early. | Submission is blocked until required intake fields meet the completeness gate. |
+| An editor or broad writer submits the request without lifecycle authority. | Submission first uses visible-ticket lookup, then requires requester ownership or `ticket:transition`. Editor and `ticket:write_all` authority alone receive a non-enumerating denial before state, timeline or audit mutation. |
 | Real file upload risks malware or data leakage. | Sprint 4 supports metadata placeholders only. File bytes and object storage are out of scope. |
 | Timeline tampering hides post-submission context. | Timeline entries are append-only in the service surface for Sprint 4 and include actor IDs and timestamps. |
 | Requester lifecycle actions change state without audit evidence. | Cancellation and delivery confirmation restore the original ticket if audit recording fails after the proposed state update. |

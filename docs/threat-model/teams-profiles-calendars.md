@@ -20,6 +20,10 @@ availability service (`docs/specs/teams-profiles-calendars.md`).
 | Membership tampering | Roster changes require `team:manage` AND management of that specific team (object-level, not just role-level); targets must be active accounts; every change is audited with rollback on audit failure |
 | A member forges a teammate's availability | Members may only write their own entries; only the team's managers write for others; entries record `created_by_user_id` |
 | Profile impersonation or stored-text abuse | Profiles are self-edit only, with bounded lengths (title 120, specialisms 8x80, bio 1000) validated at the schema boundary; values render as text, never markup |
+| A profile title or specialism grants analyst authority | Assignment independently validates active status, the generic Analyst role and membership of the selected organisational team; profiles are descriptive only. |
+| A footballer-based seed persona is mistaken for a real personnel record | The dataset and affected screens are labelled synthetic or `MOCK DATA ONLY`; biographies are fictional and make no claim about the real person's work, service or clearance. |
+| Display-name collisions change identity | User IDs and usernames remain authoritative for persistence and security decisions; display names are presentation data only. |
+| Large rosters enable unbounded enumeration | Teams are capped at 50 people and candidate directory results are bounded to ten; future growth requires paginated server-side queries rather than larger unbounded responses. |
 | Calendar as a data sink | Dates must be ISO calendar dates, block ranges must run forwards and end within the bounded window (62 days), activity types are a fixed enum, notes capped at 280 characters |
 | Ticket content leaking through availability | The availability service reads a system ticket snapshot but only ever returns derived counts; no ticket fields cross the boundary |
 | Cross-team analyst assignment | Candidate discovery and assignment are limited to members of the manager's organisational team for the approved RFA or collection route |

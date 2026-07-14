@@ -119,6 +119,7 @@ export type AuthApi = {
   login: (payload: LoginRequest) => Promise<AuthSession>;
   getCurrentUser: () => Promise<AuthSession>;
   logout: (csrfToken: string) => Promise<void>;
+  changePassword: (payload: ChangePasswordRequest, csrfToken: string) => Promise<AuthSession>;
 };
 
-export const defaultAuthApi: AuthApi = { getCurrentUser, login, logout };
+export const defaultAuthApi: AuthApi = { changePassword, getCurrentUser, login, logout };

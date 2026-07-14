@@ -39,17 +39,16 @@ test("keeps the submit disabled and hints while the form is invalid", async () =
   expect(submit).toBeDisabled();
 });
 
-test("changes the password and refreshes the session", async () => {
-  const fetchMock = vi
-    .fn()
-    .mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({ ...previewSession, csrfToken: "rotated-csrf-token" }),
-    })
-    .mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({ ...previewSession, passwordResetRequired: false }),
-    });
+test("changes the password and adopts the rotated session", async () => {
+  const fetchMock = vi.fn().mockResolvedValueOnce({
+    ok: true,
+    json: () =>
+      Promise.resolve({
+        ...previewSession,
+        csrfToken: "rotated-csrf-token",
+        passwordResetRequired: false,
+      }),
+  });
   vi.stubGlobal("fetch", fetchMock);
 
   renderWithProviders(<ChangePasswordPage />, "/account/password");
@@ -57,7 +56,7 @@ test("changes the password and refreshes the session", async () => {
   await fillForm();
   await userEvent.click(screen.getByRole("button", { name: "Change password" }));
 
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
   expect(fetchMock).toHaveBeenNthCalledWith(
     1,
     "http://127.0.0.1:8001/api/v1/auth/password",
@@ -69,11 +68,6 @@ test("changes the password and refreshes the session", async () => {
       headers: { "Content-Type": "application/json", "X-CSRF-Token": "test-csrf-token" },
       method: "POST",
     }),
-  );
-  expect(fetchMock).toHaveBeenNthCalledWith(
-    2,
-    "http://127.0.0.1:8001/api/v1/auth/me",
-    expect.objectContaining({ method: "GET" }),
   );
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 });

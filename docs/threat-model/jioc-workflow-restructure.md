@@ -24,6 +24,7 @@ QC-owned release and the CM-to-RFA leg. Supersedes
 | A manager approves their own drafted work | `separation_of_duties`: drafting or actively assigned users cannot manager-approve; QC keeps its own drafter check |
 | The wrong team's manager approves work | Approval requires the route's review permission and `product:approve`; the other route's manager gets 403/404 |
 | Release without quality control | Only QC approval releases; managers lost `product:publish` and `product:disseminate` |
+| A manager uses existing-product upload to bypass QC-owned release | JSON and multipart creation default to draft. Explicit published creation requires `product:publish`, which managers do not receive. |
 | A raw collect leaks to the customer during the analysed flow | The forwarded collect stays DRAFT, is never disseminated, and store search excludes it; verified by API tests and the live walk-through |
 | The RFA analysts cannot see the collect they must analyse (silent filter) | QC's ACG selection must include a group the analysts hold; covered by the CM-to-RFA leg test |
 | Orphaned products after a mid-release failure | QC approval compensates: the ticket is restored and the ingested product discarded on any failure after ingestion; the discard runs even if the restore itself fails |

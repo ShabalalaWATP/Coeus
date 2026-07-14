@@ -17,8 +17,9 @@ export function AppShell({ profile }: AppShellProps) {
   const navigationItems = visibleNavigationItems(profile);
 
   async function handleLogout() {
-    await logout();
-    void navigate("/login", { replace: true });
+    if (await logout()) {
+      void navigate("/login", { replace: true });
+    }
   }
 
   return (

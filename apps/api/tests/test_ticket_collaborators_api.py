@@ -114,6 +114,61 @@ async def test_owner_tags_editor_who_can_view_and_edit() -> None:
 
 
 @pytest.mark.asyncio
+async def test_editor_can_complete_intake_but_cannot_submit_owner_ticket() -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        owner_csrf = await _login(client, "user@example.test")
+        ticket_id = await _create_ticket(client, owner_csrf)
+        await _tag(client, owner_csrf, ticket_id, "colleague@example.test", "editor")
+
+        editor_csrf = await _login(client, "colleague@example.test")
+        completed = await client.patch(
+            f"/api/v1/tickets/{ticket_id}/intake",
+            headers={"X-CSRF-Token": editor_csrf},
+            json={
+                "title": "Mock Collaborative Assessment",
+                "description": "Assess synthetic harbour activity and likely disruption.",
+                "operationalQuestion": "What mock activity needs command attention?",
+                "areaOrRegion": "Baltic ports",
+                "timePeriodStart": "2026-07-01",
+                "priority": "high",
+                "supportedOperation": "Operation Mock Sentinel",
+                "urgencyJustification": "A synthetic decision is due this week.",
+                "deadline": "Friday",
+                "requestingUnit": "Synthetic Task Group",
+                "intelligenceDisciplines": "IMINT",
+                "requiredOutputFormat": "Briefing note",
+                "customerSuccessCriteria": "Identify mock actions for watch teams.",
+            },
+        )
+        before = app.state.ticket_services.tickets._repository.get(UUID(ticket_id))
+        before_events = app.state.auth_service.audit_log.list_events()
+        denied = await client.post(
+            f"/api/v1/tickets/{ticket_id}/submit",
+            headers={"X-CSRF-Token": editor_csrf},
+        )
+        after = app.state.ticket_services.tickets._repository.get(UUID(ticket_id))
+        after_denied_events = app.state.auth_service.audit_log.list_events()
+
+        owner_csrf = await _login(client, "user@example.test")
+        owner_submit = await client.post(
+            f"/api/v1/tickets/{ticket_id}/submit",
+            headers={"X-CSRF-Token": owner_csrf},
+        )
+
+    assert completed.status_code == 200
+    assert completed.json()["isReadyForSubmission"] is True
+    assert denied.status_code == 404
+    assert denied.json()["error"]["code"] == "ticket_not_found"
+    assert after == before
+    assert after_denied_events == before_events
+    assert owner_submit.status_code == 200
+    assert owner_submit.json()["state"] == "RFI_SEARCHING"
+
+
+@pytest.mark.asyncio
 async def test_viewer_can_read_but_not_edit_or_manage() -> None:
     async with _client() as client:
         owner_csrf = await _login(client, "user@example.test")

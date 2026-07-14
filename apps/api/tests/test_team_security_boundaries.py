@@ -137,7 +137,7 @@ def test_assignment_candidates_and_state_boundaries(monkeypatch: pytest.MonkeyPa
     )
     with pytest.raises(AppError, match="route team"):
         service.assign(
-            cm_manager, sample.ticket_id, (_user(app, "analyst.geo@example.test").user_id,), ()
+            cm_manager, sample.ticket_id, (_user(app, "analyst.4@example.test").user_id,), ()
         )
 
 

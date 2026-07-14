@@ -118,23 +118,26 @@ Compose waits for the API readiness endpoint before starting the web service.
 All local seed accounts use mock `example.test` usernames and the mock local
 credential `CoeusLocal1!`. They exist only in `local` and `test` environments.
 
-| Username                          | Role                          | Lands on               |
-| --------------------------------- | ----------------------------- | ---------------------- |
-| `admin@example.test`              | Administrator                 | `/admin/overview`      |
-| `user@example.test`               | Customer                      | `/app/requests`        |
-| `colleague@example.test`          | Customer colleague            | `/app/requests`        |
-| `jioc.team@example.test`          | JIOC Team Member              | `/jioc/queue`          |
-| `rfa.manager@example.test`        | RFA Manager                   | `/rfa/queue`           |
-| `rfa.team@example.test`           | RFA Team Member               | `/rfa/products`        |
-| `collection.manager@example.test` | CM Manager                    | `/collection/queue`    |
-| `collection.team@example.test`    | CM Team Member                | `/collection/products` |
-| `store.manager@example.test`      | Intelligence Store Manager    | `/store`               |
-| `analyst@example.test`            | Analyst                       | `/analyst/workbench`   |
-| `analyst.maritime@example.test`   | Maritime Assessment Analyst   | `/analyst/workbench`   |
-| `analyst.cyber@example.test`      | Cyber Threat Analyst          | `/analyst/workbench`   |
-| `analyst.geo@example.test`        | Geospatial Assessment Analyst | `/analyst/workbench`   |
-| `qc.manager@example.test`         | Quality Control Manager       | `/qc/queue`            |
-| `disabled@example.test`           | (disabled)                    | Blocked from login     |
+| Username                          | Synthetic display name | Role                       | Lands on               |
+| --------------------------------- | ---------------------- | -------------------------- | ---------------------- |
+| `admin@example.test`              | Andy Robertson         | Administrator              | `/admin/overview`      |
+| `user@example.test`               | John McGinn            | Customer                   | `/app/requests`        |
+| `colleague@example.test`          | Billy Gilmour          | Customer                   | `/app/requests`        |
+| `jioc.team@example.test`          | Scott McTominay        | JIOC Team Member           | `/jioc/queue`          |
+| `rfa.manager@example.test`        | Kieran Tierney         | RFA Manager                | `/rfa/queue`           |
+| `rfa.team@example.test`           | Ryan Christie          | RFA Team Member            | `/rfa/products`        |
+| `collection.manager@example.test` | Grant Hanley           | CM Manager                 | `/collection/queue`    |
+| `collection.team@example.test`    | Kenny McLean           | CM Team Member             | `/collection/products` |
+| `store.manager@example.test`      | Craig Gordon           | Intelligence Store Manager | `/store`               |
+| `analyst@example.test`            | Lewis Ferguson         | Analyst                    | `/analyst/workbench`   |
+| `analyst.2@example.test`          | Nathan Patterson       | Analyst                    | `/analyst/workbench`   |
+| `analyst.3@example.test`          | Ben Doak               | Analyst                    | `/analyst/workbench`   |
+| `analyst.4@example.test`          | Che Adams              | Analyst                    | `/analyst/workbench`   |
+| `qc.manager@example.test`         | Angus Gunn             | Quality Control Manager    | `/qc/queue`            |
+| `disabled@example.test`           | James Forrest          | Customer (disabled)        | Blocked from login     |
+
+The display names borrow from Scottish footballers, but every local profile is
+a fictional exercise persona and does not describe the real person.
 
 Four organisational teams are also seeded for the My Team page (`/teams`): the
 RFA Assessment Team (RFA manager plus the analysts), the Collection Management

@@ -198,7 +198,11 @@ class TicketService:
         )
 
     def submit(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
-        ticket = self.get_editable_ticket(actor, ticket_id)
+        ticket = self.get_visible_ticket(actor, ticket_id)
+        if not is_owner(actor, ticket) and Permission.TICKET_TRANSITION not in actor.permissions:
+            raise AppError(404, "ticket_not_found", "Ticket was not found.")
+        if ticket.state not in {TicketState.DRAFT_INTAKE, TicketState.INFO_REQUIRED}:
+            raise AppError(409, "ticket_not_editable", "Ticket intake is no longer editable.")
         if not self._completeness.is_complete_enough(ticket.intake):
             raise AppError(409, "intake_incomplete", "Complete the required intake fields first.")
         if not can_transition(ticket.state, TicketState.RFI_SEARCHING):

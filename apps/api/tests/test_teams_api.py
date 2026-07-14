@@ -147,7 +147,7 @@ async def test_calendar_entries_respect_member_and_manager_boundaries() -> None:
             f"/api/v1/teams/{team_id}/calendar",
             headers={"X-CSRF-Token": str(analyst["csrfToken"])},
             json={
-                "userId": _user_id(app, "analyst.geo@example.test"),
+                "userId": _user_id(app, "analyst.4@example.test"),
                 "date": "2026-07-20",
                 "status": "leave",
             },
@@ -159,7 +159,7 @@ async def test_calendar_entries_respect_member_and_manager_boundaries() -> None:
             f"/api/v1/teams/{team_id}/calendar",
             headers={"X-CSRF-Token": str(manager["csrfToken"])},
             json={
-                "userId": _user_id(app, "analyst.geo@example.test"),
+                "userId": _user_id(app, "analyst.4@example.test"),
                 "date": "2026-07-21",
                 "status": "on_task",
                 "note": "Standing task.",
@@ -218,7 +218,7 @@ async def test_availability_combines_calendar_and_live_assignments() -> None:
             f"/api/v1/teams/{team_id}/calendar",
             headers={"X-CSRF-Token": str(manager["csrfToken"])},
             json={
-                "userId": _user_id(app, "analyst.maritime@example.test"),
+                "userId": _user_id(app, "analyst.2@example.test"),
                 "date": "2026-07-15",
                 "status": "leave",
             },

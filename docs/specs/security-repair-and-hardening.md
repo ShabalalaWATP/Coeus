@@ -102,3 +102,20 @@ The detailed implementation sequence is in
   baseline occurrence and no new reportable finding.
 - Authorised staging closes the deferred proxy, CORS and ingress questions;
   without that boundary Sprint 17 remains explicitly blocked.
+
+## Current Eight-Finding Tranche
+
+Sealed standard review `87a10d13-14af-48cc-a361-72470abc8d8d` of later revision
+`752d32a` is the current application baseline. It added eight findings covering
+publication authority, two session races, ticket submission authority, login
+and registration Argon2 exhaustion, failed browser logout and self-authorising
+draft links. The cross-cutting acceptance contract is
+`security-review-remediation-2026-07-14.md`.
+
+This tranche deliberately changes one API default: omitted Store creation
+status now means `draft`, while explicit `published` may return `403` when the
+actor lacks `product:publish`. Generated contracts and compatibility evidence
+must record that approved secure-default change. All eight original PoCs,
+bypass variants and legitimate paths must pass in addition to the historical
+12-finding matrix. The clean-candidate deep scan and authorised staging gates
+above remain unchanged.

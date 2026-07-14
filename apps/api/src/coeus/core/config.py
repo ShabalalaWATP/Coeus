@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     argon2_time_cost: int = 2
     argon2_memory_cost: int = 19_456
     argon2_parallelism: int = 1
+    argon2_max_concurrent: int = Field(default=2, ge=1, le=8)
     local_seed_credential: str = DEFAULT_SEED_CREDENTIAL
     allow_dev_seed_users: bool = False
     gcp_project_id: str | None = None

@@ -57,7 +57,7 @@ class StoreProductCreateRequest(BaseModel):
         validation_alias="semanticLabels",
     )
     acg_ids: list[UUID] = Field(default_factory=list, validation_alias="acgIds")
-    status: str = "published"
+    status: str = "draft"
     time_period_start: str | None = Field(
         default=None,
         pattern=ISO_DATE_PATTERN,

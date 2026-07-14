@@ -28,7 +28,7 @@ ingestion, local indexing, dissemination and feedback request creation.
 | Product is disseminated but the requester cannot read it. | `DisseminationService` calls Store visibility checks for the requester before recording dissemination. |
 | Product is indexed with incomplete or inactive ACG metadata. | Release metadata requires at least one active ACG and accepts only QC-confirmed active ACGs the reviewer is allowed to use. |
 | Rejection loses reviewer rationale. | Rejection creates an immutable ticket-level QC decision and timeline event before moving to `REWORK_REQUIRED`. |
-| Draft-only product appears in Store search. | Only approval writes a published Store product. Drafts remain ticket-local before QC approval. |
+| Draft-only product appears in Store search. | QC approval writes published workflow products. The separate existing-product ingestion path can publish only for an actor with `product:publish`; otherwise it defaults to draft. Ticket-local analyst drafts remain outside Store publication before approval. |
 | QC approval or rejection is saved even though the audit event failed. | Approval and rejection restore the original ticket state if audit recording fails. Approval also discards the ingested Store product and local placeholder asset bytes so the operation can be retried cleanly. |
 | Real intelligence or real asset bytes enter the repo. | Sprint 10 stores synthetic metadata only. Tests and docs continue to use `MOCK DATA ONLY` examples. |
 

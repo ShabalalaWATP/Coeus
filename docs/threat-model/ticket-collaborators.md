@@ -12,6 +12,11 @@ Scope: the user directory endpoint and collaborator management on tickets.
   require `ticket:add_information`). Viewers receive read access only, and
   collaborator management itself remains requester-only, so an editor
   cannot widen sharing.
+- Lifecycle escalation through editor access: ticket submission uses the
+  visible-ticket boundary and then requires requester ownership or the explicit
+  `ticket:transition` permission. `editor` and `ticket:write_all` authority do
+  not imply a lifecycle transition. Denials are non-enumerating and occur
+  before state or audit mutation.
 - Product metadata leakage through collaboration: the generic ticket response
   only returns RFI match titles to the requester. Collaborators must use the
   RFI results endpoint, where offers are filtered by their own Store access.

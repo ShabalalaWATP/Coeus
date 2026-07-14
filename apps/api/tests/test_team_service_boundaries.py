@@ -108,11 +108,11 @@ def test_seed_profiles_are_personal_and_preserve_user_edits() -> None:
     app = _app()
     repository = app.state.team_repository
     users = cast(SeedUserRepository, app.state.team_workspace_service._users)
-    analyst = _user(app, "analyst.maritime@example.test")
+    analyst = _user(app, "analyst.2@example.test")
 
     seeded = repository.get_profile(analyst.user_id)
     assert seeded is not None
-    assert seeded.title == "Maritime Assessment Analyst"
+    assert seeded.title == "Military Intelligence Analyst"
     assert seeded.specialisms
     assert seeded.bio
 

@@ -32,6 +32,10 @@ scarce resources are shared by a principal and deployment, not by one request.
 - Endpoint quotas, streaming, caches, single-flight work and bounded histories
   remain defence in depth through rollout and rollback.
 - Metrics expose resource and saturation labels without principal identifiers.
+- Argon2 hash and verify operations share one process-level password-work pool
+  across login, registration and administrative credential services. Capacity
+  is acquired non-blocking before Argon2 work; saturation returns a generic
+  `429`, and every failure path releases its slot.
 
 ## Consequences
 
@@ -47,3 +51,6 @@ scarce resources are shared by a principal and deployment, not by one request.
   Aggregate deletion, workflow-state override and bulk live-lease release are
   prohibited. A single active lease requires a fully drained system, explicit
   identity, reason and audit evidence.
+- The current Argon2 pool is process-local. Hosted worker and replica counts
+  multiply effective concurrency and must be sized against the aggregate memory
+  budget before deployment.

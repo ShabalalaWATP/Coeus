@@ -1,6 +1,7 @@
 import pytest
 
 from coeus.core.config import Settings
+from coeus.core.errors import AppError
 from coeus.repositories.auth import LoginAttemptRepository, SeedUserRepository, SessionRepository
 from coeus.services.audit import AuditEvent, AuditLog
 from coeus.services.auth import AuthService
@@ -112,7 +113,7 @@ def test_password_change_rolls_back_user_sessions_and_attempts_when_audit_fails(
     assert "password_changed" not in [event.event_type for event in service.audit_log.list_events()]
 
 
-def test_logout_keeps_session_when_audit_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_logout_revocation_survives_audit_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     service = _service()
     result = service.login("user@example.test", SEED_CREDENTIAL)
 
@@ -132,7 +133,9 @@ def test_logout_keeps_session_when_audit_fails(monkeypatch: pytest.MonkeyPatch) 
     with pytest.raises(RuntimeError, match="simulated audit failure"):
         service.logout(result.session_token)
 
-    assert service.require_session(result.session_token).session == result.session
+    with pytest.raises(AppError) as revoked:
+        service.require_session(result.session_token)
+    assert revoked.value.code == "not_authenticated"
 
 
 def test_logout_keeps_session_when_session_persistence_fails(

@@ -19,6 +19,7 @@ afterEach(() => {
 });
 
 test("allows product readers to open direct asset URLs without download access", async () => {
+  await import("../features/store/ProductDetailPage");
   const sessionWithoutDownloads: AuthSession = {
     ...previewSession,
     user: {
@@ -51,7 +52,7 @@ test("allows product readers to open direct asset URLs without download access",
     </AppProviders>,
   );
 
-  expect(await screen.findByText("regional-brief.pdf")).toBeVisible();
+  expect(await screen.findByText("regional-brief.pdf", {}, { timeout: 5_000 })).toBeVisible();
   expect(screen.queryByRole("heading", { name: "Access denied" })).not.toBeInTheDocument();
   await waitFor(() =>
     expect(

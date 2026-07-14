@@ -40,9 +40,9 @@ def test_assignment_summary_mentions_team_when_present() -> None:
     assert assignment_summary(("analyst@example.test",), None) == "analyst@example.test"
     assert (
         assignment_summary(
-            ("analyst@example.test", "analyst.geo@example.test"), "Maritime Assessment"
+            ("analyst@example.test", "analyst.4@example.test"), "Maritime Assessment"
         )
-        == "analyst@example.test, analyst.geo@example.test assigned via Maritime Assessment."
+        == "analyst@example.test, analyst.4@example.test assigned via Maritime Assessment."
     )
 
 

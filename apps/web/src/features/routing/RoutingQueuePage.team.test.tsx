@@ -30,8 +30,8 @@ test("assigns analysts from the manager team queue and clears the ticket", async
           },
           {
             userId: "analyst-2",
-            username: "analyst.geo@example.test",
-            displayName: "Geospatial Assessment Analyst",
+            username: "analyst.4@example.test",
+            displayName: "Che Adams",
           },
         ],
       }),
@@ -43,7 +43,7 @@ test("assigns analysts from the manager team queue and clears the ticket", async
 
   await userEvent.click(await screen.findByRole("button", { name: /TCK-0001/ }));
   await userEvent.click(await screen.findByRole("checkbox", { name: "Intelligence Analyst" }));
-  await userEvent.click(screen.getByRole("checkbox", { name: "Geospatial Assessment Analyst" }));
+  await userEvent.click(screen.getByRole("checkbox", { name: "Che Adams" }));
   expect(screen.getByLabelText("Team")).toHaveValue("RFA-MARITIME");
   await userEvent.click(screen.getByRole("button", { name: "Assign analysts" }));
 

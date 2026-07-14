@@ -2,7 +2,6 @@ import { KeyRound, ShieldCheck } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { changePassword } from "../../lib/api-client/auth";
 import { ApiError } from "../../lib/api-client/client";
 import { useAuth } from "../../lib/auth/auth-context";
 import { actionErrorMessage } from "../../lib/mutations/action-error";
@@ -10,7 +9,7 @@ import { actionErrorMessage } from "../../lib/mutations/action-error";
 const MIN_PASSWORD_LENGTH = 12;
 
 export default function ChangePasswordPage() {
-  const { refreshSession, session } = useAuth();
+  const { changePassword, session } = useAuth();
   const navigate = useNavigate();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -34,8 +33,7 @@ export default function ChangePasswordPage() {
     setFormError(null);
     setIsSaving(true);
     try {
-      await changePassword({ currentPassword, newPassword }, session?.csrfToken ?? "");
-      const nextSession = await refreshSession();
+      const nextSession = await changePassword({ currentPassword, newPassword });
       void navigate(nextSession.user.defaultRoute, { replace: true });
     } catch (error) {
       setFormError(changePasswordErrorMessage(error));

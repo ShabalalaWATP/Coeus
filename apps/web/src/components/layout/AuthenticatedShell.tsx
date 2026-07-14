@@ -2,6 +2,10 @@ import { Navigate, useLocation } from "react-router-dom";
 
 import { AppShell } from "./AppShell";
 import { RouteFallback } from "./RouteFallback";
+import {
+  LogoutPendingPage,
+  LogoutUnconfirmedPage,
+} from "../../features/auth/LogoutUnconfirmedPage";
 import { useAuth } from "../../lib/auth/auth-context";
 
 export function AuthenticatedShell() {
@@ -10,6 +14,12 @@ export function AuthenticatedShell() {
 
   if (status === "loading") {
     return <RouteFallback />;
+  }
+  if (status === "logging_out") {
+    return <LogoutPendingPage />;
+  }
+  if (status === "logout_unconfirmed") {
+    return <LogoutUnconfirmedPage />;
   }
   if (status === "expired") {
     return <Navigate to="/session-expired" replace />;

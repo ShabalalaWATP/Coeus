@@ -74,3 +74,18 @@ After `COEUS_PROVIDER_CIRCUIT_COOLDOWN_SECONDS`, one recovery probe is allowed;
 other callers continue to fall back until that probe succeeds. Metrics expose
 opens, rejections, probes, failures and successes without provider keys or
 principal identifiers.
+
+## Password-work admission
+
+`COEUS_ARGON2_MAX_CONCURRENT` defaults to 2 and accepts 1 through 8. One
+process-local non-blocking pool covers every `PasswordHasher.hash` and
+`PasswordHasher.verify` call used by login, registration, self-service password
+change and administrative credential reset. Saturation returns the same
+`429 password_capacity_exhausted` response before Argon2 work starts. Context
+exit releases the slot after success, mismatch or exception.
+
+The limit is per process, not a distributed lease. Each worker or replica
+multiplies effective Argon2 concurrency and memory use. Hosted deployment must
+size the product of worker count, configured capacity and Argon2 memory cost,
+then alert on saturation. Do not add direct `argon2.PasswordHasher` callers that
+bypass this wrapper.

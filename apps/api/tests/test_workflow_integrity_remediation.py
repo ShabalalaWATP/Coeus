@@ -154,7 +154,7 @@ def test_credential_reset_restores_attempt_state_when_change_fails(
 @pytest.mark.asyncio
 async def test_area_manager_selects_an_authoritative_same_kind_team() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
-    analyst = app.state.access_services.repository.get_user_by_username("analyst.geo@example.test")
+    analyst = app.state.access_services.repository.get_user_by_username("analyst.4@example.test")
     assert analyst is not None
     team = OrgTeam(
         team_id=uuid4(),
@@ -196,7 +196,7 @@ async def test_candidate_api_requires_an_exact_team_id() -> None:
 @pytest.mark.asyncio
 async def test_cm_manager_selects_only_a_cm_assignment_team() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
-    analyst = app.state.access_services.repository.get_user_by_username("analyst.geo@example.test")
+    analyst = app.state.access_services.repository.get_user_by_username("analyst.4@example.test")
     assert analyst is not None
     cm_team = OrgTeam(
         team_id=uuid4(),

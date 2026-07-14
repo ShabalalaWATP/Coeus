@@ -31,6 +31,7 @@ from coeus.repositories.store_ids import new_store_product_id
 from coeus.services.audit import AuditLog
 from coeus.services.embeddings import EmbeddingService
 from coeus.services.store_access import StoreAssetService, StoreDetailService
+from coeus.services.store_creation_policy import require_product_creation_status
 from coeus.services.store_metadata_suggestions import MetadataSuggestionService
 from coeus.services.store_owner_policy import normalise_owner_team, require_owner_permission
 from coeus.services.store_product_policy import StoreProductAccessPolicy
@@ -91,7 +92,7 @@ class StoreIngestionService:
         *,
         audit: bool = True,
     ) -> StoreProduct:
-        self._require(actor, Permission.PRODUCT_CREATE_EXISTING)
+        require_product_creation_status(actor, draft.status)
         owner_team = normalise_owner_team(draft.owner_team)
         require_owner_permission(actor, owner_team)
         self._validate_acgs(actor, draft.acg_ids)
@@ -233,9 +234,8 @@ class StoreSearchService:
     def search(self, actor: UserAccount, filters: StoreSearchFilters) -> StoreSearchResult:
         if Permission.PRODUCT_SEARCH not in actor.permissions:
             raise AppError(403, "forbidden", "Permission denied.")
-        # Need-to-know: the store never lists a user's whole visible holdings
-        # unprompted. A search term or filter is required first; only
-        # catalogue curators (and administrators) may browse everything.
+        # Need-to-know: the Store never lists a user's whole visible holdings unprompted.
+        # Only catalogue curators (and administrators) may browse everything.
         if not _has_search_criteria(filters) and (
             Permission.STORE_BROWSE_ALL not in actor.permissions
         ):

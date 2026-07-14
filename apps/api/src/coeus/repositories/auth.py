@@ -15,7 +15,7 @@ from coeus.repositories.auth_attempts import (
     LoginAttemptReset,
     LoginAttemptState,
 )
-from coeus.repositories.auth_seed import seed_user_specs
+from coeus.repositories.auth_seed import reconcile_seed_user_identities, seed_user_specs
 
 __all__ = [
     "AttemptStoreFull",
@@ -45,15 +45,15 @@ class SeedUserRepository:
         self._restore_or_persist()
 
     def _seed_users(self, seed_credential: str, password_hasher: PasswordHashPort) -> None:
-        for username, display_name, roles, is_active in seed_user_specs():
+        for spec in seed_user_specs():
             account = UserAccount(
                 user_id=uuid4(),
-                username=username,
-                display_name=display_name,
-                roles=roles,
-                permissions=permissions_for_roles(roles),
+                username=spec.username,
+                display_name=spec.display_name,
+                roles=spec.roles,
+                permissions=permissions_for_roles(spec.roles),
                 password_hash=password_hasher.hash(seed_credential),
-                is_active=is_active,
+                is_active=spec.is_active,
                 clearance_level=3,
             )
             self.save(account)
@@ -108,7 +108,7 @@ class SeedUserRepository:
         # Roles are the persisted source of truth; permissions are re-derived
         # from the current role definitions so code-level permission changes
         # (grants AND revocations) apply to existing accounts on startup.
-        users = tuple(
+        users = reconcile_seed_user_identities(
             _with_current_permissions(decode_value(item)) for item in payload.get("users", [])
         )
         self._users_by_username = {user.username.casefold(): user for user in users}
@@ -150,15 +150,36 @@ class SessionRepository:
         with self._lock:
             return self._sessions.get(session_id)
 
-    def delete(self, session_id: str) -> None:
+    def delete(self, session_id: str) -> SessionRecord | None:
         with self._lock:
             sessions = dict(self._sessions)
-            self._sessions.pop(session_id, None)
+            deleted = self._sessions.pop(session_id, None)
+            if deleted is None:
+                return None
             try:
                 self._persist()
             except Exception:
                 self._sessions = sessions
                 raise
+            return deleted
+
+    def replace_if_current(self, expected_id: str, replacement: SessionRecord) -> bool:
+        """Atomically replace one active session without reviving a stale token."""
+        with self._lock:
+            current = self._sessions.get(expected_id)
+            if current is None or current.user_id != replacement.user_id:
+                return False
+            if replacement.session_id != expected_id and replacement.session_id in self._sessions:
+                return False
+            sessions = dict(self._sessions)
+            self._sessions.pop(expected_id)
+            self._sessions[replacement.session_id] = replacement
+            try:
+                self._persist()
+            except Exception:
+                self._sessions = sessions
+                raise
+            return True
 
     def delete_for_user(self, user_id: UUID) -> tuple[SessionRecord, ...]:
         with self._lock:

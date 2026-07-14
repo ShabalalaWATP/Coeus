@@ -14,8 +14,8 @@ const candidates = {
     },
     {
       userId: "analyst-2",
-      username: "analyst.geo@example.test",
-      displayName: "Geospatial Assessment Analyst",
+      username: "analyst.4@example.test",
+      displayName: "Che Adams",
     },
   ],
 };
@@ -77,7 +77,7 @@ test("assigns multiple analysts with custom work packages", async () => {
   ).toBeVisible();
 
   await userEvent.click(await screen.findByRole("checkbox", { name: "Intelligence Analyst" }));
-  await userEvent.click(screen.getByRole("checkbox", { name: "Geospatial Assessment Analyst" }));
+  await userEvent.click(screen.getByRole("checkbox", { name: "Che Adams" }));
   await userEvent.type(
     screen.getByLabelText("Work packages (one per line)"),
     "Validate scope; Draft assessment ;",

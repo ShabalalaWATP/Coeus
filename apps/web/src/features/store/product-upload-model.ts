@@ -10,7 +10,7 @@ export const initialProductUploadForm = {
   ownerTeam: "RFA",
   areaOrRegion: "Baltic ports",
   classificationLevel: "2",
-  status: "published" as "draft" | "published",
+  status: "draft" as "draft" | "published",
   tags: "ports, activity",
   assetName: "harbour-brief.pdf",
   assetType: "pdf",

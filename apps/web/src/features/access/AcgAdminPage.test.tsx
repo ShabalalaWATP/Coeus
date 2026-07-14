@@ -227,7 +227,7 @@ test("initialises the edit form from a routed inactive group", async () => {
 
   expect(await screen.findByRole("heading", { name: "Bravo Collection" })).toBeVisible();
   const selectedGroup = within(screen.getByLabelText("Selected access group"));
-  expect(selectedGroup.getByLabelText("Name")).toHaveValue("Bravo Collection");
+  await waitFor(() => expect(selectedGroup.getByLabelText("Name")).toHaveValue("Bravo Collection"));
   expect(selectedGroup.getByLabelText("Active")).not.toBeChecked();
   await userEvent.clear(selectedGroup.getByLabelText("Name"));
   await userEvent.type(selectedGroup.getByLabelText("Name"), "Bravo Reviewed");
