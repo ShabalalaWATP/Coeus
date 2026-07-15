@@ -262,9 +262,7 @@ class RfiSearchService:
             metric = replace(
                 metric,
                 candidate_count=(
-                    metric.candidate_count
-                    if actor.user_id == ticket.requester_user_id
-                    else 0
+                    metric.candidate_count if actor.user_id == ticket.requester_user_id else 0
                 ),
                 offered_count=len(visible_offers),
                 rejected_count=sum(

@@ -231,9 +231,7 @@ def test_pdf_corpus_and_billy_acg_matrix_are_exact(tmp_path: Path) -> None:
         billy, StoreSearchFilters(query="Russia SIGINT")
     )
     denied_ids = {
-        acg.acg_id
-        for acg in access.list_acgs()
-        if acg.code in {"ACG-CN-CYBER", "ACG-RU-SIGINT"}
+        acg.acg_id for acg in access.list_acgs() if acg.code in {"ACG-CN-CYBER", "ACG-RU-SIGINT"}
     }
     assert any("Russia electronic warfare" in hit.product.metadata.title for hit in visible_ew.hits)
     assert all(not (hit.product.metadata.acg_ids & denied_ids) for hit in denied_sigint.hits)

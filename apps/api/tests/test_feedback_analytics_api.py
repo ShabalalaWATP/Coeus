@@ -13,6 +13,7 @@ from coeus.main import create_app
 from rfi_search_helpers import login, submitted_ticket
 from routing_helpers import assignment_team_id
 
+
 @pytest.mark.asyncio
 async def test_customer_submits_feedback_and_admin_dashboard_tracks_reuse() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
@@ -339,9 +340,8 @@ def _acg_id(app: FastAPI, code: str) -> str:
 
 
 def _ticket_for_feedback_request(app: FastAPI, request_id: str) -> TicketRecord:
-    parsed_request_id = UUID(request_id)
     for ticket in app.state.ticket_services.tickets._repository.list_tickets():
-        if any(request.request_id == parsed_request_id for request in ticket.feedback_requests):
+        if any(request.request_id == UUID(request_id) for request in ticket.feedback_requests):
             return cast(TicketRecord, ticket)
     raise AssertionError(f"Missing feedback request {request_id}")
 

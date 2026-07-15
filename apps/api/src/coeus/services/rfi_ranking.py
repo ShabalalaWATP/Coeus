@@ -83,8 +83,7 @@ def rank_hybrid_rfi_candidates(
         lexical_signal = max(text_score, candidate.lexical_score, title_signal)
         vector_signal = max(
             0.0,
-            (candidate.vector_score - VECTOR_SIMILARITY_FLOOR)
-            / (1.0 - VECTOR_SIMILARITY_FLOOR),
+            (candidate.vector_score - VECTOR_SIMILARITY_FLOOR) / (1.0 - VECTOR_SIMILARITY_FLOOR),
         )
         # Rank fusion is only a small ordering signal. Absolute lexical and
         # vector evidence determine whether an offer is relevant enough.
