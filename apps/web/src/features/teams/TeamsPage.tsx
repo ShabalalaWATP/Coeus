@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Users } from "lucide-react";
 import { useState } from "react";
 
-import { MyProfilePanel } from "./MyProfilePanel";
 import { TeamCalendarPanel } from "./TeamCalendarPanel";
 import { TeamRosterPanel } from "./TeamRosterPanel";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/PageState";
@@ -101,7 +100,6 @@ export default function TeamsPage() {
           </div>
         </>
       ) : null}
-      <MyProfilePanel csrfToken={csrfToken} />
     </div>
   );
 }

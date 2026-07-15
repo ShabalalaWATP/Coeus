@@ -21,6 +21,7 @@ how the agents work see [AI Agents](AI_AGENTS.md).
 - [Intelligence analyst](#intelligence-analyst)
 - [Quality control](#quality-control)
 - [My Team](#my-team)
+- [My profile](#my-profile)
 - [Access Groups](#access-groups)
 - [Administrator](#administrator)
 - [Users and account lifecycle](#users-and-account-lifecycle)
@@ -60,22 +61,24 @@ directly onto the [agents](AI_AGENTS.md#agents-at-a-glance).
 
 ## Customer
 
-Customers get two focused screens. The **dashboard** shows status metrics and a
-list of their requests, with one action to open a new request.
+Customers get two focused screens. The **dashboard** starts with an aligned
+status ledger that emphasises requests needing customer action, then shows a
+request register with state, priority, collaborators and the next available
+action. One primary action opens a new request.
 
 ![Customer request dashboard](images/03-customer-dashboard.png)
 
-Opening a request shows the **chat-first workspace**. On the left the intake
-assistant captures the requirement conversationally; on the right a live
-checklist shows which core and priority-dependent details have been captured,
-with a manual edit panel and product offers below.
+Opening a request shows the **chat-first workspace**. The intake assistant
+captures the requirement conversationally without exposing its internal
+completeness checklist. Customers can still open the manual edit panel when
+they want direct control over the structured fields.
 
 ![Customer request workspace with intake assistant and checklist](images/04-request-workspace.png)
 
 From here a customer can:
 
-- Chat with the intake assistant until every detail displayed in the checklist
-  has been captured.
+- Chat naturally with the intake assistant until it confirms the requirement is
+  ready, without needing to manage the assistant's internal checklist.
 - Edit any detail directly in "Edit details manually".
 - Tag colleagues as editors or viewers.
 - Submit the request, then accept or reject any existing-product offers.
@@ -146,7 +149,9 @@ The analyst workbench lists only the tasks assigned to the signed-in analyst;
 a task can be shared by several analysts. Selecting a task shows its context,
 work packages, and progressive-disclosure sections for working notes and
 linked products, with the draft form and **Submit for manager approval**
-action below (QC-requested rework resubmits straight to QC).
+action below (QC-requested rework resubmits straight to QC). The collapsed
+**Request conversation** section loads the complete customer and Istari history
+only when the assigned analyst opens it.
 
 ![Analyst workbench](images/08-analyst-workbench.png)
 
@@ -173,19 +178,27 @@ itself is never released). A QC manager cannot approve a draft they authored.
 Everyone on a team gets the **My Team** page: the roster with each member's
 title and specialisms, a two-week availability calendar and today's
 availability tile. Members log their own availability; managers can log for
-anyone on their team, and add or remove members. Every user edits their own
-profile (title, specialisms, bio) at the bottom of the page.
+anyone on their team, and add or remove members.
+
+## My profile
+
+Every signed-in user can open **Edit profile** from the account menu. The page
+starts in a read-only identity view with the user's account, roles, title,
+specialisms and biography. Choose **Edit profile** to enter edit mode, then
+**Save changes** or **Cancel**. Profile text is descriptive only and never
+changes roles, team membership, ACG access or clearance.
 
 ---
 
 ## Access Groups
 
 Every signed-in user can open **Access Groups** from the navigation. The page
-lists active need-to-know groups and shows whether you are a member or have a
-pending, approved, rejected or withdrawn application.
+provides a searchable list of every active need-to-know group and labels each
+entry as **Member**, **Not a member** or with its application state. Selecting
+an ACG opens one detail view with its purpose and the current active managers.
 
-To apply, enter a concise operational justification and choose **Apply for
-access**. Your text is retained if submission fails. A pending request can be
+To apply, select the ACG, enter a concise operational justification and choose
+**Submit application**. Your text is retained if submission fails. A pending request can be
 withdrawn after confirmation. Membership is granted only after another
 authorised person approves the application.
 

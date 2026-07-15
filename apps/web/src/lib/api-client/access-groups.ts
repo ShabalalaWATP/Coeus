@@ -12,6 +12,7 @@ export type AccessGroupSummary = {
   applicationId: string | null;
   canReviewApplications: boolean;
   canManageAdmins: boolean;
+  managerNames: readonly string[];
 };
 
 export type AccessGroupApplication = {
@@ -39,11 +40,12 @@ export type AccessGroupCataloguePage = {
   totalPages: number;
 };
 
-export function listAccessGroups(page = 1): Promise<AccessGroupCataloguePage> {
-  return apiRequestJson<AccessGroupCataloguePage>(
-    `/api/v1/acgs/catalogue?page=${page}&pageSize=20`,
-    { method: "GET" },
-  );
+export function listAccessGroups(page = 1, query = ""): Promise<AccessGroupCataloguePage> {
+  const params = new URLSearchParams({ page: String(page), pageSize: "50" });
+  if (query.trim()) params.set("query", query.trim());
+  return apiRequestJson<AccessGroupCataloguePage>(`/api/v1/acgs/catalogue?${params.toString()}`, {
+    method: "GET",
+  });
 }
 
 export function applyForAccessGroup(acgId: string, justification: string, csrfToken: string) {

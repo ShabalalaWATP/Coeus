@@ -98,15 +98,20 @@ def _hybrid_hit(
     available_legs: int,
 ) -> StoreSearchHit:
     reasons = _hybrid_reasons(candidate, query)
+    rrf = hybrid_rrf_score(
+        candidate,
+        available_legs,
+        lexical_floor=STORE_LEXICAL_SCORE_FLOOR,
+        vector_floor=VECTOR_SIMILARITY_FLOOR,
+    )
+    vector_signal = max(
+        0.0,
+        (candidate.vector_score - VECTOR_SIMILARITY_FLOOR) / (1.0 - VECTOR_SIMILARITY_FLOOR),
+    )
     return StoreSearchHit(
         product=candidate.product,
         match_score=round(
-            hybrid_rrf_score(
-                candidate,
-                available_legs,
-                lexical_floor=STORE_LEXICAL_SCORE_FLOOR,
-                vector_floor=VECTOR_SIMILARITY_FLOOR,
-            ),
+            min(1.0, (0.65 * candidate.lexical_score) + (0.30 * vector_signal) + (0.05 * rrf)),
             4,
         ),
         match_reasons=tuple(dict.fromkeys(reasons)),

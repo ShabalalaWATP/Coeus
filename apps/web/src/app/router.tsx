@@ -21,6 +21,7 @@ import {
   JiocOversightPage,
   ProductDetailPage,
   ProductUploadPage,
+  ProfilePage,
   QcQueuePage,
   RequestsPage,
   RoutingQueuePage,
@@ -67,6 +68,10 @@ export function createAppRouter() {
         {
           path: "account/password",
           element: protectedPage(<ChangePasswordPage />, []),
+        },
+        {
+          path: "account/profile",
+          element: protectedPage(<ProfilePage />, ["user:read_self"]),
         },
         {
           path: "app/requests",

@@ -12,6 +12,7 @@ metadata placeholders, agent-run records and ticket timeline.
 - Agent-run summaries and safety flags.
 - Attachment metadata, without file bytes.
 - Timeline entries used by managers and downstream workflow services.
+- The complete customer and Istari conversation used as analyst task context.
 
 ## Threats And Controls
 
@@ -25,6 +26,8 @@ metadata placeholders, agent-run records and ticket timeline.
 | Real file upload risks malware or data leakage. | Sprint 4 supports metadata placeholders only. File bytes and object storage are out of scope. |
 | Timeline tampering hides post-submission context. | Timeline entries are append-only in the service surface for Sprint 4 and include actor IDs and timestamps. |
 | Requester lifecycle actions change state without audit evidence. | Cancellation and delivery confirmation restore the original ticket if audit recording fails after the proposed state update. |
+| A task list or unassigned analyst exposes customer conversation content. | Task collections retain only their bounded summary. The full ordered transcript is fetched lazily from task detail and uses the existing current-assignment authorisation before any message is returned. |
+| Stored chat text executes markup in the analyst workspace. | Conversation bodies are rendered as plain React text and are never inserted as raw HTML. |
 
 ## Deferred Risks
 
@@ -43,3 +46,7 @@ metadata placeholders, agent-run records and ticket timeline.
 - Intake PATCH requests preserve omitted fields and represent deliberate
   clearing as explicit `null`, reducing stale sensitive metadata and accidental
   bulk erasure.
+- The customer workspace no longer renders the assistant's internal intake
+  checklist. Assigned analysts can open the bounded full transcript from task
+  detail, while unassigned users receive the same non-enumerating denial as
+  other analyst task reads.

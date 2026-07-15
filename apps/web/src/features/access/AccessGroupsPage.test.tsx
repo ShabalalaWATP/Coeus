@@ -43,6 +43,7 @@ test("lets an authenticated user apply to an active group", async () => {
                       applicationId: null,
                       canReviewApplications: false,
                       canManageAdmins: false,
+                      managerNames: ["ACG Manager"],
                     },
                   ],
                 },
@@ -54,15 +55,15 @@ test("lets an authenticated user apply to an active group", async () => {
   renderWithProviders(<AccessGroupsPage />, "/access-groups", session);
   await waitFor(() =>
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8001/api/v1/acgs/catalogue?page=1&pageSize=20",
+      "http://127.0.0.1:8001/api/v1/acgs/catalogue?page=1&pageSize=50",
       { credentials: "include", method: "GET" },
     ),
   );
   await userEvent.type(
-    await screen.findByLabelText("Why do you need access to Regional reporting?"),
+    await screen.findByLabelText(/Why do you need access/),
     "Required for my assigned regional assessment.",
   );
-  await userEvent.click(screen.getByRole("button", { name: "Apply for access" }));
+  await userEvent.click(screen.getByRole("button", { name: "Submit application" }));
 
   await waitFor(() =>
     expect(fetchMock).toHaveBeenCalledWith(
@@ -110,11 +111,11 @@ test("lets users browse beyond the first catalogue page", async () => {
   );
 
   renderWithProviders(<AccessGroupsPage />, "/access-groups", session);
-  expect(await screen.findByText("First catalogue group")).toBeVisible();
+  expect((await screen.findAllByText("First catalogue group"))[0]).toBeVisible();
   await userEvent.click(screen.getByRole("button", { name: "Next" }));
-  expect(await screen.findByText("Later catalogue group")).toBeVisible();
+  expect((await screen.findAllByText("Later catalogue group"))[0]).toBeVisible();
   await userEvent.click(screen.getByRole("button", { name: "Previous" }));
-  expect(await screen.findByText("First catalogue group")).toBeVisible();
+  expect((await screen.findAllByText("First catalogue group"))[0]).toBeVisible();
 });
 
 test("shows a delegated review and retains decision feedback", async () => {
@@ -286,10 +287,58 @@ test("shows membership states and lets a user withdraw a pending application", a
   );
 
   renderWithProviders(<AccessGroupsPage />, "/access-groups", session);
-  expect(await screen.findByText("Member")).toBeVisible();
+  expect((await screen.findAllByText("Member"))[0]).toBeVisible();
   expect(screen.getByText("Application rejected")).toBeVisible();
   expect(screen.getByText("Application approved")).toBeVisible();
   expect(screen.getByText("Application withdrawn")).toBeVisible();
+  await userEvent.click(screen.getByRole("button", { name: /pending Application pending/i }));
   await userEvent.click(screen.getByRole("button", { name: "Withdraw application" }));
   expect(await screen.findByText("Application withdrawn.")).toBeVisible();
+});
+
+test("searches the active ACG catalogue and explains an empty result", async () => {
+  const fetchMock = vi.fn((url: string) =>
+    Promise.resolve({
+      ok: true,
+      json: () =>
+        Promise.resolve(
+          url.includes("/acg-applications")
+            ? { applications: [], page: 1, pageSize: 20, total: 0, totalPages: 0 }
+            : url.includes("query=missing")
+              ? { acgs: [], page: 1, pageSize: 50, total: 0, totalPages: 0 }
+              : {
+                  acgs: [
+                    {
+                      id: "acg-1",
+                      code: "ACG-ONE",
+                      name: "Regional reporting",
+                      description: "Controlled products.",
+                      isMember: false,
+                      applicationStatus: null,
+                      applicationId: null,
+                      canReviewApplications: false,
+                      canManageAdmins: false,
+                      managerNames: ["Current Manager"],
+                    },
+                  ],
+                  page: 1,
+                  pageSize: 50,
+                  total: 1,
+                  totalPages: 1,
+                },
+        ),
+    }),
+  );
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<AccessGroupsPage />, "/access-groups", session);
+  expect(await screen.findByText("1 active access group matches this view.")).toBeVisible();
+  await userEvent.type(await screen.findByLabelText("Search access groups"), "missing");
+
+  expect(await screen.findByText("No ACGs match your search.")).toBeVisible();
+  expect(screen.getByText("Choose a different search to view an access group.")).toBeVisible();
+  expect(fetchMock).toHaveBeenCalledWith(
+    "http://127.0.0.1:8001/api/v1/acgs/catalogue?page=1&pageSize=50&query=missing",
+    expect.objectContaining({ method: "GET" }),
+  );
 });

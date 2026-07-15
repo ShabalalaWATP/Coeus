@@ -25,6 +25,7 @@ from coeus.repositories.demo_catalogue_data import (
     TYPE_LABELS,
 )
 from coeus.repositories.demo_catalogue_specs import BASE_SPECS, SHOWCASE_SPECS
+from coeus.repositories.demo_pdf_catalogue import build_pdf_corpus
 
 _BOUNDING_BOX = BoundingBox(*BOUNDING_BOX)
 
@@ -46,6 +47,7 @@ class ProductSpec:
 class DemoCatalogue:
     products: tuple[StoreProduct, ...]
     acg_codes: frozenset[str]
+    generated_assets: tuple[tuple[str, bytes], ...] = ()
 
 
 def build_demo_catalogue(access_repository: AccessRepository) -> DemoCatalogue:
@@ -62,7 +64,10 @@ def build_demo_catalogue(access_repository: AccessRepository) -> DemoCatalogue:
             continue
         used_codes.add(spec.acg_code)
         products.append(_build_product(spec, index, acg_id, admin.user_id, now))
-    return DemoCatalogue(tuple(products), frozenset(used_codes))
+    pdf_products, generated_assets, pdf_codes = build_pdf_corpus(acg_ids, admin.user_id)
+    products.extend(pdf_products)
+    used_codes.update(pdf_codes)
+    return DemoCatalogue(tuple(products), frozenset(used_codes), generated_assets)
 
 
 def _normalised_specs() -> list[ProductSpec]:

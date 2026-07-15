@@ -1,6 +1,40 @@
 /* Ambient UI effects. Every animation here is neutralised by the global
    prefers-reduced-motion rule in base.css. */
 
+/* A restrained adaptation of the React Bits border-glow idea. The effect uses
+   existing theme tokens, creates no new dependency and never carries state. */
+.border-glow {
+  --glow-surface: var(--surface);
+
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--glow-surface), var(--glow-surface)) padding-box,
+    linear-gradient(
+        110deg,
+        var(--border) 0%,
+        var(--border) 38%,
+        color-mix(in srgb, var(--accent) 82%, white) 50%,
+        var(--border) 62%,
+        var(--border) 100%
+      )
+      border-box;
+  background-position:
+    0 0,
+    100% 0;
+  background-size:
+    100% 100%,
+    220% 100%;
+  animation: border-glow-drift 7s ease-in-out infinite alternate;
+}
+
+@keyframes border-glow-drift {
+  to {
+    background-position:
+      0 0,
+      -100% 0;
+  }
+}
+
 /* Spotlight card: a soft radial highlight that follows the pointer. */
 .spotlight-card {
   --spot-x: 50%;

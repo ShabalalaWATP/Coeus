@@ -15,6 +15,7 @@ const group = {
   applicationId: null,
   canReviewApplications: true,
   canManageAdmins: true,
+  managerNames: ["Manager One"],
 } as const;
 
 beforeEach(() => resetQueryClientForTests());

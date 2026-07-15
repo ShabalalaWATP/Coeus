@@ -27,6 +27,8 @@ FROM intelligence_store_products p
 WHERE p.product_id = CAST(:product_id AS uuid)
   AND p.status <> :archived_status
   AND p.classification_level <= :clearance_level
+  AND p.releasability = ARRAY['MOCK']::text[]
+  AND p.handling_caveats = ARRAY['MOCK DATA ONLY']::text[]
   AND (
       :include_drafts
       OR p.status <> :draft_status
@@ -73,6 +75,8 @@ SELECT
 FROM intelligence_store_products p
 WHERE p.status <> :archived_status
   AND p.classification_level <= :clearance_level
+  AND p.releasability = ARRAY['MOCK']::text[]
+  AND p.handling_caveats = ARRAY['MOCK DATA ONLY']::text[]
   AND (
       :include_drafts
       OR p.status <> :draft_status
@@ -222,6 +226,8 @@ WITH scoped AS (
     FROM intelligence_store_products p
     WHERE p.status <> :archived_status
       AND p.classification_level <= :clearance_level
+      AND p.releasability = ARRAY['MOCK']::text[]
+      AND p.handling_caveats = ARRAY['MOCK DATA ONLY']::text[]
       AND (
           :include_drafts
           OR p.status <> :draft_status

@@ -1,0 +1,202 @@
+.profile-page {
+  display: grid;
+  gap: 24px;
+}
+
+.profile-card {
+  display: grid;
+  gap: 22px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: clamp(20px, 4vw, 42px);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  box-shadow: var(--shadow-soft);
+}
+
+.profile-identity {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+}
+
+.profile-avatar {
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--border));
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-muted));
+  color: var(--accent-soft);
+  font-family: var(--font-mono);
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.profile-eyebrow,
+.profile-read-view__heading span,
+.profile-edit-form__heading span {
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.profile-identity h2,
+.profile-identity p,
+.profile-read-view h3,
+.profile-edit-form h3 {
+  margin: 0;
+}
+
+.profile-identity h2 {
+  margin-top: 4px;
+  font-size: clamp(1.35rem, 3vw, 2rem);
+}
+
+.profile-identity p,
+.profile-card > p,
+.profile-read-view > small {
+  color: var(--muted);
+}
+
+.profile-verified {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  color: var(--success);
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.profile-roles,
+.profile-specialisms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.profile-roles span,
+.profile-specialisms span {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.profile-read-view {
+  display: grid;
+  gap: 18px;
+  border-top: 1px solid var(--border);
+  padding-top: 24px;
+}
+
+.profile-read-view__heading,
+.profile-edit-form__heading,
+.profile-edit-form__actions {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.profile-bio {
+  max-width: 72ch;
+  margin: 0;
+  color: var(--text);
+  line-height: 1.7;
+}
+
+.profile-edit-form {
+  --glow-surface: var(--surface-raised);
+
+  display: grid;
+  gap: 18px;
+  border-radius: var(--radius-lg);
+  padding: clamp(18px, 3vw, 28px);
+}
+
+.profile-edit-form label {
+  display: grid;
+  gap: 8px;
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 750;
+}
+
+.profile-edit-form input,
+.profile-edit-form textarea {
+  width: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--surface-muted) 76%, transparent);
+  color: var(--text);
+  line-height: 1.5;
+  resize: vertical;
+  transition:
+    border-color var(--speed-fast) ease,
+    box-shadow var(--speed-fast) ease,
+    background var(--speed-fast) ease;
+}
+
+.profile-edit-form input:focus,
+.profile-edit-form textarea:focus {
+  border-color: var(--accent);
+  background: var(--surface-muted);
+  box-shadow: var(--glow-accent);
+  outline: none;
+}
+
+.profile-edit-form label small {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.profile-edit-form__heading > button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--muted);
+}
+
+.profile-edit-form__actions {
+  justify-content: flex-end;
+}
+
+.profile-edit-form__actions button[type="submit"] {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 42px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  padding: 0 16px;
+  background: var(--accent-strong);
+  color: white;
+  font-weight: 750;
+}
+
+@media (max-width: 640px) {
+  .profile-identity {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .profile-verified {
+    grid-column: 1 / -1;
+  }
+
+  .profile-read-view__heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

@@ -83,6 +83,7 @@ class AcgCatalogueItemResponse(BaseModel):
     application_id: UUID | None = Field(serialization_alias="applicationId")
     can_review_applications: bool = Field(serialization_alias="canReviewApplications")
     can_manage_admins: bool = Field(serialization_alias="canManageAdmins")
+    manager_names: list[str] = Field(serialization_alias="managerNames")
 
 
 class AcgCatalogueResponse(BaseModel):

@@ -2621,6 +2621,33 @@ line and 95.01 percent branch coverage, plus 432 frontend tests at 98.51 percent
 line and 95.01 percent branch coverage. Dependency audits report no known
 vulnerabilities.
 
+### Sprint 18: Customer experience and analyst context
+
+This post-security feature slice makes the request, ACG and profile journeys
+operationally clear while preserving backend authority. It replaces decorative
+request metrics with a status ledger, hides intake completeness from customers,
+adds bounded server-side ACG search with minimal manager identity, moves profile
+editing to a read-first account route and exposes the full customer conversation
+only to the currently assigned analyst through lazy task detail.
+
+The acceptance contract is
+`docs/specs/customer-experience-and-analyst-context.md`; the projection and
+interaction decisions are recorded in ADR 0030.
+
+### Sprint 19: Synthetic intelligence library and search assurance
+
+This local-demo feature slice adds 144 deterministic four-page PDF products,
+15 specialist ACGs and a broad but testable Billy Gilmour membership matrix.
+It replaces misleading rank-normalised RFI and Store scores with calibrated
+absolute evidence, raises the bounded memory semantic work limit to the full
+demo corpus, weights title and labelled metadata, suppresses requester-scoped
+candidate counts for other viewers and aligns PostgreSQL visibility aggregates
+with the synthetic release-marker policy.
+
+The acceptance contract is
+`docs/specs/synthetic-intelligence-library-and-search-assurance.md`; the corpus
+and retrieval decisions are recorded in ADR 0031.
+
 ## 20. Definition of done for MVP
 
 The MVP is done when:

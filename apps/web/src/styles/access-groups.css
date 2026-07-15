@@ -1,34 +1,269 @@
 .access-groups-page,
-.access-group-list,
 .access-group-reviews,
 .access-group-admins {
+  display: grid;
+  gap: 18px;
+}
+
+.access-group-directory {
   display: grid;
   gap: 16px;
 }
 
-.access-group-application,
+.access-group-directory__heading {
+  display: flex;
+  gap: 18px;
+  align-items: end;
+  justify-content: space-between;
+}
+
+.access-group-directory__heading h2,
+.access-group-directory__heading p {
+  margin: 0;
+}
+
+.access-group-directory__heading p {
+  margin-top: 5px;
+  color: var(--muted);
+}
+
+.access-group-search {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  width: min(100%, 430px);
+  min-height: 46px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  padding: 0 14px;
+  background: var(--surface-muted);
+  color: var(--muted);
+}
+
+.access-group-search:focus-within {
+  border-color: var(--accent);
+  box-shadow: var(--glow-accent);
+}
+
+.access-group-search input {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  outline: none;
+}
+
+.access-group-directory__layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.4fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.access-group-results {
+  display: grid;
+  max-height: 670px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+}
+
+.access-group-result {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  padding: 14px 16px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  transition: background var(--speed-fast) ease;
+}
+
+.access-group-result:last-of-type {
+  border-bottom: 0;
+}
+
+.access-group-result:hover,
+.access-group-result:focus-visible,
+.access-group-result[aria-current="true"] {
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface-muted));
+  outline: none;
+}
+
+.access-group-result[aria-current="true"] {
+  box-shadow: inset 3px 0 var(--accent);
+}
+
+.access-group-result__code,
+.access-group-detail__header span {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.access-group-result strong,
+.access-group-result small {
+  grid-column: 1;
+}
+
+.access-group-result small {
+  color: var(--muted);
+}
+
+.access-group-result svg {
+  grid-row: 1 / 4;
+  grid-column: 2;
+  align-self: center;
+  color: var(--muted);
+}
+
+.access-group-results__empty {
+  padding: 24px;
+  color: var(--muted);
+}
+
+.access-group-detail {
+  --glow-surface: var(--surface);
+
+  display: grid;
+  gap: 20px;
+  padding: clamp(20px, 3vw, 30px);
+}
+
+.access-group-detail > p {
+  max-width: 68ch;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.access-group-detail__header,
+.form-footer {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.access-group-detail__header h3 {
+  margin: 4px 0 0;
+  font-size: 1.35rem;
+}
+
+.access-group-status {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--border));
+  border-radius: 999px;
+  padding: 6px 10px;
+  color: var(--accent-soft);
+  font-size: 0.78rem;
+}
+
+.access-group-managers {
+  display: grid;
+  gap: 10px;
+  border-block: 1px solid var(--border);
+  padding: 16px 0;
+}
+
+.access-group-managers > div {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.access-group-managers h4,
+.access-group-managers p {
+  margin: 0;
+}
+
+.access-group-managers ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.access-group-managers li {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.access-group-application-form {
+  display: grid;
+  gap: 10px;
+}
+
+.access-group-application-form label {
+  display: grid;
+  gap: 4px;
+  font-weight: 750;
+}
+
+.access-group-application-form label span,
+.access-group-member-note,
+.form-footer small {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.access-group-application-form textarea {
+  width: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  padding: 13px 14px;
+  background: var(--surface-muted);
+  color: var(--text);
+  line-height: 1.55;
+  resize: vertical;
+}
+
+.access-group-application-form textarea:focus {
+  border-color: var(--accent);
+  box-shadow: var(--glow-accent);
+  outline: none;
+}
+
+.access-group-application-form button {
+  min-height: 42px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  padding: 0 15px;
+  background: var(--accent-strong);
+  color: white;
+  font-weight: 750;
+}
+
 .access-group-review-row {
   display: grid;
   gap: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
 }
 
-.access-group-application form,
 .access-group-review-row label,
 .access-group-admins label {
   display: grid;
   gap: 6px;
 }
 
-.access-group-application__status {
-  color: var(--accent);
-}
-
-.access-group-review-row {
-  border-top: 1px solid var(--border);
-  padding-top: 14px;
-}
-
-.access-group-review-row > div:last-of-type {
+.access-group-review-row > div:last-of-type,
+.access-group-admins li {
   display: flex;
   gap: 10px;
 }
@@ -41,12 +276,33 @@
 }
 
 .access-group-admins li {
-  display: flex;
-  gap: 12px;
   align-items: center;
   justify-content: space-between;
 }
 
 .access-group-admins li span {
   display: grid;
+}
+
+@media (max-width: 860px) {
+  .access-group-directory__heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .access-group-directory__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .access-group-results {
+    max-height: 350px;
+  }
+}
+
+@media (max-width: 520px) {
+  .access-group-detail__header,
+  .form-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }

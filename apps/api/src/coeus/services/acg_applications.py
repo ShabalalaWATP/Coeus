@@ -1,6 +1,5 @@
 from dataclasses import replace
 from datetime import UTC, datetime
-from math import ceil
 from threading import RLock
 from uuid import UUID, uuid4
 
@@ -14,6 +13,7 @@ from coeus.domain.access import (
 from coeus.domain.auth import UserAccount
 from coeus.repositories.access import AccessRepository
 from coeus.repositories.acg_applications import AcgApplicationRepository
+from coeus.services.acg_catalogue import active_manager_names, catalogue_page, total_pages
 from coeus.services.audit import AuditLog
 
 MAX_ACG_ADMINS = 8
@@ -33,12 +33,10 @@ class AcgApplicationService:
         self._bootstrap_owners()
 
     def catalogue(
-        self, actor: UserAccount, page: int, page_size: int
+        self, actor: UserAccount, page: int, page_size: int, query: str = ""
     ) -> tuple[tuple[AccessControlGroup, ...], int, int]:
         self._require_active(actor)
-        active = tuple(acg for acg in self._access.list_acgs() if acg.is_active)
-        start = (page - 1) * page_size
-        return active[start : start + page_size], len(active), _total_pages(active, page_size)
+        return catalogue_page(self._access, page, page_size, query)
 
     def own_application(self, actor: UserAccount, acg_id: UUID) -> AcgAccessApplication | None:
         return self._workflows.get_for_user(acg_id, actor.user_id)
@@ -111,7 +109,7 @@ class AcgApplicationService:
         reviewable = self._reviewable_acg_ids(actor)
         pending = self._workflows.list_pending(reviewable)
         start = (page - 1) * page_size
-        return pending[start : start + page_size], len(pending), _total_pages(pending, page_size)
+        return pending[start : start + page_size], len(pending), total_pages(pending, page_size)
 
     def decide(
         self,
@@ -154,6 +152,11 @@ class AcgApplicationService:
         return tuple(
             sorted((user for user in users if user is not None), key=lambda u: u.display_name)
         )
+
+    def manager_names(self, actor: UserAccount, acg_id: UUID) -> tuple[str, ...]:
+        self._require_active(actor)
+        self._active_acg(acg_id)
+        return active_manager_names(self._access, self._workflows, acg_id)
 
     def add_admin(self, actor: UserAccount, acg_id: UUID, user_id: UUID) -> tuple[UserAccount, ...]:
         with self._lock:
@@ -230,7 +233,7 @@ class AcgApplicationService:
             )
         )
         start = (page - 1) * page_size
-        return users[start : start + page_size], len(users), _total_pages(users, page_size)
+        return users[start : start + page_size], len(users), total_pages(users, page_size)
 
     def _apply_decision(
         self,
@@ -341,7 +344,3 @@ class AcgApplicationService:
     @staticmethod
     def _is_platform_admin(actor: UserAccount) -> bool:
         return Permission.SYSTEM_CONFIGURE in actor.permissions
-
-
-def _total_pages(items: tuple[object, ...], page_size: int) -> int:
-    return ceil(len(items) / page_size) if items else 0

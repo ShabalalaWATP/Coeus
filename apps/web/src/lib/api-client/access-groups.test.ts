@@ -31,7 +31,7 @@ test("uses the bounded catalogue and application workflow contracts", async () =
   });
   vi.stubGlobal("fetch", fetchMock);
 
-  await listAccessGroups(2);
+  await listAccessGroups(2, " cyber ");
   await applyForAccessGroup("acg/1", application.justification, "csrf");
   await withdrawAccessGroupApplication("acg/1", "csrf");
   await listAccessGroupApplications(3);
@@ -39,7 +39,7 @@ test("uses the bounded catalogue and application workflow contracts", async () =
   await decideAccessGroupApplication(application, "reject", "Insufficient need.", "csrf");
 
   expect(fetchMock).toHaveBeenCalledWith(
-    "http://127.0.0.1:8001/api/v1/acgs/catalogue?page=2&pageSize=20",
+    "http://127.0.0.1:8001/api/v1/acgs/catalogue?page=2&pageSize=50&query=cyber",
     expect.objectContaining({ method: "GET" }),
   );
   expect(fetchMock).toHaveBeenCalledWith(

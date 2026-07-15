@@ -57,9 +57,10 @@ async def list_acg_catalogue(
     access_services: Annotated[AccessServices, Depends(get_access_services)],
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(alias="pageSize", ge=1, le=50)] = 20,
+    query: Annotated[str, Query(max_length=100)] = "",
 ) -> AcgCatalogueResponse:
     acgs, total, total_pages = access_services.applications.catalogue(
-        authenticated.user, page, page_size
+        authenticated.user, page, page_size, query
     )
     return AcgCatalogueResponse(
         acgs=[
@@ -91,6 +92,9 @@ async def list_acg_catalogue(
                     authenticated.user, acg.acg_id
                 ),
                 can_manage_admins=Permission.SYSTEM_CONFIGURE in authenticated.user.permissions,
+                manager_names=list(
+                    access_services.applications.manager_names(authenticated.user, acg.acg_id)
+                ),
             )
             for acg in acgs
         ],

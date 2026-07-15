@@ -159,7 +159,7 @@ function OfferCard({
       </div>
       <div className="offer-reasons">
         {offer.matchReasons.map((reasonItem) => (
-          <span key={reasonItem}>{reasonItem}</span>
+          <span key={reasonItem}>{reasonLabel(reasonItem)}</span>
         ))}
       </div>
       {offer.rejectionReason ? <p>{offer.rejectionReason}</p> : null}
@@ -189,9 +189,28 @@ function OfferCard({
 
 function ScoreBadge({ offer }: { offer: RfiProductOffer }) {
   return (
-    <span className={`score-badge score-badge--${offer.status}`}>
+    <span
+      aria-label={`Retrieval relevance ${Math.round(offer.matchScore * 100)} percent`}
+      className={`score-badge score-badge--${offer.status}`}
+      title="Retrieval relevance, not analytic confidence"
+    >
       <BarChart3 aria-hidden="true" size={16} />
       {Math.round(offer.matchScore * 100)}%
     </span>
   );
+}
+
+function reasonLabel(reason: string) {
+  const [kind, value] = reason.split(":", 2);
+  const labels: Record<string, string> = {
+    "full-text": "Matched term",
+    "lexical-rank": "Text result rank",
+    metadata: "Metadata fit",
+    retrieval: "Retrieval mode",
+    semantic: "Related term",
+    "semantic-label": "Topic",
+    "vector-similarity": "Semantic similarity",
+  };
+  const label = labels[kind] ?? "Match signal";
+  return `${label}: ${(value ?? reason).replaceAll("-", " ")}`;
 }

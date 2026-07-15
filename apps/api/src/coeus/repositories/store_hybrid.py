@@ -9,7 +9,7 @@ from coeus.domain.store_filters import structured_filter_match
 from coeus.domain.store_ranking import lexical_score_for_product
 from coeus.domain.store_semantics import product_semantic_text
 
-MEMORY_VECTOR_WORK_LIMIT = 64
+MEMORY_VECTOR_WORK_LIMIT = 500
 
 
 def memory_hybrid_candidates(

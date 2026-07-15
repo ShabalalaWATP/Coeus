@@ -311,6 +311,13 @@
             "title": "Ismember",
             "type": "boolean"
           },
+          "managerNames": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Managernames",
+            "type": "array"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -325,7 +332,8 @@
           "applicationStatus",
           "applicationId",
           "canReviewApplications",
-          "canManageAdmins"
+          "canManageAdmins",
+          "managerNames"
         ],
         "title": "AcgCatalogueItemResponse",
         "type": "object"
@@ -913,6 +921,22 @@
           "displayName"
         ],
         "title": "AnalystCandidateResponse",
+        "type": "object"
+      },
+      "AnalystConversationResponse": {
+        "properties": {
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/ChatMessageResponse"
+            },
+            "title": "Messages",
+            "type": "array"
+          }
+        },
+        "required": [
+          "messages"
+        ],
+        "title": "AnalystConversationResponse",
         "type": "object"
       },
       "AnalystNoteRequest": {
@@ -6981,6 +7005,17 @@
               "title": "Pagesize",
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "query",
+            "required": false,
+            "schema": {
+              "default": "",
+              "maxLength": 100,
+              "title": "Query",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -8667,6 +8702,49 @@
           }
         },
         "summary": "Assign Analysts",
+        "tags": [
+          "analyst"
+        ]
+      }
+    },
+    "/api/v1/analyst/tasks/{ticket_id}/conversation": {
+      "get": {
+        "operationId": "analyst_task_conversation_api_v1_analyst_tasks__ticket_id__conversation_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalystConversationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Analyst Task Conversation",
         "tags": [
           "analyst"
         ]

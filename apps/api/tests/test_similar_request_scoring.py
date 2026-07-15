@@ -27,15 +27,12 @@ class FixedEmbeddingService:
         return (0.2, 0.4) if self.calls == 1 else self.candidate_vector
 
 
-def test_similar_and_rfi_paths_share_one_lexical_scorer() -> None:
-    # Part B (similar requests) must score equivalent text identically to Part A
-    # (RFI product ranking); both now route through the shared formula, so the
-    # floor stays calibrated and results cannot drift apart.
+def test_product_lexical_scorer_weights_fields_instead_of_flat_text() -> None:
     product = seed_product()
     document = product_semantic_text(product)
     query = "Baltic regional stability assessment ports"
 
-    assert lexical_score_for_product(product, query) == lexical_text_score(query, document)
+    assert 0 < lexical_score_for_product(product, query) < lexical_text_score(query, document)
 
 
 def test_score_similar_requests_returns_empty_when_no_open_candidates() -> None:

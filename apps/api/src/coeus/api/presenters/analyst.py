@@ -18,6 +18,7 @@ from coeus.schemas.analyst import (
     LinkedProductResponse,
     WorkPackageResponse,
 )
+from coeus.schemas.tickets import ChatMessageResponse
 from coeus.services.analyst_records import active_assignments
 from coeus.services.analyst_workflow import AnalystWorkflowService
 
@@ -55,6 +56,18 @@ def task_response(
         ],
         drafts=[_draft_response(item) for item in ticket.draft_products],
     )
+
+
+def conversation_response(ticket: TicketRecord) -> list[ChatMessageResponse]:
+    return [
+        ChatMessageResponse(
+            message_id=message.message_id,
+            author=message.author,
+            body=message.body,
+            created_at=message.created_at,
+        )
+        for message in ticket.messages
+    ]
 
 
 def _assignment_response(assignment: AnalystAssignment) -> AnalystAssignmentResponse:

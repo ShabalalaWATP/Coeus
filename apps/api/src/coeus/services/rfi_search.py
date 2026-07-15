@@ -253,11 +253,17 @@ class RfiSearchService:
             offer for offer in ticket.product_offers if self._can_read_offer(actor, offer)
         )
         metric = ticket.search_metrics[-1] if ticket.search_metrics else None
-        if metric is not None and len(visible_offers) != len(ticket.product_offers):
-            # candidate_count stays the permitted candidate total from the search
-            # run; only the offer counts are re-scoped to what this viewer can see.
+        if metric is not None and (
+            len(visible_offers) != len(ticket.product_offers)
+            or actor.user_id != ticket.requester_user_id
+        ):
+            # The source catalogue count is scoped to the requester. Do not
+            # disclose it to collaborators who may have a narrower ACG set.
             metric = replace(
                 metric,
+                candidate_count=(
+                    metric.candidate_count if actor.user_id == ticket.requester_user_id else 0
+                ),
                 offered_count=len(visible_offers),
                 rejected_count=sum(
                     offer.status == ProductOfferStatus.REJECTED for offer in visible_offers

@@ -254,6 +254,13 @@ async def _approved_route_ticket(
                 headers={"X-CSRF-Token": csrf_token},
                 json={"reason": "Need a new route."},
             )
+    elif search.json()["ticketState"] == "RFI_NO_MATCH":
+        consent = await client.post(
+            f"/api/v1/tickets/{ticket_id}/no-match-consent",
+            headers={"X-CSRF-Token": csrf_token},
+            json={"taskAsNewRequest": True},
+        )
+        assert consent.status_code == 200
     jioc = await login(client, "jioc.team@example.test")
     routed = await client.post(
         f"/api/v1/routing/{ticket_id}/run",
@@ -333,9 +340,8 @@ def _acg_id(app: FastAPI, code: str) -> str:
 
 
 def _ticket_for_feedback_request(app: FastAPI, request_id: str) -> TicketRecord:
-    parsed_request_id = UUID(request_id)
     for ticket in app.state.ticket_services.tickets._repository.list_tickets():
-        if any(request.request_id == parsed_request_id for request in ticket.feedback_requests):
+        if any(request.request_id == UUID(request_id) for request in ticket.feedback_requests):
             return cast(TicketRecord, ticket)
     raise AssertionError(f"Missing feedback request {request_id}")
 

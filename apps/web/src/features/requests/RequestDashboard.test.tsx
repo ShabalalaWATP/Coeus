@@ -135,4 +135,9 @@ test("renders fallback titles and an empty dashboard state", () => {
   expect(
     screen.getByText("Requests shared with you appear here once you are tagged."),
   ).toBeVisible();
+
+  rerender(<RequestDashboard {...dashboardDefaults} onOpen={vi.fn()} tickets={[]} />);
+  expect(
+    screen.getByText("Open a new request and the assistant will capture the details in chat."),
+  ).toBeVisible();
 });

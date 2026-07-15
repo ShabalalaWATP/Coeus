@@ -21,6 +21,16 @@ SEMANTIC_LABEL_TERMS: dict[str, frozenset[str]] = {
     "supply-chain": frozenset({"supply", "logistics", "freight", "cargo"}),
     "border": frozenset({"border", "crossing", "checkpoint", "migration"}),
     "environment": frozenset({"weather", "climate", "flood", "wildfire"}),
+    "russia": frozenset({"russia", "russian"}),
+    "iran": frozenset({"iran", "iranian"}),
+    "china": frozenset({"china", "chinese"}),
+    "land-warfare": frozenset({"army", "land", "mechanised", "tanks", "armour"}),
+    "artillery": frozenset({"artillery", "rocket", "rockets", "fires"}),
+    "missile": frozenset({"missile", "missiles", "ballistic", "cruise"}),
+    "air-defence": frozenset({"air-defence", "defence", "interceptor"}),
+    "uas": frozenset({"drone", "drones", "uas", "uncrewed", "swarming"}),
+    "electronic-warfare": frozenset({"electronic-warfare", "ew", "jamming"}),
+    "spectrum": frozenset({"spectrum", "emitter", "emitters", "elint"}),
 }
 
 

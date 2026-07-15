@@ -199,9 +199,9 @@ async def test_rejecting_last_product_offer_queues_for_jioc_review() -> None:
     assert rejected.json()["metrics"]["rejectedCount"] == 1
     assert manager["user"]["username"] == "collection.manager@example.test"
     assert manager_results.json()["offers"] == []
-    # The candidate count reflects the permitted candidates searched for the
-    # requester; per-viewer filtering only hides the offers themselves.
-    assert manager_results.json()["metrics"]["candidateCount"] == 1
+    # The requester's permitted catalogue count must not leak to a reviewer
+    # whose ACG set cannot read the offered product.
+    assert manager_results.json()["metrics"]["candidateCount"] == 0
     assert manager_results.json()["metrics"]["offeredCount"] == 0
 
 

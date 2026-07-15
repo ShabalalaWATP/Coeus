@@ -11,20 +11,17 @@ from coeus.domain.auth import UserAccount
 from coeus.persistence.state_store import StateStore
 from coeus.repositories.access_state import load_access_snapshot, save_access_snapshot
 from coeus.repositories.auth import SeedUserRepository
+from coeus.repositories.demo_access_specs import (
+    BILLY_DENIED_ACG_CODES,
+    THEMED_ACG_DISCIPLINES,
+    THEMED_ACG_REGIONS,
+    merge_demo_access,
+    specialist_acgs,
+)
 
 SEED_NAMESPACE = UUID("f71d6c95-85da-4f8b-8d55-e547c227c3a4")
 
-THEMED_ACG_REGIONS = (
-    ("EU", "European"),
-    ("AF", "African"),
-    ("ME", "Middle Eastern"),
-    ("AP", "Asia-Pacific"),
-    ("NA", "North American"),
-    ("SA", "South American"),
-    ("AR", "Arctic"),
-    ("MAR", "Maritime"),
-)
-THEMED_ACG_DISCIPLINES = ("Cyber", "HUMINT", "SIGINT", "GEOINT", "OSINT")
+DEMO_ACCESS_SEED_VERSION = 2
 
 
 def stable_seed_id(name: str) -> UUID:
@@ -171,6 +168,15 @@ class SeedAccessRepository:
         self._acgs = snapshot.acgs
         self._memberships = snapshot.memberships
         self._products = snapshot.products
+        marker = self._state_store.load("demo_access_seed") or {}
+        if int(marker.get("version", 0)) < DEMO_ACCESS_SEED_VERSION:
+            admin = self._user("admin@example.test")
+            billy = self._user("colleague@example.test")
+            if merge_demo_access(
+                self._acgs, self._memberships, admin.user_id, billy.user_id, stable_seed_id
+            ):
+                self._persist()
+            self._state_store.save("demo_access_seed", {"version": DEMO_ACCESS_SEED_VERSION})
 
     def _persist(self) -> None:
         if self._state_store is None or self._initialising:
@@ -233,6 +239,13 @@ class SeedAccessRepository:
         for name, themed_members in themed_memberships:
             for member in themed_members:
                 self.add_membership(themed[name].acg_id, member.user_id)
+
+        for acg in specialist_acgs(admin.user_id, stable_seed_id):
+            self.save_acg(acg)
+            self.add_membership(acg.acg_id, admin.user_id)
+        for acg in self._acgs.values():
+            if acg.code not in BILLY_DENIED_ACG_CODES:
+                self.add_membership(acg.acg_id, colleague.user_id)
 
         regional_product = self._seed_product(
             "regional-stability-brief",

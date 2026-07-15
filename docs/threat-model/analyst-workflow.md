@@ -21,6 +21,9 @@ to QC review.
 | A customer assigns analysts or mutates analyst work. | Assignment requires RFA or collection assignment permissions. Analyst mutations require analyst permissions and assignment ownership. |
 | A descriptive analyst profile is treated as authority. | Assignment validates active status, the generic Analyst role and selected-team membership independently of display name, title, biography or specialisms. |
 | An analyst sees another analyst's task. | Workbench listing and task detail require the latest assignment to match the actor's user ID. |
+| An analyst reads a former or unassigned task's customer conversation. | The lazy conversation endpoint resolves every request through current assignment and visible analyst workflow state. Reassignment or lifecycle exit revokes access immediately. |
+| Customer chat triggers stored XSS or becomes an instruction channel. | The analyst projection returns only message identity, author, body and time. The web client renders bodies as text and never sends this read surface to an agent. |
+| Full transcripts inflate every task response. | Conversation history is excluded from task lists and loaded only when an assigned analyst expands the bounded detail disclosure. |
 | A linked product bypasses ACG or clearance checks. | Product links call `StoreDetailService.get_visible_product`, reusing Store access policy, and accept only published products. |
 | Linking a readable draft grants another task participant a new draft audience. | External Store links reject every draft, including creator-visible and relationship-visible drafts. Ticket-local analyst drafts remain in the dedicated versioned draft workflow, so a link cannot manufacture access authority. |
 | Draft product data leaks through published store search. | Sprint 9 draft products remain ticket-local and are not indexed or published. |

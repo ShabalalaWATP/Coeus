@@ -1,5 +1,5 @@
 import { Bot, Mic, MicOff, SendHorizonal } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { Ticket } from "../../lib/api-client/tickets";
 import { useSpeechToText } from "./useSpeechToText";
@@ -17,6 +17,7 @@ type ChatPanelProps = {
 
 export function ChatPanel({ isSending, onSend, readOnly = false, ticket }: ChatPanelProps) {
   const [message, setMessage] = useState("");
+  const transcriptRef = useRef<HTMLDivElement>(null);
   const speech = useSpeechToText((transcript) => {
     setMessage((current) =>
       current.trim() ? `${current.trimEnd()} ${transcript.trim()}` : transcript.trim(),
@@ -26,6 +27,11 @@ export function ChatPanel({ isSending, onSend, readOnly = false, ticket }: ChatP
     ticket?.state === "INFO_REQUIRED" ? (ticket.clarificationRequests ?? []) : [];
   const trimmedMessage = message.trim();
   const messageTooShort = trimmedMessage.length > 0 && trimmedMessage.length < 3;
+
+  useEffect(() => {
+    const transcript = transcriptRef.current;
+    if (transcript) transcript.scrollTop = transcript.scrollHeight;
+  }, [isSending, ticket?.messages.length]);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -38,15 +44,28 @@ export function ChatPanel({ isSending, onSend, readOnly = false, ticket }: ChatP
 
   return (
     <section className="surface chat-panel" aria-labelledby="chat-title">
-      <div className="section-heading access-heading">
-        <Bot aria-hidden="true" size={20} />
-        <h2 id="chat-title">Customer chatbot</h2>
+      <div className="chat-panel__heading">
+        <span className="chat-panel__icon">
+          <Bot aria-hidden="true" size={20} />
+        </span>
+        <div>
+          <h2 id="chat-title">Conversation with Istari</h2>
+          <p>Describe the decision you need to make. Istari will shape it into a clear request.</p>
+        </div>
       </div>
-      <div className="chat-transcript" aria-live="polite">
+      <div
+        aria-label="Conversation history"
+        aria-live="polite"
+        className="chat-transcript"
+        ref={transcriptRef}
+      >
         {ticket?.messages.length ? (
           ticket.messages.map((item) => (
             <article className={`chat-message chat-message--${item.author}`} key={item.id}>
-              <strong>{item.author === "user" ? "You" : "Istari"}</strong>
+              <header>
+                <strong>{item.author === "user" ? "You" : "Istari"}</strong>
+                <time dateTime={item.createdAt}>{formatMessageTime(item.createdAt)}</time>
+              </header>
               <p>{item.body}</p>
             </article>
           ))
@@ -63,7 +82,7 @@ export function ChatPanel({ isSending, onSend, readOnly = false, ticket }: ChatP
             className="chat-message chat-message--assistant chat-message--clarification"
             key={request.id}
           >
-            <strong>Istari</strong>
+            <strong>More information needed</strong>
             <p>Manager clarification requested: {request.reason}</p>
             <ul>
               {request.questions.map((question) => (
@@ -92,12 +111,15 @@ export function ChatPanel({ isSending, onSend, readOnly = false, ticket }: ChatP
         </p>
       ) : (
         <form className="chat-form" onSubmit={handleSubmit}>
-          <label htmlFor="request-message">Message</label>
+          <label className="sr-only" htmlFor="request-message">
+            Message
+          </label>
           <textarea
             id="request-message"
             maxLength={4000}
             onChange={(event) => setMessage(event.target.value)}
             rows={4}
+            placeholder="Add the next detail or answer Istari's question…"
             value={message}
           />
           {messageTooShort ? (
@@ -141,4 +163,11 @@ export function ChatPanel({ isSending, onSend, readOnly = false, ticket }: ChatP
       )}
     </section>
   );
+}
+
+function formatMessageTime(value: string) {
+  return new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
 }

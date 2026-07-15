@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from coeus.schemas.tickets import ChatMessageResponse
+
 WorkPackageText = Annotated[str, Field(min_length=3, max_length=180)]
 
 
@@ -23,6 +25,12 @@ class AnalystAssignmentRequest(BaseModel):
 
 class AnalystNoteRequest(BaseModel):
     body: str = Field(min_length=3, max_length=2_000)
+
+
+class AnalystConversationResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    messages: list[ChatMessageResponse]
 
 
 class LinkProductRequest(BaseModel):

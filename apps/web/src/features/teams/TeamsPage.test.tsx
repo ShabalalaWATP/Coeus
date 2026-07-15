@@ -79,34 +79,6 @@ test("tells the manager when a search matches nobody addable", async () => {
   );
 });
 
-test("saves the caller's own profile", async () => {
-  const fetchMock = teamsFetch();
-  vi.stubGlobal("fetch", fetchMock);
-
-  renderWithProviders(<TeamsPage />, "/teams");
-
-  const titleInput = await screen.findByLabelText("Title");
-  await waitFor(() => expect(titleInput).toHaveValue("Team Lead"));
-  await userEvent.clear(titleInput);
-  await userEvent.type(titleInput, "Head of Assessments");
-  await userEvent.click(screen.getByRole("button", { name: "Save profile" }));
-
-  await waitFor(() =>
-    expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8001/api/v1/users/me/profile",
-      expect.objectContaining({
-        body: JSON.stringify({
-          title: "Head of Assessments",
-          specialisms: ["Management"],
-          bio: "MOCK DATA ONLY.",
-        }),
-        method: "PUT",
-      }),
-    ),
-  );
-  expect(await screen.findByText("Profile saved.")).toBeVisible();
-});
-
 test("surfaces a failure when adding a member is rejected", async () => {
   vi.stubGlobal("fetch", teamsFetch({ addMemberFails: true }));
 

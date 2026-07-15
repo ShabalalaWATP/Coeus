@@ -10,7 +10,7 @@ from coeus.api.dependencies import (
     get_current_session,
     get_team_availability_service,
 )
-from coeus.api.presenters.analyst import candidate_response, task_response
+from coeus.api.presenters.analyst import candidate_response, conversation_response, task_response
 from coeus.api.presenters.teams import availability_response
 from coeus.domain.auth import AuthenticatedSession
 from coeus.domain.tickets import (
@@ -20,6 +20,7 @@ from coeus.domain.tickets import (
 from coeus.schemas.analyst import (
     AnalystAssignmentRequest,
     AnalystCandidateListResponse,
+    AnalystConversationResponse,
     AnalystNoteRequest,
     AnalystTaskListResponse,
     AnalystTaskResponse,
@@ -106,6 +107,16 @@ async def analyst_task_details(
     return task_response(
         analyst.task_details(authenticated.user, ticket_id), authenticated.user, analyst
     )
+
+
+@router.get("/tasks/{ticket_id}/conversation", response_model=AnalystConversationResponse)
+async def analyst_task_conversation(
+    ticket_id: UUID,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_current_session)],
+    analyst: Annotated[AnalystWorkflowService, Depends(get_analyst_workflow_service)],
+) -> AnalystConversationResponse:
+    ticket = analyst.task_details(authenticated.user, ticket_id)
+    return AnalystConversationResponse(messages=conversation_response(ticket))
 
 
 @router.post("/tasks/{ticket_id}/assign", response_model=AnalystTaskResponse)
