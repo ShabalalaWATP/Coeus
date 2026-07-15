@@ -65,6 +65,15 @@ export type AnalystTaskList = {
   tasks: AnalystTask[];
 };
 
+export type AnalystConversation = {
+  messages: {
+    id: string;
+    author: "user" | "assistant";
+    body: string;
+    createdAt: string;
+  }[];
+};
+
 export type DraftProductInput = {
   title: string;
   summary: string;
@@ -97,6 +106,13 @@ export type AssignmentTeam = {
 
 export async function listAnalystTasks(): Promise<AnalystTaskList> {
   return apiRequestJson<AnalystTaskList>("/api/v1/analyst/tasks", { method: "GET" });
+}
+
+export async function getAnalystTaskConversation(ticketId: string): Promise<AnalystConversation> {
+  return apiRequestJson<AnalystConversation>(
+    `/api/v1/analyst/tasks/${pathSegment(ticketId)}/conversation`,
+    { method: "GET" },
+  );
 }
 
 export async function listAnalystCandidates(

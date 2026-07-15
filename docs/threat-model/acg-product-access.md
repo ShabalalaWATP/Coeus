@@ -37,6 +37,8 @@ product access filtering and access diagnostics.
 | Partial approval creates unaudited membership | Approval compensates workflow and membership changes if persistence or audit recording fails. The current implementation remains explicitly single-writer and does not claim multi-replica transaction safety. |
 | Application text leaks through audit | Submission, withdrawal and decision events contain identifiers, status and counts only. Justifications and rejection reasons are excluded from audit metadata and catalogue projections. |
 | Unbounded catalogue or review response | Active ACG catalogues, active-user directories and pending review queues use validated page sizes capped at 50. Application text is capped at 500 characters after whitespace normalisation. |
+| Catalogue search leaks inactive ACGs | Active-state filtering and bounded case-insensitive search run before pagination and totals, so inactive groups cannot appear through result metadata. |
+| Manager projection becomes a user directory | Catalogue items expose active manager display names only. They omit usernames, user IDs and member rosters, and manager status does not imply ACG membership or product access. |
 | Administrator roster abuse | Only platform administrators mutate rosters. Candidates must be active users, duplicate and stale mutations fail, active ACGs retain at least one administrator, and the eight-person limit is checked inside the mutation lock. Existing active owners bootstrap previously uninitialised rosters. |
 | Broad user-directory disclosure | The ACG directory exposes only active user ID, display name and username, is paginated, and is limited to platform administrators and existing ACG membership managers. Scoped ACG responses expose the same narrow identity fields only for that group's members. |
 | Browser-only ACG revocation | The ACG member removal control calls the backend delete endpoint with the session CSRF token. The backend remains authoritative for permission, self-membership and audit enforcement. |
@@ -44,6 +46,8 @@ product access filtering and access diagnostics.
 | Missing accountability for ACG changes | ACG creation, update, membership addition and membership removal create audit events. |
 | Failed audit persistence leaves a hidden ACG change behind | ACG create, update, member-add and member-remove operations restore their previous repository state if audit recording fails. |
 | Diagnostic abuse by ordinary users | Product diagnostics require `system:configure` and CSRF validation. |
+| Broad demo membership masks broken deny paths | Billy Gilmour belongs to 56 of 58 ACGs but is deliberately excluded from Russia SIGINT and China cyber. Tests assert both the exact matrix and per-product single-ACG assignment. |
+| Restart silently restores a deliberately revoked membership | Versioned demo-access reconciliation adds new seed memberships once. Later restarts preserve operator changes instead of reapplying the migration. |
 
 ## Open Risks
 

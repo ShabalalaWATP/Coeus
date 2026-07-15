@@ -24,7 +24,6 @@ from coeus.services.tickets import TicketServices
 # and analyst linking look populated for the roles a demo actually uses.
 _VISIBILITY_USERS = (
     "user@example.test",
-    "colleague@example.test",
     "rfa.manager@example.test",
     "rfa.team@example.test",
     "analyst@example.test",
@@ -59,13 +58,14 @@ def _seed_catalogue(
 ) -> None:
     if not catalogue.products:
         return
-    # Once the last product exists the current catalogue is already loaded.
-    marker = catalogue.products[-1].product_id
-    if store.repository.get_product(marker) is not None:
-        return
-    for product in catalogue.products:
-        store.repository.save_product(product)
+    store.repository.upsert_products(catalogue.products)
     seed_store_asset_placeholders(object_storage, catalogue.products)
+    for object_key, content in catalogue.generated_assets:
+        if (
+            not object_storage.exists(object_key)
+            or object_storage.read_bytes(object_key) != content
+        ):
+            object_storage.write_bytes(object_key, content)
 
 
 def _grant_visibility(access_repository: AccessRepository, acg_codes: frozenset[str]) -> None:

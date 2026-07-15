@@ -5,7 +5,6 @@ import { CancelRequestPanel } from "./CancelRequestPanel";
 import { ChatPanel } from "./ChatPanel";
 import { CollaboratorsPanel } from "./CollaboratorsPanel";
 import { CollectChoicePanel } from "./CollectChoicePanel";
-import { DetailsChecklist } from "./DetailsChecklist";
 import { IntakePanel } from "./IntakePanel";
 import { NoMatchConsentPanel } from "./NoMatchConsentPanel";
 import { ProductOffersPanel } from "./ProductOffersPanel";
@@ -140,6 +139,7 @@ export function TicketWorkspace({
         </Link>
         {ticket ? (
           <div className="ticket-workspace__meta">
+            <strong className="ticket-workspace__title">{ticket.intake.title}</strong>
             <span className="mono-ref">{ticket.reference}</span>
             <StatusPill state={ticket.state} />
             <button className="journey-trigger" onClick={() => onJourneyToggle(true)} type="button">
@@ -169,7 +169,6 @@ export function TicketWorkspace({
           ticket={ticket}
         />
         <div className="request-side-panel">
-          {ticket ? <DetailsChecklist ticket={ticket} /> : null}
           {ticket && showIntakeTools && canEdit ? (
             <details className="workspace-details">
               <summary>

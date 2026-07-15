@@ -44,6 +44,8 @@ class StoreRepository(Protocol):
 
     def save_product(self, product: StoreProduct) -> None: ...
 
+    def upsert_products(self, products: tuple[StoreProduct, ...]) -> None: ...
+
     def delete_product(self, product_id: UUID) -> None: ...
 
     def embedded_product_count(self) -> int: ...
@@ -154,6 +156,24 @@ class InMemoryStoreRepository:
         except Exception:
             self._products = products
             self._reference_counter = reference_counter
+            raise
+
+    def upsert_products(self, products: tuple[StoreProduct, ...]) -> None:
+        """Merge a deterministic seed batch with one durable persistence pass."""
+        if not products:
+            return
+        self._refresh_from_projection(allow_empty=True)
+        previous_products = dict(self._products)
+        previous_counter = self._reference_counter
+        self._products.update({product.product_id: product for product in products})
+        self._reference_counter = max_store_reference_counter(
+            tuple(self._products.values()), self._reference_counter
+        )
+        try:
+            self._persist()
+        except Exception:
+            self._products = previous_products
+            self._reference_counter = previous_counter
             raise
 
     def delete_product(self, product_id: UUID) -> None:

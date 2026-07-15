@@ -32,7 +32,15 @@ async def route_assessment_ticket(
                 json={"reason": "Need a new assessment route."},
             )
             assert response.status_code == 200
-    assert response.json()["ticketState"] == "JIOC_REVIEW"
+    elif response.json()["ticketState"] == "RFI_NO_MATCH":
+        response = await client.post(
+            f"/api/v1/tickets/{ticket_id}/no-match-consent",
+            headers={"X-CSRF-Token": csrf_token},
+            json={"taskAsNewRequest": True},
+        )
+        assert response.status_code == 200
+    state = response.json().get("ticketState", response.json().get("state"))
+    assert state == "JIOC_REVIEW"
     return ticket_id
 
 

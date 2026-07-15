@@ -569,6 +569,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/analyst/tasks/{ticket_id}/conversation": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Analyst Task Conversation */
+    get: operations["analyst_task_conversation_api_v1_analyst_tasks__ticket_id__conversation_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/analyst/tasks/{ticket_id}/drafts": {
     parameters: {
       query?: never;
@@ -2065,6 +2082,8 @@ export interface components {
       id: string;
       /** Ismember */
       isMember: boolean;
+      /** Managernames */
+      managerNames: string[];
       /** Name */
       name: string;
     };
@@ -2289,6 +2308,11 @@ export interface components {
       userId: string;
       /** Username */
       username: string;
+    };
+    /** AnalystConversationResponse */
+    AnalystConversationResponse: {
+      /** Messages */
+      messages: components["schemas"]["ChatMessageResponse"][];
     };
     /** AnalystNoteRequest */
     AnalystNoteRequest: {
@@ -4561,6 +4585,7 @@ export interface operations {
       query?: {
         page?: number;
         pageSize?: number;
+        query?: string;
       };
       header?: never;
       path?: never;
@@ -5570,6 +5595,37 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["AnalystTaskResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  analyst_task_conversation_api_v1_analyst_tasks__ticket_id__conversation_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        ticket_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AnalystConversationResponse"];
         };
       };
       /** @description Validation Error */

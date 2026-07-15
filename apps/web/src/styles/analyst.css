@@ -163,3 +163,100 @@
     grid-template-columns: 1fr;
   }
 }
+.analyst-conversation {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-muted);
+}
+
+.analyst-conversation > summary {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 54px;
+  padding: 0 16px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.analyst-conversation > summary::-webkit-details-marker {
+  display: none;
+}
+
+.analyst-conversation > summary span,
+.analyst-conversation__error button {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--text);
+  font-weight: 750;
+}
+
+.analyst-conversation > summary small,
+.analyst-conversation__body > p {
+  color: var(--muted);
+}
+
+.analyst-conversation[open] > summary {
+  border-bottom: 1px solid var(--border);
+}
+
+.analyst-conversation__body {
+  padding: 16px;
+}
+
+.analyst-conversation__messages {
+  display: grid;
+  gap: 12px;
+  max-height: 480px;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.analyst-conversation__message {
+  display: grid;
+  gap: 7px;
+  max-width: 78ch;
+  border-left: 2px solid var(--border-strong);
+  padding: 4px 0 4px 14px;
+}
+
+.analyst-conversation__message--user {
+  border-left-color: var(--accent);
+}
+
+.analyst-conversation__message header {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.analyst-conversation__message time {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.analyst-conversation__message p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.analyst-conversation__error {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--critical);
+}
+
+.analyst-conversation__error button {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 7px 10px;
+  background: transparent;
+}

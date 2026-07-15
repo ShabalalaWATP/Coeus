@@ -34,3 +34,12 @@ export function ticketMetrics(tickets: Array<Pick<TicketSummary, "state">>) {
     completed: tickets.filter((ticket) => completedStates.has(ticket.state)).length,
   };
 }
+
+export function isAwaitingCustomerAction(state: TicketSummary["state"]) {
+  return new Set([
+    "RFI_MATCH_OFFERED",
+    "RFI_NO_MATCH",
+    "COLLECT_CHOICE",
+    "DISSEMINATION_READY",
+  ]).has(state);
+}

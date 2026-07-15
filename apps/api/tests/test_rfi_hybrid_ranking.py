@@ -116,3 +116,39 @@ def test_empty_query_tokens_have_no_lexical_or_semantic_score() -> None:
 
     assert _full_text_score(product, ()) == (0.0, ())
     assert _semantic_score(product, ()) == (0.0, ())
+
+
+def test_rank_one_weak_match_is_not_misreported_as_a_confident_offer() -> None:
+    original = seed_product()
+    product = replace(
+        original,
+        metadata=replace(
+            original.metadata,
+            title="Asia-Pacific Shipping Disruption Digest",
+            summary="MOCK DATA ONLY maritime port disruption summary.",
+            description="Synthetic shipping assessment.",
+            tags=frozenset({"shipping", "ports"}),
+            semantic_labels=frozenset({"maritime"}),
+        ),
+    )
+    intake = IntakeDetails(
+        title="Arctic Army aviation readiness",
+        operational_question="What is the readiness of Army aviation in the Arctic?",
+        area_or_region="Arctic",
+        required_output_format="assessment",
+    )
+    lexical_score = lexical_score_for_product(product, query_text(intake))
+
+    offers = rank_hybrid_rfi_candidates(
+        (
+            StoreHybridCandidate(
+                product=product,
+                lexical_rank=1,
+                lexical_score=lexical_score,
+                lexical_only=True,
+            ),
+        ),
+        intake,
+    )
+
+    assert offers == ()

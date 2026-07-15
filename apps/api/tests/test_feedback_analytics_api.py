@@ -13,7 +13,6 @@ from coeus.main import create_app
 from rfi_search_helpers import login, submitted_ticket
 from routing_helpers import assignment_team_id
 
-
 @pytest.mark.asyncio
 async def test_customer_submits_feedback_and_admin_dashboard_tracks_reuse() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
@@ -254,6 +253,13 @@ async def _approved_route_ticket(
                 headers={"X-CSRF-Token": csrf_token},
                 json={"reason": "Need a new route."},
             )
+    elif search.json()["ticketState"] == "RFI_NO_MATCH":
+        consent = await client.post(
+            f"/api/v1/tickets/{ticket_id}/no-match-consent",
+            headers={"X-CSRF-Token": csrf_token},
+            json={"taskAsNewRequest": True},
+        )
+        assert consent.status_code == 200
     jioc = await login(client, "jioc.team@example.test")
     routed = await client.post(
         f"/api/v1/routing/{ticket_id}/run",

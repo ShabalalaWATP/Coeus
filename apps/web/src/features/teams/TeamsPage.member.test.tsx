@@ -146,7 +146,7 @@ test("members see the roster read-only, switch teams and log their own time", as
   expect(await screen.findByRole("heading", { name: "Collection Management Team" })).toBeVisible();
 });
 
-test("surfaces calendar load and profile save failures", async () => {
+test("surfaces calendar load failures", async () => {
   vi.stubGlobal("fetch", memberFetch({ calendarFails: true }));
 
   renderWithProviders(<TeamsPage />, "/teams");
@@ -154,10 +154,6 @@ test("surfaces calendar load and profile save failures", async () => {
   expect(
     await screen.findByText("The calendar could not be loaded.", undefined, { timeout: 5000 }),
   ).toBeVisible();
-
-  await userEvent.type(await screen.findByLabelText("Title"), "Analyst");
-  await userEvent.click(screen.getByRole("button", { name: "Save profile" }));
-  expect(await screen.findByText("Failed.")).toBeVisible();
 });
 
 test("shows a retryable error when the team list cannot load", async () => {

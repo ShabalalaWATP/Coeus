@@ -204,11 +204,14 @@ test("keeps application controls usable when apply and withdrawal requests fail"
   );
 
   renderWithProviders(<AccessGroupsPage />, "/access-groups", session);
+  await userEvent.click(await screen.findByRole("button", { name: /Apply group/ }));
   await userEvent.type(
-    await screen.findByLabelText("Why do you need access to Apply group?"),
+    await screen.findByLabelText(/Why do you need access/),
     "Required for assigned assessment work.",
   );
-  await userEvent.click(screen.getByRole("button", { name: "Apply for access" }));
+  await userEvent.click(screen.getByRole("button", { name: "Submit application" }));
+  expect(await screen.findByText("The request is stale.")).toBeVisible();
+  await userEvent.click(screen.getByRole("button", { name: /Pending group/ }));
   await userEvent.click(screen.getByRole("button", { name: "Withdraw application" }));
-  expect(await screen.findAllByText("The request is stale.")).toHaveLength(2);
+  expect(await screen.findByText("The request is stale.")).toBeVisible();
 });

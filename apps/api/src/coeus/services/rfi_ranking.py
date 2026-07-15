@@ -18,7 +18,7 @@ from coeus.domain.store_ranking import (
 from coeus.domain.tickets import IntakeDetails, ProductOffer, ProductOfferStatus
 from coeus.services.store_semantics import product_semantic_text, semantic_label_reasons
 
-RFI_OFFER_THRESHOLD = 0.34
+RFI_OFFER_THRESHOLD = 0.20
 RFI_MAX_OFFERS = 5
 RFI_RANKING_WORK_LIMIT = 100
 __all__ = [
@@ -79,7 +79,23 @@ def rank_hybrid_rfi_candidates(
         token_score, token_reasons = _semantic_score_from_tokens(query_tokens, product_tokens)
         metadata_score, metadata_reasons = _metadata_score(candidate.product, intake)
         label_score, label_reasons = _semantic_label_score(candidate.product, query)
-        score = min(1.0, _rrf_score(candidate, available_legs) + metadata_score + label_score)
+        title_signal = lexical_score_for_product(candidate.product, intake.title or "")
+        lexical_signal = max(text_score, candidate.lexical_score, title_signal)
+        vector_signal = max(
+            0.0,
+            (candidate.vector_score - VECTOR_SIMILARITY_FLOOR)
+            / (1.0 - VECTOR_SIMILARITY_FLOOR),
+        )
+        # Rank fusion is only a small ordering signal. Absolute lexical and
+        # vector evidence determine whether an offer is relevant enough.
+        score = min(
+            1.0,
+            (0.50 * lexical_signal)
+            + (0.35 * vector_signal)
+            + (0.05 * _rrf_score(candidate, available_legs))
+            + metadata_score
+            + label_score,
+        )
         reasons = _reasons(
             candidate,
             label_reasons,

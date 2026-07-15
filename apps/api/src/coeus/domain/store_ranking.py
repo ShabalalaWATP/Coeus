@@ -52,4 +52,14 @@ def lexical_text_score(query: str, document: str) -> float:
 
 
 def lexical_score_for_product(product: StoreProduct, query: str) -> float:
-    return lexical_text_score(query, product_semantic_text(product))
+    metadata = product.metadata
+    normalised_query = " ".join(tokenize(query))
+    normalised_title = " ".join(tokenize(metadata.title))
+    if normalised_query and normalised_query == normalised_title:
+        return 1.0
+    title_score = lexical_text_score(query, metadata.title)
+    labelled_score = lexical_text_score(
+        query, " ".join((*sorted(metadata.tags), *sorted(metadata.semantic_labels)))
+    )
+    full_score = lexical_text_score(query, product_semantic_text(product))
+    return min(1.0, (0.50 * title_score) + (0.30 * labelled_score) + (0.20 * full_score))

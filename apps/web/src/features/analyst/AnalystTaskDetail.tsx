@@ -1,4 +1,5 @@
 import { AnalystDraftForm } from "./AnalystDraftForm";
+import { AnalystConversation } from "./AnalystConversation";
 import { AnalystTaskContext } from "./AnalystTaskContext";
 import { LinkedProductsPanel, NotesPanel, WorkPackagesPanel } from "./AnalystTaskPanels";
 import { canSubmitTask, submissionBlockers } from "./analyst-task-policy";
@@ -34,6 +35,7 @@ export default function AnalystTaskDetail({ onTaskChange, task }: AnalystTaskDet
         </p>
       ) : null}
       <AnalystTaskContext task={task} />
+      <AnalystConversation ticketId={task.ticketId} />
       <WorkPackagesPanel
         disabled={actions.actionPending}
         onComplete={actions.completePackage}

@@ -44,6 +44,21 @@ architecture decision is ADR 0029. The slice is implemented: 68 PostgreSQL and
 branch coverage; the full frontend suite passes at 98.51 per cent line and
 95.01 per cent branch coverage, and live local reconciliation was verified.
 
+A post-Sprint-17 customer-experience slice is now implemented. It replaces
+the request metric-card mosaic, removes the backend completeness checklist from
+the customer chat, adds a searchable selected-detail ACG journey, moves profile
+editing to a read-first account page and provides assigned analysts with lazy
+full conversation context. Its contract is
+`docs/specs/customer-experience-and-analyst-context.md` and ADR 0030. The full
+frontend suite passes with 447 tests at 98.54 percent line and 95.15 percent
+branch coverage. The backend passes 922 non-PostgreSQL and 68 PostgreSQL tests
+at 98.14 percent line and 95.09 percent branch coverage.
+
+Sprint 19 is implemented and locally verified. It adds 144 deterministic four-page PDF products,
+15 specialist ACGs, an explicit 56-of-58 Billy Gilmour access matrix and search
+score calibration. Its contract is
+`docs/specs/synthetic-intelligence-library-and-search-assurance.md` and ADR 0031.
+
 ## Delivery Ledger
 
 | Sprint | Scope                                                                                                                                                                                                                                                                                                     | Status                       | Verification                                                                                                                                                                                                         |
@@ -66,6 +81,8 @@ branch coverage; the full frontend suite passes at 98.51 per cent line and
 | 15     | JIOC workflow restructure: role renames plus JIOC Team Member, JIOC routing queue, customer collect choice, manager approval chain, QC-owned release with the CM-to-RFA analysed-collect leg, multi-analyst assignment, teams/profiles/availability calendars, and the permission-refresh-on-restore fix. | Implementation delivered     | Backend and web suites passed; the complete eight-role real-browser acceptance evidence is carried into Sprint 17. See ADR 0022 and the workflow specifications.                                                     |
 | 16     | Cross-role desktop usability, multi-provider AI administration and documentation/deployment accuracy.                                                                                                                                                                                                     | Complete                     | PRs #98-#100 passed protected GitHub checks; coverage remained above 95%; current guides distinguish the supported local runtime from GCP/Kubernetes migration targets.                                              |
 | 17     | Close the current security baseline, introduce secure control ownership, improve SOLID boundaries and reconcile all active documentation without breaking intended behaviour.                                                                                                                            | Implementation in progress   | Earlier local controls, logical restore, N-1 reconciliation, PostgreSQL browser evidence and protected GitHub gates pass. The 2026-07-14 eight-finding remediation candidate passes full local coverage and dependency gates; external staging and a fresh sealed deep scan remain open. |
+| 18     | Customer request, conversational intake, searchable ACG, read-first profile and assigned-analyst conversation-context redesign.                                                                                                                                                                          | Implementation complete      | 447 frontend, 922 non-PostgreSQL and 68 PostgreSQL tests pass above the separate 95 percent line and branch gates; browser acceptance is recorded in the delivery handoff.                                             |
+| 19     | Deterministic live-demo PDF corpus, specialist ACG matrix and Store/RFI search assurance.                                                                                                                                                                                                                | Implementation complete      | 993 backend tests pass with PostgreSQL at 97.62 percent combined coverage; frontend passes at 98.54 percent line and 95.09 percent branch coverage, with a successful production build and visual PDF inspection.       |
 
 ## Sprint 11 Delivered Scope
 

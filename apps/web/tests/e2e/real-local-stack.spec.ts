@@ -16,7 +16,7 @@ test("logs in and creates a request through the real local API", async ({ page }
   await expect(page.getByText("TCK-0001")).toBeVisible();
   await expect(
     page
-      .getByLabel("Customer chatbot")
+      .getByLabel("Conversation with Istari")
       .getByText("Need a synthetic Baltic port activity briefing."),
   ).toBeVisible();
 });

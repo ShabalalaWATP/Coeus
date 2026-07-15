@@ -1,4 +1,4 @@
-import { KeyRound, LogOut, Moon, Search, Sun, UserCircle } from "lucide-react";
+import { KeyRound, LogOut, Moon, Pencil, Search, Sun, UserCircle } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -179,6 +179,14 @@ export function TopCommandBar({ onLogout, profile }: TopCommandBarProps) {
             <strong>{profile.displayName}</strong>
             <p>{profile.username}</p>
             <small>{profile.roles.join(", ")}</small>
+            <Link
+              className="store-action store-action--secondary"
+              onClick={() => setOpenPanel(null)}
+              to="/account/profile"
+            >
+              <Pencil aria-hidden="true" size={15} />
+              Edit profile
+            </Link>
             <Link
               className="store-action store-action--secondary"
               onClick={() => setOpenPanel(null)}

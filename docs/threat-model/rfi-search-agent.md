@@ -26,11 +26,15 @@ search metrics and the request-dashboard offer UI.
 | Archived or draft products are offered by default. | RFI search requests published products only. The store access policy still denies drafts unless the actor has management rights. |
 | Rejection reason content becomes a script payload in the UI. | Reasons are plain text, length constrained server-side and rendered by React escaping. |
 | Search metrics become a covert channel. | Metrics returned to the caller are tied to visible candidates and offers; raw hidden-product counts are not exposed. |
+| A weak rank-one match is shown as near-certain relevance. | Absolute lexical and vector evidence determines offer eligibility. Reciprocal-rank fusion contributes only a bounded ordering signal. |
+| A reviewer learns the size of the requester's permitted catalogue. | Candidate count is suppressed for actors other than the ticket requester, while every displayed offer is reauthorised for the viewer. |
 
 ## Residual Risk
 
 - Deterministic local semantic scoring and labels do not represent production
   embedding quality. Database-backed full-text and pgvector adapters must be
   reviewed before production use.
+- PostgreSQL RFI query construction and adapter-specific score calibration need
+  a dedicated relevance evaluation set before a production release.
 - Dissemination is represented as a ticket record in Sprint 7. Final controlled
   dissemination workflows arrive in the later QC and dissemination sprint.

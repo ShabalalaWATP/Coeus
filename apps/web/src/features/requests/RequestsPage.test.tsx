@@ -136,7 +136,7 @@ test("locks an existing-request route until its exact ticket has loaded", async 
   expect(await screen.findByText("Edit details manually")).toBeVisible();
 });
 
-test("creates a ticket from chat and shows the captured details checklist", async () => {
+test("creates a ticket from chat without exposing the captured details checklist", async () => {
   const createdTicket = { ...baseTicket, messages: baseTicket.messages.slice(0, 2) };
   const fetchMock = vi.fn((url: string, init?: RequestInit) => {
     if (url.includes("/chat/messages")) {
@@ -158,8 +158,8 @@ test("creates a ticket from chat and shows the captured details checklist", asyn
   await userEvent.click(screen.getByRole("button", { name: "Send" }));
 
   expect(await screen.findByText("TCK-0001")).toBeVisible();
-  expect(screen.getByText("Request details")).toBeVisible();
-  expect(screen.getByText("5 of 10 captured from the conversation.")).toBeVisible();
+  expect(screen.queryByText("Request details")).not.toBeInTheDocument();
+  expect(screen.queryByText(/captured from the conversation/)).not.toBeInTheDocument();
   expect(screen.getByText("Baltic Ports Brief")).toBeVisible();
   expect(fetchMock).toHaveBeenCalledWith(
     "http://127.0.0.1:8001/api/v1/chat/messages",

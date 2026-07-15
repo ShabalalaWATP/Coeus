@@ -106,20 +106,32 @@ INSERT INTO intelligence_store_products (
     CAST(:created_by_user_id AS uuid),
     :created_at,
     :updated_at,
-    to_tsvector(
-        'english',
-        concat_ws(
-            ' ',
-            CAST(:title AS text),
-            CAST(:summary AS text),
-            CAST(:description AS text),
-            CAST(:product_type AS text),
-            CAST(:source_type AS text),
-            CAST(:owner_team AS text),
-            CAST(:area_or_region AS text),
-            array_to_string(CAST(:tags AS text[]), ' '),
-            array_to_string(CAST(:semantic_labels AS text[]), ' ')
-        )
+    setweight(to_tsvector('english', CAST(:title AS text)), 'A')
+    || setweight(
+        to_tsvector(
+            'english',
+            concat_ws(
+                ' ',
+                CAST(:area_or_region AS text),
+                array_to_string(CAST(:tags AS text[]), ' '),
+                array_to_string(CAST(:semantic_labels AS text[]), ' ')
+            )
+        ),
+        'B'
+    )
+    || setweight(to_tsvector('english', CAST(:summary AS text)), 'C')
+    || setweight(
+        to_tsvector(
+            'english',
+            concat_ws(
+                ' ',
+                CAST(:description AS text),
+                CAST(:product_type AS text),
+                CAST(:source_type AS text),
+                CAST(:owner_team AS text)
+            )
+        ),
+        'D'
     ),
     CAST(:embedding AS vector),
     :embedding_source_hash

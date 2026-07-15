@@ -22,7 +22,7 @@ async def test_ticket_response_hides_rfi_matches_from_unauthorised_collaborator(
         tagged = await client.post(
             f"/api/v1/tickets/{ticket_id}/collaborators",
             headers={"X-CSRF-Token": str(user["csrfToken"])},
-            json={"username": "colleague@example.test", "access": "viewer"},
+            json={"username": "collection.team@example.test", "access": "viewer"},
         )
         run = await client.post(
             f"/api/v1/rfi-search/{ticket_id}/run",
@@ -30,7 +30,7 @@ async def test_ticket_response_hides_rfi_matches_from_unauthorised_collaborator(
         )
         owner_ticket = await client.get(f"/api/v1/tickets/{ticket_id}")
 
-        await login(client, "colleague@example.test")
+        await login(client, "collection.team@example.test")
         collaborator_ticket = await client.get(f"/api/v1/tickets/{ticket_id}")
         collaborator_results = await client.get(f"/api/v1/rfi-search/{ticket_id}/results")
 

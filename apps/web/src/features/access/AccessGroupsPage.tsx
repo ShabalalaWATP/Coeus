@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { AccessGroupApplicationList } from "./AccessGroupApplicationList";
@@ -12,10 +12,12 @@ import { hasPermissions } from "../../lib/permissions/route-access";
 export default function AccessGroupsPage() {
   const { session } = useAuth();
   const [cataloguePage, setCataloguePage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
   const [reviewPage, setReviewPage] = useState(1);
   const groupsQuery = useQuery({
-    queryKey: ["access-groups", cataloguePage],
-    queryFn: () => listAccessGroups(cataloguePage),
+    queryKey: ["access-groups", cataloguePage, searchQuery],
+    queryFn: () => listAccessGroups(cataloguePage, searchQuery),
+    placeholderData: keepPreviousData,
   });
   const reviewsQuery = useQuery({
     queryKey: ["access-group-applications", reviewPage],
@@ -24,6 +26,7 @@ export default function AccessGroupsPage() {
   });
   const csrfToken = session?.csrfToken ?? "";
   const groups = groupsQuery.data?.acgs ?? [];
+  const totalGroups = groupsQuery.data?.total ?? groups.length;
   const canReviewApplications = groups.some((group) => group.canReviewApplications);
   const isPlatformAdmin = session !== null && hasPermissions(session.user, ["role:manage"]);
   const [decisionMessage, setDecisionMessage] = useState<string | null>(null);
@@ -33,16 +36,27 @@ export default function AccessGroupsPage() {
       <section className="overview-hero" aria-labelledby="access-groups-title">
         <div>
           <h1 id="access-groups-title">Access Groups</h1>
-          <p>Browse need-to-know groups and manage your access applications.</p>
+          <p>Find the need-to-know communities that support your work.</p>
         </div>
         <div className="classification-note">MOCK DATA ONLY</div>
       </section>
       {groupsQuery.isLoading ? <LoadingState label="Loading access groups" /> : null}
       {groupsQuery.isError ? <ErrorState onRetry={() => void groupsQuery.refetch()} /> : null}
-      {groupsQuery.isSuccess && groups.length === 0 ? (
+      {groupsQuery.isSuccess && totalGroups === 0 && !searchQuery ? (
         <EmptyState title="No active access groups" hint="An administrator can activate groups." />
       ) : null}
-      {groups.length ? <AccessGroupApplicationList csrfToken={csrfToken} groups={groups} /> : null}
+      {groupsQuery.isSuccess && (totalGroups > 0 || searchQuery) ? (
+        <AccessGroupApplicationList
+          csrfToken={csrfToken}
+          groups={groups}
+          onSearchChange={(query) => {
+            setCataloguePage(1);
+            setSearchQuery(query);
+          }}
+          searchQuery={searchQuery}
+          total={totalGroups}
+        />
+      ) : null}
       {groupsQuery.data && groupsQuery.data.totalPages > 1 ? (
         <nav aria-label="Access group catalogue pages" className="access-group-pagination">
           <button

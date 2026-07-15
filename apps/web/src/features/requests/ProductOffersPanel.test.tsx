@@ -51,6 +51,10 @@ test("accepts and rejects RFI product offers", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Reject" }));
 
   expect(screen.getByText("86%")).toBeVisible();
+  expect(screen.getByLabelText("Retrieval relevance 86 percent")).toHaveAttribute(
+    "title",
+    "Retrieval relevance, not analytic confidence",
+  );
   expect(onAccept).toHaveBeenCalledWith("product-1");
   expect(onReject).toHaveBeenCalledWith("product-1", "Too old.");
 });

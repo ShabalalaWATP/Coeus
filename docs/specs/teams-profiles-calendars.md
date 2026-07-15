@@ -93,8 +93,9 @@ need-to-know posture), a month-grid calendar (Monday-first
 weeks, previous/next month navigation, a "Today" highlight, entries as
 per-member chips that span block dates, click a day to prefill the form)
 with a block-out form (member for managers, activity, from/to dates, note),
-an availability tile for today including other commitments, and
-the self-service profile editor. The AssignAnalystPanel shows "X of Y team
+and an availability tile for today including other commitments. The dedicated
+`/account/profile` route is read-first for every signed-in user and enters an
+explicit edit mode before profile fields can be changed. The AssignAnalystPanel shows "X of Y team
 members are free today" beside the candidate checkboxes. Non-members see an
 informative empty state.
 
@@ -103,5 +104,5 @@ informative empty state.
 `apps/api/tests/test_teams_api.py` covers visibility, roster boundaries,
 calendar write rules, the availability calculation against a live assignment,
 profile privacy and codec round-trips. Web tests cover the manager and member
-views, calendar writes, profile saves, failure paths and the availability
+views, calendar writes, read-first profile editing, failure paths and the availability
 line in the assignment panel.
