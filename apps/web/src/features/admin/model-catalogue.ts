@@ -4,34 +4,38 @@ export type ModelInfo = {
 };
 
 const MODEL_CATALOGUE: Record<string, ModelInfo> = {
-  "gemma-4-31b": {
-    tier: "Sovereign",
+  "gemini-3.1-pro-preview": {
+    tier: "Advanced",
+    description: "Google's preview Pro model for complex reasoning and agentic workflows.",
+  },
+  "gemini-3.5-flash": {
+    tier: "Advanced",
     description:
-      "Self-hosted Gemma weights for air-gapped or data-sovereignty constrained deployments.",
+      "Google's current stable Flash model for agentic, coding and long-horizon workflows.",
   },
-  "gemini-2.5-flash": {
-    tier: "Fast",
-    description: "Low-latency intake extraction and RFI search at the lowest cost per request.",
+  "gemma-4-31b-it": {
+    tier: "Open",
+    description: "Google's largest hosted Gemma 4 instruction-tuned model.",
   },
-  "gemini-2.5-pro": {
+  "gemma-4-26b-a4b-it": {
+    tier: "Open",
+    description: "Google's hosted Gemma 4 mixture-of-experts instruction model.",
+  },
+  "gpt-5.6-sol": {
     tier: "Advanced",
-    description: "Deeper reasoning for capability assessments and complex tasking summaries.",
+    description: "OpenAI's flagship model for complex professional work and advanced reasoning.",
   },
-  "gemini-3-flash": {
+  "gpt-5.6-terra": {
+    tier: "Balanced",
+    description: "OpenAI's balanced model for strong intelligence, latency and cost.",
+  },
+  "gpt-5.6-luna": {
     tier: "Fast",
-    description: "Latest flash generation with stronger tool use at near-flash latency.",
+    description: "OpenAI's cost-efficient model for high-volume and latency-sensitive workloads.",
   },
-  "gpt-5": {
-    tier: "Advanced",
-    description: "OpenAI's flagship reasoning model for complex assessment support.",
-  },
-  "gpt-5-mini": {
-    tier: "Fast",
-    description: "Low-latency OpenAI model suited to conversational intake.",
-  },
-  "gpt-4.1": {
-    tier: "Advanced",
-    description: "Previous-generation OpenAI model kept for continuity of behaviour.",
+  "gpt-realtime-2.1-mini": {
+    tier: "Voice",
+    description: "OpenAI's low-latency speech-to-speech model for live voice drafting.",
   },
   "anthropic.claude-sonnet-4-5-20250929-v1:0": {
     tier: "Advanced",

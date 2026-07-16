@@ -34,6 +34,8 @@ from coeus.services.ticket_collaborators import TicketCollaboratorService
 from coeus.services.ticket_lifecycle import TicketLifecycleService
 from coeus.services.tickets import TicketServices
 from coeus.services.user_admin import UserAdminService
+from coeus.services.voice_models import VoiceModelService
+from coeus.services.voice_sessions import VoiceSessionService
 
 
 def get_settings(request: Request) -> Settings:
@@ -94,6 +96,20 @@ def get_ai_model_service(request: Request) -> AiModelService:
     service = getattr(request.app.state, "ai_model_service", None)
     if not isinstance(service, AiModelService):
         raise AppError(500, "ai_models_not_configured", "AI model selection is not configured.")
+    return service
+
+
+def get_voice_model_service(request: Request) -> VoiceModelService:
+    service = getattr(request.app.state, "voice_model_service", None)
+    if not isinstance(service, VoiceModelService):
+        raise AppError(500, "voice_not_configured", "Voice configuration is not available.")
+    return service
+
+
+def get_voice_session_service(request: Request) -> VoiceSessionService:
+    service = getattr(request.app.state, "voice_session_service", None)
+    if not isinstance(service, VoiceSessionService):
+        raise AppError(500, "voice_not_configured", "Voice sessions are not available.")
     return service
 
 

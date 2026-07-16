@@ -4,16 +4,16 @@ export const providers = [
   {
     name: "gemini_api",
     label: "Gemini API (primary)",
-    models: ["gemma-4-31b", "gemini-2.5-flash", "gemini-2.5-pro"],
-    activeModel: "gemma-4-31b",
+    models: ["gemini-3.5-flash", "gemini-3.1-pro-preview", "gemma-4-31b-it", "gemma-4-26b-a4b-it"],
+    activeModel: "gemma-4-31b-it",
     apiKeyConfigured: false,
-    supportsModelRefresh: true,
+    supportsModelRefresh: false,
   },
   {
     name: "openai_api",
     label: "OpenAI API",
-    models: ["gpt-5", "gpt-5-mini"],
-    activeModel: "gpt-5-mini",
+    models: ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"],
+    activeModel: "gpt-5.6-terra",
     apiKeyConfigured: false,
     supportsModelRefresh: true,
   },
@@ -37,8 +37,13 @@ export const providers = [
 
 export const modelState = {
   provider: "gemini_api",
-  activeModel: "gemma-4-31b",
-  availableModels: ["gemma-4-31b", "gemini-2.5-flash", "gemini-2.5-pro"],
+  activeModel: "gemma-4-31b-it",
+  availableModels: [
+    "gemini-3.5-flash",
+    "gemini-3.1-pro-preview",
+    "gemma-4-31b-it",
+    "gemma-4-26b-a4b-it",
+  ],
   apiKeyConfigured: false,
   embeddingProvider: "mock",
   embeddedProductCount: 3,

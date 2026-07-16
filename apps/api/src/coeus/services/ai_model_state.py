@@ -3,7 +3,7 @@ from datetime import datetime
 
 from coeus.core.config import LlmProviderName
 from coeus.core.model_ids import clean_model_ids
-from coeus.services.ai_provider_catalog import ProviderSpec
+from coeus.services.ai_provider_catalog import CURATED_PROVIDER_NAMES, ProviderSpec
 
 
 @dataclass(frozen=True)
@@ -31,6 +31,11 @@ def restore_model_state(
         stored_custom = payload.get("extra_models")
     _restore_catalogue(stored_custom, custom_models, spec_by_name)
     _restore_catalogue(payload.get("discovered_models"), discovered_models, spec_by_name)
+    # Curated providers prune legacy additions so deprecated models cannot
+    # survive a catalogue update through persisted state.
+    for provider in CURATED_PROVIDER_NAMES:
+        custom_models[provider] = []
+        discovered_models[provider] = []
 
     stored_active = payload.get("active_models")
     if isinstance(stored_active, dict):

@@ -11,7 +11,7 @@ export default defineConfig({
       "Cross-Origin-Embedder-Policy": "require-corp",
       "Cross-Origin-Opener-Policy": "same-origin",
       "Cross-Origin-Resource-Policy": "same-origin",
-      "Permissions-Policy": "camera=(), geolocation=(), microphone=()",
+      "Permissions-Policy": "camera=(), geolocation=(), microphone=(self)",
       "X-Frame-Options": "DENY",
     },
   },

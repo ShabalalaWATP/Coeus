@@ -50,37 +50,40 @@ export function AiModelGrid({
             ) : null}
           </div>
         ) : null}
-        <form
-          className="ai-custom-model"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const model = customModel.trim();
-            if (model.length >= 2) {
-              onAddCustom(model, () => setCustomModel(""));
-            }
-          }}
-        >
-          <label className="sr-only" htmlFor={customModelId}>
-            {provider.label} model ID
-          </label>
-          <input
-            aria-label={`${provider.label} model ID`}
-            disabled={pending}
-            id={customModelId}
-            onChange={(event) => setCustomModel(event.target.value)}
-            placeholder="Add a model ID (for example, a new release)"
-            value={customModel}
-          />
-          <button
-            aria-label={`Add model ID for ${provider.label}`}
-            className="ai-btn-secondary"
-            disabled={pending || addingCustom || customModel.trim().length < 2}
-            type="submit"
+        {provider.name !== "gemini_api" &&
+        (provider.name !== "openai_api" || provider.supportsModelRefresh) ? (
+          <form
+            className="ai-custom-model"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const model = customModel.trim();
+              if (model.length >= 2) {
+                onAddCustom(model, () => setCustomModel(""));
+              }
+            }}
           >
-            <Plus aria-hidden="true" size={15} />
-            Add
-          </button>
-        </form>
+            <label className="sr-only" htmlFor={customModelId}>
+              {provider.label} model ID
+            </label>
+            <input
+              aria-label={`${provider.label} model ID`}
+              disabled={pending}
+              id={customModelId}
+              onChange={(event) => setCustomModel(event.target.value)}
+              placeholder="Add a model ID (for example, a new release)"
+              value={customModel}
+            />
+            <button
+              aria-label={`Add model ID for ${provider.label}`}
+              className="ai-btn-secondary"
+              disabled={pending || addingCustom || customModel.trim().length < 2}
+              type="submit"
+            >
+              <Plus aria-hidden="true" size={15} />
+              Add
+            </button>
+          </form>
+        ) : null}
       </div>
       <form
         className="ai-model-selection"

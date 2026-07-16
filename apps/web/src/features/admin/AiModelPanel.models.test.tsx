@@ -48,7 +48,7 @@ test("refreshes the model list from the provider and reports the count", async (
       }),
     ),
   );
-  expect(await screen.findByText(/3 models available for OpenAI API/)).toBeVisible();
+  expect(await screen.findByText(/4 models available for OpenAI API/)).toBeVisible();
   expect(screen.getByRole("radio", { name: /gpt-6-omni/ })).toBeInTheDocument();
 });
 
@@ -130,7 +130,7 @@ test("Enter adds a custom model instead of applying the selected model", async (
 
   renderWithProviders(<AiModelPanel csrfToken="test-csrf-token" />, "/admin/overview");
   await userEvent.click(await screen.findByRole("button", { name: /OpenAI API/ }));
-  await userEvent.click(screen.getByDisplayValue("gpt-5"));
+  await userEvent.click(screen.getByDisplayValue("gpt-5.6-sol"));
   await userEvent.type(screen.getByLabelText("OpenAI API model ID"), "gpt-6-enter{Enter}");
 
   await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));

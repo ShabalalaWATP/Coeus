@@ -16,8 +16,10 @@ afterEach(() => {
 });
 
 test("describes catalogued models and falls back for unknown ones", () => {
-  expect(modelInfoFor("gemini-2.5-pro").tier).toBe("Advanced");
-  expect(modelInfoFor("gpt-5-mini").tier).toBe("Fast");
+  expect(modelInfoFor("gemini-3.1-pro-preview").tier).toBe("Advanced");
+  expect(modelInfoFor("gemini-3.5-flash").tier).toBe("Advanced");
+  expect(modelInfoFor("gemma-4-26b-a4b-it").tier).toBe("Open");
+  expect(modelInfoFor("gpt-5.6-luna").tier).toBe("Fast");
   expect(modelInfoFor("experimental-model").tier).toBe("Custom");
 });
 
@@ -30,7 +32,7 @@ test("switches the active model within the live provider", async () => {
       json: () =>
         Promise.resolve({
           ...modelState,
-          activeModel: "gemini-2.5-pro",
+          activeModel: "gemini-3.1-pro-preview",
           changedBy: "admin@example.test",
           changedAt: "2026-07-06T09:00:00Z",
         }),
@@ -39,10 +41,12 @@ test("switches the active model within the live provider", async () => {
 
   renderWithProviders(<AiModelPanel csrfToken="test-csrf-token" />, "/admin/overview");
 
-  expect(await screen.findByRole("radio", { name: /gemma-4-31b/ })).toBeChecked();
+  expect(await screen.findByRole("radio", { name: /gemma-4-31b-it/ })).toBeChecked();
+  expect(screen.queryByRole("button", { name: /Refresh models from Gemini API/ })).toBeNull();
+  expect(screen.queryByRole("button", { name: /Add model ID for Gemini API/ })).toBeNull();
   expect(screen.getByRole("button", { name: "Apply model" })).toBeDisabled();
 
-  await userEvent.click(screen.getByRole("radio", { name: /gemini-2.5-pro/ }));
+  await userEvent.click(screen.getByRole("radio", { name: /gemini-3.1-pro-preview/ }));
   await userEvent.click(screen.getByRole("button", { name: "Apply model" }));
 
   await waitFor(() =>
@@ -50,7 +54,7 @@ test("switches the active model within the live provider", async () => {
       2,
       "http://127.0.0.1:8001/api/v1/admin/ai-model",
       expect.objectContaining({
-        body: JSON.stringify({ model: "gemini-2.5-pro", provider: "gemini_api" }),
+        body: JSON.stringify({ model: "gemini-3.1-pro-preview", provider: "gemini_api" }),
         headers: { "Content-Type": "application/json", "X-CSRF-Token": "test-csrf-token" },
         method: "PUT",
       }),
@@ -129,7 +133,7 @@ test("tests a provider connection and reports the outcome", async () => {
         Promise.resolve({
           ok: false,
           provider: "openai_api",
-          model: "gpt-5-mini",
+          model: "gpt-5.6-terra",
           message: "No API key is configured for this provider.",
         }),
     });
@@ -163,8 +167,8 @@ test("reports a successful connection test", async () => {
         Promise.resolve({
           ok: true,
           provider: "gemini_api",
-          model: "gemma-4-31b",
-          message: "gemma-4-31b answered the test prompt.",
+          model: "gemma-4-31b-it",
+          message: "gemma-4-31b-it answered the test prompt.",
         }),
     });
   vi.stubGlobal("fetch", fetchMock);
@@ -174,7 +178,7 @@ test("reports a successful connection test", async () => {
   await userEvent.click(await screen.findByRole("button", { name: "Test connection" }));
 
   expect(
-    await screen.findByText(/Connection OK: gemma-4-31b answered the test prompt/),
+    await screen.findByText(/Connection OK: gemma-4-31b-it answered the test prompt/),
   ).toBeVisible();
 });
 
@@ -197,7 +201,7 @@ test("activating another provider warns about the app-wide change first", async 
         Promise.resolve({
           ok: true,
           provider: "openai_api",
-          model: "gpt-5-mini",
+          model: "gpt-5.6-terra",
           message: "Connection verified.",
         }),
     })
@@ -207,7 +211,7 @@ test("activating another provider warns about the app-wide change first", async 
         Promise.resolve({
           ...modelState,
           provider: "openai_api",
-          activeModel: "gpt-5-mini",
+          activeModel: "gpt-5.6-terra",
           changedBy: "admin@example.test",
           changedAt: "2026-07-06T09:00:00Z",
         }),
@@ -239,7 +243,7 @@ test("activating another provider warns about the app-wide change first", async 
       }),
     ),
   );
-  expect(await within(liveRegion()).findByText(/gpt-5-mini/)).toBeVisible();
+  expect(await within(liveRegion()).findByText(/gpt-5.6-terra/)).toBeVisible();
 });
 
 test("cancelling the activation warning sends nothing", async () => {
@@ -289,7 +293,7 @@ test("shows a generic error when the switch fails", async () => {
 
   renderWithProviders(<AiModelPanel csrfToken="test-csrf-token" />, "/admin/overview");
 
-  await userEvent.click(await screen.findByRole("radio", { name: /gemini-2.5-flash/ }));
+  await userEvent.click(await screen.findByRole("radio", { name: /gemini-3.5-flash/ }));
   await userEvent.click(screen.getByRole("button", { name: "Apply model" }));
 
   expect(

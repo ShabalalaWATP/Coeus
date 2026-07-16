@@ -3,19 +3,27 @@ import { useEffect, useRef, useState } from "react";
 
 import type { Ticket } from "../../lib/api-client/tickets";
 import { useSpeechToText } from "./useSpeechToText";
+import { VoiceCallControls } from "./VoiceCallControls";
 
 const GREETING =
   "Hi, I am Istari. Please tell me about the query you would like to " +
   "submit and we will take it from there.";
 
 type ChatPanelProps = {
+  csrfToken?: string;
   isSending: boolean;
   onSend: (message: string, onSuccess?: () => void) => void;
   readOnly?: boolean;
   ticket?: Ticket;
 };
 
-export function ChatPanel({ isSending, onSend, readOnly = false, ticket }: ChatPanelProps) {
+export function ChatPanel({
+  csrfToken = "",
+  isSending,
+  onSend,
+  readOnly = false,
+  ticket,
+}: ChatPanelProps) {
   const [message, setMessage] = useState("");
   const transcriptRef = useRef<HTMLDivElement>(null);
   const speech = useSpeechToText((transcript) => {
@@ -136,6 +144,19 @@ export function ChatPanel({ isSending, onSend, readOnly = false, ticket }: ChatP
               Dictation is provided by your browser and may process audio remotely. Use synthetic
               data only.
             </small>
+          ) : null}
+          {csrfToken ? (
+            <VoiceCallControls
+              csrfToken={csrfToken}
+              onTranscript={(transcript) =>
+                setMessage((current) => {
+                  const combined = current.trim()
+                    ? `${current.trimEnd()}\n\n${transcript}`
+                    : transcript;
+                  return combined.slice(0, 4000);
+                })
+              }
+            />
           ) : null}
           <div className="chat-form__actions">
             {speech.isSupported ? (

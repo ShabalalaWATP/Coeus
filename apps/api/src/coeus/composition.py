@@ -48,6 +48,9 @@ from coeus.services.ticket_collaborators import TicketCollaboratorService
 from coeus.services.ticket_lifecycle import TicketLifecycleService
 from coeus.services.upload_admission import UploadAdmissionController
 from coeus.services.user_admin import UserAdminService
+from coeus.services.voice_admission import VoiceSessionAdmission
+from coeus.services.voice_models import VoiceModelService
+from coeus.services.voice_sessions import VoiceSessionService
 
 
 @dataclass(frozen=True)
@@ -172,6 +175,22 @@ def _configure_data_services(
         settings,
         identity.audit_log,
         app.state.state_store,
+    )
+    app.state.voice_model_service = VoiceModelService(
+        settings,
+        identity.audit_log,
+        app.state.state_store,
+    )
+    app.state.voice_session_admission = VoiceSessionAdmission(
+        max_concurrent=settings.voice_session_max_concurrent,
+        max_per_principal=settings.voice_session_max_per_principal,
+        ttl_seconds=settings.voice_session_ttl_seconds,
+    )
+    app.state.voice_session_service = VoiceSessionService(
+        settings,
+        app.state.voice_model_service,
+        app.state.voice_session_admission,
+        identity.audit_log,
     )
     app.state.embedding_service = build_embedding_service(
         settings,

@@ -9,17 +9,24 @@ are key-based over plain HTTPS through one gateway
 (`integrations/llm_gateway.py`); keys travel in headers, never in URLs, and
 no vendor SDKs are used. Per-provider model allow-lists and defaults come
 from settings (`available_*_models`) as a curated fallback.
+The curated Gemini API fallback contains `gemini-3.5-flash`,
+`gemini-3.1-pro-preview`, `gemma-4-31b-it`, and `gemma-4-26b-a4b-it`.
+Gemini 3.5 Flash is the default. Coeus continues to use the stateless
+`generateContent` API, which Google supports for these models; adopting the
+stateful Interactions API is a separate architecture and data-retention decision.
 
-The selectable model set is not frozen to those defaults. An administrator
-can **refresh** a provider's list from its live API (OpenAI and Gemini
-expose a listing endpoint over the same key; `integrations/llm_models.py`
-filters out known non-chat families) and can **add a model ID by hand** for any provider,
-so brand-new models are usable the day they ship even before, or without, a
-listing. Discovered and hand-added ids are held per provider on top of the
-curated defaults and persisted (they are not secrets); the effective list is
-`curated + custom + discovered`. Refresh is append-only: it never removes
-custom IDs, prior discoveries or the active model. IDs are constrained to 2-80
-safe characters and each persisted source is capped at 200 entries.
+The Gemini API model set is deliberately frozen to that curated list. Provider
+refresh and manual model entry are disabled for Gemini, and legacy persisted
+additions are pruned during state restoration. This prevents deprecated or
+special-purpose Google models from returning to the selectable catalogue.
+
+The OpenAI catalogue is also curated. It contains `gpt-5.6-sol`,
+`gpt-5.6-terra`, and `gpt-5.6-luna`, with Terra as the default. Refresh and
+manual model entry are disabled for OpenAI, and legacy additions are pruned.
+
+Vertex AI and Bedrock retain manual model management. Hand-added IDs are
+persisted (they are not secrets), constrained to 2-80 safe characters, and
+each persisted source is capped at 200 entries.
 
 One `AiModelService` instance serves the whole application, so the active
 provider and model apply to every user at once.

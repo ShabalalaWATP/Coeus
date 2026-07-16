@@ -163,6 +163,7 @@ export function TicketWorkspace({
 
       <section className="request-workspace" aria-label="Request workspace">
         <ChatPanel
+          csrfToken={session?.csrfToken ?? ""}
           isSending={pending.sending}
           onSend={actions.onSend}
           readOnly={!canEdit || (ticket !== undefined && !showIntakeTools)}

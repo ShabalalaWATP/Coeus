@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 
 import { AiModelPanel } from "./AiModelPanel";
 import { RegistrationApprovalsPanel } from "./RegistrationApprovalsPanel";
+import { VoiceModelPanel } from "./VoiceModelPanel";
 import { ErrorState, LoadingState } from "../../components/ui/PageState";
 import { getAdminOverview } from "../../lib/api-client/admin";
 import { useAuth } from "../../lib/auth/auth-context";
@@ -86,6 +87,8 @@ export default function AdminOverviewPage() {
           </Link>
         ))}
       </section>
+
+      <VoiceModelPanel csrfToken={session?.csrfToken ?? ""} />
     </div>
   );
 }

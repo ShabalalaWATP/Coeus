@@ -6569,6 +6569,70 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "VoiceApiKeyUpdateRequest": {
+        "properties": {
+          "apiKey": {
+            "maxLength": 4096,
+            "minLength": 10,
+            "title": "Apikey",
+            "type": "string"
+          }
+        },
+        "required": [
+          "apiKey"
+        ],
+        "title": "VoiceApiKeyUpdateRequest",
+        "type": "object"
+      },
+      "VoiceModelStateResponse": {
+        "properties": {
+          "apiKeyConfigured": {
+            "title": "Apikeyconfigured",
+            "type": "boolean"
+          },
+          "availableModels": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Availablemodels",
+            "type": "array"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model",
+          "availableModels",
+          "enabled",
+          "apiKeyConfigured"
+        ],
+        "title": "VoiceModelStateResponse",
+        "type": "object"
+      },
+      "VoiceModelUpdateRequest": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model",
+          "enabled"
+        ],
+        "title": "VoiceModelUpdateRequest",
+        "type": "object"
+      },
       "WorkPackageResponse": {
         "properties": {
           "id": {
@@ -8418,6 +8482,143 @@
         "summary": "Set Status",
         "tags": [
           "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-model": {
+      "get": {
+        "operationId": "admin_voice_model_api_v1_admin_voice_model_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceModelStateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Voice Model",
+        "tags": [
+          "voice"
+        ]
+      },
+      "put": {
+        "operationId": "configure_voice_model_api_v1_admin_voice_model_put",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceModelUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceModelStateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Configure Voice Model",
+        "tags": [
+          "voice"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-model/api-key": {
+      "put": {
+        "operationId": "configure_voice_api_key_api_v1_admin_voice_model_api_key_put",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceApiKeyUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceModelStateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Configure Voice Api Key",
+        "tags": [
+          "voice"
         ]
       }
     },
@@ -13407,6 +13608,121 @@
         "summary": "User Profile",
         "tags": [
           "teams"
+        ]
+      }
+    },
+    "/api/v1/voice/config": {
+      "get": {
+        "operationId": "voice_config_api_v1_voice_config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceModelStateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Voice Config",
+        "tags": [
+          "voice"
+        ]
+      }
+    },
+    "/api/v1/voice/session": {
+      "post": {
+        "operationId": "create_voice_session_api_v1_voice_session_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Voice Session",
+        "tags": [
+          "voice"
+        ]
+      }
+    },
+    "/api/v1/voice/session/{token}": {
+      "delete": {
+        "operationId": "release_voice_session_api_v1_voice_session__token__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Token",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Release Voice Session",
+        "tags": [
+          "voice"
         ]
       }
     }

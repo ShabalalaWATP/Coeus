@@ -9,6 +9,7 @@ from coeus.integrations.llm_models import discover_models
 from coeus.persistence.state_store import StateStore
 from coeus.services.ai_model_state import model_state_payload, restore_model_state
 from coeus.services.ai_provider_catalog import (
+    CURATED_PROVIDER_NAMES,
     ProviderSpec,
     initial_api_keys,
     provider_specs,
@@ -54,8 +55,6 @@ class _AiModelSnapshot:
 
 
 class AiModelService:
-    """Administrator-controlled, application-wide LLM configuration."""
-
     def __init__(
         self,
         settings: Settings,
@@ -198,7 +197,6 @@ class AiModelService:
     def refresh_models(
         self, actor_user_id: str, actor_username: str, provider: str
     ) -> AiModelState:
-        """Append safe live discoveries without removing existing model IDs."""
         spec = self._require_refreshable_provider(provider)
         key = self._api_keys.get(spec.name)
         if not key:
@@ -230,8 +228,9 @@ class AiModelService:
     def add_custom_model(
         self, actor_user_id: str, actor_username: str, provider: str, model: str
     ) -> AiModelState:
-        """Register a model ID without changing the provider's active model."""
         spec = self._require_external_provider(provider)
+        if spec.name in CURATED_PROVIDER_NAMES:
+            raise AppError(422, "model_catalogue_curated", "This provider catalogue is curated.")
         model = model.strip()
         if not is_valid_model_id(model):
             raise AppError(422, "invalid_model_id", "The model ID contains unsupported characters.")

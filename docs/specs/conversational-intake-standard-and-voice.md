@@ -5,8 +5,8 @@
 Make the customer chatbot drive the intake conversation instead of listing
 missing fields. The assistant greets the customer as soon as the chat opens,
 then asks one natural question per turn until every detail required for an RFI
-submission is captured. Customers can also dictate messages with their voice
-instead of typing.
+submission is captured. Customers can dictate messages or explicitly start an
+OpenAI Realtime speech-to-speech session when an administrator enables it.
 
 ## Scope
 
@@ -26,11 +26,22 @@ instead of typing.
 - Voice input via the browser Web Speech API (`useSpeechToText` hook): a
   Dictate button appears only when the browser supports recognition, final
   transcripts append to the message box, and the customer still presses Send.
+- Optional realtime voice uses WebRTC and `gpt-realtime-2.1-mini`. A separate
+  setting at the bottom of the admin AI panel accepts its own administrator-only
+  API key, selects and enables the voice model without changing or reusing any
+  text-chat provider key.
+- The browser sends its SDP offer to an authenticated Coeus endpoint. Coeus
+  creates the OpenAI Realtime call server-side, so the dedicated Voice API key
+  is never returned to browser code.
+- Stopping a voice session places the synthetic conversation transcript in the
+  message editor for review and explicit submission through the existing chat
+  validation and persistence path.
 
 ## Non-goals
 
-- Server-side speech transcription or audio upload. If an offline deployment
-  needs it, a self-hosted Whisper-class service is the follow-up.
+- Durable audio recording or server-side storage of audio bytes.
+- An offline speech-to-speech implementation. Browser dictation remains the
+  local fallback.
 - Changing the set of required fields, the submit gate, or extraction
   heuristics.
 - LLM-driven slot filling; extraction stays deterministic and local.
@@ -39,9 +50,15 @@ instead of typing.
 
 - Safety-flagged messages keep the fixed refusal on every provider path;
   flagged text is never sent to an external model.
-- Dictation runs entirely in the browser; no audio or transcript touches the
-  backend until the customer sends the message through the existing validated
-  chat endpoint.
+- Dictation runs through the browser's recognition implementation; no dictated
+  transcript reaches Coeus until the customer sends it.
+- Realtime voice is disabled by default, requires `chat:use`, an authenticated
+  session and CSRF, and is available only when an OpenAI key is configured.
+- Coeus caps and validates SDP, applies provider admission, derives a stable
+  privacy-preserving OpenAI safety identifier, never logs SDP or audio, and
+  returns Realtime responses with `Cache-Control: no-store`.
+- The SPA permits microphone access only from itself. Camera and geolocation
+  remain disabled, and audio capture begins only after a user presses Start.
 
 ## Acceptance Criteria
 
@@ -52,3 +69,9 @@ instead of typing.
   becomes submittable (existing 7-field gate unchanged).
 - The Dictate button is hidden when the Web Speech API is unavailable; blocked
   microphone access shows a clear hint and typing still works.
+- The voice setting is the final section of the admin AI panel and cannot be
+  enabled without an OpenAI key.
+- When voice is enabled, a supported browser can start and stop a direct
+  speech-to-speech session powered by the configured Realtime model.
+- Older OpenAI text models are absent from the curated text catalogue, which
+  contains `gpt-5.6-sol`, `gpt-5.6-terra`, and `gpt-5.6-luna`.

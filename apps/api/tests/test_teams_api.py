@@ -1,3 +1,4 @@
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
@@ -33,6 +34,10 @@ def _user_id(app: FastAPI, username: str) -> str:
     user = app.state.access_services.repository.get_user_by_username(username)
     assert user is not None
     return str(user.user_id)
+
+
+def _future_date(days: int) -> str:
+    return (datetime.now(UTC).date() + timedelta(days=days)).isoformat()
 
 
 @pytest.mark.asyncio
@@ -126,6 +131,9 @@ async def test_only_the_owning_manager_changes_the_roster() -> None:
 @pytest.mark.asyncio
 async def test_calendar_entries_respect_member_and_manager_boundaries() -> None:
     app = _app()
+    first_day = _future_date(1)
+    second_day = _future_date(2)
+    third_day = _future_date(3)
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
@@ -136,7 +144,7 @@ async def test_calendar_entries_respect_member_and_manager_boundaries() -> None:
             headers={"X-CSRF-Token": str(analyst["csrfToken"])},
             json={
                 "userId": _user_id(app, "analyst@example.test"),
-                "date": "2026-07-20",
+                "date": first_day,
                 "status": "leave",
                 "note": "Annual leave.",
             },
@@ -148,7 +156,7 @@ async def test_calendar_entries_respect_member_and_manager_boundaries() -> None:
             headers={"X-CSRF-Token": str(analyst["csrfToken"])},
             json={
                 "userId": _user_id(app, "analyst.4@example.test"),
-                "date": "2026-07-20",
+                "date": first_day,
                 "status": "leave",
             },
         )
@@ -160,18 +168,20 @@ async def test_calendar_entries_respect_member_and_manager_boundaries() -> None:
             headers={"X-CSRF-Token": str(manager["csrfToken"])},
             json={
                 "userId": _user_id(app, "analyst.4@example.test"),
-                "date": "2026-07-21",
+                "date": second_day,
                 "status": "on_task",
                 "note": "Standing task.",
             },
         )
         assert for_member.status_code == 200
 
-        window = await client.get(f"/api/v1/teams/{team_id}/calendar?from=2026-07-20&to=2026-07-22")
+        window = await client.get(
+            f"/api/v1/teams/{team_id}/calendar?from={first_day}&to={third_day}"
+        )
         assert window.status_code == 200
         assert len(window.json()["entries"]) == 2
         bad_window = await client.get(
-            f"/api/v1/teams/{team_id}/calendar?from=2026-07-22&to=2026-07-20"
+            f"/api/v1/teams/{team_id}/calendar?from={third_day}&to={first_day}"
         )
         assert bad_window.status_code == 422
 
@@ -198,6 +208,7 @@ async def test_calendar_entries_respect_member_and_manager_boundaries() -> None:
 @pytest.mark.asyncio
 async def test_availability_combines_calendar_and_live_assignments() -> None:
     app = _app()
+    availability_date = _future_date(1)
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
@@ -219,13 +230,15 @@ async def test_availability_combines_calendar_and_live_assignments() -> None:
             headers={"X-CSRF-Token": str(manager["csrfToken"])},
             json={
                 "userId": _user_id(app, "analyst.2@example.test"),
-                "date": "2026-07-15",
+                "date": availability_date,
                 "status": "leave",
             },
         )
         assert leave.status_code == 200
 
-        availability = await client.get(f"/api/v1/teams/{team_id}/availability?date=2026-07-15")
+        availability = await client.get(
+            f"/api/v1/teams/{team_id}/availability?date={availability_date}"
+        )
 
     assert availability.status_code == 200
     body = availability.json()

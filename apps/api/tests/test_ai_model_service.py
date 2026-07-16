@@ -8,6 +8,7 @@ from coeus.core.errors import AppError
 from coeus.core.model_ids import MAX_MODELS_PER_SOURCE
 from coeus.persistence.state_store import MemoryStateStore
 from coeus.services.ai_models import AI_MODEL_NAMESPACE, AiModelService
+from coeus.services.ai_provider_catalog import ProviderSpec
 from coeus.services.audit import AuditLog
 
 
@@ -61,19 +62,44 @@ def test_legacy_persisted_gemini_key_is_scrubbed() -> None:
     payload = state_store.load(AI_MODEL_NAMESPACE)
     assert payload is not None
     assert service.api_key("gemini_api") is None
-    assert service.active_model("gemini_api") == "gemini-2.5-pro"
+    assert service.active_model("gemini_api") == "gemini-3.5-flash"
     assert "api_key" not in payload
     assert "legacy-secret" not in str(payload)
+
+
+def test_legacy_gemini_catalogue_additions_are_pruned() -> None:
+    state_store = MemoryStateStore()
+    state_store.save(
+        AI_MODEL_NAMESPACE,
+        {
+            "active_models": {"gemini_api": "gemini-2.5-pro"},
+            "custom_models": {"gemini_api": ["gemini-2.5-pro"]},
+            "discovered_models": {"gemini_api": ["gemini-3-flash-preview"]},
+        },
+    )
+
+    service = AiModelService(Settings(environment="test"), AuditLog(), state_store)
+    gemini = next(
+        provider for provider in service.state().providers if provider.name == "gemini_api"
+    )
+
+    assert gemini.models == (
+        "gemini-3.5-flash",
+        "gemini-3.1-pro-preview",
+        "gemma-4-31b-it",
+        "gemma-4-26b-a4b-it",
+    )
+    assert gemini.active_model == "gemini-3.5-flash"
 
 
 def test_selecting_active_model_is_a_noop() -> None:
     audit_log = AuditLog()
     service = AiModelService(Settings(environment="test"), audit_log, MemoryStateStore())
 
-    state = service.select("admin-id", "admin@example.test", "gemini-2.5-flash", "gemini_api")
+    state = service.select("admin-id", "admin@example.test", "gemini-3.5-flash", "gemini_api")
 
     assert state.changed_by is None
-    assert service.active_model("gemini_api") == "gemini-2.5-flash"
+    assert service.active_model("gemini_api") == "gemini-3.5-flash"
     assert audit_log.list_events() == ()
 
 
@@ -82,13 +108,13 @@ def test_model_selection_rolls_back_when_audit_fails() -> None:
     service = AiModelService(Settings(environment="test"), FailingAuditLog(), state_store)
 
     with pytest.raises(RuntimeError, match="audit unavailable"):
-        service.select("admin-id", "admin@example.test", "gemini-2.5-pro", "gemini_api")
+        service.select("admin-id", "admin@example.test", "gemini-3.1-pro-preview", "gemini_api")
 
     payload = state_store.load(AI_MODEL_NAMESPACE)
     assert payload is not None
-    assert service.active_model("gemini_api") == "gemini-2.5-flash"
+    assert service.active_model("gemini_api") == "gemini-3.5-flash"
     assert service.state().changed_by is None
-    assert payload["active_models"]["gemini_api"] == "gemini-2.5-flash"
+    assert payload["active_models"]["gemini_api"] == "gemini-3.5-flash"
 
 
 def test_model_selection_rolls_back_when_persistence_fails() -> None:
@@ -97,9 +123,9 @@ def test_model_selection_rolls_back_when_persistence_fails() -> None:
 
     state_store.fail_saves = True
     with pytest.raises(RuntimeError, match="state store unavailable"):
-        service.select("admin-id", "admin@example.test", "gemini-2.5-pro", "gemini_api")
+        service.select("admin-id", "admin@example.test", "gemini-3.1-pro-preview", "gemini_api")
 
-    assert service.active_model("gemini_api") == "gemini-2.5-flash"
+    assert service.active_model("gemini_api") == "gemini-3.5-flash"
     assert service.state().changed_by is None
 
 
@@ -135,14 +161,14 @@ def test_env_configured_provider_can_be_activated_and_restored_models_apply() ->
     settings = Settings(environment="test", openai_api_key="sk-env")
     service = AiModelService(settings, AuditLog(), state_store)
 
-    service.select("admin-id", "admin@example.test", "gpt-5", "openai_api")
+    service.select("admin-id", "admin@example.test", "gpt-5.6-sol", "openai_api")
     service.select_provider("admin-id", "admin@example.test", "openai_api")
     assert service.provider() == "openai_api"
-    assert service.active_model() == "gpt-5"
+    assert service.active_model() == "gpt-5.6-sol"
 
     # A restart restores per-provider model choices from the state store.
     restarted = AiModelService(settings, AuditLog(), state_store)
-    assert restarted.active_model("openai_api") == "gpt-5"
+    assert restarted.active_model("openai_api") == "gpt-5.6-sol"
     # The provider itself is runtime-only, like the keys.
     assert restarted.provider() == "mock"
 
@@ -156,92 +182,108 @@ def test_key_configuration_rejects_the_mock_provider() -> None:
 
 def test_custom_models_persist_without_becoming_active() -> None:
     state_store = MemoryStateStore()
-    settings = Settings(environment="test", openai_api_key="sk-env")
+    settings = Settings(environment="test")
     service = AiModelService(settings, AuditLog(), state_store)
 
-    service.add_custom_model("admin-id", "admin@example.test", "openai_api", "gpt-6-omni")
-    assert "gpt-6-omni" in service.state().providers[1].models
+    custom = "anthropic.claude-opus-5-20261101-v1:0"
+    service.add_custom_model("admin-id", "admin@example.test", "bedrock", custom)
 
     restarted = AiModelService(settings, AuditLog(), state_store)
-    openai = next(p for p in restarted.state().providers if p.name == "openai_api")
-    assert "gpt-6-omni" in openai.models
-    assert openai.active_model == "gpt-5-mini"
+    bedrock = next(p for p in restarted.state().providers if p.name == "bedrock")
+    assert custom in bedrock.models
 
-    service.select("admin-id", "admin@example.test", "gpt-6-omni", "openai_api")
+    service.select("admin-id", "admin@example.test", custom, "bedrock")
     selected = AiModelService(settings, AuditLog(), state_store)
-    assert selected.active_model("openai_api") == "gpt-6-omni"
+    assert selected.active_model("bedrock") == custom
 
 
-def test_refresh_preserves_custom_and_prior_discovered_models(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    responses = iter((("gpt-6-first",), ("gpt-6-second",)))
-    monkeypatch.setattr("coeus.services.ai_models.discover_models", lambda *_args: next(responses))
+def test_curated_openai_catalogue_rejects_refresh_and_custom_models() -> None:
     service = AiModelService(
         Settings(environment="test", openai_api_key="sk-env"), AuditLog(), MemoryStateStore()
     )
-    service.add_custom_model("admin-id", "admin@example.test", "openai_api", "gpt-custom")
-    service.refresh_models("admin-id", "admin@example.test", "openai_api")
-    service.select("admin-id", "admin@example.test", "gpt-6-first", "openai_api")
-
-    state = service.refresh_models("admin-id", "admin@example.test", "openai_api")
-    openai = next(provider for provider in state.providers if provider.name == "openai_api")
-
-    assert {"gpt-custom", "gpt-6-first", "gpt-6-second"} <= set(openai.models)
-    assert openai.active_model == "gpt-6-first"
-
-
-def test_refresh_limit_never_evicts_prior_discoveries(monkeypatch: pytest.MonkeyPatch) -> None:
-    original = tuple(f"gpt-found-{index:03d}" for index in range(MAX_MODELS_PER_SOURCE))
-    responses = iter((original, ("gpt-new-after-limit",)))
-    monkeypatch.setattr("coeus.services.ai_models.discover_models", lambda *_args: next(responses))
-    service = AiModelService(
-        Settings(environment="test", openai_api_key="sk-env"), AuditLog(), MemoryStateStore()
-    )
-
-    service.refresh_models("admin-id", "admin@example.test", "openai_api")
-    state = service.refresh_models("admin-id", "admin@example.test", "openai_api")
-    openai = next(provider for provider in state.providers if provider.name == "openai_api")
-
-    assert set(original) <= set(openai.models)
-    assert "gpt-new-after-limit" not in openai.models
-
-
-def test_refresh_rolls_back_extra_models_when_audit_fails(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr("coeus.services.ai_models.discover_models", lambda *_args: ("gpt-6-omni",))
-    state_store = MemoryStateStore()
-    service = AiModelService(
-        Settings(environment="test", openai_api_key="sk-env"), FailingAuditLog(), state_store
-    )
-
-    with pytest.raises(RuntimeError, match="audit unavailable"):
+    with pytest.raises(AppError, match="Live model listing is not available"):
         service.refresh_models("admin-id", "admin@example.test", "openai_api")
+    with pytest.raises(AppError, match="catalogue is curated"):
+        service.add_custom_model("admin-id", "admin@example.test", "openai_api", "gpt-old")
 
-    openai = next(p for p in service.state().providers if p.name == "openai_api")
-    assert "gpt-6-omni" not in openai.models
-    assert service.state().changed_by is None
+
+def test_effective_models_are_empty_for_an_unknown_provider() -> None:
+    service = AiModelService(Settings(environment="test"), AuditLog(), MemoryStateStore())
+
+    assert service._effective_models("unknown") == ()
+
+
+def test_refresh_requires_a_key_and_preserves_the_actor_for_discovery(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from coeus.services import ai_models as ai_models_module
+
+    original_spec_for = ai_models_module.spec_for
+    refreshable = ProviderSpec(
+        name="vertex_ai",
+        label="GCP Vertex AI",
+        models=("vertex-existing",),
+        default_model="vertex-existing",
+        supports_model_refresh=True,
+    )
+    monkeypatch.setattr(
+        ai_models_module,
+        "spec_for",
+        lambda settings, name: (
+            refreshable if name == "vertex_ai" else original_spec_for(settings, name)
+        ),
+    )
+    no_key = AiModelService(Settings(environment="test"), AuditLog(), MemoryStateStore())
+    with pytest.raises(AppError, match="Save an API key"):
+        no_key.refresh_models("admin-id", "admin@example.test", "vertex_ai")
+
+    monkeypatch.setattr(ai_models_module, "discover_models", lambda *_args: ["vertex-new"])
+    configured = AiModelService(
+        Settings(environment="test", vertex_api_key="vertex-key"),
+        AuditLog(),
+        MemoryStateStore(),
+    )
+    state = configured.refresh_models("admin-id", "admin@example.test", "vertex_ai")
+    vertex = next(provider for provider in state.providers if provider.name == "vertex_ai")
+
+    assert "vertex-new" in vertex.models
+    assert state.changed_by is None
+
+
+def test_custom_model_validation_and_capacity_are_enforced() -> None:
+    service = AiModelService(Settings(environment="test"), AuditLog(), MemoryStateStore())
+    with pytest.raises(AppError, match="unsupported characters"):
+        service.add_custom_model("admin-id", "admin@example.test", "bedrock", "bad id")
+
+    state_store = MemoryStateStore()
+    state_store.save(
+        AI_MODEL_NAMESPACE,
+        {
+            "custom_models": {
+                "bedrock": [f"custom-{index}" for index in range(MAX_MODELS_PER_SOURCE)]
+            }
+        },
+    )
+    at_capacity = AiModelService(Settings(environment="test"), AuditLog(), state_store)
+    with pytest.raises(AppError, match="limit"):
+        at_capacity.add_custom_model("admin-id", "admin@example.test", "bedrock", "one-more")
 
 
 def test_persisted_model_ids_are_sanitised_and_bounded() -> None:
     state_store = MemoryStateStore()
-    candidates = [f"gpt-custom-{index}" for index in range(MAX_MODELS_PER_SOURCE + 25)]
+    candidates = [f"bedrock-custom-{index}" for index in range(MAX_MODELS_PER_SOURCE + 25)]
     state_store.save(
         AI_MODEL_NAMESPACE,
         {
-            "custom_models": {"openai_api": [*candidates, "bad id", "x" * 81, "gpt-custom-1"]},
-            "active_models": {"openai_api": "bad id"},
+            "custom_models": {"bedrock": [*candidates, "bad id", "x" * 81]},
+            "active_models": {"bedrock": "bad id"},
         },
     )
 
     service = AiModelService(Settings(environment="test"), AuditLog(), state_store)
-    openai = next(
-        provider for provider in service.state().providers if provider.name == "openai_api"
-    )
-    extras = [model for model in openai.models if model.startswith("gpt-custom-")]
+    bedrock = next(provider for provider in service.state().providers if provider.name == "bedrock")
+    extras = [model for model in bedrock.models if model.startswith("bedrock-custom-")]
 
     assert len(extras) == MAX_MODELS_PER_SOURCE
-    assert "bad id" not in openai.models
-    assert "x" * 81 not in openai.models
-    assert openai.active_model == "gpt-5-mini"
+    assert "bad id" not in bedrock.models
+    assert "x" * 81 not in bedrock.models
