@@ -49,8 +49,9 @@ export function AiModelPanel({ csrfToken }: AiModelPanelProps) {
           <h2 id="ai-model-title">AI provider and model</h2>
           <p>
             Gemini API is the primary provider; OpenAI, GCP Vertex AI and AWS Bedrock are optional
-            alternatives. Refresh the model list from a provider or add a new model ID by hand to
-            stay current. Search embeddings are configured separately.
+            alternatives. Gemini and OpenAI use current curated catalogues; deployment-specific
+            Vertex AI and Bedrock model IDs can be added by hand. Search embeddings are configured
+            separately.
           </p>
         </div>
       </div>

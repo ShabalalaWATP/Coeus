@@ -1,0 +1,77 @@
+.voice-admin {
+  display: grid;
+  gap: 20px;
+}
+
+.voice-admin__heading {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.voice-admin__heading h2,
+.voice-admin__heading p {
+  margin: 0;
+}
+
+.voice-admin__heading p {
+  margin-top: 5px;
+  color: var(--muted);
+}
+
+.voice-admin__form {
+  display: grid;
+  gap: 12px;
+  max-width: 760px;
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+  border-radius: var(--radius-md);
+  padding: 18px;
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface-muted));
+}
+
+.voice-admin__form select {
+  min-height: 46px;
+  border-color: var(--border-strong);
+  background: var(--surface);
+}
+
+.voice-admin__description {
+  margin: 0;
+  color: var(--muted);
+}
+
+.voice-admin__toggle {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+
+.voice-admin__toggle input {
+  width: 18px;
+  height: 18px;
+}
+
+.voice-admin__saved {
+  color: var(--success);
+}
+
+.voice-call {
+  display: grid;
+  gap: 6px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.chat-form button.voice-call__button {
+  justify-self: start;
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--text);
+}
+
+.chat-form button.voice-call__button--active {
+  border-color: var(--danger);
+  color: var(--danger);
+}

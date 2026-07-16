@@ -25,17 +25,29 @@ test("renders admin action links, approvals and AI model controls", async () => 
           json: () =>
             Promise.resolve({
               provider: "gemini_api",
-              activeModel: "gemma-4-31b",
-              availableModels: ["gemma-4-31b", "gemini-2.5-pro"],
+              activeModel: "gemma-4-31b-it",
+              availableModels: ["gemma-4-31b-it", "gemini-3.1-pro-preview"],
               providers: [
                 {
                   name: "gemini_api",
                   label: "Gemini API (primary)",
-                  models: ["gemma-4-31b", "gemini-2.5-pro"],
-                  activeModel: "gemma-4-31b",
+                  models: ["gemma-4-31b-it", "gemini-3.1-pro-preview"],
+                  activeModel: "gemma-4-31b-it",
                   apiKeyConfigured: false,
                 },
               ],
+            }),
+        });
+      }
+      if (url.includes("/admin/voice-model")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              model: "gpt-realtime-2.1-mini",
+              availableModels: ["gpt-realtime-2.1-mini"],
+              enabled: false,
+              apiKeyConfigured: false,
             }),
         });
       }
@@ -54,7 +66,7 @@ test("renders admin action links, approvals and AI model controls", async () => 
   renderWithProviders(<AdminOverviewPage />, "/admin/overview");
 
   expect(await screen.findByRole("heading", { name: "Available" })).toBeVisible();
-  expect(await screen.findByRole("radio", { name: /gemma-4-31b/ })).toBeChecked();
+  expect(await screen.findByRole("radio", { name: /gemma-4-31b-it/ })).toBeChecked();
   expect(await screen.findByText("No pending access requests")).toBeVisible();
   expect(screen.getByRole("link", { name: /Access groups/ })).toHaveAttribute(
     "href",
@@ -71,6 +83,17 @@ test("shows admin service loading independently of the other controls", () => {
       if (url.endsWith("/api/v1/admin/overview")) return new Promise(() => undefined);
       if (url.includes("/registrations"))
         return Promise.resolve({ ok: true, json: () => Promise.resolve({ registrations: [] }) });
+      if (url.includes("/voice-model"))
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              model: "gpt-realtime-2.1-mini",
+              availableModels: ["gpt-realtime-2.1-mini"],
+              enabled: false,
+              apiKeyConfigured: false,
+            }),
+        });
       return Promise.resolve({
         ok: true,
         json: () =>

@@ -61,10 +61,10 @@ def test_gemini_call_uses_key_header_and_generate_content(
         "coeus.integrations.provider_http.httpx.Client", _fake_client(captured, payload)
     )
 
-    text = generate_text(_call("gemini_api", model="gemini-2.5-flash"))
+    text = generate_text(_call("gemini_api", model="gemini-3.5-flash"))
 
     assert text == "Gemini says hello."
-    assert "models/gemini-2.5-flash:generateContent" in str(captured["url"])
+    assert "models/gemini-3.5-flash:generateContent" in str(captured["url"])
     assert captured["headers"]["x-goog-api-key"] == "test-key"
     assert "key=" not in str(captured["url"])
 
@@ -78,12 +78,12 @@ def test_openai_call_uses_bearer_token_and_chat_completions(
         "coeus.integrations.provider_http.httpx.Client", _fake_client(captured, payload)
     )
 
-    text = generate_text(_call("openai_api", model="gpt-5-mini"))
+    text = generate_text(_call("openai_api", model="gpt-5.6-terra"))
 
     assert text == "OpenAI says hello."
     assert captured["url"] == "https://api.openai.com/v1/chat/completions"
     assert captured["headers"]["Authorization"] == "Bearer test-key"
-    assert captured["body"]["model"] == "gpt-5-mini"
+    assert captured["body"]["model"] == "gpt-5.6-terra"
 
 
 def test_vertex_call_targets_the_publisher_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:

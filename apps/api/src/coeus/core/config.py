@@ -67,15 +67,15 @@ class Settings(BaseSettings):
     embedding_provider: EmbeddingProviderName = "mock"
     embedding_model_path: str = ".local-data/embedding-models"
     gemini_api_key: str | None = None
-    gemini_api_model: str = "gemini-2.5-flash"
+    gemini_api_model: str = "gemini-3.5-flash"
     gemini_embedding_model: str = "gemini-embedding-001"
     gemini_api_timeout_seconds: int = Field(default=10, ge=1, le=60)
     available_gemini_models: list[str] = Field(
         default_factory=lambda: [
-            "gemma-4-31b",
-            "gemini-2.5-flash",
-            "gemini-2.5-pro",
-            "gemini-3-flash",
+            "gemini-3.5-flash",
+            "gemini-3.1-pro-preview",
+            "gemma-4-31b-it",
+            "gemma-4-26b-a4b-it",
         ],
         min_length=1,
     )
@@ -102,11 +102,19 @@ class Settings(BaseSettings):
     outbox_retry_seconds: int = Field(default=30, ge=1, le=3600)
     outbox_max_attempts: int = Field(default=5, ge=1, le=50)
     openai_api_key: str | None = None
-    openai_api_model: str = "gpt-5-mini"
+    openai_api_model: str = "gpt-5.6-terra"
     available_openai_models: list[str] = Field(
-        default_factory=lambda: ["gpt-5", "gpt-5-mini", "gpt-4.1"],
+        default_factory=lambda: ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"],
         min_length=1,
     )
+    openai_realtime_model: str = "gpt-realtime-2.1-mini"
+    available_openai_realtime_models: list[str] = Field(
+        default_factory=lambda: ["gpt-realtime-2.1-mini"], min_length=1
+    )
+    openai_realtime_voice: str = "marin"
+    voice_session_max_concurrent: int = Field(default=4, ge=1, le=32)
+    voice_session_max_per_principal: int = Field(default=1, ge=1, le=4)
+    voice_session_ttl_seconds: int = Field(default=10 * 60, ge=60, le=60 * 60)
     vertex_api_key: str | None = None
     vertex_api_model: str = "gemini-2.5-flash"
     available_vertex_models: list[str] = Field(

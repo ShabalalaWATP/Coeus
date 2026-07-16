@@ -9,6 +9,8 @@ from dataclasses import dataclass
 
 from coeus.core.config import LlmProviderName, Settings
 
+CURATED_PROVIDER_NAMES = frozenset({"gemini_api", "openai_api"})
+
 
 @dataclass(frozen=True)
 class ProviderSpec:
@@ -27,14 +29,12 @@ def provider_specs(settings: Settings) -> tuple[ProviderSpec, ...]:
             "Gemini API (primary)",
             settings.available_gemini_models,
             settings.gemini_api_model,
-            supports_model_refresh=True,
         ),
         _spec(
             "openai_api",
             "OpenAI API",
             settings.available_openai_models,
             settings.openai_api_model,
-            supports_model_refresh=True,
         ),
         _spec(
             "vertex_ai",

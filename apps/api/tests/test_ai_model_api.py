@@ -24,21 +24,27 @@ async def test_admin_reads_state_and_switches_a_provider_model() -> None:
             "mock",
         ]
         assert providers[0]["label"] == "Gemini API (primary)"
-        assert "gemini-2.5-pro" in providers[0]["models"]
-        assert providers[0]["activeModel"] == "gemini-2.5-flash"
+        assert providers[0]["models"] == [
+            "gemini-3.5-flash",
+            "gemini-3.1-pro-preview",
+            "gemma-4-31b-it",
+            "gemma-4-26b-a4b-it",
+        ]
+        assert providers[0]["activeModel"] == "gemini-3.5-flash"
+        assert providers[0]["supportsModelRefresh"] is False
 
         switched = await client.put(
             "/api/v1/admin/ai-model",
             headers={"X-CSRF-Token": csrf},
-            json={"model": "gemini-2.5-pro", "provider": "gemini_api"},
+            json={"model": "gemini-3.1-pro-preview", "provider": "gemini_api"},
         )
         assert switched.status_code == 200
-        assert switched.json()["providers"][0]["activeModel"] == "gemini-2.5-pro"
+        assert switched.json()["providers"][0]["activeModel"] == "gemini-3.1-pro-preview"
         assert switched.json()["changedBy"] == "admin@example.test"
         assert switched.json()["changedAt"] is not None
 
         refreshed = await client.get("/api/v1/admin/ai-model")
-        assert refreshed.json()["providers"][0]["activeModel"] == "gemini-2.5-pro"
+        assert refreshed.json()["providers"][0]["activeModel"] == "gemini-3.1-pro-preview"
 
 
 @pytest.mark.asyncio
@@ -74,7 +80,7 @@ async def test_admin_provider_settings_drive_ticket_assistant(
         await client.put(
             "/api/v1/admin/ai-model",
             headers={"X-CSRF-Token": csrf},
-            json={"model": "gemini-2.5-pro", "provider": "gemini_api"},
+            json={"model": "gemini-3.1-pro-preview", "provider": "gemini_api"},
         )
         await client.put(
             "/api/v1/admin/ai-model/api-key",
@@ -95,7 +101,7 @@ async def test_admin_provider_settings_drive_ticket_assistant(
 
     assert response.status_code == 201
     assert response.json()["messages"][-1]["body"] == "Gemini reply."
-    assert "models/gemini-2.5-pro:generateContent" in str(FakeLlmClient.captured["url"])
+    assert "models/gemini-3.1-pro-preview:generateContent" in str(FakeLlmClient.captured["url"])
     headers = {
         str(key).casefold(): value for key, value in FakeLlmClient.captured["headers"].items()
     }
@@ -173,7 +179,7 @@ async def test_model_selection_requires_admin_permission_and_csrf() -> None:
         forbidden_write = await client.put(
             "/api/v1/admin/ai-model",
             headers={"X-CSRF-Token": user_csrf},
-            json={"model": "gemini-2.5-pro", "provider": "gemini_api"},
+            json={"model": "gemini-3.1-pro-preview", "provider": "gemini_api"},
         )
         assert forbidden_write.status_code == 403
 
@@ -194,7 +200,7 @@ async def test_model_selection_requires_admin_permission_and_csrf() -> None:
         await admin_login(client)
         missing_csrf = await client.put(
             "/api/v1/admin/ai-model",
-            json={"model": "gemini-2.5-pro", "provider": "gemini_api"},
+            json={"model": "gemini-3.1-pro-preview", "provider": "gemini_api"},
         )
         assert missing_csrf.status_code == 403
         assert missing_csrf.json()["error"]["code"] == "csrf_failed"

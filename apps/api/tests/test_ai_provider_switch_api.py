@@ -38,8 +38,8 @@ async def test_provider_activation_requires_a_key_and_notifies_all_admins() -> N
         )
         assert activated.status_code == 200
         assert activated.json()["provider"] == "openai_api"
-        assert activated.json()["activeModel"] == "gpt-5-mini"
-        assert "gpt-5" in activated.json()["availableModels"]
+        assert activated.json()["activeModel"] == "gpt-5.6-terra"
+        assert "gpt-5.6-sol" in activated.json()["availableModels"]
 
         # A repeat activation is a no-op and must not renotify.
         repeated = await client.put(
@@ -113,7 +113,7 @@ async def test_connection_test_reports_key_state_and_provider_reachability(
         )
         assert reachable.status_code == 200
         assert reachable.json()["ok"] is True
-        assert reachable.json()["model"] == "gemini-2.5-flash"
+        assert reachable.json()["model"] == "gemini-3.5-flash"
 
         class FailingClient:
             def __init__(self, *, timeout: int) -> None:

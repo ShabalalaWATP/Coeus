@@ -467,6 +467,41 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/admin/voice-model": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Admin Voice Model */
+    get: operations["admin_voice_model_api_v1_admin_voice_model_get"];
+    /** Configure Voice Model */
+    put: operations["configure_voice_model_api_v1_admin_voice_model_put"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/admin/voice-model/api-key": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Configure Voice Api Key */
+    put: operations["configure_voice_api_key_api_v1_admin_voice_model_api_key_put"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/analyst/assignment-teams": {
     parameters: {
       query?: never;
@@ -1945,6 +1980,57 @@ export interface paths {
     put?: never;
     post?: never;
     delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/voice/config": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Voice Config */
+    get: operations["voice_config_api_v1_voice_config_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/voice/session": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Create Voice Session */
+    post: operations["create_voice_session_api_v1_voice_session_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/voice/session/{token}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Release Voice Session */
+    delete: operations["release_voice_session_api_v1_voice_session__token__delete"];
     options?: never;
     head?: never;
     patch?: never;
@@ -4350,6 +4436,29 @@ export interface components {
       /** Error Type */
       type: string;
     };
+    /** VoiceApiKeyUpdateRequest */
+    VoiceApiKeyUpdateRequest: {
+      /** Apikey */
+      apiKey: string;
+    };
+    /** VoiceModelStateResponse */
+    VoiceModelStateResponse: {
+      /** Apikeyconfigured */
+      apiKeyConfigured: boolean;
+      /** Availablemodels */
+      availableModels: string[];
+      /** Enabled */
+      enabled: boolean;
+      /** Model */
+      model: string;
+    };
+    /** VoiceModelUpdateRequest */
+    VoiceModelUpdateRequest: {
+      /** Enabled */
+      enabled: boolean;
+      /** Model */
+      model: string;
+    };
     /** WorkPackageResponse */
     WorkPackageResponse: {
       /**
@@ -5410,6 +5519,96 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["AdminUserResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  admin_voice_model_api_v1_admin_voice_model_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["VoiceModelStateResponse"];
+        };
+      };
+    };
+  };
+  configure_voice_model_api_v1_admin_voice_model_put: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["VoiceModelUpdateRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["VoiceModelStateResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  configure_voice_api_key_api_v1_admin_voice_model_api_key_put: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["VoiceApiKeyUpdateRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["VoiceModelStateResponse"];
         };
       };
       /** @description Validation Error */
@@ -8313,6 +8512,86 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["ProfileResponse"];
         };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  voice_config_api_v1_voice_config_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["VoiceModelStateResponse"];
+        };
+      };
+    };
+  };
+  create_voice_session_api_v1_voice_session_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  release_voice_session_api_v1_voice_session__token__delete: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path: {
+        token: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Validation Error */
       422: {

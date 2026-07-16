@@ -24,7 +24,7 @@ test("reads and updates the AI provider and model with CSRF protection", async (
     json: () =>
       Promise.resolve({
         provider: "mock",
-        activeModel: "gemma-4-31b",
+        activeModel: "gemma-4-31b-it",
         availableModels: [],
         apiKeyConfigured: false,
         providers: [],
@@ -33,7 +33,7 @@ test("reads and updates the AI provider and model with CSRF protection", async (
   vi.stubGlobal("fetch", fetchMock);
 
   await getAiModelState();
-  await selectAiModel("gemini-2.5-pro", "gemini_api", "csrf");
+  await selectAiModel("gemini-3.1-pro-preview", "gemini_api", "csrf");
   await configureAiApiKey("gemini-key-value", "gemini_api", "csrf");
   await selectAiProvider("gemini_api", "csrf");
   await testAiConnection("gemini_api", "csrf");
@@ -48,7 +48,7 @@ test("reads and updates the AI provider and model with CSRF protection", async (
     2,
     "http://127.0.0.1:8001/api/v1/admin/ai-model",
     expect.objectContaining({
-      body: JSON.stringify({ model: "gemini-2.5-pro", provider: "gemini_api" }),
+      body: JSON.stringify({ model: "gemini-3.1-pro-preview", provider: "gemini_api" }),
       headers: { "Content-Type": "application/json", "X-CSRF-Token": "csrf" },
       method: "PUT",
     }),

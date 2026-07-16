@@ -25,6 +25,7 @@ from coeus.api.routes.teams import profile_router as profiles_router
 from coeus.api.routes.teams import router as teams_router
 from coeus.api.routes.tickets import router as tickets_router
 from coeus.api.routes.users_admin import router as users_admin_router
+from coeus.api.routes.voice import router as voice_router
 from coeus.application.ports.outbox import OutboxDispatcherPort
 from coeus.composition import configure_application_state
 from coeus.core.config import Settings
@@ -97,6 +98,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "X-CSRF-Token",
             "X-Asset-Token",
         ],
+        expose_headers=["X-Voice-Session-Token"],
     )
 
     @app.middleware("http")
@@ -130,6 +132,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(notifications_router, prefix="/api/v1")
     app.include_router(teams_router, prefix="/api/v1")
     app.include_router(profiles_router, prefix="/api/v1")
+    app.include_router(voice_router, prefix="/api/v1")
     app.include_router(health_router, prefix="/api/v1")
     return app
 
