@@ -54,3 +54,64 @@ test("keeps legacy events without item identifiers bounded and usable", () => {
 
   expect(completeTranscript(state)).toBe("You: Need a synthetic briefing");
 });
+
+test("collects item deltas and completed response transcripts", () => {
+  const state = emptyTranscript();
+  collectTranscript(
+    JSON.stringify({
+      type: "conversation.item.input_audio_transcription.delta",
+      item_id: "user-1",
+      delta: "Need synthetic ",
+    }),
+    state,
+  );
+  collectTranscript(
+    JSON.stringify({
+      type: "conversation.item.input_audio_transcription.delta",
+      item_id: "user-1",
+      delta: "port activity",
+    }),
+    state,
+  );
+  collectTranscript(
+    JSON.stringify({
+      type: "conversation.item.input_audio_transcription.completed",
+      item_id: "user-1",
+    }),
+    state,
+  );
+  collectTranscript(
+    JSON.stringify({
+      type: "response.done",
+      response: {
+        output: [
+          {
+            id: "assistant-1",
+            role: "assistant",
+            content: [{ transcript: "Which reporting window?" }],
+          },
+        ],
+      },
+    }),
+    state,
+  );
+
+  expect(completeTranscript(state)).toBe(
+    "You: Need synthetic port activity\nIstari: Which reporting window?",
+  );
+});
+
+test("ignores unsupported payloads and retains a completed legacy assistant line", () => {
+  const state = emptyTranscript();
+  collectTranscript(undefined, state);
+  collectTranscript(JSON.stringify({ type: "unsupported.event" }), state);
+  collectTranscript(
+    JSON.stringify({
+      type: "response.output_audio_transcript.done",
+      transcript: "How urgent is the request?",
+    }),
+    state,
+  );
+
+  expect(completeTranscript(state)).toBe("Istari: How urgent is the request?");
+});
