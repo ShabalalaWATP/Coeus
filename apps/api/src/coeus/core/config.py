@@ -55,6 +55,8 @@ class Settings(BaseSettings):
     auth_ip_max_entries: int = Field(default=10_000, ge=1)
     audit_log_max_events: int = Field(default=10_000, ge=1)
     audit_log_path: str = ".local-data/audit/coeus-audit.jsonl"
+    configuration_encryption_key: str | None = None
+    configuration_encryption_key_path: str = ".local-data/secrets/configuration.key"
     argon2_time_cost: int = 2
     argon2_memory_cost: int = 19_456
     argon2_parallelism: int = 1
@@ -107,9 +109,9 @@ class Settings(BaseSettings):
         default_factory=lambda: ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"],
         min_length=1,
     )
-    openai_realtime_model: str = "gpt-realtime-2.1-mini"
+    openai_realtime_model: str = "gpt-realtime-mini"
     available_openai_realtime_models: list[str] = Field(
-        default_factory=lambda: ["gpt-realtime-2.1-mini"], min_length=1
+        default_factory=lambda: ["gpt-realtime-mini"], min_length=1
     )
     openai_realtime_voice: str = "marin"
     voice_session_max_concurrent: int = Field(default=4, ge=1, le=32)
@@ -193,9 +195,16 @@ def _seed_user_errors(settings: Settings) -> tuple[str, ...]:
 
 
 def _secret_errors(settings: Settings) -> tuple[str, ...]:
-    if settings.environment not in HOSTED_ENVIRONMENTS:
-        return ()
     errors: list[str] = []
+    if (
+        settings.configuration_encryption_key is not None
+        and len(settings.configuration_encryption_key) < 32
+    ):
+        errors.append("COEUS_CONFIGURATION_ENCRYPTION_KEY must be at least 32 characters.")
+    if settings.environment not in HOSTED_ENVIRONMENTS:
+        return tuple(errors)
+    if not settings.configuration_encryption_key:
+        errors.append("COEUS_CONFIGURATION_ENCRYPTION_KEY is required in hosted environments.")
     if not settings.session_secret or len(settings.session_secret) < 32:
         errors.append("COEUS_SESSION_SECRET must be at least 32 characters.")
     if not settings.csrf_secret or len(settings.csrf_secret) < 32:

@@ -1,13 +1,18 @@
 from collections.abc import Callable
-from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from coeus.core.config import LlmProviderName, Settings
 from coeus.core.errors import AppError
 from coeus.core.model_ids import MAX_MODELS_PER_SOURCE, clean_model_ids, is_valid_model_id
 from coeus.integrations.llm_models import discover_models
-from coeus.persistence.state_store import StateStore
-from coeus.services.ai_model_state import model_state_payload, restore_model_state
+from coeus.persistence.state_store import MemoryStateStore, StateStore
+from coeus.services.ai_model_credentials import (
+    restore_persisted_api_keys,
+    set_persisted_api_key,
+    sync_persisted_api_keys,
+)
+from coeus.services.ai_model_state import effective_models, model_state_payload, restore_model_state
+from coeus.services.ai_model_types import AiModelSnapshot, AiModelState, AiProviderState
 from coeus.services.ai_provider_catalog import (
     CURATED_PROVIDER_NAMES,
     ProviderSpec,
@@ -16,42 +21,9 @@ from coeus.services.ai_provider_catalog import (
     spec_for,
 )
 from coeus.services.audit import AuditLog
+from coeus.services.integration_secrets import EncryptedIntegrationSecretStore
 
 AI_MODEL_NAMESPACE = "ai_model"
-
-
-@dataclass(frozen=True)
-class AiProviderState:
-    name: str
-    label: str
-    models: tuple[str, ...]
-    active_model: str
-    api_key_configured: bool
-    supports_model_refresh: bool
-
-
-@dataclass(frozen=True)
-class AiModelState:
-    provider: str
-    active_model: str
-    available_models: tuple[str, ...]
-    api_key_configured: bool
-    embedding_provider: str
-    embedded_product_count: int
-    changed_by: str | None
-    changed_at: datetime | None
-    providers: tuple[AiProviderState, ...]
-
-
-@dataclass(frozen=True)
-class _AiModelSnapshot:
-    provider: LlmProviderName
-    active_models: dict[LlmProviderName, str]
-    custom_models: dict[str, list[str]]
-    discovered_models: dict[str, list[str]]
-    api_keys: dict[LlmProviderName, str | None]
-    changed_by: str | None
-    changed_at: datetime | None
 
 
 class AiModelService:
@@ -60,6 +32,7 @@ class AiModelService:
         settings: Settings,
         audit_log: AuditLog,
         state_store: StateStore | None = None,
+        secret_store: EncryptedIntegrationSecretStore | None = None,
     ) -> None:
         self._settings = settings
         self._audit_log = audit_log
@@ -68,6 +41,13 @@ class AiModelService:
         self._embedding_provider = settings.embedding_provider
         self._embedded_product_count: Callable[[], int] = lambda: 0
         self._api_keys = initial_api_keys(settings)
+        self._environment_api_key_providers = {
+            provider for provider, key in self._api_keys.items() if key
+        }
+        self._persisted_api_key_providers: set[LlmProviderName] = set()
+        self._secret_store = secret_store or EncryptedIntegrationSecretStore(
+            state_store or MemoryStateStore(), settings
+        )
         specs = provider_specs(settings)
         self._active_models = {spec.name: spec.default_model for spec in specs}
         self._custom_models: dict[str, list[str]] = {spec.name: [] for spec in specs}
@@ -103,15 +83,7 @@ class AiModelService:
         spec = self._spec(provider)
         if spec is None:
             return ()
-        return tuple(
-            dict.fromkeys(
-                [
-                    *spec.models,
-                    *self._custom_models.get(provider, []),
-                    *self._discovered_models.get(provider, []),
-                ]
-            )
-        )
+        return effective_models(spec, self._custom_models, self._discovered_models)
 
     def provider(self) -> LlmProviderName:
         return self._provider
@@ -185,12 +157,20 @@ class AiModelService:
         provider: str = "gemini_api",
     ) -> AiModelState:
         spec = self._require_external_provider(provider)
+        if spec.name in self._environment_api_key_providers:
+            raise AppError(
+                409,
+                "provider_key_managed_by_environment",
+                "This provider key is managed by the environment and cannot be replaced here.",
+            )
         self._apply_change(
             actor_user_id,
             actor_username,
             "ai_api_key_configured",
             {"provider": spec.name},
-            lambda: self._api_keys.__setitem__(spec.name, api_key),
+            lambda: set_persisted_api_key(
+                self._api_keys, self._persisted_api_key_providers, spec.name, api_key
+            ),
         )
         return self.state()
 
@@ -294,16 +274,25 @@ class AiModelService:
     def _restore_or_persist(self) -> None:
         if self._state_store is None:
             return
+        specs = provider_specs(self._settings)
+        self._persisted_api_key_providers = restore_persisted_api_keys(
+            specs,
+            self._secret_store,
+            self._api_keys,
+            self._environment_api_key_providers,
+        )
         payload = self._state_store.load(AI_MODEL_NAMESPACE)
         if payload is None:
             self._persist()
             return
-        restored = restore_model_state(payload, provider_specs(self._settings))
+        restored = restore_model_state(payload, specs, self._provider)
         self._active_models = restored.active_models
         self._custom_models = restored.custom_models
         self._discovered_models = restored.discovered_models
         self._changed_by = restored.changed_by
         self._changed_at = restored.changed_at
+        if restored.active_provider == "mock" or self._api_keys.get(restored.active_provider):
+            self._provider = restored.active_provider
         # Re-save to scrub legacy keys and invalid or oversized model IDs.
         self._persist()
 
@@ -321,9 +310,15 @@ class AiModelService:
                 changed_at=self._changed_at,
             ),
         )
+        sync_persisted_api_keys(
+            provider_specs(self._settings),
+            self._secret_store,
+            self._api_keys,
+            self._persisted_api_key_providers,
+        )
 
-    def _snapshot(self) -> _AiModelSnapshot:
-        return _AiModelSnapshot(
+    def _snapshot(self) -> AiModelSnapshot:
+        return AiModelSnapshot(
             provider=self._provider,
             active_models=dict(self._active_models),
             custom_models={name: list(models) for name, models in self._custom_models.items()},
@@ -331,11 +326,12 @@ class AiModelService:
                 name: list(models) for name, models in self._discovered_models.items()
             },
             api_keys=dict(self._api_keys),
+            persisted_api_key_providers=set(self._persisted_api_key_providers),
             changed_by=self._changed_by,
             changed_at=self._changed_at,
         )
 
-    def _restore(self, snapshot: _AiModelSnapshot) -> None:
+    def _restore(self, snapshot: AiModelSnapshot) -> None:
         self._provider = snapshot.provider
         self._active_models = dict(snapshot.active_models)
         self._custom_models = {
@@ -345,5 +341,6 @@ class AiModelService:
             name: list(models) for name, models in snapshot.discovered_models.items()
         }
         self._api_keys = dict(snapshot.api_keys)
+        self._persisted_api_key_providers = set(snapshot.persisted_api_key_providers)
         self._changed_by = snapshot.changed_by
         self._changed_at = snapshot.changed_at

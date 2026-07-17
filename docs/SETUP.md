@@ -258,15 +258,21 @@ coverage. Do not lower the coverage gates.
   paste an API key on `/admin/overview`, test the connection, and explicitly
   activate the provider. Gemini API is the primary provider; OpenAI, GCP
   Vertex AI (express-mode key) and AWS Bedrock (long-term API key) are
-  optional alternatives. Keys are held by the running API process, never
-  returned to the browser, never persisted, and are gone on restart. Saving a
-  key does not switch the provider: activation is a separate, warned action
-  that applies to every user immediately and notifies all administrators.
-  Leave everything unset for offline mock behaviour. For a persistent
-  credential use `COEUS_LLM_PROVIDER` plus the matching key env var
+  optional alternatives. Admin-entered keys are never returned to the browser;
+  they are encrypted in isolated provider namespaces and restored after an API
+  restart. The active provider and every selected text or voice model are also
+  restored. Saving a key does not switch the provider: activation is a
+  separate, warned action that applies to every user immediately and notifies
+  all administrators. Leave everything unset for offline mock behaviour.
+- Local mode creates `.local-data/secrets/configuration.key` when needed. Keep
+  that ignored file private and back it up separately from PostgreSQL. Docker
+  stores it in the API local-data volume. Hosted deployments must set
+  `COEUS_CONFIGURATION_ENCRYPTION_KEY` from a secret manager; losing or changing
+  it makes saved admin credentials unreadable. Environment-managed provider
+  keys remain authoritative and cannot be replaced in the UI. Configure them
+  with `COEUS_LLM_PROVIDER` plus the matching key env var
   (`COEUS_GEMINI_API_KEY`, `COEUS_OPENAI_API_KEY`, `COEUS_VERTEX_API_KEY` or
-  `COEUS_BEDROCK_API_KEY`, with `COEUS_BEDROCK_REGION` for Bedrock) or a
-  future secret manager integration.
+  `COEUS_BEDROCK_API_KEY`, with `COEUS_BEDROCK_REGION` for Bedrock).
 - To send real emails locally, set `COEUS_EMAIL_PROVIDER=smtp`,
   `COEUS_SMTP_HOST`, `COEUS_SMTP_FROM` and any required username/password. The
   default `outbox` provider records and audits emails without sending them.

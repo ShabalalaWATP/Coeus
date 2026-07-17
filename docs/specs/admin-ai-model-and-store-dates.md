@@ -43,10 +43,12 @@ All endpoints require `system:configure`; writes also require CSRF.
   return `422 model_not_available`; changes are audit logged
   (`ai_model_changed`).
 - `PUT /api/v1/admin/ai-model/api-key` with `{apiKey, provider?}` stores a
-  write-only runtime key for that provider (default `gemini_api`). Saving a
-  key never switches the provider. Keys are held in memory only: never
-  returned to clients, never persisted, gone on restart (audit:
-  `ai_api_key_configured`).
+  write-only key for that provider (default `gemini_api`). Saving a key never
+  switches the provider. Admin-entered keys are encrypted with AES-256-GCM,
+  bound to their provider identity and persisted separately from ordinary
+  model state. They are never returned to clients or written to logs (audit:
+  `ai_api_key_configured`). Environment-managed keys remain authoritative and
+  cannot be replaced from the admin panel.
 - `PUT /api/v1/admin/ai-model/provider` with `{provider}` activates a
   provider for the whole application. Activation requires a configured key
   (`422 provider_not_configured` otherwise, `422 provider_not_available`
@@ -85,6 +87,14 @@ An env key alone never switches the provider. Hosted environments refuse to
 boot with a non-mock provider and no key. Locally the provider remains
 `mock` unless explicitly enabled. Search embeddings are a separate switch
 (`COEUS_EMBEDDING_PROVIDER`) and always use the Gemini key.
+
+The active provider, each provider's selected model and encrypted
+admin-entered keys survive API restarts. Local mode creates a separate
+configuration-encryption key file when no key is supplied. Hosted deployments
+must supply `COEUS_CONFIGURATION_ENCRYPTION_KEY` from a secret manager and must
+back it up separately from application state. Losing or changing that key
+makes persisted admin credentials unreadable; Coeus fails closed rather than
+silently discarding or replacing them.
 
 ## Store date search
 

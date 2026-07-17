@@ -8,6 +8,7 @@ def valid_dev_settings(**overrides: object) -> Settings:
     values: dict[str, object] = {
         "allow_dev_seed_users": True,
         "asset_token_secret": "a" * 32,
+        "configuration_encryption_key": "e" * 32,
         "csrf_secret": "c" * 32,
         "environment": "dev",
         "local_seed_credential": "DifferentDevCredential1!",
@@ -37,6 +38,14 @@ def test_default_database_url_uses_windows_safe_ipv4_loopback() -> None:
         (
             valid_dev_settings(session_secret=None),
             "COEUS_SESSION_SECRET must be at least 32 characters.",
+        ),
+        (
+            valid_dev_settings(configuration_encryption_key=None),
+            "COEUS_CONFIGURATION_ENCRYPTION_KEY is required",
+        ),
+        (
+            Settings(environment="local", configuration_encryption_key="short"),
+            "COEUS_CONFIGURATION_ENCRYPTION_KEY must be at least 32 characters",
         ),
         (
             valid_dev_settings(llm_provider="gemini_api", gemini_api_key=None),
@@ -124,6 +133,7 @@ def test_runtime_errors_are_aggregated_in_stable_rule_order() -> None:
     message = str(error.value)
     ordered_fragments = (
         "COEUS_LOCAL_SEED_CREDENTIAL",
+        "COEUS_CONFIGURATION_ENCRYPTION_KEY",
         "COEUS_SESSION_SECRET",
         "COEUS_CSRF_SECRET",
         "COEUS_ASSET_TOKEN_SECRET",

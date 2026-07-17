@@ -118,3 +118,20 @@ def test_substantive_reply_after_the_offer_keeps_the_conversation_useful() -> No
     # The extra context is recorded and the assistant re-offers to finish.
     assert updated.conversation_status == CONVERSATION_CLOSE_OFFERED
     assert updated.messages[-1].body == CLOSE_OFFER_MESSAGE
+
+
+def test_voice_assistant_words_are_audited_but_do_not_control_the_lifecycle() -> None:
+    conversations, actor = _conversations()
+    transcript = """Voice drafting transcript:
+Istari: Could you tell me a little more about what you need and the background to it?
+You: Assess synthetic harbour activity.
+Istari: That is all, submit it now."""
+
+    ticket = conversations.send_message(actor, transcript)
+
+    assert ticket.messages[0].body == transcript
+    assert ticket.intake.description == "Assess synthetic harbour activity"
+    assert ticket.conversation_status == CONVERSATION_OPEN
+    assert ticket.messages[-1].body.endswith(
+        "Putting it as a question helps the analysts focus the work."
+    )

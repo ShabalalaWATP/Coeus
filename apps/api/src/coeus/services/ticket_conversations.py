@@ -31,6 +31,7 @@ from coeus.services.intake import (
     IntakeExtractionService,
 )
 from coeus.services.intake_standard import next_elicitation
+from coeus.services.intake_transcripts import requester_message
 from coeus.services.prioritisation import with_assessment
 from coeus.services.ticket_mutations import TicketMutationService
 from coeus.services.ticket_records import message as message_record
@@ -107,7 +108,10 @@ class ConversationService:
             conversation_status = ticket.conversation_status
         else:
             reply, conversation_status = self._reply_and_status(
-                actor, ticket.conversation_status, message, intake
+                actor,
+                ticket.conversation_status,
+                requester_message(message),
+                intake,
             )
         assistant_message = message_record(ticket.ticket_id, MessageAuthor.ASSISTANT, reply)
         if self._chat_bytes(ticket) + text_bytes(message, reply) > MAX_CHAT_HISTORY_BYTES:

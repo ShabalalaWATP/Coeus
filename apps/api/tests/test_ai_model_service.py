@@ -10,6 +10,7 @@ from coeus.persistence.state_store import MemoryStateStore
 from coeus.services.ai_models import AI_MODEL_NAMESPACE, AiModelService
 from coeus.services.ai_provider_catalog import ProviderSpec
 from coeus.services.audit import AuditLog
+from coeus.services.integration_secrets import integration_secret_namespace
 
 
 class ToggleStateStore:
@@ -26,28 +27,34 @@ class ToggleStateStore:
         self.payloads[namespace] = payload
 
 
-def test_api_keys_are_not_persisted_in_state_store() -> None:
+def test_admin_api_keys_are_encrypted_and_restored_with_the_active_provider() -> None:
     state_store = MemoryStateStore()
-    service = AiModelService(
-        Settings(environment="test", gemini_api_key="env-secret"),
-        AuditLog(),
-        state_store=state_store,
-    )
+    settings = Settings(environment="test")
+    service = AiModelService(settings, AuditLog(), state_store=state_store)
 
     payload = state_store.load(AI_MODEL_NAMESPACE)
     assert payload is not None
     assert "api_key" not in payload
-    assert "env-secret" not in str(payload)
-
     service.configure_api_key("admin-id", "admin@example.test", "runtime-secret")
     service.configure_api_key("admin-id", "admin@example.test", "sk-runtime", "openai_api")
+    service.select("admin-id", "admin@example.test", "gpt-5.6-sol", "openai_api")
+    service.select_provider("admin-id", "admin@example.test", "openai_api")
 
     payload = state_store.load(AI_MODEL_NAMESPACE)
     assert payload is not None
-    assert service.api_key("gemini_api") == "runtime-secret"
-    assert service.api_key("openai_api") == "sk-runtime"
+    gemini_envelope = state_store.load(integration_secret_namespace("llm:gemini_api"))
+    openai_envelope = state_store.load(integration_secret_namespace("llm:openai_api"))
+    assert gemini_envelope and openai_envelope
     assert "runtime-secret" not in str(payload)
     assert "sk-runtime" not in str(payload)
+    assert "runtime-secret" not in str(gemini_envelope)
+    assert "sk-runtime" not in str(openai_envelope)
+
+    restarted = AiModelService(settings, AuditLog(), state_store)
+    assert restarted.api_key("gemini_api") == "runtime-secret"
+    assert restarted.api_key("openai_api") == "sk-runtime"
+    assert restarted.provider() == "openai_api"
+    assert restarted.active_model() == "gpt-5.6-sol"
 
 
 def test_legacy_persisted_gemini_key_is_scrubbed() -> None:
@@ -65,6 +72,21 @@ def test_legacy_persisted_gemini_key_is_scrubbed() -> None:
     assert service.active_model("gemini_api") == "gemini-3.5-flash"
     assert "api_key" not in payload
     assert "legacy-secret" not in str(payload)
+
+
+def test_environment_api_key_is_authoritative_and_not_copied_to_state() -> None:
+    state_store = MemoryStateStore()
+    service = AiModelService(
+        Settings(environment="test", gemini_api_key="env-secret"), AuditLog(), state_store
+    )
+
+    with pytest.raises(AppError, match="managed by the environment"):
+        service.configure_api_key("admin-id", "admin@example.test", "replacement")
+
+    assert service.api_key("gemini_api") == "env-secret"
+    envelope = state_store.load(integration_secret_namespace("llm:gemini_api"))
+    assert envelope == {}
+    assert "env-secret" not in str(state_store.load(AI_MODEL_NAMESPACE))
 
 
 def test_legacy_gemini_catalogue_additions_are_pruned() -> None:
@@ -166,11 +188,10 @@ def test_env_configured_provider_can_be_activated_and_restored_models_apply() ->
     assert service.provider() == "openai_api"
     assert service.active_model() == "gpt-5.6-sol"
 
-    # A restart restores per-provider model choices from the state store.
+    # A restart restores both the provider and its model choice.
     restarted = AiModelService(settings, AuditLog(), state_store)
     assert restarted.active_model("openai_api") == "gpt-5.6-sol"
-    # The provider itself is runtime-only, like the keys.
-    assert restarted.provider() == "mock"
+    assert restarted.provider() == "openai_api"
 
 
 def test_key_configuration_rejects_the_mock_provider() -> None:

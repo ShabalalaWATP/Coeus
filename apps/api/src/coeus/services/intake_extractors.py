@@ -7,6 +7,7 @@ general message can never silently satisfy them; the assistant should ask.
 """
 
 import re
+from datetime import date
 
 REQUIREMENT_CUES = frozenset(
     {
@@ -30,7 +31,7 @@ REQUIREMENT_CUES = frozenset(
 REGION_PATTERN = re.compile(
     r"\b(?:in|around|near|over|across|for)\s+(?:the\s+)?(?P<region>.+?)"
     r"(?=(?:\s+(?:by|before|due|with|include|including|so that|to|as|from|between|during|next"
-    r" week|this week|today|tomorrow)\b)|[.,;]|$)",
+    r" week|this week|today|tomorrow)\b)|[.,;?]|$)",
     re.IGNORECASE,
 )
 REGION_STOP_WORDS = ("the ", "a ", "an ")
@@ -74,6 +75,18 @@ ON_BEHALF_PATTERN = re.compile(
 )
 
 URGENCY_CUES = ("in support of", "due to", "ahead of", "time critical", "time-critical")
+
+_RANGE_JOINER = r"(?:to|through|until|\u2013|\u2014)"
+_ISO_RANGE_PATTERN = re.compile(
+    rf"\b(?:from\s+)?(?P<start>\d{{4}}-\d{{2}}-\d{{2}})\s+{_RANGE_JOINER}\s+"
+    rf"(?P<end>\d{{4}}-\d{{2}}-\d{{2}})\b",
+    re.IGNORECASE,
+)
+_UK_RANGE_PATTERN = re.compile(
+    rf"\b(?:from\s+)?(?P<start>\d{{1,2}}/\d{{1,2}}/\d{{2,4}})\s+{_RANGE_JOINER}\s+"
+    rf"(?P<end>\d{{1,2}}/\d{{1,2}}/\d{{2,4}})\b",
+    re.IGNORECASE,
+)
 
 
 def extract_title(text: str) -> str | None:
@@ -144,19 +157,39 @@ def extract_deadline(text: str) -> str | None:
 
 
 def extract_time_window(text: str) -> tuple[str | None, str | None]:
-    date_range = re.search(
-        r"\bfrom\s+(?P<start>\d{4}-\d{2}-\d{2})\s+(?:to|through|until)\s+"
-        r"(?P<end>\d{4}-\d{2}-\d{2})\b",
-        text,
-        re.IGNORECASE,
-    )
-    if date_range:
-        return date_range.group("start"), date_range.group("end")
+    for pattern, parser in (
+        (_ISO_RANGE_PATTERN, date.fromisoformat),
+        (_UK_RANGE_PATTERN, _parse_uk_date),
+    ):
+        date_range = pattern.search(text)
+        if date_range:
+            try:
+                start = parser(date_range.group("start"))
+                end = parser(date_range.group("end"))
+            except ValueError:
+                return None, None
+            if start > end:
+                return None, None
+            return start.isoformat(), end.isoformat()
     lowered = text.casefold()
     for phrase in ("next week", "this week", "next month", "this month", "last month"):
         if phrase in lowered:
             return phrase, phrase
+    month_window = re.search(
+        r"\b(?:the\s+)?(?:entirety|whole|all)\s+of\s+"
+        r"(?:january|february|march|april|may|june|july|august|september|october|"
+        r"november|december)\b",
+        text,
+        re.IGNORECASE,
+    )
+    if month_window:
+        value = normalise_spaces(month_window.group(0)).strip()
+        return value, value
     return None, None
+
+
+def contains_explicit_date_range(text: str) -> bool:
+    return _ISO_RANGE_PATTERN.search(text) is not None or _UK_RANGE_PATTERN.search(text) is not None
 
 
 def extract_success_criteria(text: str) -> str | None:
@@ -249,3 +282,10 @@ def _trim_clause(value: str) -> str:
         if index != -1:
             cleaned = cleaned[:index]
     return cleaned.strip(" .,")
+
+
+def _parse_uk_date(value: str) -> date:
+    day, month, year = (int(part) for part in value.split("/"))
+    if year < 100:
+        year += 2000
+    return date(year, month, day)

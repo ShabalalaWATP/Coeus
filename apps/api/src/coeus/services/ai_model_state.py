@@ -8,6 +8,7 @@ from coeus.services.ai_provider_catalog import CURATED_PROVIDER_NAMES, ProviderS
 
 @dataclass(frozen=True)
 class PersistedAiModelState:
+    active_provider: LlmProviderName
     active_models: dict[LlmProviderName, str]
     custom_models: dict[str, list[str]]
     discovered_models: dict[str, list[str]]
@@ -15,8 +16,26 @@ class PersistedAiModelState:
     changed_at: datetime | None
 
 
+def effective_models(
+    spec: ProviderSpec,
+    custom_models: dict[str, list[str]],
+    discovered_models: dict[str, list[str]],
+) -> tuple[str, ...]:
+    return tuple(
+        dict.fromkeys(
+            [
+                *spec.models,
+                *custom_models.get(spec.name, []),
+                *discovered_models.get(spec.name, []),
+            ]
+        )
+    )
+
+
 def restore_model_state(
-    payload: dict[str, object], specs: tuple[ProviderSpec, ...]
+    payload: dict[str, object],
+    specs: tuple[ProviderSpec, ...],
+    default_provider: LlmProviderName,
 ) -> PersistedAiModelState:
     """Decode and sanitise non-secret AI model configuration."""
     spec_by_name: dict[str, ProviderSpec] = {str(spec.name): spec for spec in specs}
@@ -51,8 +70,13 @@ def restore_model_state(
         if gemini and isinstance(legacy_model, str) and legacy_model in gemini.models:
             active_models[gemini.name] = legacy_model
 
+    stored_provider = payload.get("active_provider")
+    active_provider = next(
+        (spec.name for spec in specs if spec.name == stored_provider), default_provider
+    )
     changed_by = payload.get("changed_by")
     return PersistedAiModelState(
+        active_provider=active_provider,
         active_models=active_models,
         custom_models=custom_models,
         discovered_models=discovered_models,
@@ -71,6 +95,7 @@ def model_state_payload(
     changed_at: datetime | None,
 ) -> dict[str, object]:
     return {
+        "active_provider": active_provider,
         "active_model": active_models[active_provider],
         "active_models": dict(active_models),
         "custom_models": {name: list(models) for name, models in custom_models.items()},

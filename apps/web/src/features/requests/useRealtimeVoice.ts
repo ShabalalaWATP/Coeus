@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { createVoiceSession, releaseVoiceSession } from "../../lib/api-client/voice";
+import {
+  collectTranscript,
+  completeTranscript,
+  emptyTranscript,
+  type TranscriptState,
+} from "./realtime-transcript";
+import { voiceStartError } from "./voice-start-error";
 
 type VoiceStatus = "idle" | "connecting" | "connected" | "stopping";
-type TranscriptState = { assistantDelta: string; lines: string[]; userDelta: string };
-
 const CONNECTION_TIMEOUT_MS = 15_000;
 const TRANSCRIPT_DRAIN_MS = 500;
-const MAX_TRANSCRIPT_CHARS = 3500;
 
 export function useRealtimeVoice(csrfToken: string, onTranscript: (transcript: string) => void) {
   const [status, setStatus] = useState<VoiceStatus>("idle");
@@ -110,6 +114,7 @@ export function useRealtimeVoice(csrfToken: string, onTranscript: (transcript: s
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
         if (mountedRef.current) setStatus("connected");
+        channel.send(JSON.stringify({ type: "response.create" }));
       };
       channel.onmessage = (event) => collectTranscript(event.data, transcriptRef.current);
       channel.onerror = () => fail("The voice connection encountered an error.");
@@ -123,9 +128,9 @@ export function useRealtimeVoice(csrfToken: string, onTranscript: (transcript: s
       }
       tokenRef.current = started.token;
       await peer.setRemoteDescription({ type: "answer", sdp: started.answer });
-    } catch {
+    } catch (caught) {
       if (operationRef.current === operation) {
-        fail("Voice could not start. Check microphone permission and try again.");
+        fail(voiceStartError(caught));
       }
     }
   }, [csrfToken, fail]);
@@ -139,64 +144,6 @@ export function useRealtimeVoice(csrfToken: string, onTranscript: (transcript: s
     };
   }, [closeResources]);
   return { error, isActive: status !== "idle", start, status, stop };
-}
-
-function collectTranscript(raw: unknown, state: TranscriptState) {
-  if (typeof raw !== "string") return;
-  try {
-    const event = JSON.parse(raw) as RealtimeEvent;
-    if (event.type === "conversation.item.input_audio_transcription.delta") {
-      state.userDelta += event.delta ?? "";
-    } else if (event.type === "response.output_audio_transcript.delta") {
-      state.assistantDelta += event.delta ?? "";
-    } else if (event.type === "conversation.item.input_audio_transcription.completed") {
-      appendFinal(state, "userDelta", "You", event.transcript);
-    } else if (event.type === "response.output_audio_transcript.done") {
-      appendFinal(state, "assistantDelta", "Istari", event.transcript);
-    } else if (event.type === "response.done") {
-      const transcript = event.response?.output
-        ?.flatMap((item) => item.content ?? [])
-        .map((content) => content.transcript ?? "")
-        .join(" ")
-        .trim();
-      if (transcript) appendFinal(state, "assistantDelta", "Istari", transcript);
-    }
-  } catch {
-    // Ignore non-JSON WebRTC control messages.
-  }
-}
-
-type RealtimeEvent = {
-  delta?: string;
-  response?: { output?: { content?: { transcript?: string }[] }[] };
-  transcript?: string;
-  type?: string;
-};
-
-function appendFinal(
-  state: TranscriptState,
-  pending: "assistantDelta" | "userDelta",
-  speaker: string,
-  finalValue?: string,
-) {
-  const value = finalValue?.trim() || state[pending].trim();
-  state[pending] = "";
-  if (value) appendLine(state.lines, `${speaker}: ${value}`);
-}
-
-function completeTranscript(state: TranscriptState): string {
-  appendFinal(state, "userDelta", "You");
-  appendFinal(state, "assistantDelta", "Istari");
-  return state.lines.join("\n").trim();
-}
-
-function appendLine(lines: string[], line: string) {
-  const remaining = MAX_TRANSCRIPT_CHARS - lines.join("\n").length;
-  if (remaining > 0 && !lines.includes(line)) lines.push(line.slice(0, remaining));
-}
-
-function emptyTranscript(): TranscriptState {
-  return { assistantDelta: "", lines: [], userDelta: "" };
 }
 
 function isCurrent(

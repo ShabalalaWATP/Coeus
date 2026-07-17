@@ -319,9 +319,9 @@ The agents depend on an LLM provider interface, not on a specific model:
 - **Local optional:** admins can enter a Gemini API key and select the active
   model from the Admin workspace. Entering a key through the Admin workspace is
   an explicit opt-in to the Gemini provider; a key present only in the
-  environment never changes the configured provider. The key is held by the
-  running API process, never returned to the browser and not persisted to
-  generic app state.
+  environment never changes the configured provider. The key is never returned
+  to the browser; it is stored as a provider-bound encrypted envelope and
+  restored after API restart.
 - **Graceful degradation:** if the Gemini API is unavailable, times out or is
   selected without a key, the chatbot falls back to the deterministic mock
   reply. The customer's message is always saved and the chat turn never fails
@@ -329,10 +329,10 @@ The agents depend on an LLM provider interface, not on a specific model:
 - **Future GCP deployment:** the same runtime boundary can point at Google
   managed services without changing the workflow contracts.
 
-Administrators choose the active Gemini model from the Admin workspace
-(`services/ai_models.py`); each selection raises an `ai_model_changed` audit
-event. Persisted provider credentials belong in environment configuration or a
-secret manager, not the admin UI runtime key field. See the
+Administrators choose the active provider and model from the Admin workspace
+(`services/ai_models.py`); each selection raises an audited event. Environment
+keys remain authoritative. Admin-entered keys use the configuration-encryption
+service and never appear in generic model state or API responses. See the
 [User Guide](USER_GUIDE.md#administrator) for the catalogue and tiers.
 
 ## Design principles

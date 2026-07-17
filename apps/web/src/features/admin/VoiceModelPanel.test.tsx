@@ -7,8 +7,8 @@ import { resetQueryClientForTests } from "../../app/query-client";
 import { renderWithProviders } from "../../test/test-utils";
 
 const state = {
-  model: "gpt-realtime-2.1-mini",
-  availableModels: ["gpt-realtime-2.1-mini"],
+  model: "gpt-realtime-mini",
+  availableModels: ["gpt-realtime-mini"],
   enabled: false,
   apiKeyConfigured: true,
 };
@@ -108,7 +108,7 @@ test("enables and saves the separately configured voice model", async () => {
   expect(fetchMock).toHaveBeenLastCalledWith(
     "http://127.0.0.1:8001/api/v1/admin/voice-model",
     expect.objectContaining({
-      body: JSON.stringify({ model: "gpt-realtime-2.1-mini", enabled: true }),
+      body: JSON.stringify({ model: "gpt-realtime-mini", enabled: true }),
       headers: { "Content-Type": "application/json", "X-CSRF-Token": "csrf" },
       method: "PUT",
     }),

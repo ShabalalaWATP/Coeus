@@ -12,8 +12,8 @@ async def test_admin_configures_voice_separately_from_text_provider() -> None:
         initial = await client.get("/api/v1/admin/voice-model")
         assert initial.status_code == 200
         assert initial.json() == {
-            "model": "gpt-realtime-2.1-mini",
-            "availableModels": ["gpt-realtime-2.1-mini"],
+            "model": "gpt-realtime-mini",
+            "availableModels": ["gpt-realtime-mini"],
             "enabled": False,
             "apiKeyConfigured": False,
         }
@@ -28,7 +28,7 @@ async def test_admin_configures_voice_separately_from_text_provider() -> None:
         missing_key = await client.put(
             "/api/v1/admin/voice-model",
             headers={"X-CSRF-Token": csrf},
-            json={"model": "gpt-realtime-2.1-mini", "enabled": True},
+            json={"model": "gpt-realtime-mini", "enabled": True},
         )
         assert missing_key.status_code == 422
         assert missing_key.json()["error"]["code"] == "voice_provider_not_configured"
@@ -41,7 +41,7 @@ async def test_admin_configures_voice_separately_from_text_provider() -> None:
         still_missing_voice_key = await client.put(
             "/api/v1/admin/voice-model",
             headers={"X-CSRF-Token": csrf},
-            json={"model": "gpt-realtime-2.1-mini", "enabled": True},
+            json={"model": "gpt-realtime-mini", "enabled": True},
         )
         assert still_missing_voice_key.status_code == 422
         voice_key = await client.put(
@@ -54,7 +54,7 @@ async def test_admin_configures_voice_separately_from_text_provider() -> None:
         configured = await client.put(
             "/api/v1/admin/voice-model",
             headers={"X-CSRF-Token": csrf},
-            json={"model": "gpt-realtime-2.1-mini", "enabled": True},
+            json={"model": "gpt-realtime-mini", "enabled": True},
         )
         assert configured.status_code == 200
         assert configured.json()["enabled"] is True
@@ -71,7 +71,7 @@ async def test_voice_configuration_requires_admin_and_csrf() -> None:
         forbidden_update = await client.put(
             "/api/v1/admin/voice-model",
             headers={"X-CSRF-Token": user_csrf},
-            json={"model": "gpt-realtime-2.1-mini", "enabled": False},
+            json={"model": "gpt-realtime-mini", "enabled": False},
         )
         assert forbidden_update.status_code == 403
         forbidden_key = await client.put(
@@ -84,7 +84,7 @@ async def test_voice_configuration_requires_admin_and_csrf() -> None:
         admin_csrf = await admin_login(client)
         missing_csrf = await client.put(
             "/api/v1/admin/voice-model",
-            json={"model": "gpt-realtime-2.1-mini", "enabled": False},
+            json={"model": "gpt-realtime-mini", "enabled": False},
         )
         assert missing_csrf.status_code == 403
         missing_key_csrf = await client.put(
@@ -121,7 +121,7 @@ async def test_voice_session_validates_sdp_and_proxies_without_exposing_key(
         await client.put(
             "/api/v1/admin/voice-model",
             headers={"X-CSRF-Token": admin_csrf},
-            json={"model": "gpt-realtime-2.1-mini", "enabled": True},
+            json={"model": "gpt-realtime-mini", "enabled": True},
         )
         user_csrf = await admin_login(client, "user@example.test")
 
@@ -176,7 +176,9 @@ async def test_voice_session_validates_sdp_and_proxies_without_exposing_key(
         assert response.headers["cache-control"] == "no-store"
         assert response.headers["content-type"].startswith("application/sdp")
         token = response.headers["x-voice-session-token"]
-        assert captured["model"] == "gpt-realtime-2.1-mini"
+        assert captured["model"] == "gpt-realtime-mini"
+        assert "YOUR ONLY PURPOSE" in captured["instructions"]
+        assert "NEVER say the RFI was created, saved" in captured["instructions"]
         assert captured["api_key"] == "sk-dedicated-voice-key"
         assert len(captured["safety_identifier"]) == 64
 

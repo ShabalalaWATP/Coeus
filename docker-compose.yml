@@ -42,6 +42,7 @@ services:
       COEUS_OBJECT_STORAGE_PROVIDER: local
       COEUS_LOCAL_OBJECT_STORAGE_PATH: /var/lib/coeus/objects
       COEUS_ASSET_TOKEN_SECRET: local-docker-only-asset-token-secret-32
+      COEUS_CONFIGURATION_ENCRYPTION_KEY_PATH: /var/lib/coeus/secrets/configuration.key
       COEUS_EMAIL_PROVIDER: outbox
     ports:
       - "127.0.0.1:8000:8000"

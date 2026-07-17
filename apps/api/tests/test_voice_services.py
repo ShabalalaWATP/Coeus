@@ -7,8 +7,14 @@ from coeus.core.config import Settings
 from coeus.core.errors import AppError
 from coeus.persistence.state_store import MemoryStateStore
 from coeus.services.audit import AuditLog
+from coeus.services.integration_secrets import integration_secret_namespace
 from coeus.services.voice_admission import VoiceSessionAdmission
-from coeus.services.voice_models import VOICE_MODEL_NAMESPACE, VoiceModelService, VoiceModelState
+from coeus.services.voice_models import (
+    VOICE_CREDENTIAL_NAME,
+    VOICE_MODEL_NAMESPACE,
+    VoiceModelService,
+    VoiceModelState,
+)
 from coeus.services.voice_sessions import VoiceSessionService
 
 
@@ -22,7 +28,7 @@ class EnabledVoiceModels:
         self._api_key = api_key
 
     def require_enabled(self) -> VoiceModelState:
-        return VoiceModelState("gpt-realtime-2.1-mini", ("gpt-realtime-2.1-mini",), True, True)
+        return VoiceModelState("gpt-realtime-mini", ("gpt-realtime-mini",), True, True)
 
     def api_key(self) -> str | None:
         return self._api_key
@@ -53,6 +59,22 @@ def test_voice_configuration_restores_valid_state_and_rejects_disabled_use() -> 
         disabled.require_enabled()
 
 
+def test_voice_configuration_migrates_an_unavailable_persisted_model() -> None:
+    store = MemoryStateStore()
+    store.save(
+        VOICE_MODEL_NAMESPACE,
+        {"model": "gpt-realtime-2.1-mini", "enabled": True},
+    )
+
+    service = VoiceModelService(Settings(environment="test"), AuditLog(), store)
+
+    assert service.state().model == "gpt-realtime-mini"
+    assert store.load(VOICE_MODEL_NAMESPACE) == {
+        "model": "gpt-realtime-mini",
+        "enabled": True,
+    }
+
+
 def test_voice_key_configuration_rolls_back_when_audit_fails() -> None:
     store = MemoryStateStore()
     settings = Settings(environment="test")
@@ -64,9 +86,49 @@ def test_voice_key_configuration_rolls_back_when_audit_fails() -> None:
     assert service.state().api_key_configured is False
     assert service.state().enabled is False
     assert store.load(VOICE_MODEL_NAMESPACE) == {
-        "model": "gpt-realtime-2.1-mini",
+        "model": "gpt-realtime-mini",
         "enabled": False,
     }
+    assert store.load(integration_secret_namespace(VOICE_CREDENTIAL_NAME)) == {}
+
+
+def test_voice_model_configuration_rolls_back_when_audit_fails() -> None:
+    store = MemoryStateStore()
+    settings = Settings(
+        environment="test",
+        openai_realtime_model="voice-a",
+        available_openai_realtime_models=["voice-a", "voice-b"],
+    )
+    service = VoiceModelService(settings, AuditLog(), store)
+    service.configure_api_key("admin", "admin@example.test", "sk-dedicated-voice-key")
+    failing = VoiceModelService(settings, FailingAuditLog(), store)
+
+    with pytest.raises(RuntimeError, match="audit unavailable"):
+        failing.configure("admin", "admin@example.test", "voice-b", True)
+
+    assert failing.state() == VoiceModelState("voice-a", ("voice-a", "voice-b"), False, True)
+    restarted = VoiceModelService(settings, AuditLog(), store)
+    assert restarted.state() == VoiceModelState("voice-a", ("voice-a", "voice-b"), False, True)
+
+
+def test_voice_key_model_and_enabled_state_survive_restart_without_plaintext() -> None:
+    store = MemoryStateStore()
+    settings = Settings(
+        environment="test",
+        openai_realtime_model="voice-a",
+        available_openai_realtime_models=["voice-a", "voice-b"],
+    )
+    service = VoiceModelService(settings, AuditLog(), store)
+    service.configure_api_key("admin", "admin@example.test", "sk-dedicated-voice-key")
+    service.configure("admin", "admin@example.test", "voice-b", True)
+
+    envelope = store.load(integration_secret_namespace(VOICE_CREDENTIAL_NAME))
+    assert envelope
+    assert "sk-dedicated-voice-key" not in str(envelope)
+
+    restarted = VoiceModelService(settings, AuditLog(), store)
+    assert restarted.api_key() == "sk-dedicated-voice-key"
+    assert restarted.state() == VoiceModelState("voice-b", ("voice-a", "voice-b"), True, True)
 
 
 def test_voice_session_defends_against_an_inconsistent_missing_key_state() -> None:
