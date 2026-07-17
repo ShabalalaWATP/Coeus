@@ -6,7 +6,6 @@ from math import isfinite
 from typing import Any, Protocol, cast
 from uuid import UUID
 
-from coeus.core.config import Settings
 from coeus.domain.search_index import (
     SEARCH_EMBEDDING_DIMENSIONS,
     GroundedProductEvidence,
@@ -26,7 +25,8 @@ SEARCH_PASSAGE_LIMIT = 3
 
 
 class SearchIndexRepository(Protocol):
-    def begin(self, profile: SearchIndexProfile) -> None: ...
+    def begin(self, profile: SearchIndexProfile) -> None:
+        pass
 
     def activate(
         self,
@@ -36,13 +36,17 @@ class SearchIndexRepository(Protocol):
         ticket_documents: tuple[SearchTicketDocument, ...] = (),
         ticket_embeddings: tuple[SearchTicketEmbedding, ...] = (),
         asset_states: tuple[SearchAssetIndexState, ...] = (),
-    ) -> None: ...
+    ) -> None:
+        pass
 
-    def fail(self, profile_id: UUID, error_code: str) -> None: ...
+    def fail(self, profile_id: UUID, error_code: str) -> None:
+        pass
 
-    def rollback_activation(self, profile_id: UUID, error_code: str) -> None: ...
+    def rollback_activation(self, profile_id: UUID, error_code: str) -> None:
+        pass
 
-    def counts(self) -> tuple[int, int, int, int, str]: ...
+    def counts(self) -> tuple[int, int, int, int, str]:
+        pass
 
     def search_tickets(
         self,
@@ -50,7 +54,8 @@ class SearchIndexRepository(Protocol):
         query_vector: tuple[float, ...] | None,
         allowed_ticket_ids: frozenset[UUID],
         states: frozenset[str],
-    ) -> tuple[SearchTicketHit, ...]: ...
+    ) -> tuple[SearchTicketHit, ...]:
+        pass
 
     def search(
         self,
@@ -58,7 +63,8 @@ class SearchIndexRepository(Protocol):
         query: str,
         query_vector: tuple[float, ...] | None,
         allowed_product_ids: frozenset[UUID] | None = None,
-    ) -> tuple[GroundedProductEvidence, ...]: ...
+    ) -> tuple[GroundedProductEvidence, ...]:
+        pass
 
 
 class MemorySearchIndexRepository:
@@ -213,14 +219,6 @@ class MemorySearchIndexRepository:
             for ticket_id in selected
         )
         return tuple(sorted(hits, key=_ticket_hit_order))
-
-
-def build_search_index_repository(settings: Settings) -> SearchIndexRepository:
-    if settings.persistence_provider == "postgres":
-        from coeus.persistence.search_index_postgres import build_postgres_search_index
-
-        return build_postgres_search_index(settings)
-    return MemorySearchIndexRepository()
 
 
 def _group_rows(rows: tuple[dict[str, Any], ...]) -> tuple[GroundedProductEvidence, ...]:

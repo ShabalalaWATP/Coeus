@@ -17,8 +17,8 @@ from coeus.persistence.search_index_repository import (
     MemorySearchIndexRepository,
     _group_rows,
     _vector,
-    build_search_index_repository,
 )
+from coeus.services.search_composition import build_search_index_repository
 from coeus.services.search_configuration import SEARCH_EMBEDDING_DIMENSIONS
 
 VECTOR = (0.0,) * SEARCH_EMBEDDING_DIMENSIONS

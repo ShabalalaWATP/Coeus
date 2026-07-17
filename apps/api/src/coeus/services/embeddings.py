@@ -43,10 +43,12 @@ class EmbeddingProvider(Protocol):
     """Provider contract for deterministic retrieval embeddings."""
 
     @property
-    def name(self) -> str: ...
+    def name(self) -> str:
+        pass
 
     @property
-    def model_name(self) -> str: ...
+    def model_name(self) -> str:
+        pass
 
     def embed(self, text: str) -> tuple[float, ...]:
         """Return a normalised vector for text or raise `EmbeddingUnavailable`."""

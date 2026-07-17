@@ -1,12 +1,22 @@
 from fastapi import FastAPI
 
 from coeus.core.config import Settings
-from coeus.persistence.search_index_repository import build_search_index_repository
+from coeus.persistence import search_index_postgres
+from coeus.persistence.search_index_repository import (
+    MemorySearchIndexRepository,
+    SearchIndexRepository,
+)
 from coeus.services.audit import AuditLog
 from coeus.services.grounded_search import GroundedSearchService
 from coeus.services.search_configuration import SearchConfigurationService
 from coeus.services.search_embeddings import SearchEmbeddingService
 from coeus.services.search_indexing import SearchIndexingService
+
+
+def build_search_index_repository(settings: Settings) -> SearchIndexRepository:
+    if settings.persistence_provider == "postgres":
+        return search_index_postgres.build_postgres_search_index(settings)
+    return MemorySearchIndexRepository()
 
 
 def configure_search_services(app: FastAPI, settings: Settings, audit_log: AuditLog) -> None:
