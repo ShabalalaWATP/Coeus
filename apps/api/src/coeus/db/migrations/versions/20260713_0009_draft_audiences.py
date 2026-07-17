@@ -19,7 +19,7 @@ __all__ = ("branch_labels", "depends_on", "down_revision", "downgrade", "revisio
 def upgrade() -> None:
     op.execute(
         """
-        CREATE TABLE coeus_draft_audiences (
+        CREATE TABLE IF NOT EXISTS coeus_draft_audiences (
             product_id uuid NOT NULL,
             principal_id uuid NOT NULL,
             reason text NOT NULL,
@@ -30,7 +30,7 @@ def upgrade() -> None:
         """
     )
     op.execute(
-        "CREATE INDEX idx_coeus_draft_audiences_principal "
+        "CREATE INDEX IF NOT EXISTS idx_coeus_draft_audiences_principal "
         "ON coeus_draft_audiences(principal_id, product_id, reason)"
     )
     op.execute(

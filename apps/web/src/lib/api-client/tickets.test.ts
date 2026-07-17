@@ -7,6 +7,7 @@ import {
   getTicket,
   listTickets,
   listUserDirectory,
+  reopenTicketConversation,
   removeTicketCollaborator,
 } from "./tickets";
 
@@ -62,6 +63,26 @@ test("confirms delivery with a CSRF-protected mutation", async () => {
 
   expect(fetchMock).toHaveBeenCalledWith(
     "http://127.0.0.1:8001/api/v1/tickets/ticket-1/confirm-delivery",
+    {
+      credentials: "include",
+      headers: { "X-CSRF-Token": "csrf" },
+      method: "POST",
+    },
+  );
+});
+
+test("reopens intake chat with a CSRF-protected mutation", async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    json: () => Promise.resolve({ id: "ticket-1", conversationStatus: "open" }),
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  await expect(reopenTicketConversation("ticket-1", "csrf")).resolves.toMatchObject({
+    conversationStatus: "open",
+  });
+  expect(fetchMock).toHaveBeenCalledWith(
+    "http://127.0.0.1:8001/api/v1/tickets/ticket-1/conversation/reopen",
     {
       credentials: "include",
       headers: { "X-CSRF-Token": "csrf" },

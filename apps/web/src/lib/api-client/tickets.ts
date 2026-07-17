@@ -182,6 +182,16 @@ export async function sendChatMessage(
   });
 }
 
+export async function reopenTicketConversation(
+  ticketId: string,
+  csrfToken: string,
+): Promise<Ticket> {
+  return apiRequestJson<Ticket>(`/api/v1/tickets/${pathSegment(ticketId)}/conversation/reopen`, {
+    headers: { "X-CSRF-Token": csrfToken },
+    method: "POST",
+  });
+}
+
 export async function updateTicketIntake(
   ticketId: string,
   payload: IntakeUpdate,

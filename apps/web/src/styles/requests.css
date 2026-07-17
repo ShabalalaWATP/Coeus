@@ -96,6 +96,7 @@
 }
 
 .chat-form button,
+.chat-completion button,
 .intake-actions button,
 .attachment-form button,
 .timeline-form button,
@@ -120,6 +121,7 @@
 }
 
 .chat-form button:hover:enabled,
+.chat-completion button:hover:enabled,
 .intake-actions button:hover:enabled,
 .attachment-form button:hover:enabled,
 .timeline-form button:hover:enabled,
@@ -129,6 +131,7 @@
 }
 
 .chat-form button:disabled,
+.chat-completion button:disabled,
 .intake-actions button:disabled,
 .timeline-form button:disabled,
 .offer-toolbar button:disabled,
@@ -143,6 +146,23 @@
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.chat-completion {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.chat-completion .chat-readonly {
+  flex: 1 1 22rem;
+}
+
+.chat-completion .chat-completion__reopen {
+  border-color: var(--border);
+  background: var(--surface-muted);
+  color: var(--text);
 }
 
 .missing-fields {
@@ -230,6 +250,35 @@
   border-radius: 8px;
   padding: 12px;
   background: var(--surface-muted);
+}
+
+.offer-evidence {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.offer-evidence summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-weight: 760;
+}
+
+.offer-evidence blockquote {
+  margin: 10px 0 0;
+  border-left: 3px solid color-mix(in srgb, var(--accent) 55%, var(--border));
+  padding: 8px 12px;
+  background: var(--surface-muted);
+}
+
+.offer-evidence blockquote p {
+  margin: 0 0 6px;
+}
+
+.offer-evidence cite {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-style: normal;
 }
 
 .offer-card__header {

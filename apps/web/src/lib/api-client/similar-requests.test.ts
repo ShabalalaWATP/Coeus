@@ -4,6 +4,7 @@ import {
   joinSimilarRequest,
   linkRoutingSimilarRequest,
   listRoutingSimilarRequests,
+  markRoutingDuplicate,
 } from "./similar-requests";
 
 const notice = {
@@ -16,6 +17,14 @@ const notice = {
       score: 0.71,
       reasons: ["similarity:vector:0.82"],
       alreadyLinked: false,
+      alreadyMarkedDuplicate: false,
+      requestKind: "RFI",
+      approvedRoute: null,
+      assignedTeam: null,
+      requestingUnit: null,
+      supportedOperation: null,
+      timePeriodStart: null,
+      timePeriodEnd: null,
     },
   ],
 };
@@ -32,11 +41,22 @@ test("calls similar request endpoints with encoded path segments and CSRF header
   await joinSimilarRequest("ticket/1", "related/1", "csrf-token");
   await listRoutingSimilarRequests("ticket/1");
   await linkRoutingSimilarRequest("ticket/1", "related/1", "csrf-token");
+  await markRoutingDuplicate("ticket/1", "related/1", true, "csrf-token");
 
   expect(fetchMock).toHaveBeenNthCalledWith(
     1,
     "http://127.0.0.1:8001/api/v1/similar-requests/tickets/ticket%2F1",
     { credentials: "include", method: "GET" },
+  );
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    5,
+    "http://127.0.0.1:8001/api/v1/similar-requests/routing/ticket%2F1/duplicate/related%2F1",
+    {
+      body: JSON.stringify({ withdrawSource: true }),
+      credentials: "include",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": "csrf-token" },
+      method: "POST",
+    },
   );
   expect(fetchMock).toHaveBeenNthCalledWith(
     2,

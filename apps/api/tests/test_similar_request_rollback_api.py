@@ -89,6 +89,34 @@ async def test_manager_link_audit_failure_rolls_back_related_tickets(
     assert target.timeline == original_target.timeline
 
 
+@pytest.mark.asyncio
+async def test_duplicate_audit_failure_rolls_back_both_tickets(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = create_app(
+        Settings(environment="test", argon2_memory_cost=8_192, persistence_provider="memory")
+    )
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        user = await login(client, "user@example.test")
+        source_id, target_id = await similar_ticket_pair(client, str(user["csrfToken"]))
+        manager = await login(client, "rfa.manager@example.test")
+        original_source = _stored_ticket(app, source_id)
+        original_target = _stored_ticket(app, target_id)
+        monkeypatch.setattr(app.state.similar_request_service._audit_log, "record", _fail_audit)
+
+        with pytest.raises(RuntimeError, match="audit unavailable"):
+            await client.post(
+                f"/api/v1/similar-requests/routing/{source_id}/duplicate/{target_id}",
+                headers={"X-CSRF-Token": str(manager["csrfToken"])},
+                json={"withdrawSource": True},
+            )
+
+    assert _stored_ticket(app, source_id) == original_source
+    assert _stored_ticket(app, target_id) == original_target
+
+
 def _fail_audit(*_args: object, **_kwargs: object) -> None:
     raise RuntimeError("audit unavailable")
 

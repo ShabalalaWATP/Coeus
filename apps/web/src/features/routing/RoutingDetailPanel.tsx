@@ -37,6 +37,7 @@ type RoutingDetailPanelProps = {
   onClarificationReasonChange: (value: string) => void;
   onDecisionRouteChange: (route: RoutingRoute) => void;
   onLinkSimilar: (ticketId: string) => void;
+  onMarkDuplicate: (ticketId: string, withdrawSource: boolean) => void;
   onManagerDecision: (ticket: RoutingTicket) => void;
   onOverrideReasonChange: (value: string) => void;
   onReject: () => void;
@@ -70,6 +71,7 @@ export function RoutingDetailPanel({
   onClarificationReasonChange,
   onDecisionRouteChange,
   onLinkSimilar,
+  onMarkDuplicate,
   onManagerDecision,
   onOverrideReasonChange,
   onReject,
@@ -128,11 +130,12 @@ export function RoutingDetailPanel({
             </p>
           ) : null}
           <SimilarRequestsPanel
-            isLinking={actionPending || isLinkingSimilar}
+            isMutating={actionPending || isLinkingSimilar}
             isLoading={isSimilarLoading}
             isQueryError={isSimilarQueryError}
             matches={similarMatches}
             onLink={onLinkSimilar}
+            onMarkDuplicate={onMarkDuplicate}
             onRetry={onRetrySimilar}
           />
           {canDecide && canApprove(selectedTicket) ? (

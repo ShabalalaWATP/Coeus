@@ -1,4 +1,4 @@
-import { Bot, Mic, MicOff, SendHorizonal } from "lucide-react";
+import { Bot, MessageSquarePlus, Mic, MicOff, Play, SendHorizonal } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import type { Ticket } from "../../lib/api-client/tickets";
@@ -10,17 +10,27 @@ const GREETING =
   "submit and we will take it from there.";
 
 type ChatPanelProps = {
+  canSubmit?: boolean;
   csrfToken?: string;
+  isReopening?: boolean;
   isSending: boolean;
+  isSubmitting?: boolean;
+  onReopen?: () => void;
   onSend: (message: string, onSuccess?: () => void) => void;
+  onSubmit?: () => void;
   readOnly?: boolean;
   ticket?: Ticket;
 };
 
 export function ChatPanel({
+  canSubmit = false,
   csrfToken = "",
+  isReopening = false,
   isSending,
+  isSubmitting = false,
+  onReopen,
   onSend,
+  onSubmit,
   readOnly = false,
   ticket,
 }: ChatPanelProps) {
@@ -114,9 +124,34 @@ export function ChatPanel({
       {readOnly ? (
         <p className="chat-readonly">The conversation is read-only for this request.</p>
       ) : ticket?.conversationStatus === "closed" ? (
-        <p className="chat-readonly">
-          The conversation is complete. Review the details and press Submit.
-        </p>
+        <div className="chat-completion">
+          <p className="chat-readonly">
+            {ticket.isReadyForSubmission
+              ? "The conversation is complete. Review the details and press Submit."
+              : "The conversation is complete. Review the missing details before submitting."}
+          </p>
+          {onReopen ? (
+            <button
+              className="chat-completion__reopen"
+              disabled={isReopening}
+              onClick={onReopen}
+              type="button"
+            >
+              <MessageSquarePlus aria-hidden="true" size={18} />
+              {isReopening ? "Reopening..." : "Add more information"}
+            </button>
+          ) : null}
+          {canSubmit && onSubmit ? (
+            <button
+              disabled={!ticket.isReadyForSubmission || isSubmitting}
+              onClick={onSubmit}
+              type="button"
+            >
+              <Play aria-hidden="true" size={18} />
+              {isSubmitting ? "Submitting..." : "Submit"}
+            </button>
+          ) : null}
+        </div>
       ) : (
         <form className="chat-form" onSubmit={handleSubmit}>
           <label className="sr-only" htmlFor="request-message">

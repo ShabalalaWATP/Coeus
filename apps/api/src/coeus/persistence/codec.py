@@ -8,6 +8,7 @@ from uuid import UUID
 
 from coeus.persistence.codec_registry import (
     ENUM_IDENTITIES,
+    LEGACY_TYPE_ALIASES,
     TYPE_IDENTITIES,
     build_identity_registries,
 )
@@ -23,6 +24,7 @@ class CodecWriteFormat(StrEnum):
 (_TYPE_ID_BY_CLASS, _STABLE_TYPE_REGISTRY, _LEGACY_TYPE_REGISTRY) = build_identity_registries(
     TYPE_IDENTITIES
 )
+_LEGACY_TYPE_REGISTRY = {**_LEGACY_TYPE_REGISTRY, **LEGACY_TYPE_ALIASES}
 (_ENUM_ID_BY_CLASS, _STABLE_ENUM_REGISTRY, _LEGACY_ENUM_REGISTRY) = build_identity_registries(
     ENUM_IDENTITIES
 )

@@ -8,6 +8,14 @@ type SimilarRequestMatch = {
   score: number;
   reasons: string[];
   alreadyLinked: boolean;
+  alreadyMarkedDuplicate: boolean;
+  requestKind: string;
+  approvedRoute: string | null;
+  assignedTeam: string | null;
+  requestingUnit: string | null;
+  supportedOperation: string | null;
+  timePeriodStart: string | null;
+  timePeriodEnd: string | null;
 };
 
 export type SimilarRequestNotice = {
@@ -60,6 +68,22 @@ export async function linkRoutingSimilarRequest(
     `/api/v1/similar-requests/routing/${pathSegment(ticketId)}/link/${pathSegment(relatedTicketId)}`,
     {
       headers: { "X-CSRF-Token": csrfToken },
+      method: "POST",
+    },
+  );
+}
+
+export async function markRoutingDuplicate(
+  ticketId: string,
+  relatedTicketId: string,
+  withdrawSource: boolean,
+  csrfToken: string,
+): Promise<SimilarRequestList> {
+  return apiRequestJson<SimilarRequestList>(
+    `/api/v1/similar-requests/routing/${pathSegment(ticketId)}/duplicate/${pathSegment(relatedTicketId)}`,
+    {
+      body: JSON.stringify({ withdrawSource }),
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
       method: "POST",
     },
   );

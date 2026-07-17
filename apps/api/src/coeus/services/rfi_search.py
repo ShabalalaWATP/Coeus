@@ -1,4 +1,4 @@
-from dataclasses import dataclass, replace
+from dataclasses import replace
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
@@ -7,17 +7,20 @@ from coeus.core.permissions import Permission
 from coeus.domain.access import ProductStatus
 from coeus.domain.auth import UserAccount
 from coeus.domain.enums import TicketState
+from coeus.domain.search_index import GroundedProductEvidence
+from coeus.domain.search_metrics import RfiSearchMetrics
 from coeus.domain.store import StoreSearchFilters
 from coeus.domain.tickets import (
     ProductDissemination,
     ProductOffer,
     ProductOfferStatus,
-    RfiSearchMetrics,
     TicketRecord,
 )
 from coeus.repositories.access import AccessRepository
 from coeus.services.audit import AuditLog
 from coeus.services.embeddings import EmbeddingService
+from coeus.services.grounded_search import GroundedSearchService
+from coeus.services.rfi_grounding import merge_grounded_candidates
 from coeus.services.rfi_ranking import query_text, rank_hybrid_rfi_candidates
 from coeus.services.rfi_records import (
     accepted_metric,
@@ -28,6 +31,7 @@ from coeus.services.rfi_records import (
     set_offer_status,
     timeline,
 )
+from coeus.services.rfi_search_types import RfiSearchResults
 from coeus.services.store import StoreSearchService, StoreServices
 from coeus.services.store_access import StoreDetailService
 from coeus.services.ticket_mutations import TicketMutationService
@@ -47,13 +51,6 @@ RFI_RESULTS_REVIEW_STATES = frozenset(
 RFI_CANDIDATE_SEARCH_LIMIT = 500
 
 
-@dataclass(frozen=True)
-class RfiSearchResults:
-    ticket: TicketRecord
-    offers: tuple[ProductOffer, ...]
-    metrics: RfiSearchMetrics | None
-
-
 class RfiSearchService:
     def __init__(
         self,
@@ -63,6 +60,7 @@ class RfiSearchService:
         access_repository: AccessRepository,
         audit_log: AuditLog,
         embeddings: EmbeddingService,
+        grounded: GroundedSearchService,
         mutations: TicketMutationService,
     ) -> None:
         self._tickets = tickets
@@ -71,6 +69,7 @@ class RfiSearchService:
         self._access_repository = access_repository
         self._audit_log = audit_log
         self._embeddings = embeddings
+        self._grounded = grounded
         self._mutations = mutations
 
     def run(self, actor: UserAccount, ticket_id: UUID) -> RfiSearchResults:
@@ -101,21 +100,40 @@ class RfiSearchService:
             query,
             query_embedding,
         )
+        grounded = self._grounded.search(requester, ticket.intake, actor.user_id)
+        candidates = merge_grounded_candidates(
+            requester, self._store_details, candidates, grounded.evidence
+        )
         offers = rank_hybrid_rfi_candidates(candidates, ticket.intake)
-        target_state = TicketState.RFI_MATCH_OFFERED if offers else TicketState.RFI_NO_MATCH
+        target_state = (
+            TicketState.RFI_MATCH_OFFERED
+            if offers
+            else TicketState.RFI_NO_MATCH
+            if grounded.degraded_reason is None
+            else TicketState.RFI_SEARCHING
+        )
         now = datetime.now(UTC)
         summary = run_summary(len(offers), search.total)
         agent_runs, run_id = complete_agent_run(ticket, summary, now)
         search_timeline = [
             timeline(ticket.ticket_id, actor.user_id, "search_completed", summary),
         ]
-        if not offers:
+        if not offers and grounded.degraded_reason is None:
             search_timeline.append(
                 timeline(
                     ticket.ticket_id,
                     actor.user_id,
                     "rfi_no_match",
                     "No existing product matched this request.",
+                )
+            )
+        elif not offers:
+            search_timeline.append(
+                timeline(
+                    ticket.ticket_id,
+                    actor.user_id,
+                    "rfi_search_degraded",
+                    "Semantic retrieval was unavailable; no definitive no-match was recorded.",
                 )
             )
         metric = RfiSearchMetrics(
@@ -126,6 +144,8 @@ class RfiSearchService:
             rejected_count=0,
             accepted_product_id=None,
             created_at=now,
+            retrieval_mode=grounded.retrieval_mode,
+            degraded_reason=grounded.degraded_reason,
         )
         updated = self._mutations.save_audited_if_current(
             ticket,
@@ -134,6 +154,7 @@ class RfiSearchService:
                 state=target_state,
                 agent_runs=agent_runs,
                 product_offers=offers,
+                search_evidence=grounded.evidence,
                 search_metrics=(*ticket.search_metrics, metric),
                 visible_product_matches=tuple(offer.title for offer in offers),
                 timeline=(*ticket.timeline, *search_timeline),
@@ -142,7 +163,7 @@ class RfiSearchService:
             actor,
             {"ticket_id": str(ticket.ticket_id), "offered_count": str(len(offers))},
         )
-        return self._results_for(actor, updated)
+        return self._results_for(actor, updated, grounded.evidence)
 
     def results(self, actor: UserAccount, ticket_id: UUID) -> RfiSearchResults:
         return self._results_for(actor, self._results_ticket(actor, ticket_id))
@@ -248,7 +269,12 @@ class RfiSearchService:
                 raise AppError(404, "ticket_not_found", "Ticket was not found.") from None
             return ticket
 
-    def _results_for(self, actor: UserAccount, ticket: TicketRecord) -> RfiSearchResults:
+    def _results_for(
+        self,
+        actor: UserAccount,
+        ticket: TicketRecord,
+        evidence: tuple[GroundedProductEvidence, ...] | None = None,
+    ) -> RfiSearchResults:
         visible_offers = tuple(
             offer for offer in ticket.product_offers if self._can_read_offer(actor, offer)
         )
@@ -269,7 +295,20 @@ class RfiSearchService:
                     offer.status == ProductOfferStatus.REJECTED for offer in visible_offers
                 ),
             )
-        return RfiSearchResults(ticket=ticket, offers=visible_offers, metrics=metric)
+        if evidence is None:
+            evidence = ticket.search_evidence
+        visible_ids = {offer.product_id for offer in visible_offers}
+        visible_evidence = tuple(
+            item for item in (evidence or ()) if item.product_id in visible_ids
+        )
+        return RfiSearchResults(
+            ticket=ticket,
+            offers=visible_offers,
+            metrics=metric,
+            evidence=visible_evidence,
+            retrieval_mode=metric.retrieval_mode if metric else "metadata_only",
+            degraded_reason=metric.degraded_reason if metric else None,
+        )
 
     def _requester(self, ticket: TicketRecord) -> UserAccount:
         requester = self._access_repository.get_user(ticket.requester_user_id)
@@ -296,6 +335,7 @@ def build_rfi_search_service(
     access_repository: AccessRepository,
     audit_log: AuditLog,
     embeddings: EmbeddingService,
+    grounded: GroundedSearchService,
 ) -> RfiSearchService:
     return RfiSearchService(
         ticket_services.tickets,
@@ -304,5 +344,6 @@ def build_rfi_search_service(
         access_repository,
         audit_log,
         embeddings,
+        grounded,
         ticket_services.mutations,
     )

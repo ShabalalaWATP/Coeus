@@ -18,20 +18,38 @@ __all__ = ("branch_labels", "depends_on", "down_revision", "downgrade", "revisio
 
 def upgrade() -> None:
     op.execute(
-        "ALTER TABLE coeus_outbox ADD COLUMN available_at timestamptz NOT NULL DEFAULT now()"
+        "ALTER TABLE coeus_outbox ADD COLUMN IF NOT EXISTS "
+        "available_at timestamptz NOT NULL DEFAULT now()"
     )
-    op.execute("ALTER TABLE coeus_outbox ADD COLUMN attempt_count integer NOT NULL DEFAULT 0")
-    op.execute("ALTER TABLE coeus_outbox ADD COLUMN claimed_by uuid")
-    op.execute("ALTER TABLE coeus_outbox ADD COLUMN claim_expires_at timestamptz")
-    op.execute("ALTER TABLE coeus_outbox ADD COLUMN last_error text")
-    op.execute("ALTER TABLE coeus_outbox ADD COLUMN dead_lettered_at timestamptz")
     op.execute(
-        "ALTER TABLE coeus_outbox ADD CONSTRAINT ck_coeus_outbox_attempt_count "
-        "CHECK (attempt_count >= 0)"
+        "ALTER TABLE coeus_outbox ADD COLUMN IF NOT EXISTS attempt_count integer NOT NULL DEFAULT 0"
     )
-    op.execute("DROP INDEX idx_coeus_outbox_pending")
+    op.execute("ALTER TABLE coeus_outbox ADD COLUMN IF NOT EXISTS claimed_by uuid")
+    op.execute("ALTER TABLE coeus_outbox ADD COLUMN IF NOT EXISTS claim_expires_at timestamptz")
+    op.execute("ALTER TABLE coeus_outbox ADD COLUMN IF NOT EXISTS last_error text")
+    op.execute("ALTER TABLE coeus_outbox ADD COLUMN IF NOT EXISTS dead_lettered_at timestamptz")
     op.execute(
-        "CREATE INDEX idx_coeus_outbox_pending "
+        """
+        DO $constraint$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint
+            WHERE conrelid = 'coeus_outbox'::regclass
+              AND conname IN (
+                'ck_coeus_outbox_attempt_count',
+                'coeus_outbox_attempt_count_check'
+              )
+          ) THEN
+            ALTER TABLE coeus_outbox
+              ADD CONSTRAINT ck_coeus_outbox_attempt_count CHECK (attempt_count >= 0);
+          END IF;
+        END
+        $constraint$
+        """
+    )
+    op.execute("DROP INDEX IF EXISTS idx_coeus_outbox_pending")
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS idx_coeus_outbox_pending "
         "ON coeus_outbox(available_at, created_at, event_id) "
         "WHERE delivered_at IS NULL AND dead_lettered_at IS NULL"
     )

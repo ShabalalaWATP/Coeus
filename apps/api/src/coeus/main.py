@@ -18,6 +18,7 @@ from coeus.api.routes.notifications import router as notifications_router
 from coeus.api.routes.qc import router as qc_router
 from coeus.api.routes.rfi_search import router as rfi_search_router
 from coeus.api.routes.routing import router as routing_router
+from coeus.api.routes.search_admin import router as search_admin_router
 from coeus.api.routes.similar_requests import router as similar_requests_router
 from coeus.api.routes.store import router as store_router
 from coeus.api.routes.store_files import router as store_files_router
@@ -116,6 +117,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(auth_router, prefix="/api/v1")
     app.include_router(admin_router, prefix="/api/v1")
+    app.include_router(search_admin_router, prefix="/api/v1")
     app.include_router(users_admin_router, prefix="/api/v1")
     app.include_router(audit_router, prefix="/api/v1")
     app.include_router(access_router, prefix="/api/v1")

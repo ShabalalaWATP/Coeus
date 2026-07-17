@@ -21,6 +21,7 @@ import {
 import {
   linkRoutingSimilarRequest,
   listRoutingSimilarRequests,
+  markRoutingDuplicate,
 } from "../../lib/api-client/similar-requests";
 import { useAuth } from "../../lib/auth/auth-context";
 import { useActionError } from "../../lib/mutations/action-error";
@@ -177,13 +178,37 @@ export default function RoutingQueuePage({ queue: queueKind }: RoutingQueuePageP
     onMutate: clearActionError,
     onSuccess: (matches) => queryClient.setQueryData(selectedSimilarKey, matches),
   });
+  const duplicateMutation = useMutation({
+    mutationFn: ({
+      relatedTicketId,
+      withdrawSource,
+    }: {
+      relatedTicketId: string;
+      withdrawSource: boolean;
+    }) => {
+      if (selectedTicket === undefined) throw new Error("No ticket selected.");
+      return markRoutingDuplicate(
+        selectedTicket.ticketId,
+        relatedTicketId,
+        withdrawSource,
+        csrfToken,
+      );
+    },
+    onError: failActionWith("The duplicate request action could not be completed. Try again."),
+    onMutate: clearActionError,
+    onSuccess: (matches, variables) => {
+      queryClient.setQueryData(selectedSimilarKey, matches);
+      if (variables.withdrawSource && selectedTicket) removeTicket(selectedTicket.ticketId);
+    },
+  });
   const labels = QUEUE_LABELS[queueKind];
   const actionPending =
     runMutation.isPending ||
     approveMutation.isPending ||
     rejectMutation.isPending ||
     clarificationMutation.isPending ||
-    linkSimilarMutation.isPending;
+    linkSimilarMutation.isPending ||
+    duplicateMutation.isPending;
   const selectTicket = (ticketId: string) => {
     if (actionPending) return;
     setSelectedTicketId(ticketId);
@@ -247,7 +272,7 @@ export default function RoutingQueuePage({ queue: queueKind }: RoutingQueuePageP
           csrfToken={csrfToken}
           decisionRoute={decisionRoute}
           isApprovePending={approveMutation.isPending}
-          isLinkingSimilar={linkSimilarMutation.isPending}
+          isLinkingSimilar={linkSimilarMutation.isPending || duplicateMutation.isPending}
           isRunningReviews={runMutation.isPending}
           isSimilarLoading={similarRequestsQuery.isLoading}
           isSimilarQueryError={similarRequestsQuery.isError}
@@ -257,6 +282,9 @@ export default function RoutingQueuePage({ queue: queueKind }: RoutingQueuePageP
           onClarificationReasonChange={setClarificationReason}
           onDecisionRouteChange={setDecisionRoute}
           onLinkSimilar={(id) => linkSimilarMutation.mutate(id)}
+          onMarkDuplicate={(id, withdrawSource) =>
+            duplicateMutation.mutate({ relatedTicketId: id, withdrawSource })
+          }
           onOverrideReasonChange={setOverrideReason}
           onReject={() => rejectMutation.mutate()}
           onRejectReasonChange={setRejectReason}

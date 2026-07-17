@@ -2648,6 +2648,29 @@ The acceptance contract is
 `docs/specs/synthetic-intelligence-library-and-search-assurance.md`; the corpus
 and retrieval decisions are recorded in ADR 0031.
 
+### Sprint 20: Grounded search and duplicate assurance
+
+This feature slice replaces metadata-only demonstration retrieval with bounded
+PDF and DOCX passage indexing, cited RFI evidence, field-weighted temporal
+ranking and an explicit degraded-search contract. It adds a separate persisted
+Search and Embeddings admin control plane, embedding provenance, safe
+generation-based re-indexing, deterministic labelled relevance gates and real
+PostgreSQL/pgvector retrieval-mechanics tests.
+
+It also replaces the arbitrary first-100 similar-ticket scan with full-corpus
+access-filtered retrieval, adds route, team, time-window and operation context
+for managers, and provides controlled audited duplicate withdrawal without
+merging history or widening access.
+
+The recommended quality configuration is `gemini-embedding-2` at 1,536
+dimensions. Fresh local and CI runtimes remain offline on `mock`; external
+embedding requires explicit administrator activation and re-indexing.
+
+The acceptance contract is
+`docs/specs/search-retrieval-and-duplicate-assurance.md`; the architecture
+decision is ADR 0034 and the security boundary is documented in
+`docs/threat-model/search-retrieval-and-duplicate-assurance.md`.
+
 ## 20. Definition of done for MVP
 
 The MVP is done when:

@@ -55,8 +55,42 @@ test("accepts and rejects RFI product offers", async () => {
     "title",
     "Retrieval relevance, not analytic confidence",
   );
+  expect(screen.getByText("Grounded evidence (1)")).toBeVisible();
+  expect(screen.getByText("Regional brief.pdf, page 2")).toBeInTheDocument();
+  expect(screen.getByText(/Synthetic reporting describes activity/)).toBeInTheDocument();
   expect(onAccept).toHaveBeenCalledWith("product-1");
   expect(onReject).toHaveBeenCalledWith("product-1", "Too old.");
+});
+
+test("makes degraded retrieval explicit and avoids claiming a definitive no-match", () => {
+  render(
+    <ProductOffersPanel
+      canManageOffers
+      canRunSearch
+      isAccepting={false}
+      isLoading={false}
+      isRejecting={false}
+      isRunning={false}
+      onAccept={vi.fn()}
+      onReject={vi.fn()}
+      onRun={vi.fn()}
+      results={{
+        ...rfiResults,
+        offers: [],
+        retrievalMode: "lexical_only",
+        degradedReason: "provider_unavailable",
+        metrics: rfiResults.metrics
+          ? { ...rfiResults.metrics, retrievalMode: "lexical_only" }
+          : null,
+      }}
+      ticket={{ ...ticket, state: "RFI_SEARCHING" }}
+    />,
+  );
+
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "No definitive no-match decision will be made",
+  );
+  expect(screen.getByText("lexical only")).toBeVisible();
 });
 
 test("does not render RFI metrics when metrics are unavailable", () => {

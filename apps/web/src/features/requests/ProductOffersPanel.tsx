@@ -63,7 +63,15 @@ export function ProductOffersPanel({
               Run search
             </button>
           </div>
-          {results?.metrics ? <SearchMetrics metrics={results.metrics} /> : null}
+          {results?.metrics ? (
+            <SearchMetrics metrics={results.metrics} retrievalMode={results.retrievalMode} />
+          ) : null}
+          {results?.degradedReason ? (
+            <p className="workspace-alert" role="alert">
+              Search is degraded ({(results.retrievalMode ?? "lexical_only").replaceAll("_", " ")}).
+              No definitive no-match decision will be made until semantic retrieval recovers.
+            </p>
+          ) : null}
           {isLoading ? <p>Loading product offers</p> : null}
           {isError ? (
             <p className="auth-error" role="alert">
@@ -97,7 +105,13 @@ export function ProductOffersPanel({
   );
 }
 
-function SearchMetrics({ metrics }: { metrics: RfiSearchMetrics }) {
+function SearchMetrics({
+  metrics,
+  retrievalMode,
+}: {
+  metrics: RfiSearchMetrics;
+  retrievalMode?: string;
+}) {
   return (
     <dl className="search-metrics" aria-label="RFI search metrics">
       <div>
@@ -111,6 +125,10 @@ function SearchMetrics({ metrics }: { metrics: RfiSearchMetrics }) {
       <div>
         <dt>Rejected</dt>
         <dd>{metrics.rejectedCount}</dd>
+      </div>
+      <div>
+        <dt>Retrieval</dt>
+        <dd>{(metrics.retrievalMode ?? retrievalMode ?? "metadata_only").replaceAll("_", " ")}</dd>
       </div>
     </dl>
   );
@@ -142,6 +160,7 @@ function OfferCard({
   const canAct =
     canManageOffers && ticket.state === "RFI_MATCH_OFFERED" && offer.status === "offered";
   const rejectId = `reject-${offer.productId}`;
+  const passages = offer.passages ?? [];
   return (
     <article className="offer-card">
       <div className="offer-card__header">
@@ -162,6 +181,17 @@ function OfferCard({
           <span key={reasonItem}>{reasonLabel(reasonItem)}</span>
         ))}
       </div>
+      {passages.length ? (
+        <details className="offer-evidence">
+          <summary>Grounded evidence ({passages.length})</summary>
+          {passages.map((passage) => (
+            <blockquote key={passage.chunkId}>
+              <p>{passage.excerpt}</p>
+              <cite>{passage.citation}</cite>
+            </blockquote>
+          ))}
+        </details>
+      ) : null}
       {offer.rejectionReason ? <p>{offer.rejectionReason}</p> : null}
       <div className="offer-actions">
         <button disabled={!canAct || isAccepting} onClick={() => onAccept(offer.productId)}>

@@ -3,14 +3,22 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from coeus.core.errors import AppError
+from coeus.core.permissions import Permission
 from coeus.domain.auth import UserAccount
+from coeus.domain.enums import TicketState
 from coeus.domain.tickets import (
     CollaboratorAccess,
     TicketCollaborator,
     TicketRecord,
 )
+from coeus.persistence.search_index_repository import SearchIndexRepository
 from coeus.services.audit import AuditLog
 from coeus.services.embeddings import EmbeddingService
+from coeus.services.rfi_ranking import query_text
+from coeus.services.search_configuration import SearchConfigurationService
+from coeus.services.search_embeddings import SearchEmbeddingService
+from coeus.services.search_generation import semantic_generation_usable
+from coeus.services.similar_request_consolidation import mark_duplicate_ticket
 from coeus.services.similar_request_scoring import (
     CUSTOMER_SIMILARITY_THRESHOLD,
     MANAGER_SIMILARITY_THRESHOLD,
@@ -22,7 +30,7 @@ from coeus.services.similar_request_scoring import (
 from coeus.services.ticket_records import is_collaborator, is_owner, timeline
 from coeus.services.tickets import TicketServices
 
-SIMILARITY_CANDIDATE_LIMIT = 100
+CUSTOMER_NOTICE_STATES = OPEN_SIMILARITY_STATES - {TicketState.INFO_REQUIRED}
 
 
 class SimilarRequestService:
@@ -33,10 +41,16 @@ class SimilarRequestService:
         tickets: TicketServices,
         audit_log: AuditLog,
         embeddings: EmbeddingService,
+        search_index: SearchIndexRepository | None = None,
+        search_configuration: SearchConfigurationService | None = None,
+        search_embeddings: SearchEmbeddingService | None = None,
     ) -> None:
         self._tickets = tickets
         self._audit_log = audit_log
         self._embeddings = embeddings
+        self._search_index = search_index
+        self._search_configuration = search_configuration
+        self._search_embeddings = search_embeddings
 
     def customer_notice(
         self, actor: UserAccount, ticket_id: UUID
@@ -46,7 +60,7 @@ class SimilarRequestService:
         # Only run for submitted, non-editable tickets. Draft or info-required tickets keep
         # their intake editable, which would let a customer replay the check as a probe. In
         # those states there is no notice to give, so return without scoring.
-        if source.state not in OPEN_SIMILARITY_STATES:
+        if source.state not in CUSTOMER_NOTICE_STATES:
             return ()
         # Customers only ever see matches they already have need-to-know for. Hidden overlaps
         # are the manager panel's job to catch; nothing derived from invisible tickets (counts,
@@ -185,6 +199,29 @@ class SimilarRequestService:
         )
         return source_updated
 
+    def mark_duplicate(
+        self,
+        actor: UserAccount,
+        ticket_id: UUID,
+        related_ticket_id: UUID,
+        *,
+        withdraw_source: bool,
+    ) -> TicketRecord:
+        if Permission.TICKET_CONSOLIDATE not in actor.permissions:
+            raise AppError(403, "permission_denied", "Permission is required for this action.")
+        if self.manager_match(actor, ticket_id, related_ticket_id) is None:
+            raise AppError(422, "duplicate_match_required", "The selected ticket is not a match.")
+        return mark_duplicate_ticket(
+            self._tickets,
+            self._audit_log,
+            self._embeddings,
+            actor,
+            ticket_id,
+            related_ticket_id,
+            withdraw_source=withdraw_source,
+            similarity_verified=True,
+        )
+
     def _score(
         self,
         source: TicketRecord,
@@ -192,13 +229,48 @@ class SimilarRequestService:
         threshold: float,
         principal_id: UUID,
     ) -> tuple[SimilarRequestMatch, ...]:
+        semantic_rank = self._indexed_semantic_rank(source, candidates, principal_id)
         return score_similar_requests(
             source,
             candidates,
             self._embeddings,
             threshold,
             principal_id,
+            semantic_rank_override=semantic_rank,
         )
+
+    def _indexed_semantic_rank(
+        self,
+        source: TicketRecord,
+        candidates: tuple[TicketRecord, ...],
+        principal_id: UUID,
+    ) -> dict[UUID, tuple[int, float]] | None:
+        if (
+            self._search_index is None
+            or self._search_configuration is None
+            or self._search_embeddings is None
+        ):
+            return None
+        state = self._search_configuration.state()
+        if not semantic_generation_usable(state.index_status, state.degraded_reason):
+            return None
+        query = query_text(source.intake)
+        vector = self._search_embeddings.embed(
+            query,
+            purpose="query",
+            principal_id=principal_id,
+        )
+        hits = self._search_index.search_tickets(
+            query,
+            vector,
+            frozenset(ticket.ticket_id for ticket in candidates),
+            frozenset(state.value for state in OPEN_SIMILARITY_STATES),
+        )
+        return {
+            hit.ticket_id: (hit.vector_rank, hit.vector_score)
+            for hit in hits
+            if hit.vector_rank is not None
+        }
 
     def _find_match(
         self,
@@ -218,7 +290,7 @@ class SimilarRequestService:
             for ticket in candidates
             if ticket.ticket_id != source.ticket_id and ticket.state in OPEN_SIMILARITY_STATES
         )
-        return tuple(eligible)[:SIMILARITY_CANDIDATE_LIMIT]
+        return tuple(eligible)
 
     def _customer_can_see(self, actor: UserAccount, ticket_id: UUID) -> bool:
         try:

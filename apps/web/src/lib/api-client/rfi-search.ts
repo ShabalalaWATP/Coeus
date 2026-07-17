@@ -17,6 +17,16 @@ export type RfiProductOffer = {
   offerableToUser: boolean;
   status: "offered" | "accepted" | "rejected";
   rejectionReason: string | null;
+  passages: RfiEvidencePassage[];
+};
+
+type RfiEvidencePassage = {
+  citation: string;
+  chunkId: string;
+  assetId: string | null;
+  assetName: string;
+  pageNumber: number;
+  excerpt: string;
 };
 
 export type RfiSearchMetrics = {
@@ -27,6 +37,8 @@ export type RfiSearchMetrics = {
   rejectedCount: number;
   acceptedProductId: string | null;
   createdAt: string;
+  retrievalMode: string;
+  degradedReason: string | null;
 };
 
 export type RfiSearchResults = {
@@ -34,6 +46,8 @@ export type RfiSearchResults = {
   ticketState: TicketState;
   offers: RfiProductOffer[];
   metrics: RfiSearchMetrics | null;
+  retrievalMode: string;
+  degradedReason: string | null;
 };
 
 export async function getRfiSearchResults(ticketId: string): Promise<RfiSearchResults> {

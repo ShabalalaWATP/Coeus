@@ -40,6 +40,7 @@ from coeus.services.release_notification_handler import ProductReleaseNotificati
 from coeus.services.resource_admission import LocalResourceAdmissionController
 from coeus.services.rfi_search import build_rfi_search_service
 from coeus.services.routing import build_routing_service
+from coeus.services.search_composition import configure_search_services
 from coeus.services.similar_requests import SimilarRequestService
 from coeus.services.store_builder import build_store_services
 from coeus.services.team_availability import TeamAvailabilityService, TeamCalendarService
@@ -220,6 +221,7 @@ def _configure_data_services(
         app.state.embedding_service,
         app.state.ticket_services.tickets.assignment_snapshot,
     )
+    configure_search_services(app, settings, identity.audit_log)
     app.state.ai_model_service.set_embedded_product_count_provider(
         app.state.store_services.repository.embedded_product_count
     )
@@ -246,6 +248,9 @@ def _configure_workflow_services(
         tickets,
         audit_log,
         app.state.embedding_service,
+        app.state.search_index_repository,
+        app.state.search_configuration_service,
+        app.state.search_embedding_service,
     )
     app.state.rfi_search_service = build_rfi_search_service(
         tickets,
@@ -253,6 +258,7 @@ def _configure_workflow_services(
         identity.access,
         audit_log,
         app.state.embedding_service,
+        app.state.grounded_search_service,
     )
     app.state.routing_service = build_routing_service(tickets, audit_log)
     app.state.manager_queue_service = ManagerQueueService(tickets)

@@ -7,6 +7,8 @@ from coeus.domain.capabilities import CandidateTeam
 from coeus.domain.enums import TicketState
 from coeus.domain.prioritisation import PriorityAssessment
 from coeus.domain.qc import FeedbackRequest, FeedbackSubmission, ProductIndexRecord, QcDecision
+from coeus.domain.search_index import GroundedProductEvidence
+from coeus.domain.search_metrics import RfiSearchMetrics
 
 
 class MessageAuthor(StrEnum):
@@ -145,17 +147,6 @@ class ProductDissemination:
     ticket_id: UUID
     product_id: UUID
     recipient_user_id: UUID
-    created_at: datetime
-
-
-@dataclass(frozen=True)
-class RfiSearchMetrics:
-    run_id: UUID
-    query: str
-    candidate_count: int
-    offered_count: int
-    rejected_count: int
-    accepted_product_id: UUID | None
     created_at: datetime
 
 
@@ -322,10 +313,12 @@ class TicketRecord:
     agent_runs: tuple[AgentRun, ...] = field(default_factory=tuple)
     timeline: tuple[TicketTimelineEntry, ...] = field(default_factory=tuple)
     related_ticket_ids: tuple[UUID, ...] = field(default_factory=tuple)
+    duplicate_of_ticket_id: UUID | None = None
     visible_product_matches: tuple[str, ...] = field(default_factory=tuple)
     product_offers: tuple[ProductOffer, ...] = field(default_factory=tuple)
     disseminations: tuple[ProductDissemination, ...] = field(default_factory=tuple)
     search_metrics: tuple[RfiSearchMetrics, ...] = field(default_factory=tuple)
+    search_evidence: tuple[GroundedProductEvidence, ...] = field(default_factory=tuple)
     rfa_reviews: tuple[RfaCapabilityReview, ...] = field(default_factory=tuple)
     cm_reviews: tuple[CmCapabilityReview, ...] = field(default_factory=tuple)
     route_recommendations: tuple[RouteRecommendation, ...] = field(default_factory=tuple)

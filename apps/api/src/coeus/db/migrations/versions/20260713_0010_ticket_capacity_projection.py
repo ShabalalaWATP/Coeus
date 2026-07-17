@@ -17,9 +17,13 @@ __all__ = ("branch_labels", "depends_on", "down_revision", "downgrade", "revisio
 
 
 def upgrade() -> None:
-    op.execute("ALTER TABLE coeus_ticket_aggregates ADD COLUMN requester_user_id uuid")
-    op.execute("ALTER TABLE coeus_ticket_aggregates ADD COLUMN state text")
-    op.execute("ALTER TABLE coeus_ticket_aggregates ADD COLUMN consumes_capacity boolean")
+    op.execute(
+        "ALTER TABLE coeus_ticket_aggregates ADD COLUMN IF NOT EXISTS requester_user_id uuid"
+    )
+    op.execute("ALTER TABLE coeus_ticket_aggregates ADD COLUMN IF NOT EXISTS state text")
+    op.execute(
+        "ALTER TABLE coeus_ticket_aggregates ADD COLUMN IF NOT EXISTS consumes_capacity boolean"
+    )
     op.execute(
         """
         UPDATE coeus_ticket_aggregates SET
@@ -33,7 +37,7 @@ def upgrade() -> None:
     op.execute("ALTER TABLE coeus_ticket_aggregates ALTER COLUMN state SET NOT NULL")
     op.execute("ALTER TABLE coeus_ticket_aggregates ALTER COLUMN consumes_capacity SET NOT NULL")
     op.execute(
-        "CREATE INDEX idx_coeus_ticket_capacity "
+        "CREATE INDEX IF NOT EXISTS idx_coeus_ticket_capacity "
         "ON coeus_ticket_aggregates(requester_user_id) WHERE consumes_capacity"
     )
 

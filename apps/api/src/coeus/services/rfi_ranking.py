@@ -1,3 +1,4 @@
+from datetime import date
 from math import sqrt
 
 from coeus.domain.search_relevance import (
@@ -74,10 +75,11 @@ def rank_hybrid_rfi_candidates(
     bounded_candidates = candidates[:RFI_RANKING_WORK_LIMIT]
     available_legs = _available_legs(bounded_candidates)
     for candidate in bounded_candidates:
-        product_tokens = _tokens(_product_text(candidate.product))
+        product_text = _product_text(candidate.product)
+        product_tokens = _tokens(product_text)
         text_score, text_reasons = _score_tokens(query_tokens, product_tokens, "full-text")
         token_score, token_reasons = _semantic_score_from_tokens(query_tokens, product_tokens)
-        metadata_score, metadata_reasons = _metadata_score(candidate.product, intake)
+        metadata_score, metadata_reasons = _metadata_score(candidate.product, intake, product_text)
         label_score, label_reasons = _semantic_label_score(candidate.product, query)
         title_signal = lexical_score_for_product(candidate.product, intake.title or "")
         lexical_signal = max(text_score, candidate.lexical_score, title_signal)
@@ -118,6 +120,7 @@ def query_text(intake: IntakeDetails) -> str:
         value
         for value in (
             intake.title,
+            intake.description,
             intake.operational_question,
             intake.area_or_region,
             intake.known_context,
@@ -125,6 +128,14 @@ def query_text(intake: IntakeDetails) -> str:
             intake.customer_success_criteria,
             intake.intelligence_disciplines,
             intake.supported_operation,
+            intake.time_period_start,
+            intake.time_period_end,
+            intake.priority,
+            intake.deadline,
+            intake.restrictions_or_caveats,
+            intake.suggested_acg_context,
+            intake.requesting_unit,
+            intake.urgency_justification,
         )
         if value
     )
@@ -183,20 +194,63 @@ def _semantic_score_from_tokens(
     return min(score, 1.0), tuple(f"semantic:{token}" for token in overlap)
 
 
-def _metadata_score(product: StoreProduct, intake: IntakeDetails) -> tuple[float, tuple[str, ...]]:
+def _metadata_score(
+    product: StoreProduct, intake: IntakeDetails, product_text: str
+) -> tuple[float, tuple[str, ...]]:
     metadata = product.metadata
     reasons: list[str] = []
     score = 0.0
     if intake.area_or_region and token_overlap(intake.area_or_region, metadata.area_or_region):
-        score += 0.04
+        score += 0.05
         reasons.append("metadata:region")
     if intake.required_output_format and token_overlap(
         intake.required_output_format,
         metadata.product_type,
     ):
-        score += 0.02
+        score += 0.03
         reasons.append("metadata:format")
-    return min(score, 0.06), tuple(reasons)
+    if intake.supported_operation and token_overlap(intake.supported_operation, product_text):
+        score += 0.04
+        reasons.append("metadata:operation")
+    if intake.intelligence_disciplines and token_overlap(
+        intake.intelligence_disciplines, product_text
+    ):
+        score += 0.04
+        reasons.append("metadata:discipline")
+    if intake.requesting_unit and token_overlap(intake.requesting_unit, metadata.owner_team):
+        score += 0.02
+        reasons.append("metadata:requesting-unit")
+    temporal_score, temporal_reason = _temporal_score(product, intake)
+    score += temporal_score
+    if temporal_reason:
+        reasons.append(temporal_reason)
+    return max(-0.12, min(score, 0.24)), tuple(reasons)
+
+
+def _temporal_score(product: StoreProduct, intake: IntakeDetails) -> tuple[float, str | None]:
+    requested_start = _date(intake.time_period_start)
+    requested_end = _date(intake.time_period_end)
+    product_start = _date(product.metadata.time_period_start)
+    product_end = _date(product.metadata.time_period_end) or product_start
+    if not requested_start and not requested_end:
+        return 0.0, None
+    if not product_start:
+        return 0.0, "metadata:time-unknown"
+    effective_request_start = requested_start or requested_end
+    effective_request_end = requested_end or requested_start
+    if effective_request_start and effective_request_end and product_end:
+        overlaps = product_end >= effective_request_start and product_start <= effective_request_end
+        return (0.08, "metadata:time-overlap") if overlaps else (-0.12, "metadata:time-mismatch")
+    return 0.0, None
+
+
+def _date(value: str | None) -> date | None:
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        return None
 
 
 def _semantic_label_score(product: StoreProduct, query: str) -> tuple[float, tuple[str, ...]]:

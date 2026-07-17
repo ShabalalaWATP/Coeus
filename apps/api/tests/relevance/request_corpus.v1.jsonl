@@ -1,0 +1,5 @@
+{"version":1,"request_id":"rfi-baltic","title":"Vessel movements in the Gulf of Finland","question":"What vessel movements are occurring around the Gulf of Finland?","region":"Gulf of Finland","route":"RFI","cluster":"baltic-maritime"}
+{"version":1,"request_id":"rfa-baltic","title":"Baltic vessel activity assessment","question":"Assess maritime traffic near St Petersburg.","region":"St Petersburg","route":"RFA","cluster":"baltic-maritime"}
+{"version":1,"request_id":"collection-baltic","title":"Collect Baltic maritime movement indicators","question":"Collect indicators of ship movements in the Gulf of Finland.","region":"Gulf of Finland","route":"CM","cluster":"baltic-maritime"}
+{"version":1,"request_id":"hidden-baltic","title":"Restricted Baltic vessel task","question":"Track ship movements near St Petersburg.","region":"St Petersburg","route":"RFI","cluster":"baltic-maritime"}
+{"version":1,"request_id":"weather","title":"Antarctic cloud forecast","question":"What cloud cover is expected?","region":"Antarctic","route":"RFI","cluster":"weather"}
