@@ -33,7 +33,7 @@ const MODEL_CATALOGUE: Record<string, ModelInfo> = {
     tier: "Fast",
     description: "OpenAI's cost-efficient model for high-volume and latency-sensitive workloads.",
   },
-  "gpt-realtime-2.1-mini": {
+  "gpt-realtime-mini": {
     tier: "Voice",
     description: "OpenAI's low-latency speech-to-speech model for live voice drafting.",
   },

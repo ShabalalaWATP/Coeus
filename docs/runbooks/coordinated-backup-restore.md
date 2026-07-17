@@ -13,6 +13,13 @@ use the live source as the restore target. The tool excludes in-flight resource
 leases and clears restored outbox claims because a new process cannot inherit
 ownership from the recovery point.
 
+If administrator-entered provider credentials are in use, preserve the
+configuration-encryption key separately from this bundle. For local mode this
+is `COEUS_CONFIGURATION_ENCRYPTION_KEY_PATH`; hosted environments must preserve
+the corresponding Secret Manager version. Never copy the key into the database
+or recovery bundle. A restored database without the matching key intentionally
+fails to decrypt its credential envelopes.
+
 Set variables without placing credentials on the command line:
 
 ```powershell

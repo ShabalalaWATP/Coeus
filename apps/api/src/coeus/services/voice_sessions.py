@@ -7,6 +7,7 @@ from coeus.core.config import Settings
 from coeus.core.errors import AppError
 from coeus.integrations.openai_realtime import create_realtime_call
 from coeus.services.audit import AuditLog
+from coeus.services.realtime_intake_prompt import build_realtime_intake_instructions
 from coeus.services.voice_admission import VoiceSessionAdmission
 from coeus.services.voice_models import VoiceModelService
 
@@ -41,6 +42,7 @@ class VoiceSessionService:
         try:
             answer = create_realtime_call(
                 api_key=api_key,
+                instructions=build_realtime_intake_instructions(),
                 model=state.model,
                 voice=self._settings.openai_realtime_voice,
                 sdp=sdp,

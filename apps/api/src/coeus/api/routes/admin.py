@@ -30,7 +30,8 @@ from coeus.schemas.registration import (
     RegistrationResponse,
 )
 from coeus.services.access import AccessServices
-from coeus.services.ai_models import AiModelService, AiModelState
+from coeus.services.ai_model_types import AiModelState
+from coeus.services.ai_models import AiModelService
 from coeus.services.ai_provider_admin import notify_admins_of_provider_change, test_connection
 from coeus.services.notifications import NotificationService
 from coeus.services.registration import RegistrationService

@@ -44,8 +44,8 @@ test("renders admin action links, approvals and AI model controls", async () => 
           ok: true,
           json: () =>
             Promise.resolve({
-              model: "gpt-realtime-2.1-mini",
-              availableModels: ["gpt-realtime-2.1-mini"],
+              model: "gpt-realtime-mini",
+              availableModels: ["gpt-realtime-mini"],
               enabled: false,
               apiKeyConfigured: false,
             }),
@@ -88,8 +88,8 @@ test("shows admin service loading independently of the other controls", () => {
           ok: true,
           json: () =>
             Promise.resolve({
-              model: "gpt-realtime-2.1-mini",
-              availableModels: ["gpt-realtime-2.1-mini"],
+              model: "gpt-realtime-mini",
+              availableModels: ["gpt-realtime-mini"],
               enabled: false,
               apiKeyConfigured: false,
             }),

@@ -23,6 +23,7 @@ injection regression coverage.
 | Vulnerable code reaches `main` without static analysis. | CodeQL extended queries and Semgrep `auto` plus OWASP Top 10 run on pull requests, `main` pushes and schedules. |
 | Secrets are committed or retained in history. | Gitleaks scans committed history in CI; GitHub secret scanning and push protection remain required repository settings. |
 | Container base images include known fixable vulnerabilities. | Trivy scans API and web images for high and critical OS and library vulnerabilities. |
+| The API container depends on writable build-tool caches or lets a compromised process modify application code. | The image starts the installed virtual-environment Uvicorn executable directly as the non-root `coeus` user. Application files remain root-owned, while only `/var/lib/coeus` is prepared as the writable runtime data directory (`infra/docker/api.Dockerfile`). Runtime-only imports are declared as production dependencies and covered by Docker configuration regression tests. |
 | Infrastructure drift introduces insecure Terraform. | Checkov scans `infra/gcp` and uploads SARIF; inline skips document accepted dev-scope exceptions. |
 | Frontend exposes unauthenticated passive DAST issues. | ZAP baseline scans a locally built web target in CI without touching GCP. |
 | Dependency inventory is unavailable during review. | CycloneDX SBOM artifact is generated on each security supply-chain run. |

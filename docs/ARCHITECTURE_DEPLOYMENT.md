@@ -133,19 +133,23 @@ The table records the target provider mapping. Only the local column is
 currently supported; the GCP column remains a migration contract until its
 adapters and readiness gates pass.
 
-| Concern         | Setting                         | Local default                | GCP reference                   |
-| --------------- | ------------------------------- | ---------------------------- | ------------------------------- |
-| Persistence     | `COEUS_PERSISTENCE_PROVIDER`    | `postgres` (local container) | `postgres` (Cloud SQL)          |
-| Object storage  | `COEUS_OBJECT_STORAGE_PROVIDER` | `local` (filesystem)         | `gcs` (Cloud Storage)           |
-| Language model  | `COEUS_LLM_PROVIDER`            | `mock`; four external APIs optional | Same application gateway   |
-| Embeddings      | `COEUS_EMBEDDING_PROVIDER`      | `mock`                       | `mock`, `local` or `gemini_api` |
-| Email           | `COEUS_EMAIL_PROVIDER`          | `outbox` (on disk)           | `smtp`                          |
-| Secrets         | environment / `.env`            | local file                   | Secret Manager                  |
-| Deploy identity | n/a                             | n/a                          | Workload Identity Federation    |
+| Concern         | Setting                                | Local default                       | GCP reference                   |
+| --------------- | -------------------------------------- | ----------------------------------- | ------------------------------- |
+| Persistence     | `COEUS_PERSISTENCE_PROVIDER`           | `postgres` (local container)        | `postgres` (Cloud SQL)          |
+| Object storage  | `COEUS_OBJECT_STORAGE_PROVIDER`        | `local` (filesystem)                | `gcs` (Cloud Storage)           |
+| Language model  | `COEUS_LLM_PROVIDER`                   | `mock`; four external APIs optional | Same application gateway        |
+| Embeddings      | `COEUS_EMBEDDING_PROVIDER`             | `mock`                              | `mock`, `local` or `gemini_api` |
+| Email           | `COEUS_EMAIL_PROVIDER`                 | `outbox` (on disk)                  | `smtp`                          |
+| Secrets         | configuration key plus encrypted state | ignored local key file              | Secret Manager                  |
+| Deploy identity | n/a                                    | n/a                                 | Workload Identity Federation    |
 
 Provider settings are authoritative: an API key present in the environment never
 silently switches the language or embedding provider on; the provider must be
 selected explicitly. This keeps a machine configured for offline use offline.
+Administrator-entered provider and Realtime voice keys are AES-256-GCM
+encrypted in isolated state namespaces and survive restart. The separate
+configuration-encryption key is generated outside PostgreSQL for local mode and
+must come from Secret Manager in hosted environments.
 
 ---
 

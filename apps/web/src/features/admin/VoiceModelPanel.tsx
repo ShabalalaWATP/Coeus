@@ -38,7 +38,7 @@ export function VoiceModelPanel({ csrfToken }: { csrfToken: string }) {
     }
   }, [query.data]);
 
-  const info = modelInfoFor(model || "gpt-realtime-2.1-mini");
+  const info = modelInfoFor(model || "gpt-realtime-mini");
   return (
     <section className="surface voice-admin" aria-labelledby="voice-model-title">
       <div className="voice-admin__heading">

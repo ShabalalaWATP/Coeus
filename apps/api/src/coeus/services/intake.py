@@ -4,6 +4,7 @@ from typing import Protocol
 
 from coeus.domain.tickets import IntakeDetails
 from coeus.services import intake_extractors as extractors
+from coeus.services.intake_answers import apply_direct_answer
 from coeus.services.intake_standard import (
     REQUIRED_INTAKE_FIELDS as REQUIRED_INTAKE_FIELDS,
 )
@@ -12,6 +13,7 @@ from coeus.services.intake_standard import (
     entry_satisfied,
     next_elicitation,
 )
+from coeus.services.intake_transcripts import voice_answers, voice_turns
 
 # Substring markers are matched against a normalised message (casefolded,
 # zero-width characters stripped, whitespace collapsed), so case, doubled
@@ -88,13 +90,55 @@ class MockLlmProvider:
 
 class IntakeExtractionService:
     def extract(self, message: str, existing: IntakeDetails | None = None) -> IntakeDetails:
+        turns = voice_turns(message)
+        if turns is None:
+            return self._extract_text(message, existing or IntakeDetails())
+        original = existing or IntakeDetails()
+        requester_text = " ".join(turn.text for turn in turns if turn.speaker == "user")
+        current = (
+            self._extract_text(
+                requester_text,
+                original,
+                apply_context=False,
+                infer_title=False,
+            )
+            if requester_text
+            else RequirementCompletenessService().with_completeness(original)
+        )
+        for answer in voice_answers(turns):
+            if answer.field is None:
+                current = self._extract_text(answer.text, current)
+            else:
+                current = apply_direct_answer(
+                    current,
+                    answer.field,
+                    answer.text,
+                    overwrite=not _field_has_value(original, answer.field),
+                )
+                current = RequirementCompletenessService().with_completeness(current)
+        return current
+
+    def _extract_text(
+        self,
+        message: str,
+        existing: IntakeDetails,
+        *,
+        apply_context: bool = True,
+        infer_title: bool | None = None,
+    ) -> IntakeDetails:
         text = extractors.normalise_spaces(message)
         lowered = text.casefold()
-        base = existing or IntakeDetails()
+        base = RequirementCompletenessService().with_completeness(existing)
+        expected = next_elicitation(base.missing_information)
         time_period_start, time_period_end = extractors.extract_time_window(text)
+        can_infer_title = (
+            infer_title
+            if infer_title is not None
+            else (base.description is None or (expected is not None and expected.field == "title"))
+        )
         extracted = replace(
             base,
-            title=base.title or extractors.extract_title(text),
+            title=base.title or (extractors.extract_title(text) if can_infer_title else None),
             description=base.description or text,
             operational_question=base.operational_question or extractors.extract_question(text),
             area_or_region=base.area_or_region or extractors.extract_region(text),
@@ -114,6 +158,8 @@ class IntakeExtractionService:
             urgency_justification=base.urgency_justification
             or extractors.extract_urgency_justification(text),
         )
+        if apply_context and expected is not None:
+            extracted = apply_direct_answer(extracted, expected.field, text)
         return RequirementCompletenessService().with_completeness(extracted)
 
     def safety_flags_for(self, message: str) -> tuple[str, ...]:
@@ -169,3 +215,8 @@ def merge_intake(intake: IntakeDetails, updates: dict[str, str | None]) -> Intak
 def _normalise_for_scanning(value: str) -> str:
     stripped = _ZERO_WIDTH_PATTERN.sub("", value)
     return " ".join(stripped.casefold().split())
+
+
+def _field_has_value(intake: IntakeDetails, field: str) -> bool:
+    value = intake.time_period_start if field == "time_period" else getattr(intake, field, None)
+    return isinstance(value, str) and bool(value.strip())

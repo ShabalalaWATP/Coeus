@@ -26,6 +26,7 @@ from coeus.services.demo_seed import seed_demo_dataset
 from coeus.services.email_delivery import build_email_provider
 from coeus.services.embeddings import build_embedding_service
 from coeus.services.feedback_analytics import build_feedback_analytics_service
+from coeus.services.integration_secrets import EncryptedIntegrationSecretStore
 from coeus.services.manager_approval import ManagerApprovalService
 from coeus.services.manager_queue import ManagerQueueService
 from coeus.services.notifications import NotificationService
@@ -67,6 +68,9 @@ def configure_application_state(app: FastAPI, settings: Settings) -> None:
     """Assemble the local-first application through named responsibility groups."""
     app.state.settings = settings
     app.state.state_store = build_state_store(settings)
+    app.state.integration_secret_store = EncryptedIntegrationSecretStore(
+        app.state.state_store, settings
+    )
     app.state.workflow_transaction = _workflow_transaction(app, settings)
     app.state.asset_token_service = AssetTokenService(settings.asset_token_secret)
     app.state.object_storage = build_object_storage(settings)
@@ -175,11 +179,13 @@ def _configure_data_services(
         settings,
         identity.audit_log,
         app.state.state_store,
+        app.state.integration_secret_store,
     )
     app.state.voice_model_service = VoiceModelService(
         settings,
         identity.audit_log,
         app.state.state_store,
+        app.state.integration_secret_store,
     )
     app.state.voice_session_admission = VoiceSessionAdmission(
         max_concurrent=settings.voice_session_max_concurrent,

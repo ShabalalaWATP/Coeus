@@ -13,9 +13,9 @@ hosting, GCS, Pub/Sub or a cloud-hosted AI platform.
 - File state store retained only as an explicit fallback.
 - Local object storage for real Store upload and download bytes.
 - Signed, expiring asset download tokens that re-check user, product and asset.
-- Admin-managed Gemini model selection and runtime Gemini API key input that
-  affect future agent calls app-wide without exposing the key back to the
-  browser. Model selection is persisted; UI-entered keys are runtime-only.
+- Admin-managed provider and model selection plus encrypted API key input that
+  affect future agent calls app-wide without exposing keys back to the
+  browser. Provider selection, model choices and UI-entered keys are durable.
 - Optional SMTP email delivery behind the existing notification outbox.
 
 ## Acceptance Criteria
@@ -41,9 +41,9 @@ hosting, GCS, Pub/Sub or a cloud-hosted AI platform.
 - Product upload accepts one real asset, computes its size and SHA-256 hash
   server-side, stores bytes locally and allows authorised token redemption.
 - Seeded synthetic products have local placeholder bytes so demo downloads work.
-- Admin-configured Gemini model choices are persisted and audited. UI-entered
-  Gemini keys are hidden from responses, held only in the running API process
-  and used by future assistant calls for every user until restart.
+- Admin-configured provider and model choices are persisted and audited.
+  UI-entered provider and Realtime voice keys are encrypted with a separately
+  held configuration key, hidden from responses and restored after restart.
 - `COEUS_EMAIL_PROVIDER=smtp` sends through SMTP when configured; the default
   outbox records and audits emails without external delivery.
 

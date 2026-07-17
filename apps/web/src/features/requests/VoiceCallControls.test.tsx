@@ -50,6 +50,10 @@ test("starts a WebRTC call, captures both transcripts and cleans up on stop", as
     } as MessageEvent);
     latestPeer?.channel.onopen?.(new Event("open"));
   });
+  expect(latestPeer?.channel.send).toHaveBeenNthCalledWith(
+    1,
+    JSON.stringify({ type: "response.create" }),
+  );
   await userEvent.click(screen.getByRole("button", { name: "Stop voice" }));
 
   await waitFor(() =>
@@ -134,14 +138,16 @@ test("starts correctly when React StrictMode replays effects", async () => {
   await waitFor(() => expect(latestPeer?.remoteDescription).not.toBeNull());
 });
 
-test("reports microphone failures and returns to the idle control", async () => {
+test("reports denied microphone permission and returns to the idle control", async () => {
   stubBrowser();
-  vi.spyOn(navigator.mediaDevices, "getUserMedia").mockRejectedValueOnce(new Error("denied"));
+  vi.spyOn(navigator.mediaDevices, "getUserMedia").mockRejectedValueOnce(
+    new DOMException("device detail that must not be shown", "NotAllowedError"),
+  );
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(voiceState)));
   renderControl(vi.fn());
 
   await userEvent.click(await screen.findByRole("button", { name: "Talk with Istari" }));
-  expect(await screen.findByRole("alert")).toHaveTextContent("Voice could not start");
+  expect(await screen.findByRole("alert")).toHaveTextContent("Microphone permission was denied");
   expect(screen.getByRole("button", { name: "Talk with Istari" })).toBeEnabled();
 });
 
@@ -239,8 +245,8 @@ test("captures a completed assistant response transcript", async () => {
 });
 
 const voiceState = {
-  model: "gpt-realtime-2.1-mini",
-  availableModels: ["gpt-realtime-2.1-mini"],
+  model: "gpt-realtime-mini",
+  availableModels: ["gpt-realtime-mini"],
   enabled: true,
   apiKeyConfigured: true,
 };

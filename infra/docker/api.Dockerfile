@@ -13,9 +13,11 @@ COPY apps/api/src ./apps/api/src
 WORKDIR /app/apps/api
 RUN uv sync --frozen --no-dev
 
-RUN addgroup --system coeus && adduser --system --ingroup coeus coeus && chown -R coeus:coeus /app
+RUN addgroup --system coeus \
+    && adduser --system --ingroup coeus coeus \
+    && install -d -o coeus -g coeus /var/lib/coeus
 
 USER coeus
 
 EXPOSE 8000
-CMD ["sh", "-c", "uv run uvicorn coeus.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]
+CMD ["sh", "-c", "exec /app/apps/api/.venv/bin/uvicorn coeus.main:app --host 0.0.0.0 --port \"${PORT:-8000}\" --workers 1"]
