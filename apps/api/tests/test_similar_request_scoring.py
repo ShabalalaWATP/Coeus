@@ -68,6 +68,55 @@ def test_score_similar_requests_degrades_to_lexical_only_when_embeddings_are_una
     assert "similarity:metadata-format" in matches[0].reasons
 
 
+def test_partial_semantic_generation_does_not_penalise_new_lexical_candidate() -> None:
+    source = _ticket(
+        "Gulf of Finland vessel activity",
+        region="Gulf of Finland",
+        output_format="movement report",
+    )
+    new_candidate = _ticket(
+        "Gulf of Finland vessel activity",
+        region="Gulf of Finland",
+        output_format="movement report",
+    )
+    indexed_candidate = _ticket("Unrelated indexed request")
+
+    matches = score_similar_requests(
+        source,
+        (new_candidate, indexed_candidate),
+        cast(EmbeddingService, NoEmbeddingService()),
+        0.58,
+        semantic_rank_override={indexed_candidate.ticket_id: (1, 0.8)},
+    )
+
+    assert matches[0].ticket_id == new_candidate.ticket_id
+    assert "similarity:lexical-only" in matches[0].reasons
+
+
+def test_weak_semantic_leg_does_not_suppress_strong_lexical_match() -> None:
+    source = _ticket(
+        "Gulf of Finland vessel activity",
+        region="Gulf of Finland",
+        output_format="movement report",
+    )
+    candidate = _ticket(
+        "Gulf of Finland vessel activity",
+        region="Gulf of Finland",
+        output_format="movement report",
+    )
+
+    matches = score_similar_requests(
+        source,
+        (candidate,),
+        cast(EmbeddingService, NoEmbeddingService()),
+        0.58,
+        semantic_rank_override={candidate.ticket_id: (1, 0.21)},
+    )
+
+    assert matches[0].ticket_id == candidate.ticket_id
+    assert matches[0].score >= 0.58
+
+
 def test_plural_variant_duplicate_crosses_manager_similarity_threshold() -> None:
     # Every content token differs only by plural inflection, so this match
     # exists solely because of stem folding; it must fail if folding regresses.
@@ -102,6 +151,28 @@ def test_no_match_tickets_are_still_open_similarity_candidates() -> None:
 
     assert matches[0].ticket_id == candidate.ticket_id
     assert matches[0].state == TicketState.RFI_NO_MATCH
+
+
+def test_rank_one_weak_lexical_overlap_is_not_a_duplicate_match() -> None:
+    source = _ticket(
+        "Iran missile readiness",
+        question="What Iranian ballistic missile activity is reported?",
+        region="Iran",
+    )
+    candidate = _ticket(
+        "Baltic vessel activity assessment",
+        question="Assess maritime traffic near St Petersburg.",
+        region="St Petersburg",
+    )
+
+    matches = score_similar_requests(
+        source,
+        (candidate,),
+        cast(EmbeddingService, NoEmbeddingService()),
+        0.50,
+    )
+
+    assert matches == ()
 
 
 def test_similarity_scoring_supports_vector_only_and_missing_candidate_vectors() -> None:

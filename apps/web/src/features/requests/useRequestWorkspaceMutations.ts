@@ -24,6 +24,7 @@ import {
   chooseCollectOption,
   consentNoMatch,
   confirmTicketDelivery,
+  reopenTicketConversation,
   removeTicketCollaborator,
   sendChatMessage,
   submitTicket,
@@ -107,6 +108,12 @@ export function useRequestWorkspaceMutations({
   const intakeMutation = useMutation({
     mutationFn: (payload: IntakeUpdate) => updateTicketIntake(selectedTicketId, payload, csrfToken),
     onError: failAction("The request details could not be saved. Refresh and try again."),
+    onMutate: clearActionError,
+    onSuccess: updateTicketCache,
+  });
+  const reopenConversationMutation = useMutation({
+    mutationFn: () => reopenTicketConversation(selectedTicketId, csrfToken),
+    onError: failAction("The conversation could not be reopened. Refresh and try again."),
     onMutate: clearActionError,
     onSuccess: updateTicketCache,
   });
@@ -220,6 +227,7 @@ export function useRequestWorkspaceMutations({
     onNoMatchConsent: (taskAsNewRequest) => noMatchConsentMutation.mutate(taskAsNewRequest),
     onReject: (productId, reason) => rejectOfferMutation.mutate({ productId, reason }),
     onRemoveCollaborator: (userId) => removeCollaboratorMutation.mutate(userId),
+    onReopenConversation: () => reopenConversationMutation.mutate(),
     onRun: () => runRfiMutation.mutate(),
     onSave: (payload) => intakeMutation.mutate(payload),
     onSend: (message, onSuccess) => chatMutation.mutate(message, { onSuccess }),
@@ -234,6 +242,7 @@ export function useRequestWorkspaceMutations({
     collaborating: addCollaboratorMutation.isPending || removeCollaboratorMutation.isPending,
     consenting: noMatchConsentMutation.isPending,
     rejecting: rejectOfferMutation.isPending,
+    reopening: reopenConversationMutation.isPending,
     running: runRfiMutation.isPending,
     saving: intakeMutation.isPending,
     sending: chatMutation.isPending,

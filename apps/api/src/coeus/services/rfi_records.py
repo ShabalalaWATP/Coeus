@@ -4,12 +4,12 @@ from uuid import UUID, uuid4
 
 from coeus.core.errors import AppError
 from coeus.domain.agent_names import LEGACY_RFI_SEARCH_AGENT, RFI_SEARCH_AGENT
+from coeus.domain.search_metrics import RfiSearchMetrics
 from coeus.domain.tickets import (
     AgentRun,
     AgentRunStatus,
     ProductOffer,
     ProductOfferStatus,
-    RfiSearchMetrics,
     TicketRecord,
     TicketTimelineEntry,
 )

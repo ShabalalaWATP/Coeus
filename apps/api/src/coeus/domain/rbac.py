@@ -43,6 +43,7 @@ PRODUCT_TEAM_PERMISSIONS = SELF_SERVICE | frozenset(
 # team roster and calendar.
 MANAGER_TEAM_LEAD_PERMISSIONS = frozenset(
     {
+        Permission.TICKET_CONSOLIDATE,
         Permission.PRODUCT_APPROVE,
         Permission.TEAM_MANAGE,
         Permission.ANALYTICS_VIEW_TEAM,
@@ -85,6 +86,7 @@ ROLE_DEFINITIONS: dict[RoleName, RoleDefinition] = {
         | frozenset(
             {
                 Permission.JIOC_REVIEW,
+                Permission.TICKET_CONSOLIDATE,
                 Permission.TICKET_ADD_COMMENT,
                 Permission.ANALYTICS_VIEW_TEAM,
             }

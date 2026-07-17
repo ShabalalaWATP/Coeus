@@ -3,6 +3,8 @@ from collections.abc import Sequence
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
+from coeus.persistence.search_index_schema import search_index_schema_statements
+
 
 def store_schema_statements() -> Sequence[str]:
     return (
@@ -117,5 +119,5 @@ def store_schema_statements() -> Sequence[str]:
 
 
 def ensure_relational_schema(connection: Connection) -> None:
-    for statement in store_schema_statements():
+    for statement in (*store_schema_statements(), *search_index_schema_statements()):
         connection.execute(text(statement))

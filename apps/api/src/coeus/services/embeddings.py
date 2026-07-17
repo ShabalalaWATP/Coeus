@@ -40,9 +40,15 @@ class EmbeddingUnavailable(RuntimeError):
 
 
 class EmbeddingProvider(Protocol):
-    """Provider contract for deterministic 384-dimension retrieval embeddings."""
+    """Provider contract for deterministic retrieval embeddings."""
 
-    name: str
+    @property
+    def name(self) -> str:
+        pass
+
+    @property
+    def model_name(self) -> str:
+        pass
 
     def embed(self, text: str) -> tuple[float, ...]:
         """Return a normalised vector for text or raise `EmbeddingUnavailable`."""
@@ -80,16 +86,25 @@ class EmbeddingService:
     def provider_name(self) -> str:
         return self._provider.name
 
+    @property
+    def model_name(self) -> str:
+        return str(getattr(self._provider, "model_name", "unspecified"))
+
+    @property
+    def space_id(self) -> str:
+        value = getattr(self._provider, "space_id", None)
+        return str(value or f"{self.provider_name}:{self.model_name}:{EMBEDDING_DIMENSIONS}")
+
     def embed(
         self, text: str, *, purpose: str, principal_id: UUID | None = None
     ) -> tuple[float, ...] | None:
         try:
             if self._admission is None:
-                return self._provider.embed(text)
+                return self._provider.embed(_provider_text(self.provider_name, text, purpose))
             if principal_id is None:
                 raise EmbeddingUnavailable("embedding principal context is missing")
             with self._admission.reserve(principal_id) as reservation:
-                vector = self._provider.embed(text)
+                vector = self._provider.embed(_provider_text(self.provider_name, text, purpose))
                 reservation.commit()
                 return vector
         except EmbeddingUnavailable as exc:
@@ -102,7 +117,7 @@ class EmbeddingService:
         """Embed a normalised key once, coalescing concurrent cache misses."""
         normalised = " ".join(text.split()).casefold()
         digest = blake2b(normalised.encode("utf-8"), digest_size=16).hexdigest()
-        key = f"{self.provider_name}:{digest}"
+        key = f"{self.space_id}:{purpose}:{digest}"
         with self._lock:
             if key in self._cache:
                 self._cache.move_to_end(key)
@@ -151,6 +166,7 @@ class MockEmbeddingProvider:
     """
 
     name = "mock"
+    model_name = "token-hash-v2"
 
     def embed(self, text: str) -> tuple[float, ...]:
         return mock_embedding(text)
@@ -158,6 +174,7 @@ class MockEmbeddingProvider:
 
 class LocalFastEmbedProvider:
     name = "local"
+    model_name = "BAAI/bge-small-en-v1.5"
 
     def __init__(self, model_path: str) -> None:
         self._model_path = Path(model_path)
@@ -194,14 +211,18 @@ class LocalFastEmbedProvider:
 class GeminiApiEmbeddingProvider:
     name = "gemini_api"
 
-    def __init__(self, settings: Settings, ai_models: ApiKeyProvider) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        api_key: Callable[[], str | None] | ApiKeyProvider,
+        model_name: str | None = None,
+    ) -> None:
         self._settings = settings
-        self._ai_models = ai_models
+        self._api_key = api_key if callable(api_key) else lambda: api_key.api_key("gemini_api")
+        self.model_name = model_name or settings.gemini_embedding_model
 
     def embed(self, text: str) -> tuple[float, ...]:
-        # Embeddings always use the Gemini key, whichever chat provider is
-        # active: the embedding provider is a separate configuration switch.
-        api_key = self._ai_models.api_key("gemini_api")
+        api_key = self._api_key()
         if not api_key:
             raise EmbeddingUnavailable("gemini api key is not configured")
         payload = {
@@ -211,7 +232,7 @@ class GeminiApiEmbeddingProvider:
         try:
             with httpx.Client(timeout=self._settings.gemini_api_timeout_seconds) as client:
                 response = client.post(
-                    GEMINI_EMBEDDING_URL.format(model=self._settings.gemini_embedding_model),
+                    GEMINI_EMBEDDING_URL.format(model=self.model_name),
                     headers={"x-goog-api-key": api_key},
                     json=payload,
                 )
@@ -234,7 +255,7 @@ def build_embedding_service(
     if settings.embedding_provider == "local":
         provider = LocalFastEmbedProvider(settings.embedding_model_path)
     elif settings.embedding_provider == "gemini_api":
-        provider = GeminiApiEmbeddingProvider(settings, ai_models)
+        provider = GeminiApiEmbeddingProvider(settings, lambda: ai_models.api_key("gemini_api"))
     else:
         provider = MockEmbeddingProvider()
     admission = provider_admission if settings.embedding_provider == "gemini_api" else None
@@ -248,6 +269,14 @@ def _coerce_vector(values: object) -> list[float]:
     if len(vector) < EMBEDDING_DIMENSIONS:
         vector.extend(0.0 for _ in range(EMBEDDING_DIMENSIONS - len(vector)))
     return vector
+
+
+def _provider_text(provider: str, text: str, purpose: str) -> str:
+    if provider != "gemini_api":
+        return text
+    if purpose in {"rfi-query", "store-query", "similar-request-source"}:
+        return f"task: search result | query: {text}"
+    return f"text: {text}"
 
 
 def _offline_hf_call(factory: Callable[[], object]) -> object:

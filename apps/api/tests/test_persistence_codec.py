@@ -9,6 +9,7 @@ import pytest
 
 from coeus.core.permissions import Permission
 from coeus.domain.auth import RoleName, UserAccount
+from coeus.domain.search_metrics import RfiSearchMetrics
 from coeus.domain.tickets import WorkflowPlanUpdate
 from coeus.persistence.codec import CodecWriteFormat, decode_value, encode_value
 from coeus.persistence.codec_registry import ENUM_IDENTITIES, TYPE_IDENTITIES
@@ -138,6 +139,23 @@ def test_default_writer_uses_stable_ids_and_reader_retains_legacy_compatibility(
     assert "__type__" not in stable
     assert decode_value(legacy) == update
     assert decode_value(stable) == update
+
+
+def test_reader_accepts_pre_move_rfi_search_metrics_identity() -> None:
+    metrics = RfiSearchMetrics(
+        run_id=uuid4(),
+        query="Synthetic movement reporting",
+        candidate_count=2,
+        offered_count=1,
+        rejected_count=0,
+        accepted_product_id=None,
+        created_at=datetime.now(UTC),
+        retrieval_mode="hybrid",
+    )
+    payload = encode_value(metrics, write_format=CodecWriteFormat.LEGACY)
+    payload["__type__"] = "coeus.domain.tickets.RfiSearchMetrics"
+
+    assert decode_value(payload) == metrics
 
 
 def test_stable_writer_uses_semantic_enum_ids_recursively() -> None:

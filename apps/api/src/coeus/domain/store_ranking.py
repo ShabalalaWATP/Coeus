@@ -26,12 +26,37 @@ STOP_WORDS = frozenset(
     }
 )
 
+# Small, reviewed equivalence classes improve the lexical-only safety net for
+# common intelligence vocabulary and observed speech-to-text errors. Keep this
+# list explicit. Broad fuzzy matching would make abstention and audit reasons
+# difficult to explain.
+TOKEN_ALIASES = {
+    "armored": "armour",
+    "armoured": "armour",
+    "armor": "armour",
+    "tank": "armour",
+    "tanks": "armour",
+    "donbass": "donbas",
+    "donetsk": "donbas",
+    "russan": "russian",
+    "rusians": "russian",
+    "boats": "maritime",
+    "naval": "maritime",
+    "ship": "maritime",
+    "ships": "maritime",
+    "vessel": "maritime",
+    "vessels": "maritime",
+    "opensource": "osint",
+    "geoint": "geospatial",
+    "imagint": "imagery",
+}
+
 
 def tokenize(text: str) -> tuple[str, ...]:
     """Return distinct, normalised retrieval tokens in source order."""
     return tuple(
         dict.fromkeys(
-            token
+            TOKEN_ALIASES.get(token, token)
             for token in findall(r"[a-z0-9]+", text.casefold())
             if len(token) >= 2 and token not in STOP_WORDS
         )

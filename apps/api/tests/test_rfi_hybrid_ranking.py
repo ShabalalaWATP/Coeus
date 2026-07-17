@@ -1,10 +1,14 @@
 from dataclasses import replace
 
+import pytest
+
 from coeus.domain.store import StoreHybridCandidate, StoreProduct, StoreSearchHit
 from coeus.domain.tickets import IntakeDetails
 from coeus.services.rfi_ranking import (
     LEXICAL_SCORE_FLOOR,
+    _date,
     _full_text_score,
+    _metadata_score,
     _semantic_score,
     lexical_score_for_product,
     query_text,
@@ -116,6 +120,42 @@ def test_empty_query_tokens_have_no_lexical_or_semantic_score() -> None:
 
     assert _full_text_score(product, ()) == (0.0, ())
     assert _semantic_score(product, ()) == (0.0, ())
+
+
+def test_non_empty_lexical_semantic_and_operational_metadata_scores() -> None:
+    original = seed_product()
+    product = replace(
+        original,
+        metadata=replace(
+            original.metadata,
+            title="Operation Rowan imagery assessment",
+            description="Synthetic GEOINT reporting for Operation Rowan.",
+            owner_team="Joint Analysis Unit",
+        ),
+    )
+    tokens = ("operation", "rowan", "imagery")
+
+    lexical, lexical_reasons = _full_text_score(product, tokens)
+    semantic, semantic_reasons = _semantic_score(product, tokens)
+    metadata, metadata_reasons = _metadata_score(
+        product,
+        IntakeDetails(
+            supported_operation="Operation Rowan",
+            intelligence_disciplines="GEOINT imagery",
+            requesting_unit="Joint Analysis Unit",
+        ),
+        "Operation Rowan GEOINT imagery reporting",
+    )
+
+    assert lexical > 0 and lexical_reasons
+    assert semantic > 0 and semantic_reasons
+    assert metadata == pytest.approx(0.10)
+    assert set(metadata_reasons) == {
+        "metadata:operation",
+        "metadata:discipline",
+        "metadata:requesting-unit",
+    }
+    assert _date("not-a-date") is None
 
 
 def test_rank_one_weak_match_is_not_misreported_as_a_confident_offer() -> None:

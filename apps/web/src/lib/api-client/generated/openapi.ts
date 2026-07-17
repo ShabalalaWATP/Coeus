@@ -382,6 +382,91 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/admin/search-embeddings": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Search Embedding State */
+    get: operations["search_embedding_state_api_v1_admin_search_embeddings_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/admin/search-embeddings/api-key": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Configure Search Embedding Key */
+    put: operations["configure_search_embedding_key_api_v1_admin_search_embeddings_api_key_put"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/admin/search-embeddings/configuration": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Configure Search Embeddings */
+    put: operations["configure_search_embeddings_api_v1_admin_search_embeddings_configuration_put"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/admin/search-embeddings/reindex": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Reindex Search Embeddings */
+    post: operations["reindex_search_embeddings_api_v1_admin_search_embeddings_reindex_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/admin/search-embeddings/test": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Test Search Embeddings */
+    post: operations["test_search_embeddings_api_v1_admin_search_embeddings_test_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/admin/users": {
     parameters: {
       query?: never;
@@ -1404,6 +1489,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/similar-requests/routing/{ticket_id}/duplicate/{related_ticket_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Mark Duplicate Ticket */
+    post: operations["mark_duplicate_ticket_api_v1_similar_requests_routing__ticket_id__duplicate__related_ticket_id__post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/similar-requests/routing/{ticket_id}/link/{related_ticket_id}": {
     parameters: {
       query?: never;
@@ -1859,6 +1961,23 @@ export interface paths {
     put?: never;
     /** Confirm Delivery */
     post: operations["confirm_delivery_api_v1_tickets__ticket_id__confirm_delivery_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/tickets/{ticket_id}/conversation/reopen": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Reopen Chat Conversation */
+    post: operations["reopen_chat_conversation_api_v1_tickets__ticket_id__conversation_reopen_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -3762,6 +3881,24 @@ export interface components {
       /** Suggestedworkpackages */
       suggestedWorkPackages: string[];
     };
+    /** RfiEvidencePassageResponse */
+    RfiEvidencePassageResponse: {
+      /** Assetid */
+      assetId: string | null;
+      /** Assetname */
+      assetName: string;
+      /**
+       * Chunkid
+       * Format: uuid
+       */
+      chunkId: string;
+      /** Citation */
+      citation: string;
+      /** Excerpt */
+      excerpt: string;
+      /** Pagenumber */
+      pageNumber: number;
+    };
     /** RfiProductOfferResponse */
     RfiProductOfferResponse: {
       /** Assettypes */
@@ -3774,6 +3911,8 @@ export interface components {
       matchScore: number;
       /** Offerabletouser */
       offerableToUser: boolean;
+      /** Passages */
+      passages?: components["schemas"]["RfiEvidencePassageResponse"][];
       /**
        * Productid
        * Format: uuid
@@ -3809,12 +3948,16 @@ export interface components {
        * Format: date-time
        */
       createdAt: string;
+      /** Degradedreason */
+      degradedReason: string | null;
       /** Offeredcount */
       offeredCount: number;
       /** Query */
       query: string;
       /** Rejectedcount */
       rejectedCount: number;
+      /** Retrievalmode */
+      retrievalMode: string;
       /**
        * Runid
        * Format: uuid
@@ -3823,9 +3966,13 @@ export interface components {
     };
     /** RfiSearchResultsResponse */
     RfiSearchResultsResponse: {
+      /** Degradedreason */
+      degradedReason: string | null;
       metrics: components["schemas"]["RfiSearchMetricsResponse"] | null;
       /** Offers */
       offers: components["schemas"]["RfiProductOfferResponse"][];
+      /** Retrievalmode */
+      retrievalMode: string;
       /**
        * Ticketid
        * Format: uuid
@@ -3948,6 +4095,81 @@ export interface components {
       /** Workflowplanupdates */
       workflowPlanUpdates: components["schemas"]["WorkflowPlanUpdateResponse"][];
     };
+    /** SearchEmbeddingConfigurationRequest */
+    SearchEmbeddingConfigurationRequest: {
+      /**
+       * Confirmexternalegress
+       * @default false
+       */
+      confirmExternalEgress: boolean;
+      /** Model */
+      model: string;
+      /** Provider */
+      provider: string;
+    };
+    /** SearchEmbeddingKeyRequest */
+    SearchEmbeddingKeyRequest: {
+      /** Apikey */
+      apiKey: string;
+    };
+    /** SearchEmbeddingStateResponse */
+    SearchEmbeddingStateResponse: {
+      /** Apikeyconfigured */
+      apiKeyConfigured: boolean;
+      /** Availablemodels */
+      availableModels: string[];
+      /** Availableproviders */
+      availableProviders: string[];
+      /** Changedat */
+      changedAt: string | null;
+      /** Changedby */
+      changedBy: string | null;
+      /** Chunkcount */
+      chunkCount: number;
+      /** Corpusversion */
+      corpusVersion: string;
+      /** Degradedreason */
+      degradedReason: string | null;
+      /** Dimensions */
+      dimensions: number;
+      /** Failedassetcount */
+      failedAssetCount: number;
+      /** Indexgeneration */
+      indexGeneration: number;
+      /** Indexstatus */
+      indexStatus: string;
+      /** Lastindexedat */
+      lastIndexedAt: string | null;
+      /** Model */
+      model: string;
+      /** Productcount */
+      productCount: number;
+      /** Provider */
+      provider: string;
+      /** Spaceid */
+      spaceId: string;
+      /** Ticketcount */
+      ticketCount: number;
+    };
+    /** SearchEmbeddingTestResponse */
+    SearchEmbeddingTestResponse: {
+      /** Message */
+      message: string;
+      /** Model */
+      model: string;
+      /** Ok */
+      ok: boolean;
+      /** Provider */
+      provider: string;
+    };
+    /** SimilarRequestDuplicateRequest */
+    SimilarRequestDuplicateRequest: {
+      /**
+       * Withdrawsource
+       * @default false
+       */
+      withdrawSource: boolean;
+    };
     /** SimilarRequestJoinResponse */
     SimilarRequestJoinResponse: {
       /**
@@ -3972,19 +4194,35 @@ export interface components {
     SimilarRequestResponse: {
       /** Alreadylinked */
       alreadyLinked: boolean;
+      /** Alreadymarkedduplicate */
+      alreadyMarkedDuplicate: boolean;
+      /** Approvedroute */
+      approvedRoute: string | null;
+      /** Assignedteam */
+      assignedTeam: string | null;
       /** Reasons */
       reasons: string[];
       /** Reference */
       reference: string;
+      /** Requestkind */
+      requestKind: string;
+      /** Requestingunit */
+      requestingUnit: string | null;
       /** Score */
       score: number;
       /** State */
       state: string;
+      /** Supportedoperation */
+      supportedOperation: string | null;
       /**
        * Ticketid
        * Format: uuid
        */
       ticketId: string;
+      /** Timeperiodend */
+      timePeriodEnd: string | null;
+      /** Timeperiodstart */
+      timePeriodStart: string | null;
       /** Title */
       title: string;
     };
@@ -5355,6 +5593,158 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["RegistrationResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  search_embedding_state_api_v1_admin_search_embeddings_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SearchEmbeddingStateResponse"];
+        };
+      };
+    };
+  };
+  configure_search_embedding_key_api_v1_admin_search_embeddings_api_key_put: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SearchEmbeddingKeyRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SearchEmbeddingStateResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  configure_search_embeddings_api_v1_admin_search_embeddings_configuration_put: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SearchEmbeddingConfigurationRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SearchEmbeddingStateResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  reindex_search_embeddings_api_v1_admin_search_embeddings_reindex_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SearchEmbeddingStateResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  test_search_embeddings_api_v1_admin_search_embeddings_test_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SearchEmbeddingTestResponse"];
         };
       };
       /** @description Validation Error */
@@ -7266,6 +7656,44 @@ export interface operations {
       };
     };
   };
+  mark_duplicate_ticket_api_v1_similar_requests_routing__ticket_id__duplicate__related_ticket_id__post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path: {
+        ticket_id: string;
+        related_ticket_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SimilarRequestDuplicateRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SimilarRequestListResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   link_related_ticket_api_v1_similar_requests_routing__ticket_id__link__related_ticket_id__post: {
     parameters: {
       query?: never;
@@ -8231,6 +8659,39 @@ export interface operations {
     };
   };
   confirm_delivery_api_v1_tickets__ticket_id__confirm_delivery_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path: {
+        ticket_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TicketResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  reopen_chat_conversation_api_v1_tickets__ticket_id__conversation_reopen_post: {
     parameters: {
       query?: never;
       header?: {

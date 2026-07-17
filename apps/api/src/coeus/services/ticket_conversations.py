@@ -83,6 +83,35 @@ class ConversationService:
             )
             return self._send_to_ticket(actor, message, ticket, create=ticket_id is None)
 
+    def reopen(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
+        ticket = self._tickets.get_editable_ticket(actor, ticket_id)
+        if ticket.conversation_status != lifecycle.CONVERSATION_CLOSED:
+            raise AppError(
+                409,
+                "conversation_not_closed",
+                "The intake conversation is already open.",
+            )
+        proposed = replace(
+            ticket,
+            conversation_status=lifecycle.CONVERSATION_OPEN,
+            timeline=(
+                *ticket.timeline,
+                timeline(
+                    ticket.ticket_id,
+                    actor.user_id,
+                    "conversation_reopened",
+                    "Intake conversation reopened.",
+                ),
+            ),
+        )
+        return self._mutations.save_audited_if_current(
+            ticket,
+            proposed,
+            "ticket_conversation_reopened",
+            actor,
+            {"ticket_id": str(ticket.ticket_id)},
+        )
+
     def _send_to_ticket(
         self,
         actor: UserAccount,

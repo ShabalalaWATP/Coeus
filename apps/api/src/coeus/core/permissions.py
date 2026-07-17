@@ -22,6 +22,7 @@ class Permission(StrEnum):
     TICKET_ADD_INFORMATION = "ticket:add_information"
     TICKET_ADD_COMMENT = "ticket:add_comment"
     TICKET_TRANSITION = "ticket:transition"
+    TICKET_CONSOLIDATE = "ticket:consolidate"
     CHAT_USE = "chat:use"
     RFI_SEARCH = "rfi:search"
     RFI_OFFER_PRODUCT = "rfi:offer_product"

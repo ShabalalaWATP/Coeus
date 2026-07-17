@@ -26,6 +26,18 @@ class RfiProductOfferResponse(BaseModel):
     offerable_to_user: bool = Field(serialization_alias="offerableToUser")
     status: str
     rejection_reason: str | None = Field(serialization_alias="rejectionReason")
+    passages: list["RfiEvidencePassageResponse"] = Field(default_factory=list)
+
+
+class RfiEvidencePassageResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    citation: str
+    chunk_id: UUID = Field(serialization_alias="chunkId")
+    asset_id: UUID | None = Field(serialization_alias="assetId")
+    asset_name: str = Field(serialization_alias="assetName")
+    page_number: int = Field(serialization_alias="pageNumber")
+    excerpt: str
 
 
 class RfiSearchMetricsResponse(BaseModel):
@@ -38,6 +50,8 @@ class RfiSearchMetricsResponse(BaseModel):
     rejected_count: int = Field(serialization_alias="rejectedCount")
     accepted_product_id: UUID | None = Field(serialization_alias="acceptedProductId")
     created_at: datetime = Field(serialization_alias="createdAt")
+    retrieval_mode: str = Field(serialization_alias="retrievalMode")
+    degraded_reason: str | None = Field(serialization_alias="degradedReason")
 
 
 class RfiSearchResultsResponse(BaseModel):
@@ -47,3 +61,5 @@ class RfiSearchResultsResponse(BaseModel):
     ticket_state: str = Field(serialization_alias="ticketState")
     offers: list[RfiProductOfferResponse]
     metrics: RfiSearchMetricsResponse | None
+    retrieval_mode: str = Field(serialization_alias="retrievalMode")
+    degraded_reason: str | None = Field(serialization_alias="degradedReason")

@@ -48,6 +48,12 @@ OpenAI Realtime speech-to-speech session when an administrator enables it.
 - Stopping a voice session places the synthetic conversation transcript in the
   message editor for review and explicit submission through the existing chat
   validation and persistence path.
+- Once the reviewed transcript closes a complete conversation, the chat panel
+  shows a prominent Submit action beside its completion message. The customer
+  does not need to expand the manual-details section to find it.
+- A closed draft conversation also offers Add more information. Reopening keeps
+  the existing intake and transcript, returns the message editor and records an
+  audited state change before accepting further chat messages.
 - Realtime transcript events are ordered by their conversation item identifiers,
   rather than by asynchronous transcription completion time.
 - The reviewed raw transcript remains in chat history, but only `You:` turns can
@@ -100,6 +106,10 @@ OpenAI Realtime speech-to-speech session when an administrator enables it.
   question, matching the standard's order.
 - A complete intake produces the review-and-submit confirmation and the ticket
   becomes submittable (existing 7-field gate unchanged).
+- A requester with a complete conversation can see and use Submit directly in
+  the chat completion state without opening Edit details manually.
+- An authorised requester or editor can reopen a closed draft conversation and
+  continue adding information before submission.
 - The Dictate button is hidden when the Web Speech API is unavailable; blocked
   microphone access shows a clear hint and typing still works.
 - The voice setting is the final section of the admin AI panel and cannot be

@@ -76,6 +76,8 @@ export const requestTicket: Ticket = {
 export const rfiResultsFixture: RfiSearchResults = {
   ticketId: "ticket-1",
   ticketState: "RFI_MATCH_OFFERED",
+  retrievalMode: "hybrid",
+  degradedReason: null,
   metrics: {
     runId: "run-1",
     query: "Regional Stability Brief Baltic ports assessment report",
@@ -84,6 +86,8 @@ export const rfiResultsFixture: RfiSearchResults = {
     rejectedCount: 0,
     acceptedProductId: null,
     createdAt: "2026-07-05T00:01:00Z",
+    retrievalMode: "hybrid",
+    degradedReason: null,
   },
   offers: [
     {
@@ -102,6 +106,16 @@ export const rfiResultsFixture: RfiSearchResults = {
       offerableToUser: true,
       status: "offered",
       rejectionReason: null,
+      passages: [
+        {
+          citation: "Regional brief.pdf, page 2",
+          chunkId: "chunk-1",
+          assetId: "asset-1",
+          assetName: "Regional brief.pdf",
+          pageNumber: 2,
+          excerpt: "Synthetic reporting describes activity around the assessed ports.",
+        },
+      ],
     },
   ],
 };

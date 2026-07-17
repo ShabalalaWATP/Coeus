@@ -13,12 +13,14 @@ from sqlalchemy import create_engine, inspect, text
 from coeus.domain.enums import TicketState
 from coeus.domain.tickets import IntakeDetails, TicketRecord
 from coeus.persistence.codec import CodecWriteFormat, encode_value
+from coeus.persistence.resource_lease_schema import RESOURCE_LEASE_SCHEMA_SQL
 from coeus.persistence.state_store import PostgresStateStore
 from coeus.persistence.ticket_reverse_projection import reverse_project_ticket_state
+from coeus.persistence.ticket_shadow_schema import ensure_ticket_shadow_schema
 from coeus.repositories.tickets import InMemoryTicketRepository
 
 API_ROOT = Path(__file__).resolve().parents[2]
-HEAD_REVISION = "20260713_0012"
+HEAD_REVISION = "20260717_0013"
 
 pytestmark = pytest.mark.postgres
 
@@ -61,6 +63,12 @@ def test_empty_database_upgrades_to_head(postgres_database_url: str) -> None:
         "coeus_draft_audiences",
         "intelligence_store_products",
         "intelligence_store_assets",
+        "search_index_profiles",
+        "intelligence_store_search_chunks",
+        "intelligence_store_chunk_embeddings",
+        "intelligence_store_asset_index_state",
+        "ticket_search_documents",
+        "ticket_search_embeddings",
     } <= tables
     assert "vector" in extensions
 
@@ -99,6 +107,46 @@ def test_seeded_legacy_database_upgrades_idempotently(
         engine.dispose()
 
     assert cleaned == {"records": [retained]}
+    assert _revision(postgres_database_url) == HEAD_REVISION
+
+
+def test_runtime_bootstrapped_schema_upgrades_to_head(postgres_database_url: str) -> None:
+    """Reconcile databases bootstrapped lazily before Alembic advanced."""
+    config = _alembic(postgres_database_url)
+    command.upgrade(config, "20260710_0006")
+    ticket = TicketRecord(
+        ticket_id=uuid4(),
+        reference="TCK-RUNTIME-BOOTSTRAP",
+        requester_user_id=uuid4(),
+        state=TicketState.DRAFT_INTAKE,
+        intake=IntakeDetails(title="Synthetic runtime bootstrap"),
+    )
+    engine = create_engine(postgres_database_url)
+    try:
+        with engine.begin() as connection:
+            connection.execute(text(RESOURCE_LEASE_SCHEMA_SQL))
+            ensure_ticket_shadow_schema(connection)
+            connection.execute(
+                text(
+                    "INSERT INTO coeus_state(namespace, payload) "
+                    "VALUES ('tickets', CAST(:payload AS jsonb))"
+                ),
+                {"payload": json.dumps({"tickets": [encode_value(ticket)]})},
+            )
+
+        command.upgrade(config, "head")
+        with engine.connect() as connection:
+            requester_user_id = connection.execute(
+                text(
+                    "SELECT requester_user_id FROM coeus_ticket_aggregates "
+                    "WHERE ticket_id = :ticket_id"
+                ),
+                {"ticket_id": ticket.ticket_id},
+            ).scalar_one()
+    finally:
+        engine.dispose()
+
+    assert requester_user_id == ticket.requester_user_id
     assert _revision(postgres_database_url) == HEAD_REVISION
 
 

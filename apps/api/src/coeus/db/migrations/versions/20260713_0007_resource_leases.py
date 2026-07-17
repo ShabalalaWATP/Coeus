@@ -19,7 +19,7 @@ __all__ = ("branch_labels", "depends_on", "down_revision", "downgrade", "revisio
 def upgrade() -> None:
     op.execute(
         """
-        CREATE TABLE coeus_resource_leases (
+        CREATE TABLE IF NOT EXISTS coeus_resource_leases (
             lease_id uuid PRIMARY KEY,
             resource_type text NOT NULL,
             principal_id uuid NOT NULL,
@@ -32,7 +32,7 @@ def upgrade() -> None:
         """
     )
     op.execute(
-        "CREATE INDEX idx_coeus_resource_leases_scope "
+        "CREATE INDEX IF NOT EXISTS idx_coeus_resource_leases_scope "
         "ON coeus_resource_leases(resource_type, expires_at, principal_id)"
     )
 

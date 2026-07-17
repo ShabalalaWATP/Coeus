@@ -56,6 +56,7 @@ were added and are covered by tests.
 | Long list item strings amplify request size or get persisted into workflow records. | Store metadata arrays, routing clarification questions, analyst assignment work-package titles and admin role names now bound each item as well as list length. |
 | Reserved characters in browser route IDs or API path IDs cause path confusion. | Frontend API clients encode dynamic path segments, and local navigation links encode request, task, QC, product and asset IDs before constructing routes. |
 | Cross-task data association in the analyst workbench, or a stale routing selection after a ticket leaves the queue. | Frontend state is reset on selection change (analyst detail keyed by task; routing selection cleared when a ticket is routed away), preventing one task's draft being submitted against another. |
+| A closed intake is reopened by an unauthorised user or after the ticket has entered workflow. | The CSRF-protected reopen endpoint requires chat permission, object-level edit access and a draft or information-required ticket state. The optimistic mutation is audit logged and rejects conversations that are not closed. |
 
 ## Open Risks
 

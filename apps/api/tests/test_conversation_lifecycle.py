@@ -74,6 +74,34 @@ def test_confirming_the_offer_closes_the_chat_and_blocks_new_messages() -> None:
     assert denied.value.code == "conversation_closed"
 
 
+def test_closed_draft_can_be_reopened_and_continued() -> None:
+    conversations, actor = _conversations()
+    ticket = conversations.send_message(actor, COMPLETE_ROUTINE_MESSAGE)
+    closed = conversations.send_message(actor, "No, that's all thanks", ticket.ticket_id)
+
+    reopened = conversations.reopen(actor, closed.ticket_id)
+
+    assert reopened.conversation_status == CONVERSATION_OPEN
+    assert reopened.timeline[-1].event_type == "conversation_reopened"
+    continued = conversations.send_message(
+        actor,
+        "Also include a comparison with synthetic traffic from last month.",
+        reopened.ticket_id,
+    )
+    assert continued.messages[-2].body.startswith("Also include")
+    assert continued.conversation_status == CONVERSATION_CLOSE_OFFERED
+
+
+def test_conversation_that_is_not_closed_cannot_be_reopened() -> None:
+    conversations, actor = _conversations()
+    ticket = conversations.send_message(actor, COMPLETE_ROUTINE_MESSAGE)
+
+    with pytest.raises(AppError) as denied:
+        conversations.reopen(actor, ticket.ticket_id)
+
+    assert denied.value.code == "conversation_not_closed"
+
+
 def test_a_bare_yes_after_the_offer_does_not_close_the_chat() -> None:
     conversations, actor = _conversations()
     ticket = conversations.send_message(actor, COMPLETE_ROUTINE_MESSAGE)

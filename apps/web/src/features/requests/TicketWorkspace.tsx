@@ -50,6 +50,7 @@ export type TicketWorkspaceActions = {
   onNoMatchConsent: (taskAsNewRequest: boolean) => void;
   onReject: (productId: string, reason: string) => void;
   onRemoveCollaborator: (userId: string) => void;
+  onReopenConversation?: () => void;
   onRun: () => void;
   onSave: (payload: IntakeUpdate) => void;
   onSend: (message: string, onSuccess?: () => void) => void;
@@ -70,7 +71,7 @@ export type TicketWorkspacePending = Record<
   | "sending"
   | "submitting",
   boolean
->;
+> & { reopening?: boolean };
 
 type TicketWorkspaceProps = {
   actions: TicketWorkspaceActions;
@@ -163,9 +164,14 @@ export function TicketWorkspace({
 
       <section className="request-workspace" aria-label="Request workspace">
         <ChatPanel
+          canSubmit={canSubmit}
           csrfToken={session?.csrfToken ?? ""}
           isSending={pending.sending}
+          isReopening={pending.reopening ?? false}
+          isSubmitting={pending.submitting}
+          onReopen={actions.onReopenConversation}
           onSend={actions.onSend}
+          onSubmit={actions.onSubmit}
           readOnly={!canEdit || (ticket !== undefined && !showIntakeTools)}
           ticket={ticket}
         />

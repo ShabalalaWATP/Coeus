@@ -61,21 +61,6 @@ test("shows an empty transcript note for read-only conversations", () => {
   expect(screen.queryByText(/Hi, I am Istari/)).not.toBeInTheDocument();
 });
 
-test("replaces the message form once the conversation is complete", () => {
-  render(
-    <ChatPanel
-      isSending={false}
-      onSend={vi.fn()}
-      ticket={{ ...ticket, conversationStatus: "closed" }}
-    />,
-  );
-
-  expect(
-    screen.getByText("The conversation is complete. Review the details and press Submit."),
-  ).toBeVisible();
-  expect(screen.queryByLabelText("Message")).not.toBeInTheDocument();
-});
-
 class FakeSpeechRecognition {
   static instances: FakeSpeechRecognition[] = [];
   continuous = false;
@@ -124,6 +109,14 @@ test("dictates a message with the microphone", async () => {
     });
   });
   expect(screen.getByLabelText("Message")).toHaveValue("need a harbour brief");
+
+  act(() => {
+    recognition?.onresult?.({
+      resultIndex: 0,
+      results: [{ 0: { transcript: "with imagery" }, isFinal: true }],
+    });
+  });
+  expect(screen.getByLabelText("Message")).toHaveValue("need a harbour brief with imagery");
 
   await userEvent.click(screen.getByRole("button", { name: "Stop dictation" }));
   expect(recognition?.stop).toHaveBeenCalled();

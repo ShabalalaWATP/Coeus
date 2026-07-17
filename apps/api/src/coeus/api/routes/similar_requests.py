@@ -12,6 +12,7 @@ from coeus.api.dependencies import (
 from coeus.application.ports.admission import ResourceAdmission
 from coeus.domain.auth import AuthenticatedSession
 from coeus.schemas.similar_requests import (
+    SimilarRequestDuplicateRequest,
     SimilarRequestJoinResponse,
     SimilarRequestListResponse,
     SimilarRequestNoticeResponse,
@@ -84,6 +85,29 @@ def link_related_ticket(
     return SimilarRequestListResponse(matches=[] if match is None else [_match_response(match)])
 
 
+@router.post(
+    "/routing/{ticket_id}/duplicate/{related_ticket_id}",
+    response_model=SimilarRequestListResponse,
+)
+def mark_duplicate_ticket(
+    ticket_id: UUID,
+    related_ticket_id: UUID,
+    payload: SimilarRequestDuplicateRequest,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    service: Annotated[SimilarRequestService, Depends(get_similar_request_service)],
+    admission: Annotated[ResourceAdmission, Depends(get_search_admission)],
+) -> SimilarRequestListResponse:
+    with admission.reserve(authenticated.user.user_id):
+        service.mark_duplicate(
+            authenticated.user,
+            ticket_id,
+            related_ticket_id,
+            withdraw_source=payload.withdraw_source,
+        )
+        match = service.manager_match(authenticated.user, ticket_id, related_ticket_id)
+    return SimilarRequestListResponse(matches=[] if match is None else [_match_response(match)])
+
+
 def _match_response(match: SimilarRequestMatch) -> SimilarRequestResponse:
     return SimilarRequestResponse(
         ticket_id=match.ticket_id,
@@ -93,4 +117,12 @@ def _match_response(match: SimilarRequestMatch) -> SimilarRequestResponse:
         score=match.score,
         reasons=list(match.reasons),
         already_linked=match.already_linked,
+        already_marked_duplicate=match.already_marked_duplicate,
+        request_kind=match.request_kind,
+        approved_route=match.approved_route,
+        assigned_team=match.assigned_team,
+        requesting_unit=match.requesting_unit,
+        supported_operation=match.supported_operation,
+        time_period_start=match.time_period_start,
+        time_period_end=match.time_period_end,
     )

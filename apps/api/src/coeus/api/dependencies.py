@@ -17,6 +17,7 @@ from coeus.services.analyst_assignment_service import AnalystAssignmentService
 from coeus.services.analyst_workflow import AnalystWorkflowService
 from coeus.services.asset_tokens import AssetTokenService
 from coeus.services.auth import AuthService
+from coeus.services.embeddings import EmbeddingService
 from coeus.services.feedback_analytics import FeedbackAnalyticsService
 from coeus.services.manager_approval import ManagerApprovalService
 from coeus.services.manager_queue import ManagerQueueService
@@ -96,6 +97,13 @@ def get_ai_model_service(request: Request) -> AiModelService:
     service = getattr(request.app.state, "ai_model_service", None)
     if not isinstance(service, AiModelService):
         raise AppError(500, "ai_models_not_configured", "AI model selection is not configured.")
+    return service
+
+
+def get_embedding_service(request: Request) -> EmbeddingService:
+    service = getattr(request.app.state, "embedding_service", None)
+    if not isinstance(service, EmbeddingService):
+        raise AppError(500, "search_not_configured", "Search embeddings are not available.")
     return service
 
 

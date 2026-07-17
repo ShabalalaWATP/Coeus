@@ -4600,6 +4600,53 @@
         "title": "RfaCapabilityReviewResponse",
         "type": "object"
       },
+      "RfiEvidencePassageResponse": {
+        "properties": {
+          "assetId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assetid"
+          },
+          "assetName": {
+            "title": "Assetname",
+            "type": "string"
+          },
+          "chunkId": {
+            "format": "uuid",
+            "title": "Chunkid",
+            "type": "string"
+          },
+          "citation": {
+            "title": "Citation",
+            "type": "string"
+          },
+          "excerpt": {
+            "title": "Excerpt",
+            "type": "string"
+          },
+          "pageNumber": {
+            "title": "Pagenumber",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "citation",
+          "chunkId",
+          "assetId",
+          "assetName",
+          "pageNumber",
+          "excerpt"
+        ],
+        "title": "RfiEvidencePassageResponse",
+        "type": "object"
+      },
       "RfiProductOfferResponse": {
         "properties": {
           "assetTypes": {
@@ -4627,6 +4674,13 @@
           "offerableToUser": {
             "title": "Offerabletouser",
             "type": "boolean"
+          },
+          "passages": {
+            "items": {
+              "$ref": "#/components/schemas/RfiEvidencePassageResponse"
+            },
+            "title": "Passages",
+            "type": "array"
           },
           "productId": {
             "format": "uuid",
@@ -4737,6 +4791,17 @@
             "title": "Createdat",
             "type": "string"
           },
+          "degradedReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Degradedreason"
+          },
           "offeredCount": {
             "title": "Offeredcount",
             "type": "integer"
@@ -4748,6 +4813,10 @@
           "rejectedCount": {
             "title": "Rejectedcount",
             "type": "integer"
+          },
+          "retrievalMode": {
+            "title": "Retrievalmode",
+            "type": "string"
           },
           "runId": {
             "format": "uuid",
@@ -4762,13 +4831,26 @@
           "offeredCount",
           "rejectedCount",
           "acceptedProductId",
-          "createdAt"
+          "createdAt",
+          "retrievalMode",
+          "degradedReason"
         ],
         "title": "RfiSearchMetricsResponse",
         "type": "object"
       },
       "RfiSearchResultsResponse": {
         "properties": {
+          "degradedReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Degradedreason"
+          },
           "metrics": {
             "anyOf": [
               {
@@ -4786,6 +4868,10 @@
             "title": "Offers",
             "type": "array"
           },
+          "retrievalMode": {
+            "title": "Retrievalmode",
+            "type": "string"
+          },
           "ticketId": {
             "format": "uuid",
             "title": "Ticketid",
@@ -4800,7 +4886,9 @@
           "ticketId",
           "ticketState",
           "offers",
-          "metrics"
+          "metrics",
+          "retrievalMode",
+          "degradedReason"
         ],
         "title": "RfiSearchResultsResponse",
         "type": "object"
@@ -5159,6 +5247,221 @@
         "title": "RoutingTicketResponse",
         "type": "object"
       },
+      "SearchEmbeddingConfigurationRequest": {
+        "properties": {
+          "confirmExternalEgress": {
+            "default": false,
+            "title": "Confirmexternalegress",
+            "type": "boolean"
+          },
+          "model": {
+            "maxLength": 128,
+            "minLength": 2,
+            "title": "Model",
+            "type": "string"
+          },
+          "provider": {
+            "maxLength": 32,
+            "minLength": 2,
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "model"
+        ],
+        "title": "SearchEmbeddingConfigurationRequest",
+        "type": "object"
+      },
+      "SearchEmbeddingKeyRequest": {
+        "properties": {
+          "apiKey": {
+            "maxLength": 4096,
+            "minLength": 10,
+            "title": "Apikey",
+            "type": "string"
+          }
+        },
+        "required": [
+          "apiKey"
+        ],
+        "title": "SearchEmbeddingKeyRequest",
+        "type": "object"
+      },
+      "SearchEmbeddingStateResponse": {
+        "properties": {
+          "apiKeyConfigured": {
+            "title": "Apikeyconfigured",
+            "type": "boolean"
+          },
+          "availableModels": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Availablemodels",
+            "type": "array"
+          },
+          "availableProviders": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Availableproviders",
+            "type": "array"
+          },
+          "changedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Changedat"
+          },
+          "changedBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Changedby"
+          },
+          "chunkCount": {
+            "title": "Chunkcount",
+            "type": "integer"
+          },
+          "corpusVersion": {
+            "title": "Corpusversion",
+            "type": "string"
+          },
+          "degradedReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Degradedreason"
+          },
+          "dimensions": {
+            "title": "Dimensions",
+            "type": "integer"
+          },
+          "failedAssetCount": {
+            "title": "Failedassetcount",
+            "type": "integer"
+          },
+          "indexGeneration": {
+            "title": "Indexgeneration",
+            "type": "integer"
+          },
+          "indexStatus": {
+            "title": "Indexstatus",
+            "type": "string"
+          },
+          "lastIndexedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastindexedat"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "productCount": {
+            "title": "Productcount",
+            "type": "integer"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "spaceId": {
+            "title": "Spaceid",
+            "type": "string"
+          },
+          "ticketCount": {
+            "title": "Ticketcount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "provider",
+          "model",
+          "dimensions",
+          "apiKeyConfigured",
+          "availableProviders",
+          "availableModels",
+          "indexStatus",
+          "indexGeneration",
+          "productCount",
+          "chunkCount",
+          "ticketCount",
+          "failedAssetCount",
+          "corpusVersion",
+          "spaceId",
+          "changedBy",
+          "changedAt",
+          "lastIndexedAt",
+          "degradedReason"
+        ],
+        "title": "SearchEmbeddingStateResponse",
+        "type": "object"
+      },
+      "SearchEmbeddingTestResponse": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "provider",
+          "model",
+          "message"
+        ],
+        "title": "SearchEmbeddingTestResponse",
+        "type": "object"
+      },
+      "SimilarRequestDuplicateRequest": {
+        "properties": {
+          "withdrawSource": {
+            "default": false,
+            "title": "Withdrawsource",
+            "type": "boolean"
+          }
+        },
+        "title": "SimilarRequestDuplicateRequest",
+        "type": "object"
+      },
       "SimilarRequestJoinResponse": {
         "properties": {
           "joinedTicketId": {
@@ -5216,6 +5519,32 @@
             "title": "Alreadylinked",
             "type": "boolean"
           },
+          "alreadyMarkedDuplicate": {
+            "title": "Alreadymarkedduplicate",
+            "type": "boolean"
+          },
+          "approvedRoute": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approvedroute"
+          },
+          "assignedTeam": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assignedteam"
+          },
           "reasons": {
             "items": {
               "type": "string"
@@ -5227,6 +5556,21 @@
             "title": "Reference",
             "type": "string"
           },
+          "requestKind": {
+            "title": "Requestkind",
+            "type": "string"
+          },
+          "requestingUnit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requestingunit"
+          },
           "score": {
             "title": "Score",
             "type": "number"
@@ -5235,10 +5579,43 @@
             "title": "State",
             "type": "string"
           },
+          "supportedOperation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supportedoperation"
+          },
           "ticketId": {
             "format": "uuid",
             "title": "Ticketid",
             "type": "string"
+          },
+          "timePeriodEnd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeperiodend"
+          },
+          "timePeriodStart": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeperiodstart"
           },
           "title": {
             "title": "Title",
@@ -5252,7 +5629,15 @@
           "state",
           "score",
           "reasons",
-          "alreadyLinked"
+          "alreadyLinked",
+          "alreadyMarkedDuplicate",
+          "requestKind",
+          "approvedRoute",
+          "assignedTeam",
+          "requestingUnit",
+          "supportedOperation",
+          "timePeriodStart",
+          "timePeriodEnd"
         ],
         "title": "SimilarRequestResponse",
         "type": "object"
@@ -8195,6 +8580,243 @@
         "summary": "Reject Registration",
         "tags": [
           "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/search-embeddings": {
+      "get": {
+        "operationId": "search_embedding_state_api_v1_admin_search_embeddings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchEmbeddingStateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Search Embedding State",
+        "tags": [
+          "admin search"
+        ]
+      }
+    },
+    "/api/v1/admin/search-embeddings/api-key": {
+      "put": {
+        "operationId": "configure_search_embedding_key_api_v1_admin_search_embeddings_api_key_put",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchEmbeddingKeyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchEmbeddingStateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Configure Search Embedding Key",
+        "tags": [
+          "admin search"
+        ]
+      }
+    },
+    "/api/v1/admin/search-embeddings/configuration": {
+      "put": {
+        "operationId": "configure_search_embeddings_api_v1_admin_search_embeddings_configuration_put",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchEmbeddingConfigurationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchEmbeddingStateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Configure Search Embeddings",
+        "tags": [
+          "admin search"
+        ]
+      }
+    },
+    "/api/v1/admin/search-embeddings/reindex": {
+      "post": {
+        "operationId": "reindex_search_embeddings_api_v1_admin_search_embeddings_reindex_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchEmbeddingStateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reindex Search Embeddings",
+        "tags": [
+          "admin search"
+        ]
+      }
+    },
+    "/api/v1/admin/search-embeddings/test": {
+      "post": {
+        "operationId": "test_search_embeddings_api_v1_admin_search_embeddings_test_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchEmbeddingTestResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Search Embeddings",
+        "tags": [
+          "admin search"
         ]
       }
     },
@@ -11259,6 +11881,85 @@
         ]
       }
     },
+    "/api/v1/similar-requests/routing/{ticket_id}/duplicate/{related_ticket_id}": {
+      "post": {
+        "operationId": "mark_duplicate_ticket_api_v1_similar_requests_routing__ticket_id__duplicate__related_ticket_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "related_ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Related Ticket Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimilarRequestDuplicateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimilarRequestListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mark Duplicate Ticket",
+        "tags": [
+          "similar requests"
+        ]
+      }
+    },
     "/api/v1/similar-requests/routing/{ticket_id}/link/{related_ticket_id}": {
       "post": {
         "operationId": "link_related_ticket_api_v1_similar_requests_routing__ticket_id__link__related_ticket_id__post",
@@ -13175,6 +13876,65 @@
           }
         },
         "summary": "Confirm Delivery",
+        "tags": [
+          "tickets"
+        ]
+      }
+    },
+    "/api/v1/tickets/{ticket_id}/conversation/reopen": {
+      "post": {
+        "operationId": "reopen_chat_conversation_api_v1_tickets__ticket_id__conversation_reopen_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reopen Chat Conversation",
         "tags": [
           "tickets"
         ]

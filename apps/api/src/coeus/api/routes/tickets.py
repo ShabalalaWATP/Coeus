@@ -89,6 +89,20 @@ def send_chat_message(
     return to_ticket_response(ticket, authenticated.user)
 
 
+@router.post("/tickets/{ticket_id}/conversation/reopen", response_model=TicketResponse)
+async def reopen_chat_conversation(
+    ticket_id: UUID,
+    authenticated: Annotated[
+        AuthenticatedSession,
+        Depends(require_permission(Permission.CHAT_USE)),
+    ],
+    ticket_services: Annotated[TicketServices, Depends(get_ticket_services)],
+    _csrf_session: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+) -> TicketResponse:
+    ticket = ticket_services.conversations.reopen(authenticated.user, ticket_id)
+    return to_ticket_response(ticket, authenticated.user)
+
+
 @router.patch("/tickets/{ticket_id}/intake", response_model=TicketResponse)
 async def update_intake(
     ticket_id: UUID,

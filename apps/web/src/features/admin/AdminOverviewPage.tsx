@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 
 import { AiModelPanel } from "./AiModelPanel";
 import { RegistrationApprovalsPanel } from "./RegistrationApprovalsPanel";
+import { SearchEmbeddingsPanel } from "./SearchEmbeddingsPanel";
 import { VoiceModelPanel } from "./VoiceModelPanel";
 import { ErrorState, LoadingState } from "../../components/ui/PageState";
 import { getAdminOverview } from "../../lib/api-client/admin";
@@ -75,6 +76,8 @@ export default function AdminOverviewPage() {
       <RegistrationApprovalsPanel csrfToken={session?.csrfToken ?? ""} />
 
       <AiModelPanel csrfToken={session?.csrfToken ?? ""} />
+
+      <SearchEmbeddingsPanel csrfToken={session?.csrfToken ?? ""} />
 
       <section className="admin-action-grid" aria-label="Admin workspaces">
         {adminActions.map((item) => (

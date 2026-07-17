@@ -75,6 +75,29 @@
   color: var(--muted);
 }
 
+.routing-similar__context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+
+.routing-similar__context span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+
+.routing-similar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.routing-similar button.routing-similar__withdraw {
+  border-color: color-mix(in srgb, var(--danger) 58%, var(--border));
+  background: color-mix(in srgb, var(--danger) 10%, var(--surface));
+}
+
 .similar-panel__actions,
 .routing-similar__error {
   display: flex;

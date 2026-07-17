@@ -16,12 +16,24 @@ const similarList = {
       score: 0.68,
       reasons: ["similarity:lexical-rank:1", "similarity:metadata-region"],
       alreadyLinked: false,
+      alreadyMarkedDuplicate: false,
+      requestKind: "RFA",
+      approvedRoute: "rfa",
+      assignedTeam: "Baltic Assessment Team",
+      requestingUnit: "Mock Maritime Group",
+      supportedOperation: "Operation Synthetic North",
+      timePeriodStart: "2026-07-01",
+      timePeriodEnd: "2026-07-31",
     },
   ],
 };
 
 const linkedList = {
   matches: [{ ...similarList.matches[0], alreadyLinked: true }],
+};
+
+const duplicateList = {
+  matches: [{ ...similarList.matches[0], alreadyLinked: true, alreadyMarkedDuplicate: true }],
 };
 
 beforeEach(() => {
@@ -47,6 +59,26 @@ test("shows manager similar open requests and links a related ticket", async () 
     "http://127.0.0.1:8001/api/v1/similar-requests/routing/ticket-1/link/related-1",
     expect.objectContaining({
       headers: { "X-CSRF-Token": "test-csrf-token" },
+      method: "POST",
+    }),
+  );
+  expect(screen.getByText("Team: Baltic Assessment Team")).toBeVisible();
+  expect(screen.getByText("Operation: Operation Synthetic North")).toBeVisible();
+});
+
+test("lets a manager mark a confirmed match as a duplicate", async () => {
+  const fetchMock = routingSimilarFetch();
+  vi.stubGlobal("fetch", fetchMock);
+  renderWithProviders(<RoutingQueuePage queue="jioc" />, "/jioc/queue");
+
+  await userEvent.click(await screen.findByRole("button", { name: "Mark duplicate" }));
+
+  expect(await screen.findByRole("button", { name: "Duplicate marked" })).toBeDisabled();
+  expect(fetchMock).toHaveBeenCalledWith(
+    "http://127.0.0.1:8001/api/v1/similar-requests/routing/ticket-1/duplicate/related-1",
+    expect.objectContaining({
+      body: JSON.stringify({ withdrawSource: false }),
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": "test-csrf-token" },
       method: "POST",
     }),
   );
@@ -78,6 +110,9 @@ function routingSimilarFetch(options: { linkFails?: boolean } = {}) {
             }
           : jsonResponse(linkedList),
       );
+    }
+    if (url.includes("/similar-requests/routing/ticket-1/duplicate/related-1")) {
+      return Promise.resolve(jsonResponse(duplicateList));
     }
     if (url.includes("/similar-requests/routing/ticket-1")) {
       return Promise.resolve(jsonResponse(similarList));

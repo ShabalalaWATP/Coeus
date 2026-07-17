@@ -28,6 +28,34 @@ export type AiConnectionTest = {
   message: string;
 };
 
+export type SearchEmbeddingState = {
+  provider: string;
+  model: string;
+  dimensions: number;
+  apiKeyConfigured: boolean;
+  availableProviders: string[];
+  availableModels: string[];
+  indexStatus: string;
+  indexGeneration: number;
+  productCount: number;
+  chunkCount: number;
+  ticketCount: number;
+  failedAssetCount: number;
+  corpusVersion: string;
+  spaceId: string;
+  changedBy: string | null;
+  changedAt: string | null;
+  lastIndexedAt: string | null;
+  degradedReason: string | null;
+};
+
+export type SearchEmbeddingTest = {
+  ok: boolean;
+  provider: string;
+  model: string;
+  message: string;
+};
+
 export type AdminUser = {
   id: string;
   username: string;
@@ -115,6 +143,50 @@ export async function configureAiApiKey(
     body: JSON.stringify({ apiKey, provider }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "PUT",
+  });
+}
+
+export function getSearchEmbeddingState(): Promise<SearchEmbeddingState> {
+  return apiRequestJson<SearchEmbeddingState>("/api/v1/admin/search-embeddings", {
+    method: "GET",
+  });
+}
+
+export function configureSearchEmbeddingKey(
+  apiKey: string,
+  csrfToken: string,
+): Promise<SearchEmbeddingState> {
+  return apiRequestJson<SearchEmbeddingState>("/api/v1/admin/search-embeddings/api-key", {
+    body: JSON.stringify({ apiKey }),
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+    method: "PUT",
+  });
+}
+
+export function configureSearchEmbeddings(
+  provider: string,
+  model: string,
+  confirmExternalEgress: boolean,
+  csrfToken: string,
+): Promise<SearchEmbeddingState> {
+  return apiRequestJson<SearchEmbeddingState>("/api/v1/admin/search-embeddings/configuration", {
+    body: JSON.stringify({ provider, model, confirmExternalEgress }),
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+    method: "PUT",
+  });
+}
+
+export function testSearchEmbeddings(csrfToken: string): Promise<SearchEmbeddingTest> {
+  return apiRequestJson<SearchEmbeddingTest>("/api/v1/admin/search-embeddings/test", {
+    headers: { "X-CSRF-Token": csrfToken },
+    method: "POST",
+  });
+}
+
+export function reindexSearchEmbeddings(csrfToken: string): Promise<SearchEmbeddingState> {
+  return apiRequestJson<SearchEmbeddingState>("/api/v1/admin/search-embeddings/reindex", {
+    headers: { "X-CSRF-Token": csrfToken },
+    method: "POST",
   });
 }
 

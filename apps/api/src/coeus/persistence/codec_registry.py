@@ -30,6 +30,8 @@ from coeus.domain.qc import (
     QcDecisionStatus,
 )
 from coeus.domain.registration import RegistrationRequest, RegistrationStatus
+from coeus.domain.search_index import GroundedProductEvidence, SearchPassage
+from coeus.domain.search_metrics import RfiSearchMetrics
 from coeus.domain.store import BoundingBox, StoreAsset, StoreProduct, StoreProductMetadata
 from coeus.domain.teams import CalendarStatus, OrgTeam, TeamCalendarEntry, TeamKind, UserProfile
 from coeus.domain.tickets import (
@@ -54,7 +56,6 @@ from coeus.domain.tickets import (
     ProductOffer,
     ProductOfferStatus,
     RfaCapabilityReview,
-    RfiSearchMetrics,
     RouteRecommendation,
     RoutingRoute,
     TicketCollaborator,
@@ -66,6 +67,12 @@ from coeus.domain.tickets import (
 
 CodecClass = type[Any]
 CodecIdentity = tuple[CodecClass, str]
+
+# Reader-only aliases preserve rows written before a class moved modules. New
+# writes always use the stable semantic identity declared in TYPE_IDENTITIES.
+LEGACY_TYPE_ALIASES: Mapping[str, CodecClass] = {
+    "coeus.domain.tickets.RfiSearchMetrics": RfiSearchMetrics,
+}
 
 TYPE_IDENTITIES: tuple[CodecIdentity, ...] = (
     (AcgAccessApplication, "access.acg_access_application"),
@@ -108,8 +115,10 @@ TYPE_IDENTITIES: tuple[CodecIdentity, ...] = (
     (ManagerRoutingDecision, "tickets.manager_routing_decision"),
     (ProductDissemination, "tickets.product_dissemination"),
     (ProductOffer, "tickets.product_offer"),
+    (GroundedProductEvidence, "tickets.grounded_product_evidence"),
     (RfaCapabilityReview, "tickets.rfa_capability_review"),
     (RfiSearchMetrics, "tickets.rfi_search_metrics"),
+    (SearchPassage, "tickets.search_passage"),
     (RouteRecommendation, "tickets.route_recommendation"),
     (TicketCollaborator, "tickets.ticket_collaborator"),
     (TicketRecord, "tickets.ticket_record"),

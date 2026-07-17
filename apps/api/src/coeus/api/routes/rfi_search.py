@@ -12,14 +12,17 @@ from coeus.api.dependencies import (
 from coeus.application.ports.admission import ResourceAdmission
 from coeus.core.async_work import run_bounded_search
 from coeus.domain.auth import AuthenticatedSession
-from coeus.domain.tickets import ProductOffer, RfiSearchMetrics
+from coeus.domain.search_metrics import RfiSearchMetrics
+from coeus.domain.tickets import ProductOffer
 from coeus.schemas.rfi_search import (
     RejectProductOfferRequest,
+    RfiEvidencePassageResponse,
     RfiProductOfferResponse,
     RfiSearchMetricsResponse,
     RfiSearchResultsResponse,
 )
-from coeus.services.rfi_search import RfiSearchResults, RfiSearchService
+from coeus.services.rfi_search import RfiSearchService
+from coeus.services.rfi_search_types import RfiSearchResults
 
 router = APIRouter(prefix="/rfi-search", tags=["rfi-search"])
 
@@ -72,12 +75,15 @@ def _to_response(result: RfiSearchResults) -> RfiSearchResultsResponse:
     return RfiSearchResultsResponse(
         ticket_id=result.ticket.ticket_id,
         ticket_state=result.ticket.state.value,
-        offers=[_offer_response(offer) for offer in result.offers],
+        offers=[_offer_response(offer, result) for offer in result.offers],
         metrics=_metrics_response(result.metrics) if result.metrics is not None else None,
+        retrieval_mode=result.retrieval_mode,
+        degraded_reason=result.degraded_reason,
     )
 
 
-def _offer_response(offer: ProductOffer) -> RfiProductOfferResponse:
+def _offer_response(offer: ProductOffer, result: RfiSearchResults) -> RfiProductOfferResponse:
+    evidence = next((item for item in result.evidence if item.product_id == offer.product_id), None)
     return RfiProductOfferResponse(
         product_id=offer.product_id,
         title=offer.title,
@@ -94,6 +100,23 @@ def _offer_response(offer: ProductOffer) -> RfiProductOfferResponse:
         offerable_to_user=offer.offerable_to_user,
         status=offer.status.value,
         rejection_reason=offer.rejection_reason,
+        passages=[
+            RfiEvidencePassageResponse(
+                citation=(
+                    passage.asset_name
+                    if passage.page_number == 0
+                    else f"{passage.asset_name}, page {passage.page_number}"
+                ),
+                chunk_id=passage.chunk_id,
+                asset_id=passage.asset_id,
+                asset_name=passage.asset_name,
+                page_number=passage.page_number,
+                excerpt=passage.excerpt,
+            )
+            for passage in evidence.passages
+        ]
+        if evidence
+        else [],
     )
 
 
@@ -106,4 +129,6 @@ def _metrics_response(metrics: RfiSearchMetrics) -> RfiSearchMetricsResponse:
         rejected_count=metrics.rejected_count,
         accepted_product_id=metrics.accepted_product_id,
         created_at=metrics.created_at,
+        retrieval_mode=metrics.retrieval_mode,
+        degraded_reason=metrics.degraded_reason,
     )

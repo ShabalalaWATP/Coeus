@@ -1,52 +1,11 @@
 # Coeus Development Story
 
-Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVELOPMENT_STORY_SPRINTS_01-13.md). The 2026-07-06 continuation lives in [DEVELOPMENT_STORY_2026-07-06.md](DEVELOPMENT_STORY_2026-07-06.md).
-
-## 2026-07-13 security repair and hardening
-
-- Added atomic assigned-QC self-claim. Safe summaries precede assignment; one eligible reviewer owns detail, decisions and linked-draft audience. Audited release, rework retention, separation of duties, one-winner memory/PostgreSQL tests and local/relational Store-search parity close the audience gap. The final candidate passes 962 backend tests at 98.15 percent line and 95.08 percent branch coverage, 414 frontend tests at 98.69 percent line and 95.00 percent branch coverage, and all ten disposable-PostgreSQL browser stages.
-- Introduced the application-owned workflow transaction port and cut hosted PostgreSQL QC
-  release over to one version-checked ticket, Store, audit and notification transaction.
-  Audit failure rolls the unit back; concurrent adapters produce one commit and one conflict.
-- Cut requester cancellation, no-match consent, collect choice and delivery
-  confirmation over to the same hosted ticket-and-audit transaction while
-  retaining API responses and atomic single-process compatibility behaviour.
-- Extracted `TicketMutationService` for collision-safe creation, single-ticket
-  updates, deterministic paired links and batched join audits, removing hosted
-  save-then-audit compensation while preserving existing audit events.
-- Added hosted outbox delivery with strict payload validation, requester resolution,
-  fenced retries and durable in-app/email event-ID deduplication. Conflicting
-  content for the same aggregate version fails closed.
-- Verified Ruff, strict mypy, architecture and line gates. The full 838-test memory,
-  file and PostgreSQL suite passed at 97.29 percent combined line and branch coverage.
-- Cut persistence writers over to semantic stable type and enum IDs after
-  validating dual-format readers and identity goldens. Migration `0012` now
-  converts legacy ticket rows and reconciles canonical hashes before relational
-  mutation; relational startup rejects hash, identity and projection drift.
-- Expanded CI boundaries and config/docs drift gates. Frontend format, lint,
-  type, Knip, tests, production audit and build pass at 98.63 percent lines,
-  95.10 percent branches and 96.21 percent functions.
-- Projected ticket requester, lifecycle state and capacity into indexed relational columns.
-  Store reads use draft audiences with revocation tests; full reconciliation remains open.
-- Added dry-run-first, advisory-locked ticket-capacity recovery with scoped cleanup, validated
-  projection repair and drained-only release. Mutations are audited and focused tests pass.
-- Added a quiesced N-1 compatibility bridge. It verifies relational hashes,
-  emits legacy IDs, rejects drift or malformed state and normalises N-1 writes
-  back to stable IDs. A detached immutable N-1 worktree proved old and current
-  writes against a disposable PostgreSQL database.
-- Removed the local scanner findings: Bandit, pip-audit, Semgrep, Gitleaks,
-  Checkov and high/critical Trivy image checks are clean on the candidate.
-- Added a digest-pinned PostgreSQL browser gate. Ten real Chromium stages now
-  prove explicit draft registration, same-ACG search, known-detail and asset
-  grant denial, `413` recovery without mutation, `429` recovery without lost
-  input, customer intake, JIOC routing, RFA assignment, analyst production,
-  manager approval, QC release, Store search and exact downloaded asset bytes.
-  Published remains the upload default, preserving existing registration.
-- Added the provisional per-finding closure ledger. Formal closure still needs
-  the remaining audience/recovery browser matrix and authorised staging
-  topology. PR 109 protected checks passed on substantive candidate
-  `a02fd6d3`. The repository owner explicitly deferred the fresh sealed scan on
-  2026-07-13, so fresh-scan closure is not claimed.
+Sprint 1 to Sprint 13 entries live in
+[DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVELOPMENT_STORY_SPRINTS_01-13.md). The
+2026-07-06 continuation lives in
+[DEVELOPMENT_STORY_2026-07-06.md](DEVELOPMENT_STORY_2026-07-06.md), and the
+2026-07-13 security milestone lives in
+[DEVELOPMENT_STORY_2026-07-13.md](DEVELOPMENT_STORY_2026-07-13.md).
 
 ## 2026-07-11 cross-role usability and documentation accuracy
 
@@ -348,3 +307,37 @@ Sprint 1 to Sprint 13 entries live in [DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVEL
 - Verification passed with 682 backend tests at 98.22 percent line and 95.05
   percent branch coverage, 411 frontend tests at 98.61 percent line and 95.10
   percent branch coverage, and all three Playwright end-to-end journeys.
+
+## 2026-07-17 Grounded retrieval and duplicate assurance
+
+- Added an independent Search and embeddings administration boundary with its
+  own encrypted Gemini credential, persisted provider and model selection,
+  explicit egress confirmation, connection test and generation-aware re-index.
+  The quality-first production choice is `gemini-embedding-2` at 1,536
+  dimensions, while local and CI runtimes remain offline on `token-hash-v2`.
+- Added bounded local PDF and DOCX extraction, page-aware chunks, PostgreSQL
+  full-text plus pgvector retrieval, access-prefiltered evidence, stable
+  citations and persisted RFI search snapshots. Active RFI, RFA and collection
+  tickets share the generation index for full-corpus duplicate discovery.
+- Added customer join notices and manager duplicate controls with route, team,
+  time-window and operation context. Hidden-ticket responses preserve the
+  zero-signal rule, and link, duplicate and withdrawal actions are transactional
+  and audited.
+- Live browser testing found and fixed two production-only ranking defects. A
+  newly submitted request no longer disables compatible product vectors merely
+  because the corpus changed, and partial or weak semantic coverage can no
+  longer suppress a strong lexical ticket match. The running app returned a
+  92 percent similar open RFI and a hybrid cited Intelligence Store offer;
+  manager retrieval also returned active RFA work with route and team context.
+- Reconciled runtime-created PostgreSQL tables with Alembic revisions `0007` to
+  `0011`, added an old persisted codec identity alias and proved the drifted
+  local database upgrades to `20260717_0013` without deleting credentials or
+  application data. Docker API health, pgvector and the migrated schema were
+  verified against the live local stack.
+- Final backend verification passed with 1,129 tests and one intentional skip
+  at 98.16 percent line and 95.12 percent branch coverage. Ruff, mypy,
+  architecture, line-limit, documentation, security-policy, OpenAPI, Compose,
+  dependency-audit and production-build gates passed.
+- The complete frontend suite passed at 98.66 percent line and 95.03 percent
+  branch coverage. ESLint, TypeScript, Prettier, Knip and the production build
+  also passed.
