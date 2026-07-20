@@ -221,7 +221,7 @@ module "api" {
     COEUS_PUBSUB_TOPIC_PREFIX           = local.name_prefix
     COEUS_LLM_PROVIDER                  = "mock"
     COEUS_EMBEDDING_PROVIDER            = "mock"
-    COEUS_JIOC_AGENT_ROUTING_ENABLED     = "disabled"
+    COEUS_JIOC_AGENT_ROUTING_ENABLED    = "disabled"
   }
 
   secret_environment_variables = {
