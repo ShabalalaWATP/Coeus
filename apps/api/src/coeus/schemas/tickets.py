@@ -3,6 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from coeus.schemas.advisory_agents import AgentAdviceResponse
+
 
 class ChatMessageRequest(BaseModel):
     ticket_id: UUID | None = Field(default=None, validation_alias="ticketId")
@@ -184,6 +186,7 @@ class AgentRunResponse(BaseModel):
         default=None, ge=0, serialization_alias="outputTokenCount"
     )
     error_class: str | None = Field(default=None, max_length=200, serialization_alias="errorClass")
+    advice: AgentAdviceResponse | None = None
 
 
 class TimelineEntryResponse(BaseModel):

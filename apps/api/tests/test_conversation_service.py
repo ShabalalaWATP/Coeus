@@ -66,14 +66,12 @@ def test_failed_remote_fallback_refunds_provider_capacity() -> None:
             raise AppError(503, "provider_unavailable", "Synthetic provider failure.")
         data = json.loads(call.prompt)
         requested_field = data["missing_fields"][0]
-        reply = {
-            "area_or_region": "Which area or region does it concern?",
-            "time_period": "What time period should this cover?",
-        }[requested_field]
         return json.dumps(
             {
-                "requested_field": requested_field,
-                "reply": reply,
+                "action": "ask_missing_field",
+                "strategy": "ask_one_field",
+                "reason_codes": ["missing_required_field"],
+                "suggested_field": requested_field,
                 "abstain": False,
             }
         )
@@ -112,7 +110,9 @@ def test_failed_remote_fallback_refunds_provider_capacity() -> None:
         conversations.send_message(actor, "Need another synthetic briefing.")
 
     assert calls == 2
-    assert second.messages[-1].body == "Which area or region does it concern?"
+    assert second.messages[-1].body == (
+        "Got it. So this reaches the right team, which area or region does it concern?"
+    )
     assert denied.value.status_code == 429
     assert len(repository.list_tickets()) == 1
     run = second.agent_runs[-1]
@@ -121,14 +121,16 @@ def test_failed_remote_fallback_refunds_provider_capacity() -> None:
     assert run.model
     assert run.fallback_outcome == "not_used"
     assert run.validation_outcome == "passed"
-    assert run.prompt_version == "intake-text-v2"
-    assert run.policy_version == "intake-authority-v1"
+    assert run.prompt_version == "intake-planner-v1"
+    assert run.policy_version == "intake-planner-policy-v1"
     assert run.context_schema_version == "intake-extracted-fields-v1"
     assert run.input_hash and run.input_hash.startswith("sha256:")
     assert run.output_hash and run.output_hash.startswith("sha256:")
     assert "synthetic-key" not in repr(run)
     assert "Focus it on Baltic ports" not in repr(run)
     assert "Which area or region" not in repr(run)
+    assert run.advice is not None
+    assert run.advice.agent.value == "intake_planner"
 
 
 def test_chat_byte_limits_reject_before_and_after_provider_reply(monkeypatch) -> None:

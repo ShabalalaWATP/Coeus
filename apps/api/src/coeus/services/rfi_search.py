@@ -6,6 +6,7 @@ from coeus.application.ports.access import UserLookup
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
 from coeus.domain.access import ProductStatus
+from coeus.domain.agent_names import SEARCH_PLANNER_AGENT
 from coeus.domain.auth import UserAccount
 from coeus.domain.enums import TicketState
 from coeus.domain.search_index import GroundedProductEvidence
@@ -17,11 +18,9 @@ from coeus.domain.tickets import (
     ProductOfferStatus,
     TicketRecord,
 )
-from coeus.services.audit import AuditLog
+from coeus.services.advisory_records import advisory_agent_run
 from coeus.services.embeddings import EmbeddingService
 from coeus.services.grounded_search import GroundedSearchService
-from coeus.services.rfi_grounding import merge_grounded_candidates
-from coeus.services.rfi_ranking import query_text, rank_hybrid_rfi_candidates
 from coeus.services.rfi_records import (
     accepted_metric,
     active_offer,
@@ -37,14 +36,18 @@ from coeus.services.rfi_search_assurance import (
     decide_search_outcome,
     state_after_all_offers_rejected,
 )
+from coeus.services.rfi_search_retrieval import (
+    RFI_CANDIDATE_SEARCH_LIMIT,
+    ranked_additive_offers,
+    retrieve_with_additive_advice,
+)
 from coeus.services.rfi_search_types import RfiSearchResults
-from coeus.services.store import StoreSearchService, StoreServices
+from coeus.services.search_planner_agent import SearchPlannerAgent
+from coeus.services.store import StoreSearchService
 from coeus.services.store_access import StoreDetailService
 from coeus.services.ticket_mutations import TicketMutationService
 from coeus.services.ticket_records import is_editor, is_owner
-from coeus.services.tickets import TicketService, TicketServices
-
-RFI_CANDIDATE_SEARCH_LIMIT = 500
+from coeus.services.tickets import TicketService
 
 
 class RfiSearchService:
@@ -54,18 +57,18 @@ class RfiSearchService:
         store_search: StoreSearchService,
         store_details: StoreDetailService,
         access_repository: UserLookup,
-        audit_log: AuditLog,
         embeddings: EmbeddingService,
         grounded: GroundedSearchService,
+        planner: SearchPlannerAgent,
         mutations: TicketMutationService,
     ) -> None:
         self._tickets = tickets
         self._store_search = store_search
         self._store_details = store_details
         self._access_repository = access_repository
-        self._audit_log = audit_log
         self._embeddings = embeddings
         self._grounded = grounded
+        self._planner = planner
         self._mutations = mutations
 
     def run(self, actor: UserAccount, ticket_id: UUID) -> RfiSearchResults:
@@ -83,28 +86,36 @@ class RfiSearchService:
                 page_size=RFI_CANDIDATE_SEARCH_LIMIT,
             ),
         )
-        query = query_text(ticket.intake)
-        query_embedding = self._embeddings.embed_cached(
-            query, purpose="rfi-query", principal_id=actor.user_id
-        )
-        candidates = self._store_search.hybrid_candidates(
+        retrieval = retrieve_with_additive_advice(
             requester,
-            StoreSearchFilters(
-                status=ProductStatus.PUBLISHED,
-                page_size=RFI_CANDIDATE_SEARCH_LIMIT,
-            ),
-            query,
-            query_embedding,
+            ticket,
+            actor.user_id,
+            self._planner,
+            self._embeddings,
+            self._store_search,
+            self._store_details,
+            self._grounded,
         )
-        grounded = self._grounded.search(requester, ticket.intake, actor.user_id)
-        candidates = merge_grounded_candidates(
-            requester, self._store_details, candidates, grounded.evidence
-        )
-        offers = rank_hybrid_rfi_candidates(candidates, ticket.intake)
+        plan = retrieval.plan
+        grounded = retrieval.grounded
+        offers = ranked_additive_offers(retrieval, ticket)
         decision = decide_search_outcome(len(offers), grounded)
         now = datetime.now(UTC)
         summary = run_summary(len(offers), search.total)
+        planner_run = advisory_agent_run(
+            ticket.ticket_id,
+            SEARCH_PLANNER_AGENT,
+            "Advised bounded terminology for authorised product retrieval.",
+            plan.record,
+            created_at=now,
+        )
         agent_runs, run_id = complete_agent_run(ticket, summary, now)
+        search_index = next(index for index, run in enumerate(agent_runs) if run.run_id == run_id)
+        agent_runs = (
+            *agent_runs[:search_index],
+            planner_run,
+            *agent_runs[search_index:],
+        )
         search_timeline = [
             timeline(ticket.ticket_id, actor.user_id, "search_completed", summary),
         ]
@@ -128,7 +139,7 @@ class RfiSearchService:
             )
         metric = RfiSearchMetrics(
             run_id=run_id,
-            query=query,
+            query=retrieval.base_query,
             candidate_count=search.total,
             offered_count=len(offers),
             rejected_count=0,
@@ -321,23 +332,3 @@ class RfiSearchService:
     def _require(actor: UserAccount, permission: Permission) -> None:
         if permission not in actor.permissions:
             raise AppError(403, "forbidden", "Permission denied.")
-
-
-def build_rfi_search_service(
-    ticket_services: TicketServices,
-    store_services: StoreServices,
-    access_repository: UserLookup,
-    audit_log: AuditLog,
-    embeddings: EmbeddingService,
-    grounded: GroundedSearchService,
-) -> RfiSearchService:
-    return RfiSearchService(
-        ticket_services.tickets,
-        store_services.search,
-        store_services.details,
-        access_repository,
-        audit_log,
-        embeddings,
-        grounded,
-        ticket_services.mutations,
-    )

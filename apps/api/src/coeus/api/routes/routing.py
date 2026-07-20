@@ -123,6 +123,10 @@ async def routing_oversight(
                 completed_work_package_count=item.completed_work_package_count,
                 agent_disposition=item.agent_disposition,
                 agent_confidence=item.agent_confidence,
+                critic_verdict=item.critic_verdict,
+                critic_outcome=item.critic_outcome,
+                critic_challenge_count=item.critic_challenge_count,
+                critic_missing_evidence_count=item.critic_missing_evidence_count,
             )
             for item in view.tasks
         ],

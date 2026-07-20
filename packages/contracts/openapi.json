@@ -539,8 +539,105 @@
         "title": "AdminUserResponse",
         "type": "object"
       },
+      "AgentAdviceItemResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "references": {
+            "items": {
+              "type": "string"
+            },
+            "title": "References",
+            "type": "array"
+          }
+        },
+        "required": [
+          "kind",
+          "code",
+          "detail",
+          "references"
+        ],
+        "title": "AgentAdviceItemResponse",
+        "type": "object"
+      },
+      "AgentAdviceResponse": {
+        "properties": {
+          "agent": {
+            "title": "Agent",
+            "type": "string"
+          },
+          "contextReferences": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Contextreferences",
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AgentAdviceItemResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "providerAttempted": {
+            "title": "Providerattempted",
+            "type": "boolean"
+          },
+          "shadowOnly": {
+            "title": "Shadowonly",
+            "type": "boolean"
+          },
+          "verdict": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verdict"
+          }
+        },
+        "required": [
+          "agent",
+          "outcome",
+          "verdict",
+          "shadowOnly",
+          "contextReferences",
+          "items",
+          "providerAttempted"
+        ],
+        "title": "AgentAdviceResponse",
+        "type": "object"
+      },
       "AgentRunResponse": {
         "properties": {
+          "advice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgentAdviceResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "agentName": {
             "title": "Agentname",
             "type": "string"
@@ -4261,6 +4358,36 @@
             "title": "Completedworkpackagecount",
             "type": "integer"
           },
+          "criticChallengeCount": {
+            "title": "Criticchallengecount",
+            "type": "integer"
+          },
+          "criticMissingEvidenceCount": {
+            "title": "Criticmissingevidencecount",
+            "type": "integer"
+          },
+          "criticOutcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Criticoutcome"
+          },
+          "criticVerdict": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Criticverdict"
+          },
           "reference": {
             "title": "Reference",
             "type": "string"
@@ -4324,7 +4451,11 @@
           "workPackageCount",
           "completedWorkPackageCount",
           "agentDisposition",
-          "agentConfidence"
+          "agentConfidence",
+          "criticVerdict",
+          "criticOutcome",
+          "criticChallengeCount",
+          "criticMissingEvidenceCount"
         ],
         "title": "OversightTaskResponse",
         "type": "object"
@@ -6247,6 +6378,13 @@
       },
       "RoutingTicketResponse": {
         "properties": {
+          "advisoryRuns": {
+            "items": {
+              "$ref": "#/components/schemas/AgentRunResponse"
+            },
+            "title": "Advisoryruns",
+            "type": "array"
+          },
           "agentRuns": {
             "items": {
               "type": "string"
@@ -6376,6 +6514,7 @@
           "jiocAgentDecision",
           "clarifications",
           "agentRuns",
+          "advisoryRuns",
           "managerDecisions",
           "workflowPlanUpdates",
           "reanalysisContext"

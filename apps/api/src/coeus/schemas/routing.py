@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from coeus.schemas.tickets import AgentRunResponse
+
 ClarificationQuestion = Annotated[str, Field(min_length=3, max_length=300)]
 
 
@@ -197,6 +199,7 @@ class RoutingTicketResponse(BaseModel):
     )
     clarifications: list[ClarificationRequestResponse]
     agent_runs: list[str] = Field(serialization_alias="agentRuns")
+    advisory_runs: list[AgentRunResponse] = Field(serialization_alias="advisoryRuns")
     manager_decisions: list[ManagerDecisionResponse] = Field(serialization_alias="managerDecisions")
     workflow_plan_updates: list[WorkflowPlanUpdateResponse] = Field(
         serialization_alias="workflowPlanUpdates"
@@ -262,6 +265,10 @@ class OversightTaskResponse(BaseModel):
     completed_work_package_count: int = Field(serialization_alias="completedWorkPackageCount")
     agent_disposition: str | None = Field(serialization_alias="agentDisposition")
     agent_confidence: float | None = Field(serialization_alias="agentConfidence")
+    critic_verdict: str | None = Field(serialization_alias="criticVerdict")
+    critic_outcome: str | None = Field(serialization_alias="criticOutcome")
+    critic_challenge_count: int = Field(serialization_alias="criticChallengeCount")
+    critic_missing_evidence_count: int = Field(serialization_alias="criticMissingEvidenceCount")
 
 
 class RoutingOversightResponse(BaseModel):

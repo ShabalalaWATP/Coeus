@@ -40,9 +40,9 @@ export const JOURNEY_STAGES: JourneyStage[] = [
     ],
   },
   {
-    label: "JIOC route review",
+    label: "JIOC routing",
     detail:
-      "Capability agents advise and a JIOC team member decides whether collection is required.",
+      "The JIOC agent decides CM or RFA for clear cases; a JIOC team member handles exceptions.",
     icon: Route,
     states: ["JIOC_ROUTING_PENDING", "JIOC_INTERVENTION_HOLD", "JIOC_REVIEW", "COLLECT_CHOICE"],
   },

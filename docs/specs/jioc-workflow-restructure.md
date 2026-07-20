@@ -2,9 +2,9 @@
 
 ## Status
 
-Implemented (2026-07-11). See ADR 0022. Supersedes the routing and release
-behaviour described in `docs/specs/sprint-08-rfa-cm-routing.md` and
-`docs/specs/manager-final-release.md`.
+Implemented (2026-07-11). See ADR 0022. The mandatory human routing step is
+superseded by `customer-search-routing-orchestration.md` and ADR 0036. This
+specification supersedes the older Sprint 8 routing and manager-release designs.
 
 ## Problem
 

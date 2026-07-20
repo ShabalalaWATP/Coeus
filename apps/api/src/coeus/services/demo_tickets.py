@@ -13,11 +13,11 @@ from uuid import UUID
 
 from coeus.domain.auth import UserAccount
 from coeus.domain.enums import TicketState
+from coeus.domain.product_submission import DraftProductAsset
 from coeus.domain.qc import FeedbackRequestStatus, FeedbackSubmission, QcDecision, QcDecisionStatus
 from coeus.domain.store import StoreProduct
 from coeus.domain.tickets import (
     ChatMessage,
-    DraftProductAsset,
     IntakeDetails,
     ManagerRoutingDecisionStatus,
     MessageAuthor,

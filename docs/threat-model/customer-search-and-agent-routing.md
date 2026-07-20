@@ -86,11 +86,11 @@ Threat: a deployment accidentally enables state-changing routing, shadow mode
 mutates state, or an operator cannot reproduce which provider, prompt, context and
 policy produced a recorded run.
 
-Controls: `disabled` safe default, mutually exclusive `disabled`/`shadow`/`active`
-modes, explicit activation and kill switch, tests proving disabled/shadow can
-only refer to human review, versioned contexts and policies, and per-run
-provider/model, prompt, duration,
-validation/fallback and input/output hash provenance. Provenance excludes secrets,
+Controls: evaluated, pinned `active` local/test default, explicit hosted mode
+and approval, mutually exclusive `disabled`/`shadow`/`active` modes, tested
+restart/redeployment rollback, proof that disabled/shadow only refer to human
+review, plus provider/model, prompt, duration, validation/fallback and
+input/output hash provenance. Provenance excludes secrets,
 raw prompts and unnecessary raw request content.
 
 ### Silent dead-lettered automation

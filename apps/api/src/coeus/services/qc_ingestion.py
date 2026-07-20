@@ -7,13 +7,14 @@ from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
 from coeus.domain.access import ProductStatus
 from coeus.domain.auth import UserAccount
+from coeus.domain.product_submission import DraftProductAsset, DraftProductVersion
 from coeus.domain.store import (
     StoreAsset,
     StoreProduct,
     StoreProductMetadata,
     object_key_segment,
 )
-from coeus.domain.tickets import DraftProductAsset, DraftProductVersion, TicketRecord
+from coeus.domain.tickets import TicketRecord
 from coeus.repositories.access import AccessRepository
 from coeus.repositories.store_ids import new_store_product_id
 from coeus.services.analyst_records import approved_route

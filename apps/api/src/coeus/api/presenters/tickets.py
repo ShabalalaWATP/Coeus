@@ -1,5 +1,6 @@
 from collections.abc import Iterable
 
+from coeus.api.presenters.advisory_agents import advice_response
 from coeus.core.permissions import Permission
 from coeus.domain.auth import UserAccount
 from coeus.domain.tickets import (
@@ -31,6 +32,7 @@ from coeus.schemas.tickets import (
 )
 from coeus.services.customer_projection import customer_clarifications, customer_timeline
 from coeus.services.customer_status import CustomerStatus, customer_status
+from coeus.services.intake_planner import intake_is_ready_for_submission
 from coeus.services.intake_standard import applicable_entries, entry_satisfied, entry_value
 
 
@@ -51,7 +53,7 @@ def to_ticket_response(ticket: TicketRecord, actor: UserAccount) -> TicketRespon
         intake_checklist=_to_intake_checklist(ticket.intake),
         conversation_status=ticket.conversation_status,
         collect_disposition=ticket.collect_disposition,
-        is_ready_for_submission=not ticket.intake.missing_information,
+        is_ready_for_submission=intake_is_ready_for_submission(ticket.intake),
         visible_product_matches=_visible_product_matches(ticket, actor),
         released_product_ids=[dissemination.product_id for dissemination in ticket.disseminations],
         collaborators=[
@@ -59,7 +61,7 @@ def to_ticket_response(ticket: TicketRecord, actor: UserAccount) -> TicketRespon
         ],
         messages=[_to_message_response(message) for message in ticket.messages],
         attachments=[_to_attachment_response(attachment) for attachment in ticket.attachments],
-        agent_runs=[_to_agent_run_response(run) for run in ticket.agent_runs] if staff_view else [],
+        agent_runs=[to_agent_run_response(run) for run in ticket.agent_runs] if staff_view else [],
         clarification_requests=[_to_clarification_response(item) for item in clarifications],
         timeline=[_to_timeline_response(entry) for entry in history],
         created_at=ticket.created_at,
@@ -76,7 +78,7 @@ def to_ticket_summary_response(ticket: TicketRecord, actor: UserAccount) -> Tick
         customer_status=_to_customer_status(customer_status(ticket, actor)),
         title=ticket.intake.title,
         priority=ticket.intake.priority,
-        is_ready_for_submission=not ticket.intake.missing_information,
+        is_ready_for_submission=intake_is_ready_for_submission(ticket.intake),
         collaborator_count=len(ticket.collaborators),
         released_product_id=(
             ticket.disseminations[-1].product_id if ticket.disseminations else None
@@ -202,7 +204,7 @@ def _to_attachment_response(attachment: AttachmentMetadata) -> AttachmentMetadat
     )
 
 
-def _to_agent_run_response(run: AgentRun) -> AgentRunResponse:
+def to_agent_run_response(run: AgentRun) -> AgentRunResponse:
     return AgentRunResponse(
         run_id=run.run_id,
         agent_name=run.agent_name,
@@ -223,6 +225,7 @@ def _to_agent_run_response(run: AgentRun) -> AgentRunResponse:
         input_token_count=run.input_token_count,
         output_token_count=run.output_token_count,
         error_class=run.error_class,
+        advice=advice_response(run.advice) if run.advice else None,
         created_at=run.created_at,
     )
 

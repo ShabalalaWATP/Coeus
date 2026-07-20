@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-07-11).
+Accepted (2026-07-11). Its mandatory human routing step is superseded by ADR 0036.
 
 ## Context
 

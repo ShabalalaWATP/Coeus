@@ -7,8 +7,9 @@ from uuid import uuid4
 
 from coeus.core.errors import AppError
 from coeus.domain.auth import UserAccount
+from coeus.domain.product_submission import DraftProductVersion
 from coeus.domain.qc import QcAgentCheck, QcAgentPreflight, QcAgentPreflightStatus
-from coeus.domain.tickets import AgentRun, AgentRunStatus, DraftProductVersion, TicketRecord
+from coeus.domain.tickets import AgentRun, AgentRunStatus, TicketRecord
 from coeus.services.qc_proofing import proofing_findings
 from coeus.services.ticket_records import timeline
 from coeus.services.tickets import TicketServices

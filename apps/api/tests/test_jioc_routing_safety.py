@@ -20,22 +20,24 @@ from coeus.services.tasking_consent import TaskingConsentService
 from coeus.services.ticket_records import timeline
 
 
-def test_routing_defaults_disabled_and_active_requires_evaluated_release() -> None:
-    assert Settings(environment="test").jioc_agent_routing_enabled is JiocRoutingMode.DISABLED
+def test_routing_defaults_active_with_the_evaluated_release() -> None:
+    settings = Settings(environment="test")
 
+    assert settings.jioc_agent_routing_enabled is JiocRoutingMode.ACTIVE
+    assert settings.jioc_routing_approved_releases == [ROUTING_RELEASE]
+    settings.require_runtime_security()
+
+
+def test_active_routing_rejects_an_unapproved_release() -> None:
     with pytest.raises(ValueError, match="JIOC_ROUTING_APPROVED_RELEASES"):
         Settings(
-            environment="test", jioc_agent_routing_enabled=JiocRoutingMode.ACTIVE
+            environment="test",
+            jioc_agent_routing_enabled=JiocRoutingMode.ACTIVE,
+            jioc_routing_approved_releases=[],
         ).require_runtime_security()
 
-    Settings(
-        environment="test",
-        jioc_agent_routing_enabled=JiocRoutingMode.ACTIVE,
-        jioc_routing_approved_releases=[ROUTING_RELEASE],
-    ).require_runtime_security()
 
-
-def test_legacy_true_environment_value_fails_closed_without_release(
+def test_legacy_true_environment_value_requires_explicit_release_approval(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("COEUS_ENVIRONMENT", "test")
@@ -44,7 +46,8 @@ def test_legacy_true_environment_value_fails_closed_without_release(
     settings = Settings(_env_file=None)
 
     assert settings.jioc_agent_routing_enabled is True
-    with pytest.raises(ValueError, match="JIOC_ROUTING_APPROVED_RELEASES"):
+    assert settings.jioc_routing_approved_releases == [ROUTING_RELEASE]
+    with pytest.raises(ValueError, match="JIOC_ROUTING_APPROVED_RELEASES must be explicit"):
         settings.require_runtime_security()
 
 
@@ -124,7 +127,10 @@ def test_missing_operational_evidence_fails_closed_to_manager_review() -> None:
 
     assert result.state == TicketState.JIOC_REVIEW
     assert "availability_snapshot_missing" in result.jioc_routing_decisions[-1].rationale_codes
-    mutations.save_audited_if_current.assert_called_once()
+    mutations.save_audited_with_outbox_if_current.assert_called_once()
+    intent = mutations.save_audited_with_outbox_if_current.call_args.args[-1][0]
+    assert intent.event_type == "jioc_routing_critique_requested"
+    assert intent.payload["decision_id"] == str(result.jioc_routing_decisions[-1].decision_id)
 
 
 def test_disabled_referral_invokes_no_agent_and_records_no_agent_decision() -> None:
@@ -170,7 +176,7 @@ def test_shadow_mode_records_once_and_refers_to_human_review() -> None:
     assert all(run.execution_kind is AgentExecutionKind.DETERMINISTIC for run in first.agent_runs)
     assert all(run.input_hash and run.output_hash for run in first.agent_runs)
     assert second is first
-    mutations.save_audited_if_current.assert_called_once()
+    mutations.save_audited_with_outbox_if_current.assert_called_once()
 
 
 def test_shadow_clarification_records_evidence_without_customer_handoff() -> None:
@@ -282,6 +288,9 @@ def _service(
 ) -> tuple[JiocRoutingAgentService, MagicMock]:
     mutations = MagicMock()
     mutations.save_audited_if_current.side_effect = lambda _current, proposed, *_args: proposed
+    mutations.save_audited_with_outbox_if_current.side_effect = lambda _current, proposed, *_args: (
+        proposed
+    )
     tickets = SimpleNamespace(tickets=MagicMock(), mutations=mutations)
     tickets.tickets.assignment_snapshot.return_value = (ticket,)
     return (

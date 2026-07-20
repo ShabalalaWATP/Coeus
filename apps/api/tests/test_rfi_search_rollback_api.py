@@ -22,7 +22,9 @@ async def test_rfi_search_audit_failure_rolls_back_ticket(
         user = await login(client, "user@example.test")
         ticket_id = await submitted_ticket(client, str(user["csrfToken"]))
         original = _stored_ticket(app, ticket_id)
-        monkeypatch.setattr(app.state.rfi_search_service._audit_log, "record", _fail_audit)
+        monkeypatch.setattr(
+            app.state.rfi_search_service._mutations._audit_log, "record_many", _fail_audit
+        )
 
         with pytest.raises(RuntimeError, match="audit unavailable"):
             await client.post(
@@ -50,7 +52,9 @@ async def test_offer_accept_audit_failure_rolls_back_ticket(
         run = await _run_search(client, ticket_id, str(user["csrfToken"]))
         product_id = run.json()["offers"][0]["productId"]
         original = _stored_ticket(app, ticket_id)
-        monkeypatch.setattr(app.state.rfi_search_service._audit_log, "record", _fail_audit)
+        monkeypatch.setattr(
+            app.state.rfi_search_service._mutations._audit_log, "record_many", _fail_audit
+        )
 
         with pytest.raises(RuntimeError, match="audit unavailable"):
             await client.post(
@@ -79,7 +83,9 @@ async def test_offer_reject_audit_failure_rolls_back_ticket(
         run = await _run_search(client, ticket_id, str(user["csrfToken"]))
         product_id = run.json()["offers"][0]["productId"]
         original = _stored_ticket(app, ticket_id)
-        monkeypatch.setattr(app.state.rfi_search_service._audit_log, "record", _fail_audit)
+        monkeypatch.setattr(
+            app.state.rfi_search_service._mutations._audit_log, "record_many", _fail_audit
+        )
 
         with pytest.raises(RuntimeError, match="audit unavailable"):
             await client.post(

@@ -16,7 +16,7 @@ from rfi_search_helpers import login
 
 
 @pytest.mark.asyncio
-async def test_no_match_search_requires_customer_consent_before_route_review() -> None:
+async def test_no_match_search_requires_consent_before_agent_clarification() -> None:
     app = create_app(_settings())
     _make_search_definitive(app)
     async with AsyncClient(
@@ -40,11 +40,81 @@ async def test_no_match_search_requires_customer_consent_before_route_review() -
     assert ticket["state"] == "NEW_TASKING_CONSENT"
     assert _timeline_bodies(ticket, "rfi_no_match") == ["No existing product matched this request."]
     assert consent.status_code == 200
-    assert consent.json()["state"] == "JIOC_REVIEW"
+    assert consent.json()["state"] == "INFO_REQUIRED"
     assert _timeline_bodies(consent.json(), "tasking_confirmed") == [
         "Requester confirmed new tasking; queued for JIOC routing."
     ]
     assert "no_match_tasking_confirmed" in _audit_types(app)
+
+
+@pytest.mark.parametrize(
+    (
+        "description",
+        "output_format",
+        "area_or_region",
+        "disciplines",
+        "expected_route",
+        "expected_state",
+    ),
+    (
+        (
+            "Assess existing maritime port reports.",
+            "assessment report",
+            "north atlantic",
+            "IMINT OSINT",
+            "rfa",
+            "ANALYST_ASSIGNMENT",
+        ),
+        (
+            "Collect new cyber sensor telemetry.",
+            "collection plan",
+            "global",
+            "SIGINT TECHINT",
+            "cm",
+            "COLLECT_CHOICE",
+        ),
+    ),
+)
+@pytest.mark.asyncio
+async def test_default_active_agent_routes_clear_rfa_and_cm_requests(
+    description: str,
+    output_format: str,
+    area_or_region: str,
+    disciplines: str,
+    expected_route: str,
+    expected_state: str,
+) -> None:
+    app = create_app(_settings())
+    _make_search_definitive(app)
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        user = await login(client, "user@example.test")
+        ticket_id = await _no_match_ticket(
+            client,
+            str(user["csrfToken"]),
+            description=description,
+            output_format=output_format,
+            area_or_region=area_or_region,
+            disciplines=disciplines,
+            title="Synthetic routing requirement",
+        )
+        await _run_no_match_search(client, ticket_id, str(user["csrfToken"]))
+        consent = await client.post(
+            f"/api/v1/tickets/{ticket_id}/no-match-consent",
+            headers={"X-CSRF-Token": str(user["csrfToken"])},
+            json={"taskAsNewRequest": True},
+        )
+
+    stored = _stored_ticket(app, ticket_id)
+    assert consent.status_code == 200
+    decision = stored.jioc_routing_decisions[-1]
+    assert consent.json()["state"] == expected_state, (
+        decision.rationale_codes,
+        decision.required_clarifications,
+    )
+    assert decision.disposition == "auto_applied"
+    assert decision.recommended_route == expected_route
 
 
 @pytest.mark.asyncio
@@ -173,7 +243,16 @@ def _settings(*, active_work_offers_enabled: bool = True) -> Settings:
     )
 
 
-async def _no_match_ticket(client: AsyncClient, csrf_token: str) -> str:
+async def _no_match_ticket(
+    client: AsyncClient,
+    csrf_token: str,
+    *,
+    description: str = "Forecast mock agricultural yields on Mars farms.",
+    output_format: str = "spreadsheet",
+    area_or_region: str = "Mars farms",
+    disciplines: str = "OSINT",
+    title: str = "Martian Crop Forecast",
+) -> str:
     created = await client.post(
         "/api/v1/chat/messages",
         headers={"X-CSRF-Token": csrf_token},
@@ -184,15 +263,16 @@ async def _no_match_ticket(client: AsyncClient, csrf_token: str) -> str:
         f"/api/v1/tickets/{ticket_id}/intake",
         headers={"X-CSRF-Token": csrf_token},
         json={
-            "title": "Martian Crop Forecast",
-            "description": "Forecast mock agricultural yields on Mars farms.",
+            "title": title,
+            "description": description,
             "operationalQuestion": "What crop yield is expected?",
-            "areaOrRegion": "Mars farms",
+            "areaOrRegion": area_or_region,
             "timePeriodStart": "2026-06-01",
+            "deadline": "2026-07-21",
             "priority": "routine",
             "requestingUnit": "Mars Survey Squadron",
-            "intelligenceDisciplines": "OSINT",
-            "requiredOutputFormat": "spreadsheet",
+            "intelligenceDisciplines": disciplines,
+            "requiredOutputFormat": output_format,
             "customerSuccessCriteria": "Estimate crop output.",
             "knownContext": None,
         },
@@ -250,6 +330,7 @@ def _make_search_definitive(app: FastAPI) -> None:
         result = original(*args, **kwargs)
         return replace(
             result,
+            evidence=(),
             degraded_reason=None,
             coverage_status="complete",
             profile_space_id="test:complete:g1",

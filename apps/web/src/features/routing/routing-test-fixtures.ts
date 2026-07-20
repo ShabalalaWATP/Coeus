@@ -25,6 +25,7 @@ export const baseTicket: RoutingTicket = {
   recommendation: null,
   clarifications: [],
   agentRuns: [],
+  advisoryRuns: [],
   managerDecisions: [],
   workflowPlanUpdates: [],
 };

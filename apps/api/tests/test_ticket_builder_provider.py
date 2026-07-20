@@ -14,7 +14,6 @@ REFUSAL = "I can only help capture the requirement. Please provide the missing d
 PRIORITY_QUESTION = (
     "Thanks, that helps. How urgent is this for you: critical, high, medium, routine or low?"
 )
-REMOTE_PRIORITY_QUESTION = "How urgent is this request?"
 
 
 class JsonStream:
@@ -34,13 +33,16 @@ class JsonStream:
         yield json.dumps(self._payload).encode()
 
 
-def _structured_reply(
-    reply: str = REMOTE_PRIORITY_QUESTION,
-    *,
-    field: str = "priority",
-    abstain: bool = False,
-) -> str:
-    return json.dumps({"requested_field": field, "reply": reply, "abstain": abstain})
+def _structured_reply() -> str:
+    return json.dumps(
+        {
+            "action": "ask_missing_field",
+            "strategy": "ask_one_field",
+            "reason_codes": ["missing_required_field"],
+            "suggested_field": "priority",
+            "abstain": False,
+        }
+    )
 
 
 class ForbiddenClient:
@@ -118,7 +120,7 @@ def test_explicit_provider_activation_routes_replies_to_it(
     provider = ConfigurableIntakeProvider(settings, ai_models)
 
     assert ai_models.provider() == "gemini_api"
-    assert provider.build_assistant_message(_intake(), ()) == REMOTE_PRIORITY_QUESTION
+    assert provider.build_assistant_message(_intake(), ()) == PRIORITY_QUESTION
 
 
 def test_flagged_messages_are_refused_without_calling_any_provider(
@@ -173,13 +175,13 @@ def test_admitted_reply_reports_remote_fallback_and_success() -> None:
 
     assert fallback.text == PRIORITY_QUESTION
     assert not fallback.provider_succeeded
-    assert success.text == REMOTE_PRIORITY_QUESTION
+    assert success.text == PRIORITY_QUESTION
     assert success.provider_succeeded
     assert success.provider == "gemini_api"
     assert success.model
     assert success.duration_ms is not None
     assert success.outcome == "provider_success"
-    assert success.prompt_version == "intake-text-v2"
+    assert success.prompt_version == "intake-planner-v1"
 
 
 def test_provider_circuit_stops_repeated_failed_remote_calls() -> None:
@@ -205,7 +207,7 @@ def test_provider_circuit_stops_repeated_failed_remote_calls() -> None:
     assert not provider.prepare_assistant_reply(_intake(), ()).requires_admission
 
 
-def test_unexpected_provider_failure_is_recorded_and_propagated() -> None:
+def test_unexpected_provider_failure_is_recorded_and_falls_back() -> None:
     def fail(_call: object) -> str:
         raise RuntimeError("synthetic unexpected failure")
 
@@ -220,8 +222,11 @@ def test_unexpected_provider_failure_is_recorded_and_propagated() -> None:
         text_generator=fail,
     )
 
-    with pytest.raises(RuntimeError, match="unexpected"):
-        provider.build_assistant_message(_intake(), ())
+    reply = provider.build_admitted_assistant_message(_intake(), ())
+
+    assert reply.text == PRIORITY_QUESTION
+    assert reply.outcome == "provider_error_fallback"
+    assert reply.error_class == "RuntimeError"
     assert not provider.prepare_assistant_reply(_intake(), ()).requires_admission
 
 
@@ -264,7 +269,7 @@ def test_settings_driven_openai_provider_is_called_without_ai_models(
 
     message = provider.build_assistant_message(_intake(), ())
 
-    assert message == REMOTE_PRIORITY_QUESTION
+    assert message == PRIORITY_QUESTION
     assert captured["url"] == "https://api.openai.com/v1/chat/completions"
     body = captured["body"]
     assert isinstance(body, dict)
@@ -273,6 +278,8 @@ def test_settings_driven_openai_provider_is_called_without_ai_models(
     messages = body["messages"]
     assert isinstance(messages, list)
     assert messages[0]["role"] == "system"
-    assert "YOUR ONLY PURPOSE" in messages[0]["content"]
+    assert "PURPOSE: advise the deterministic RFI intake controller only" in messages[0]["content"]
     assert messages[1]["role"] == "user"
-    assert "Harbour brief" in messages[1]["content"]
+    prompt = json.loads(messages[1]["content"])
+    assert "Harbour brief" not in messages[1]["content"]
+    assert prompt == {"captured_fields": {}, "missing_fields": ["priority"]}

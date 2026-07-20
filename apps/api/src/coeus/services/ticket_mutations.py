@@ -10,7 +10,7 @@ from coeus.application.ports.workflow_transaction import WorkflowTransactionPort
 from coeus.core.errors import AppError
 from coeus.domain.auth import UserAccount
 from coeus.domain.tickets import TicketRecord
-from coeus.domain.workflow_transaction import WorkflowAuditIntent
+from coeus.domain.workflow_transaction import WorkflowAuditIntent, WorkflowOutboxIntent
 from coeus.services.audit import AuditLog
 from coeus.services.ticket_persistence import save_ticket, save_ticket_if_current
 
@@ -69,6 +69,25 @@ class TicketMutationService:
             proposed,
             actor,
             ((event_type, metadata),),
+        )
+
+    def save_audited_with_outbox_if_current(
+        self,
+        expected: TicketRecord,
+        proposed: TicketRecord,
+        event_type: str,
+        actor: UserAccount | UUID,
+        metadata: dict[str, str],
+        outbox: tuple[WorkflowOutboxIntent, ...],
+    ) -> TicketRecord:
+        if self._transaction is None:
+            return self.save_audited_if_current(expected, proposed, event_type, actor, metadata)
+        return self._commit(
+            expected,
+            proposed,
+            actor,
+            ((event_type, metadata),),
+            outbox,
         )
 
     def save_with_audits_if_current(
@@ -133,6 +152,7 @@ class TicketMutationService:
         proposed: TicketRecord,
         actor: UserAccount | UUID,
         events: tuple[tuple[str, dict[str, str]], ...],
+        outbox: tuple[WorkflowOutboxIntent, ...] = (),
     ) -> TicketRecord:
         committed = replace(proposed, updated_at=datetime.now(UTC))
         audits = tuple(
@@ -140,7 +160,7 @@ class TicketMutationService:
             for event_type, metadata in events
         )
         if not self._transaction or not self._transaction.commit_ticket_update(
-            expected, committed, audits
+            expected, committed, audits, outbox
         ):
             raise _ticket_changed()
         self._accept_many((committed,))

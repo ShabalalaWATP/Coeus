@@ -14,6 +14,13 @@ from coeus.domain.access import (
     ProductRecord,
     ProductStatus,
 )
+from coeus.domain.advisory_agents import (
+    AdviceItemKind,
+    AdvisoryAgentKind,
+    AgentAdvice,
+    AgentAdviceItem,
+    AgentAdviceProvenance,
+)
 from coeus.domain.auth import RoleName, SessionRecord, UserAccount
 from coeus.domain.capabilities import CandidateTeam
 from coeus.domain.customer_outcomes import (
@@ -93,6 +100,9 @@ LEGACY_TYPE_ALIASES: Mapping[str, CodecClass] = {
 }
 
 TYPE_IDENTITIES: tuple[CodecIdentity, ...] = (
+    (AgentAdvice, "advisory.agent_advice"),
+    (AgentAdviceItem, "advisory.agent_advice_item"),
+    (AgentAdviceProvenance, "advisory.agent_advice_provenance"),
     (AcgAccessApplication, "access.acg_access_application"),
     (AccessCheck, "access.access_check"),
     (AccessControlGroup, "access.access_control_group"),
@@ -156,6 +166,8 @@ TYPE_IDENTITIES: tuple[CodecIdentity, ...] = (
 )
 
 ENUM_IDENTITIES: tuple[CodecIdentity, ...] = (
+    (AdvisoryAgentKind, "advisory.agent_kind"),
+    (AdviceItemKind, "advisory.item_kind"),
     (AcgApplicationStatus, "access.acg_application_status"),
     (ProductStatus, "access.product_status"),
     (RoleName, "auth.role_name"),

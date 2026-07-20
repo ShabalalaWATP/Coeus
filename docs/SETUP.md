@@ -58,15 +58,15 @@ cp .env.example .env
 
 ### JIOC routing configuration upgrade
 
-Existing `.env` files may still contain the former boolean setting
-`COEUS_JIOC_AGENT_ROUTING_ENABLED=true`. That legacy value now means `active`
-and intentionally fails startup unless the exact evaluated routing release is
-also present in `COEUS_JIOC_ROUTING_APPROVED_RELEASES`. Do not add the release
-only to make startup pass. During upgrade, set the mode explicitly to
-`disabled` (the safe default) or `shadow`; select `active` only after reviewing
-the current evaluation report and approving its exact release identifier.
-`false` continues to mean `disabled`. After migration, keep one of the explicit
-`disabled`, `shadow` or `active` values so the deployment intent is unambiguous.
+Coeus's supported synthetic local/test runtime ships the evaluated JIOC release
+in `active` mode, so eligible new tasking is automatically classified as CM or
+RFA. Unsafe or ambiguous evidence still refers the request to human JIOC review.
+Existing `.env` files override this baseline: set
+`COEUS_JIOC_AGENT_ROUTING_ENABLED=active` and pin the current identifier in
+`COEUS_JIOC_ROUTING_APPROVED_RELEASES`. Hosted deployments must explicitly set
+the mode and release approval; keep them disabled until production evidence is
+approved. `disabled` is the restart/redeployment kill switch; `shadow` records
+evidence only. Legacy `true` requires an explicit release approval.
 
 Hosted environments must also set a random `COEUS_METRICS_BEARER_TOKEN` of at
 least 32 characters. Monitoring sends it in the `Authorization: Bearer` header;
@@ -286,10 +286,10 @@ coverage. Do not lower the coverage gates.
   stores it in the API local-data volume. Hosted deployments must set
   `COEUS_CONFIGURATION_ENCRYPTION_KEY` from a secret manager; losing or changing
   it makes saved admin credentials unreadable. Environment-managed provider
-  keys remain authoritative and cannot be replaced in the UI. Configure them
-  with `COEUS_LLM_PROVIDER` plus the matching key env var
-  (`COEUS_GEMINI_API_KEY`, `COEUS_OPENAI_API_KEY`, `COEUS_VERTEX_API_KEY` or
-  `COEUS_BEDROCK_API_KEY`, with `COEUS_BEDROCK_REGION` for Bedrock).
+  keys remain authoritative. Hosted Intake Planner egress is unavailable until
+  ticket classification is enforceable. Hosted Search Planner and Routing Critic
+  egress stays off until its flag is true; the selected provider and `synthetic`
+  class must also appear in the advisory approval lists in `.env.example`.
 - To send real emails locally, set `COEUS_EMAIL_PROVIDER=smtp`,
   `COEUS_SMTP_HOST`, `COEUS_SMTP_FROM` and any required username/password. The
   default `outbox` provider records and audits emails without sending them.

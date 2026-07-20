@@ -1,9 +1,11 @@
 import { MessageCircleQuestion } from "lucide-react";
 
 import { AssignAnalystPanel } from "./AssignAnalystPanel";
+import { AdvisoryEvidencePanel } from "./AdvisoryEvidencePanel";
 import { ManagerApprovalPanel } from "./ManagerApprovalPanel";
 import { SimilarRequestsPanel } from "./SimilarRequestsPanel";
 import { ReanalysisDecisionPanel } from "./ReanalysisDecisionPanel";
+import { RoutingPriorityAssessment } from "./RoutingPriorityAssessment";
 import {
   canApprove,
   canApproveWithOverride,
@@ -12,7 +14,6 @@ import {
   isRouteOverride,
 } from "./routing-model";
 import { PlanUpdates, Recommendation, Review } from "./routing-sections";
-import { formatTaggedReason } from "./routing-labels";
 import { EmptyState } from "../../components/ui/PageState";
 import { StatusPill } from "../../components/ui/StatusPill";
 import type { AnalystTask } from "../../lib/api-client/analyst";
@@ -145,21 +146,7 @@ export function RoutingDetailPanel({
             <p>{selectedTicket.title}</p>
           </div>
           <StatusPill state={selectedTicket.state} />
-          {selectedTicket.priorityAssessment ? (
-            <div className="priority-assessment">
-              <span
-                className={`priority-badge priority-badge--${selectedTicket.priorityAssessment.tier.toLowerCase()}`}
-              >
-                {selectedTicket.priorityAssessment.tier}
-              </span>
-              <span>Internal priority score {selectedTicket.priorityAssessment.score}</span>
-              <ul>
-                {selectedTicket.priorityAssessment.reasons.map((reason) => (
-                  <li key={reason}>{formatTaggedReason(reason)}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
+          <RoutingPriorityAssessment ticket={selectedTicket} />
           {!canDecide ? (
             <p className="workspace-alert" role="status">
               {`This request is already routed to the ${
@@ -168,6 +155,7 @@ export function RoutingDetailPanel({
             </p>
           ) : null}
           <Recommendation ticket={selectedTicket} />
+          <AdvisoryEvidencePanel runs={selectedTicket.advisoryRuns} />
           <Review title="RFA recommendation" review={selectedTicket.rfaReview} />
           <Review title="CM recommendation" review={selectedTicket.cmReview} />
           <PlanUpdates ticket={selectedTicket} />

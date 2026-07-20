@@ -2577,8 +2577,37 @@ export interface components {
       /** Username */
       username: string;
     };
+    /** AgentAdviceItemResponse */
+    AgentAdviceItemResponse: {
+      /** Code */
+      code: string;
+      /** Detail */
+      detail: string;
+      /** Kind */
+      kind: string;
+      /** References */
+      references: string[];
+    };
+    /** AgentAdviceResponse */
+    AgentAdviceResponse: {
+      /** Agent */
+      agent: string;
+      /** Contextreferences */
+      contextReferences: string[];
+      /** Items */
+      items: components["schemas"]["AgentAdviceItemResponse"][];
+      /** Outcome */
+      outcome: string;
+      /** Providerattempted */
+      providerAttempted: boolean;
+      /** Shadowonly */
+      shadowOnly: boolean;
+      /** Verdict */
+      verdict: string | null;
+    };
     /** AgentRunResponse */
     AgentRunResponse: {
+      advice?: components["schemas"]["AgentAdviceResponse"] | null;
       /** Agentname */
       agentName: string;
       /** Contextschemaversion */
@@ -3870,6 +3899,14 @@ export interface components {
       analystCount: number;
       /** Completedworkpackagecount */
       completedWorkPackageCount: number;
+      /** Criticchallengecount */
+      criticChallengeCount: number;
+      /** Criticmissingevidencecount */
+      criticMissingEvidenceCount: number;
+      /** Criticoutcome */
+      criticOutcome: string | null;
+      /** Criticverdict */
+      criticVerdict: string | null;
       /** Reference */
       reference: string;
       /** Route */
@@ -4638,6 +4675,8 @@ export interface components {
     };
     /** RoutingTicketResponse */
     RoutingTicketResponse: {
+      /** Advisoryruns */
+      advisoryRuns: components["schemas"]["AgentRunResponse"][];
       /** Agentruns */
       agentRuns: string[];
       /** Clarifications */

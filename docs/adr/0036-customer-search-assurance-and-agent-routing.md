@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted, 2026-07-18.
+Accepted, 2026-07-18. Active-routing baseline approved, 2026-07-20.
 
 ## Context
 
@@ -38,12 +38,13 @@ every proven-safe route.
 9. Permit production search providers and embedding models only after the fixed
    evaluation corpus passes every release gate and the deployment is explicitly
    allowlisted.
-10. Treat routing rollout as three explicit modes: `disabled` invokes no
+10. Treat routing operation as three explicit modes: `disabled` invokes no
     capability agent and deterministically refers the ticket for human JIOC
     review; `shadow` records a decision for comparison and makes the same human
     referral; `active` permits only allowlisted deterministic route transitions.
-    `disabled` is the safe default; deployment configuration must opt in to the
-    other modes.
+    The evaluated, version-pinned release is active by default in supported
+    synthetic local/test use. Hosted mode and approval must be explicit;
+    `disabled` is the deployment rollback and `shadow` is evidence-only.
 11. Do not represent fixed rule outputs as calibrated probability. Routing policy
     uses explicit eligibility, ambiguity, insufficient-evidence and prohibited
     outcomes. Numeric confidence may inform humans only after calibration against

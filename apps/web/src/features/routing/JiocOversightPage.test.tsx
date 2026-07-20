@@ -46,6 +46,10 @@ test("renders workflow ownership and capacity from the oversight endpoint", asyn
               analystCount: 2,
               workPackageCount: 3,
               completedWorkPackageCount: 1,
+              criticVerdict: "challenges",
+              criticOutcome: "provider_succeeded",
+              criticChallengeCount: 2,
+              criticMissingEvidenceCount: 1,
             },
           ],
         }),
@@ -57,6 +61,11 @@ test("renders workflow ownership and capacity from the oversight endpoint", asyn
   expect(screen.getByText("TCK-0001")).toBeVisible();
   expect(screen.getByText("Assessment Analyst")).toBeVisible();
   expect(screen.getByText("1 of 3")).toBeVisible();
+  expect(screen.getByText(/shadow-only critic cannot route or change workflow/)).toBeVisible();
+  const critic = screen.getByLabelText("Routing critic evidence for TCK-0001");
+  expect(critic).toHaveTextContent("provider succeeded");
+  expect(critic).toHaveTextContent("Challenges2");
+  expect(critic).toHaveTextContent("Missing evidence1");
 });
 
 test("offers recovery when oversight cannot be loaded", async () => {

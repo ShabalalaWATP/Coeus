@@ -6,6 +6,7 @@ from coeus.api.search_composition import configure_search_services
 from coeus.api.ticket_discovery_composition import build_ticket_discovery_handler
 from coeus.application.ports.admission import ResourceAdmission
 from coeus.core.config import HOSTED_ENVIRONMENTS, Settings
+from coeus.domain.jioc_routing import JiocRoutingMode, normalise_routing_mode
 from coeus.persistence.factory import build_state_store
 from coeus.persistence.outbox import PostgresOutboxStore
 from coeus.persistence.state_store import PostgresStateStore
@@ -18,6 +19,8 @@ from coeus.services.ai_models import AiModelService
 from coeus.services.analyst_assignment_service import AnalystAssignmentService
 from coeus.services.analyst_workflow import AnalystWorkflowService
 from coeus.services.asset_tokens import AssetTokenService
+from coeus.services.bounded_advisory import BoundedAdvisoryService
+from coeus.services.critiqued_jioc_routing import CritiquedJiocRoutingService
 from coeus.services.demo_seed import seed_demo_dataset
 from coeus.services.email_delivery import build_email_provider
 from coeus.services.embeddings import build_embedding_service
@@ -34,8 +37,12 @@ from coeus.services.postgres_resource_admission import PostgresResourceAdmission
 from coeus.services.quality_control import build_quality_control_service
 from coeus.services.release_notification_handler import ProductReleaseNotificationHandler
 from coeus.services.resource_admission import LocalResourceAdmissionController
-from coeus.services.rfi_search import build_rfi_search_service
+from coeus.services.rfi_search_builder import build_rfi_search_service
 from coeus.services.routing import build_routing_service
+from coeus.services.routing_critic_agent import RoutingCriticAgent
+from coeus.services.routing_critic_intent import ROUTING_CRITIQUE_REQUESTED
+from coeus.services.routing_critic_outbox_handler import RoutingCriticOutboxHandler
+from coeus.services.search_planner_agent import SearchPlannerAgent
 from coeus.services.similar_requests import SimilarRequestService
 from coeus.services.store_builder import build_store_services
 from coeus.services.team_availability import TeamAvailabilityService, TeamCalendarService
@@ -57,6 +64,7 @@ def configure_application_state(app: FastAPI, settings: Settings) -> None:
         app.state.state_store, settings
     )
     app.state.workflow_transaction = _workflow_transaction(app, settings)
+    _require_hosted_routing_transaction(app, settings)
     app.state.asset_token_service = AssetTokenService(settings.asset_token_secret)
     app.state.object_storage = build_object_storage(settings)
     app.state.admission_metrics = AdmissionMetrics()
@@ -126,6 +134,12 @@ def _configure_data_services(
         app.state.state_store,
         app.state.integration_secret_store,
     )
+    app.state.bounded_advisory_service = BoundedAdvisoryService(
+        settings,
+        app.state.ai_model_service,
+        app.state.provider_admission,
+    )
+    app.state.search_planner_agent = SearchPlannerAgent(app.state.bounded_advisory_service)
     app.state.voice_model_service = VoiceModelService(
         settings,
         identity.audit_log,
@@ -213,17 +227,25 @@ def _configure_workflow_services(
         tickets,
         store,
         identity.access,
-        audit_log,
         app.state.embedding_service,
         app.state.grounded_search_service,
+        app.state.search_planner_agent,
     )
     app.state.routing_service = build_routing_service(tickets, audit_log)
-    app.state.jioc_routing_agent_service = JiocRoutingAgentService(
+    deterministic_router = JiocRoutingAgentService(
         tickets,
         operational_context=LiveRoutingOperationalContext(
             app.state.team_repository,
             app.state.team_availability_service,
         ),
+    )
+    app.state.jioc_deterministic_routing_service = deterministic_router
+    critic = RoutingCriticAgent(app.state.bounded_advisory_service)
+    app.state.routing_critic_agent = critic
+    app.state.jioc_routing_agent_service = (
+        deterministic_router
+        if settings.environment in HOSTED_ENVIRONMENTS
+        else CritiquedJiocRoutingService(deterministic_router, critic, tickets.mutations)
     )
     app.state.manager_queue_service = ManagerQueueService(tickets)
     app.state.analyst_assignment_service = AnalystAssignmentService(
@@ -267,6 +289,7 @@ def _configure_workflow_services(
                 "product_release_notification": ProductReleaseNotificationHandler(
                     identity.users, app.state.notification_service
                 ),
+                ROUTING_CRITIQUE_REQUESTED: RoutingCriticOutboxHandler(tickets, critic),
             },
             lease_seconds=settings.outbox_lease_seconds,
             retry_seconds=settings.outbox_retry_seconds,
@@ -293,3 +316,15 @@ def _workflow_transaction(app: FastAPI, settings: Settings) -> PostgresWorkflowT
     if isinstance(state_store, PostgresStateStore) and state_store.ticket_mode == "relational":
         return PostgresWorkflowTransaction(settings.database_url)
     return None
+
+
+def _require_hosted_routing_transaction(app: FastAPI, settings: Settings) -> None:
+    routing_enabled = (
+        normalise_routing_mode(settings.jioc_agent_routing_enabled) is not JiocRoutingMode.DISABLED
+    )
+    if (
+        settings.environment in HOSTED_ENVIRONMENTS
+        and routing_enabled
+        and app.state.workflow_transaction is None
+    ):
+        raise ValueError("Hosted JIOC routing requires a workflow transaction.")

@@ -2,12 +2,12 @@
 
 from uuid import UUID
 
+from coeus.application.ports.jioc_routing import JiocRoutingService
 from coeus.core.logging import get_logger
 from coeus.domain.auth import UserAccount
 from coeus.domain.enums import TicketState
 from coeus.domain.jioc_routing import JiocRoutingMode, normalise_routing_mode
 from coeus.domain.tickets import TicketRecord
-from coeus.services.jioc_routing_agent import JiocRoutingAgentService
 from coeus.services.ticket_lifecycle import TicketLifecycleService
 
 logger = get_logger(__name__)
@@ -17,7 +17,7 @@ class TaskingConsentService:
     def __init__(
         self,
         lifecycle: TicketLifecycleService,
-        routing_agent: JiocRoutingAgentService,
+        routing_agent: JiocRoutingService,
         agent_routing_enabled: JiocRoutingMode | bool = JiocRoutingMode.DISABLED,
     ) -> None:
         self._lifecycle = lifecycle

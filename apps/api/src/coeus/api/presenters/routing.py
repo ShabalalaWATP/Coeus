@@ -1,5 +1,6 @@
 from collections.abc import Iterable
 
+from coeus.api.presenters.tickets import to_agent_run_response
 from coeus.domain.capabilities import CandidateTeam, CapabilityTeam
 from coeus.domain.tickets import (
     ClarificationRequest,
@@ -66,6 +67,9 @@ def ticket_response(ticket: TicketRecord) -> RoutingTicketResponse:
         else None,
         clarifications=[_clarification_response(item) for item in ticket.clarification_requests],
         agent_runs=[run.agent_name for run in ticket.agent_runs],
+        advisory_runs=[
+            to_agent_run_response(run) for run in ticket.agent_runs if run.advice is not None
+        ],
         manager_decisions=[_decision_response(item) for item in ticket.manager_decisions],
         workflow_plan_updates=[
             _workflow_update_response(item) for item in ticket.workflow_plan_updates

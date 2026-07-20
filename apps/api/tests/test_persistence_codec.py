@@ -90,6 +90,7 @@ def test_agent_run_from_pre_provenance_payload_uses_safe_defaults() -> None:
         "input_token_count",
         "output_token_count",
         "error_class",
+        "advice",
     }
     for field_name in provenance_fields:
         payload["fields"].pop(field_name)

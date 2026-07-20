@@ -1,6 +1,7 @@
 """QC domain-to-API response mapping."""
 
 from coeus.api.presenters.routing import priority_assessment_response
+from coeus.domain.product_submission import DraftProductAsset, DraftProductVersion
 from coeus.domain.qc import (
     FeedbackRequest,
     ProductIndexRecord,
@@ -10,8 +11,6 @@ from coeus.domain.qc import (
 )
 from coeus.domain.store import StoreProduct
 from coeus.domain.tickets import (
-    DraftProductAsset,
-    DraftProductVersion,
     ProductDissemination,
     TicketRecord,
 )

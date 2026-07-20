@@ -9,7 +9,11 @@ from sqlalchemy.engine import Connection
 
 from coeus.domain.store import StoreProduct
 from coeus.domain.tickets import TicketRecord
-from coeus.domain.workflow_transaction import ReleaseNotificationIntent, WorkflowAuditIntent
+from coeus.domain.workflow_transaction import (
+    ReleaseNotificationIntent,
+    WorkflowAuditIntent,
+    WorkflowOutboxIntent,
+)
 from coeus.persistence.audit_store import AUDIT_TABLE_SQL
 from coeus.persistence.codec import encode_value
 from coeus.persistence.database_url import synchronous_database_url
@@ -58,6 +62,7 @@ class PostgresWorkflowTransaction:
         expected: TicketRecord,
         updated: TicketRecord,
         audits: tuple[WorkflowAuditIntent, ...],
+        outbox: tuple[WorkflowOutboxIntent, ...] = (),
     ) -> bool:
         expected_payload = encode_value(expected)
         updated_payload = encode_value(updated)
@@ -66,8 +71,9 @@ class PostgresWorkflowTransaction:
             ticket_id = self._lock_current(connection, expected_payload)
             if ticket_id is None:
                 return False
-            self._write_ticket(connection, updated_payload, ticket_id)
+            version = self._write_ticket(connection, updated_payload, ticket_id)
             self._append_audits(connection, audits)
+            self._append_outbox_intents(connection, updated.ticket_id, version, outbox)
         return True
 
     def commit_ticket_pair(
@@ -178,6 +184,63 @@ class PostgresWorkflowTransaction:
     ) -> None:
         for audit in audits:
             cls._append_audit(connection, audit)
+
+    @classmethod
+    def _append_outbox_intents(
+        cls,
+        connection: Connection,
+        ticket_id: UUID,
+        version: int,
+        intents: tuple[WorkflowOutboxIntent, ...],
+    ) -> None:
+        for intent in intents:
+            cls._append_outbox(connection, ticket_id, version, intent)
+
+    @staticmethod
+    def _append_outbox(
+        connection: Connection,
+        ticket_id: UUID,
+        version: int,
+        intent: WorkflowOutboxIntent,
+    ) -> None:
+        event_id = uuid5(NAMESPACE_URL, f"coeus:{ticket_id}:{version}:{intent.event_type}")
+        payload = dict(intent.payload)
+        connection.execute(
+            text(
+                """
+                INSERT INTO coeus_outbox(
+                  event_id, aggregate_id, aggregate_version, event_type, payload
+                ) VALUES (
+                  :event_id, :ticket_id, :version, :event_type, CAST(:payload AS jsonb)
+                )
+                ON CONFLICT (aggregate_id, aggregate_version, event_type) DO NOTHING
+                """
+            ),
+            {
+                "event_id": event_id,
+                "ticket_id": ticket_id,
+                "version": version,
+                "event_type": intent.event_type,
+                "payload": json.dumps(payload),
+            },
+        )
+        stored = (
+            connection.execute(
+                text(
+                    """
+                SELECT event_id, payload FROM coeus_outbox
+                WHERE aggregate_id = :ticket_id
+                  AND aggregate_version = :version
+                  AND event_type = :event_type
+                """
+                ),
+                {"ticket_id": ticket_id, "version": version, "event_type": intent.event_type},
+            )
+            .mappings()
+            .one()
+        )
+        if stored["event_id"] != event_id or dict(stored["payload"]) != payload:
+            raise RuntimeError("Conflicting workflow outbox intent already exists.")
 
     @staticmethod
     def _append_notification(

@@ -4,6 +4,7 @@ from typing import Annotated, cast
 from fastapi import Depends, Header, Request
 
 from coeus.application.ports.admission import ResourceAdmission
+from coeus.application.ports.jioc_routing import JiocRoutingService
 from coeus.core.config import Settings
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
@@ -19,7 +20,6 @@ from coeus.services.analyst_workflow import AnalystWorkflowService
 from coeus.services.asset_tokens import AssetTokenService
 from coeus.services.auth import AuthService
 from coeus.services.feedback_analytics import FeedbackAnalyticsService
-from coeus.services.jioc_routing_agent import JiocRoutingAgentService
 from coeus.services.manager_approval import ManagerApprovalService
 from coeus.services.manager_queue import ManagerQueueService
 from coeus.services.notifications import NotificationService
@@ -210,9 +210,9 @@ def get_routing_service(request: Request) -> RoutingService:
     return routing_service
 
 
-def get_jioc_routing_agent_service(request: Request) -> JiocRoutingAgentService:
+def get_jioc_routing_agent_service(request: Request) -> JiocRoutingService:
     service = getattr(request.app.state, "jioc_routing_agent_service", None)
-    if not isinstance(service, JiocRoutingAgentService):
+    if not isinstance(service, JiocRoutingService):
         raise AppError(500, "jioc_agent_not_configured", "JIOC agent is not configured.")
     return service
 

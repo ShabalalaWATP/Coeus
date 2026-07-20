@@ -1,11 +1,10 @@
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
+from coeus.domain.product_submission import DraftProductAsset, DraftProductVersion
 from coeus.domain.tickets import (
     AnalystAssignment,
     AnalystWorkPackage,
-    DraftProductAsset,
-    DraftProductVersion,
     LinkedAnalystProduct,
     ManagerRoutingDecisionStatus,
     RoutingRoute,

@@ -2,6 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from coeus.core.config import DEFAULT_ASSET_TOKEN_SECRET, DEFAULT_SEED_CREDENTIAL, Settings
+from coeus.domain.jioc_routing import ROUTING_RELEASE
 
 
 def valid_dev_settings(**overrides: object) -> Settings:
@@ -11,6 +12,7 @@ def valid_dev_settings(**overrides: object) -> Settings:
         "configuration_encryption_key": "e" * 32,
         "csrf_secret": "c" * 32,
         "environment": "dev",
+        "jioc_agent_routing_enabled": "disabled",
         "local_seed_credential": "DifferentDevCredential1!",
         "metrics_bearer_token": "m" * 32,
         "secure_cookies": False,
@@ -23,6 +25,60 @@ def valid_dev_settings(**overrides: object) -> Settings:
 def test_valid_local_and_dev_configurations_pass() -> None:
     Settings(environment="local").require_runtime_security()
     valid_dev_settings().require_runtime_security()
+
+
+def test_hosted_routing_configuration_must_be_explicit() -> None:
+    with pytest.raises(ValueError, match="JIOC_AGENT_ROUTING_ENABLED must be explicit"):
+        Settings(environment="dev").require_runtime_security()
+
+
+def test_hosted_active_routing_requires_explicit_release_approval() -> None:
+    settings = valid_dev_settings(jioc_agent_routing_enabled="active")
+
+    with pytest.raises(ValueError, match="JIOC_ROUTING_APPROVED_RELEASES must be explicit"):
+        settings.require_runtime_security()
+
+
+@pytest.mark.parametrize("routing_mode", ("active", "shadow"))
+def test_hosted_routing_requires_transactional_ticket_persistence(routing_mode: str) -> None:
+    settings = valid_dev_settings(
+        jioc_agent_routing_enabled=routing_mode,
+        jioc_routing_approved_releases=[ROUTING_RELEASE],
+        persistence_provider="memory",
+        ticket_persistence_mode="legacy",
+    )
+
+    with pytest.raises(ValueError, match="PostgreSQL relational ticket persistence"):
+        settings.require_runtime_security()
+
+
+def test_hosted_advisory_egress_requires_provider_and_data_release() -> None:
+    settings = valid_dev_settings(
+        llm_provider="gemini_api",
+        gemini_api_key="synthetic-key",
+        search_planner_remote_enabled=True,
+    )
+
+    with pytest.raises(ValueError) as error:
+        settings.require_runtime_security()
+
+    assert "ADVISORY_APPROVED_PROVIDERS" in str(error.value)
+    assert "ADVISORY_APPROVED_DATA_CLASSIFICATIONS" in str(error.value)
+
+
+def test_remote_routing_critic_requires_a_safe_outbox_lease() -> None:
+    settings = valid_dev_settings(
+        llm_provider="gemini_api",
+        gemini_api_key="synthetic-key",
+        routing_critic_remote_enabled=True,
+        advisory_approved_providers=["gemini_api"],
+        advisory_approved_data_classifications=["synthetic"],
+        llm_api_timeout_seconds=10,
+        outbox_lease_seconds=15,
+    )
+
+    with pytest.raises(ValueError, match="OUTBOX_LEASE_SECONDS"):
+        settings.require_runtime_security()
 
 
 def test_default_database_url_uses_windows_safe_ipv4_loopback() -> None:
@@ -49,7 +105,7 @@ def test_default_database_url_uses_windows_safe_ipv4_loopback() -> None:
             "COEUS_CONFIGURATION_ENCRYPTION_KEY must be at least 32 characters",
         ),
         (
-            Settings(environment="local", metrics_bearer_token="short"),
+            Settings(environment="local", metrics_bearer_token="x" * 5),
             "COEUS_METRICS_BEARER_TOKEN must be at least 32 characters",
         ),
         (

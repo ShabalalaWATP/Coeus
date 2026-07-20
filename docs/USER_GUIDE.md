@@ -55,7 +55,7 @@ opens automatically the first time a request is submitted.
 ![Request journey popup](images/05-request-journey.png)
 
 Each stage is handled by a person supported by an Istari agent; the stages map
-directly onto the [agents](AI_AGENTS.md#agents-at-a-glance).
+directly onto the [agent authority matrix](AI_AGENTS.md#authority-matrix).
 
 ---
 
@@ -113,20 +113,22 @@ and clearance.
 
 ## JIOC team members
 
-Progressed requests land in the JIOC queue. Selecting a ticket and running
-**capability checks** invokes the RFA and CM capability agents plus the
-orchestrator; their advice appears as agent-badged cards alongside a
-recommended route. The JIOC member decides whether collection is required
-(route to CM) or not (route to RFA), can approve against the recommendation
-with a written override reason, review and link similar open requests, or
-query/reject the route with a recorded reason. When a request is routed to
-CM, the customer is asked in their workspace whether they want the **raw
+The active JIOC agent invokes the RFA and CM capability agents and automatically
+routes clear, eligible requests to RFA or CM. Ambiguous, restricted, stale or
+otherwise unsafe cases land in the JIOC queue for a team member to decide.
+JIOC members oversee automatic decisions, can hold or refer them for review,
+approve an exception with a written override reason, review and link similar
+open requests, or query/reject a route with a recorded reason. When a request
+is routed to CM, the customer is asked whether they want the **raw
 collect only** or the **collect plus an RFA analysis**.
 
 **JIOC Oversight** is the read-only whole-process view. It shows ticket totals
 by state and route, active RFA/CM teams, current availability, live analyst task
-counts and bounded task ownership summaries. It does not expose analyst notes,
-draft bodies or protected product content.
+counts, bounded task ownership and the shadow routing critic's verdict,
+challenges and missing-evidence counts. Critic output is advisory evidence only:
+it cannot route or change workflow. Managers remain on the loop and use the
+separate audited intervention controls when needed. Oversight does not expose
+analyst notes, draft bodies or protected product content.
 
 ![JIOC routing queue with agent recommendations](images/07-rfa-queue.png)
 
@@ -135,7 +137,7 @@ draft bodies or protected product content.
 Managers work across their whole RFA or CM area:
 
 - **Assign one to five analysts** after selecting any active team in their area
-  once JIOC approves the route. Candidate analysts and availability are scoped
+  once the JIOC agent or exception reviewer approves the route. Candidates are scoped
   to that authoritative team, and work packages can be defined for the task.
 - **Approve or return analyst work**: submitted drafts stop at manager
   approval, where the manager forwards them to Quality Control or returns

@@ -110,12 +110,9 @@ async def test_jioc_agent_escalates_conflicting_capability_recommendations() -> 
             area_or_region="Baltic ports",
         )
     prepared = _prepare(app, ticket_id, description="Assess and collect reporting.")
-    app.state.jioc_routing_agent_service._rfa_agent.review = lambda _ticket: _rfa_review(
-        prepared.ticket_id, True, 0.90
-    )
-    app.state.jioc_routing_agent_service._cm_agent.review = lambda _ticket: _cm_review(
-        prepared.ticket_id, True, 0.95
-    )
+    router = app.state.jioc_deterministic_routing_service
+    router._rfa_agent.review = lambda _ticket: _rfa_review(prepared.ticket_id, True, 0.90)
+    router._cm_agent.review = lambda _ticket: _cm_review(prepared.ticket_id, True, 0.95)
 
     result = app.state.jioc_routing_agent_service.route(prepared.ticket_id)
 
@@ -282,7 +279,9 @@ def _prepare(
     description: str,
     restrictions: str | None = None,
 ) -> TicketRecord:
-    app.state.jioc_routing_agent_service._operational_context = _AvailableOperationalContext()
+    app.state.jioc_deterministic_routing_service._operational_context = (
+        _AvailableOperationalContext()
+    )
     ticket = app.state.ticket_services.tickets._repository.get(UUID(ticket_id))
     assert ticket is not None
     now = datetime.now(UTC)

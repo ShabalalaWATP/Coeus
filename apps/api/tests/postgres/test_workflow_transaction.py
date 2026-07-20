@@ -10,7 +10,11 @@ from coeus.domain.access import ProductStatus
 from coeus.domain.enums import TicketState
 from coeus.domain.store import StoreProduct, StoreProductMetadata
 from coeus.domain.tickets import IntakeDetails, TicketRecord
-from coeus.domain.workflow_transaction import ReleaseNotificationIntent, WorkflowAuditIntent
+from coeus.domain.workflow_transaction import (
+    ReleaseNotificationIntent,
+    WorkflowAuditIntent,
+    WorkflowOutboxIntent,
+)
 from coeus.persistence.state_store import PostgresStateStore
 from coeus.persistence.workflow_transaction import PostgresWorkflowTransaction
 from coeus.repositories.tickets import InMemoryTicketRepository
@@ -149,8 +153,9 @@ def test_ticket_update_commits_state_and_audit_as_one_unit(
     updated = replace(ticket, state=TicketState.CANCELLED)
     audit, _notification = _intents(ticket, product)
 
+    intent = WorkflowOutboxIntent("synthetic_follow_up", {"decision_id": str(uuid4())})
     assert PostgresWorkflowTransaction(postgres_database_url).commit_ticket_update(
-        ticket, updated, (audit,)
+        ticket, updated, (audit,), (intent,)
     )
 
     restored = InMemoryTicketRepository(
@@ -161,8 +166,12 @@ def test_ticket_update_commits_state_and_audit_as_one_unit(
         audit_count = connection.execute(
             text("SELECT count(*) FROM coeus_audit_events")
         ).scalar_one()
+        outbox_count = connection.execute(
+            text("SELECT count(*) FROM coeus_outbox WHERE event_type = 'synthetic_follow_up'")
+        ).scalar_one()
     assert restored == updated
     assert audit_count == 1
+    assert outbox_count == 1
 
 
 def test_ticket_update_rolls_back_state_when_audit_write_fails(

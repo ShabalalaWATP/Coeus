@@ -3,15 +3,14 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from uuid import UUID
 
-from coeus.domain import qc
+from coeus.domain import advisory_agents, qc
+from coeus.domain import product_submission as ps
 from coeus.domain.capabilities import CandidateTeam
 from coeus.domain.customer_outcomes import ProductOutcomeHistory
 from coeus.domain.enums import TicketState
 from coeus.domain.jioc_intervention import JiocIntervention
 from coeus.domain.jioc_routing import JiocRoutingContext, JiocRoutingDecision
 from coeus.domain.prioritisation import PriorityAssessment
-from coeus.domain.product_submission import DraftProductAsset as DraftProductAsset
-from coeus.domain.product_submission import DraftProductVersion as DraftProductVersion
 from coeus.domain.search_index import GroundedProductEvidence
 from coeus.domain.search_metrics import RfiSearchMetrics
 from coeus.domain.work_discovery import ActiveWorkOffer
@@ -134,6 +133,7 @@ class AgentRun:
     input_token_count: int | None = None
     output_token_count: int | None = None
     error_class: str | None = None
+    advice: advisory_agents.AgentAdvice | None = None
 
 
 @dataclass(frozen=True)
@@ -333,7 +333,7 @@ class TicketRecord:
     work_packages: tuple[AnalystWorkPackage, ...] = field(default_factory=tuple)
     analyst_notes: tuple[AnalystNote, ...] = field(default_factory=tuple)
     linked_products: tuple[LinkedAnalystProduct, ...] = field(default_factory=tuple)
-    draft_products: tuple[DraftProductVersion, ...] = field(default_factory=tuple)
+    draft_products: tuple[ps.DraftProductVersion, ...] = field(default_factory=tuple)
     manager_approved_manifest_hash: str | None = None
     qc_agent_preflights: tuple[qc.QcAgentPreflight, ...] = field(default_factory=tuple)
     qc_reviewer_user_id: UUID | None = None

@@ -81,11 +81,11 @@ with one intentional compatibility skip at 98.09 per cent line and 95.12 per
 cent branch coverage. The frontend passes 518 tests at 98.85 per cent line and
 95.05 per cent branch coverage.
 
-The 20 July 2026 agent-safety hardening milestone is in progress. Candidate
-implementation and focused regression tests now cover fail-closed JIOC rollout,
-bounded model output and provenance, outbox operations, agent authority and
-static boundaries. Full local gates and independent code-quality and security
-reviews remain open, so completion and `active` routing approval are not claimed.
+The 20 July 2026 agent-safety hardening milestone is complete. The evaluated v2
+JIOC release is active by default for supported synthetic local/test use and
+autonomously decides CM versus RFA. Hosted mode and approval remain explicit;
+unsafe cases fail closed to human review. The release approval is independently
+pinned. Model, provenance, authority and outbox safety passed the local gates.
 
 ## Delivery Ledger
 
@@ -114,7 +114,7 @@ reviews remain open, so completion and `active` routing approval are not claimed
 | 20     | Grounded generation-aware Intelligence Store retrieval, independent search embedding administration and full-corpus RFI/RFA duplicate assurance.                                                                                                                                                       | Implementation complete      | 1,129 backend tests pass with real PostgreSQL and pgvector at 98.16 percent line and 95.12 percent branch coverage. Live browser checks prove hybrid cited offers, visible-customer duplicate joining and manager RFA discovery. |
 | 21     | Compact admin command centre, explicit provider/key state, Realtime connection assurance, return navigation and separate aggregate-only admin analytics.                                                                                                                                                 | Implementation complete      | 507 frontend, 1,072 non-PostgreSQL and 70 real-PostgreSQL tests pass above the separate 95 per cent line and branch gates; static, contract and live browser acceptance checks pass.                                   |
 | 22     | Customer-controlled product resolution, assured no-match, active-work joining, autonomous policy-constrained JIOC routing, manager intervention, safe tracking and deterministic QC preflight.                                                                                                             | Implementation complete      | 1,176 backend tests and one intentional skip pass at 98.09 per cent line and 95.12 per cent branch coverage; 518 frontend tests pass at 98.85 per cent line and 95.05 per cent branch coverage.                          |
-| 23     | Agent-safety hardening for JIOC rollout, routing evidence, bounded LLM output, safe run provenance, outbox replay and authority boundaries.                                                                                                                                                                 | Implementation in progress   | Candidate implementation and focused regressions are present; full quality gates, labelled v2 activation evidence and independent reviews remain open.                                                               |
+| 23     | Agent-safety hardening for JIOC rollout, routing evidence, bounded LLM output, safe run provenance, outbox replay and authority boundaries.                                                                                                                                                                 | Implementation complete      | Evaluated v2 routing is active for supported local/test use; hosted activation remains explicitly gated.                                                                                                              |
 
 ## Sprint 12 Future Reference Scope
 
@@ -341,3 +341,10 @@ the final candidate passed 1,333 backend tests with one intentional skip and
   adapter and scale-out evaluation are required before multi-replica routing.
 - Current next step: keep production routing `disabled`, gather labelled shadow
   evidence, satisfy the real-data governance gates, then run a reviewed canary.
+
+## 20 July 2026 Bounded Advisory Reasoning
+Status: complete and verified.
+
+- [x] Implement the feature spec and ADR 0040 with deterministic authority and safe staff-only provenance.
+- [x] Complete all quality/security gates and independent reviews.
+- Risk: remote advisory use remains blocked by default and still needs labelled evidence plus a separately approved real-data classification, redaction and egress release.

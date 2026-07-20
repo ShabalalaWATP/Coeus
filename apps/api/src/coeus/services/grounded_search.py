@@ -1,9 +1,10 @@
 from uuid import UUID
 
 from coeus.application.ports.access import ActiveAcgReader
+from coeus.domain.access import ProductStatus
 from coeus.domain.auth import UserAccount
 from coeus.domain.search_index import GroundedSearchResult
-from coeus.domain.store import StoreVisibilityScope, product_in_scope
+from coeus.domain.store import StoreVisibilityScope
 from coeus.domain.tickets import IntakeDetails
 from coeus.persistence.search_index_repository import SearchIndexRepository
 from coeus.services.search_configuration import SearchConfigurationService
@@ -32,9 +33,11 @@ class GroundedSearchService:
         actor: UserAccount,
         intake: IntakeDetails,
         principal_id: UUID,
+        *,
+        planned_query: str | None = None,
     ) -> GroundedSearchResult:
         state = self._configuration.state()
-        query = weighted_query_text(intake)
+        query = planned_query or weighted_query_text(intake)
         configured_complete = (
             state.index_status == "ready"
             and state.degraded_reason is None
@@ -57,7 +60,8 @@ class GroundedSearchService:
         allowed = frozenset(
             product.product_id
             for product in self._store.repository.list_products()
-            if product_in_scope(product, scope)
+            if product.metadata.status == ProductStatus.PUBLISHED
+            and self._store.details.can_read_product(actor, product)
         )
         evidence = self._index.search(scope, query, query_vector, allowed)
         if state.chunk_count == 0:

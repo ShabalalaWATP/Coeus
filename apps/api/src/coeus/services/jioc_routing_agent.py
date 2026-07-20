@@ -44,6 +44,7 @@ from coeus.services.routing_agents import (
     RfaCapabilityAgent,
     RfaReviewAgent,
 )
+from coeus.services.routing_critic_intent import routing_critique_intent
 from coeus.services.routing_records import (
     agent_run,
     latest_recommendation,
@@ -195,7 +196,7 @@ class JiocRoutingAgentService:
             proposed = append_collect_choice_handoff(
                 proposed, collect_choice_handoff(ticket.ticket_id, JIOC_AGENT_PRINCIPAL)
             )
-        return self._tickets.mutations.save_audited_if_current(
+        return self._tickets.mutations.save_audited_with_outbox_if_current(
             ticket,
             proposed,
             _event_type(disposition),
@@ -206,6 +207,7 @@ class JiocRoutingAgentService:
                 "disposition": disposition,
                 "policy_version": ROUTING_POLICY_VERSION,
             },
+            (routing_critique_intent(context, decision, rfa_review, cm_review, target),),
         )
 
     def defer_to_manager(

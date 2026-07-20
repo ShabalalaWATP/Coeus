@@ -1,10 +1,9 @@
 from coeus.domain.auth import UserAccount
+from coeus.domain.product_submission import DraftProductAsset, DraftProductVersion
 from coeus.domain.tickets import (
     AnalystAssignment,
     AnalystNote,
     AnalystWorkPackage,
-    DraftProductAsset,
-    DraftProductVersion,
     LinkedAnalystProduct,
     TicketRecord,
 )

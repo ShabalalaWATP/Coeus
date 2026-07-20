@@ -83,18 +83,18 @@ restrictions and policy exceptions route to manual review. The JIOC Manager is o
 the loop through an oversight queue, analytics and an audited intervention action,
 not a mandatory approval gate.
 
-Routing has three mutually exclusive deployment modes:
+Routing has three mutually exclusive operational modes:
 
-- `disabled`: safe default; do not invoke capability agents or persist a route
+- `disabled`: deployment kill switch; do not invoke capability agents or persist a route
   decision, then deterministically refer the ticket to `JIOC_REVIEW`;
 - `shadow`: persist the context and proposed decision for comparison, then refer
   the ticket to `JIOC_REVIEW` without choosing RFA or CM;
 - `active`: apply only a schema-valid, policy-eligible deterministic transition.
 
-Mode changes are explicit deployment actions. Shadow evaluation and an approved
-activation gate precede `active`; the operator can return immediately to
-`disabled`. No routing or QC decision module may import or call an LLM/provider
-adapter.
+The evaluated, version-pinned release is the supported synthetic local/test
+default in `active` mode. Hosted deployments must set mode and approval
+explicitly. `disabled` takes effect after restart/redeployment; `shadow` is for
+evidence-only operation. Routing and QC modules cannot call an LLM adapter.
 
 ## Model-backed bounded-selector contract
 
@@ -160,12 +160,12 @@ exposed.
 ## Rollout
 
 Ship automatic discovery, active-work offers and JIOC agent decisions behind
-independent flags. Provider and embedding-model activation remains blocked by
-the release-gate evaluation and an explicit deployment allowlist. Routing defaults
-to `disabled`, progresses through `shadow`, then canaries `active` only after the
-labelled conflict, negation, stale-context and authority suites pass. Roll back on
-any access, assurance or state-integrity breach. Deterministic QC preflight is a
-mandatory safety control, not an optional rollout path.
+independent controls. Provider and embedding-model activation remains blocked by
+the release-gate evaluation and an explicit deployment allowlist. The labelled
+conflict, negation, stale-context and authority suites now approve the pinned
+`active` routing release; use `shadow` for comparison and `disabled` for rollback
+on any access, assurance or state-integrity breach. Deterministic QC preflight is
+a mandatory safety control, not an optional rollout path.
 
 Before real or sensitive data, deployment additionally requires approved data
 classification, DLP/redaction and egress policy; provider/model/region allowlists;

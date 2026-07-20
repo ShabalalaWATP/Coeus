@@ -3,6 +3,7 @@
 from uuid import UUID
 
 from coeus.application.ports.access import UserLookup
+from coeus.application.ports.jioc_routing import JiocRoutingService
 from coeus.core.logging import get_logger
 from coeus.domain.auth import UserAccount
 from coeus.domain.enums import TicketState
@@ -10,7 +11,6 @@ from coeus.domain.jioc_routing import JiocRoutingMode, normalise_routing_mode
 from coeus.domain.outbox import OutboxMessage
 from coeus.domain.tickets import TicketRecord
 from coeus.services.active_work_discovery import ActiveWorkDiscoveryService
-from coeus.services.jioc_routing_agent import JiocRoutingAgentService
 from coeus.services.rfi_search import RfiSearchService
 from coeus.services.tickets import TicketServices
 
@@ -25,7 +25,7 @@ class TicketDiscoveryHandler:
         access: UserLookup,
         rfi_search: RfiSearchService,
         active_work: ActiveWorkDiscoveryService,
-        jioc_routing: JiocRoutingAgentService,
+        jioc_routing: JiocRoutingService,
         automatic_discovery_enabled: bool = True,
         active_work_offers_enabled: bool = True,
         agent_routing_enabled: JiocRoutingMode | bool = JiocRoutingMode.DISABLED,

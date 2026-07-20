@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
+import { RoutingCriticStatus } from "./RoutingCriticStatus";
 import { ErrorState, LoadingState } from "../../components/ui/PageState";
 import {
   getJiocOversight,
@@ -132,6 +133,11 @@ function OversightTasks({
   return (
     <section className="surface oversight-section" aria-labelledby="oversight-tasks-title">
       <h2 id="oversight-tasks-title">Task ownership</h2>
+      <p className="workspace-alert" role="note">
+        Routing critic results are advisory evidence only. The shadow-only critic cannot route or
+        change workflow. JIOC managers monitor its challenges and intervene through the separate
+        controls below.
+      </p>
       {tasks.length === 0 ? (
         <p>No active tasks.</p>
       ) : (
@@ -146,6 +152,7 @@ function OversightTasks({
                 <th>Analysts</th>
                 <th>Work packages</th>
                 <th>Agent decision</th>
+                <th>Routing critic</th>
                 <th>Intervention</th>
               </tr>
             </thead>
@@ -166,6 +173,9 @@ function OversightTasks({
                           (task.agentConfidence ?? 0) * 100,
                         )}%)`
                       : "Legacy or pending"}
+                  </td>
+                  <td>
+                    <RoutingCriticStatus task={task} />
                   </td>
                   <td>
                     <TaskInterventionControls

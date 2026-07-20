@@ -1,7 +1,6 @@
 from contextlib import nullcontext
 from dataclasses import replace
 from datetime import UTC, datetime
-from hashlib import sha256
 from typing import Protocol, cast
 from uuid import UUID, uuid4
 
@@ -14,7 +13,7 @@ from coeus.core.resource_limits import (
     MAX_CHAT_MESSAGES_PER_TICKET,
     text_bytes,
 )
-from coeus.domain.agent_names import CUSTOMER_CHATBOT_AGENT
+from coeus.domain.agent_names import INTAKE_PLANNER_AGENT
 from coeus.domain.auth import UserAccount
 from coeus.domain.enums import TicketState
 from coeus.domain.tickets import (
@@ -27,11 +26,18 @@ from coeus.domain.tickets import (
 )
 from coeus.services import conversation_lifecycle as lifecycle
 from coeus.services.audit import AuditLog
+from coeus.services.conversation_reply_records import (
+    advice_for_reply,
+    deterministic_reply,
+    text_hash,
+)
 from coeus.services.intake import (
     AdmittedAssistantReply,
     IntakeAssistantProvider,
     IntakeExtractionService,
 )
+from coeus.services.intake_planner import deterministic_intake_plan
+from coeus.services.intake_planner_advice import render_intake_plan
 from coeus.services.intake_provider_calls import PreparedIntakeReply
 from coeus.services.intake_standard import next_elicitation
 from coeus.services.intake_transcripts import requester_message
@@ -158,7 +164,7 @@ class ConversationService:
         agent_run = AgentRun(
             run_id=uuid4(),
             ticket_id=ticket.ticket_id,
-            agent_name=CUSTOMER_CHATBOT_AGENT,
+            agent_name=INTAKE_PLANNER_AGENT,
             status=AgentRunStatus.COMPLETED,
             summary=(
                 "Message flagged; intake extraction skipped."
@@ -180,11 +186,12 @@ class ConversationService:
             prompt_version=assistant_reply.prompt_version,
             policy_version=assistant_reply.policy_version or "intake-conversation-v1",
             context_schema_version=(assistant_reply.context_schema_version or "intake-details-v1"),
-            input_hash=assistant_reply.input_hash or _text_hash(message),
-            output_hash=assistant_reply.output_hash or _text_hash(reply),
+            input_hash=assistant_reply.input_hash or text_hash(message),
+            output_hash=assistant_reply.output_hash or text_hash(reply),
             input_token_count=assistant_reply.input_tokens,
             output_token_count=assistant_reply.output_tokens,
             error_class=assistant_reply.error_class,
+            advice=advice_for_reply(assistant_reply),
         )
         state = self._tickets.state_for_intake(ticket.state, intake)
         proposed = with_assessment(
@@ -233,28 +240,38 @@ class ConversationService:
         self, actor: UserAccount, status: str, message: str, intake: IntakeDetails
     ) -> tuple[AdmittedAssistantReply, str]:
         """Deterministic conversation lifecycle; the LLM never decides this."""
-        complete = not intake.missing_information
+        plan = deterministic_intake_plan(intake, intake.missing_information)
+        blocked = bool(plan.contradictions)
+        complete = not intake.missing_information and not blocked
         offered = status == lifecycle.CONVERSATION_CLOSE_OFFERED
         if offered and complete and lifecycle.confirms_close(message):
-            return _deterministic_reply(lifecycle.CLOSED_MESSAGE, "conversation_closed"), (
-                lifecycle.CONVERSATION_CLOSED
-            )
+            reply = deterministic_reply(lifecycle.CLOSED_MESSAGE, "conversation_closed")
+            return reply, lifecycle.CONVERSATION_CLOSED
         if lifecycle.wants_to_end(message):
             if complete:
-                return _deterministic_reply(
+                return deterministic_reply(
                     lifecycle.CLOSED_MESSAGE, "conversation_closed"
                 ), lifecycle.CONVERSATION_CLOSED
-            entry = next_elicitation(intake.missing_information)
-            question = entry.question if entry else ""
+            if blocked:
+                question = render_intake_plan(plan, intake)
+            else:
+                entry = next_elicitation(intake.missing_information)
+                question = entry.question if entry else ""
             return (
-                _deterministic_reply(
+                deterministic_reply(
                     lifecycle.cannot_close_message(question).strip(),
-                    "close_refused_missing_information",
+                    (
+                        "close_refused_intake_contradiction"
+                        if blocked
+                        else "close_refused_missing_information"
+                    ),
                 ),
                 lifecycle.CONVERSATION_OPEN,
             )
+        if blocked or plan.ambiguities:
+            return self._assistant_reply(actor, intake, ()), lifecycle.CONVERSATION_OPEN
         if complete:
-            return _deterministic_reply(
+            return deterministic_reply(
                 lifecycle.CLOSE_OFFER_MESSAGE, "close_offered"
             ), lifecycle.CONVERSATION_CLOSE_OFFERED
         return (
@@ -274,7 +291,7 @@ class ConversationService:
                 raise RuntimeError(
                     "Providers used with admission must prepare an immutable intake reply."
                 )
-            return _deterministic_reply(
+            return deterministic_reply(
                 self._llm_provider.build_assistant_message(intake, safety_flags),
                 "safety_refusal" if safety_flags else "local_provider",
             )
@@ -301,19 +318,3 @@ class ConversationService:
                 timeline(ticket_id, actor.user_id, "ticket_created", "Draft intake started."),
             ),
         )
-
-
-def _deterministic_reply(text: str, outcome: str) -> AdmittedAssistantReply:
-    return AdmittedAssistantReply(
-        text,
-        False,
-        outcome=outcome,
-        fallback_outcome="not_applicable",
-        validation_outcome="deterministic",
-        policy_version="intake-conversation-v1",
-        context_schema_version="intake-details-v1",
-    )
-
-
-def _text_hash(value: str) -> str:
-    return f"sha256:{sha256(value.encode('utf-8')).hexdigest()}"

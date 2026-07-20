@@ -27,7 +27,7 @@ test("marks the current stage and closes on escape", async () => {
   const onClose = vi.fn();
   render(<RequestJourney onClose={onClose} state="JIOC_REVIEW" />);
 
-  const current = screen.getByText("JIOC route review").closest("li");
+  const current = screen.getByText("JIOC routing").closest("li");
   expect(current).toHaveClass("journey-step--current");
   expect(screen.getByText("You are here")).toBeVisible();
   expect(screen.getByText("Describe the need").closest("li")).toHaveClass("journey-step--done");

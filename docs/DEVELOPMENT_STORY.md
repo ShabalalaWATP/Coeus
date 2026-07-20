@@ -321,10 +321,9 @@ customer-search and JIOC-agent milestone is recorded in
 
 ## 2026-07-20 Agent safety hardening
 
-- Added explicit `disabled`, `shadow` and `active` JIOC routing modes, with
-  `disabled` as the safe default, shadow decisions unable to mutate route state,
-  contact customers or create hand-offs, and active routing limited to
-  allowlisted deterministic transitions.
+- Added explicit `disabled`, `shadow` and `active` JIOC routing modes. The
+  evaluated v2 release now runs active for synthetic local/test use and decides
+  CM versus RFA; hosted mode is explicit and disabled remains the rollback.
 - Made automatic routing fail closed when required evidence is missing, stale or
   conflicting or negated, candidate-team capacity is unavailable, or immutable
   context and the versioned v2 evaluation gate do not support the route.
@@ -336,6 +335,16 @@ customer-search and JIOC-agent milestone is recorded in
 - Documented the authority assigned to each agent and automation, and extended the
   static architecture checks so deterministic decision modules and outbound
   provider adapters cannot cross their intended dependency boundaries.
-- Independent reviews were remediated. The final 1,333-test backend pass reached
-  98.18 per cent line and 95.14 per cent branch coverage; 530 frontend tests
-  reached 98.64 and 95.08 per cent, and all build/security gates passed.
+- Independent reviews were remediated. The final 1,339-test backend pass reached
+  98.20 per cent line and 95.29 per cent branch coverage; 530 frontend tests
+  reached 98.64 and 95.11 per cent, and all build/security gates passed.
+- Added bounded intake and additive search planning plus a post-decision,
+  permanently shadow-only JIOC route critic, with duplicate-safe schemas,
+  provider admission and safe provenance rather than raw prompts or replies.
+- Proven date contradictions now block submission through fixed controller copy;
+  supplemental search cannot suppress a baseline offer or control assurance.
+- Hosted routing atomically queues exact-decision criticism and returns before
+  provider work; per-agent remote egress remains disabled until explicitly approved.
+- Added adversarial authority, egress, crash-retry and persistence compatibility tests.
+- Closed final findings across egress, fallback, corrective copy, transactional shadow
+  routing and file size. Both full suites passed above the 95 per cent coverage gates.

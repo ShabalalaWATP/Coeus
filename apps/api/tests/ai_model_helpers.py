@@ -73,8 +73,10 @@ class FakeLlmClient:
     def iter_bytes(self):  # type: ignore[no-untyped-def]
         reply = json.dumps(
             {
-                "requested_field": "operational_question",
-                "reply": "What specific question should the analysts answer?",
+                "action": "ask_missing_field",
+                "strategy": "ask_one_field",
+                "reason_codes": ["missing_required_field"],
+                "suggested_field": "operational_question",
                 "abstain": False,
             }
         )

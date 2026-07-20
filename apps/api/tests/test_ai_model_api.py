@@ -101,7 +101,8 @@ async def test_admin_provider_settings_drive_ticket_assistant(
 
     assert response.status_code == 201
     assert response.json()["messages"][-1]["body"] == (
-        "What specific question should the analysts answer?"
+        "Thanks, that helps. What is the specific question you would like answered? "
+        "Putting it as a question helps the analysts focus the work."
     )
     assert "models/gemini-3.1-pro-preview:generateContent" in str(FakeLlmClient.captured["url"])
     headers = {

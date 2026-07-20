@@ -8,43 +8,50 @@ only from the workflow service and deterministic policy described here.
 > explicit, audited deployment choice and does not grant the provider authority
 > to read repositories, call tools or mutate workflow state.
 
-Remote chat and Gemini embeddings reserve shared capacity before network use.
-A reported completed provider call commits one unit, including a semantically
-invalid reply that safely falls back locally; calls that do not complete refund
-the reservation. `/api/v1/metrics` omits user IDs.
+Remote calls reserve shared capacity. Completed calls commit one unit, including
+invalid replies that fall back locally; incomplete calls refund it. Metrics omit user IDs.
 
 ## Authority matrix
 
 | Automation | Kind | Purpose and inputs | Permitted writes | Must abstain or escalate when | Owner | Version | Egress / rollout |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Customer Chatbot | Model-backed bounded selector | Select the permitted next-question or completion action from extracted intake fields and local safety results | Append application-rendered conversation copy and run records; deterministic extraction may update draft intake | Unsafe input, invalid or oversized output, provider failure, or admission denial | Product owner | Prompt and provider selection recorded per run | Extracted fields only, never raw history; no provider prose; mock default |
+| Intake Planner | Model-backed bounded advisory | Identify contradictions, ambiguity and an ordered follow-up strategy from four purpose-limited extracted fields | Admitted advice inside the intake agent run; proven date contradictions trigger only fixed controller-owned correction questions | Safety refusal, unresolved contradiction, or no permitted follow-up | Product owner | Prompt, policy and context schema recorded per run | Hosted remote egress unavailable pending enforceable classification; provider output cannot author copy, declare completeness or change lifecycle |
 | RFI Search | Deterministic state-changing | Search the actor-authorised Store corpus using requirement fields and index provenance | Search run, authorised offers and assured search state | Coverage is incomplete, stale or degraded | Intelligence Store owner | Search policy, corpus and embedding versions | Provider allowlist; shadow evaluation before production activation |
+| Search Planner | Model-backed bounded advisory | Suggest expansions, entities, date-text interpretations and alternative terminology | Admitted advice and a separate additive retrieval leg; the independent baseline leg and its offers are preserved | Invalid output, provider failure, egress disabled or admission denial | Intelligence Store owner | Prompt, query-admission policy and context schema recorded per run | Minimized intake only, never corpus/results; hosted remote egress disabled by default |
 | Similar Request Check | Deterministic advisory | Compare authorised open-work summaries | Persisted match offers only; human endpoints create subscriptions or links | Match is hidden, access is lost or retrieval is degraded | Workflow owner | Search/context versions | No hidden match content leaves the access boundary |
 | RFA / CM Capability | Deterministic advisory | Assess route signals against intake and capability facts | Review and candidate-team records only | Signals conflict, facts are missing/stale, restrictions or risks exist | RFA / CM managers | Capability catalogue and policy versions | No external egress; active only as advice |
 | Legacy Orchestrator | Deterministic advisory | Combine RFI and capability reviews | Recommendation, clarification and audit records | Neither route is safely supported | JIOC Manager | Routing policy version | No external egress; advisory only |
-| JIOC Routing | Deterministic state-changing | Apply an eligible route from a versioned routing context | Route decision and allowed transition, or manager-review/clarification state | Conflicting signals, stale/missing evidence, restrictions, policy exception or unsafe mode | JIOC Manager | `jioc-routing-policy-v2` plus context schema | No external egress; `disabled`, `shadow` or `active` |
+| JIOC Routing | Deterministic state-changing | Decide CM versus RFA from a versioned routing context | Route decision and allowed transition, or manager-review/clarification state | Conflicting signals, stale/missing evidence, restrictions, policy exception or unsafe mode | JIOC Manager | `jioc-routing-policy-v2` plus context schema | No external egress; evaluated release active in local/test, hosted mode explicit |
+| JIOC Routing Critic | Model-backed shadow advisory | Challenge the already committed route and identify missing evidence from derived immutable facts | Admitted critique run visible to staff oversight only, processed from a durable exact-decision outbox request in hosted mode | Invalid/unavailable output, egress disabled or incomplete critic context | JIOC Manager | Critic prompt, policy and route-context schema recorded per run | Permanently shadow-only; remote egress disabled by default; no raw identifiers, route, state, action, disposition or tool field |
 | Prioritisation | Deterministic advisory | Order queues from synthetic registry weights | Priority assessment and run record | Required policy inputs are unavailable | JIOC Manager | Prioritisation policy version | No external egress; never changes lifecycle state |
 | QC Preflight | Deterministic state-changing gate | Check draft structure, evidence readiness and immutable manifest | Preflight/run/audit records; may block release | Any check fails or the draft changes | QC officer | `qc-preflight-v1` | No external egress; cannot release |
 | QC release | Human-only release action | Confirm classification, sources, access and releasability | Published product, dissemination, audit and durable notification intent | Preflight is absent/stale, authority is missing, or version changed | QC officer | Human checklist and release policy | No agent or model can invoke release authority |
 
-The stages map onto the [request journey](USER_GUIDE.md#the-request-journey).
-
 ### Common authority contract
 
-- Inputs are allowlisted, versioned and access-filtered before evaluation.
+- Inputs are allowlisted, minimized, versioned and access-filtered before evaluation.
 - Model-backed chat receives extracted fields, not raw conversation history.
 - Provider output is untrusted: token and byte ceilings, identity-only response
   encoding, a closed action vocabulary and deterministic fallback apply before
   application-owned copy is persisted or displayed.
 - Runs record enough provenance to identify provider/model (where applicable),
   prompt, policy and context versions, latency, validation and fallback outcome.
-- `disabled` invokes no capability agent and makes no autonomous route decision;
-  it deterministically refers the ticket to `JIOC_REVIEW`. `shadow` records a
-  comparison and makes the same human referral. `active` may execute only
-  deterministic allowlisted transitions. Any conflict or stale/missing context
-  goes to manual review.
+- The evaluated release runs in `active` mode for supported synthetic local/test
+  use and decides CM versus RFA. `disabled` invokes no capability agent and refers the
+  ticket to `JIOC_REVIEW`; `shadow` records evidence and makes the same referral.
+  Any conflict or stale/missing context goes to manual review.
 - Humans alone approve final dissemination. Automation cannot expand its own
   permissions, invoke tools, alter policy or bypass object-level authorisation.
+
+### Decision flow and human position
+
+| Stage | Deterministic decision point | Agent freedom | Human position |
+| --- | --- | --- | --- |
+| Intake | Safety, extraction, required-field set, close/submit eligibility and the permitted next action | Intake Planner may flag bounded issues and prefer one already-missing field | Requester is in the loop: answers, edits and submits |
+| Search | Requester identity, visible corpus, baseline leg, structured filters, ranking threshold, coverage, assurance and workflow outcome | Search Planner may add a bounded supplemental leg but cannot remove or displace baseline offers | Requester is in the loop for offer acceptance/rejection and consent to new tasking |
+| JIOC route | Versioned policy validates evidence and actively chooses CM, RFA, clarification or manager review | Routing Critic observes the committed result and may challenge it using closed reason codes | JIOC Managers are on the loop through visibility, metrics, hold/reopen and audited intervention; they enter the loop only on explicit review paths |
+| Delivery and release | Assignment, manager approval, QC preflight and release gates | No advisory planner receives these authorities | RFA/CM managers and QC officers remain in the loop at their existing approval gates |
 
 ---
 

@@ -35,7 +35,7 @@ async def test_chat_creates_ticket_and_returns_follow_up_questions() -> None:
     assert "priority" in ticket["intake"]["missingInformation"]
     assert ticket["messages"][-1]["author"] == "assistant"
     assert ticket["agentRuns"] == []
-    assert _stored_ticket(app, ticket["id"]).agent_runs[0].agent_name == "customer-chatbot-agent"
+    assert _stored_ticket(app, ticket["id"]).agent_runs[0].agent_name == "intake-planner-agent"
 
 
 @pytest.mark.asyncio
@@ -82,9 +82,10 @@ async def test_intake_can_be_edited_and_submitted_when_complete() -> None:
     payload = submitted.json()
     assert payload["state"] == TicketState.RFI_SEARCH_INCOMPLETE
     assert payload["agentRuns"] == []
-    assert [run.agent_name for run in _stored_ticket(app, ticket_id).agent_runs[:3]] == [
-        "customer-chatbot-agent",
+    assert [run.agent_name for run in _stored_ticket(app, ticket_id).agent_runs[:4]] == [
+        "intake-planner-agent",
         "prioritisation-agent",
+        "search-planner-agent",
         "rfi-search-agent",
     ]
     assert any(entry["eventType"] == "search_started" for entry in payload["timeline"])

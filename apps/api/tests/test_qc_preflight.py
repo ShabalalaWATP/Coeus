@@ -4,8 +4,9 @@ from uuid import uuid4
 
 from coeus.core.config import Settings
 from coeus.domain.enums import TicketState
+from coeus.domain.product_submission import DraftProductAsset, DraftProductVersion
 from coeus.domain.qc import QcAgentPreflightStatus
-from coeus.domain.tickets import DraftProductAsset, DraftProductVersion, IntakeDetails, TicketRecord
+from coeus.domain.tickets import IntakeDetails, TicketRecord
 from coeus.main import create_app
 from coeus.services.qc_preflight import QcPreflightAgent
 
