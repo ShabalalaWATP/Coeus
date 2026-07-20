@@ -3,8 +3,9 @@
 from ipaddress import ip_network
 from urllib.parse import urlsplit
 
-from coeus.core.advisory_egress import HOSTED_ENVIRONMENTS, advisory_egress_errors
+from coeus.core.advisory_egress import advisory_egress_errors
 from coeus.core.config import DEFAULT_ASSET_TOKEN_SECRET, DEFAULT_SEED_CREDENTIAL, Settings
+from coeus.core.deployment import HOSTED_ENVIRONMENTS
 from coeus.core.litellm_endpoint import litellm_base_url_errors
 from coeus.domain.jioc_routing import ROUTING_RELEASE, JiocRoutingMode, normalise_routing_mode
 

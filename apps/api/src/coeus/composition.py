@@ -5,7 +5,8 @@ from coeus.api.product_workflow_composition import configure_product_workflow
 from coeus.api.search_composition import configure_search_services
 from coeus.api.ticket_discovery_composition import build_ticket_discovery_handler
 from coeus.application.ports.admission import ResourceAdmission
-from coeus.core.config import HOSTED_ENVIRONMENTS, Settings
+from coeus.core.config import Settings
+from coeus.core.deployment import HOSTED_ENVIRONMENTS
 from coeus.domain.jioc_routing import JiocRoutingMode, normalise_routing_mode
 from coeus.persistence.factory import build_state_store
 from coeus.persistence.outbox import PostgresOutboxStore

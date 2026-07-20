@@ -6,7 +6,8 @@ from hashlib import sha256
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from coeus.core.config import HOSTED_ENVIRONMENTS, Settings
+from coeus.core.config import Settings
+from coeus.core.deployment import HOSTED_ENVIRONMENTS
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
 from coeus.domain.auth import UserAccount

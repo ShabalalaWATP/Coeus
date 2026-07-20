@@ -1,6 +1,7 @@
 from coeus.application.ports.admission import ProviderAdmission
 from coeus.application.ports.workflow_transaction import WorkflowTransactionPort
-from coeus.core.config import HOSTED_ENVIRONMENTS, Settings
+from coeus.core.config import Settings
+from coeus.core.deployment import HOSTED_ENVIRONMENTS
 from coeus.persistence.state_store import StateStore
 from coeus.repositories.tickets import InMemoryTicketRepository
 from coeus.services.admission_metrics import AdmissionMetrics

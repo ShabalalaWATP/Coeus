@@ -3,9 +3,6 @@ from typing import Literal
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from coeus.core.advisory_egress import (
-    HOSTED_ENVIRONMENTS as HOSTED_ENVIRONMENTS,
-)
 from coeus.domain.admission import AdmissionMode
 from coeus.domain.jioc_routing import JiocRoutingMode
 

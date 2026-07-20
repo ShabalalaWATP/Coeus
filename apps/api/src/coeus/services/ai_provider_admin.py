@@ -7,8 +7,8 @@ switch visible to every administrator, not just the one who clicked.
 
 from dataclasses import dataclass
 
-from coeus.core.advisory_egress import HOSTED_ENVIRONMENTS
 from coeus.core.config import Settings
+from coeus.core.deployment import HOSTED_ENVIRONMENTS
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
 from coeus.domain.auth import UserAccount

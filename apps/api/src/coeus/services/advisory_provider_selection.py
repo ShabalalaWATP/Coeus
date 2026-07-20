@@ -3,8 +3,8 @@
 from dataclasses import dataclass
 from hashlib import sha256
 
-from coeus.core.advisory_egress import HOSTED_ENVIRONMENTS
 from coeus.core.config import Settings
+from coeus.core.deployment import HOSTED_ENVIRONMENTS
 from coeus.domain.advisory_agents import AdvisoryAgentKind, AdvisoryPrompt
 from coeus.integrations.llm_gateway import LlmCall
 from coeus.services.ai_models import AiModelService

@@ -166,5 +166,3 @@ def test_hosted_intake_remote_egress_remains_unavailable_without_classification(
     assert blocked.execute().outcome == "remote_egress_not_approved_fallback"
     assert blocked.execute().error_class == "AgentRemoteEgressNotApproved"
     assert calls == 0
-
-    assert calls == 0

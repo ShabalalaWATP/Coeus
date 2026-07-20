@@ -2,17 +2,49 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from collections.abc import Sequence
+from typing import Protocol
 
+from coeus.core.deployment import HOSTED_ENVIRONMENTS
 from coeus.domain.jioc_routing import JiocRoutingMode, normalise_routing_mode
 
-HOSTED_ENVIRONMENTS = frozenset({"dev", "staging", "prod"})
 
-if TYPE_CHECKING:
-    from coeus.core.config import Settings
+class AdvisoryEgressSettings(Protocol):
+    @property
+    def environment(self) -> str: ...
+
+    @property
+    def search_planner_remote_enabled(self) -> bool: ...
+
+    @property
+    def routing_critic_remote_enabled(self) -> bool: ...
+
+    @property
+    def llm_provider(self) -> str: ...
+
+    @property
+    def advisory_approved_providers(self) -> Sequence[str]: ...
+
+    @property
+    def advisory_approved_data_classifications(self) -> Sequence[str]: ...
+
+    @property
+    def jioc_agent_routing_enabled(self) -> JiocRoutingMode | bool: ...
+
+    @property
+    def persistence_provider(self) -> str: ...
+
+    @property
+    def ticket_persistence_mode(self) -> str: ...
+
+    @property
+    def outbox_lease_seconds(self) -> int: ...
+
+    @property
+    def llm_api_timeout_seconds(self) -> int: ...
 
 
-def advisory_egress_errors(settings: Settings) -> tuple[str, ...]:
+def advisory_egress_errors(settings: AdvisoryEgressSettings) -> tuple[str, ...]:
     if settings.environment not in HOSTED_ENVIRONMENTS:
         return ()
     errors: list[str] = []
