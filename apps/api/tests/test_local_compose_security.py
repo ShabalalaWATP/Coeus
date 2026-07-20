@@ -51,4 +51,4 @@ def test_deployment_manifests_declare_jioc_routing_authority() -> None:
 
     assert "COEUS_JIOC_AGENT_ROUTING_ENABLED: active" in compose
     assert "COEUS_JIOC_ROUTING_APPROVED_RELEASES:" in compose
-    assert 'COEUS_JIOC_AGENT_ROUTING_ENABLED     = "disabled"' in gcp_reference
+    assert 'COEUS_JIOC_AGENT_ROUTING_ENABLED = "disabled"' in " ".join(gcp_reference.split())

@@ -106,7 +106,9 @@ test("rejects an oversized upload without losing form input or creating a produc
     buffer: Buffer.alloc(2048, 65),
   });
   await page.getByRole("button", { name: "Register product" }).click();
-  await expect(page.getByRole("alert")).toHaveText("Asset exceeds the local upload limit.");
+  await expect(page.getByRole("alert")).toHaveText(
+    "The selected file is too large. Choose a smaller file and try again.",
+  );
   await expect(page.getByRole("textbox", { name: "Title", exact: true })).toHaveValue(
     "Oversized browser proof",
   );
