@@ -77,11 +77,9 @@ with one intentional compatibility skip at 98.09 per cent line and 95.12 per
 cent branch coverage. The frontend passes 518 tests at 98.85 per cent line and
 95.05 per cent branch coverage.
 
-The 20 July 2026 agent-safety hardening milestone is complete. The evaluated v2
-JIOC release is active by default for supported synthetic local/test use and
-autonomously decides CM versus RFA. Hosted mode and approval remain explicit;
-unsafe cases fail closed to human review. The release approval is independently
-pinned. Model, provenance, authority and outbox safety passed the local gates.
+The 20 July 2026 agent-safety hardening milestone is complete. The evaluated v2 JIOC release is active by default for supported synthetic local/test use and autonomously decides CM versus RFA. Hosted mode and approval remain explicit; unsafe cases fail closed to human review. The release approval is independently pinned. Model, provenance, authority and outbox safety passed the local gates.
+
+The 21 July 2026 repair aligns Store metadata and object seeding for non-demo and hosted starts; the ten-stage PostgreSQL journey proves active JIOC routing without a routine manager approval gate and the manager's separate oversight controls.
 
 ## Delivery Ledger
 

@@ -179,6 +179,10 @@ def _configure_data_services(
         app.state.state_store,
         app.state.embedding_service,
         app.state.ticket_services.tickets.assignment_snapshot,
+        seed_products=(
+            settings.should_seed_demo()
+            or (settings.environment == "test" and settings.persistence_provider == "memory")
+        ),
     )
     configure_search_services(app, settings, identity.audit_log)
     app.state.admin_analytics_service = AdminAnalyticsService(

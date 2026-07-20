@@ -44,6 +44,11 @@ complete extraction and embedding coverage, successful access filtering and no
 provider degradation. Metadata or lexical fallback may produce offers, but it
 cannot produce a definitive no-match.
 
+The Store catalogue and object corpus use one explicit demo-seeding policy. A
+non-demo or hosted deployment starts with an empty catalogue, and a ready empty
+index is complete rather than degraded. Synthetic metadata must never be present
+without its corresponding object bytes.
+
 ## Workflow
 
 ```mermaid
@@ -145,6 +150,8 @@ exposed.
 - Every remote run is attributable without retaining secrets or raw chat history.
 - Human QC is mandatory before release.
 - Search evaluation passes the release gates in this specification's test plan.
+- Disabling demo content leaves both Store metadata and object storage empty and
+  permits a complete empty-corpus search result.
 
 ## Search Release Gates
 

@@ -11,7 +11,9 @@ admin command-centre milestone is recorded in
 customer-search and JIOC-agent milestone is recorded in
 [DEVELOPMENT_STORY_2026-07-18.md](DEVELOPMENT_STORY_2026-07-18.md). The current
 agent-safety and LiteLLM work is in
-[DEVELOPMENT_STORY_2026-07-20.md](DEVELOPMENT_STORY_2026-07-20.md).
+[DEVELOPMENT_STORY_2026-07-20.md](DEVELOPMENT_STORY_2026-07-20.md), and the
+production-safe Store startup repair is in
+[DEVELOPMENT_STORY_2026-07-21.md](DEVELOPMENT_STORY_2026-07-21.md).
 
 ## 2026-07-11 cross-role usability and documentation accuracy
 

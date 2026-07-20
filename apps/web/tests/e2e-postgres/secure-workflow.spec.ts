@@ -23,6 +23,28 @@ async function logout(page: Page) {
   await expect(page.getByRole("heading", { name: "Sign in", exact: true })).toBeVisible();
 }
 
+function controlledPdf(): Buffer {
+  const content = "BT\n/F1 12 Tf\n72 720 Td\n(MOCK DATA ONLY) Tj\nET\n";
+  const objects = [
+    "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n",
+    "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n",
+    "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n",
+    "4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n",
+    `5 0 obj\n<< /Length ${Buffer.byteLength(content)} >>\nstream\n${content}endstream\nendobj\n`,
+  ];
+  let pdf = "%PDF-1.4\n";
+  const offsets: number[] = [];
+  for (const object of objects) {
+    offsets.push(Buffer.byteLength(pdf));
+    pdf += object;
+  }
+  const xrefOffset = Buffer.byteLength(pdf);
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  pdf += offsets.map((offset) => `${String(offset).padStart(10, "0")} 00000 n \n`).join("");
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+  return Buffer.from(pdf, "ascii");
+}
+
 test("denies an unrelated same-ACG user access to a PostgreSQL draft", async ({ page }) => {
   await login(page, "store.manager@example.test", "Intelligence Store");
   await page.goto("/store/upload");
@@ -123,6 +145,14 @@ test("rejects an oversized upload without losing form input or creating a produc
 });
 
 test("creates and submits a customer request through PostgreSQL", async ({ page }) => {
+  await login(page, "admin@example.test", "Admin");
+  await page.getByRole("heading", { name: "Search & embeddings" }).click();
+  await page.getByRole("button", { name: "Rebuild search index" }).click();
+  await expect(
+    page.getByLabel("Search index status").getByText("ready", { exact: true }),
+  ).toBeVisible({ timeout: 30_000 });
+  await logout(page);
+
   await login(page, "user@example.test", "My Requests");
   await page.getByRole("button", { name: "Open new request" }).click();
   await page.getByLabel("Message").fill("Need a synthetic North Atlantic maritime assessment.");
@@ -158,12 +188,10 @@ test("creates and submits a customer request through PostgreSQL", async ({ page 
   await page.getByRole("button", { name: "Submit", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "Request journey" })).toBeVisible();
   await page.getByLabel("Close journey").click();
-  await expect(page.getByRole("heading", { name: "Similar request in progress" })).toBeVisible();
-  await page.getByRole("button", { name: "None answer my need" }).click();
   const taskAsNewRequest = page.getByRole("button", { name: "Yes, task as new request" });
   await expect(taskAsNewRequest).toBeVisible();
   await taskAsNewRequest.click();
-  await expect(page.getByText("JIOC review", { exact: true })).toBeVisible();
+  await expect(page.getByText("Analyst assignment", { exact: true })).toBeVisible();
 });
 
 test("recovers from a retained-ticket 429 without losing the message", async ({ page }) => {
@@ -178,13 +206,18 @@ test("recovers from a retained-ticket 429 without losing the message", async ({ 
   await expect(page.getByLabel("Message")).toHaveValue(message);
 });
 
-test("routes the request as the JIOC user", async ({ page }) => {
-  await login(page, "jioc.team@example.test", "JIOC Queue");
-  await page.getByRole("button", { name: new RegExp(reference) }).click();
-  await page.getByRole("button", { name: "Run capability checks" }).click();
-  await expect(page.getByText(/Recommended route:/)).toBeVisible();
-  await page.getByRole("button", { name: "Approve route" }).click();
-  await expect(page.getByText("No tickets in this queue.")).toBeVisible();
+test("shows the automatic JIOC decision to the on-loop manager", async ({ page }) => {
+  await login(page, "jioc.team@example.test", "JIOC Oversight");
+  const task = page.getByRole("row").filter({ hasText: reference });
+  await expect(task).toBeVisible();
+  await expect(task).toContainText("Analyst assignment");
+  await expect(task).toContainText("RFA");
+  await expect(task).toContainText("Unassigned");
+  await expect(task).toContainText(/auto applied \(\d+%\)/);
+  await expect(task.getByRole("textbox", { name: "Intervention reason" })).toBeVisible();
+  await expect(task.getByRole("button", { name: "Hold" })).toBeDisabled();
+  await expect(task.getByRole("button", { name: "Send to review" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Approve route" })).toHaveCount(0);
 });
 
 test("assigns the request as the RFA manager", async ({ page }) => {
@@ -199,21 +232,30 @@ test("creates a controlled draft as the assigned analyst", async ({ page }) => {
   await login(page, "analyst@example.test", "Analyst Workbench");
   await page.getByRole("link", { name: new RegExp(reference) }).click();
   const workPackages = page
-    .getByRole("region", { name: "Analyst task detail" })
+    .getByRole("heading", { name: "Work packages" })
+    .locator("..")
     .getByRole("checkbox");
   for (let index = 0; index < (await workPackages.count()); index += 1) {
     const checkbox = workPackages.nth(index);
     await checkbox.click();
     await expect(checkbox).toBeChecked();
   }
-  await page.getByLabel("Title", { exact: true }).fill(assessmentTitle);
-  await page.getByLabel("Summary", { exact: true }).fill("Synthetic assessment summary.");
-  await page
-    .getByLabel("Content", { exact: true })
+  const submission = page
+    .getByRole("heading", { name: "External product submission" })
+    .locator("..");
+  await submission.getByLabel("Product file").setInputFiles({
+    name: "assessment-draft.pdf",
+    mimeType: "application/pdf",
+    buffer: controlledPdf(),
+  });
+  await submission.getByRole("textbox", { name: "Title", exact: true }).fill(assessmentTitle);
+  await submission.getByRole("textbox", { name: "Summary" }).fill("Synthetic assessment summary.");
+  await submission
+    .getByRole("textbox", { name: "Description" })
     .fill("Synthetic assessment content for controlled QC review.");
-  await page.getByLabel("Mock supporting asset name").fill("assessment.txt");
-  await page.getByRole("button", { name: "Save draft" }).click();
-  await expect(page.getByText(`v1: ${assessmentTitle}`)).toBeVisible();
+  await submission.getByRole("checkbox", { name: "ACG-EU-CYBER", exact: true }).check();
+  await submission.getByRole("button", { name: "Upload product version" }).click();
+  await expect(page.getByRole("heading", { name: `Version 1: ${assessmentTitle}` })).toBeVisible();
   await page.getByRole("button", { name: "Submit for manager approval" }).click();
   await expect(
     page
@@ -252,14 +294,14 @@ test("downloads the released asset bytes as the customer", async ({ page }) => {
   await page.getByPlaceholder("Search title, summary, tags").fill(assessmentTitle);
   await page.getByRole("button", { name: "Search products" }).click();
   await page.getByText(assessmentTitle, { exact: true }).click();
-  await page.getByRole("link", { name: /assessment.txt/ }).click();
+  await page.getByRole("link", { name: /assessment-draft\.pdf/ }).click();
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download asset" }).click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe("assessment.txt");
+  expect(download.suggestedFilename()).toBe("assessment-draft.pdf");
   const downloadedPath = await download.path();
   if (downloadedPath === null) {
     throw new Error("Playwright did not persist the downloaded asset");
   }
-  await expect(readFile(downloadedPath, "utf8")).resolves.toContain("MOCK DATA ONLY");
+  await expect(readFile(downloadedPath, "utf8")).resolves.toContain("%PDF-");
 });

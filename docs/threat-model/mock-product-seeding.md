@@ -24,11 +24,14 @@ asset tree.
 | Mock imagery or document structure is mistaken for operational material. | Every generated PDF page, product description and release marker states `MOCK DATA ONLY`; content avoids real units, locations, sources and operational claims. |
 | A local PDF object does not match its advertised MIME type, size or hash. | The live seed writes genuine deterministic PDFs, derives size and SHA-256 from the final bytes, and repairs missing or changed objects on restart. |
 | A document is exposed without a need-to-know boundary. | Every generated PDF has exactly one active specialist ACG and normal Store detail and download authorisation remains mandatory. |
+| Synthetic catalogue records appear when demo seeding is disabled or in a hosted deployment. | Runtime composition passes an explicit seed policy into the Store repository. Local demo mode and isolated in-memory tests may seed; an explicit `COEUS_SEED_DEMO_CONTENT=false`, PostgreSQL workflow tests and hosted environments start without synthetic products. |
+| Seed metadata exists without its corresponding object bytes, causing partial search coverage. | The catalogue and its objects share the same demo-seeding decision. Clean non-demo databases therefore build a complete empty index instead of inheriting metadata-only placeholder products. |
 
 ## Deferred Risks
 
-- Untrusted upload malware scanning, MIME validation and sandboxed text
-  extraction remain separate production ingestion controls.
+- Local ingestion now performs bounded MIME/content validation and non-executing
+  extraction. Hosted uploads remain fail-closed until an approved malware
+  scanner is configured.
 - Database import, object-store permissions and access-controlled downloads are
   handled by later ingestion work.
 - Search-result leakage must be rechecked when Sprint 7 indexes this generated

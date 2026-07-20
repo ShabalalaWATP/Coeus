@@ -45,6 +45,13 @@ def test_store_repository_mirrors_seed_products_to_projection() -> None:
     assert len(projection.saved_batches[0]) == 3
 
 
+def test_store_repository_can_start_without_synthetic_seed_products() -> None:
+    repository = InMemoryStoreRepository(access_repository(), seed_products=False)
+
+    assert repository.list_products() == ()
+    assert repository.next_reference() == "PROD-1001"
+
+
 def test_store_repository_restores_projection_before_json_state() -> None:
     source = InMemoryStoreRepository(access_repository())
     projected_product = replace(source.list_products()[0], reference="PROD-1100")

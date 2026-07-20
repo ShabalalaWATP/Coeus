@@ -22,6 +22,8 @@ def build_store_services(
     state_store: StateStore | None = None,
     embeddings: EmbeddingService | None = None,
     ticket_provider: Callable[[], tuple[TicketRecord, ...]] | None = None,
+    *,
+    seed_products: bool = True,
 ) -> StoreServices:
     projection = (
         state_store.store_projection(embeddings)
@@ -41,6 +43,7 @@ def build_store_services(
         projection,
         embeddings,
         audience_projection,
+        seed_products=seed_products,
     )
     policy = StoreProductAccessPolicy(
         access_repository, RoleAwareDraftAudiencePolicy(audience_projection)
