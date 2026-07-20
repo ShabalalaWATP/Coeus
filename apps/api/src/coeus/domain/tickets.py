@@ -10,12 +10,8 @@ from coeus.domain.enums import TicketState
 from coeus.domain.jioc_intervention import JiocIntervention
 from coeus.domain.jioc_routing import JiocRoutingContext, JiocRoutingDecision
 from coeus.domain.prioritisation import PriorityAssessment
-from coeus.domain.product_submission import (
-    DraftProductAsset as DraftProductAsset,
-)
-from coeus.domain.product_submission import (
-    DraftProductVersion as DraftProductVersion,
-)
+from coeus.domain.product_submission import DraftProductAsset as DraftProductAsset
+from coeus.domain.product_submission import DraftProductVersion as DraftProductVersion
 from coeus.domain.search_index import GroundedProductEvidence
 from coeus.domain.search_metrics import RfiSearchMetrics
 from coeus.domain.work_discovery import ActiveWorkOffer
@@ -27,7 +23,12 @@ class MessageAuthor(StrEnum):
 
 class AgentRunStatus(StrEnum):
     COMPLETED = "completed"
+    FAILED = "failed"
     QUEUED = "queued"
+
+
+class AgentExecutionKind(StrEnum):
+    DETERMINISTIC, PROVIDER_BACKED = "deterministic", "provider_backed"
 
 
 class ProductOfferStatus(StrEnum):
@@ -119,6 +120,20 @@ class AgentRun:
     summary: str
     safety_flags: tuple[str, ...]
     created_at: datetime
+    execution_kind: AgentExecutionKind | None = None
+    provider: str | None = None
+    model: str | None = None
+    duration_ms: int | None = None
+    fallback_outcome: str | None = None
+    validation_outcome: str | None = None
+    prompt_version: str | None = None
+    policy_version: str | None = None
+    context_schema_version: str | None = None
+    input_hash: str | None = None
+    output_hash: str | None = None
+    input_token_count: int | None = None
+    output_token_count: int | None = None
+    error_class: str | None = None
 
 
 @dataclass(frozen=True)

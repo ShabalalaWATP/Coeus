@@ -9,6 +9,7 @@ from httpx import ASGITransport, AsyncClient, Response
 
 from coeus.core.config import Settings
 from coeus.domain.enums import TicketState
+from coeus.domain.jioc_routing import ROUTING_RELEASE, RoutingOperationalSnapshot
 from coeus.domain.search_metrics import RfiSearchMetrics
 from coeus.domain.tickets import (
     IntakeDetails,
@@ -16,11 +17,13 @@ from coeus.domain.tickets import (
     TicketRecord,
 )
 from coeus.main import create_app
-from coeus.services.jioc_routing_agent import (
-    _context,
-    _decide,
-    _evidence_failures,
+from coeus.services.jioc_routing_context import (
+    build_routing_context as _context,
 )
+from coeus.services.jioc_routing_context import (
+    evidence_failures as _evidence_failures,
+)
+from coeus.services.jioc_routing_policy import decide as _decide
 from coeus.services.ticket_records import timeline
 from jioc_test_helpers import cm_review as _cm_review
 from jioc_test_helpers import rfa_review as _rfa_review
@@ -94,7 +97,7 @@ async def test_jioc_agent_escalates_risk_to_manager_on_the_loop() -> None:
 
 
 @pytest.mark.asyncio
-async def test_jioc_agent_overrides_an_inconsistent_capability_recommendation() -> None:
+async def test_jioc_agent_escalates_conflicting_capability_recommendations() -> None:
     app = create_app(_settings())
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
@@ -116,8 +119,9 @@ async def test_jioc_agent_overrides_an_inconsistent_capability_recommendation() 
 
     result = app.state.jioc_routing_agent_service.route(prepared.ticket_id)
 
-    assert result.state == TicketState.COLLECT_CHOICE
+    assert result.state == TicketState.JIOC_REVIEW
     assert result.route_recommendations[-1].recommended_route == RoutingRoute.CM
+    assert result.jioc_routing_decisions[-1].rationale_codes == ("conflicting_route_signals",)
 
 
 def test_jioc_agent_handles_missing_stale_and_low_confidence_inputs() -> None:
@@ -140,6 +144,7 @@ def test_jioc_agent_handles_missing_stale_and_low_confidence_inputs() -> None:
     assert unchanged.ticket_id == draft.ticket_id
     assert unchanged.state == TicketState.DRAFT_INTAKE
 
+    now = datetime.now(UTC)
     context = _context(
         replace(
             draft,
@@ -152,7 +157,9 @@ def test_jioc_agent_handles_missing_stale_and_low_confidence_inputs() -> None:
                     "No matching work found.",
                 ),
             ),
-        )
+        ),
+        RoutingOperationalSnapshot("capability-catalogue-v1", now, ()),
+        now,
     )
     disposition = _decide(
         draft,
@@ -167,16 +174,17 @@ def test_jioc_agent_handles_missing_stale_and_low_confidence_inputs() -> None:
     )
     assert disposition[:2] == ("manager_review", RoutingRoute.CLARIFICATION)
 
-    unresolved = SimpleNamespace(
-        product_offers=(SimpleNamespace(status=SimpleNamespace(value="offered")),),
-        active_work_offers=(SimpleNamespace(status="offered"),),
-    )
     failures = _evidence_failures(
-        unresolved,
         SimpleNamespace(
             search_assurance="assisted",
             search_coverage="partial",
+            product_offer_statuses=(f"{uuid4()}:offered",),
             active_work_search_completed=False,
+            active_work_offer_statuses=(f"{uuid4()}:offered",),
+            capability_catalogue_version="capability-catalogue-v1",
+            availability_snapshot_at=now,
+            created_at=now,
+            capacity_freshness_seconds=300,
         ),
     )
     assert failures == (
@@ -274,6 +282,7 @@ def _prepare(
     description: str,
     restrictions: str | None = None,
 ) -> TicketRecord:
+    app.state.jioc_routing_agent_service._operational_context = _AvailableOperationalContext()
     ticket = app.state.ticket_services.tickets._repository.get(UUID(ticket_id))
     assert ticket is not None
     now = datetime.now(UTC)
@@ -320,4 +329,17 @@ def _settings() -> Settings:
         environment="test",
         argon2_memory_cost=8_192,
         persistence_provider="memory",
+        jioc_agent_routing_enabled="active",
+        jioc_routing_approved_releases=[ROUTING_RELEASE],
     )
+
+
+class _AvailableOperationalContext:
+    def snapshot(
+        self, _ticket: TicketRecord, candidate_team_ids: tuple[str, ...]
+    ) -> RoutingOperationalSnapshot:
+        return RoutingOperationalSnapshot(
+            "capability-catalogue-v1",
+            datetime.now(UTC),
+            tuple(f"{team_id}:available:1" for team_id in candidate_team_ids),
+        )

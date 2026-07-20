@@ -1,5 +1,6 @@
 """Shared fixtures for the AI model and provider tests."""
 
+import json
 from collections.abc import Callable
 from typing import Any, ClassVar
 
@@ -52,13 +53,15 @@ class FakeLlmClient:
     def __exit__(self, _exc_type: object, _exc: object, _traceback: object) -> None:
         return None
 
-    def post(
+    def stream(
         self,
+        method: str,
         url: str,
         *,
         json: dict[str, object],
         headers: dict[str, str],
     ) -> "FakeLlmClient":
+        FakeLlmClient.captured["method"] = method
         FakeLlmClient.captured["url"] = url
         FakeLlmClient.captured["headers"] = headers
         FakeLlmClient.captured["body"] = json
@@ -67,5 +70,13 @@ class FakeLlmClient:
     def raise_for_status(self) -> None:
         return None
 
-    def json(self) -> dict[str, object]:
-        return {"candidates": [{"content": {"parts": [{"text": "Gemini reply."}]}}]}
+    def iter_bytes(self):  # type: ignore[no-untyped-def]
+        reply = json.dumps(
+            {
+                "requested_field": "operational_question",
+                "reply": "What specific question should the analysts answer?",
+                "abstain": False,
+            }
+        )
+        payload = {"candidates": [{"content": {"parts": [{"text": reply}]}}]}
+        yield json.dumps(payload).encode()

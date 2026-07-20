@@ -452,6 +452,9 @@
             "title": "Generatedat",
             "type": "string"
           },
+          "outbox": {
+            "$ref": "#/components/schemas/OutboxAnalyticsResponse"
+          },
           "process": {
             "$ref": "#/components/schemas/ProcessAnalyticsResponse"
           },
@@ -472,7 +475,8 @@
           "search",
           "voice",
           "audit",
-          "process"
+          "process",
+          "outbox"
         ],
         "title": "AdminAnalyticsDashboardResponse",
         "type": "object"
@@ -541,15 +545,171 @@
             "title": "Agentname",
             "type": "string"
           },
+          "contextSchemaVersion": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contextschemaversion"
+          },
           "createdAt": {
             "format": "date-time",
             "title": "Createdat",
             "type": "string"
           },
+          "durationMs": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Durationms"
+          },
+          "errorClass": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Errorclass"
+          },
+          "executionKind": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Executionkind"
+          },
+          "fallbackOutcome": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fallbackoutcome"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "inputHash": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inputhash"
+          },
+          "inputTokenCount": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inputtokencount"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "outputHash": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outputhash"
+          },
+          "outputTokenCount": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outputtokencount"
+          },
+          "policyVersion": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Policyversion"
+          },
+          "promptVersion": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Promptversion"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
           },
           "safetyFlags": {
             "items": {
@@ -565,6 +725,18 @@
           "summary": {
             "title": "Summary",
             "type": "string"
+          },
+          "validationOutcome": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validationoutcome"
           }
         },
         "required": [
@@ -3925,6 +4097,85 @@
           "createdAt"
         ],
         "title": "NotificationResponse",
+        "type": "object"
+      },
+      "OutboxAnalyticsResponse": {
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "deadLetterCount": {
+            "title": "Deadlettercount",
+            "type": "integer"
+          },
+          "oldestPendingAgeSeconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldestpendingageseconds"
+          },
+          "pendingCount": {
+            "title": "Pendingcount",
+            "type": "integer"
+          },
+          "retryingCount": {
+            "title": "Retryingcount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "configured",
+          "available",
+          "pendingCount",
+          "retryingCount",
+          "deadLetterCount",
+          "oldestPendingAgeSeconds"
+        ],
+        "title": "OutboxAnalyticsResponse",
+        "type": "object"
+      },
+      "OutboxReplayRequest": {
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "minLength": 5,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "OutboxReplayRequest",
+        "type": "object"
+      },
+      "OutboxReplayResponse": {
+        "properties": {
+          "disposition": {
+            "title": "Disposition",
+            "type": "string"
+          },
+          "eventId": {
+            "format": "uuid",
+            "title": "Eventid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "eventId",
+          "disposition"
+        ],
+        "title": "OutboxReplayResponse",
         "type": "object"
       },
       "OversightAnalystResponse": {
@@ -11112,6 +11363,75 @@
           }
         },
         "summary": "Admin Dashboard",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/admin/outbox/{event_id}/replay": {
+      "post": {
+        "operationId": "replay_dead_letter_api_v1_analytics_admin_outbox__event_id__replay_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Event Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OutboxReplayRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutboxReplayResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Replay Dead Letter",
         "tags": [
           "analytics"
         ]

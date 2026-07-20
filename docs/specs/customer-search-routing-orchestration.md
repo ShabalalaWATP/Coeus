@@ -69,15 +69,46 @@ the same new-tasking consent prompt.
 
 The JIOC Routing Agent receives the confirmed requirement, product-search run,
 product decisions, active-work decisions, safe related-work facts, current
-capability and workload facts, and deterministic policy constraints. Its allowed
+capability catalogue version, candidate teams, availability/workload snapshot and
+deterministic policy constraints. The immutable context records its schema and
+policy versions, requirement revision, snapshot time and freshness. Its allowed
 outputs are `RFA`, `CM`, `CLARIFICATION` and `MANUAL_REVIEW` with structured
 reason codes and cited input facts.
 
 Deterministic validation enforces required intake, route eligibility, legal state
-transitions, access boundaries and escalation thresholds. Low confidence,
-conflicting evidence, stale context, policy exceptions and provider failure route
-to manual review. The JIOC Manager is on the loop through an oversight queue,
-analytics and an audited intervention action, not a mandatory approval gate.
+transitions and access boundaries. Policy outcomes are explicit eligibility,
+ambiguity, insufficient evidence or prohibition, not fixed pseudo-probabilities.
+Both routes eligible, negated or contradictory intent, missing/stale facts,
+restrictions and policy exceptions route to manual review. The JIOC Manager is on
+the loop through an oversight queue, analytics and an audited intervention action,
+not a mandatory approval gate.
+
+Routing has three mutually exclusive deployment modes:
+
+- `disabled`: safe default; do not invoke capability agents or persist a route
+  decision, then deterministically refer the ticket to `JIOC_REVIEW`;
+- `shadow`: persist the context and proposed decision for comparison, then refer
+  the ticket to `JIOC_REVIEW` without choosing RFA or CM;
+- `active`: apply only a schema-valid, policy-eligible deterministic transition.
+
+Mode changes are explicit deployment actions. Shadow evaluation and an approved
+activation gate precede `active`; the operator can return immediately to
+`disabled`. No routing or QC decision module may import or call an LLM/provider
+adapter.
+
+## Model-backed bounded-selector contract
+
+Customer-chat providers receive only delimited extracted fields and local safety
+results, never raw conversation history or workflow repositories. Provider calls
+set a maximum output-token budget and bounded timeout; transport requests identity
+encoding, rejects encoded responses and enforces a response-byte ceiling. The
+provider selects only the allowlisted next-question or completion action, and the
+application renders the requester-facing wording. Any other shape or value uses
+the deterministic reply and never changes lifecycle behaviour.
+
+Remote runs persist provider, model, prompt version, policy/context versions,
+duration and validation/fallback outcome. Raw prompts, credentials and unnecessary
+request content are not provenance.
 
 ## Collection, Analysis And QC
 
@@ -105,6 +136,11 @@ exposed.
 - New-tasking consent is owner-only, CSRF protected, deterministic and audited.
 - Active-work joins are durable, idempotent, authorised and customer-trackable.
 - JIOC agent output is schema validated and policy checked before transition.
+- Conflicting or stale routing evidence can never auto-apply a route.
+- Disabled and shadow modes cannot choose RFA or CM or create downstream route
+  side effects; both finish at the human JIOC review state.
+- Model-backed wording is byte/token bounded and invalid output falls back locally.
+- Every remote run is attributable without retaining secrets or raw chat history.
 - Human QC is mandatory before release.
 - Search evaluation passes the release gates in this specification's test plan.
 
@@ -125,7 +161,14 @@ exposed.
 
 Ship automatic discovery, active-work offers and JIOC agent decisions behind
 independent flags. Provider and embedding-model activation remains blocked by
-the release-gate evaluation and an explicit deployment allowlist. Start in shadow
-mode where applicable, compare against existing decisions, then canary and roll
-back on any access, assurance or state-integrity breach. Deterministic QC
-preflight is a mandatory safety control, not an optional rollout path.
+the release-gate evaluation and an explicit deployment allowlist. Routing defaults
+to `disabled`, progresses through `shadow`, then canaries `active` only after the
+labelled conflict, negation, stale-context and authority suites pass. Roll back on
+any access, assurance or state-integrity breach. Deterministic QC preflight is a
+mandatory safety control, not an optional rollout path.
+
+Before real or sensitive data, deployment additionally requires approved data
+classification, DLP/redaction and egress policy; provider/model/region allowlists;
+retention rules; a representative human-labelled evaluation corpus; calibration,
+drift and rollback evidence; and a recorded decision on any proposal to enrich
+provider context beyond extracted fields.

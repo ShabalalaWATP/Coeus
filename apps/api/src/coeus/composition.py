@@ -24,6 +24,7 @@ from coeus.services.embeddings import build_embedding_service
 from coeus.services.feedback_analytics import build_feedback_analytics_service
 from coeus.services.integration_secrets import EncryptedIntegrationSecretStore
 from coeus.services.jioc_routing_agent import JiocRoutingAgentService
+from coeus.services.jioc_routing_context import LiveRoutingOperationalContext
 from coeus.services.manager_approval import ManagerApprovalService
 from coeus.services.manager_queue import ManagerQueueService
 from coeus.services.notifications import NotificationService
@@ -187,6 +188,10 @@ def _configure_workflow_services(
     audit_log = identity.audit_log
     app.state.team_repository = TeamRepository(app.state.state_store)
     seed_teams(app.state.team_repository, identity.users)
+    app.state.team_availability_service = TeamAvailabilityService(
+        app.state.team_repository,
+        tickets,
+    )
     app.state.ticket_collaborator_service = TicketCollaboratorService(
         users=identity.users,
         tickets=tickets.tickets,
@@ -213,7 +218,13 @@ def _configure_workflow_services(
         app.state.grounded_search_service,
     )
     app.state.routing_service = build_routing_service(tickets, audit_log)
-    app.state.jioc_routing_agent_service = JiocRoutingAgentService(tickets)
+    app.state.jioc_routing_agent_service = JiocRoutingAgentService(
+        tickets,
+        operational_context=LiveRoutingOperationalContext(
+            app.state.team_repository,
+            app.state.team_availability_service,
+        ),
+    )
     app.state.manager_queue_service = ManagerQueueService(tickets)
     app.state.analyst_assignment_service = AnalystAssignmentService(
         tickets,
@@ -270,10 +281,6 @@ def _configure_workflow_services(
         app.state.team_repository,
         identity.users,
         audit_log,
-    )
-    app.state.team_availability_service = TeamAvailabilityService(
-        app.state.team_repository,
-        tickets,
     )
     app.state.team_calendar_service = TeamCalendarService(
         app.state.team_repository,

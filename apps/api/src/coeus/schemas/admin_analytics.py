@@ -1,6 +1,8 @@
 from datetime import datetime
+from typing import Annotated
+from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 
 class AdminAnalyticsModel(BaseModel):
@@ -66,6 +68,15 @@ class ProcessAnalyticsResponse(AdminAnalyticsModel):
     remote_requests_denied: int = Field(serialization_alias="remoteRequestsDenied")
 
 
+class OutboxAnalyticsResponse(AdminAnalyticsModel):
+    configured: bool
+    available: bool
+    pending_count: int = Field(serialization_alias="pendingCount")
+    retrying_count: int = Field(serialization_alias="retryingCount")
+    dead_letter_count: int = Field(serialization_alias="deadLetterCount")
+    oldest_pending_age_seconds: int | None = Field(serialization_alias="oldestPendingAgeSeconds")
+
+
 class AdminAnalyticsDashboardResponse(AdminAnalyticsModel):
     generated_at: datetime = Field(serialization_alias="generatedAt")
     users: UserAnalyticsResponse
@@ -74,3 +85,13 @@ class AdminAnalyticsDashboardResponse(AdminAnalyticsModel):
     voice: VoiceAnalyticsResponse
     audit: AuditAnalyticsResponse
     process: ProcessAnalyticsResponse
+    outbox: OutboxAnalyticsResponse
+
+
+class OutboxReplayRequest(BaseModel):
+    reason: Annotated[str, StringConstraints(strip_whitespace=True, min_length=5, max_length=500)]
+
+
+class OutboxReplayResponse(AdminAnalyticsModel):
+    event_id: UUID = Field(serialization_alias="eventId")
+    disposition: str

@@ -2,6 +2,17 @@ import json
 import logging
 from typing import Any
 
+_SAFE_STRUCTURED_FIELDS = (
+    "request_id",
+    "claimed",
+    "delivered",
+    "failed",
+    "dead_lettered",
+    "event_id",
+    "event_type",
+    "attempt_count",
+)
+
 
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
@@ -10,9 +21,10 @@ class JsonFormatter(logging.Formatter):
             "logger": record.name,
             "message": record.getMessage(),
         }
-        request_id = getattr(record, "request_id", None)
-        if request_id is not None:
-            payload["request_id"] = request_id
+        for field in _SAFE_STRUCTURED_FIELDS:
+            value = getattr(record, field, None)
+            if value is not None:
+                payload[field] = value
         if record.exc_info:
             payload["exception"] = self.formatException(record.exc_info)
         return json.dumps(payload, default=str, separators=(",", ":"))

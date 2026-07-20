@@ -81,6 +81,12 @@ with one intentional compatibility skip at 98.09 per cent line and 95.12 per
 cent branch coverage. The frontend passes 518 tests at 98.85 per cent line and
 95.05 per cent branch coverage.
 
+The 20 July 2026 agent-safety hardening milestone is in progress. Candidate
+implementation and focused regression tests now cover fail-closed JIOC rollout,
+bounded model output and provenance, outbox operations, agent authority and
+static boundaries. Full local gates and independent code-quality and security
+reviews remain open, so completion and `active` routing approval are not claimed.
+
 ## Delivery Ledger
 
 | Sprint | Scope                                                                                                                                                                                                                                                                                                     | Status                       | Verification                                                                                                                                                                                                         |
@@ -108,31 +114,7 @@ cent branch coverage. The frontend passes 518 tests at 98.85 per cent line and
 | 20     | Grounded generation-aware Intelligence Store retrieval, independent search embedding administration and full-corpus RFI/RFA duplicate assurance.                                                                                                                                                       | Implementation complete      | 1,129 backend tests pass with real PostgreSQL and pgvector at 98.16 percent line and 95.12 percent branch coverage. Live browser checks prove hybrid cited offers, visible-customer duplicate joining and manager RFA discovery. |
 | 21     | Compact admin command centre, explicit provider/key state, Realtime connection assurance, return navigation and separate aggregate-only admin analytics.                                                                                                                                                 | Implementation complete      | 507 frontend, 1,072 non-PostgreSQL and 70 real-PostgreSQL tests pass above the separate 95 per cent line and branch gates; static, contract and live browser acceptance checks pass.                                   |
 | 22     | Customer-controlled product resolution, assured no-match, active-work joining, autonomous policy-constrained JIOC routing, manager intervention, safe tracking and deterministic QC preflight.                                                                                                             | Implementation complete      | 1,176 backend tests and one intentional skip pass at 98.09 per cent line and 95.12 per cent branch coverage; 518 frontend tests pass at 98.85 per cent line and 95.05 per cent branch coverage.                          |
-
-## Sprint 11 Delivered Scope
-
-- Requester feedback request listing and one-time feedback submission.
-- Immutable feedback submission records with rating, comment and follow-up flag.
-- Admin, RFA and collection analytics endpoints with role-scoped permissions.
-- Product reuse analytics over disseminations, accepted offers and feedback.
-- Deterministic Trends Analysis Agent insights for region, reuse and satisfaction.
-- Customer feedback panel on `/app/requests`.
-- Analytics dashboards at `/admin/analytics`, `/rfa/analytics` and
-  `/collection/analytics`.
-- Sprint 11 spec, ADR and threat model.
-
-## Sprint 11 Verification
-
-- Backend Ruff, mypy and pytest: 101 passed, 95.45 percent total coverage.
-- Backend Bandit and pip-audit: passed; local package skipped by pip-audit.
-- Frontend Prettier, ESLint and TypeScript: passed. ESLint has existing router
-  fast-refresh warnings only.
-- Frontend Vitest: 118 passed, 99.92 percent line coverage and 95.06 percent
-  branch coverage.
-- Frontend production build, Playwright e2e and production dependency audit:
-  passed.
-- Semgrep full-repository and Sprint 11 targeted scans: 0 findings.
-- pnpm supply-chain policy, file line limit and Compose config: passed.
+| 23     | Agent-safety hardening for JIOC rollout, routing evidence, bounded LLM output, safe run provenance, outbox replay and authority boundaries.                                                                                                                                                                 | Implementation in progress   | Candidate implementation and focused regressions are present; full quality gates, labelled v2 activation evidence and independent reviews remain open.                                                               |
 
 ## Sprint 12 Future Reference Scope
 
@@ -148,21 +130,6 @@ cent branch coverage. The frontend passes 518 tests at 98.85 per cent line and
 
 This material is not a supported current deployment target. Coeus remains a
 local, single-instance application until the readiness gates in ADR 0019 pass.
-
-## Sprint 12 Verification
-
-- Backend Ruff, mypy and pytest: 107 passed, 95.50 percent total coverage.
-- Backend Bandit and pip-audit: passed; local package skipped by pip-audit.
-- Frontend Prettier, ESLint and TypeScript: passed. ESLint has existing router
-  fast-refresh warnings only.
-- Frontend Vitest: 118 passed, 99.92 percent line coverage and 95.06 percent
-  branch coverage.
-- Frontend production build, Playwright e2e and production dependency audit:
-  passed.
-- Terraform fmt and validate: passed with Terraform 1.10.5 and Google provider
-  7.39.0.
-- Semgrep full-repository scan: 0 findings.
-- File line limit and Compose config: passed.
 
 ## Sprint 14 Delivered Scope
 
@@ -247,36 +214,6 @@ The acceptance criteria are in
 delivery and role-walkthrough evidence is recorded in
 `docs/DEVELOPMENT_STORY.md`.
 
-## Sprint 13 Delivered Scope
-
-- CodeQL extended and security-and-quality queries.
-- Semgrep `auto` plus OWASP Top 10 scanning.
-- Gitleaks committed-history scan and documented GitHub push protection.
-- Trivy API and web container image scanning with SARIF upload.
-- CycloneDX SBOM generation.
-- ZAP baseline against a local CI-hosted web target.
-- Checkov Terraform scan with SARIF upload.
-- Terraform hardening for KMS, Cloud SQL logging, OIDC trust and bucket logs.
-- Prompt-injection regression suite.
-- Sprint 13 spec, ADR, threat model and air-gapped deployment runbook.
-
-## Sprint 13 Verification
-
-- Backend Ruff, mypy and pytest: 113 passed, 95.59 percent total coverage.
-- Backend Bandit and pip-audit: passed; local package skipped by pip-audit.
-- Frontend Prettier, ESLint and TypeScript: passed. ESLint has existing router
-  fast-refresh warnings only.
-- Frontend Vitest: 118 passed, 99.92 percent line coverage and 95.06 percent
-  branch coverage.
-- Frontend production build, Playwright e2e and production dependency audit:
-  passed.
-- Terraform fmt, init and validate: passed with Terraform 1.10.5 and Google
-  provider 7.39.0.
-- Checkov Terraform scan: 118 passed, 0 failed, 2 documented skips.
-- Semgrep hardened scan: 0 findings.
-- Gitleaks committed-history scan: no leaks found.
-- File line limit and Compose config: passed.
-
 ## 18 July 2026 External Product Lifecycle Milestone
 
 Status: implemented and verified locally.
@@ -348,3 +285,59 @@ Verification evidence:
 - The closure ledger is
   `docs/security/SECURITY_REVIEW_REMEDIATION_2026-07-18.md`; ADRs 0038 and 0039
   record the identity and protected-draft boundaries.
+
+## 20 July 2026 Agent-Safety Hardening
+
+Status: complete. Independent code-quality and security reviews were remediated;
+the final candidate passed 1,333 backend tests with one intentional skip and
+530 frontend tests, with both line and branch coverage above 95 per cent.
+
+### Candidate Checklist
+
+- [x] Prove `disabled` invokes no capability agent and only refers to human
+  review, while `shadow` records
+  comparison evidence without route side effects, and only an explicitly
+  allowlisted `active` release may apply deterministic transitions.
+- [x] Prove routing fails closed to clarification or human review for
+  conflicting or negated signals, stale or missing context, restrictions,
+  unavailable or missing candidate-team capacity and unmet evaluation evidence.
+- [x] Approve the versioned `jioc-routing-policy-v2` labelled activation gate;
+  `active` remains blocked until conflict, negation, stale-context, capacity and
+  authority cases pass and the release identifier is allowlisted.
+- [x] Prove the model-backed action selector has token, identity-encoding, byte
+  and timeout bounds, a closed output vocabulary and deterministic fallback,
+  while `AgentRun` retains
+  safe provider/model/version/timing/outcome provenance without secrets, raw
+  prompts or unnecessary customer content.
+- [x] Prove bounded outbox health and dispatch metrics plus authorised,
+  reason-required, audited replay that keeps the original event identity and is
+  idempotent for pending, delivered and dead-lettered events.
+- [x] Confirm the agent authority matrix and static dependency gates prevent
+  deterministic routing or QC modules from importing provider adapters and
+  prevent outbound adapters from gaining workflow or persistence authority.
+
+### Verification Gates
+
+- [x] Full backend suite passes with real PostgreSQL and at least 95 per cent
+  line and branch coverage.
+- [x] Full frontend suite, production build and separate 95 per cent line and
+  branch gates pass.
+- [x] Formatting, Ruff, mypy, ESLint, TypeScript, architecture, line-limit,
+  OpenAPI, documentation, dependency and security gates pass.
+- [x] Independent code-quality and cyber-security reviews complete, with all
+  accepted findings fixed or explicitly recorded as blockers or risks.
+
+### Deferred Gates, Risks And Next Step
+
+- Before real or sensitive data, require approved classification,
+  DLP/redaction and egress policy; provider/model/region allowlists; retention;
+  a representative human-labelled corpus; calibration, drift and rollback
+  evidence; and a decision on any richer provider context.
+- LiteLLM adoption remains deferred. Reconsider it only when an approved
+  multi-provider gateway need justifies the added secret, egress, logging and
+  failure boundary, with an ADR and threat-model update before adoption.
+- Current residual risk: operational availability remains a process-local
+  snapshot in the supported single-worker runtime. A shared authoritative
+  adapter and scale-out evaluation are required before multi-replica routing.
+- Current next step: keep production routing `disabled`, gather labelled shadow
+  evidence, satisfy the real-data governance gates, then run a reviewed canary.

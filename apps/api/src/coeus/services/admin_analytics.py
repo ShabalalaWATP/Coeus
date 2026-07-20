@@ -1,10 +1,14 @@
 from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from uuid import UUID
 
+from coeus.application.ports.outbox import OutboxDispatcherPort
 from coeus.core.errors import AppError
+from coeus.core.logging import get_logger
 from coeus.core.permissions import Permission
 from coeus.domain.auth import UserAccount
+from coeus.domain.outbox import OutboxEventNotFound, ReplayDisposition
 from coeus.repositories.auth import SeedUserRepository
 from coeus.repositories.registration import RegistrationRepository
 from coeus.services.admission_metrics import AdmissionMetrics
@@ -14,6 +18,7 @@ from coeus.services.search_configuration import SearchConfigurationService
 from coeus.services.voice_models import VoiceModelService, VoiceModelState
 
 WINDOW_DAYS = 30
+logger = get_logger(__name__)
 SECURITY_EVENTS = frozenset({"auth_throttled", "login_failure", "password_change_failed"})
 CONFIGURATION_EVENTS = frozenset(
     {
@@ -102,6 +107,16 @@ class ProcessAnalytics:
 
 
 @dataclass(frozen=True)
+class OutboxAnalytics:
+    configured: bool
+    available: bool
+    pending_count: int
+    retrying_count: int
+    dead_letter_count: int
+    oldest_pending_age_seconds: int | None
+
+
+@dataclass(frozen=True)
 class AdminAnalyticsDashboard:
     generated_at: datetime
     users: UserAnalytics
@@ -110,6 +125,7 @@ class AdminAnalyticsDashboard:
     voice: VoiceAnalytics
     audit: AuditAnalytics
     process: ProcessAnalytics
+    outbox: OutboxAnalytics
 
 
 class AdminAnalyticsService:
@@ -133,7 +149,11 @@ class AdminAnalyticsService:
         self._voice = voice
         self._admission_metrics = admission_metrics
 
-    def dashboard(self, actor: UserAccount) -> AdminAnalyticsDashboard:
+    def dashboard(
+        self,
+        actor: UserAccount,
+        outbox: OutboxDispatcherPort | None = None,
+    ) -> AdminAnalyticsDashboard:
         if Permission.ANALYTICS_VIEW_GLOBAL not in actor.permissions:
             raise AppError(403, "forbidden", "Permission denied.")
         now = datetime.now(UTC)
@@ -173,11 +193,60 @@ class AdminAnalyticsService:
                     value for key, value in process.items() if key.startswith("provider.denied_")
                 ),
             ),
+            outbox=_outbox_analytics(outbox),
         )
+
+    def replay_dead_letter(
+        self,
+        actor: UserAccount,
+        outbox: OutboxDispatcherPort,
+        event_id: UUID,
+        reason: str,
+    ) -> ReplayDisposition:
+        if Permission.SYSTEM_CONFIGURE not in actor.permissions:
+            raise AppError(403, "forbidden", "Permission denied.")
+        normalised_reason = reason.strip()
+        if not 5 <= len(normalised_reason) <= 500:
+            raise AppError(
+                422,
+                "invalid_replay_reason",
+                "Replay reason must contain between 5 and 500 characters.",
+            )
+        self._audit_log.record(
+            "outbox_dead_letter_replay_authorised",
+            str(actor.user_id),
+            {
+                "event_id": str(event_id),
+                "reason": normalised_reason,
+            },
+        )
+        try:
+            disposition = outbox.replay_dead_letter(event_id)
+        except OutboxEventNotFound as exc:
+            raise AppError(404, "outbox_event_not_found", "Outbox event was not found.") from exc
+        return disposition
 
 
 def _cutoff(now: datetime) -> datetime:
     return now - timedelta(days=WINDOW_DAYS)
+
+
+def _outbox_analytics(outbox: OutboxDispatcherPort | None) -> OutboxAnalytics:
+    if outbox is None:
+        return OutboxAnalytics(False, False, 0, 0, 0, None)
+    try:
+        status = outbox.status()
+    except Exception:
+        logger.warning("outbox_status_failed")
+        return OutboxAnalytics(True, False, 0, 0, 0, None)
+    return OutboxAnalytics(
+        configured=True,
+        available=True,
+        pending_count=status.pending_count,
+        retrying_count=status.retrying_count,
+        dead_letter_count=status.dead_letter_count,
+        oldest_pending_age_seconds=status.oldest_pending_age_seconds,
+    )
 
 
 def _user_analytics(

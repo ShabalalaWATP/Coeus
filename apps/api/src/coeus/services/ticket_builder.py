@@ -1,4 +1,6 @@
 from collections.abc import Callable
+from hashlib import sha256
+from time import monotonic_ns
 
 from coeus.application.ports.admission import ProviderAdmission
 from coeus.application.ports.workflow_transaction import WorkflowTransactionPort
@@ -6,7 +8,7 @@ from coeus.core.config import HOSTED_ENVIRONMENTS, Settings
 from coeus.core.errors import AppError
 from coeus.core.logging import get_logger
 from coeus.domain.tickets import IntakeDetails
-from coeus.integrations.llm_gateway import LlmCall, generate_text
+from coeus.integrations.llm_gateway import LlmCall, LlmGeneration, generate_text
 from coeus.persistence.state_store import StateStore
 from coeus.repositories.tickets import InMemoryTicketRepository
 from coeus.services.admission_metrics import AdmissionMetrics
@@ -19,7 +21,14 @@ from coeus.services.intake import (
     MockLlmProvider,
     RequirementCompletenessService,
 )
-from coeus.services.intake_prompt import intake_prompt
+from coeus.services.intake_prompt import (
+    INTAKE_CONTEXT_SCHEMA_VERSION,
+    INTAKE_POLICY_VERSION,
+    INTAKE_PROMPT_VERSION,
+    intake_prompt,
+    validated_intake_reply,
+)
+from coeus.services.intake_provider_calls import PreparedIntakeReply
 from coeus.services.postgres_provider_admission import PostgresProviderAdmissionController
 from coeus.services.postgres_ticket_admission import PostgresTicketAdmissionController
 from coeus.services.provider_admission import ProviderAdmissionController
@@ -133,40 +142,159 @@ class ConfigurableIntakeProvider:
     def build_admitted_assistant_message(
         self, intake: IntakeDetails, safety_flags: tuple[str, ...]
     ) -> AdmittedAssistantReply:
-        """Report whether a reserved external call completed successfully."""
+        """Execute a prepared call for direct, already-admitted callers."""
+        return self.prepare_assistant_reply(intake, safety_flags).execute()
+
+    def prepare_assistant_reply(
+        self, intake: IntakeDetails, safety_flags: tuple[str, ...]
+    ) -> PreparedIntakeReply:
+        """Freeze provider selection and call data before admission is decided."""
         if safety_flags:
-            return AdmittedAssistantReply(
-                self._mock.build_assistant_message(intake, safety_flags), False
+            return _prepared_local(
+                AdmittedAssistantReply(
+                    self._mock.build_assistant_message(intake, safety_flags),
+                    False,
+                    outcome="safety_refusal",
+                    fallback_outcome="not_applicable",
+                    validation_outcome="not_run",
+                    policy_version=INTAKE_POLICY_VERSION,
+                    context_schema_version=INTAKE_CONTEXT_SCHEMA_VERSION,
+                )
             )
-        call = self._remote_call(intake)
-        if call is None or not self._circuit.try_acquire():
-            return AdmittedAssistantReply(
-                self._mock.build_assistant_message(intake, safety_flags), False
+        remote = self._remote_call(intake)
+        if remote is None:
+            return _prepared_local(
+                AdmittedAssistantReply(
+                    self._mock.build_assistant_message(intake, safety_flags),
+                    False,
+                    outcome="local_provider",
+                    fallback_outcome="not_applicable",
+                    validation_outcome="deterministic",
+                    policy_version=INTAKE_POLICY_VERSION,
+                    context_schema_version=INTAKE_CONTEXT_SCHEMA_VERSION,
+                )
             )
+        call, requested_field = remote
+        if not self._circuit.can_attempt():
+            return _prepared_local(
+                self._remote_fallback(
+                    call,
+                    intake,
+                    safety_flags,
+                    "circuit_open_fallback",
+                    "ProviderCircuitOpen",
+                )
+            )
+        unavailable = self._remote_fallback(
+            call,
+            intake,
+            safety_flags,
+            "provider_admission_unavailable_fallback",
+            "ProviderAdmissionUnavailable",
+        )
+        return PreparedIntakeReply(
+            True,
+            unavailable,
+            lambda: self._execute_remote(call, requested_field, intake, safety_flags),
+        )
+
+    def _execute_remote(
+        self,
+        call: LlmCall,
+        requested_field: str,
+        intake: IntakeDetails,
+        safety_flags: tuple[str, ...],
+    ) -> AdmittedAssistantReply:
+        if not self._circuit.try_acquire():
+            return self._remote_fallback(
+                call,
+                intake,
+                safety_flags,
+                "circuit_open_fallback",
+                "ProviderCircuitOpen",
+            )
+        started_at = monotonic_ns()
         try:
-            text = self._text_generator(call)
+            generated = self._text_generator(call)
         except AppError as error:
             self._circuit.record_failure()
+            provider_completed = error.code == "llm_provider_invalid_response"
             self._logger.warning(
                 "LLM provider unavailable; falling back to mock reply.",
                 extra={"error_code": error.code, "provider": call.provider},
             )
             return AdmittedAssistantReply(
-                self._mock.build_assistant_message(intake, safety_flags), False
+                self._mock.build_assistant_message(intake, safety_flags),
+                provider_completed,
+                provider=call.provider,
+                model=call.model,
+                duration_ms=_elapsed_ms(started_at),
+                outcome=(
+                    "invalid_output_fallback" if provider_completed else "provider_error_fallback"
+                ),
+                prompt_version=INTAKE_PROMPT_VERSION,
+                fallback_outcome="deterministic",
+                validation_outcome="failed" if provider_completed else "not_run",
+                policy_version=INTAKE_POLICY_VERSION,
+                context_schema_version=INTAKE_CONTEXT_SCHEMA_VERSION,
+                input_hash=_call_hash(call),
+                error_class=f"AppError:{error.code}",
             )
         except Exception:
             self._circuit.record_failure()
             raise
-        self._circuit.record_success()
+        raw = str(generated) if isinstance(generated, str) else ""
+        text = validated_intake_reply(raw, requested_field)
+        if text is None:
+            self._circuit.record_failure()
+        else:
+            self._circuit.record_success()
+        outcome = "provider_success" if text is not None else "invalid_output_fallback"
         return AdmittedAssistantReply(
-            text or self._mock.build_assistant_message(intake, safety_flags), True
+            text or self._mock.build_assistant_message(intake, safety_flags),
+            True,
+            provider=call.provider,
+            model=call.model,
+            duration_ms=_elapsed_ms(started_at),
+            outcome=outcome,
+            prompt_version=INTAKE_PROMPT_VERSION,
+            input_tokens=(generated.input_tokens if isinstance(generated, LlmGeneration) else None),
+            output_tokens=(
+                generated.output_tokens if isinstance(generated, LlmGeneration) else None
+            ),
+            fallback_outcome="not_used" if text is not None else "deterministic",
+            validation_outcome="passed" if text is not None else "failed",
+            policy_version=INTAKE_POLICY_VERSION,
+            context_schema_version=INTAKE_CONTEXT_SCHEMA_VERSION,
+            input_hash=_call_hash(call),
+            output_hash=_text_hash(raw),
+            error_class=None if text is not None else "ProviderOutputValidationError",
         )
 
-    def uses_operator_provider(self) -> bool:
-        """Whether the next unflagged reply can acquire an external provider."""
-        return self._circuit.can_attempt() and self._remote_call(IntakeDetails()) is not None
+    def _remote_fallback(
+        self,
+        call: LlmCall,
+        intake: IntakeDetails,
+        safety_flags: tuple[str, ...],
+        outcome: str,
+        error_class: str,
+    ) -> AdmittedAssistantReply:
+        return AdmittedAssistantReply(
+            self._mock.build_assistant_message(intake, safety_flags),
+            False,
+            provider=call.provider,
+            model=call.model,
+            outcome=outcome,
+            prompt_version=INTAKE_PROMPT_VERSION,
+            fallback_outcome="deterministic",
+            validation_outcome="not_run",
+            policy_version=INTAKE_POLICY_VERSION,
+            context_schema_version=INTAKE_CONTEXT_SCHEMA_VERSION,
+            input_hash=_call_hash(call),
+            error_class=error_class,
+        )
 
-    def _remote_call(self, intake: IntakeDetails) -> LlmCall | None:
+    def _remote_call(self, intake: IntakeDetails) -> tuple[LlmCall, str] | None:
         # The configured provider is authoritative: an API key alone never
         # switches the provider, and a remote provider is only called when a
         # key is actually available.
@@ -181,11 +309,33 @@ class ConfigurableIntakeProvider:
             model = spec.default_model if spec else ""
         if provider == "mock" or not api_key:
             return None
-        return LlmCall(
-            provider=provider,
-            model=model,
-            api_key=api_key,
-            prompt=intake_prompt(intake, ()),
-            timeout=self._settings.llm_api_timeout_seconds,
-            region=self._settings.bedrock_region,
+        prompt = intake_prompt(intake, ())
+        return (
+            LlmCall(
+                provider=provider,
+                model=model,
+                api_key=api_key,
+                prompt=prompt.data,
+                timeout=self._settings.llm_api_timeout_seconds,
+                region=self._settings.bedrock_region,
+                instructions=prompt.instructions,
+                structured_output=True,
+            ),
+            prompt.requested_field,
         )
+
+
+def _elapsed_ms(started_at: int) -> int:
+    return max(0, (monotonic_ns() - started_at) // 1_000_000)
+
+
+def _prepared_local(reply: AdmittedAssistantReply) -> PreparedIntakeReply:
+    return PreparedIntakeReply(False, reply, lambda: reply)
+
+
+def _call_hash(call: LlmCall) -> str:
+    return _text_hash(f"{call.instructions}\n{call.prompt}")
+
+
+def _text_hash(value: str) -> str:
+    return f"sha256:{sha256(value.encode('utf-8')).hexdigest()}"

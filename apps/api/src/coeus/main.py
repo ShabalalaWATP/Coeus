@@ -30,7 +30,7 @@ from coeus.api.routes.teams import router as teams_router
 from coeus.api.routes.tickets import router as tickets_router
 from coeus.api.routes.users_admin import router as users_admin_router
 from coeus.api.routes.voice import router as voice_router
-from coeus.application.ports.outbox import OutboxDispatcherPort
+from coeus.application.ports.outbox import OutboxDispatchPort
 from coeus.composition import configure_application_state
 from coeus.core.config import Settings
 from coeus.core.errors import AppError, app_error_handler, unhandled_exception_handler
@@ -60,15 +60,25 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 async def _dispatch_outbox(
-    app: FastAPI, dispatcher: OutboxDispatcherPort, stop: asyncio.Event
+    app: FastAPI, dispatcher: OutboxDispatchPort, stop: asyncio.Event
 ) -> None:
     worker_id = uuid4()
     settings: Settings = app.state.settings
     while not stop.is_set():
         try:
-            await asyncio.to_thread(
+            result = await asyncio.to_thread(
                 dispatcher.dispatch, worker_id, limit=settings.outbox_batch_size
             )
+            if result.claimed or result.dead_lettered:
+                logger.info(
+                    "outbox_dispatch_completed",
+                    extra={
+                        "claimed": result.claimed,
+                        "delivered": result.delivered,
+                        "failed": result.failed,
+                        "dead_lettered": result.dead_lettered,
+                    },
+                )
         except Exception:
             logger.exception("outbox_dispatch_failed")
         with suppress(TimeoutError):

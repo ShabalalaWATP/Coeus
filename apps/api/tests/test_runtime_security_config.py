@@ -12,6 +12,7 @@ def valid_dev_settings(**overrides: object) -> Settings:
         "csrf_secret": "c" * 32,
         "environment": "dev",
         "local_seed_credential": "DifferentDevCredential1!",
+        "metrics_bearer_token": "m" * 32,
         "secure_cookies": False,
         "session_secret": "s" * 32,
     }
@@ -46,6 +47,10 @@ def test_default_database_url_uses_windows_safe_ipv4_loopback() -> None:
         (
             Settings(environment="local", configuration_encryption_key="short"),
             "COEUS_CONFIGURATION_ENCRYPTION_KEY must be at least 32 characters",
+        ),
+        (
+            Settings(environment="local", metrics_bearer_token="short"),
+            "COEUS_METRICS_BEARER_TOKEN must be at least 32 characters",
         ),
         (
             valid_dev_settings(llm_provider="gemini_api", gemini_api_key=None),
@@ -141,6 +146,7 @@ def test_runtime_errors_are_aggregated_in_stable_rule_order() -> None:
         "COEUS_SESSION_SECRET",
         "COEUS_CSRF_SECRET",
         "COEUS_ASSET_TOKEN_SECRET",
+        "COEUS_METRICS_BEARER_TOKEN",
         "COEUS_GEMINI_API_KEY",
         "COEUS_CSRF_HEADER_NAME",
         "COEUS_OBJECT_STORAGE_PROVIDER",

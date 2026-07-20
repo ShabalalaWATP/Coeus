@@ -3,8 +3,10 @@
 from uuid import UUID
 
 from coeus.application.ports.access import UserLookup
+from coeus.core.logging import get_logger
 from coeus.domain.auth import UserAccount
 from coeus.domain.enums import TicketState
+from coeus.domain.jioc_routing import JiocRoutingMode, normalise_routing_mode
 from coeus.domain.outbox import OutboxMessage
 from coeus.domain.tickets import TicketRecord
 from coeus.services.active_work_discovery import ActiveWorkDiscoveryService
@@ -13,6 +15,7 @@ from coeus.services.rfi_search import RfiSearchService
 from coeus.services.tickets import TicketServices
 
 EVENT_TYPE = "ticket_shadow_changed"
+logger = get_logger(__name__)
 
 
 class TicketDiscoveryHandler:
@@ -25,7 +28,7 @@ class TicketDiscoveryHandler:
         jioc_routing: JiocRoutingAgentService,
         automatic_discovery_enabled: bool = True,
         active_work_offers_enabled: bool = True,
-        agent_routing_enabled: bool = True,
+        agent_routing_enabled: JiocRoutingMode | bool = JiocRoutingMode.DISABLED,
     ) -> None:
         self._tickets = tickets
         self._access = access
@@ -34,7 +37,7 @@ class TicketDiscoveryHandler:
         self._jioc_routing = jioc_routing
         self._automatic_discovery_enabled = automatic_discovery_enabled
         self._active_work_offers_enabled = active_work_offers_enabled
-        self._agent_routing_enabled = agent_routing_enabled
+        self._routing_mode = normalise_routing_mode(agent_routing_enabled)
 
     def __call__(self, message: OutboxMessage) -> None:
         if message.event_type != EVENT_TYPE:
@@ -71,8 +74,22 @@ class TicketDiscoveryHandler:
         )
 
     def _route_with_agent(self, ticket_id: UUID) -> None:
-        if self._agent_routing_enabled:
-            self._jioc_routing.route(ticket_id)
+        if self._routing_mode is JiocRoutingMode.DISABLED:
+            self._jioc_routing.defer_to_manager(ticket_id)
+            return
+        try:
+            self._jioc_routing.route(
+                ticket_id,
+                apply=self._routing_mode is JiocRoutingMode.ACTIVE,
+            )
+        except Exception as exc:
+            logger.exception(
+                "jioc_routing_agent_deferred",
+                extra={"ticket_id": str(ticket_id), "error": type(exc).__name__},
+            )
+            # A failure here is allowed to propagate so the durable outbox retries
+            # rather than acknowledging a ticket that is still transient.
+            self._jioc_routing.defer_to_manager(ticket_id, reason="routing_agent_failed")
 
     def _search_allows_active_work(self, actor: UserAccount, ticket: TicketRecord) -> bool:
         if ticket.state == TicketState.RFI_SEARCHING:

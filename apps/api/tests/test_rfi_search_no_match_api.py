@@ -40,7 +40,7 @@ async def test_no_match_search_requires_customer_consent_before_route_review() -
     assert ticket["state"] == "NEW_TASKING_CONSENT"
     assert _timeline_bodies(ticket, "rfi_no_match") == ["No existing product matched this request."]
     assert consent.status_code == 200
-    assert consent.json()["state"] == "INFO_REQUIRED"
+    assert consent.json()["state"] == "JIOC_REVIEW"
     assert _timeline_bodies(consent.json(), "tasking_confirmed") == [
         "Requester confirmed new tasking; queued for JIOC routing."
     ]

@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "apps" / "api" / "src" / "coeus"
 REFERENCE_ROOTS = (SOURCE_ROOT, ROOT / "scripts")
 INTENTIONAL_TEST_HARNESS = {
+    ("services/routing_evaluation.py", "evaluate_routing_release"),
     ("services/search_evaluation.py", "evaluate_search_runs"),
 }
 

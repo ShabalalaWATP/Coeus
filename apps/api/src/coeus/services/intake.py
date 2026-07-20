@@ -70,6 +70,20 @@ class AdmittedAssistantReply:
 
     text: str
     provider_succeeded: bool
+    provider: str | None = None
+    model: str | None = None
+    duration_ms: int | None = None
+    outcome: str = "local_fallback"
+    prompt_version: str | None = None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    fallback_outcome: str | None = None
+    validation_outcome: str | None = None
+    policy_version: str | None = None
+    context_schema_version: str | None = None
+    input_hash: str | None = None
+    output_hash: str | None = None
+    error_class: str | None = None
 
 
 class MockLlmProvider:

@@ -2,7 +2,38 @@
 
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
 from uuid import UUID
+
+ROUTING_POLICY_VERSION = "jioc-routing-policy-v2"
+ROUTING_EVALUATION_VERSION = "jioc-routing-eval-v2"
+ROUTING_RELEASE = f"{ROUTING_POLICY_VERSION}:{ROUTING_EVALUATION_VERSION}"
+
+
+class JiocRoutingMode(StrEnum):
+    """Rollout authority for the deterministic routing agent."""
+
+    DISABLED = "disabled"
+    SHADOW = "shadow"
+    ACTIVE = "active"
+
+
+def normalise_routing_mode(value: JiocRoutingMode | bool) -> JiocRoutingMode:
+    """Accept the former boolean control while deployments migrate to modes."""
+
+    if isinstance(value, bool):
+        return JiocRoutingMode.ACTIVE if value else JiocRoutingMode.DISABLED
+    return value
+
+
+@dataclass(frozen=True)
+class RoutingOperationalSnapshot:
+    """Versioned, point-in-time operational evidence supplied to routing."""
+
+    capability_catalogue_version: str
+    captured_at: datetime | None
+    # Entries are ``<capability-team-id>:available|unavailable|unknown:<free>``.
+    candidate_capacity: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -27,6 +58,10 @@ class JiocRoutingContext:
     time_period_end: str | None
     restrictions_present: bool
     created_at: datetime
+    capability_catalogue_version: str = "unknown"
+    availability_snapshot_at: datetime | None = None
+    candidate_capacity: tuple[str, ...] = ()
+    capacity_freshness_seconds: int = 300
 
 
 @dataclass(frozen=True)
@@ -41,3 +76,4 @@ class JiocRoutingDecision:
     required_clarifications: tuple[str, ...]
     policy_version: str
     created_at: datetime
+    evidence_outcome: str = "legacy"

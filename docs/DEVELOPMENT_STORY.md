@@ -67,45 +67,18 @@ customer-search and JIOC-agent milestone is recorded in
 
 ## 2026-07-09 Access-control audit rollback
 
-- Hardened ACG administration so create, update and membership changes restore
-  previous repository state if audit recording fails. Added regression coverage
-  and updated the ACG product-access threat model.
-- Hardened notification and email side effects so creation, mark-read and
-  email outbox writes restore previous state if persistence or audit recording
-  fails. Updated the manager final-release threat model.
-- Hardened admin AI model configuration so failed model selection or Gemini API
-  key configuration restores the previous provider, model, key and change
-  metadata. Added persistence and audit-failure regression coverage.
-- Hardened RFA and CM routing so route reviews, approvals, rejections and
-  clarification requests restore the original ticket if audit recording fails
-  after the ticket update. Added rollback regression coverage for each path.
-- Hardened QC approval and rejection so audit recording failure restores the
-  original ticket state. Approval also discards the ingested Store product and
-  local placeholder asset bytes so a failed request does not leave an orphaned
-  draft product.
-- Hardened final product release so `product_released` audit failure restores
-  the ticket to `MANAGER_RELEASE`, returns the Store product to draft status
-  and suppresses requester notification.
-- Hardened similar-request customer join and manager link actions so audit
-  recording failure restores the affected ticket records instead of leaving
-  unaudited collaborator grants or related-ticket links.
-- Hardened direct ticket collaborator add and remove actions so audit
-  recording failure restores the original ticket, preventing unaudited access
-  changes.
-- Hardened requester lifecycle actions so cancellation, no-match consent and
-  delivery confirmation restore the original ticket if audit recording fails
-  after the proposed state update.
-- Hardened RFI search run, offer acceptance and offer rejection so audit
-  recording failure restores the original ticket, preventing unaudited search
-  outcomes or product decisions.
-- Hardened analyst assignment, notes, product links, work-package updates,
-  draft saves and QC submission so failed audit recording restores the original
-  ticket state.
-- Hardened Store product ingestion so `product_created` audit failure restores
-  product metadata and uploaded bytes, and storage failure does not leave a
-  false product-created audit event.
-- Hardened auth session lifecycle changes so failed `login_success`, `logout`
-  or `password_changed` audit restores sessions, credentials and login attempts.
+- Made audited ACG administration, ticket collaboration, related-request links
+  and requester lifecycle actions failure-atomic, preventing access or state
+  changes from surviving a failed audit write.
+- Extended rollback coverage across RFA/CM routing, RFI decisions, analyst work,
+  QC decisions and release, including suppression or removal of downstream Store,
+  asset and notification side effects.
+- Made notification and email persistence, administrator AI-model changes and
+  authentication session lifecycle operations restore their exact prior state
+  when persistence or audit recording fails.
+- Hardened Store ingestion so failed storage or audit work cannot leave orphaned
+  bytes, metadata or a false product-created event. Regression tests and relevant
+  threat models cover the failure boundaries.
 - Removed retired workspace sanitisation so old Project permissions and records
   fail closed instead of being accepted by the runtime persistence codec.
 
@@ -345,3 +318,24 @@ customer-search and JIOC-agent milestone is recorded in
 - The complete frontend suite passed at 98.66 percent line and 95.03 percent
   branch coverage. ESLint, TypeScript, Prettier, Knip and the production build
   also passed.
+
+## 2026-07-20 Agent safety hardening
+
+- Added explicit `disabled`, `shadow` and `active` JIOC routing modes, with
+  `disabled` as the safe default, shadow decisions unable to mutate route state,
+  contact customers or create hand-offs, and active routing limited to
+  allowlisted deterministic transitions.
+- Made automatic routing fail closed when required evidence is missing, stale or
+  conflicting or negated, candidate-team capacity is unavailable, or immutable
+  context and the versioned v2 evaluation gate do not support the route.
+- Replaced provider prose with a closed action selector and application-rendered
+  copy, bounded identity-only transport and immutable admitted-call snapshots;
+  `AgentRun` retains safe provenance without secrets or unnecessary raw content.
+- Added authenticated cached outbox metrics, Alembic `20260720_0014` monitoring
+  indexes and reason-required audited replay retaining the idempotent event ID.
+- Documented the authority assigned to each agent and automation, and extended the
+  static architecture checks so deterministic decision modules and outbound
+  provider adapters cannot cross their intended dependency boundaries.
+- Independent reviews were remediated. The final 1,333-test backend pass reached
+  98.18 per cent line and 95.14 per cent branch coverage; 530 frontend tests
+  reached 98.64 and 95.08 per cent, and all build/security gates passed.

@@ -6,6 +6,11 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from coeus.domain.admission import AdmissionMode
+from coeus.domain.jioc_routing import (
+    ROUTING_RELEASE,
+    JiocRoutingMode,
+    normalise_routing_mode,
+)
 
 EnvironmentName = Literal["local", "dev", "staging", "prod", "test"]
 EmailProviderName = Literal["outbox", "smtp"]
@@ -36,6 +41,7 @@ class Settings(BaseSettings):
         default_factory=lambda: ["http://localhost:5173", "http://127.0.0.1:5173"]
     )
     log_level: str = "INFO"
+    metrics_bearer_token: str | None = None
     session_cookie_name: str = "coeus_session"
     session_ttl_seconds: int = 30 * 60
     session_max_per_user: int = Field(default=5, ge=1, le=100)
@@ -76,7 +82,10 @@ class Settings(BaseSettings):
     search_approved_releases: list[str] = Field(default_factory=lambda: ["mock:token-hash-v2:1536"])
     automatic_request_discovery_enabled: bool = True
     active_work_offers_enabled: bool = True
-    jioc_agent_routing_enabled: bool = True
+    # The legacy environment-variable name is retained for compatibility.
+    # New values are disabled, shadow and active; old booleans still parse.
+    jioc_agent_routing_enabled: JiocRoutingMode | bool = JiocRoutingMode.DISABLED
+    jioc_routing_approved_releases: list[str] = Field(default_factory=list)
     gemini_api_timeout_seconds: int = Field(default=10, ge=1, le=60)
     available_gemini_models: list[str] = Field(
         default_factory=lambda: [
@@ -208,6 +217,8 @@ def _secret_errors(settings: Settings) -> tuple[str, ...]:
         and len(settings.configuration_encryption_key) < 32
     ):
         errors.append("COEUS_CONFIGURATION_ENCRYPTION_KEY must be at least 32 characters.")
+    if settings.metrics_bearer_token is not None and len(settings.metrics_bearer_token) < 32:
+        errors.append("COEUS_METRICS_BEARER_TOKEN must be at least 32 characters.")
     if settings.environment not in HOSTED_ENVIRONMENTS:
         return tuple(errors)
     if not settings.configuration_encryption_key:
@@ -221,6 +232,8 @@ def _secret_errors(settings: Settings) -> tuple[str, ...]:
         or len(settings.asset_token_secret) < 32
     ):
         errors.append("COEUS_ASSET_TOKEN_SECRET must be a non-default secret.")
+    if settings.metrics_bearer_token is None:
+        errors.append("COEUS_METRICS_BEARER_TOKEN is required in hosted environments.")
     return tuple(errors)
 
 
@@ -257,6 +270,14 @@ def _integration_errors(settings: Settings) -> tuple[str, ...]:
             errors.append("COEUS_SMTP_FROM is required when COEUS_EMAIL_PROVIDER=smtp.")
         if settings.environment in HOSTED_ENVIRONMENTS and not settings.smtp_starttls:
             errors.append("COEUS_SMTP_STARTTLS must be true outside local/test.")
+    if (
+        normalise_routing_mode(settings.jioc_agent_routing_enabled) is JiocRoutingMode.ACTIVE
+        and ROUTING_RELEASE not in settings.jioc_routing_approved_releases
+    ):
+        errors.append(
+            "COEUS_JIOC_ROUTING_APPROVED_RELEASES must contain the current evaluated "
+            f"routing release ({ROUTING_RELEASE}) before active routing is enabled."
+        )
     return tuple(errors)
 
 

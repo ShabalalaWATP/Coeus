@@ -1,4 +1,8 @@
+import json
+from collections.abc import Mapping
 from datetime import UTC, datetime
+from hashlib import sha256
+from typing import Any
 from uuid import UUID, uuid4
 
 from coeus.core.errors import AppError
@@ -6,6 +10,7 @@ from coeus.core.permissions import Permission
 from coeus.domain.auth import UserAccount
 from coeus.domain.enums import TicketState
 from coeus.domain.tickets import (
+    AgentExecutionKind,
     AgentRun,
     AgentRunStatus,
     CmCapabilityReview,
@@ -18,6 +23,10 @@ from coeus.domain.tickets import (
     TicketTimelineEntry,
     WorkflowPlanUpdate,
 )
+from coeus.services.jioc_routing_context import CONTEXT_SCHEMA_VERSION, requirement_revision
+
+CAPABILITY_REVIEW_POLICY_VERSION = "capability-routing-review-v1"
+ROUTING_ORCHESTRATOR_POLICY_VERSION = "routing-orchestrator-v1"
 
 
 def latest_recommendation(ticket: TicketRecord) -> RouteRecommendation:
@@ -104,29 +113,101 @@ def decision(
     )
 
 
-def agent_run(ticket_id: UUID, agent_name: str, summary: str) -> AgentRun:
+def agent_run(
+    ticket_id: UUID,
+    agent_name: str,
+    summary: str,
+    *,
+    safety_flags: tuple[str, ...] = (),
+    policy_version: str | None = None,
+    context_schema_version: str | None = None,
+    input_hash: str | None = None,
+    output_hash: str | None = None,
+) -> AgentRun:
     return AgentRun(
         run_id=uuid4(),
         ticket_id=ticket_id,
         agent_name=agent_name,
         status=AgentRunStatus.COMPLETED,
         summary=summary,
-        safety_flags=(),
+        safety_flags=safety_flags,
         created_at=datetime.now(UTC),
+        execution_kind=AgentExecutionKind.DETERMINISTIC,
+        validation_outcome="passed",
+        policy_version=policy_version,
+        context_schema_version=context_schema_version,
+        input_hash=input_hash,
+        output_hash=output_hash,
     )
 
 
 def review_agent_runs(
-    ticket_id: UUID,
+    ticket: TicketRecord,
     rfa_review: RfaCapabilityReview,
     cm_review: CmCapabilityReview,
     recommendation: RouteRecommendation,
 ) -> tuple[AgentRun, ...]:
+    input_hash = f"sha256:{requirement_revision(ticket.intake)}"
     return (
-        agent_run(ticket_id, "rfa-capability-agent", rfa_review.reasoning_summary),
-        agent_run(ticket_id, "cm-capability-agent", cm_review.reasoning_summary),
-        agent_run(ticket_id, "orchestrator-agent", recommendation.reasoning_summary),
+        agent_run(
+            ticket.ticket_id,
+            "rfa-capability-agent",
+            rfa_review.reasoning_summary,
+            safety_flags=rfa_review.risks,
+            policy_version=CAPABILITY_REVIEW_POLICY_VERSION,
+            context_schema_version=CONTEXT_SCHEMA_VERSION,
+            input_hash=input_hash,
+            output_hash=provenance_hash(_rfa_output(rfa_review)),
+        ),
+        agent_run(
+            ticket.ticket_id,
+            "cm-capability-agent",
+            cm_review.reasoning_summary,
+            safety_flags=cm_review.risks,
+            policy_version=CAPABILITY_REVIEW_POLICY_VERSION,
+            context_schema_version=CONTEXT_SCHEMA_VERSION,
+            input_hash=input_hash,
+            output_hash=provenance_hash(_cm_output(cm_review)),
+        ),
+        agent_run(
+            ticket.ticket_id,
+            "orchestrator-agent",
+            recommendation.reasoning_summary,
+            policy_version=ROUTING_ORCHESTRATOR_POLICY_VERSION,
+            context_schema_version=CONTEXT_SCHEMA_VERSION,
+            input_hash=input_hash,
+            output_hash=provenance_hash(
+                {"recommended_route": recommendation.recommended_route.value}
+            ),
+        ),
     )
+
+
+def provenance_hash(payload: Mapping[str, Any]) -> str:
+    encoded = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    return f"sha256:{sha256(encoded).hexdigest()}"
+
+
+def _rfa_output(review: RfaCapabilityReview) -> dict[str, Any]:
+    return {
+        "can_satisfy": review.can_satisfy,
+        "candidate_team_ids": [item.team_id for item in review.candidate_teams],
+        "confidence": review.confidence,
+        "required_clarifications": list(review.required_clarifications),
+        "risks": list(review.risks),
+        "suggested_team_id": review.suggested_team_id,
+    }
+
+
+def _cm_output(review: CmCapabilityReview) -> dict[str, Any]:
+    return {
+        "can_satisfy": review.can_satisfy,
+        "candidate_team_ids": [item.team_id for item in review.candidate_teams],
+        "confidence": review.confidence,
+        "required_clarifications": list(review.required_clarifications),
+        "risks": list(review.risks),
+        "suggested_collection_team_id": review.suggested_collection_team_id,
+    }
 
 
 def workflow_update(

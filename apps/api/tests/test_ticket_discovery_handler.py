@@ -9,6 +9,7 @@ from httpx import ASGITransport, AsyncClient
 from coeus.api.ticket_discovery_composition import build_ticket_discovery_handler
 from coeus.core.config import Settings
 from coeus.domain.enums import TicketState
+from coeus.domain.jioc_routing import JiocRoutingMode
 from coeus.domain.outbox import OutboxMessage
 from coeus.main import create_app
 from coeus.services.ticket_discovery_handler import TicketDiscoveryHandler
@@ -79,7 +80,12 @@ def test_outbox_handler_covers_fail_closed_and_rollout_paths() -> None:
     active_work = MagicMock()
     routing = MagicMock()
 
-    def handler(*, automatic: bool = True, active: bool = True, agent: bool = True):
+    def handler(
+        *,
+        automatic: bool = True,
+        active: bool = True,
+        agent: JiocRoutingMode | bool = JiocRoutingMode.ACTIVE,
+    ):
         return TicketDiscoveryHandler(
             tickets, access, search, active_work, routing, automatic, active, agent
         )
@@ -101,9 +107,27 @@ def test_outbox_handler_covers_fail_closed_and_rollout_paths() -> None:
         requester_user_id=uuid4(),
     )
     tickets.tickets.assignment_snapshot.return_value = (pending,)
-    handler(agent=False)(_message(ticket_id))
-    handler(agent=True)(_message(ticket_id))
-    routing.route.assert_called_once_with(ticket_id)
+    handler(agent=JiocRoutingMode.DISABLED)(_message(ticket_id))
+    handler(agent=JiocRoutingMode.SHADOW)(_message(ticket_id))
+    handler(agent=JiocRoutingMode.ACTIVE)(_message(ticket_id))
+    assert routing.route.call_args_list == [
+        ((ticket_id,), {"apply": False}),
+        ((ticket_id,), {"apply": True}),
+    ]
+    routing.defer_to_manager.assert_called_once_with(ticket_id)
+
+    routing.reset_mock()
+    routing.route.side_effect = RuntimeError("synthetic agent failure")
+    handler(agent=JiocRoutingMode.ACTIVE)(_message(ticket_id))
+    routing.defer_to_manager.assert_called_once_with(
+        ticket_id,
+        reason="routing_agent_failed",
+    )
+    routing.defer_to_manager.side_effect = RuntimeError("synthetic referral failure")
+    with pytest.raises(RuntimeError, match="referral failure"):
+        handler(agent=JiocRoutingMode.ACTIVE)(_message(ticket_id))
+    routing.defer_to_manager.side_effect = None
+    routing.route.side_effect = None
 
     searching = SimpleNamespace(
         ticket_id=ticket_id,

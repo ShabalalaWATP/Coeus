@@ -56,6 +56,23 @@ and relative `.local-data` paths resolve where documented.
 cp .env.example .env
 ```
 
+### JIOC routing configuration upgrade
+
+Existing `.env` files may still contain the former boolean setting
+`COEUS_JIOC_AGENT_ROUTING_ENABLED=true`. That legacy value now means `active`
+and intentionally fails startup unless the exact evaluated routing release is
+also present in `COEUS_JIOC_ROUTING_APPROVED_RELEASES`. Do not add the release
+only to make startup pass. During upgrade, set the mode explicitly to
+`disabled` (the safe default) or `shadow`; select `active` only after reviewing
+the current evaluation report and approving its exact release identifier.
+`false` continues to mean `disabled`. After migration, keep one of the explicit
+`disabled`, `shadow` or `active` values so the deployment intent is unambiguous.
+
+Hosted environments must also set a random `COEUS_METRICS_BEARER_TOKEN` of at
+least 32 characters. Monitoring sends it in the `Authorization: Bearer` header;
+the metrics route remains unauthenticated only for local and test use when no
+token is configured. Keep hosted metrics on private monitoring ingress as well.
+
 ## Run the app (recommended local development)
 
 This is the supported default for current development and demos. It runs

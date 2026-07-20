@@ -1,14 +1,25 @@
+import asyncio
 from typing import Annotated
+from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from coeus.api.dependencies import (
     get_admin_analytics_service,
+    get_csrf_validated_session,
     get_current_session,
     get_feedback_analytics_service,
+    require_permission,
 )
+from coeus.application.ports.outbox import OutboxDispatcherPort
+from coeus.core.errors import AppError
+from coeus.core.permissions import Permission
 from coeus.domain.auth import AuthenticatedSession
-from coeus.schemas.admin_analytics import AdminAnalyticsDashboardResponse
+from coeus.schemas.admin_analytics import (
+    AdminAnalyticsDashboardResponse,
+    OutboxReplayRequest,
+    OutboxReplayResponse,
+)
 from coeus.schemas.feedback_analytics import (
     AnalyticsDashboardResponse,
     AnalyticsMetricsResponse,
@@ -27,10 +38,45 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 @router.get("/admin/platform", response_model=AdminAnalyticsDashboardResponse)
 async def admin_platform_dashboard(
+    request: Request,
     authenticated: Annotated[AuthenticatedSession, Depends(get_current_session)],
     service: Annotated[AdminAnalyticsService, Depends(get_admin_analytics_service)],
 ) -> AdminAnalyticsDashboardResponse:
-    return AdminAnalyticsDashboardResponse.model_validate(service.dashboard(authenticated.user))
+    dashboard = await asyncio.to_thread(
+        service.dashboard,
+        authenticated.user,
+        _outbox_dispatcher(request, required=False),
+    )
+    return AdminAnalyticsDashboardResponse.model_validate(dashboard)
+
+
+@router.post(
+    "/admin/outbox/{event_id}/replay",
+    response_model=OutboxReplayResponse,
+)
+async def replay_dead_letter(
+    event_id: UUID,
+    payload: OutboxReplayRequest,
+    request: Request,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    permitted: Annotated[
+        AuthenticatedSession,
+        Depends(require_permission(Permission.SYSTEM_CONFIGURE)),
+    ],
+    service: Annotated[AdminAnalyticsService, Depends(get_admin_analytics_service)],
+) -> OutboxReplayResponse:
+    del permitted
+    outbox = _outbox_dispatcher(request, required=True)
+    if outbox is None:  # pragma: no cover - required=True raises first
+        raise AppError(503, "outbox_not_configured", "Outbox delivery is not configured.")
+    disposition = await asyncio.to_thread(
+        service.replay_dead_letter,
+        authenticated.user,
+        outbox,
+        event_id,
+        payload.reason,
+    )
+    return OutboxReplayResponse(event_id=event_id, disposition=disposition.value)
 
 
 @router.get("/admin", response_model=AnalyticsDashboardResponse, deprecated=True)
@@ -112,3 +158,10 @@ def _dashboard_response(dashboard: AnalyticsDashboard) -> AnalyticsDashboardResp
             for item in dashboard.trends
         ],
     )
+
+
+def _outbox_dispatcher(request: Request, *, required: bool) -> OutboxDispatcherPort | None:
+    dispatcher: OutboxDispatcherPort | None = getattr(request.app.state, "outbox_dispatcher", None)
+    if dispatcher is None and required:
+        raise AppError(503, "outbox_not_configured", "Outbox delivery is not configured.")
+    return dispatcher

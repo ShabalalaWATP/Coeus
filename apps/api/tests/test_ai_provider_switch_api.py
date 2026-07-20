@@ -125,7 +125,15 @@ async def test_connection_test_reports_key_state_and_provider_reachability(
             def __exit__(self, _exc_type: object, _exc: object, _traceback: object) -> None:
                 return None
 
-            def post(self, url: str, *, json: object, headers: object) -> object:
+            def stream(
+                self,
+                method: str,
+                url: str,
+                *,
+                json: object,
+                headers: object,
+            ) -> object:
+                del method, url, json, headers
                 import httpx
 
                 raise httpx.ConnectError("mock network failure")
@@ -146,8 +154,10 @@ async def test_connection_test_flags_an_empty_provider_reply(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class EmptyReplyClient(FakeLlmClient):
-        def json(self) -> dict[str, object]:
-            return {"candidates": []}
+        def iter_bytes(self):  # type: ignore[no-untyped-def]
+            import json
+
+            yield json.dumps({"candidates": []}).encode()
 
     monkeypatch.setattr("coeus.integrations.provider_http.httpx.Client", EmptyReplyClient)
     async with make_client() as client:

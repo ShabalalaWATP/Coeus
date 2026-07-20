@@ -156,6 +156,34 @@ class AgentRunResponse(BaseModel):
     summary: str
     safety_flags: list[str] = Field(serialization_alias="safetyFlags")
     created_at: datetime = Field(serialization_alias="createdAt")
+    execution_kind: str | None = Field(
+        default=None, max_length=40, serialization_alias="executionKind"
+    )
+    provider: str | None = Field(default=None, max_length=100)
+    model: str | None = Field(default=None, max_length=200)
+    duration_ms: int | None = Field(default=None, ge=0, serialization_alias="durationMs")
+    fallback_outcome: str | None = Field(
+        default=None, max_length=80, serialization_alias="fallbackOutcome"
+    )
+    validation_outcome: str | None = Field(
+        default=None, max_length=80, serialization_alias="validationOutcome"
+    )
+    prompt_version: str | None = Field(
+        default=None, max_length=100, serialization_alias="promptVersion"
+    )
+    policy_version: str | None = Field(
+        default=None, max_length=100, serialization_alias="policyVersion"
+    )
+    context_schema_version: str | None = Field(
+        default=None, max_length=100, serialization_alias="contextSchemaVersion"
+    )
+    input_hash: str | None = Field(default=None, max_length=128, serialization_alias="inputHash")
+    output_hash: str | None = Field(default=None, max_length=128, serialization_alias="outputHash")
+    input_token_count: int | None = Field(default=None, ge=0, serialization_alias="inputTokenCount")
+    output_token_count: int | None = Field(
+        default=None, ge=0, serialization_alias="outputTokenCount"
+    )
+    error_class: str | None = Field(default=None, max_length=200, serialization_alias="errorClass")
 
 
 class TimelineEntryResponse(BaseModel):

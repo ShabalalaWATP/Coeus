@@ -6,6 +6,7 @@ from coeus.core.permissions import Permission
 from coeus.domain.auth import RoleName, UserAccount
 from coeus.domain.enums import TicketState
 from coeus.domain.tickets import (
+    AgentExecutionKind,
     AgentRun,
     AgentRunStatus,
     IntakeDetails,
@@ -27,13 +28,18 @@ def test_customer_projection_hides_internal_runs_events_and_staff_identity() -> 
         intake=IntakeDetails(title="Safe projection"),
         agent_runs=(
             AgentRun(
-                uuid4(),
-                ticket_id,
-                "internal-agent",
-                AgentRunStatus.COMPLETED,
-                "Internal reasoning that a customer must not receive.",
-                ("internal_flag",),
-                datetime.now(UTC),
+                run_id=uuid4(),
+                ticket_id=ticket_id,
+                agent_name="internal-agent",
+                status=AgentRunStatus.COMPLETED,
+                summary="Internal reasoning that a customer must not receive.",
+                safety_flags=("internal_flag",),
+                created_at=datetime.now(UTC),
+                execution_kind=AgentExecutionKind.PROVIDER_BACKED,
+                provider="synthetic-provider",
+                model="synthetic-model",
+                prompt_version="intake-v2",
+                input_hash="sha256:" + "a" * 64,
             ),
         ),
         timeline=(
@@ -50,6 +56,10 @@ def test_customer_projection_hides_internal_runs_events_and_staff_identity() -> 
     assert customer_view.timeline[0].body == "Team review completed."
     assert customer_view.timeline[0].actor_user_id == customer.user_id
     assert staff_view.agent_runs[0].summary.startswith("Internal reasoning")
+    assert staff_view.agent_runs[0].execution_kind == "provider_backed"
+    assert staff_view.agent_runs[0].provider == "synthetic-provider"
+    assert staff_view.agent_runs[0].prompt_version == "intake-v2"
+    assert staff_view.agent_runs[0].input_hash == "sha256:" + "a" * 64
     assert staff_view.timeline[0].body == "Sensitive override reason."
 
 

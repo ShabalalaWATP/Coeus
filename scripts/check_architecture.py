@@ -18,6 +18,27 @@ OBJECT_STORAGE_READ_OWNERS = frozenset(
         "coeus.services.workflow_draft_access",
     }
 )
+DETERMINISTIC_AUTHORITY_MODULES = frozenset(
+    {
+        "coeus.services.jioc_routing_agent",
+        "coeus.services.jioc_routing_context",
+        "coeus.services.jioc_routing_policy",
+        "coeus.services.prioritisation",
+        "coeus.services.qc_preflight",
+        "coeus.services.routing_evaluation",
+        "coeus.services.routing_agents",
+        "coeus.services.routing_records",
+        "coeus.services.routing_review_updates",
+    }
+)
+OUTBOUND_PROVIDER_IMPORTS = (
+    "boto3",
+    "google",
+    "httpx",
+    "openai",
+    "requests",
+    "coeus.integrations",
+)
 
 
 def module_name(path: Path) -> str:
@@ -37,6 +58,19 @@ def imported_modules(path: Path) -> set[str]:
 
 
 def forbidden(source: str, target: str) -> bool:
+    if source in DETERMINISTIC_AUTHORITY_MODULES and target.startswith(
+        OUTBOUND_PROVIDER_IMPORTS
+    ):
+        return True
+    if source.startswith("coeus.integrations.") and target.startswith(
+        (
+            "coeus.api",
+            "coeus.persistence",
+            "coeus.repositories",
+            "coeus.services",
+        )
+    ):
+        return True
     if source.startswith("coeus.services."):
         return target == "fastapi" or target.startswith("fastapi.")
     if source.startswith("coeus.application."):

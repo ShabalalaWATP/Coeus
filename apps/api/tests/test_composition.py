@@ -5,6 +5,7 @@ import pytest
 from coeus.core.config import Settings
 from coeus.main import create_app
 from coeus.persistence.state_store import MemoryStateStore
+from coeus.services.jioc_routing_context import LiveRoutingOperationalContext
 from coeus.services.object_storage import LocalObjectStorage
 
 
@@ -50,6 +51,10 @@ def test_composition_shares_identity_audit_store_and_workflow_instances(tmp_path
     assert analyst._store is store
     assert quality_control._ingestion._store is store
     assert quality_control._ingestion._storage is app.state.object_storage
+    routing_context = app.state.jioc_routing_agent_service._operational_context
+    assert isinstance(routing_context, LiveRoutingOperationalContext)
+    assert routing_context._teams is app.state.team_repository
+    assert routing_context._availability is app.state.team_availability_service
 
 
 def test_composition_rejects_inactive_future_object_storage(tmp_path: Path) -> None:

@@ -1,28 +1,50 @@
-# Istari AI Agents
+# Istari AI Agents And Automations
 
-Istari is an AI-first tasking system: agents do repetitive reasoning while a person
-makes every state-changing decision. This describes their inputs, outputs and controls.
+Istari combines deterministic automation with narrowly bounded model-backed
+wording. An "agent" does not imply broad autonomy or tool use. Authority comes
+only from the workflow service and deterministic policy described here.
 
-> Agents are deterministic mocks by default: no external calls or instruction execution.
-> Admins may configure Gemini API, OpenAI, Vertex AI or Bedrock for chatbot replies,
-> but saving a key never activates it. Activation is explicit and notifies administrators.
+> The offline default makes no external calls. Enabling a remote provider is an
+> explicit, audited deployment choice and does not grant the provider authority
+> to read repositories, call tools or mutate workflow state.
 
-Remote chat and Gemini embeddings reserve shared capacity before network use;
-success commits one unit, failure refunds it, and `/api/v1/metrics` omits user IDs.
+Remote chat and Gemini embeddings reserve shared capacity before network use.
+A reported completed provider call commits one unit, including a semantically
+invalid reply that safely falls back locally; calls that do not complete refund
+the reservation. `/api/v1/metrics` omits user IDs.
 
-## Agents at a glance
+## Authority matrix
 
-| Agent                  | Stage                        | Trigger                                 | Output                                            | Human decision                                  |
-| ---------------------- | ---------------------------- | --------------------------------------- | ------------------------------------------------- | ----------------------------------------------- |
-| Customer Chatbot Agent | Describe the need            | Customer chat message                   | Extracted requirement, completeness, safety flags | Customer confirms and submits                   |
-| RFI Search Agent       | Search existing intelligence | Ticket submitted                        | Ranked offers or a no-match decision point        | Customer accepts, rejects or confirms tasking   |
-| Similar Request Check  | Search existing intelligence | Submitted request reaches open workflow | Similar open tickets and reasons                  | Customer may join or continue; manager may link |
-| RFA Capability Agent   | Route review                 | Manager runs capability checks          | Assessment-route feasibility review               | RFA manager approves, rejects or queries        |
-| CM Capability Agent    | Route review                 | Manager runs capability checks          | Collection-route feasibility review               | CM manager approves, rejects or queries         |
-| Orchestrator Agent     | Route review                 | RFI search plus RFA and CM reviews      | Recommended route and reasoning                   | Manager may follow or override with a reason    |
-| Prioritisation Agent   | Every queue                  | Intake changes; snapshot at submission  | Internal P1-P4 score with reason tags             | Managers see the ranking; no automatic action   |
+| Automation | Kind | Purpose and inputs | Permitted writes | Must abstain or escalate when | Owner | Version | Egress / rollout |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Customer Chatbot | Model-backed bounded selector | Select the permitted next-question or completion action from extracted intake fields and local safety results | Append application-rendered conversation copy and run records; deterministic extraction may update draft intake | Unsafe input, invalid or oversized output, provider failure, or admission denial | Product owner | Prompt and provider selection recorded per run | Extracted fields only, never raw history; no provider prose; mock default |
+| RFI Search | Deterministic state-changing | Search the actor-authorised Store corpus using requirement fields and index provenance | Search run, authorised offers and assured search state | Coverage is incomplete, stale or degraded | Intelligence Store owner | Search policy, corpus and embedding versions | Provider allowlist; shadow evaluation before production activation |
+| Similar Request Check | Deterministic advisory | Compare authorised open-work summaries | Persisted match offers only; human endpoints create subscriptions or links | Match is hidden, access is lost or retrieval is degraded | Workflow owner | Search/context versions | No hidden match content leaves the access boundary |
+| RFA / CM Capability | Deterministic advisory | Assess route signals against intake and capability facts | Review and candidate-team records only | Signals conflict, facts are missing/stale, restrictions or risks exist | RFA / CM managers | Capability catalogue and policy versions | No external egress; active only as advice |
+| Legacy Orchestrator | Deterministic advisory | Combine RFI and capability reviews | Recommendation, clarification and audit records | Neither route is safely supported | JIOC Manager | Routing policy version | No external egress; advisory only |
+| JIOC Routing | Deterministic state-changing | Apply an eligible route from a versioned routing context | Route decision and allowed transition, or manager-review/clarification state | Conflicting signals, stale/missing evidence, restrictions, policy exception or unsafe mode | JIOC Manager | `jioc-routing-policy-v2` plus context schema | No external egress; `disabled`, `shadow` or `active` |
+| Prioritisation | Deterministic advisory | Order queues from synthetic registry weights | Priority assessment and run record | Required policy inputs are unavailable | JIOC Manager | Prioritisation policy version | No external egress; never changes lifecycle state |
+| QC Preflight | Deterministic state-changing gate | Check draft structure, evidence readiness and immutable manifest | Preflight/run/audit records; may block release | Any check fails or the draft changes | QC officer | `qc-preflight-v1` | No external egress; cannot release |
+| QC release | Human-only release action | Confirm classification, sources, access and releasability | Published product, dissemination, audit and durable notification intent | Preflight is absent/stale, authority is missing, or version changed | QC officer | Human checklist and release policy | No agent or model can invoke release authority |
 
 The stages map onto the [request journey](USER_GUIDE.md#the-request-journey).
+
+### Common authority contract
+
+- Inputs are allowlisted, versioned and access-filtered before evaluation.
+- Model-backed chat receives extracted fields, not raw conversation history.
+- Provider output is untrusted: token and byte ceilings, identity-only response
+  encoding, a closed action vocabulary and deterministic fallback apply before
+  application-owned copy is persisted or displayed.
+- Runs record enough provenance to identify provider/model (where applicable),
+  prompt, policy and context versions, latency, validation and fallback outcome.
+- `disabled` invokes no capability agent and makes no autonomous route decision;
+  it deterministically refers the ticket to `JIOC_REVIEW`. `shadow` records a
+  comparison and makes the same human referral. `active` may execute only
+  deterministic allowlisted transitions. Any conflict or stale/missing context
+  goes to manual review.
+- Humans alone approve final dissemination. Automation cannot expand its own
+  permissions, invoke tools, alter policy or bypass object-level authorisation.
 
 ---
 
@@ -219,42 +241,12 @@ required output format, known context and success criteria.
 
 ### How they decide
 
-Both agents tokenise the intake on alphanumeric runs (so punctuation such as
-"assessment?" still matches) with simple plural folding, and look for domain
-signals:
-
-- **Assessment signal:** terms such as _assessment, assess, brief, report,
-  estimate, analysis_.
-- **Collection signal:** terms such as _collection, sensor, imagery, source,
-  monitor, surveillance_.
-- **Unsupported markers:** terms such as _mars, tbd, unbounded_ raise a
-  clarification instead of a confident answer.
-
-From those signals each agent produces:
-
-- `can_satisfy` — the RFA agent says yes when there is an assessment signal, no
-  outstanding clarifications, and the request is not purely collection-led; the
-  CM agent says yes only when a genuine collection term is present and there
-  are no clarifications. A collection-team keyword match on its own is treated
-  as an unconfirmed signal, not a confident answer.
-- `confidence` — 0.86 when it can satisfy, 0.48 when a signal exists but is
-  unconfirmed, 0.34 with no signal, and 0.28 when clarifications are outstanding.
-- `required_clarifications` — carried over from missing intake plus any raised by
-  unsupported markers or a critical priority with no deadline.
-- `suggested_work_packages` (RFA) or `suggested_collection_sources` (CM).
-- `estimated_effort` — "1-2 days" for critical/high priority, otherwise
-  "3-5 days".
-- `risks` and a plain-language `reasoning_summary`.
-
-### Output
-
-An `RfaCapabilityReview` and a `CmCapabilityReview`, both rendered on the manager
-queue as agent-badged cards.
-
-### Human control
-
-Both reviews set `manager_review_required = True`. They are advice only; a
-manager must approve, reject or request clarification.
+Both agents use transparent, deterministic route signals and the current
+capability catalogue. Their reviews expose eligibility, required clarification,
+candidate teams, risks and reasoning. They do not treat a numeric value as
+calibrated probability. Conflicting eligibility, negation, missing facts,
+restrictions, stale availability or other risk requires clarification or manual
+review. Capability reviews are advice and cannot change the lifecycle state.
 
 ---
 
@@ -322,10 +314,12 @@ The agents depend on an LLM provider interface, not on a specific model:
   environment never changes the configured provider. The key is never returned
   to the browser; it is stored as a provider-bound encrypted envelope and
   restored after API restart.
-- **Graceful degradation:** if the Gemini API is unavailable, times out or is
-  selected without a key, the chatbot falls back to the deterministic mock
-  reply. The customer's message is always saved and the chat turn never fails
-  because the external provider did.
+- **Graceful degradation:** the provider can select only a bounded question or
+  completion action; requester-facing copy is rendered locally. If the Gemini
+  API is unavailable, times out, returns another value or is selected without a
+  key, the chatbot falls back to the deterministic mock reply. The customer's
+  message is always saved and the chat turn never fails because the external
+  provider did.
 - **Future GCP deployment:** the same runtime boundary can point at Google
   managed services without changing the workflow contracts.
 
@@ -337,8 +331,9 @@ service and never appear in generic model state or API responses. See the
 
 ## Design principles
 
-- **A person makes every state change.** Agents extract, rank and advise; they
-  never approve, release or close.
+- **Authority matches proven capability.** Advisory agents cannot mutate workflow;
+  active deterministic routing may perform only its allowlisted transitions;
+  release, policy and access decisions remain human-only.
 - **Need-to-know comes first.** Access policy runs before an agent sees a
   product, so agents cannot leak what a user may not see.
 - **Deterministic and auditable.** Local agents are pure functions of their

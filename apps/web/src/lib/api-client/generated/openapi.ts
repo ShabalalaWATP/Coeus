@@ -846,6 +846,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/analytics/admin/outbox/{event_id}/replay": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Replay Dead Letter */
+    post: operations["replay_dead_letter_api_v1_analytics_admin_outbox__event_id__replay_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/analytics/admin/platform": {
     parameters: {
       query?: never;
@@ -2531,6 +2548,7 @@ export interface components {
        * Format: date-time
        */
       generatedAt: string;
+      outbox: components["schemas"]["OutboxAnalyticsResponse"];
       process: components["schemas"]["ProcessAnalyticsResponse"];
       search: components["schemas"]["SearchAnalyticsResponse"];
       users: components["schemas"]["UserAnalyticsResponse"];
@@ -2563,22 +2581,50 @@ export interface components {
     AgentRunResponse: {
       /** Agentname */
       agentName: string;
+      /** Contextschemaversion */
+      contextSchemaVersion?: string | null;
       /**
        * Createdat
        * Format: date-time
        */
       createdAt: string;
+      /** Durationms */
+      durationMs?: number | null;
+      /** Errorclass */
+      errorClass?: string | null;
+      /** Executionkind */
+      executionKind?: string | null;
+      /** Fallbackoutcome */
+      fallbackOutcome?: string | null;
       /**
        * Id
        * Format: uuid
        */
       id: string;
+      /** Inputhash */
+      inputHash?: string | null;
+      /** Inputtokencount */
+      inputTokenCount?: number | null;
+      /** Model */
+      model?: string | null;
+      /** Outputhash */
+      outputHash?: string | null;
+      /** Outputtokencount */
+      outputTokenCount?: number | null;
+      /** Policyversion */
+      policyVersion?: string | null;
+      /** Promptversion */
+      promptVersion?: string | null;
+      /** Provider */
+      provider?: string | null;
       /** Safetyflags */
       safetyFlags: string[];
       /** Status */
       status: string;
       /** Summary */
       summary: string;
+      /** Validationoutcome */
+      validationOutcome?: string | null;
     };
     /** AiConnectionTestRequest */
     AiConnectionTestRequest: {
@@ -3762,6 +3808,36 @@ export interface components {
       read: boolean;
       /** Title */
       title: string;
+    };
+    /** OutboxAnalyticsResponse */
+    OutboxAnalyticsResponse: {
+      /** Available */
+      available: boolean;
+      /** Configured */
+      configured: boolean;
+      /** Deadlettercount */
+      deadLetterCount: number;
+      /** Oldestpendingageseconds */
+      oldestPendingAgeSeconds: number | null;
+      /** Pendingcount */
+      pendingCount: number;
+      /** Retryingcount */
+      retryingCount: number;
+    };
+    /** OutboxReplayRequest */
+    OutboxReplayRequest: {
+      /** Reason */
+      reason: string;
+    };
+    /** OutboxReplayResponse */
+    OutboxReplayResponse: {
+      /** Disposition */
+      disposition: string;
+      /**
+       * Eventid
+       * Format: uuid
+       */
+      eventId: string;
     };
     /** OversightAnalystResponse */
     OversightAnalystResponse: {
@@ -7060,6 +7136,43 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["AnalyticsDashboardResponse"];
+        };
+      };
+    };
+  };
+  replay_dead_letter_api_v1_analytics_admin_outbox__event_id__replay_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path: {
+        event_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["OutboxReplayRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OutboxReplayResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };

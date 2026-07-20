@@ -51,6 +51,7 @@ from coeus.domain.search_metrics import RfiSearchMetrics
 from coeus.domain.store import BoundingBox, StoreAsset, StoreProduct, StoreProductMetadata
 from coeus.domain.teams import CalendarStatus, OrgTeam, TeamCalendarEntry, TeamKind, UserProfile
 from coeus.domain.tickets import (
+    AgentExecutionKind,
     AgentRun,
     AgentRunStatus,
     AnalystAssignment,
@@ -166,6 +167,7 @@ ENUM_IDENTITIES: tuple[CodecIdentity, ...] = (
     (RegistrationStatus, "registration.registration_status"),
     (CalendarStatus, "teams.calendar_status"),
     (TeamKind, "teams.team_kind"),
+    (AgentExecutionKind, "tickets.agent_execution_kind"),
     (AgentRunStatus, "tickets.agent_run_status"),
     (CollaboratorAccess, "tickets.collaborator_access"),
     (ManagerRoutingDecisionStatus, "tickets.manager_routing_decision_status"),
