@@ -1,4 +1,5 @@
 from typing import Any
+from uuid import uuid4
 
 import pytest
 
@@ -12,8 +13,8 @@ async def test_admin_configures_voice_separately_from_text_provider() -> None:
         initial = await client.get("/api/v1/admin/voice-model")
         assert initial.status_code == 200
         assert initial.json() == {
-            "model": "gpt-realtime-mini",
-            "availableModels": ["gpt-realtime-mini"],
+            "model": "gpt-realtime-2.1",
+            "availableModels": ["gpt-realtime-2.1", "gpt-realtime-mini"],
             "enabled": False,
             "apiKeyConfigured": False,
         }
@@ -136,12 +137,12 @@ async def test_admin_tests_voice_without_enabling_it() -> None:
         assert tested.json() == {
             "ok": True,
             "provider": "openai_realtime",
-            "model": "gpt-realtime-mini",
-            "message": "OpenAI Realtime accepted gpt-realtime-mini.",
+            "model": "gpt-realtime-2.1",
+            "message": "OpenAI Realtime accepted gpt-realtime-2.1.",
         }
         assert captured == {
             "api_key": "sk-dedicated-voice-key",
-            "model": "gpt-realtime-mini",
+            "model": "gpt-realtime-2.1",
         }
         state = await client.get("/api/v1/admin/voice-model")
         assert state.json()["enabled"] is False
@@ -172,6 +173,13 @@ async def test_voice_session_validates_sdp_and_proxies_without_exposing_key() ->
             json={"model": "gpt-realtime-mini", "enabled": True},
         )
         user_csrf = await admin_login(client, "user@example.test")
+        drafted = await client.post(
+            "/api/v1/chat/messages",
+            headers={"X-CSRF-Token": user_csrf},
+            json={"message": "I need a synthetic assessment of vessel activity."},
+        )
+        assert drafted.status_code == 201
+        ticket_id = drafted.json()["id"]
 
         wrong_type = await client.post(
             "/api/v1/voice/session",
@@ -210,7 +218,7 @@ async def test_voice_session_validates_sdp_and_proxies_without_exposing_key() ->
         assert "POST" in preflight.headers["access-control-allow-methods"]
 
         response = await client.post(
-            "/api/v1/voice/session",
+            f"/api/v1/voice/session?ticketId={ticket_id}",
             content="v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\n",
             headers={
                 "Content-Type": "application/sdp",
@@ -226,9 +234,18 @@ async def test_voice_session_validates_sdp_and_proxies_without_exposing_key() ->
         token = response.headers["x-voice-session-token"]
         assert captured["model"] == "gpt-realtime-mini"
         assert "YOUR ONLY PURPOSE" in captured["instructions"]
+        assert "AUTHORISed SESSION CONTEXT".upper() in captured["instructions"].upper()
+        assert "What is the specific question you would like answered?" in captured["instructions"]
         assert "NEVER say the RFI was created, saved" in captured["instructions"]
         assert captured["api_key"] == "sk-dedicated-voice-key"
         assert len(captured["safety_identifier"]) == 64
+
+        hidden = await client.post(
+            f"/api/v1/voice/session?ticketId={uuid4()}",
+            content="v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\n",
+            headers={"Content-Type": "application/sdp", "X-CSRF-Token": user_csrf},
+        )
+        assert hidden.status_code == 404
 
         capacity = await client.post(
             "/api/v1/voice/session",

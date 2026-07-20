@@ -13,6 +13,7 @@ from urllib.parse import quote
 import httpx
 
 from coeus.core.errors import AppError
+from coeus.core.litellm_endpoint import litellm_endpoint
 from coeus.core.resource_limits import (
     MAX_INTAKE_OUTPUT_TOKENS,
     MAX_LLM_PROVIDER_RESPONSE_BYTES,
@@ -27,6 +28,7 @@ BEDROCK_URL = "https://bedrock-runtime.{region}.amazonaws.com/model/{model}/conv
 PROVIDER_LABELS = {
     "gemini_api": "Gemini API",
     "openai_api": "OpenAI API",
+    "litellm_proxy": "LiteLLM Proxy",
     "vertex_ai": "Vertex AI",
     "bedrock": "Bedrock",
 }
@@ -43,6 +45,8 @@ class LlmCall:
     instructions: str = ""
     max_output_tokens: int = MAX_INTAKE_OUTPUT_TOKENS
     structured_output: bool = False
+    litellm_base_url: str = ""
+    hosted: bool = False
 
 
 class LlmGeneration(str):
@@ -112,6 +116,18 @@ def _request_for(call: LlmCall) -> tuple[str, dict[str, str], dict[str, object]]
             {"Authorization": f"Bearer {call.api_key}"},
             _openai_body(call),
         )
+    if call.provider == "litellm_proxy":
+        try:
+            url = litellm_endpoint(call.litellm_base_url, "chat/completions", hosted=call.hosted)
+        except ValueError as exc:
+            raise AppError(
+                500, "llm_provider_misconfigured", "LiteLLM Proxy is misconfigured."
+            ) from exc
+        return (
+            url,
+            {"Authorization": f"Bearer {call.api_key}"},
+            _openai_body(call),
+        )
     if call.provider == "vertex_ai":
         return (
             VERTEX_URL.format(model=model),
@@ -170,7 +186,7 @@ def _reply_text(provider: str, payload: object) -> str:
         return ""
     if provider in ("gemini_api", "vertex_ai"):
         return _candidate_text(payload)
-    if provider == "openai_api":
+    if provider in ("openai_api", "litellm_proxy"):
         choices = payload.get("choices", [])
         if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
             return ""
@@ -206,7 +222,7 @@ def _token_usage(provider: str, payload: object) -> tuple[int | None, int | None
     if provider in ("gemini_api", "vertex_ai"):
         usage = payload.get("usageMetadata", {})
         return _usage_values(usage, "promptTokenCount", "candidatesTokenCount")
-    if provider == "openai_api":
+    if provider in ("openai_api", "litellm_proxy"):
         usage = payload.get("usage", {})
         return _usage_values(usage, "prompt_tokens", "completion_tokens")
     usage = payload.get("usage", {})

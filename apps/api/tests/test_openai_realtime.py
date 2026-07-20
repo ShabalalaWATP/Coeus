@@ -157,8 +157,14 @@ def test_realtime_connection_sanitises_provider_failures(monkeypatch: pytest.Mon
     assert "sk-secret" not in raised.value.message
 
 
-def test_realtime_call_uses_multipart_session_and_safety_header(
+@pytest.mark.parametrize(
+    ("model", "reasoning"),
+    [("gpt-realtime-mini", None), ("gpt-realtime-2.1", {"effort": "low"})],
+)
+def test_realtime_models_share_the_guarded_session_contract(
     monkeypatch: pytest.MonkeyPatch,
+    model: str,
+    reasoning: dict[str, str] | None,
 ) -> None:
     FakeClient.status_code = None
     FakeClient.network_error = False
@@ -169,7 +175,7 @@ def test_realtime_call_uses_multipart_session_and_safety_header(
     answer = create_realtime_call(
         api_key="sk-secret",
         instructions="Guarded synthetic RFI intake.",
-        model="gpt-realtime-mini",
+        model=model,
         voice="marin",
         sdp="v=0\r\nm=audio offer\r\n",
         safety_identifier="safe-user",
@@ -184,10 +190,13 @@ def test_realtime_call_uses_multipart_session_and_safety_header(
     files = FakeClient.captured["files"]
     assert files["sdp"] == (None, "v=0\r\nm=audio offer\r\n")
     session = json.loads(files["session"][1])
-    assert session["model"] == "gpt-realtime-mini"
+    assert session["model"] == model
     assert session["instructions"] == "Guarded synthetic RFI intake."
+    assert session["max_output_tokens"] == 256
+    assert session["tools"] == []
     assert session["audio"]["output"]["voice"] == "marin"
     assert session["audio"]["input"]["transcription"]["model"] == "gpt-realtime-whisper"
+    assert session.get("reasoning") == reasoning
 
 
 @pytest.mark.parametrize(

@@ -55,8 +55,10 @@ export function getVoiceConfig(): Promise<VoiceModelState> {
 export async function createVoiceSession(
   sdp: string,
   csrfToken: string,
+  ticketId?: string,
 ): Promise<{ answer: string; token: string }> {
-  const response = await apiRequest("/api/v1/voice/session", {
+  const query = ticketId ? `?ticketId=${encodeURIComponent(ticketId)}` : "";
+  const response = await apiRequest(`/api/v1/voice/session${query}`, {
     body: sdp,
     headers: { "Content-Type": "application/sdp", "X-CSRF-Token": csrfToken },
     method: "POST",

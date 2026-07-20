@@ -181,7 +181,7 @@ def test_admitted_reply_reports_remote_fallback_and_success() -> None:
     assert success.model
     assert success.duration_ms is not None
     assert success.outcome == "provider_success"
-    assert success.prompt_version == "intake-planner-v1"
+    assert success.prompt_version == "intake-planner-v2"
 
 
 def test_provider_circuit_stops_repeated_failed_remote_calls() -> None:

@@ -37,6 +37,7 @@ README.
 | Runbook                                                                | Read it for                                                                  |
 | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | [Local Development](runbooks/local-development.md)                     | Day-to-day local startup, health checks and local quality gates              |
+| [LiteLLM Provider Connectivity](runbooks/litellm-provider-connectivity.md) | AWS Bedrock and GCP Vertex AI routes, identity, virtual keys and verification |
 | [CI/CD Pipeline](runbooks/ci-cd-pipeline.md)                           | GitHub Actions workflows, required status checks and security gates          |
 | [GitHub Branch Protection](runbooks/github-branch-protection.md)       | `main` ruleset, pull-request requirements and required code-scanning results |
 | [GCP Reference Deployment](runbooks/gcp-dev-deployment.md)             | Future work-owned GCP deployment setup                                       |

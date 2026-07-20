@@ -16,7 +16,8 @@ silently replace the application-wide text-chat provider.
 - Treat voice as a separately enabled capability with its own curated model
   setting and dedicated administrator-entered API key. The key is independent
   from every text-chat provider key. The default model is
-  `gpt-realtime-mini`.
+  `gpt-realtime-2.1` with low reasoning effort. The earlier
+  `gpt-realtime-mini` remains selectable for compatibility and comparison.
 - Persist the dedicated key as an authenticated encrypted envelope under a
   Realtime-specific identity. Persist the selected model and enabled state so
   a normal API restart does not silently disable a configured capability.
@@ -35,8 +36,13 @@ silently replace the application-wide text-chat provider.
 - Generate structured Realtime instructions from the authoritative RFI intake
   standard. Pin Istari to intake, one-question elicitation, synthetic data,
   off-topic redirection and an explicit review-and-send completion boundary.
+- For an existing draft, authorise the ticket through the normal editable-ticket
+  boundary and add only derived field-presence, missing-field and deterministic
+  opening-action context. Do not send raw chat history or stored field values.
 - Do not give the voice session tools or permission to submit, route, search or
   change a request. It may only produce a transcript for customer review.
+- Apply the same tool-free 256-token session contract to both curated models.
+  Realtime 2.1 alone receives low reasoning effort and no-preamble guidance.
 - Keep durable ticket updates on the existing validated text-chat boundary.
   The browser exposes the captured synthetic voice transcript for review and
   explicit submission; audio is never stored by Coeus.
@@ -59,9 +65,11 @@ limits, provider admission, no-store responses, audit metadata without content,
 sanitised provider error categories, and a same-origin microphone permissions
 policy.
 
-A new Realtime session retains the details spoken within that voice session,
-but does not inherit an existing typed-chat draft. The reviewed transcript is
-merged through the normal chat path after voice stops.
+A new Realtime session retains details spoken within that voice session. When
+started from an existing editable draft, it also receives bounded field-presence,
+missing-field and next-action context, but no raw typed history or stored field
+values. The reviewed transcript is merged through the normal chat path after
+voice stops.
 
 The administration UI distinguishes a key being saved, voice being enabled and
 the latest connection test succeeding. A test neither changes configuration nor

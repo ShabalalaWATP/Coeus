@@ -79,6 +79,19 @@ def test_hosted_advisory_egress_requires_provider_and_data_release() -> None:
     assert "ADVISORY_APPROVED_DATA_CLASSIFICATIONS" in str(error.value)
 
 
+def test_hosted_litellm_requires_an_environment_key_and_https() -> None:
+    with pytest.raises(ValueError) as missing:
+        valid_dev_settings(llm_provider="litellm_proxy").require_runtime_security()
+    assert "COEUS_LITELLM_API_KEY is required" in str(missing.value)
+    assert "must use HTTPS" in str(missing.value)
+
+    valid_dev_settings(
+        llm_provider="litellm_proxy",
+        litellm_api_key="sk-virtual-key",
+        litellm_base_url="https://llm.example.test/proxy",
+    ).require_runtime_security()
+
+
 def test_remote_routing_critic_requires_a_safe_outbox_lease() -> None:
     settings = valid_dev_settings(
         llm_provider="gemini_api",

@@ -5,6 +5,7 @@ from urllib.parse import urlsplit
 
 from coeus.core.advisory_egress import HOSTED_ENVIRONMENTS, advisory_egress_errors
 from coeus.core.config import DEFAULT_ASSET_TOKEN_SECRET, DEFAULT_SEED_CREDENTIAL, Settings
+from coeus.core.litellm_endpoint import litellm_base_url_errors
 from coeus.domain.jioc_routing import ROUTING_RELEASE, JiocRoutingMode, normalise_routing_mode
 
 SEED_USER_ENVIRONMENTS = frozenset({"local", "test"})
@@ -12,6 +13,7 @@ SECURE_COOKIE_ENVIRONMENTS = frozenset({"staging", "prod"})
 _LLM_KEY_ENV_VARS = {
     "gemini_api": "COEUS_GEMINI_API_KEY",
     "openai_api": "COEUS_OPENAI_API_KEY",
+    "litellm_proxy": "COEUS_LITELLM_API_KEY",
     "vertex_ai": "COEUS_VERTEX_API_KEY",
     "bedrock": "COEUS_BEDROCK_API_KEY",
 }
@@ -77,6 +79,7 @@ def _llm_env_key(settings: Settings) -> str | None:
     return {
         "gemini_api": settings.gemini_api_key,
         "openai_api": settings.openai_api_key,
+        "litellm_proxy": settings.litellm_api_key,
         "vertex_ai": settings.vertex_api_key,
         "bedrock": settings.bedrock_api_key,
     }.get(settings.llm_provider)
@@ -88,6 +91,8 @@ def _integration_errors(settings: Settings) -> tuple[str, ...]:
     if settings.llm_provider != "mock" and not _llm_env_key(settings) and hosted:
         env_var = _LLM_KEY_ENV_VARS[settings.llm_provider]
         errors.append(f"{env_var} is required when COEUS_LLM_PROVIDER={settings.llm_provider}.")
+    if settings.llm_provider == "litellm_proxy":
+        errors.extend(litellm_base_url_errors(settings.litellm_base_url, hosted=hosted))
     if settings.email_provider == "smtp":
         if not settings.smtp_host:
             errors.append("COEUS_SMTP_HOST is required when COEUS_EMAIL_PROVIDER=smtp.")

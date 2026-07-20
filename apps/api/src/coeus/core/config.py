@@ -12,7 +12,9 @@ from coeus.domain.jioc_routing import JiocRoutingMode
 EnvironmentName = Literal["local", "dev", "staging", "prod", "test"]
 EmailProviderName = Literal["outbox", "smtp"]
 EmbeddingProviderName = Literal["mock", "local", "gemini_api"]
-LlmProviderName = Literal["mock", "gemini_api", "openai_api", "vertex_ai", "bedrock"]
+LlmProviderName = Literal[
+    "mock", "gemini_api", "openai_api", "litellm_proxy", "vertex_ai", "bedrock"
+]
 ObjectStorageProviderName = Literal["local", "gcs"]
 PersistenceProviderName = Literal["memory", "file", "postgres"]
 TicketPersistenceMode = Literal["legacy", "shadow_validate", "relational"]
@@ -117,9 +119,13 @@ class Settings(BaseSettings):
         default_factory=lambda: ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"],
         min_length=1,
     )
-    openai_realtime_model: str = "gpt-realtime-mini"
+    litellm_api_key: str | None = None
+    litellm_base_url: str = "http://127.0.0.1:4000"
+    litellm_api_model: str = "default"
+    available_litellm_models: list[str] = Field(default_factory=lambda: ["default"], min_length=1)
+    openai_realtime_model: str = "gpt-realtime-2.1"
     available_openai_realtime_models: list[str] = Field(
-        default_factory=lambda: ["gpt-realtime-mini"], min_length=1
+        default_factory=lambda: ["gpt-realtime-2.1", "gpt-realtime-mini"], min_length=1
     )
     openai_realtime_voice: str = "marin"
     voice_session_max_concurrent: int = Field(default=4, ge=1, le=32)

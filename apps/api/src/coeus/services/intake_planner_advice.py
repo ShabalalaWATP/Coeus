@@ -8,7 +8,7 @@ from coeus.domain.advisory_agents import (
     AgentAdviceProvenance,
 )
 from coeus.domain.tickets import IntakeDetails
-from coeus.services.intake_planner import (
+from coeus.services.intake_planner_types import (
     IntakePlanDraft,
     IntakePlannerAction,
     IntakePlannerReason,

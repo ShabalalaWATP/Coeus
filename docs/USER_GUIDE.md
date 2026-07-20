@@ -243,13 +243,28 @@ log according to the administrator's permissions.
 ### Choosing the AI model
 
 The **AI provider and model** panel groups models by provider. Gemini, OpenAI,
-Vertex AI and Bedrock can each accept a write-only key, test the connection and
-retain their own selected model. Activating a provider is a separate warned
-action that changes the text-chat provider for every user. Administrator-entered
-keys are encrypted at rest, persisted and never returned to the browser.
+LiteLLM Proxy, Vertex AI and Bedrock can each accept a write-only key, test the
+connection and retain their own selected model. LiteLLM model aliases can be
+refreshed from its deployment-managed server address. Use a scoped virtual key,
+not the LiteLLM master key. Activating a provider is a separate warned action
+that changes the remote text and bounded-advice provider for every user, subject
+to agent egress gates and deterministic fallback. Administrator-entered keys are
+encrypted at rest, persisted and never returned to the browser.
 Environment-managed provider keys take precedence and cannot be replaced in the
 workspace. The configuration-encryption key must remain available across
 restarts or persisted credentials cannot be decrypted.
+
+The Vertex and Bedrock entries are direct API-key adapters. When either cloud is
+routed through LiteLLM instead, cloud IAM, ADC and federated identities stay in
+the LiteLLM deployment; only its restricted virtual key is entered here.
+
+For the standard local Docker stack, a LiteLLM Proxy running on the Windows host
+is reached at `http://host.docker.internal:4000`. Override
+`COEUS_LITELLM_BASE_URL` before starting the stack when the proxy uses another
+operator-controlled origin or path prefix. Operators configuring AWS Bedrock or
+GCP Vertex AI routes should follow the
+[LiteLLM Provider Connectivity Runbook](runbooks/litellm-provider-connectivity.md);
+cloud credentials never belong in this workspace.
 
 ![Admin AI model catalogue](images/12-admin-ai-model.png)
 

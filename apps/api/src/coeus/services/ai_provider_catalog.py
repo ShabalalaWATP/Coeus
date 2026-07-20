@@ -37,6 +37,13 @@ def provider_specs(settings: Settings) -> tuple[ProviderSpec, ...]:
             settings.openai_api_model,
         ),
         _spec(
+            "litellm_proxy",
+            "LiteLLM Proxy",
+            settings.available_litellm_models,
+            settings.litellm_api_model,
+            supports_model_refresh=True,
+        ),
+        _spec(
             "vertex_ai",
             "GCP Vertex AI",
             settings.available_vertex_models,
@@ -64,6 +71,7 @@ def initial_api_keys(settings: Settings) -> dict[LlmProviderName, str | None]:
     return {
         "gemini_api": settings.gemini_api_key,
         "openai_api": settings.openai_api_key,
+        "litellm_proxy": settings.litellm_api_key,
         "vertex_ai": settings.vertex_api_key,
         "bedrock": settings.bedrock_api_key,
         "mock": None,

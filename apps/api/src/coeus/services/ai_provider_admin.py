@@ -7,6 +7,7 @@ switch visible to every administrator, not just the one who clicked.
 
 from dataclasses import dataclass
 
+from coeus.core.advisory_egress import HOSTED_ENVIRONMENTS
 from coeus.core.config import Settings
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
@@ -62,6 +63,8 @@ def test_connection(
         prompt=TEST_PROMPT,
         timeout=settings.llm_api_timeout_seconds,
         region=settings.bedrock_region,
+        litellm_base_url=settings.litellm_base_url,
+        hosted=settings.environment in HOSTED_ENVIRONMENTS,
     )
     try:
         text = generate_text(call)

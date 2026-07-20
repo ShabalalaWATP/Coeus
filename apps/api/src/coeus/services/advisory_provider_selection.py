@@ -58,6 +58,8 @@ def freeze_advisory_provider(
         instructions=prompt.instructions,
         max_output_tokens=prompt.max_output_tokens,
         structured_output=True,
+        litellm_base_url=settings.litellm_base_url,
+        hosted=settings.environment in HOSTED_ENVIRONMENTS,
     )
     return AdvisoryProviderSelection(provider, model, input_hash, call)
 

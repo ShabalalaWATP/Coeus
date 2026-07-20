@@ -3,7 +3,9 @@
 import httpx
 
 from coeus.core.errors import AppError
+from coeus.core.litellm_endpoint import litellm_endpoint
 from coeus.core.model_ids import clean_model_ids
+from coeus.core.resource_limits import MAX_LLM_PROVIDER_RESPONSE_BYTES
 from coeus.integrations.llm_gateway import PROVIDER_LABELS
 from coeus.integrations.provider_http import get_json
 
@@ -32,12 +34,32 @@ _OPENAI_NON_CHAT = (
 )
 
 
-def discover_models(provider: str, api_key: str, timeout: int) -> tuple[str, ...]:
+def discover_models(
+    provider: str,
+    api_key: str,
+    timeout: int,
+    litellm_base_url: str = "",
+    litellm_hosted: bool = False,
+) -> tuple[str, ...]:
     """Return a safe, bounded catalogue or fail without changing app state."""
     if provider == "openai_api":
         payload = _get_json(
             provider,
             OPENAI_MODELS_URL,
+            {"Authorization": f"Bearer {api_key}"},
+            timeout,
+        )
+        return _openai_models(payload)
+    if provider == "litellm_proxy":
+        try:
+            url = litellm_endpoint(litellm_base_url, "models", hosted=litellm_hosted)
+        except ValueError as exc:
+            raise AppError(
+                500, "llm_provider_misconfigured", "LiteLLM Proxy is misconfigured."
+            ) from exc
+        payload = _get_json(
+            provider,
+            url,
             {"Authorization": f"Bearer {api_key}"},
             timeout,
         )
@@ -60,7 +82,12 @@ def discover_models(provider: str, api_key: str, timeout: int) -> tuple[str, ...
 def _get_json(provider: str, url: str, headers: dict[str, str], timeout: int) -> dict[str, object]:
     label = PROVIDER_LABELS.get(provider, provider)
     try:
-        payload = get_json(url, headers=headers, timeout=timeout)
+        payload = get_json(
+            url,
+            headers=headers,
+            timeout=timeout,
+            max_response_bytes=MAX_LLM_PROVIDER_RESPONSE_BYTES,
+        )
     except httpx.HTTPStatusError as exc:
         status = exc.response.status_code
         if status in (401, 403):

@@ -18,7 +18,7 @@ def test_realtime_connection(*, api_key: str, model: str) -> None:
                 "POST",
                 OPENAI_REALTIME_CLIENT_SECRETS_URL,
                 headers={"Authorization": f"Bearer {api_key}"},
-                json={"session": {"type": "realtime", "model": model}},
+                json={"session": _session_identity(model)},
             ) as response:
                 response.raise_for_status()
                 content = bytearray()
@@ -55,9 +55,10 @@ def create_realtime_call(
 ) -> str:
     """Exchange a browser SDP offer without exposing the OpenAI key."""
     session = {
-        "type": "realtime",
-        "model": model,
+        **_session_identity(model),
         "instructions": instructions,
+        "max_output_tokens": 256,
+        "tools": [],
         "audio": {
             "input": {"transcription": {"model": "gpt-realtime-whisper"}},
             "output": {"voice": voice},
@@ -93,6 +94,13 @@ def create_realtime_call(
             "The voice provider returned an invalid response.",
         ) from exc
     return answer
+
+
+def _session_identity(model: str) -> dict[str, object]:
+    session: dict[str, object] = {"type": "realtime", "model": model}
+    if model.startswith("gpt-realtime-2"):
+        session["reasoning"] = {"effort": "low"}
+    return session
 
 
 def _provider_status_error(status_code: int) -> AppError:

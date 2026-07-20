@@ -23,10 +23,12 @@ synthetic conversation audio and derived transcripts.
 | Upstream errors disclose provider details.                                        | Convert network, timeout and non-success responses to sanitised dependency categories without returning upstream bodies, request headers, exception text or credentials. The SPA surfaces only these backend-controlled messages.                                                |
 | A malicious provider response consumes memory during an administrator test.       | Stream and cap the response at 64 KiB, require the expected client-secret shape and discard the returned ephemeral credential immediately.                                                                                                                                       |
 | Spoken prompt injection changes Istari's role or bypasses intake safety.          | Generate labelled Realtime instructions from the authoritative intake standard, treat speech as untrusted content, reject role or prompt changes, redirect off-topic work, require synthetic placeholders and expose no submission or search tools.                              |
+| Stored prompt injection is replayed into a new voice session.                     | Authorise the editable ticket, then expose only application-generated field names, missing fields and deterministic plan codes. Do not place raw history or stored field values in Realtime instructions.                                                                       |
+| A stronger reasoning voice model expands its authority or silently increases latency. | `gpt-realtime-2.1` receives the same transcript-only scope and no application tools. Start with low reasoning effort, retain explicit microphone initiation and transcript review, and evaluate latency and intake behaviour before production enablement. |
 | A voice transcript bypasses ticket validation.                                    | Place the transcript in the existing message editor; only the normal chat endpoint can persist it. Safety-scan the complete raw envelope before parsing speaker labels.                                                                                                        |
 | Assistant transcript text contaminates customer fields or controls chat state.    | Preserve the raw transcript for audit, but allow only labelled requester turns to supply field values or finish commands. Assistant questions can select answer context only. Speaker labels do not reduce raw safety scanning.                                                 |
 | Asynchronous transcription events reorder questions and answers.                  | Track Realtime conversation item IDs and `previous_item_id`; render and ingest final transcripts in conversation order rather than completion-event arrival order.                                                                                                             |
-| Stopping drops the final spoken turn.                                             | Stop microphone input first, commit the input buffer, briefly drain final events, parse authoritative completed events and preserve bounded deltas as a fallback before teardown.                                                                                                |
+| Stopping drops the final spoken turn.                                             | Stop microphone input first, commit the input buffer, wait through an event-sensitive quiet period with a hard timeout, parse authoritative completed events and preserve bounded deltas as a fallback before teardown.                                                          |
 | A long voice session exhausts browser memory or exceeds chat limits.              | Bound the collected transcript and cap the resulting editor value at the existing 4,000-character chat limit.                                                                                                                                                                    |
 
 ## Residual Risks
@@ -39,6 +41,10 @@ synthetic conversation audio and derived transcripts.
   and persistence validation begin only after the customer sends the reviewed
   transcript through normal chat, so synthetic data remains mandatory during
   the live voice session.
+- Purpose, authority, bounded request context and the persistence boundary are
+  aligned across typed and voice intake. Live per-turn enforcement is not
+  identical because direct WebRTC speech reaches the model before Coeus can
+  scan it.
 - The lease controls admission through the supported Coeus client, but a client
   that deliberately bypasses teardown can keep its already-issued direct
   WebRTC session until OpenAI ends it. Voice therefore remains disabled by

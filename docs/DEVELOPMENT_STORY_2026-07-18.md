@@ -1,5 +1,22 @@
 # Coeus Development Story: 2026-07-18
 
+## Realtime 2.1 voice model
+
+- Made `gpt-realtime-2.1` the default curated OpenAI voice model while retaining
+  `gpt-realtime-mini` as an explicit compatibility option.
+- Applied the documented low reasoning effort to Realtime 2 sessions without
+  expanding voice authority beyond transcript drafting or changing the
+  administrator key, test and enablement controls.
+- Aligned voice with the current typed draft through authorised, derived
+  field-presence, missing-field and deterministic next-action context, without
+  exporting raw history or stored values.
+- Gave mini and 2.1 the same tool-free 256-token session contract, added
+  no-preamble guidance, bounded event-sensitive transcript draining and
+  explicit provider-error handling.
+- Verified 1,433 backend tests with one intentional PostgreSQL compatibility
+  skip at 98.14 per cent line and 95.10 per cent branch coverage, plus all 533
+  frontend tests at 98.65 per cent line and 95.08 per cent branch coverage.
+
 ## Customer-controlled search and autonomous JIOC routing
 
 - Kept the existing Gemini-capable hybrid retrieval, pgvector, chunking and

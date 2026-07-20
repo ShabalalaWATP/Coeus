@@ -5,11 +5,21 @@ import json
 import httpx
 
 
-def get_json(url: str, *, headers: dict[str, str], timeout: int) -> object:
-    with httpx.Client(timeout=timeout) as client:
-        response = client.get(url, headers=headers)
-        response.raise_for_status()
-        return response.json()
+def get_json(
+    url: str,
+    *,
+    headers: dict[str, str],
+    timeout: int,
+    max_response_bytes: int,
+) -> object:
+    """Get JSON with the same bounded, uncompressed transport used for POST."""
+    _require_response_limit(max_response_bytes)
+    request_headers = _request_headers(headers)
+    with (
+        httpx.Client(timeout=timeout) as client,
+        client.stream("GET", url, headers=request_headers) as response,
+    ):
+        return _read_json(response, max_response_bytes)
 
 
 def post_json(
@@ -21,24 +31,35 @@ def post_json(
     max_response_bytes: int,
 ) -> object:
     """Post JSON and reject oversized responses before buffering them fully."""
-    if max_response_bytes < 1:
-        raise ValueError("The provider response limit must be positive.")
-    request_headers = {
-        key: value for key, value in headers.items() if key.casefold() != "accept-encoding"
-    }
-    request_headers["Accept-Encoding"] = "identity"
+    _require_response_limit(max_response_bytes)
+    request_headers = _request_headers(headers)
     with (
         httpx.Client(timeout=timeout) as client,
         client.stream("POST", url, json=body, headers=request_headers) as response,
     ):
-        response.raise_for_status()
-        _validate_response_headers(response, max_response_bytes)
-        content = bytearray()
-        for chunk in response.iter_bytes():
-            if len(content) + len(chunk) > max_response_bytes:
-                raise ValueError("The provider response exceeded the allowed byte limit.")
-            content.extend(chunk)
+        return _read_json(response, max_response_bytes)
+
+
+def _request_headers(headers: dict[str, str]) -> dict[str, str]:
+    bounded = {key: value for key, value in headers.items() if key.casefold() != "accept-encoding"}
+    bounded["Accept-Encoding"] = "identity"
+    return bounded
+
+
+def _read_json(response: httpx.Response, max_response_bytes: int) -> object:
+    response.raise_for_status()
+    _validate_response_headers(response, max_response_bytes)
+    content = bytearray()
+    for chunk in response.iter_bytes():
+        if len(content) + len(chunk) > max_response_bytes:
+            raise ValueError("The provider response exceeded the allowed byte limit.")
+        content.extend(chunk)
     return json.loads(content)
+
+
+def _require_response_limit(max_response_bytes: int) -> None:
+    if max_response_bytes < 1:
+        raise ValueError("The provider response limit must be positive.")
 
 
 def _validate_response_headers(response: httpx.Response, max_response_bytes: int) -> None:

@@ -97,8 +97,9 @@ export function AiModelPanel({ csrfToken, initiallyOpen = true }: AiModelPanelPr
       />
       <div className="admin-disclosure__body">
         <p className="admin-section-intro">
-          Gemini API is the primary provider; OpenAI, GCP Vertex AI and AWS Bedrock are optional
-          alternatives. Search embeddings and Realtime voice are configured separately.
+          Gemini API is the primary provider; OpenAI, LiteLLM Proxy, GCP Vertex AI and AWS Bedrock
+          are optional alternatives. The LiteLLM server address is deployment-managed. Search
+          embeddings and Realtime voice are configured separately.
         </p>
         {stateQuery.isError ? <ErrorState onRetry={() => void stateQuery.refetch()} /> : null}
         {stateQuery.isLoading ? <LoadingState label="Loading model configuration" /> : null}

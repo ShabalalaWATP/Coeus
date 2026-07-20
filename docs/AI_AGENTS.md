@@ -310,10 +310,16 @@ The bounded model-backed agents depend on one LLM gateway, not a specific model:
 
 - **Local and test default:** `COEUS_LLM_PROVIDER=mock`. Deterministic, no
   network calls, reproducible in CI.
-- **Selectable providers:** Gemini API, OpenAI API, Vertex AI and AWS Bedrock use
-  the same bounded gateway and configured model allowlists. Administrators may
-  select a provider/model and enter its key in the Admin workspace. Environment
-  keys remain authoritative and never select a provider by their presence alone.
+- **Selectable providers:** Gemini API, OpenAI API, LiteLLM Proxy, Vertex AI and
+  AWS Bedrock use the same bounded gateway and configured model allowlists.
+  Administrators may select a provider/model and enter its key in the Admin
+  workspace. The LiteLLM address is deployment-managed, not browser-editable.
+  Its Istari virtual key is separate from AWS or GCP workload identity, which
+  remains in the proxy deployment. The
+  [LiteLLM Provider Connectivity Runbook](runbooks/litellm-provider-connectivity.md)
+  defines provider setup and model-route approval.
+  Environment keys remain authoritative and never select a provider by their
+  presence alone.
 - **Graceful degradation:** each agent validates its closed output schema and
   falls back locally on missing credentials, timeout, provider failure, invalid
   output or egress denial. Requester-facing copy is rendered by the application.
@@ -335,6 +341,6 @@ service and never appear in generic model state or API responses. See the
   product, so agents cannot leak what a user may not see.
 - **Deterministic and auditable.** Local agents are pure functions of their
   inputs, and every human decision they inform is written to the audit log.
-- **No tool use in any provider path.** Mock, Gemini, OpenAI, Vertex and Bedrock
-  calls cannot act on instructions. Flagged intake is refused locally before any
-  external call is made.
+- **No tool use in any provider path.** Mock, Gemini, OpenAI, LiteLLM, Vertex and
+  Bedrock calls cannot act on instructions. Flagged intake is refused locally
+  before any external call is made.

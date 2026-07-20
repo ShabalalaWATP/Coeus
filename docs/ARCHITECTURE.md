@@ -31,7 +31,7 @@ controlled. Every diagram reflects the shipped code.
   services, domain modules and repositories.
 - **Provider boundaries.** Persistence, object storage, the language model, the
   embedding model and email are selected by configuration. Chat supports mock,
-  Gemini API, OpenAI API, Vertex AI and Bedrock. Embeddings support mock,
+  Gemini API, OpenAI API, LiteLLM Proxy, Vertex AI and Bedrock. Embeddings support mock,
   offline local and Gemini API. GCS object storage is not implemented.
 
 ---
@@ -58,7 +58,7 @@ flowchart TB
     IST["<b>Istari</b><br/>Tasking and product orchestration<br/>React SPA + FastAPI"]
 
     subgraph ext["External services (optional, off by default)"]
-        LLM["LLM gateway<br/>Gemini, OpenAI, Vertex, Bedrock"]
+        LLM["LLM gateway<br/>Gemini, OpenAI, LiteLLM, Vertex, Bedrock"]
         EMB["Embedding provider<br/>Gemini API when selected"]
         SMTP["SMTP relay<br/>release notifications"]
     end

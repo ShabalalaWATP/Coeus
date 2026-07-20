@@ -30,7 +30,7 @@ export function AiConfigurationSummary({ state }: { state: AiModelState }) {
         </div>
         <div>
           <dt>Scope</dt>
-          <dd>Text chat only</dd>
+          <dd>Text and bounded advice</dd>
         </div>
         {state.changedBy ? (
           <div>

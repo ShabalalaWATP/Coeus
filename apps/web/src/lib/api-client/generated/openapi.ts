@@ -10061,7 +10061,9 @@ export interface operations {
   };
   create_voice_session_api_v1_voice_session_post: {
     parameters: {
-      query?: never;
+      query?: {
+        ticketId?: string | null;
+      };
       header?: {
         "X-CSRF-Token"?: string | null;
       };

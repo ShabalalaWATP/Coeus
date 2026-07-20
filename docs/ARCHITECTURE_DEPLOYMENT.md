@@ -58,7 +58,8 @@ GCP hosting is a reference target, not a requirement, and the Terraform in
 In the target design, the API and web run on Cloud Run, state moves to Cloud SQL (with
 pgvector), product bytes move to Cloud Storage buckets, and the language
 provider remains an explicit choice among `mock`, `gemini_api`, `openai_api`,
-`vertex_ai` and `bedrock`. Embeddings remain `mock`, `local` or `gemini_api`.
+`litellm_proxy`, `vertex_ai` and `bedrock`. Embeddings remain `mock`, `local` or
+`gemini_api`.
 Deployments authenticate from GitHub Actions through Workload
 Identity Federation, with no long-lived keys.
 
@@ -138,7 +139,7 @@ adapters and readiness gates pass.
 | --------------- | -------------------------------------- | ----------------------------------- | ------------------------------- |
 | Persistence     | `COEUS_PERSISTENCE_PROVIDER`           | `postgres` (local container)        | `postgres` (Cloud SQL)          |
 | Object storage  | `COEUS_OBJECT_STORAGE_PROVIDER`        | `local` (filesystem)                | `gcs` (Cloud Storage)           |
-| Language model  | `COEUS_LLM_PROVIDER`                   | `mock`; four external APIs optional | Same application gateway        |
+| Language model  | `COEUS_LLM_PROVIDER`                   | `mock`; five external providers optional | Same application gateway        |
 | Embeddings      | `COEUS_EMBEDDING_PROVIDER`             | `mock`                              | `mock`, `local` or `gemini_api` |
 | Email           | `COEUS_EMAIL_PROVIDER`                 | `outbox` (persisted state)          | `smtp`                          |
 | Secrets         | configuration key plus encrypted state | ignored local key file              | Secret Manager                  |
@@ -151,6 +152,12 @@ Administrator-entered provider and Realtime voice keys are AES-256-GCM
 encrypted in isolated state namespaces and survive restart. The separate
 configuration-encryption key is generated outside PostgreSQL for local mode and
 must come from Secret Manager in hosted environments.
+
+LiteLLM is a separate operator-managed trust boundary. Istari receives a scoped
+virtual key and selects only aliases visible to that key; AWS or GCP workload
+identity, upstream model IDs, regions and fallback routing stay in the proxy
+deployment. The [LiteLLM Provider Connectivity Runbook](runbooks/litellm-provider-connectivity.md)
+defines the supported Bedrock and Vertex route patterns and production gates.
 
 ---
 

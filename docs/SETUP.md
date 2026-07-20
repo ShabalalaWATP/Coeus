@@ -1,10 +1,8 @@
 # Setup Guide
 
-Istari is currently designed to run locally on a developer machine with a local
-PostgreSQL database. This keeps local development aligned with the future
-production direction on Google Cloud SQL for PostgreSQL while requiring no GCP
-account or hosted service. Uploaded asset bytes are stored in a local object
-directory for now.
+Istari currently runs locally with PostgreSQL. This keeps development aligned
+with the future Cloud SQL direction without requiring a GCP account or hosted
+service. Uploaded asset bytes remain in a local object directory.
 
 ## Prerequisites
 
@@ -273,14 +271,16 @@ disposable server where the configured user may create and drop databases.
   returned by the asset-access endpoint.
 - To use a real LLM from your machine without deploying, an administrator can
   paste an API key on `/admin/overview`, test the connection, and explicitly
-  activate the provider. Gemini API is the primary provider; OpenAI, GCP
-  Vertex AI (express-mode key) and AWS Bedrock (long-term API key) are
-  optional alternatives. Admin-entered keys are never returned to the browser;
+  activate it. Gemini is primary; OpenAI, LiteLLM, Vertex AI and Bedrock are optional.
+  LiteLLM uses a deployment-owned `COEUS_LITELLM_BASE_URL` plus a scoped virtual key;
+  Docker defaults to `http://host.docker.internal:4000`, while hosted use
+  requires HTTPS. Admin-entered keys are never returned to the browser;
   they are encrypted in isolated provider namespaces and restored after an API
   restart. The active provider and every selected text or voice model are also
   restored. Saving a key does not switch the provider: activation is a
   separate, warned action that applies to every user immediately and notifies
-  all administrators. Leave everything unset for offline mock behaviour.
+  all administrators. Follow the [LiteLLM Provider Connectivity Runbook](runbooks/litellm-provider-connectivity.md)
+  for AWS/GCP setup. Leave everything unset for offline mock behaviour.
 - Local mode creates `.local-data/secrets/configuration.key` when needed. Keep
   that ignored file private and back it up separately from PostgreSQL. Docker
   stores it in the API local-data volume. Hosted deployments must set

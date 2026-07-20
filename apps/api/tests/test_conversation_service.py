@@ -121,7 +121,7 @@ def test_failed_remote_fallback_refunds_provider_capacity() -> None:
     assert run.model
     assert run.fallback_outcome == "not_used"
     assert run.validation_outcome == "passed"
-    assert run.prompt_version == "intake-planner-v1"
+    assert run.prompt_version == "intake-planner-v2"
     assert run.policy_version == "intake-planner-policy-v1"
     assert run.context_schema_version == "intake-extracted-fields-v1"
     assert run.input_hash and run.input_hash.startswith("sha256:")

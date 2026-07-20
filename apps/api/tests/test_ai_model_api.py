@@ -19,6 +19,7 @@ async def test_admin_reads_state_and_switches_a_provider_model() -> None:
         assert [provider["name"] for provider in providers] == [
             "gemini_api",
             "openai_api",
+            "litellm_proxy",
             "vertex_ai",
             "bedrock",
             "mock",

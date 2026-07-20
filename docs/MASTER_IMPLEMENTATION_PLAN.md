@@ -59,10 +59,10 @@ The admin command-centre refinement is implemented under
 `docs/specs/admin-command-centre-and-analytics.md`. It adds compact configuration
 disclosures, explicit saved/active/tested states, a bounded Realtime voice
 connection test, admin return navigation and an operational analytics view
-derived only from the existing authorised aggregates. Full local gate evidence
-is green: 507 frontend tests pass at 98.69 per cent line and 95.05 per cent
-branch coverage; 1,072 non-PostgreSQL and 70 real-PostgreSQL backend tests pass
-at 98.08 per cent line and 95.08 per cent branch coverage.
+derived only from the existing authorised aggregates. Realtime defaults to
+`gpt-realtime-2.1` at low reasoning effort, with `gpt-realtime-mini` retained.
+It preserves the server key boundary, transcript-only authority, explicit
+review, admin controls and bounded draft context under one tool-free contract.
 
 The customer-search and autonomous-routing orchestration is implemented under
 `docs/specs/customer-search-routing-orchestration.md` and ADR 0036. Submission
@@ -330,9 +330,10 @@ point-in-time test counts for each 20 July slice.
   DLP/redaction and egress policy; provider/model/region allowlists; retention;
   a representative human-labelled corpus; calibration, drift and rollback
   evidence; and a decision on any richer provider context.
-- LiteLLM adoption remains deferred. Reconsider it only when an approved
-  multi-provider gateway need justifies the added secret, egress, logging and
-  failure boundary, with an ADR and threat-model update before adoption.
+- LiteLLM connectivity is implemented behind a deployment-managed URL, encrypted
+  scoped key, bounded discovery and deterministic controllers. Production still
+  requires explicit aliases, workload identity, egress/retention approval and
+  route evaluation under ADR 0041 and the LiteLLM threat model.
 - Current residual risk: operational availability remains a process-local
   snapshot in the supported single-worker runtime. A shared authoritative
   adapter and scale-out evaluation are required before multi-replica routing.

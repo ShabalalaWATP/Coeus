@@ -44,6 +44,8 @@ services:
       COEUS_ASSET_TOKEN_SECRET: local-docker-only-asset-token-secret-32
       COEUS_CONFIGURATION_ENCRYPTION_KEY_PATH: /var/lib/coeus/secrets/configuration.key
       COEUS_EMAIL_PROVIDER: outbox
+      # A host-run LiteLLM Proxy is reachable from the API container at this fixed address.
+      COEUS_LITELLM_BASE_URL: ${COEUS_LITELLM_BASE_URL:-http://host.docker.internal:4000}
       COEUS_JIOC_AGENT_ROUTING_ENABLED: active
       COEUS_JIOC_ROUTING_APPROVED_RELEASES: '["jioc-routing-policy-v2:jioc-routing-eval-v2"]'
     ports:

@@ -59,7 +59,7 @@ export function VoiceModelPanel({
     }
   }, [query.data]);
 
-  const info = modelInfoFor(model || "gpt-realtime-mini");
+  const info = modelInfoFor(model || "gpt-realtime-2.1");
   const state = query.data;
   const savedDraft = Boolean(state) && model === state?.model && apiKey.trim() === "";
   const connectionTested =

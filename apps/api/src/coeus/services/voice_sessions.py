@@ -6,6 +6,7 @@ from uuid import UUID
 
 from coeus.core.config import Settings
 from coeus.core.errors import AppError
+from coeus.domain.tickets import IntakeDetails
 from coeus.integrations.openai_realtime import create_realtime_call
 from coeus.services.audit import AuditLog
 from coeus.services.realtime_intake_prompt import build_realtime_intake_instructions
@@ -49,7 +50,9 @@ class VoiceSessionService:
         self._audit_log = audit_log
         self._call_creator = call_creator
 
-    def create(self, user_id: UUID, sdp: str) -> VoiceSessionStart:
+    def create(
+        self, user_id: UUID, sdp: str, intake: IntakeDetails | None = None
+    ) -> VoiceSessionStart:
         state = self._voice_models.require_enabled()
         api_key = self._voice_models.api_key()
         if not api_key:
@@ -58,7 +61,7 @@ class VoiceSessionService:
         try:
             answer = self._call_creator(
                 api_key=api_key,
-                instructions=build_realtime_intake_instructions(),
+                instructions=build_realtime_intake_instructions(intake),
                 model=state.model,
                 voice=self._settings.openai_realtime_voice,
                 sdp=sdp,

@@ -2,7 +2,7 @@
 
 import pytest
 
-from coeus.integrations.provider_http import post_json
+from coeus.integrations.provider_http import get_json, post_json
 
 
 class FakeResponse:
@@ -39,7 +39,7 @@ def _fake_client(response: FakeResponse, captured: dict[str, object]) -> type:
             method: str,
             url: str,
             *,
-            json: object,
+            json: object | None = None,
             headers: dict[str, str],
         ) -> FakeResponse:
             captured["headers"] = headers
@@ -113,3 +113,22 @@ def test_non_positive_transport_limit_is_rejected_before_network() -> None:
             timeout=1,
             max_response_bytes=0,
         )
+
+
+def test_get_json_uses_the_same_response_bounds(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+    response = FakeResponse(raw=b'{"data":[]}', headers={"content-length": "11"})
+    monkeypatch.setattr(
+        "coeus.integrations.provider_http.httpx.Client", _fake_client(response, captured)
+    )
+
+    assert get_json(
+        "https://provider.example.test/v1/models",
+        headers={"Authorization": "Bearer test"},
+        timeout=2,
+        max_response_bytes=11,
+    ) == {"data": []}
+    assert captured["headers"] == {
+        "Authorization": "Bearer test",
+        "Accept-Encoding": "identity",
+    }
