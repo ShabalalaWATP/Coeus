@@ -1,9 +1,10 @@
-# Coeus: Spec-driven implementation plan
+# Istari (Coeus): Spec-driven implementation plan
 
-Version: 1.1  
-Target repository: `ShabalalaWATP/coeus`  
-Product name: **Coeus**  
-Suggested product strapline: **Knowledge-led intelligence tasking and product orchestration**
+- Version: 1.1
+- Target repository: `ShabalalaWATP/coeus`
+- Product name: **Istari**
+- Repository and internal working name: **Coeus**
+- Suggested product strapline: **Knowledge-led intelligence tasking and product orchestration**
 
 ## Confirmed project details
 
@@ -19,9 +20,32 @@ Default development environment name: dev
 
 For Terraform and CI/CD, keep project-specific values in checked-in example files and environment-specific values in GitHub environment variables or Google Secret Manager. Use examples such as `.env.example`, `terraform.tfvars.example`, and GitHub Actions documentation rather than committing real secrets.
 
+## Current delivery overlay
+
+This plan began as the implementation blueprint, so earlier sections preserve
+historical target-state language. The current delivery tracker is
+`docs/MASTER_IMPLEMENTATION_PLAN.md`. As of 20 July 2026:
+
+- Sprints 1 to 23 are implemented for the supported synthetic local/test
+  boundary.
+- Istari is the product name; Coeus remains the repository, Python package and
+  internal working name.
+- The version-pinned JIOC Routing Agent is active for supported local/test use
+  and may apply a policy-eligible CM or RFA transition. JIOC Managers are on the
+  loop, entering the loop for clarification, manual review or audited
+  intervention. Human QC remains the release authority.
+- Analyst assignment uses an organisational `teamId`; display names do not
+  establish assignment authority.
+- PostgreSQL with pgvector retrieval is implemented and tested locally. GCP,
+  Kubernetes, shared-network, multi-instance and production operation remain
+  migration or release targets rather than supported current deployments.
+- Sprint 17 implementation is complete locally, but production release closure
+  remains blocked by authorised staging evidence and a fresh sealed deep scan.
+  Those external gates must not be inferred from later feature completion.
+
 ## 1. Executive summary
 
-Coeus is a secure, role-based intelligence tasking and intelligence product management platform. It gives customers a conversational way to raise Requests for Intelligence, then orchestrates the request through existing product search, Request for Assessment review, Collection Management review, analyst production, Quality Control, dissemination, feedback, and learning.
+Istari is a secure, role-based intelligence tasking and intelligence product management platform. Coeus remains the repository and internal package name. Istari gives customers a conversational way to raise Requests for Intelligence, then orchestrates the request through existing product search, Request for Assessment review, Collection Management review, analyst production, Quality Control, dissemination, feedback, and learning.
 
 The platform must be built with:
 
@@ -31,7 +55,7 @@ The platform must be built with:
 - Security: secure by design, UK Gov-aligned, NCSC Cloud Security Principles, OWASP ASVS, least privilege, complete auditability, defensive logging, supply-chain security, and strong CI/CD gates.
 - Testing: 95% minimum line and branch coverage for backend and frontend application code.
 
-The application must be dark themed by default, with a light theme option. It must support a professional login page with space for a Coeus logo. MFA is out of scope because the target end state is an air-gapped private hosting environment, but session security, password handling, rate limiting, audit, and RBAC must still be treated as critical.
+The application must be dark themed by default, with a light theme option. It must support a professional login page with space for the Istari logo. MFA is out of scope because the target end state is an air-gapped private hosting environment, but session security, password handling, rate limiting, audit, and RBAC must still be treated as critical.
 
 Important public repository rule: `ShabalalaWATP/coeus` is planned as a public repository. The repo must never contain real intelligence products, real operational examples, real screenshots, real API schemas, real credentials, internal URLs, classified strings, classification-marked content, or real organisational data. All seed data must be synthetic and clearly labelled as mock.
 
@@ -108,7 +132,9 @@ coeus/
 
 ## 5. Product identity and UI direction
 
-Product name: **Coeus**
+Product name: **Istari**
+
+Repository and internal code name: **Coeus**
 
 Brand direction:
 
@@ -2579,13 +2605,13 @@ The sealed deep scan `abf0e143-4656-4646-b133-6fea0d6661ee` of revision
 `3e27c82d4b62efb683b3fbb81d2486bccafd8fb0` reported 12 findings and deferred
 four deployment or undefined-policy questions. Sprint 17 is release-blocking.
 
-Implementation is in progress. Local tactical and structural controls, N-1
+Implementation is complete for the supported local-first boundary. Local tactical and structural controls, N-1
 forward reconciliation, logical restore and a ten-stage PostgreSQL browser
 workflow pass. Atomic assigned-QC self-claim and object-aware QC draft audience
-are implemented. The remaining audience and recovery browser matrix and
-authorised staging evidence remain release-blocking. Final protected GitHub
-checks pass on the assigned-QC candidate. The repository owner explicitly
-deferred the fresh sealed candidate scan, so this work does not claim scan
+are implemented. Authorised staging evidence and the fresh sealed candidate
+scan remain release-blocking. Final protected GitHub checks pass on the
+assigned-QC candidate. The repository owner explicitly deferred the fresh
+sealed candidate scan, so this work does not claim production release or scan
 closure.
 
 Deliver:
@@ -2670,6 +2696,36 @@ The acceptance contract is
 `docs/specs/search-retrieval-and-duplicate-assurance.md`; the architecture
 decision is ADR 0034 and the security boundary is documented in
 `docs/threat-model/search-retrieval-and-duplicate-assurance.md`.
+
+### Sprint 21: Admin command centre and analytics
+
+Implemented for the supported local boundary. This slice adds compact provider,
+credential and model state; bounded Realtime connection assurance; return
+navigation; and a separate aggregate-only operational analytics view. Its
+acceptance contract is `docs/specs/admin-command-centre-and-analytics.md`.
+
+### Sprint 22: Customer search and active JIOC routing
+
+Implemented for supported synthetic local/test use. Automatic assured product
+search, active-work offers and owner-controlled new-tasking consent feed a
+version-pinned JIOC Routing Agent. In `active` mode it may apply a validated CM
+or RFA transition. JIOC Managers are on the loop with audited intervention and
+enter the loop for clarification or manual review. Deterministic QC preflight
+does not replace human release authority. The acceptance contract is
+`docs/specs/customer-search-routing-orchestration.md`; ADR 0036 records the
+authority decision.
+
+### Sprint 23: Agent-safety hardening and bounded advice
+
+Implemented and locally verified. Routing modes, immutable context, explicit
+release approval, bounded model selection, safe provenance, durable outbox
+replay and static authority boundaries harden the active routing release.
+Intake and Search Planners provide bounded advice to deterministic controllers;
+the Routing Critic remains permanently shadow-only and is durably scheduled for
+hosted shadow or active routing. ADR 0040 and
+`docs/specs/bounded-advisory-planners.md` define the advisory boundary. Hosted
+activation and all real-data use remain subject to the documented governance,
+classification, egress, evaluation and production-release gates.
 
 ## 20. Definition of done for MVP
 

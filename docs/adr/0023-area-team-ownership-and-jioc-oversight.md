@@ -42,7 +42,10 @@ view after hand-off.
   their stored name where an unambiguous team exists.
 - Adding another team within an area no longer creates cross-team candidate or
   availability ambiguity.
-- JIOC gains operational awareness without gaining workflow mutation authority.
+- This decision gave JIOC operational awareness without adding mutation
+  authority to the oversight projection. ADR 0036 later gave the separate,
+  policy-constrained JIOC Routing Agent bounded RFA/CM transition authority;
+  the projection remains read-only and JIOC Managers remain on the loop.
 - ACG membership no longer depends exclusively on platform or Store Manager
   intervention, while need-to-know access remains an explicit, audited human
   decision.

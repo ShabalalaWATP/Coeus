@@ -1,4 +1,4 @@
-# Coeus Master Implementation Plan
+# Istari (Coeus) Master Implementation Plan
 
 The authoritative project implementation plan is
 `coeus_spec_driven_implementation_plan.md` at the repository root. This file is
@@ -6,19 +6,15 @@ the concise delivery tracker and must stay within the repository line limit.
 
 ## Current Stage
 
-Sprint 15 implementation and Sprint 16 are delivered; Sprint 15's full-role
-browser acceptance evidence is carried into Sprint 17. Sprint 17 implementation
-is in progress and release-blocking from the sealed deep scan of revision
-`3e27c82`, which reported 12 findings and four deferred questions. Local
-controls, N-1 reconciliation and a ten-stage PostgreSQL browser workflow are
-green, and PR 109 protected GitHub gates passed on substantive candidate
-`a02fd6d3`. Assigned-QC self-claim and object-aware audience enforcement are
-implemented with memory and PostgreSQL regression evidence. The remaining
-authorised staging checks remain open. The final local candidate passes 962
-backend tests, 414 frontend tests and the ten-stage PostgreSQL browser workflow.
-The repository owner deferred the fresh sealed scan on 2026-07-13, so
-fresh-scan closure is not claimed. Local
-development remains supported; GCP and Kubernetes remain migration targets.
+Sprints 1 to 23 are implemented for the supported synthetic local/test
+boundary. Sprint 17's implementation is complete, but its production-release
+closure remains blocked by authorised staging checks and a fresh sealed scan of
+the exact release candidate. The historical scan of revision `3e27c82`
+reported 12 findings and four deferred questions; the local controls,
+PostgreSQL workflow and later remediation evidence are recorded below. The
+repository owner deferred the fresh sealed scan on 2026-07-13, so neither scan
+closure nor production readiness is claimed. Local development remains the
+supported runtime; GCP and Kubernetes remain migration targets.
 
 A sealed standard review `87a10d13-14af-48cc-a361-72470abc8d8d` of later
 revision `752d32a` validated eight additional application findings and is the
@@ -108,7 +104,7 @@ pinned. Model, provenance, authority and outbox safety passed the local gates.
 | 14B    | Remediate the sealed 16-finding baseline and its verification findings.                                                                                                                                                                                                                                    | Superseded by Sprint 17      | The original baseline was closed, but deep scan `abf0e143` of later revision `3e27c82` established the current 12-finding baseline.                                                                                  |
 | 15     | JIOC workflow restructure: role renames plus JIOC Team Member, JIOC routing queue, customer collect choice, manager approval chain, QC-owned release with the CM-to-RFA analysed-collect leg, multi-analyst assignment, teams/profiles/availability calendars, and the permission-refresh-on-restore fix. | Implementation delivered     | Backend and web suites passed; the complete eight-role real-browser acceptance evidence is carried into Sprint 17. See ADR 0022 and the workflow specifications.                                                     |
 | 16     | Cross-role desktop usability, multi-provider AI administration and documentation/deployment accuracy.                                                                                                                                                                                                     | Complete                     | PRs #98-#100 passed protected GitHub checks; coverage remained above 95%; current guides distinguish the supported local runtime from GCP/Kubernetes migration targets.                                              |
-| 17     | Close the current security baseline, introduce secure control ownership, improve SOLID boundaries and reconcile all active documentation without breaking intended behaviour.                                                                                                                            | Implementation in progress   | Earlier local controls, logical restore, N-1 reconciliation, PostgreSQL browser evidence and protected GitHub gates pass. The 2026-07-14 eight-finding remediation candidate passes full local coverage and dependency gates; external staging and a fresh sealed deep scan remain open. |
+| 17     | Close the current security baseline, introduce secure control ownership, improve SOLID boundaries and reconcile all active documentation without breaking intended behaviour.                                                                                                                            | Implementation complete; release gates open | Local controls, logical restore, N-1 reconciliation, PostgreSQL browser evidence and protected GitHub gates pass. Authorised external staging and a fresh sealed deep scan remain open, so production release closure is not claimed. |
 | 18     | Customer request, conversational intake, searchable ACG, read-first profile and assigned-analyst conversation-context redesign.                                                                                                                                                                          | Implementation complete      | 447 frontend, 922 non-PostgreSQL and 68 PostgreSQL tests pass above the separate 95 percent line and branch gates; browser acceptance is recorded in the delivery handoff.                                             |
 | 19     | Deterministic live-demo PDF corpus, specialist ACG matrix and Store/RFI search assurance.                                                                                                                                                                                                                | Implementation complete      | 993 backend tests pass with PostgreSQL at 97.62 percent combined coverage; frontend passes at 98.54 percent line and 95.09 percent branch coverage, with a successful production build and visual PDF inspection.       |
 | 20     | Grounded generation-aware Intelligence Store retrieval, independent search embedding administration and full-corpus RFI/RFA duplicate assurance.                                                                                                                                                       | Implementation complete      | 1,129 backend tests pass with real PostgreSQL and pgvector at 98.16 percent line and 95.12 percent branch coverage. Live browser checks prove hybrid cited offers, visible-customer duplicate joining and manager RFA discovery. |
@@ -288,9 +284,10 @@ Verification evidence:
 
 ## 20 July 2026 Agent-Safety Hardening
 
-Status: complete. Independent code-quality and security reviews were remediated;
-the final candidate passed 1,333 backend tests with one intentional skip and
-530 frontend tests, with both line and branch coverage above 95 per cent.
+Status: complete. Independent code-quality and security reviews were remediated.
+The final recorded full backend and frontend suites passed with both line and
+branch coverage above 95 per cent; the development story retains the
+point-in-time test counts for each 20 July slice.
 
 ### Candidate Checklist
 
@@ -343,8 +340,10 @@ the final candidate passed 1,333 backend tests with one intentional skip and
   evidence, satisfy the real-data governance gates, then run a reviewed canary.
 
 ## 20 July 2026 Bounded Advisory Reasoning
-Status: complete and verified.
+Status: complete and verified for the supported local/test boundary.
 
 - [x] Implement the feature spec and ADR 0040 with deterministic authority and safe staff-only provenance.
-- [x] Complete all quality/security gates and independent reviews.
+- [x] Complete all quality/security gates and independent reviews. Final combined
+  verification passed 1,432 backend tests with one intentional skip at 98.13/95.07
+  per cent line/branch coverage and 533 frontend tests at 98.65/95.05 per cent.
 - Risk: remote advisory use remains blocked by default and still needs labelled evidence plus a separately approved real-data classification, redaction and egress release.

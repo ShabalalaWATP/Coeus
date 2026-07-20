@@ -324,27 +324,27 @@ customer-search and JIOC-agent milestone is recorded in
 - Added explicit `disabled`, `shadow` and `active` JIOC routing modes. The
   evaluated v2 release now runs active for synthetic local/test use and decides
   CM versus RFA; hosted mode is explicit and disabled remains the rollback.
-- Made automatic routing fail closed when required evidence is missing, stale or
-  conflicting or negated, candidate-team capacity is unavailable, or immutable
-  context and the versioned v2 evaluation gate do not support the route.
-- Replaced provider prose with a closed action selector and application-rendered
-  copy, bounded identity-only transport and immutable admitted-call snapshots;
-  `AgentRun` retains safe provenance without secrets or unnecessary raw content.
-- Added authenticated cached outbox metrics, Alembic `20260720_0014` monitoring
-  indexes and reason-required audited replay retaining the idempotent event ID.
-- Documented the authority assigned to each agent and automation, and extended the
-  static architecture checks so deterministic decision modules and outbound
-  provider adapters cannot cross their intended dependency boundaries.
+- Made automatic routing fail closed for missing, stale or conflicting evidence,
+  unavailable team capacity, or a route unsupported by the evaluated v2 gate.
+- Replaced free provider prose with closed actions and application-rendered copy,
+  bounded transport and immutable safe provenance. Added authenticated outbox
+  metrics, monitoring indexes and reason-required idempotent replay.
+- Extended static architecture checks to keep deterministic decision modules and
+  outbound provider adapters within their intended boundaries.
 - Independent reviews were remediated. The final 1,339-test backend pass reached
   98.20 per cent line and 95.29 per cent branch coverage; 530 frontend tests
   reached 98.64 and 95.11 per cent, and all build/security gates passed.
-- Added bounded intake and additive search planning plus a post-decision,
-  permanently shadow-only JIOC route critic, with duplicate-safe schemas,
-  provider admission and safe provenance rather than raw prompts or replies.
-- Proven date contradictions now block submission through fixed controller copy;
-  supplemental search cannot suppress a baseline offer or control assurance.
-- Hosted routing atomically queues exact-decision criticism and returns before
-  provider work; per-agent remote egress remains disabled until explicitly approved.
-- Added adversarial authority, egress, crash-retry and persistence compatibility tests.
-- Closed final findings across egress, fallback, corrective copy, transactional shadow
-  routing and file size. Both full suites passed above the 95 per cent coverage gates.
+- Added bounded intake and additive search planning plus a permanently shadow-only
+  route critic. Adversarial tests cover authority, egress, retry and persistence;
+  both full suites passed above the 95 per cent coverage gates for this milestone.
+
+## 2026-07-20 Documentation accuracy remediation
+
+- Reconciled guides, diagrams, ADRs, specifications and status records with active
+  JIOC routing, human exception authority, lifecycle and hosted prerequisites.
+  Managers are on the loop routinely and in the loop for review or intervention.
+- Corrected persisted-key guidance and the empty Bedrock example, and refreshed
+  all 13 synthetic screenshots against the current interface.
+- Contained supplemental Search Planner failures so baseline evidence survives with
+  partial assurance. Final verification passed 1,432 backend tests with one skip at
+  98.13/95.07 per cent line/branch coverage and 533 frontend tests at 98.65/95.05.

@@ -3,8 +3,19 @@
 ## Goal
 
 Align the workflow with a customer chatbot, an orchestrator agent and separate
-RFA/CM capability agents, while keeping every state-changing decision human
-approved.
+RFA/CM capability agents. This specification originally required every route
+to be human-approved. That authority rule was superseded by
+`customer-search-routing-orchestration.md` and ADR 0036: the active,
+version-pinned JIOC Routing Agent may apply an eligible RFA or CM transition,
+while JIOC Managers remain on the loop and handle explicit manual-review,
+clarification and intervention paths.
+
+## Status
+
+Implemented capability-catalogue foundation. The current JIOC authority and
+bounded advisory model are defined by ADRs 0036 and 0040 and their companion
+specifications. Where this earlier specification conflicts with those records,
+the later records take precedence.
 
 ## Scope
 
@@ -18,8 +29,9 @@ approved.
 - Manager routing queues expose a read-only route-relevant view of the local
   capability catalogue.
 - RFA and CM reviews include suggested team IDs and names.
-- Analyst assignment accepts a manager-entered team name and falls back to the
-  agent-suggested team when omitted.
+- Analyst assignment accepts the selected organisational `teamId`; service-level
+  compatibility can resolve the agent-suggested capability team when no
+  explicit team is supplied.
 - Analyst candidate data includes multiple synthetic RFA-community analysts.
 - Agent or manager clarification requests are handed back to the customer as
   chatbot messages, not only timeline entries.
@@ -38,7 +50,8 @@ approved.
 - RFA recommendations include a suggested assessment team.
 - CM recommendations include a suggested collection capability team.
 - RFA and CM manager queues display route-relevant synthetic capability teams.
-- Managers can enter an assignment team name when assigning an analyst.
+- Managers select an active organisational team by `teamId` before assigning
+  an analyst from that team's active membership.
 - Analyst assignment candidate lists include team-aligned synthetic analysts.
 - Analyst task details show the assigned team name.
 - Store managers can administer Store products and ACG assignments without
@@ -51,7 +64,9 @@ approved.
 
 ## Non-Goals
 
-- Autonomous route approval.
+- Unbounded or model-authorised route approval. Bounded active JIOC routing is
+  now implemented under the later version-pinned policy and deployment gates.
 - Real external collection systems.
-- Production embeddings or pgvector indexes.
+- A supported production deployment of embeddings or pgvector. Local
+  PostgreSQL/pgvector retrieval mechanics are implemented and tested.
 - Full multi-agent message bus or worker orchestration.

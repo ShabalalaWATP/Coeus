@@ -21,7 +21,7 @@ operational availability snapshots and team-aware analyst assignment.
 | Clarification questions are buried in manager-only context. | Agent and manager clarification requests append customer-facing chatbot messages and a `customer_clarification_sent` timeline event. |
 | Capability catalogue data is mistaken for real organisational structure. | Team names are synthetic and documentation keeps the repository public-safe. |
 | Capability catalogue leaks internal routing context to customers. | `GET /routing/capability-catalogue` requires RFA or Collection review permission and the UI only appears inside manager queues. |
-| A manager assigns work without recording the intended team. | Assignment accepts a team name and falls back to the agent-suggested team. |
+| A manager assigns work without recording the intended team. | Assignment requires an authorised organisational `teamId`; display names and agent suggestions never establish assignment authority. |
 | RFI Search reveals products outside requester ACGs. | Store and RFI Search continue to filter products before ranking, counts, offers and detail responses. |
 | Site administration becomes an implicit intelligence read role. | Product detail access remains governed by RBAC, clearance and ACG intersection. Emergency admin detail and asset access use break-glass endpoints, mandatory reason capture and `product_break_glass_accessed` / `product_asset_break_glass_accessed` audit events. |
 
@@ -31,6 +31,8 @@ operational availability snapshots and team-aware analyst assignment.
   skills/capacity model. Keep JIOC routing disabled or in shadow outside synthetic
   evaluation until a representative labelled corpus, human comparison, canary and
   rollback evidence support the current policy and catalogue release.
-- The shadow critic is appended after route commit. A crash can omit the
-  observation but cannot alter the route. Add durable post-commit scheduling if
-  critic-completeness becomes an operational service objective.
+- Hosted shadow and active routing atomically enqueue an identifier-only critic
+  request with the route transaction. The durable worker retries and persists
+  the critique idempotently. Worker outage can delay oversight evidence but
+  cannot alter or delay the committed route; outbox health and replay therefore
+  remain operational monitoring responsibilities.

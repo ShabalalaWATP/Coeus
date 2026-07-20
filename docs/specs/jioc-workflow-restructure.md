@@ -5,6 +5,8 @@
 Implemented (2026-07-11). See ADR 0022. The mandatory human routing step is
 superseded by `customer-search-routing-orchestration.md` and ADR 0036. This
 specification supersedes the older Sprint 8 routing and manager-release designs.
+The roles and state machine below preserve the Sprint 15 design history. They
+are not the current authority for the route-decision entry path.
 
 ## Problem
 
@@ -19,7 +21,7 @@ the final release. Tickets also needed to support more than one analyst.
 | Role | Queue | Key additions |
 | --- | --- | --- |
 | Customer | Requests | No-match consent, collect choice, receipt confirmation |
-| JIOC Team Member | `/jioc/queue` | `jioc:review`: route decisions with agent advice |
+| JIOC Team Member | `/jioc/queue` | Historical mandatory route decision; now manual-review and exception handling |
 | RFA / CM Manager | `/rfa/queue`, `/collection/queue` | `product:approve`, `team:manage`; release permissions removed |
 | Analyst | Workbench | Shared tasks (1 to 5 analysts per assignment) |
 | Quality Control Manager | `/qc/queue` | QC approval performs the final release |

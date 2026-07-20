@@ -1,8 +1,12 @@
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
 from coeus.core.config import DEFAULT_ASSET_TOKEN_SECRET, DEFAULT_SEED_CREDENTIAL, Settings
 from coeus.domain.jioc_routing import ROUTING_RELEASE
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 
 
 def valid_dev_settings(**overrides: object) -> Settings:
@@ -25,6 +29,15 @@ def valid_dev_settings(**overrides: object) -> Settings:
 def test_valid_local_and_dev_configurations_pass() -> None:
     Settings(environment="local").require_runtime_security()
     valid_dev_settings().require_runtime_security()
+
+
+def test_example_environment_does_not_configure_bedrock_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("COEUS_BEDROCK_API_KEY", raising=False)
+    settings = Settings(_env_file=REPOSITORY_ROOT / ".env.example")
+
+    assert not settings.bedrock_api_key
 
 
 def test_hosted_routing_configuration_must_be_explicit() -> None:

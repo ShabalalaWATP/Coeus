@@ -66,7 +66,7 @@ export function RequestJourney({ journey, onClose, state }: RequestJourneyProps)
                 ? "This request was cancelled, so it did not continue through the stages below."
                 : reused
                   ? "An existing product satisfied this request, so it skipped straight to delivery."
-                  : "Each stage is handled by a person supported by Istari agents."}
+                  : "Istari automates bounded search and routing; people provide input, handle exceptions and control release."}
             </p>
           </div>
           <button aria-label="Close journey" onClick={onClose} type="button">

@@ -56,16 +56,26 @@ def retrieve_with_additive_advice(
     controlled = control_search_query(base_query, plan.suggestions)
     if not controlled.included_hints:
         return PlannedRetrieval(base_query, controlled.text, plan, baseline, (), base_grounded)
-    supplemental, supplemental_grounded = _retrieve_leg(
-        requester,
-        ticket,
-        principal_id,
-        controlled.text,
-        embeddings,
-        store_search,
-        store_details,
-        grounded_search,
-    )
+    try:
+        supplemental, supplemental_grounded = _retrieve_leg(
+            requester,
+            ticket,
+            principal_id,
+            controlled.text,
+            embeddings,
+            store_search,
+            store_details,
+            grounded_search,
+        )
+    except Exception:
+        return PlannedRetrieval(
+            base_query,
+            controlled.text,
+            plan,
+            baseline,
+            (),
+            _degraded_supplemental_result(base_grounded),
+        )
     baseline_ids = {candidate.product.product_id for candidate in baseline}
     supplemental = tuple(
         candidate for candidate in supplemental if candidate.product.product_id not in baseline_ids
@@ -138,6 +148,18 @@ def _merge_grounded(
         profile_space_id=baseline.profile_space_id if complete else None,
         coverage_status="complete" if complete else "partial",
         corpus_version=baseline.corpus_version if releases_match else None,
+    )
+
+
+def _degraded_supplemental_result(baseline: GroundedSearchResult) -> GroundedSearchResult:
+    """Retain authorised baseline evidence without claiming complete planner coverage."""
+    return GroundedSearchResult(
+        evidence=baseline.evidence,
+        retrieval_mode=baseline.retrieval_mode,
+        degraded_reason="supplemental_search_failed",
+        profile_space_id=baseline.profile_space_id,
+        coverage_status="partial",
+        corpus_version=baseline.corpus_version,
     )
 
 

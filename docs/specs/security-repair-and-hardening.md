@@ -2,7 +2,10 @@
 
 ## Status
 
-Implementation in progress and release-blocking from 2026-07-13.
+Implementation complete for the supported local-first boundary. Production
+release closure remains blocked by the authorised staging and fresh sealed-scan
+gates defined below. This document preserves the Sprint 17 acceptance contract;
+it does not claim those external gates have passed.
 
 ## Purpose
 

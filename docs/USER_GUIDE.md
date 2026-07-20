@@ -16,7 +16,7 @@ how the agents work see [AI Agents](AI_AGENTS.md).
 - [The request journey](#the-request-journey)
 - [Customer](#customer)
 - [Intelligence Store](#intelligence-store)
-- [JIOC team members](#jioc-team-members)
+- [JIOC routing and oversight](#jioc-routing-and-oversight)
 - [RFA and Collection managers](#rfa-and-collection-managers)
 - [Intelligence analyst](#intelligence-analyst)
 - [Quality control](#quality-control)
@@ -48,14 +48,18 @@ generic so the page never reveals whether an account already exists.
 
 ## The request journey
 
-At any time a customer can open **Request journey** to see the seven stages a
-request moves through and where theirs currently sits. The popup is transient and
-opens automatically the first time a request is submitted.
+At any time a customer can open **Request journey** to see the stages that apply
+to their request and where it currently sits. A direct RFA route or a raw
+collection route has six stages. A collection followed by RFA analysis has
+seven. Existing-product and joined-work outcomes can finish earlier. The popup
+is transient and opens automatically the first time a request is submitted.
 
 ![Request journey popup](images/05-request-journey.png)
 
-Each stage is handled by a person supported by an Istari agent; the stages map
-directly onto the [agent authority matrix](AI_AGENTS.md#authority-matrix).
+The stages are projected from the server-side workflow. Agents assist intake and
+search, and the active JIOC Agent routes clear eligible requests. People remain
+responsible for exception routing, production, approval, release and customer
+outcome decisions. See the [agent authority matrix](AI_AGENTS.md#authority-matrix).
 
 ---
 
@@ -85,6 +89,11 @@ From here a customer can:
 - If no existing product matches, choose **Yes, task as new request** to continue
   into route assessment, or **No, cancel request** to stop the ticket with a
   recorded reason.
+- After a newly produced product is released, confirm whether it meets the
+  requirement. A **Yes** closes the request. A **No** requires a reason and can
+  identify unmet criteria, then asks the responsible RFA or Collection manager
+  to decide whether re-analysis is justified. If that manager disagrees, an
+  independent JIOC human makes the final re-analysis decision.
 
 After submission, Istari also checks open requests for likely overlap. If a
 visible similar request is already in progress, the workspace shows its
@@ -104,31 +113,36 @@ so a customer only ever sees products they are entitled to.
 ![Intelligence Store search and results](images/06-intelligence-store.png)
 
 Each result carries rich metadata: reference, owning team, region,
-classification, coverage window, tags and format. RFA managers, Collection
-managers and Intelligence Store Managers can administer store metadata and
-assets. Viewing or downloading product content still depends on ACG membership
-and clearance.
+classification, coverage window, tags and format. RFA and Collection managers
+can register existing products for their own area. Intelligence Store Managers
+can register draft or published products for either area, choose their product
+ACGs and browse the catalogue without first entering search criteria. These
+powers do not grant blanket content access. Viewing or downloading product
+content still depends on product status, ACG membership and clearance.
 
 ---
 
-## JIOC team members
+## JIOC routing and oversight
 
 The active JIOC agent invokes the RFA and CM capability agents and automatically
 routes clear, eligible requests to RFA or CM. Ambiguous, restricted, stale or
-otherwise unsafe cases land in the JIOC queue for a team member to decide.
-JIOC members oversee automatic decisions, can hold or refer them for review,
-approve an exception with a written override reason, review and link similar
-open requests, or query/reject a route with a recorded reason. When a request
-is routed to CM, the customer is asked whether they want the **raw
-collect only** or the **collect plus an RFA analysis**.
+otherwise unsafe cases land in the JIOC queue for a JIOC Team Member or JIOC
+Manager to decide. An exception reviewer can approve the recommended route,
+override it with a written reason, query the requester, reject the route, and
+review or link similar open requests. When a request is routed to CM, the
+customer is asked whether they want the **raw collect only** or the **collect
+plus an RFA analysis**.
 
-**JIOC Oversight** is the read-only whole-process view. It shows ticket totals
+JIOC Managers are normally **on the loop**, supervising outcomes rather than
+approving every routine route. **JIOC Oversight** is their whole-process view.
+It shows ticket totals
 by state and route, active RFA/CM teams, current availability, live analyst task
 counts, bounded task ownership and the shadow routing critic's verdict,
 challenges and missing-evidence counts. Critic output is advisory evidence only:
-it cannot route or change workflow. Managers remain on the loop and use the
-separate audited intervention controls when needed. Oversight does not expose
-analyst notes, draft bodies or protected product content.
+it cannot route or change workflow. A JIOC Manager can use separate audited
+controls to hold or resume eligible work, or send an eligible automated route
+to exception review. Oversight does not expose analyst notes, draft bodies or
+protected product content.
 
 ![JIOC routing queue with agent recommendations](images/07-rfa-queue.png)
 
@@ -142,6 +156,9 @@ Managers work across their whole RFA or CM area:
 - **Approve or return analyst work**: submitted drafts stop at manager
   approval, where the manager forwards them to Quality Control or returns
   them with a rework reason. A manager cannot approve work they drafted.
+- **Review re-analysis requests** after release: agree and return the work to
+  analysis, or refer a disagreement to an independent JIOC human. An assigned
+  analyst cannot make this decision.
 - **Manage the team** on the My Team page: roster, member profiles and the
   availability calendar.
 
@@ -166,12 +183,13 @@ shared queue without changing the product. Rejected work returns to the same
 reviewer after resubmission. A reviewer cannot claim work they authored or
 actively analysed.
 
-The assigned QC manager reviews submitted drafts and approves or rejects them. Approval
-now performs the final release: the product is published, disseminated to the
-requester with a notification and a recorded email, and a feedback request is
-raised. For a collect the customer asked to have analysed, approval instead
-forwards the ticket to RFA assignment with the collect linked (the collect
-itself is never released). A QC manager cannot approve a draft they authored.
+The assigned QC manager reviews submitted drafts and approves or rejects them.
+Approval performs the final release: the product is published, disseminated to
+the requester with a notification and a recorded email, and the requester is
+asked whether it meets the requirement. For a collect the customer asked to
+have analysed, approval instead forwards the ticket to RFA assignment with the
+collect linked (the collect itself is never released). A QC manager cannot
+approve a draft they authored.
 
 ![Quality control queue](images/09-qc-queue.png)
 
@@ -215,21 +233,42 @@ grant access to the group's protected products.
 ## Administrator
 
 The Admin workspace is the governance control plane. It shows service status,
-pending **access requests** to approve or reject with a reason, and the AI model
-catalogue. The left navigation exposes operational workspaces, analytics, Users,
-ACGs and the audit log according to the administrator's permissions.
+pending **access requests** to approve or reject with a reason, and separate
+controls for text-chat AI, search embeddings and Realtime voice. The left
+navigation exposes operational workspaces, analytics, Users, ACGs and the audit
+log according to the administrator's permissions.
 
 ![Administrator overview](images/10-admin-overview.png)
 
 ### Choosing the AI model
 
-The **AI model** panel groups models by provider. Gemini, OpenAI, Vertex AI and
-Bedrock can each accept a write-only runtime key, test the connection and retain
-their own selected model. Activating a provider is a separate warned action that
-changes the provider for every user. Runtime keys are not returned to the browser
-or persisted and disappear when the API restarts; model choices are persisted.
+The **AI provider and model** panel groups models by provider. Gemini, OpenAI,
+Vertex AI and Bedrock can each accept a write-only key, test the connection and
+retain their own selected model. Activating a provider is a separate warned
+action that changes the text-chat provider for every user. Administrator-entered
+keys are encrypted at rest, persisted and never returned to the browser.
+Environment-managed provider keys take precedence and cannot be replaced in the
+workspace. The configuration-encryption key must remain available across
+restarts or persisted credentials cannot be decrypted.
 
 ![Admin AI model catalogue](images/12-admin-ai-model.png)
+
+### Search embeddings
+
+**Search & embeddings** is independent of text chat. It reports the index,
+corpus and evaluation state, and lets an administrator select offline mock or
+Gemini embeddings. Gemini uses a dedicated encrypted key and requires explicit
+confirmation before synthetic Store text is sent externally. Test a saved
+configuration before rebuilding the index. Until a provider and model pass the
+approved retrieval evaluation, Istari may return candidates for review but will
+not claim a definitive no-match.
+
+### Realtime voice
+
+**Realtime voice model** is optional and independent of both text chat and
+embeddings. It requires a dedicated, encrypted OpenAI Realtime key. Save and test
+the key, select the model, then explicitly enable voice for customer request
+chat. Disabling voice leaves typed chat available.
 
 ### Access control groups
 

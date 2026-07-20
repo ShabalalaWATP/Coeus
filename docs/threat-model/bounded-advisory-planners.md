@@ -1,5 +1,10 @@
 # Bounded Advisory Planners Threat Model
 
+## Status
+
+Current for the implemented synthetic local/test boundary. Remote egress and
+real-data operation remain gated as described under residual risks.
+
 ## Scope
 
 The Intake Planner, Search Planner and shadow-only Routing Critic, including
@@ -23,7 +28,7 @@ projections.
 | An intake plan skips required evidence or closes the conversation. | The controller recomputes missing fields and lifecycle state. A suggestion must be a currently missing allowlisted field. The application owns all requester wording. |
 | Search advice broadens access or leaks hidden product facts. | The planner sees no product corpus. Requester visibility is resolved before ranking, and result counts/evidence are projected after authorisation. Planner terms never participate in access decisions. |
 | A date interpretation weakens a temporal constraint. | Planner dates are query hints only. Structured time filters continue to use the submitted `IntakeDetails`. |
-| Search expansion suppresses a real baseline match or turns absence into a definitive no-match. | The immutable base query runs independently. Supplemental candidates are unioned after it, baseline offers are preserved first, and both legs must have deterministic complete coverage before definitive absence. |
+| Search expansion suppresses a real baseline match or turns absence into a definitive no-match. | The immutable base query runs independently. Supplemental candidates are unioned after it and baseline offers are preserved first. A supplemental exception is contained, exposes no provider detail, retains the authorised baseline, marks coverage partial and therefore prevents definitive absence. |
 | The Routing Critic becomes a hidden second routing authority. | It runs after validation, is persisted separately and is never read by state transition or side-effect code. Tests assert route invariance across arbitrary critic results and failures. |
 | Malformed or excessively large output causes resource exhaustion or parser ambiguity. | Provider timeout, output-token and response-byte ceilings apply. Schemas reject unknown fields, invalid types, excessive items and overlong/control-character text. |
 | Provider calls evade deployment or egress approval. | Every remote call reserves provider admission capacity. Hosted Intake Planner egress is unavailable until classification is enforceable. Hosted Search Planner and Routing Critic egress is independently disabled by default and requires approved provider plus data-class releases at startup and call time. |

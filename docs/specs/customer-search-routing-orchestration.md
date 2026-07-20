@@ -2,8 +2,10 @@
 
 ## Status
 
-Approved implementation specification. This specification supersedes the routing
-parts of `no-match-consent.md` while retaining its owner-only and audit controls.
+Implemented for the supported synthetic local/test boundary. This specification
+supersedes the routing parts of `no-match-consent.md` while retaining its
+owner-only and audit controls. Hosted activation and production release remain
+subject to the rollout gates below.
 
 ## Problem
 

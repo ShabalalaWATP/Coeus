@@ -27,7 +27,7 @@ This index links the guides and deeper design records.
 | [Specifications](specs/)                                               | One Markdown spec per feature                            |
 | [Architecture Decision Records](adr/)                                  | Why the significant choices were made                    |
 | [Threat Models](threat-model/)                                         | Per-feature threat models and residual risks             |
-| [Security Repair Plan](security/SECURITY_REPAIR_AND_HARDENING_PLAN.md) | Current finding closure, hardening and verification work |
+| [Security Repair Plan](security/SECURITY_REPAIR_AND_HARDENING_PLAN.md) | Historical Sprint 17 implementation evidence and still-open production release gates |
 
 ## Runbooks
 

@@ -2,16 +2,17 @@
 
 ## Status
 
-Approved implementation specification.
+Implemented and verified for the supported synthetic local/test boundary. Remote
+advisory egress and real-data use remain subject to the rollout gates below.
 
 ## Problem
 
 Coeus has deliberately deterministic controllers for intake progression,
 authorised retrieval and JIOC routing. Those controls protect authority, but the
-system currently underuses model reasoning where it can improve the quality of
-the evidence presented to those controllers. In particular, it does not retain a
-structured account of intake contradictions, broader search terminology or a
-second opinion on an applied routing decision.
+system uses bounded model reasoning only where it cannot weaken those controls.
+The intake controller now records deterministic contradictions and ambiguities;
+models can improve missing-field ordering, broaden search terminology and offer
+a second opinion on an applied routing decision.
 
 ## Decision And Authority Model
 
@@ -20,7 +21,7 @@ propose, but they never own an external or state-changing decision.
 
 | Agent | May propose | Deterministic authority remains with |
 | --- | --- | --- |
-| Intake Planner | contradictions, ambiguities, a follow-up strategy and the most useful missing field | conversation lifecycle, permitted next action and application-owned requester wording |
+| Intake Planner | one already-missing field preference when the deterministic controller is asking for missing information | contradiction and ambiguity detection, conversation lifecycle, permitted action and application-owned wording |
 | Search Planner | query expansions, entities, date interpretations and alternative terminology | requester authorisation, access filtering, retrieval limits, temporal metadata filters, ranking assurance and workflow outcome |
 | Routing Critic | a support/challenge verdict, bounded reason codes, cited facts and missing evidence | JIOC routing policy, transition validation and the active JIOC Routing Agent |
 
@@ -49,17 +50,18 @@ planner call.
 ## Intake Planner
 
 The input is the currently extracted `IntakeDetails`, its deterministic missing
-fields and local safety flags. Raw chat history is excluded. The planner returns:
+fields and local safety flags. Raw chat history is excluded. The effective plan
+contains:
 
-- zero or more contradiction observations, each identifying only allowlisted
-  intake fields;
-- zero or more ambiguity observations, each identifying only allowlisted fields;
-- ordered follow-up strategies from an allowlist;
+- deterministic contradiction and ambiguity observations using closed reason
+  codes;
+- one controller-selected follow-up strategy from an allowlist;
 - one suggested next field, which must be in the controller's current missing
 field set, or `null`;
 - an abstention flag.
 
-The controller selects the permitted action. Safety refusal and conversation
+Provider output cannot introduce or suppress a contradiction or ambiguity. The
+controller selects the permitted action. Safety refusal and conversation
 close rules run before planner advice. A valid suggestion may reorder only the
 existing deterministic missing-field queue. It cannot mark a requirement
 complete, remove a required field, emit arbitrary requester prose or change

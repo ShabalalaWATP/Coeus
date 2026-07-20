@@ -1,14 +1,16 @@
 from types import SimpleNamespace
 from uuid import uuid4
 
+from coeus.domain.enums import TicketState
 from coeus.domain.search_index import GroundedSearchResult
 from coeus.domain.tickets import IntakeDetails, ProductOffer, ProductOfferStatus
+from coeus.services.rfi_search_assurance import decide_search_outcome
 from coeus.services.rfi_search_retrieval import (
     PlannedRetrieval,
     ranked_additive_offers,
     retrieve_with_additive_advice,
 )
-from coeus.services.search_planner import EMPTY_SEARCH_PLANNER_ADVICE
+from coeus.services.search_planner import EMPTY_SEARCH_PLANNER_ADVICE, SearchPlannerAdvice
 
 
 def _offer(title: str, product_id=None) -> ProductOffer:  # type: ignore[no-untyped-def]
@@ -86,3 +88,47 @@ def test_baseline_retrieval_runs_before_optional_planner(monkeypatch) -> None:
 
     assert events == ["baseline", "planner"]
     assert retrieval.baseline_candidates == ()
+
+
+def test_supplemental_failure_preserves_baseline_and_degrades_assurance(monkeypatch) -> None:
+    events: list[str] = []
+    grounded = GroundedSearchResult((), "hybrid", None, "space-v1", "complete", "corpus-v1")
+
+    def retrieve(*_args, **_kwargs):  # type: ignore[no-untyped-def]
+        events.append("retrieve")
+        if len(events) == 2:
+            raise RuntimeError("synthetic supplemental failure with sensitive detail")
+        return ("authorised-baseline",), grounded
+
+    class Planner:
+        def plan_safely(self, *_args):  # type: ignore[no-untyped-def]
+            return SimpleNamespace(
+                suggestions=SearchPlannerAdvice(query_expansions=("bounded hint",)),
+                record=object(),
+            )
+
+    monkeypatch.setattr("coeus.services.rfi_search_retrieval._retrieve_leg", retrieve)
+    requester_id = uuid4()
+    retrieval = retrieve_with_additive_advice(
+        SimpleNamespace(),  # type: ignore[arg-type]
+        SimpleNamespace(  # type: ignore[arg-type]
+            requester_user_id=requester_id,
+            intake=IntakeDetails(description="authorised baseline query"),
+        ),
+        requester_id,
+        Planner(),  # type: ignore[arg-type]
+        SimpleNamespace(),  # type: ignore[arg-type]
+        SimpleNamespace(),  # type: ignore[arg-type]
+        SimpleNamespace(),  # type: ignore[arg-type]
+        SimpleNamespace(),  # type: ignore[arg-type]
+    )
+
+    assert events == ["retrieve", "retrieve"]
+    assert retrieval.baseline_candidates == ("authorised-baseline",)
+    assert retrieval.supplemental_candidates == ()
+    assert retrieval.grounded.coverage_status == "partial"
+    assert retrieval.grounded.degraded_reason == "supplemental_search_failed"
+    assert "sensitive" not in retrieval.grounded.degraded_reason
+    decision = decide_search_outcome(0, retrieval.grounded)
+    assert decision.state is TicketState.RFI_SEARCH_INCOMPLETE
+    assert decision.assurance == "assisted"

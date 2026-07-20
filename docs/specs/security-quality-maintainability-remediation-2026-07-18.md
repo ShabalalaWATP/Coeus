@@ -2,9 +2,10 @@
 
 ## Status
 
-Implementation complete on 18 July 2026, with final full-suite and PostgreSQL
-release evidence in progress. This remains release-blocking until every
-acceptance gate below is recorded as passing.
+Implementation complete and verified on 18 July 2026 for the supported
+local-first boundary. The full local suite and PostgreSQL evidence passed as
+recorded below. This specification does not expand the supported boundary or
+close Sprint 17's separate authorised-staging and sealed-scan release gates.
 
 ## Evidence Baseline
 

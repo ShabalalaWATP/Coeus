@@ -37,6 +37,16 @@ test("marks the current stage and closes on escape", async () => {
   expect(onClose).toHaveBeenCalledTimes(1);
 });
 
+test("describes bounded automation and retained human authority", () => {
+  render(<RequestJourney onClose={vi.fn()} state="JIOC_REVIEW" />);
+
+  expect(
+    screen.getByText(
+      "Istari automates bounded search and routing; people provide input, handle exceptions and control release.",
+    ),
+  ).toBeVisible();
+});
+
 test("closes on overlay click but not on dialog click", async () => {
   const onClose = vi.fn();
   render(<RequestJourney onClose={onClose} state="DRAFT_INTAKE" />);

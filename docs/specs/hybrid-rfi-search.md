@@ -1,5 +1,9 @@
 # Spec: Hybrid RFI Search
 
+Status: implemented historical baseline. Subsequent retrieval-assurance work
+lowered the current offer threshold to `0.20`; `rfi_ranking.py` owns the runtime
+constant.
+
 ## Goal
 
 Replace the RFI Search Agent's lexical-only ranking with local-first hybrid
@@ -78,7 +82,7 @@ fusion:
 - semantic label match: `+0.02` each, capped at `+0.04`.
 
 The displayed score is capped to `0..1` and rounded to four decimal places.
-The offer threshold is `0.34`: a weak rank at the bottom of one list is not
+The original offer threshold was `0.34`: a weak rank at the bottom of one list is not
 enough on its own, while a strong lexical or semantic rank remains offerable.
 
 ## Match Reasons
