@@ -1,4 +1,5 @@
-from typing import cast
+from dataclasses import replace
+from typing import Any, cast
 from uuid import UUID
 
 import pytest
@@ -6,14 +7,18 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient, Response
 
 from coeus.core.config import Settings
+from coeus.domain.enums import TicketState
+from coeus.domain.search_index import GroundedSearchResult
 from coeus.domain.tickets import TicketRecord
 from coeus.main import create_app
+from coeus.services.active_work_discovery import ActiveWorkDiscoveryService
 from rfi_search_helpers import login
 
 
 @pytest.mark.asyncio
 async def test_no_match_search_requires_customer_consent_before_route_review() -> None:
     app = create_app(_settings())
+    _make_search_definitive(app)
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
@@ -26,30 +31,47 @@ async def test_no_match_search_requires_customer_consent_before_route_review() -
             headers={"X-CSRF-Token": str(user["csrfToken"])},
             json={"taskAsNewRequest": True},
         )
-        jioc = await login(client, "jioc.team@example.test")
-        routed = await client.post(
-            f"/api/v1/routing/{ticket_id}/run",
-            headers={"X-CSRF-Token": str(jioc["csrfToken"])},
-        )
 
-    assert search.json()["ticketState"] == "RFI_NO_MATCH"
+    assert search.json()["ticketState"] == "NEW_TASKING_CONSENT"
     assert search.json()["offers"] == []
     assert search.json()["metrics"]["offeredCount"] == 0
-    assert ticket["state"] == "RFI_NO_MATCH"
+    assert search.json()["outcome"] == "no_match"
+    assert search.json()["assurance"] == "definitive"
+    assert ticket["state"] == "NEW_TASKING_CONSENT"
     assert _timeline_bodies(ticket, "rfi_no_match") == ["No existing product matched this request."]
     assert consent.status_code == 200
-    assert consent.json()["state"] == "JIOC_REVIEW"
+    assert consent.json()["state"] == "INFO_REQUIRED"
     assert _timeline_bodies(consent.json(), "tasking_confirmed") == [
-        "Requester confirmed tasking; queued for JIOC route review."
+        "Requester confirmed new tasking; queued for JIOC routing."
     ]
-    assert routed.status_code == 200
-    assert routed.json()["rfaReview"] is not None
     assert "no_match_tasking_confirmed" in _audit_types(app)
+
+
+@pytest.mark.asyncio
+async def test_manual_search_respects_disabled_active_work_rollout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = create_app(_settings(active_work_offers_enabled=False))
+    _make_search_definitive(app)
+
+    def unexpected_discovery(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("active-work discovery must stay disabled")
+
+    monkeypatch.setattr(ActiveWorkDiscoveryService, "discover", unexpected_discovery)
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        user = await login(client, "user@example.test")
+        ticket_id = await _no_match_ticket(client, str(user["csrfToken"]))
+        search = await _run_no_match_search(client, ticket_id, str(user["csrfToken"]))
+
+    assert search.json()["ticketState"] == "NEW_TASKING_CONSENT"
 
 
 @pytest.mark.asyncio
 async def test_no_match_decline_cancels_with_fixed_reason() -> None:
     app = create_app(_settings())
+    _make_search_definitive(app)
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
@@ -63,9 +85,9 @@ async def test_no_match_decline_cancels_with_fixed_reason() -> None:
         )
 
     assert declined.status_code == 200
-    assert declined.json()["state"] == "CANCELLED"
+    assert declined.json()["state"] == "CLOSED_UNANSWERED"
     assert _timeline_bodies(declined.json(), "tasking_declined") == [
-        "customer declined tasking after no-match"
+        "The search did not answer the question and the requester declined new tasking."
     ]
     assert "no_match_tasking_declined" in _audit_types(app)
 
@@ -76,6 +98,7 @@ async def test_no_match_consent_audit_failure_rolls_back_ticket(
     monkeypatch: pytest.MonkeyPatch, task_as_new_request: bool
 ) -> None:
     app = create_app(_settings())
+    _make_search_definitive(app)
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
@@ -100,15 +123,24 @@ async def test_no_match_consent_audit_failure_rolls_back_ticket(
 @pytest.mark.asyncio
 async def test_no_match_consent_is_owner_only_and_state_bound() -> None:
     app = create_app(_settings())
+    _make_search_definitive(app)
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
         user = await login(client, "user@example.test")
         wrong_state_id = await _no_match_ticket(client, str(user["csrfToken"]))
+        wrong_ticket = _stored_ticket(app, wrong_state_id)
+        app.state.ticket_services.tickets.save_system_update(
+            replace(wrong_ticket, state=TicketState.RFI_SEARCH_INCOMPLETE)
+        )
         wrong_state = await client.post(
             f"/api/v1/tickets/{wrong_state_id}/no-match-consent",
             headers={"X-CSRF-Token": str(user["csrfToken"])},
             json={"taskAsNewRequest": True},
+        )
+        wrong_ticket = _stored_ticket(app, wrong_state_id)
+        app.state.ticket_services.tickets.save_system_update(
+            replace(wrong_ticket, state=TicketState.CANCELLED)
         )
         ticket_id = await _no_match_ticket(client, str(user["csrfToken"]))
         await _run_no_match_search(client, ticket_id, str(user["csrfToken"]))
@@ -131,11 +163,13 @@ async def test_no_match_consent_is_owner_only_and_state_bound() -> None:
     assert forbidden.json()["error"]["code"] == "forbidden"
 
 
-def _settings() -> Settings:
+def _settings(*, active_work_offers_enabled: bool = True) -> Settings:
     return Settings(
         environment="test",
         argon2_memory_cost=8_192,
         persistence_provider="memory",
+        automatic_request_discovery_enabled=False,
+        active_work_offers_enabled=active_work_offers_enabled,
     )
 
 
@@ -206,3 +240,20 @@ def _stored_ticket(app: FastAPI, ticket_id: str) -> TicketRecord:
     ticket = app.state.ticket_services.tickets._repository.get(UUID(ticket_id))
     assert ticket is not None
     return cast(TicketRecord, ticket)
+
+
+def _make_search_definitive(app: FastAPI) -> None:
+    grounded = app.state.rfi_search_service._grounded
+    original = grounded.search
+
+    def complete(*args: object, **kwargs: object) -> GroundedSearchResult:
+        result = original(*args, **kwargs)
+        return replace(
+            result,
+            degraded_reason=None,
+            coverage_status="complete",
+            profile_space_id="test:complete:g1",
+            corpus_version="test-corpus-v1",
+        )
+
+    grounded.search = cast(Any, complete)

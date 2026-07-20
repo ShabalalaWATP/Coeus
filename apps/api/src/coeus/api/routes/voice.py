@@ -15,6 +15,7 @@ from coeus.core.permissions import Permission
 from coeus.domain.auth import AuthenticatedSession
 from coeus.schemas.voice import (
     VoiceApiKeyUpdateRequest,
+    VoiceConnectionTestResponse,
     VoiceModelStateResponse,
     VoiceModelUpdateRequest,
 )
@@ -66,6 +67,24 @@ def configure_voice_api_key(
         service.configure_api_key(
             str(authenticated.user.user_id), authenticated.user.username, payload.api_key
         )
+    )
+
+
+@router.post("/admin/voice-model/test", response_model=VoiceConnectionTestResponse)
+def test_voice_connection(
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    permitted: Annotated[
+        AuthenticatedSession, Depends(require_permission(Permission.SYSTEM_CONFIGURE))
+    ],
+    service: Annotated[VoiceModelService, Depends(get_voice_model_service)],
+) -> VoiceConnectionTestResponse:
+    del authenticated, permitted
+    result = service.test_connection()
+    return VoiceConnectionTestResponse(
+        ok=result.ok,
+        provider=result.provider,
+        model=result.model,
+        message=result.message,
     )
 
 

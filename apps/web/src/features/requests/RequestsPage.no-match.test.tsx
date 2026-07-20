@@ -7,7 +7,7 @@ import { baseTicket, directory, renderRequests } from "../../test/requests-fixtu
 
 const noMatchTicket: Ticket = {
   ...baseTicket,
-  state: "RFI_NO_MATCH",
+  state: "NEW_TASKING_CONSENT",
   timeline: [
     ...baseTicket.timeline,
     {
@@ -31,7 +31,7 @@ afterEach(() => {
 test("confirms no-match tasking as a new request from the workspace", async () => {
   const confirmedTicket: Ticket = {
     ...noMatchTicket,
-    state: "JIOC_REVIEW",
+    state: "JIOC_ROUTING_PENDING",
     timeline: [
       ...noMatchTicket.timeline,
       {
@@ -50,7 +50,7 @@ test("confirms no-match tasking as a new request from the workspace", async () =
 
   renderRequests("/app/requests/ticket-1");
 
-  expect(await screen.findByText("No existing product matches")).toBeVisible();
+  expect(await screen.findByText("No accepted existing answer")).toBeVisible();
   await userEvent.click(screen.getByRole("button", { name: "Request journey" }));
   expect(screen.getByText("Search existing intelligence").closest("li")).toHaveClass(
     "journey-step--current",
@@ -67,19 +67,19 @@ test("confirms no-match tasking as a new request from the workspace", async () =
       }),
     ),
   );
-  expect((await screen.findAllByText("JIOC review"))[0]).toBeVisible();
+  expect((await screen.findAllByText("JIOC routing pending"))[0]).toBeVisible();
 });
 
-test("declines no-match tasking and cancels the request", async () => {
+test("declines no-match tasking and closes the request unanswered", async () => {
   const cancelledTicket: Ticket = {
     ...noMatchTicket,
-    state: "CANCELLED",
+    state: "CLOSED_UNANSWERED",
     timeline: [
       ...noMatchTicket.timeline,
       {
         id: "timeline-declined",
         eventType: "tasking_declined",
-        body: "customer declined tasking after no-match",
+        body: "The search did not answer the question and the requester declined new tasking.",
         actorUserId: "preview-user",
         createdAt: "2026-07-06T00:03:00Z",
       },
@@ -92,7 +92,7 @@ test("declines no-match tasking and cancels the request", async () => {
 
   renderRequests("/app/requests/ticket-1");
 
-  await userEvent.click(await screen.findByRole("button", { name: "No, cancel request" }));
+  await userEvent.click(await screen.findByRole("button", { name: "No, close unanswered" }));
 
   await waitFor(() =>
     expect(fetchMock).toHaveBeenCalledWith(
@@ -103,7 +103,7 @@ test("declines no-match tasking and cancels the request", async () => {
       }),
     ),
   );
-  expect((await screen.findAllByText("Cancelled"))[0]).toBeVisible();
+  expect((await screen.findAllByText("Closed unanswered"))[0]).toBeVisible();
 });
 
 test("shows no-match consent failures through the shared action error", async () => {

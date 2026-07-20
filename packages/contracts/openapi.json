@@ -439,6 +439,44 @@
         "title": "AddInformationRequest",
         "type": "object"
       },
+      "AdminAnalyticsDashboardResponse": {
+        "properties": {
+          "assistant": {
+            "$ref": "#/components/schemas/AssistantAnalyticsResponse"
+          },
+          "audit": {
+            "$ref": "#/components/schemas/AuditAnalyticsResponse"
+          },
+          "generatedAt": {
+            "format": "date-time",
+            "title": "Generatedat",
+            "type": "string"
+          },
+          "process": {
+            "$ref": "#/components/schemas/ProcessAnalyticsResponse"
+          },
+          "search": {
+            "$ref": "#/components/schemas/SearchAnalyticsResponse"
+          },
+          "users": {
+            "$ref": "#/components/schemas/UserAnalyticsResponse"
+          },
+          "voice": {
+            "$ref": "#/components/schemas/VoiceAnalyticsResponse"
+          }
+        },
+        "required": [
+          "generatedAt",
+          "users",
+          "assistant",
+          "search",
+          "voice",
+          "audit",
+          "process"
+        ],
+        "title": "AdminAnalyticsDashboardResponse",
+        "type": "object"
+      },
       "AdminUserListResponse": {
         "properties": {
           "users": {
@@ -725,7 +763,10 @@
           "availableModels",
           "apiKeyConfigured",
           "embeddingProvider",
-          "embeddedProductCount"
+          "embeddedProductCount",
+          "changedBy",
+          "changedAt",
+          "providers"
         ],
         "title": "AiModelStateResponse",
         "type": "object"
@@ -1310,6 +1351,34 @@
         "title": "AssignmentTeamResponse",
         "type": "object"
       },
+      "AssistantAnalyticsResponse": {
+        "properties": {
+          "apiKeyConfigured": {
+            "title": "Apikeyconfigured",
+            "type": "boolean"
+          },
+          "chatTurns30d": {
+            "title": "Chatturns30D",
+            "type": "integer"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "model",
+          "apiKeyConfigured",
+          "chatTurns30d"
+        ],
+        "title": "AssistantAnalyticsResponse",
+        "type": "object"
+      },
       "AttachmentMetadataRequest": {
         "properties": {
           "description": {
@@ -1372,6 +1441,67 @@
           "createdAt"
         ],
         "title": "AttachmentMetadataResponse",
+        "type": "object"
+      },
+      "AuditAnalyticsResponse": {
+        "properties": {
+          "configurationChanges30d": {
+            "title": "Configurationchanges30D",
+            "type": "integer"
+          },
+          "coverageStartsAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coveragestartsat"
+          },
+          "events30d": {
+            "title": "Events30D",
+            "type": "integer"
+          },
+          "loginFailures30d": {
+            "title": "Loginfailures30D",
+            "type": "integer"
+          },
+          "loginSuccesses30d": {
+            "title": "Loginsuccesses30D",
+            "type": "integer"
+          },
+          "retainedEvents": {
+            "title": "Retainedevents",
+            "type": "integer"
+          },
+          "retentionLimitReached": {
+            "title": "Retentionlimitreached",
+            "type": "boolean"
+          },
+          "securityEvents30d": {
+            "title": "Securityevents30D",
+            "type": "integer"
+          },
+          "windowDays": {
+            "title": "Windowdays",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "windowDays",
+          "retainedEvents",
+          "events30d",
+          "loginSuccesses30d",
+          "loginFailures30d",
+          "securityEvents30d",
+          "configurationChanges30d",
+          "coverageStartsAt",
+          "retentionLimitReached"
+        ],
+        "title": "AuditAnalyticsResponse",
         "type": "object"
       },
       "AuditEventResponse": {
@@ -2199,6 +2329,213 @@
         "title": "CredentialResetResponse",
         "type": "object"
       },
+      "CustomerEstimateResponse": {
+        "properties": {
+          "asOf": {
+            "format": "date-time",
+            "title": "Asof",
+            "type": "string"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "string"
+          },
+          "earliest": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Earliest"
+          },
+          "latest": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest"
+          },
+          "likely": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Likely"
+          },
+          "policyVersion": {
+            "title": "Policyversion",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "earliest",
+          "likely",
+          "latest",
+          "confidence",
+          "status",
+          "asOf",
+          "policyVersion"
+        ],
+        "title": "CustomerEstimateResponse",
+        "type": "object"
+      },
+      "CustomerJourneyStageResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "status"
+        ],
+        "title": "CustomerJourneyStageResponse",
+        "type": "object"
+      },
+      "CustomerProductDecisionRequest": {
+        "properties": {
+          "meetsRequirement": {
+            "title": "Meetsrequirement",
+            "type": "boolean"
+          },
+          "reason": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Reason",
+            "type": "string"
+          },
+          "unmetCriteria": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "Unmetcriteria",
+            "type": "array"
+          }
+        },
+        "required": [
+          "meetsRequirement"
+        ],
+        "title": "CustomerProductDecisionRequest",
+        "type": "object"
+      },
+      "CustomerStatusResponse": {
+        "properties": {
+          "actionRequired": {
+            "title": "Actionrequired",
+            "type": "boolean"
+          },
+          "actionType": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actiontype"
+          },
+          "canonicalTicketId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonicalticketid"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "currentLeg": {
+            "title": "Currentleg",
+            "type": "string"
+          },
+          "estimate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CustomerEstimateResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "journey": {
+            "items": {
+              "$ref": "#/components/schemas/CustomerJourneyStageResponse"
+            },
+            "title": "Journey",
+            "type": "array"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "nextMilestone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextmilestone"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "explanation",
+          "currentLeg",
+          "actionRequired",
+          "actionType",
+          "nextMilestone",
+          "canonicalTicketId",
+          "estimate",
+          "journey"
+        ],
+        "title": "CustomerStatusResponse",
+        "type": "object"
+      },
       "DecideAcgApplicationRequest": {
         "properties": {
           "decision": {
@@ -2293,6 +2630,10 @@
             "title": "Assettype",
             "type": "string"
           },
+          "detectedMimeType": {
+            "title": "Detectedmimetype",
+            "type": "string"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -2304,6 +2645,18 @@
           },
           "name": {
             "title": "Name",
+            "type": "string"
+          },
+          "previewAvailable": {
+            "title": "Previewavailable",
+            "type": "boolean"
+          },
+          "previewKind": {
+            "title": "Previewkind",
+            "type": "string"
+          },
+          "processingStatus": {
+            "title": "Processingstatus",
             "type": "string"
           },
           "sha256": {
@@ -2321,7 +2674,11 @@
           "assetType",
           "mimeType",
           "sizeBytes",
-          "sha256"
+          "sha256",
+          "detectedMimeType",
+          "previewKind",
+          "processingStatus",
+          "previewAvailable"
         ],
         "title": "DraftAssetResponse",
         "type": "object"
@@ -2372,12 +2729,28 @@
       },
       "DraftProductResponse": {
         "properties": {
+          "acgIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Acgids",
+            "type": "array"
+          },
+          "areaOrRegion": {
+            "title": "Areaorregion",
+            "type": "string"
+          },
           "assets": {
             "items": {
               "$ref": "#/components/schemas/DraftAssetResponse"
             },
             "title": "Assets",
             "type": "array"
+          },
+          "classificationLevel": {
+            "title": "Classificationlevel",
+            "type": "integer"
           },
           "content": {
             "title": "Content",
@@ -2388,18 +2761,55 @@
             "title": "Createdat",
             "type": "string"
           },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "handlingCaveats": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Handlingcaveats",
+            "type": "array"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
+            "type": "string"
+          },
+          "manifestHash": {
+            "title": "Manifesthash",
+            "type": "string"
+          },
+          "ownerTeam": {
+            "title": "Ownerteam",
             "type": "string"
           },
           "productType": {
             "title": "Producttype",
             "type": "string"
           },
+          "releasability": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Releasability",
+            "type": "array"
+          },
+          "sourceType": {
+            "title": "Sourcetype",
+            "type": "string"
+          },
           "summary": {
             "title": "Summary",
             "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
           },
           "title": {
             "title": "Title",
@@ -2417,6 +2827,16 @@
           "summary",
           "productType",
           "content",
+          "description",
+          "sourceType",
+          "ownerTeam",
+          "areaOrRegion",
+          "classificationLevel",
+          "releasability",
+          "handlingCaveats",
+          "tags",
+          "acgIds",
+          "manifestHash",
           "assets",
           "createdAt"
         ],
@@ -3092,6 +3512,99 @@
         "title": "IntakeUpdateRequest",
         "type": "object"
       },
+      "JiocAgentDecisionResponse": {
+        "properties": {
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "disposition": {
+            "title": "Disposition",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "policyVersion": {
+            "title": "Policyversion",
+            "type": "string"
+          },
+          "rationaleCodes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Rationalecodes",
+            "type": "array"
+          },
+          "recommendedRoute": {
+            "title": "Recommendedroute",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "recommendedRoute",
+          "disposition",
+          "confidence",
+          "rationaleCodes",
+          "policyVersion",
+          "createdAt"
+        ],
+        "title": "JiocAgentDecisionResponse",
+        "type": "object"
+      },
+      "JiocInterventionRequest": {
+        "properties": {
+          "action": {
+            "pattern": "^(hold|resume|send_to_review)$",
+            "title": "Action",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 3,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "reason"
+        ],
+        "title": "JiocInterventionRequest",
+        "type": "object"
+      },
+      "JiocReanalysisDecisionRequest": {
+        "properties": {
+          "decision": {
+            "enum": [
+              "reanalyse",
+              "close"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "rationale": {
+            "maxLength": 2000,
+            "minLength": 3,
+            "title": "Rationale",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision",
+          "rationale"
+        ],
+        "title": "JiocReanalysisDecisionRequest",
+        "type": "object"
+      },
       "LinkProductRequest": {
         "properties": {
           "productId": {
@@ -3220,6 +3733,30 @@
           "createdAt"
         ],
         "title": "ManagerDecisionResponse",
+        "type": "object"
+      },
+      "ManagerReanalysisDecisionRequest": {
+        "properties": {
+          "decision": {
+            "enum": [
+              "agree",
+              "refer_to_jioc"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "rationale": {
+            "maxLength": 2000,
+            "minLength": 3,
+            "title": "Rationale",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision",
+          "rationale"
+        ],
+        "title": "ManagerReanalysisDecisionRequest",
         "type": "object"
       },
       "MetadataSuggestionRequest": {
@@ -3443,6 +3980,28 @@
       },
       "OversightTaskResponse": {
         "properties": {
+          "agentConfidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agentconfidence"
+          },
+          "agentDisposition": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agentdisposition"
+          },
           "analystCount": {
             "title": "Analystcount",
             "type": "integer"
@@ -3512,7 +4071,9 @@
           "teamName",
           "analystCount",
           "workPackageCount",
-          "completedWorkPackageCount"
+          "completedWorkPackageCount",
+          "agentDisposition",
+          "agentConfidence"
         ],
         "title": "OversightTaskResponse",
         "type": "object"
@@ -3602,6 +4163,24 @@
           "reasons"
         ],
         "title": "PriorityAssessmentResponse",
+        "type": "object"
+      },
+      "ProcessAnalyticsResponse": {
+        "properties": {
+          "remoteRequestsAdmitted": {
+            "title": "Remoterequestsadmitted",
+            "type": "integer"
+          },
+          "remoteRequestsDenied": {
+            "title": "Remoterequestsdenied",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "remoteRequestsAdmitted",
+          "remoteRequestsDenied"
+        ],
+        "title": "ProcessAnalyticsResponse",
         "type": "object"
       },
       "ProductReuseResponse": {
@@ -3733,6 +4312,143 @@
           }
         },
         "title": "ProfileUpdateRequest",
+        "type": "object"
+      },
+      "QcAgentCheckResponse": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "passed",
+          "detail"
+        ],
+        "title": "QcAgentCheckResponse",
+        "type": "object"
+      },
+      "QcAgentFindingResponse": {
+        "properties": {
+          "blocking": {
+            "title": "Blocking",
+            "type": "boolean"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "location": {
+            "title": "Location",
+            "type": "string"
+          },
+          "originalText": {
+            "title": "Originaltext",
+            "type": "string"
+          },
+          "severity": {
+            "title": "Severity",
+            "type": "string"
+          },
+          "suggestedText": {
+            "title": "Suggestedtext",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "category",
+          "severity",
+          "originalText",
+          "suggestedText",
+          "location",
+          "detail",
+          "confidence",
+          "blocking"
+        ],
+        "title": "QcAgentFindingResponse",
+        "type": "object"
+      },
+      "QcAgentPreflightResponse": {
+        "properties": {
+          "blockers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Blockers",
+            "type": "array"
+          },
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/QcAgentCheckResponse"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "draftVersionId": {
+            "format": "uuid",
+            "title": "Draftversionid",
+            "type": "string"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/QcAgentFindingResponse"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "policyVersion": {
+            "title": "Policyversion",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "draftVersionId",
+          "status",
+          "checks",
+          "blockers",
+          "policyVersion",
+          "createdAt",
+          "findings"
+        ],
+        "title": "QcAgentPreflightResponse",
         "type": "object"
       },
       "QcApprovalRequest": {
@@ -3896,6 +4612,10 @@
             "title": "Assettype",
             "type": "string"
           },
+          "detectedMimeType": {
+            "title": "Detectedmimetype",
+            "type": "string"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -3907,6 +4627,18 @@
           },
           "name": {
             "title": "Name",
+            "type": "string"
+          },
+          "previewAvailable": {
+            "title": "Previewavailable",
+            "type": "boolean"
+          },
+          "previewKind": {
+            "title": "Previewkind",
+            "type": "string"
+          },
+          "processingStatus": {
+            "title": "Processingstatus",
             "type": "string"
           },
           "sha256": {
@@ -3924,7 +4656,11 @@
           "assetType",
           "mimeType",
           "sizeBytes",
-          "sha256"
+          "sha256",
+          "detectedMimeType",
+          "previewKind",
+          "processingStatus",
+          "previewAvailable"
         ],
         "title": "QcDraftAssetResponse",
         "type": "object"
@@ -3952,9 +4688,17 @@
             "title": "Createdbyuserid",
             "type": "string"
           },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
+            "type": "string"
+          },
+          "manifestHash": {
+            "title": "Manifesthash",
             "type": "string"
           },
           "productType": {
@@ -3981,6 +4725,8 @@
           "summary",
           "productType",
           "content",
+          "description",
+          "manifestHash",
           "createdByUserId",
           "createdAt",
           "assets"
@@ -4063,6 +4809,16 @@
       },
       "QcProductResponse": {
         "properties": {
+          "agentPreflight": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QcAgentPreflightResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "areaOrRegion": {
             "anyOf": [
               {
@@ -4210,6 +4966,7 @@
           "latestDraft",
           "managerNotes",
           "decisions",
+          "agentPreflight",
           "indexRecords",
           "disseminations",
           "feedbackRequests",
@@ -4362,6 +5119,45 @@
           "components"
         ],
         "title": "ReadinessResponse",
+        "type": "object"
+      },
+      "ReanalysisContextResponse": {
+        "properties": {
+          "customerReason": {
+            "title": "Customerreason",
+            "type": "string"
+          },
+          "managerRationale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Managerrationale"
+          },
+          "productId": {
+            "format": "uuid",
+            "title": "Productid",
+            "type": "string"
+          },
+          "unmetCriteria": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Unmetcriteria",
+            "type": "array"
+          }
+        },
+        "required": [
+          "productId",
+          "customerReason",
+          "unmetCriteria",
+          "managerRationale"
+        ],
+        "title": "ReanalysisContextResponse",
         "type": "object"
       },
       "RegistrationDecisionRequest": {
@@ -4782,9 +5578,28 @@
             ],
             "title": "Acceptedproductid"
           },
+          "assurance": {
+            "title": "Assurance",
+            "type": "string"
+          },
           "candidateCount": {
             "title": "Candidatecount",
             "type": "integer"
+          },
+          "corpusVersion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corpusversion"
+          },
+          "coverageStatus": {
+            "title": "Coveragestatus",
+            "type": "string"
           },
           "createdAt": {
             "format": "date-time",
@@ -4805,6 +5620,21 @@
           "offeredCount": {
             "title": "Offeredcount",
             "type": "integer"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "profileSpaceId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profilespaceid"
           },
           "query": {
             "title": "Query",
@@ -4833,13 +5663,22 @@
           "acceptedProductId",
           "createdAt",
           "retrievalMode",
-          "degradedReason"
+          "degradedReason",
+          "outcome",
+          "assurance",
+          "coverageStatus",
+          "profileSpaceId",
+          "corpusVersion"
         ],
         "title": "RfiSearchMetricsResponse",
         "type": "object"
       },
       "RfiSearchResultsResponse": {
         "properties": {
+          "assurance": {
+            "title": "Assurance",
+            "type": "string"
+          },
           "degradedReason": {
             "anyOf": [
               {
@@ -4868,6 +5707,10 @@
             "title": "Offers",
             "type": "array"
           },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
           "retrievalMode": {
             "title": "Retrievalmode",
             "type": "string"
@@ -4888,9 +5731,29 @@
           "offers",
           "metrics",
           "retrievalMode",
-          "degradedReason"
+          "degradedReason",
+          "outcome",
+          "assurance"
         ],
         "title": "RfiSearchResultsResponse",
+        "type": "object"
+      },
+      "RoleCountResponse": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "count"
+        ],
+        "title": "RoleCountResponse",
         "type": "object"
       },
       "RouteApprovalRequest": {
@@ -5157,6 +6020,16 @@
               }
             ]
           },
+          "jiocAgentDecision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JiocAgentDecisionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "managerDecisions": {
             "items": {
               "$ref": "#/components/schemas/ManagerDecisionResponse"
@@ -5177,6 +6050,16 @@
           },
           "priorityAssessment": {
             "$ref": "#/components/schemas/PriorityAssessmentResponse"
+          },
+          "reanalysisContext": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReanalysisContextResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "recommendation": {
             "anyOf": [
@@ -5239,12 +6122,67 @@
           "rfaReview",
           "cmReview",
           "recommendation",
+          "jiocAgentDecision",
           "clarifications",
           "agentRuns",
           "managerDecisions",
-          "workflowPlanUpdates"
+          "workflowPlanUpdates",
+          "reanalysisContext"
         ],
         "title": "RoutingTicketResponse",
+        "type": "object"
+      },
+      "SearchAnalyticsResponse": {
+        "properties": {
+          "apiKeyConfigured": {
+            "title": "Apikeyconfigured",
+            "type": "boolean"
+          },
+          "failedAssets": {
+            "title": "Failedassets",
+            "type": "integer"
+          },
+          "indexStatus": {
+            "title": "Indexstatus",
+            "type": "string"
+          },
+          "indexedPassages": {
+            "title": "Indexedpassages",
+            "type": "integer"
+          },
+          "indexedProducts": {
+            "title": "Indexedproducts",
+            "type": "integer"
+          },
+          "indexedRequests": {
+            "title": "Indexedrequests",
+            "type": "integer"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "searchRuns30d": {
+            "title": "Searchruns30D",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "provider",
+          "model",
+          "apiKeyConfigured",
+          "indexStatus",
+          "searchRuns30d",
+          "indexedProducts",
+          "indexedPassages",
+          "indexedRequests",
+          "failedAssets"
+        ],
+        "title": "SearchAnalyticsResponse",
         "type": "object"
       },
       "SearchEmbeddingConfigurationRequest": {
@@ -5340,6 +6278,10 @@
             "title": "Corpusversion",
             "type": "string"
           },
+          "definitiveNoMatchEnabled": {
+            "title": "Definitivenomatchenabled",
+            "type": "boolean"
+          },
           "degradedReason": {
             "anyOf": [
               {
@@ -5354,6 +6296,10 @@
           "dimensions": {
             "title": "Dimensions",
             "type": "integer"
+          },
+          "evaluationStatus": {
+            "title": "Evaluationstatus",
+            "type": "string"
           },
           "failedAssetCount": {
             "title": "Failedassetcount",
@@ -5391,6 +6337,10 @@
             "title": "Provider",
             "type": "string"
           },
+          "releaseId": {
+            "title": "Releaseid",
+            "type": "string"
+          },
           "spaceId": {
             "title": "Spaceid",
             "type": "string"
@@ -5418,7 +6368,10 @@
           "changedBy",
           "changedAt",
           "lastIndexedAt",
-          "degradedReason"
+          "degradedReason",
+          "releaseId",
+          "evaluationStatus",
+          "definitiveNoMatchEnabled"
         ],
         "title": "SearchEmbeddingStateResponse",
         "type": "object"
@@ -6529,6 +7482,9 @@
             "title": "Createdat",
             "type": "string"
           },
+          "customerStatus": {
+            "$ref": "#/components/schemas/CustomerStatusResponse"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -6601,6 +7557,7 @@
           "reference",
           "requesterUserId",
           "state",
+          "customerStatus",
           "intake",
           "intakeChecklist",
           "conversationStatus",
@@ -6630,6 +7587,9 @@
             "format": "date-time",
             "title": "Createdat",
             "type": "string"
+          },
+          "customerStatus": {
+            "$ref": "#/components/schemas/CustomerStatusResponse"
           },
           "id": {
             "format": "uuid",
@@ -6698,6 +7658,7 @@
           "reference",
           "requesterUserId",
           "state",
+          "customerStatus",
           "title",
           "priority",
           "isReadyForSubmission",
@@ -6814,6 +7775,52 @@
           }
         },
         "title": "UpdateAccessControlGroupRequest",
+        "type": "object"
+      },
+      "UserAnalyticsResponse": {
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "integer"
+          },
+          "activeUsers30d": {
+            "title": "Activeusers30D",
+            "type": "integer"
+          },
+          "disabled": {
+            "title": "Disabled",
+            "type": "integer"
+          },
+          "passwordResetRequired": {
+            "title": "Passwordresetrequired",
+            "type": "integer"
+          },
+          "pendingRegistrations": {
+            "title": "Pendingregistrations",
+            "type": "integer"
+          },
+          "roleCounts": {
+            "items": {
+              "$ref": "#/components/schemas/RoleCountResponse"
+            },
+            "title": "Rolecounts",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "active",
+          "disabled",
+          "passwordResetRequired",
+          "pendingRegistrations",
+          "activeUsers30d",
+          "roleCounts"
+        ],
+        "title": "UserAnalyticsResponse",
         "type": "object"
       },
       "UserClearanceRequest": {
@@ -6954,6 +7961,39 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "VoiceAnalyticsResponse": {
+        "properties": {
+          "apiKeyConfigured": {
+            "title": "Apikeyconfigured",
+            "type": "boolean"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "sessionsStarted30d": {
+            "title": "Sessionsstarted30D",
+            "type": "integer"
+          },
+          "users30d": {
+            "title": "Users30D",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "model",
+          "enabled",
+          "apiKeyConfigured",
+          "sessionsStarted30d",
+          "users30d"
+        ],
+        "title": "VoiceAnalyticsResponse",
+        "type": "object"
+      },
       "VoiceApiKeyUpdateRequest": {
         "properties": {
           "apiKey": {
@@ -6967,6 +8007,34 @@
           "apiKey"
         ],
         "title": "VoiceApiKeyUpdateRequest",
+        "type": "object"
+      },
+      "VoiceConnectionTestResponse": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "provider",
+          "model",
+          "message"
+        ],
+        "title": "VoiceConnectionTestResponse",
         "type": "object"
       },
       "VoiceModelStateResponse": {
@@ -9244,6 +10312,55 @@
         ]
       }
     },
+    "/api/v1/admin/voice-model/test": {
+      "post": {
+        "operationId": "test_voice_connection_api_v1_admin_voice_model_test_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceConnectionTestResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Voice Connection",
+        "tags": [
+          "voice"
+        ]
+      }
+    },
     "/api/v1/analyst/assignment-teams": {
       "get": {
         "operationId": "assignment_teams_api_v1_analyst_assignment_teams_get",
@@ -9780,6 +10897,65 @@
         ]
       }
     },
+    "/api/v1/analyst/tasks/{ticket_id}/submissions/upload": {
+      "post": {
+        "operationId": "upload_product_submission_api_v1_analyst_tasks__ticket_id__submissions_upload_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalystTaskResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Product Submission",
+        "tags": [
+          "analyst"
+        ]
+      }
+    },
     "/api/v1/analyst/tasks/{ticket_id}/submit": {
       "post": {
         "operationId": "submit_work_api_v1_analyst_tasks__ticket_id__submit_post",
@@ -9920,6 +11096,8 @@
     },
     "/api/v1/analytics/admin": {
       "get": {
+        "deprecated": true,
+        "description": "Retain the old shape without returning intelligence workflow detail.",
         "operationId": "admin_dashboard_api_v1_analytics_admin_get",
         "responses": {
           "200": {
@@ -9934,6 +11112,27 @@
           }
         },
         "summary": "Admin Dashboard",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/admin/platform": {
+      "get": {
+        "operationId": "admin_platform_dashboard_api_v1_analytics_admin_platform_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAnalyticsDashboardResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Platform Dashboard",
         "tags": [
           "analytics"
         ]
@@ -11539,6 +12738,144 @@
         ]
       }
     },
+    "/api/v1/routing/{ticket_id}/intervene": {
+      "post": {
+        "operationId": "intervene_in_route_api_v1_routing__ticket_id__intervene_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JiocInterventionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutingTicketResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Intervene In Route",
+        "tags": [
+          "routing"
+        ]
+      }
+    },
+    "/api/v1/routing/{ticket_id}/jioc-reanalysis-decision": {
+      "post": {
+        "operationId": "decide_jioc_reanalysis_api_v1_routing__ticket_id__jioc_reanalysis_decision_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JiocReanalysisDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutingTicketResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Decide Jioc Reanalysis",
+        "tags": [
+          "customer-outcomes"
+        ]
+      }
+    },
     "/api/v1/routing/{ticket_id}/manager-approval": {
       "post": {
         "operationId": "manager_approve_work_api_v1_routing__ticket_id__manager_approval_post",
@@ -11707,6 +13044,75 @@
         "summary": "Manager Review Work",
         "tags": [
           "routing"
+        ]
+      }
+    },
+    "/api/v1/routing/{ticket_id}/reanalysis-manager-decision": {
+      "post": {
+        "operationId": "decide_manager_reanalysis_api_v1_routing__ticket_id__reanalysis_manager_decision_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagerReanalysisDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutingTicketResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Decide Manager Reanalysis",
+        "tags": [
+          "customer-outcomes"
         ]
       }
     },
@@ -12072,6 +13478,65 @@
         ]
       }
     },
+    "/api/v1/similar-requests/tickets/{ticket_id}/continue": {
+      "post": {
+        "operationId": "continue_after_active_work_api_v1_similar_requests_tickets__ticket_id__continue_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Continue After Active Work",
+        "tags": [
+          "similar requests"
+        ]
+      }
+    },
     "/api/v1/similar-requests/tickets/{ticket_id}/join/{related_ticket_id}": {
       "post": {
         "operationId": "join_customer_match_api_v1_similar_requests_tickets__ticket_id__join__related_ticket_id__post",
@@ -12136,6 +13601,65 @@
           }
         },
         "summary": "Join Customer Match",
+        "tags": [
+          "similar requests"
+        ]
+      }
+    },
+    "/api/v1/similar-requests/tickets/{ticket_id}/retry": {
+      "post": {
+        "operationId": "retry_active_work_search_api_v1_similar_requests_tickets__ticket_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retry Active Work Search",
         "tags": [
           "similar requests"
         ]
@@ -12840,6 +14364,67 @@
           }
         },
         "summary": "Download Asset",
+        "tags": [
+          "store"
+        ]
+      }
+    },
+    "/api/v1/store/products/{product_id}/assets/{asset_id}/preview": {
+      "get": {
+        "operationId": "preview_store_asset_api_v1_store_products__product_id__assets__asset_id__preview_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "asset_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Asset Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Asset-Token",
+            "required": true,
+            "schema": {
+              "minLength": 20,
+              "title": "X-Asset-Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Preview Store Asset",
         "tags": [
           "store"
         ]
@@ -14078,6 +15663,75 @@
         ]
       }
     },
+    "/api/v1/tickets/{ticket_id}/requirement-decision": {
+      "post": {
+        "operationId": "decide_product_outcome_api_v1_tickets__ticket_id__requirement_decision_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerProductDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Decide Product Outcome",
+        "tags": [
+          "customer-outcomes"
+        ]
+      }
+    },
     "/api/v1/tickets/{ticket_id}/submit": {
       "post": {
         "operationId": "submit_ticket_api_v1_tickets__ticket_id__submit_post",
@@ -14483,6 +16137,67 @@
         "summary": "Release Voice Session",
         "tags": [
           "voice"
+        ]
+      }
+    },
+    "/api/v1/workflow/products/{ticket_id}/versions/{version_id}/assets/{asset_id}/preview": {
+      "get": {
+        "operationId": "preview_product_submission_api_v1_workflow_products__ticket_id__versions__version_id__assets__asset_id__preview_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Version Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "asset_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Asset Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Preview Product Submission",
+        "tags": [
+          "analyst"
         ]
       }
     }

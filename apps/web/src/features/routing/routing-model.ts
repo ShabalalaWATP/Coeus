@@ -44,7 +44,9 @@ export function canApproveWithOverride(
 
 export function upsertRoutingTicket(tickets: RoutingTicket[], nextTicket: RoutingTicket) {
   const shouldRemainVisible =
-    nextTicket.state === "JIOC_REVIEW" || nextTicket.state === "COLLECT_CHOICE";
+    nextTicket.state === "JIOC_REVIEW" ||
+    nextTicket.state === "COLLECT_CHOICE" ||
+    nextTicket.state === "JIOC_REANALYSIS_ADJUDICATION";
   const withoutCurrent = tickets.filter((ticket) => ticket.ticketId !== nextTicket.ticketId);
   return shouldRemainVisible ? [nextTicket, ...withoutCurrent] : withoutCurrent;
 }

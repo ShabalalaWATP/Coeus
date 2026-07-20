@@ -2,14 +2,20 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from coeus.api.dependencies import get_current_session, get_feedback_analytics_service
+from coeus.api.dependencies import (
+    get_admin_analytics_service,
+    get_current_session,
+    get_feedback_analytics_service,
+)
 from coeus.domain.auth import AuthenticatedSession
+from coeus.schemas.admin_analytics import AdminAnalyticsDashboardResponse
 from coeus.schemas.feedback_analytics import (
     AnalyticsDashboardResponse,
     AnalyticsMetricsResponse,
     ProductReuseResponse,
     TrendInsightResponse,
 )
+from coeus.services.admin_analytics import AdminAnalyticsService
 from coeus.services.feedback_analytics import (
     AnalyticsAudience,
     AnalyticsDashboard,
@@ -19,12 +25,37 @@ from coeus.services.feedback_analytics import (
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 
-@router.get("/admin", response_model=AnalyticsDashboardResponse)
+@router.get("/admin/platform", response_model=AdminAnalyticsDashboardResponse)
+async def admin_platform_dashboard(
+    authenticated: Annotated[AuthenticatedSession, Depends(get_current_session)],
+    service: Annotated[AdminAnalyticsService, Depends(get_admin_analytics_service)],
+) -> AdminAnalyticsDashboardResponse:
+    return AdminAnalyticsDashboardResponse.model_validate(service.dashboard(authenticated.user))
+
+
+@router.get("/admin", response_model=AnalyticsDashboardResponse, deprecated=True)
 async def admin_dashboard(
     authenticated: Annotated[AuthenticatedSession, Depends(get_current_session)],
-    service: Annotated[FeedbackAnalyticsService, Depends(get_feedback_analytics_service)],
+    service: Annotated[AdminAnalyticsService, Depends(get_admin_analytics_service)],
 ) -> AnalyticsDashboardResponse:
-    return _dashboard_response(service.dashboard(authenticated.user, AnalyticsAudience.ADMIN))
+    """Retain the old shape without returning intelligence workflow detail."""
+    service.dashboard(authenticated.user)
+    return AnalyticsDashboardResponse(
+        audience="admin",
+        metrics=AnalyticsMetricsResponse(
+            total_tickets=0,
+            active_tickets=0,
+            disseminations=0,
+            feedback_requested=0,
+            feedback_submitted=0,
+            average_rating=None,
+            average_search_candidates=None,
+            rfa_routes=0,
+            collection_routes=0,
+        ),
+        product_reuse=[],
+        trends=[],
+    )
 
 
 @router.get("/rfa", response_model=AnalyticsDashboardResponse)

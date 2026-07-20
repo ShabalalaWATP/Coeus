@@ -123,9 +123,7 @@ def test_provider_failure_degrades_to_the_mock_reply(monkeypatch: pytest.MonkeyP
     assert message == PRIORITY_QUESTION
 
 
-def test_admitted_reply_reports_remote_fallback_and_success(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_admitted_reply_reports_remote_fallback_and_success() -> None:
     responses: list[object] = [
         AppError(503, "provider_unavailable", "Synthetic failure."),
         "Remote response.",
@@ -137,10 +135,10 @@ def test_admitted_reply_reports_remote_fallback_and_success(
             raise response
         return str(response)
 
-    monkeypatch.setattr("coeus.services.ticket_builder.generate_text", reply)
     provider = ConfigurableIntakeProvider(
         Settings(environment="test", llm_provider="gemini_api", gemini_api_key="synthetic"),
         None,
+        text_generator=reply,
     )
 
     fallback = provider.build_admitted_assistant_message(_intake(), ())
@@ -152,9 +150,7 @@ def test_admitted_reply_reports_remote_fallback_and_success(
     assert success.provider_succeeded
 
 
-def test_provider_circuit_stops_repeated_failed_remote_calls(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_provider_circuit_stops_repeated_failed_remote_calls() -> None:
     calls = 0
 
     def fail(_call: object) -> str:
@@ -162,14 +158,13 @@ def test_provider_circuit_stops_repeated_failed_remote_calls(
         calls += 1
         raise AppError(503, "provider_unavailable", "Synthetic provider failure.")
 
-    monkeypatch.setattr("coeus.services.ticket_builder.generate_text", fail)
     settings = Settings(
         environment="test",
         llm_provider="gemini_api",
         gemini_api_key="env-secret",
         provider_circuit_failure_threshold=2,
     )
-    provider = ConfigurableIntakeProvider(settings, None)
+    provider = ConfigurableIntakeProvider(settings, None, text_generator=fail)
 
     assert provider.build_assistant_message(_intake(), ()) == PRIORITY_QUESTION
     assert provider.build_assistant_message(_intake(), ()) == PRIORITY_QUESTION
@@ -178,13 +173,10 @@ def test_provider_circuit_stops_repeated_failed_remote_calls(
     assert not provider.uses_operator_provider()
 
 
-def test_unexpected_provider_failure_is_recorded_and_propagated(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_unexpected_provider_failure_is_recorded_and_propagated() -> None:
     def fail(_call: object) -> str:
         raise RuntimeError("synthetic unexpected failure")
 
-    monkeypatch.setattr("coeus.services.ticket_builder.generate_text", fail)
     provider = ConfigurableIntakeProvider(
         Settings(
             environment="test",
@@ -193,6 +185,7 @@ def test_unexpected_provider_failure_is_recorded_and_propagated(
             provider_circuit_failure_threshold=1,
         ),
         None,
+        text_generator=fail,
     )
 
     with pytest.raises(RuntimeError, match="unexpected"):

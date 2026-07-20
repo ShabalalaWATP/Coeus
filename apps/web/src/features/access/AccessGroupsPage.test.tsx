@@ -14,6 +14,7 @@ const session: AuthSession = {
     displayName: "Requesting User",
     roles: ["Requester"],
     defaultRoute: "/app/requests",
+    passwordResetRequired: false,
     permissions: ["user:read_self"],
   },
 };
@@ -53,6 +54,7 @@ test("lets an authenticated user apply to an active group", async () => {
   vi.stubGlobal("fetch", fetchMock);
 
   renderWithProviders(<AccessGroupsPage />, "/access-groups", session);
+  expect(screen.queryByRole("link", { name: "Back to Admin" })).not.toBeInTheDocument();
   await waitFor(() =>
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8001/api/v1/acgs/catalogue?page=1&pageSize=50",
@@ -234,6 +236,10 @@ test("lets a platform administrator manage delegated administrators", async () =
   vi.stubGlobal("fetch", fetchMock);
 
   renderWithProviders(<AccessGroupsPage />, "/access-groups", adminSession);
+  expect(screen.getByRole("link", { name: "Back to Admin" })).toHaveAttribute(
+    "href",
+    "/admin/overview",
+  );
   expect(await screen.findByText("Platform Admin")).toBeVisible();
   await userEvent.type(screen.getByLabelText("Find an active user"), "Can");
   await userEvent.click(await screen.findByRole("button", { name: "Add Candidate One" }));

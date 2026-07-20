@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AccessGroupApplicationList } from "./AccessGroupApplicationList";
 import { AccessGroupReviewQueue } from "./AccessGroupReviewQueue";
 import { AccessGroupAdminPanel } from "./AccessGroupAdminPanel";
+import { AdminReturnLink } from "../../components/ui/AdminReturnLink";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/PageState";
 import { listAccessGroupApplications, listAccessGroups } from "../../lib/api-client/access-groups";
 import { useAuth } from "../../lib/auth/auth-context";
@@ -35,6 +36,7 @@ export default function AccessGroupsPage() {
     <div className="workspace-page access-groups-page">
       <section className="overview-hero" aria-labelledby="access-groups-title">
         <div>
+          <AdminReturnLink />
           <h1 id="access-groups-title">Access Groups</h1>
           <p>Find the need-to-know communities that support your work.</p>
         </div>

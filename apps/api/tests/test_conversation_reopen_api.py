@@ -64,6 +64,6 @@ async def test_closed_draft_conversation_can_be_reopened_before_submission() -> 
     assert reopened.json()["timeline"][-1]["eventType"] == "conversation_reopened"
     assert continued.json()["conversationStatus"] == "close_offered"
     assert reclosed.json()["conversationStatus"] == "closed"
-    assert submitted.json()["state"] == "RFI_SEARCHING"
+    assert submitted.json()["state"] == "RFI_SEARCH_INCOMPLETE"
     assert too_late.status_code == 409
     assert too_late.json()["error"]["code"] == "ticket_not_editable"

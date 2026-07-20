@@ -117,7 +117,19 @@ class CmCapabilityAgent:
         team = self._catalogue.team(candidates[0].team_id) if candidates else None
         # A confident answer needs a genuine collection term; a team-keyword
         # match alone is only an unconfirmed signal.
-        collection_hit = bool(terms.intersection(COLLECTION_TERMS))
+        task_terms = _terms(
+            " ".join(
+                value
+                for value in (
+                    ticket.intake.description,
+                    ticket.intake.operational_question,
+                    ticket.intake.required_output_format,
+                    ticket.intake.customer_success_criteria,
+                )
+                if value
+            )
+        )
+        collection_hit = bool(task_terms.intersection(COLLECTION_TERMS))
         signal_present = collection_hit or team is not None
         if collection_hit and team is None:
             team = self._catalogue.default_cm_team()
@@ -179,7 +191,7 @@ def _terms(text: str) -> frozenset[str]:
     # Tokenise on alphanumeric runs so punctuation such as "assessment?"
     # still matches, and fold simple plurals ("sensors" also counts as
     # "sensor") without a stemming dependency.
-    tokens = set(_TOKEN_PATTERN.findall(text))
+    tokens = set(_TOKEN_PATTERN.findall(text.casefold()))
     tokens.update(token[:-1] for token in tuple(tokens) if token.endswith("s") and len(token) > 3)
     return frozenset(tokens)
 

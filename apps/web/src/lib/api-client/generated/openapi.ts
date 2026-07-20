@@ -587,6 +587,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/admin/voice-model/test": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Test Voice Connection */
+    post: operations["test_voice_connection_api_v1_admin_voice_model_test_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/analyst/assignment-teams": {
     parameters: {
       query?: never;
@@ -757,6 +774,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/analyst/tasks/{ticket_id}/submissions/upload": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Upload Product Submission */
+    post: operations["upload_product_submission_api_v1_analyst_tasks__ticket_id__submissions_upload_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/analyst/tasks/{ticket_id}/submit": {
     parameters: {
       query?: never;
@@ -798,8 +832,29 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Admin Dashboard */
+    /**
+     * Admin Dashboard
+     * @deprecated
+     * @description Retain the old shape without returning intelligence workflow detail.
+     */
     get: operations["admin_dashboard_api_v1_analytics_admin_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/analytics/admin/platform": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Admin Platform Dashboard */
+    get: operations["admin_platform_dashboard_api_v1_analytics_admin_platform_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1387,6 +1442,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/routing/{ticket_id}/intervene": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Intervene In Route */
+    post: operations["intervene_in_route_api_v1_routing__ticket_id__intervene_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/routing/{ticket_id}/jioc-reanalysis-decision": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Decide Jioc Reanalysis */
+    post: operations["decide_jioc_reanalysis_api_v1_routing__ticket_id__jioc_reanalysis_decision_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/routing/{ticket_id}/manager-approval": {
     parameters: {
       query?: never;
@@ -1432,6 +1521,23 @@ export interface paths {
     get: operations["manager_review_work_api_v1_routing__ticket_id__manager_work_get"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/routing/{ticket_id}/reanalysis-manager-decision": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Decide Manager Reanalysis */
+    post: operations["decide_manager_reanalysis_api_v1_routing__ticket_id__reanalysis_manager_decision_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1540,6 +1646,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/similar-requests/tickets/{ticket_id}/continue": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Continue After Active Work */
+    post: operations["continue_after_active_work_api_v1_similar_requests_tickets__ticket_id__continue_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/similar-requests/tickets/{ticket_id}/join/{related_ticket_id}": {
     parameters: {
       query?: never;
@@ -1551,6 +1674,23 @@ export interface paths {
     put?: never;
     /** Join Customer Match */
     post: operations["join_customer_match_api_v1_similar_requests_tickets__ticket_id__join__related_ticket_id__post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/similar-requests/tickets/{ticket_id}/retry": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Retry Active Work Search */
+    post: operations["retry_active_work_search_api_v1_similar_requests_tickets__ticket_id__retry_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1686,6 +1826,23 @@ export interface paths {
     };
     /** Download Asset */
     get: operations["download_asset_api_v1_store_products__product_id__assets__asset_id__download_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/store/products/{product_id}/assets/{asset_id}/preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Preview Store Asset */
+    get: operations["preview_store_asset_api_v1_store_products__product_id__assets__asset_id__preview_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -2018,6 +2175,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/tickets/{ticket_id}/requirement-decision": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Decide Product Outcome */
+    post: operations["decide_product_outcome_api_v1_tickets__ticket_id__requirement_decision_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/tickets/{ticket_id}/submit": {
     parameters: {
       query?: never;
@@ -2150,6 +2324,23 @@ export interface paths {
     post?: never;
     /** Release Voice Session */
     delete: operations["release_voice_session_api_v1_voice_session__token__delete"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workflow/products/{ticket_id}/versions/{version_id}/assets/{asset_id}/preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Preview Product Submission */
+    get: operations["preview_product_submission_api_v1_workflow_products__ticket_id__versions__version_id__assets__asset_id__preview_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
     options?: never;
     head?: never;
     patch?: never;
@@ -2331,6 +2522,20 @@ export interface components {
       /** Body */
       body: string;
     };
+    /** AdminAnalyticsDashboardResponse */
+    AdminAnalyticsDashboardResponse: {
+      assistant: components["schemas"]["AssistantAnalyticsResponse"];
+      audit: components["schemas"]["AuditAnalyticsResponse"];
+      /**
+       * Generatedat
+       * Format: date-time
+       */
+      generatedAt: string;
+      process: components["schemas"]["ProcessAnalyticsResponse"];
+      search: components["schemas"]["SearchAnalyticsResponse"];
+      users: components["schemas"]["UserAnalyticsResponse"];
+      voice: components["schemas"]["VoiceAnalyticsResponse"];
+    };
     /** AdminUserListResponse */
     AdminUserListResponse: {
       /** Users */
@@ -2424,9 +2629,9 @@ export interface components {
       /** Availablemodels */
       availableModels: string[];
       /** Changedat */
-      changedAt?: string | null;
+      changedAt: string | null;
       /** Changedby */
-      changedBy?: string | null;
+      changedBy: string | null;
       /** Embeddedproductcount */
       embeddedProductCount: number;
       /** Embeddingprovider */
@@ -2434,7 +2639,7 @@ export interface components {
       /** Provider */
       provider: string;
       /** Providers */
-      providers?: components["schemas"]["AiProviderStateResponse"][];
+      providers: components["schemas"]["AiProviderStateResponse"][];
     };
     /** AiProviderSelectRequest */
     AiProviderSelectRequest: {
@@ -2647,6 +2852,17 @@ export interface components {
        */
       teamId: string;
     };
+    /** AssistantAnalyticsResponse */
+    AssistantAnalyticsResponse: {
+      /** Apikeyconfigured */
+      apiKeyConfigured: boolean;
+      /** Chatturns30D */
+      chatTurns30d: number;
+      /** Model */
+      model: string;
+      /** Provider */
+      provider: string;
+    };
     /** AttachmentMetadataRequest */
     AttachmentMetadataRequest: {
       /** Description */
@@ -2674,6 +2890,27 @@ export interface components {
       name: string;
       /** Sourcetype */
       sourceType: string;
+    };
+    /** AuditAnalyticsResponse */
+    AuditAnalyticsResponse: {
+      /** Configurationchanges30D */
+      configurationChanges30d: number;
+      /** Coveragestartsat */
+      coverageStartsAt: string | null;
+      /** Events30D */
+      events30d: number;
+      /** Loginfailures30D */
+      loginFailures30d: number;
+      /** Loginsuccesses30D */
+      loginSuccesses30d: number;
+      /** Retainedevents */
+      retainedEvents: number;
+      /** Retentionlimitreached */
+      retentionLimitReached: boolean;
+      /** Securityevents30D */
+      securityEvents30d: number;
+      /** Windowdays */
+      windowDays: number;
     };
     /** AuditEventResponse */
     AuditEventResponse: {
@@ -2998,6 +3235,69 @@ export interface components {
       /** Temporarycredential */
       temporaryCredential: string;
     };
+    /** CustomerEstimateResponse */
+    CustomerEstimateResponse: {
+      /**
+       * Asof
+       * Format: date-time
+       */
+      asOf: string;
+      /** Confidence */
+      confidence: string;
+      /** Earliest */
+      earliest: string | null;
+      /** Latest */
+      latest: string | null;
+      /** Likely */
+      likely: string | null;
+      /** Policyversion */
+      policyVersion: string;
+      /** Status */
+      status: string;
+    };
+    /** CustomerJourneyStageResponse */
+    CustomerJourneyStageResponse: {
+      /** Code */
+      code: string;
+      /** Label */
+      label: string;
+      /** Status */
+      status: string;
+    };
+    /** CustomerProductDecisionRequest */
+    CustomerProductDecisionRequest: {
+      /** Meetsrequirement */
+      meetsRequirement: boolean;
+      /**
+       * Reason
+       * @default
+       */
+      reason: string;
+      /** Unmetcriteria */
+      unmetCriteria?: string[];
+    };
+    /** CustomerStatusResponse */
+    CustomerStatusResponse: {
+      /** Actionrequired */
+      actionRequired: boolean;
+      /** Actiontype */
+      actionType: string | null;
+      /** Canonicalticketid */
+      canonicalTicketId: string | null;
+      /** Code */
+      code: string;
+      /** Currentleg */
+      currentLeg: string;
+      estimate: components["schemas"]["CustomerEstimateResponse"] | null;
+      /** Explanation */
+      explanation: string;
+      /** Journey */
+      journey: components["schemas"]["CustomerJourneyStageResponse"][];
+      /** Label */
+      label: string;
+      /** Nextmilestone */
+      nextMilestone: string | null;
+    };
     /** DecideAcgApplicationRequest */
     DecideAcgApplicationRequest: {
       /**
@@ -3030,6 +3330,8 @@ export interface components {
     DraftAssetResponse: {
       /** Assettype */
       assetType: string;
+      /** Detectedmimetype */
+      detectedMimeType: string;
       /**
        * Id
        * Format: uuid
@@ -3039,6 +3341,12 @@ export interface components {
       mimeType: string;
       /** Name */
       name: string;
+      /** Previewavailable */
+      previewAvailable: boolean;
+      /** Previewkind */
+      previewKind: string;
+      /** Processingstatus */
+      processingStatus: string;
       /** Sha256 */
       sha256: string;
       /** Sizebytes */
@@ -3059,8 +3367,14 @@ export interface components {
     };
     /** DraftProductResponse */
     DraftProductResponse: {
+      /** Acgids */
+      acgIds: string[];
+      /** Areaorregion */
+      areaOrRegion: string;
       /** Assets */
       assets: components["schemas"]["DraftAssetResponse"][];
+      /** Classificationlevel */
+      classificationLevel: number;
       /** Content */
       content: string;
       /**
@@ -3068,15 +3382,29 @@ export interface components {
        * Format: date-time
        */
       createdAt: string;
+      /** Description */
+      description: string;
+      /** Handlingcaveats */
+      handlingCaveats: string[];
       /**
        * Id
        * Format: uuid
        */
       id: string;
+      /** Manifesthash */
+      manifestHash: string;
+      /** Ownerteam */
+      ownerTeam: string;
       /** Producttype */
       productType: string;
+      /** Releasability */
+      releasability: string[];
+      /** Sourcetype */
+      sourceType: string;
       /** Summary */
       summary: string;
+      /** Tags */
+      tags: string[];
       /** Title */
       title: string;
       /** Versionnumber */
@@ -3261,6 +3589,46 @@ export interface components {
       /** Urgencyjustification */
       urgencyJustification?: string | null;
     };
+    /** JiocAgentDecisionResponse */
+    JiocAgentDecisionResponse: {
+      /** Confidence */
+      confidence: number;
+      /**
+       * Createdat
+       * Format: date-time
+       */
+      createdAt: string;
+      /** Disposition */
+      disposition: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Policyversion */
+      policyVersion: string;
+      /** Rationalecodes */
+      rationaleCodes: string[];
+      /** Recommendedroute */
+      recommendedRoute: string;
+    };
+    /** JiocInterventionRequest */
+    JiocInterventionRequest: {
+      /** Action */
+      action: string;
+      /** Reason */
+      reason: string;
+    };
+    /** JiocReanalysisDecisionRequest */
+    JiocReanalysisDecisionRequest: {
+      /**
+       * Decision
+       * @enum {string}
+       */
+      decision: "reanalyse" | "close";
+      /** Rationale */
+      rationale: string;
+    };
     /** LinkProductRequest */
     LinkProductRequest: {
       /**
@@ -3325,6 +3693,16 @@ export interface components {
       route: string;
       /** Status */
       status: string;
+    };
+    /** ManagerReanalysisDecisionRequest */
+    ManagerReanalysisDecisionRequest: {
+      /**
+       * Decision
+       * @enum {string}
+       */
+      decision: "agree" | "refer_to_jioc";
+      /** Rationale */
+      rationale: string;
     };
     /** MetadataSuggestionRequest */
     MetadataSuggestionRequest: {
@@ -3408,6 +3786,10 @@ export interface components {
     };
     /** OversightTaskResponse */
     OversightTaskResponse: {
+      /** Agentconfidence */
+      agentConfidence: number | null;
+      /** Agentdisposition */
+      agentDisposition: string | null;
       /** Analystcount */
       analystCount: number;
       /** Completedworkpackagecount */
@@ -3463,6 +3845,13 @@ export interface components {
       score: number;
       /** Tier */
       tier: string;
+    };
+    /** ProcessAnalyticsResponse */
+    ProcessAnalyticsResponse: {
+      /** Remoterequestsadmitted */
+      remoteRequestsAdmitted: number;
+      /** Remoterequestsdenied */
+      remoteRequestsDenied: number;
     };
     /** ProductReuseResponse */
     ProductReuseResponse: {
@@ -3524,6 +3913,67 @@ export interface components {
        * @default
        */
       title: string;
+    };
+    /** QcAgentCheckResponse */
+    QcAgentCheckResponse: {
+      /** Detail */
+      detail: string;
+      /** Key */
+      key: string;
+      /** Passed */
+      passed: boolean;
+    };
+    /** QcAgentFindingResponse */
+    QcAgentFindingResponse: {
+      /** Blocking */
+      blocking: boolean;
+      /** Category */
+      category: string;
+      /** Confidence */
+      confidence: number;
+      /** Detail */
+      detail: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Location */
+      location: string;
+      /** Originaltext */
+      originalText: string;
+      /** Severity */
+      severity: string;
+      /** Suggestedtext */
+      suggestedText: string;
+    };
+    /** QcAgentPreflightResponse */
+    QcAgentPreflightResponse: {
+      /** Blockers */
+      blockers: string[];
+      /** Checks */
+      checks: components["schemas"]["QcAgentCheckResponse"][];
+      /**
+       * Createdat
+       * Format: date-time
+       */
+      createdAt: string;
+      /**
+       * Draftversionid
+       * Format: uuid
+       */
+      draftVersionId: string;
+      /** Findings */
+      findings: components["schemas"]["QcAgentFindingResponse"][];
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Policyversion */
+      policyVersion: string;
+      /** Status */
+      status: string;
     };
     /** QcApprovalRequest */
     QcApprovalRequest: {
@@ -3600,6 +4050,8 @@ export interface components {
     QcDraftAssetResponse: {
       /** Assettype */
       assetType: string;
+      /** Detectedmimetype */
+      detectedMimeType: string;
       /**
        * Id
        * Format: uuid
@@ -3609,6 +4061,12 @@ export interface components {
       mimeType: string;
       /** Name */
       name: string;
+      /** Previewavailable */
+      previewAvailable: boolean;
+      /** Previewkind */
+      previewKind: string;
+      /** Processingstatus */
+      processingStatus: string;
       /** Sha256 */
       sha256: string;
       /** Sizebytes */
@@ -3630,11 +4088,15 @@ export interface components {
        * Format: uuid
        */
       createdByUserId: string;
+      /** Description */
+      description: string;
       /**
        * Id
        * Format: uuid
        */
       id: string;
+      /** Manifesthash */
+      manifestHash: string;
       /** Producttype */
       productType: string;
       /** Summary */
@@ -3693,6 +4155,7 @@ export interface components {
     };
     /** QcProductResponse */
     QcProductResponse: {
+      agentPreflight: components["schemas"]["QcAgentPreflightResponse"] | null;
       /** Areaorregion */
       areaOrRegion: string | null;
       /** Checklistkeys */
@@ -3790,6 +4253,20 @@ export interface components {
        * @enum {string}
        */
       status: "ok" | "ready" | "not_ready";
+    };
+    /** ReanalysisContextResponse */
+    ReanalysisContextResponse: {
+      /** Customerreason */
+      customerReason: string;
+      /** Managerrationale */
+      managerRationale: string | null;
+      /**
+       * Productid
+       * Format: uuid
+       */
+      productId: string;
+      /** Unmetcriteria */
+      unmetCriteria: string[];
     };
     /** RegistrationDecisionRequest */
     RegistrationDecisionRequest: {
@@ -3941,8 +4418,14 @@ export interface components {
     RfiSearchMetricsResponse: {
       /** Acceptedproductid */
       acceptedProductId: string | null;
+      /** Assurance */
+      assurance: string;
       /** Candidatecount */
       candidateCount: number;
+      /** Corpusversion */
+      corpusVersion: string | null;
+      /** Coveragestatus */
+      coverageStatus: string;
       /**
        * Createdat
        * Format: date-time
@@ -3952,6 +4435,10 @@ export interface components {
       degradedReason: string | null;
       /** Offeredcount */
       offeredCount: number;
+      /** Outcome */
+      outcome: string;
+      /** Profilespaceid */
+      profileSpaceId: string | null;
       /** Query */
       query: string;
       /** Rejectedcount */
@@ -3966,11 +4453,15 @@ export interface components {
     };
     /** RfiSearchResultsResponse */
     RfiSearchResultsResponse: {
+      /** Assurance */
+      assurance: string;
       /** Degradedreason */
       degradedReason: string | null;
       metrics: components["schemas"]["RfiSearchMetricsResponse"] | null;
       /** Offers */
       offers: components["schemas"]["RfiProductOfferResponse"][];
+      /** Outcome */
+      outcome: string;
       /** Retrievalmode */
       retrievalMode: string;
       /**
@@ -3980,6 +4471,13 @@ export interface components {
       ticketId: string;
       /** Ticketstate */
       ticketState: string;
+    };
+    /** RoleCountResponse */
+    RoleCountResponse: {
+      /** Count */
+      count: number;
+      /** Role */
+      role: string;
     };
     /** RouteApprovalRequest */
     RouteApprovalRequest: {
@@ -4069,11 +4567,13 @@ export interface components {
       /** Clarifications */
       clarifications: components["schemas"]["ClarificationRequestResponse"][];
       cmReview: components["schemas"]["CmCapabilityReviewResponse"] | null;
+      jiocAgentDecision: components["schemas"]["JiocAgentDecisionResponse"] | null;
       /** Managerdecisions */
       managerDecisions: components["schemas"]["ManagerDecisionResponse"][];
       /** Priority */
       priority: string | null;
       priorityAssessment: components["schemas"]["PriorityAssessmentResponse"];
+      reanalysisContext: components["schemas"]["ReanalysisContextResponse"] | null;
       recommendation: components["schemas"]["RouteRecommendationResponse"] | null;
       /** Reference */
       reference: string;
@@ -4094,6 +4594,27 @@ export interface components {
       title: string;
       /** Workflowplanupdates */
       workflowPlanUpdates: components["schemas"]["WorkflowPlanUpdateResponse"][];
+    };
+    /** SearchAnalyticsResponse */
+    SearchAnalyticsResponse: {
+      /** Apikeyconfigured */
+      apiKeyConfigured: boolean;
+      /** Failedassets */
+      failedAssets: number;
+      /** Indexstatus */
+      indexStatus: string;
+      /** Indexedpassages */
+      indexedPassages: number;
+      /** Indexedproducts */
+      indexedProducts: number;
+      /** Indexedrequests */
+      indexedRequests: number;
+      /** Model */
+      model: string;
+      /** Provider */
+      provider: string;
+      /** Searchruns30D */
+      searchRuns30d: number;
     };
     /** SearchEmbeddingConfigurationRequest */
     SearchEmbeddingConfigurationRequest: {
@@ -4128,10 +4649,14 @@ export interface components {
       chunkCount: number;
       /** Corpusversion */
       corpusVersion: string;
+      /** Definitivenomatchenabled */
+      definitiveNoMatchEnabled: boolean;
       /** Degradedreason */
       degradedReason: string | null;
       /** Dimensions */
       dimensions: number;
+      /** Evaluationstatus */
+      evaluationStatus: string;
       /** Failedassetcount */
       failedAssetCount: number;
       /** Indexgeneration */
@@ -4146,6 +4671,8 @@ export interface components {
       productCount: number;
       /** Provider */
       provider: string;
+      /** Releaseid */
+      releaseId: string;
       /** Spaceid */
       spaceId: string;
       /** Ticketcount */
@@ -4511,6 +5038,7 @@ export interface components {
        * Format: date-time
        */
       createdAt: string;
+      customerStatus: components["schemas"]["CustomerStatusResponse"];
       /**
        * Id
        * Format: uuid
@@ -4553,6 +5081,7 @@ export interface components {
        * Format: date-time
        */
       createdAt: string;
+      customerStatus: components["schemas"]["CustomerStatusResponse"];
       /**
        * Id
        * Format: uuid
@@ -4623,6 +5152,23 @@ export interface components {
       /** Name */
       name?: string | null;
     };
+    /** UserAnalyticsResponse */
+    UserAnalyticsResponse: {
+      /** Active */
+      active: number;
+      /** Activeusers30D */
+      activeUsers30d: number;
+      /** Disabled */
+      disabled: number;
+      /** Passwordresetrequired */
+      passwordResetRequired: number;
+      /** Pendingregistrations */
+      pendingRegistrations: number;
+      /** Rolecounts */
+      roleCounts: components["schemas"]["RoleCountResponse"][];
+      /** Total */
+      total: number;
+    };
     /** UserClearanceRequest */
     UserClearanceRequest: {
       /** Clearancelevel */
@@ -4674,10 +5220,34 @@ export interface components {
       /** Error Type */
       type: string;
     };
+    /** VoiceAnalyticsResponse */
+    VoiceAnalyticsResponse: {
+      /** Apikeyconfigured */
+      apiKeyConfigured: boolean;
+      /** Enabled */
+      enabled: boolean;
+      /** Model */
+      model: string;
+      /** Sessionsstarted30D */
+      sessionsStarted30d: number;
+      /** Users30D */
+      users30d: number;
+    };
     /** VoiceApiKeyUpdateRequest */
     VoiceApiKeyUpdateRequest: {
       /** Apikey */
       apiKey: string;
+    };
+    /** VoiceConnectionTestResponse */
+    VoiceConnectionTestResponse: {
+      /** Message */
+      message: string;
+      /** Model */
+      model: string;
+      /** Ok */
+      ok: boolean;
+      /** Provider */
+      provider: string;
     };
     /** VoiceModelStateResponse */
     VoiceModelStateResponse: {
@@ -6012,6 +6582,37 @@ export interface operations {
       };
     };
   };
+  test_voice_connection_api_v1_admin_voice_model_test_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["VoiceConnectionTestResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   assignment_teams_api_v1_analyst_assignment_teams_get: {
     parameters: {
       query: {
@@ -6339,6 +6940,39 @@ export interface operations {
       };
     };
   };
+  upload_product_submission_api_v1_analyst_tasks__ticket_id__submissions_upload_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path: {
+        ticket_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AnalystTaskResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   submit_work_api_v1_analyst_tasks__ticket_id__submit_post: {
     parameters: {
       query?: never;
@@ -6426,6 +7060,26 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["AnalyticsDashboardResponse"];
+        };
+      };
+    };
+  };
+  admin_platform_dashboard_api_v1_analytics_admin_platform_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminAnalyticsDashboardResponse"];
         };
       };
     };
@@ -7454,6 +8108,80 @@ export interface operations {
       };
     };
   };
+  intervene_in_route_api_v1_routing__ticket_id__intervene_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path: {
+        ticket_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["JiocInterventionRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RoutingTicketResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  decide_jioc_reanalysis_api_v1_routing__ticket_id__jioc_reanalysis_decision_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path: {
+        ticket_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["JiocReanalysisDecisionRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RoutingTicketResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   manager_approve_work_api_v1_routing__ticket_id__manager_approval_post: {
     parameters: {
       query?: never;
@@ -7542,6 +8270,43 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["AnalystTaskResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  decide_manager_reanalysis_api_v1_routing__ticket_id__reanalysis_manager_decision_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path: {
+        ticket_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ManagerReanalysisDecisionRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RoutingTicketResponse"];
         };
       };
       /** @description Validation Error */
@@ -7759,6 +8524,39 @@ export interface operations {
       };
     };
   };
+  continue_after_active_work_api_v1_similar_requests_tickets__ticket_id__continue_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path: {
+        ticket_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TicketResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   join_customer_match_api_v1_similar_requests_tickets__ticket_id__join__related_ticket_id__post: {
     parameters: {
       query?: never;
@@ -7780,6 +8578,39 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["SimilarRequestJoinResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  retry_active_work_search_api_v1_similar_requests_tickets__ticket_id__retry_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path: {
+        ticket_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TicketResponse"];
         };
       };
       /** @description Validation Error */
@@ -8083,6 +8914,40 @@ export interface operations {
     };
   };
   download_asset_api_v1_store_products__product_id__assets__asset_id__download_get: {
+    parameters: {
+      query?: never;
+      header: {
+        "X-Asset-Token": string;
+      };
+      path: {
+        product_id: string;
+        asset_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  preview_store_asset_api_v1_store_products__product_id__assets__asset_id__preview_get: {
     parameters: {
       query?: never;
       header: {
@@ -8798,6 +9663,43 @@ export interface operations {
       };
     };
   };
+  decide_product_outcome_api_v1_tickets__ticket_id__requirement_decision_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path: {
+        ticket_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CustomerProductDecisionRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TicketResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   submit_ticket_api_v1_tickets__ticket_id__submit_post: {
     parameters: {
       query?: never;
@@ -9053,6 +9955,39 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  preview_product_submission_api_v1_workflow_products__ticket_id__versions__version_id__assets__asset_id__preview_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        ticket_id: string;
+        version_id: string;
+        asset_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
       };
       /** @description Validation Error */
       422: {

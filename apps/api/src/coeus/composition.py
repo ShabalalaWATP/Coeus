@@ -1,46 +1,40 @@
-from dataclasses import dataclass
-
 from fastapi import FastAPI
 
+from coeus.api.identity_composition import IdentityComponents, configure_identity
+from coeus.api.product_workflow_composition import configure_product_workflow
+from coeus.api.search_composition import configure_search_services
+from coeus.api.ticket_discovery_composition import build_ticket_discovery_handler
 from coeus.application.ports.admission import ResourceAdmission
 from coeus.core.config import HOSTED_ENVIRONMENTS, Settings
-from coeus.persistence.factory import build_audit_event_store, build_state_store
+from coeus.persistence.factory import build_state_store
 from coeus.persistence.outbox import PostgresOutboxStore
 from coeus.persistence.state_store import PostgresStateStore
 from coeus.persistence.workflow_transaction import PostgresWorkflowTransaction
-from coeus.repositories.access import SeedAccessRepository
-from coeus.repositories.acg_applications import AcgApplicationRepository
-from coeus.repositories.auth import LoginAttemptRepository, SeedUserRepository, SessionRepository
-from coeus.repositories.registration import RegistrationRepository
 from coeus.repositories.teams import TeamRepository
 from coeus.repositories.teams_seed import seed_teams
-from coeus.services.access import build_access_services
+from coeus.services.admin_analytics import AdminAnalyticsService
 from coeus.services.admission_metrics import AdmissionMetrics
 from coeus.services.ai_models import AiModelService
 from coeus.services.analyst_assignment_service import AnalystAssignmentService
 from coeus.services.analyst_workflow import AnalystWorkflowService
 from coeus.services.asset_tokens import AssetTokenService
-from coeus.services.audit import AuditLog
-from coeus.services.auth import AuthService
 from coeus.services.demo_seed import seed_demo_dataset
 from coeus.services.email_delivery import build_email_provider
 from coeus.services.embeddings import build_embedding_service
 from coeus.services.feedback_analytics import build_feedback_analytics_service
 from coeus.services.integration_secrets import EncryptedIntegrationSecretStore
+from coeus.services.jioc_routing_agent import JiocRoutingAgentService
 from coeus.services.manager_approval import ManagerApprovalService
 from coeus.services.manager_queue import ManagerQueueService
 from coeus.services.notifications import NotificationService
 from coeus.services.object_storage import build_object_storage
 from coeus.services.outbox_dispatcher import OutboxDispatcher
-from coeus.services.passwords import PasswordHasher
 from coeus.services.postgres_resource_admission import PostgresResourceAdmissionController
 from coeus.services.quality_control import build_quality_control_service
-from coeus.services.registration import RegistrationService
 from coeus.services.release_notification_handler import ProductReleaseNotificationHandler
 from coeus.services.resource_admission import LocalResourceAdmissionController
 from coeus.services.rfi_search import build_rfi_search_service
 from coeus.services.routing import build_routing_service
-from coeus.services.search_composition import configure_search_services
 from coeus.services.similar_requests import SimilarRequestService
 from coeus.services.store_builder import build_store_services
 from coeus.services.team_availability import TeamAvailabilityService, TeamCalendarService
@@ -49,20 +43,9 @@ from coeus.services.ticket_builder import build_provider_admission, build_ticket
 from coeus.services.ticket_collaborators import TicketCollaboratorService
 from coeus.services.ticket_lifecycle import TicketLifecycleService
 from coeus.services.upload_admission import UploadAdmissionController
-from coeus.services.user_admin import UserAdminService
 from coeus.services.voice_admission import VoiceSessionAdmission
 from coeus.services.voice_models import VoiceModelService
 from coeus.services.voice_sessions import VoiceSessionService
-
-
-@dataclass(frozen=True)
-class IdentityComponents:
-    users: SeedUserRepository
-    sessions: SessionRepository
-    access: SeedAccessRepository
-    login_attempts: LoginAttemptRepository
-    password_hasher: PasswordHasher
-    audit_log: AuditLog
 
 
 def configure_application_state(app: FastAPI, settings: Settings) -> None:
@@ -79,7 +62,7 @@ def configure_application_state(app: FastAPI, settings: Settings) -> None:
     app.state.upload_admission = _upload_admission(settings, app.state.admission_metrics)
     app.state.search_admission = _search_admission(settings, app.state.admission_metrics)
     app.state.provider_admission = build_provider_admission(settings, app.state.admission_metrics)
-    identity = _configure_identity(app, settings)
+    identity = configure_identity(app, settings)
     _configure_data_services(app, settings, identity)
     _configure_workflow_services(app, settings, identity)
     if settings.should_seed_demo():
@@ -133,46 +116,6 @@ def _search_admission(settings: Settings, metrics: AdmissionMetrics) -> Resource
     )
 
 
-def _configure_identity(app: FastAPI, settings: Settings) -> IdentityComponents:
-    password_hasher = PasswordHasher(settings)
-    users = SeedUserRepository(settings, password_hasher, app.state.state_store)
-    sessions = SessionRepository(app.state.state_store)
-    access = SeedAccessRepository(users, app.state.state_store)
-    audit_log = AuditLog(
-        max_events=settings.audit_log_max_events,
-        event_store=build_audit_event_store(settings, app.state.state_store),
-    )
-    login_attempts = LoginAttemptRepository(max_entries=settings.login_attempt_max_entries)
-    app.state.auth_service = AuthService(
-        settings=settings,
-        users=users,
-        sessions=sessions,
-        login_attempts=login_attempts,
-        password_hasher=password_hasher,
-        audit_log=audit_log,
-    )
-    app.state.registration_service = RegistrationService(
-        settings=settings,
-        users=users,
-        registrations=RegistrationRepository(app.state.state_store),
-        password_hasher=password_hasher,
-        audit_log=audit_log,
-    )
-    app.state.access_services = build_access_services(
-        access,
-        audit_log,
-        AcgApplicationRepository(app.state.state_store),
-    )
-    app.state.user_admin_service = UserAdminService(
-        users=users,
-        sessions=sessions,
-        login_attempts=login_attempts,
-        password_hasher=password_hasher,
-        audit_log=audit_log,
-    )
-    return IdentityComponents(users, sessions, access, login_attempts, password_hasher, audit_log)
-
-
 def _configure_data_services(
     app: FastAPI, settings: Settings, identity: IdentityComponents
 ) -> None:
@@ -222,6 +165,15 @@ def _configure_data_services(
         app.state.ticket_services.tickets.assignment_snapshot,
     )
     configure_search_services(app, settings, identity.audit_log)
+    app.state.admin_analytics_service = AdminAnalyticsService(
+        identity.users,
+        identity.registrations,
+        identity.audit_log,
+        app.state.ai_model_service,
+        app.state.search_configuration_service,
+        app.state.voice_model_service,
+        app.state.admission_metrics,
+    )
     app.state.ai_model_service.set_embedded_product_count_provider(
         app.state.store_services.repository.embedded_product_count
     )
@@ -261,10 +213,8 @@ def _configure_workflow_services(
         app.state.grounded_search_service,
     )
     app.state.routing_service = build_routing_service(tickets, audit_log)
+    app.state.jioc_routing_agent_service = JiocRoutingAgentService(tickets)
     app.state.manager_queue_service = ManagerQueueService(tickets)
-    app.state.manager_approval_service = ManagerApprovalService(
-        tickets, audit_log, app.state.team_repository
-    )
     app.state.analyst_assignment_service = AnalystAssignmentService(
         tickets,
         identity.access,
@@ -276,8 +226,12 @@ def _configure_workflow_services(
         store,
         audit_log,
     )
-    # Notifications are built before QC because the QC release step notifies
-    # the requester when it publishes the approved product.
+    draft_policy = configure_product_workflow(
+        app, settings, identity.access, app.state.team_repository
+    )
+    app.state.manager_approval_service = ManagerApprovalService(
+        tickets, audit_log, app.state.team_repository, draft_policy
+    )
     app.state.notification_service = NotificationService(
         audit_log,
         app.state.state_store,
@@ -291,13 +245,14 @@ def _configure_workflow_services(
         app.state.object_storage,
         app.state.notification_service,
         app.state.team_repository,
+        draft_policy,
         app.state.workflow_transaction,
     )
     if settings.environment in HOSTED_ENVIRONMENTS:
         app.state.outbox_dispatcher = OutboxDispatcher(
             PostgresOutboxStore(settings.database_url),
             {
-                "ticket_shadow_changed": lambda _message: None,
+                "ticket_shadow_changed": build_ticket_discovery_handler(app, identity.access),
                 "product_release_notification": ProductReleaseNotificationHandler(
                     identity.users, app.state.notification_service
                 ),

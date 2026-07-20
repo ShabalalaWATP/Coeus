@@ -61,9 +61,9 @@ test("switches the active model within the live provider", async () => {
     ),
   );
   await waitFor(() => expect(within(liveRegion()).getByText(/admin@example\.test/)).toBeVisible());
-  expect(within(liveRegion()).getByText("Embeddings")).toBeVisible();
-  expect(within(liveRegion()).getByText("mock")).toBeVisible();
-  expect(within(liveRegion()).getByText("3")).toBeVisible();
+  expect(within(liveRegion()).getByText("Key")).toBeVisible();
+  expect(within(liveRegion()).getByText("Not saved")).toBeVisible();
+  expect(within(liveRegion()).getByText("Text chat only")).toBeVisible();
 });
 
 test("stores an API key for the selected provider without rendering it back", async () => {
@@ -180,8 +180,13 @@ test("reports a successful connection test", async () => {
   expect(
     await screen.findByText(/Connection OK: gemma-4-31b-it answered the test prompt/),
   ).toBeVisible();
+  expect(screen.getByText("Tested gemma-4-31b-it")).toBeVisible();
+  await userEvent.click(screen.getByRole("radio", { name: /gemini-3.1-pro-preview/ }));
+  expect(screen.queryByText(/Connection OK/)).not.toBeInTheDocument();
+  expect(screen.queryByText("Tested gemma-4-31b-it")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Test connection" })).toBeDisabled();
+  expect(screen.getByText(/Save or clear draft key and model changes/)).toBeVisible();
 });
-
 test("activating another provider warns about the app-wide change first", async () => {
   const fetchMock = vi
     .fn()

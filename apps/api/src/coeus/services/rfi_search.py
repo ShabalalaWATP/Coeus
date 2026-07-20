@@ -2,6 +2,7 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
+from coeus.application.ports.access import UserLookup
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
 from coeus.domain.access import ProductStatus
@@ -16,7 +17,6 @@ from coeus.domain.tickets import (
     ProductOfferStatus,
     TicketRecord,
 )
-from coeus.repositories.access import AccessRepository
 from coeus.services.audit import AuditLog
 from coeus.services.embeddings import EmbeddingService
 from coeus.services.grounded_search import GroundedSearchService
@@ -31,6 +31,12 @@ from coeus.services.rfi_records import (
     set_offer_status,
     timeline,
 )
+from coeus.services.rfi_search_assurance import (
+    RFI_RESULTS_REVIEW_PERMISSIONS,
+    RFI_RESULTS_REVIEW_STATES,
+    decide_search_outcome,
+    state_after_all_offers_rejected,
+)
 from coeus.services.rfi_search_types import RfiSearchResults
 from coeus.services.store import StoreSearchService, StoreServices
 from coeus.services.store_access import StoreDetailService
@@ -38,16 +44,6 @@ from coeus.services.ticket_mutations import TicketMutationService
 from coeus.services.ticket_records import is_editor, is_owner
 from coeus.services.tickets import TicketService, TicketServices
 
-RFI_RESULTS_REVIEW_PERMISSIONS = frozenset({Permission.RFA_REVIEW, Permission.COLLECTION_REVIEW})
-RFI_RESULTS_REVIEW_STATES = frozenset(
-    {
-        TicketState.RFI_NO_MATCH,
-        TicketState.JIOC_REVIEW,
-        TicketState.COLLECT_CHOICE,
-    }
-)
-# Ranking must see every permitted PUBLISHED product, not the store-browse page
-# size, so the candidate search uses one large internal page.
 RFI_CANDIDATE_SEARCH_LIMIT = 500
 
 
@@ -57,7 +53,7 @@ class RfiSearchService:
         tickets: TicketService,
         store_search: StoreSearchService,
         store_details: StoreDetailService,
-        access_repository: AccessRepository,
+        access_repository: UserLookup,
         audit_log: AuditLog,
         embeddings: EmbeddingService,
         grounded: GroundedSearchService,
@@ -77,7 +73,7 @@ class RfiSearchService:
         ticket = self._tickets.get_visible_ticket(actor, ticket_id)
         if not self._can_run_search(actor, ticket):
             raise AppError(404, "ticket_not_found", "Ticket was not found.")
-        if ticket.state != TicketState.RFI_SEARCHING:
+        if ticket.state not in {TicketState.RFI_SEARCHING, TicketState.RFI_SEARCH_INCOMPLETE}:
             raise AppError(409, "invalid_ticket_state", "Ticket is not awaiting RFI search.")
         requester = self._requester(ticket)
         search = self._store_search.search(
@@ -105,20 +101,14 @@ class RfiSearchService:
             requester, self._store_details, candidates, grounded.evidence
         )
         offers = rank_hybrid_rfi_candidates(candidates, ticket.intake)
-        target_state = (
-            TicketState.RFI_MATCH_OFFERED
-            if offers
-            else TicketState.RFI_NO_MATCH
-            if grounded.degraded_reason is None
-            else TicketState.RFI_SEARCHING
-        )
+        decision = decide_search_outcome(len(offers), grounded)
         now = datetime.now(UTC)
         summary = run_summary(len(offers), search.total)
         agent_runs, run_id = complete_agent_run(ticket, summary, now)
         search_timeline = [
             timeline(ticket.ticket_id, actor.user_id, "search_completed", summary),
         ]
-        if not offers and grounded.degraded_reason is None:
+        if decision.outcome == "no_match":
             search_timeline.append(
                 timeline(
                     ticket.ticket_id,
@@ -127,13 +117,13 @@ class RfiSearchService:
                     "No existing product matched this request.",
                 )
             )
-        elif not offers:
+        elif decision.outcome == "incomplete":
             search_timeline.append(
                 timeline(
                     ticket.ticket_id,
                     actor.user_id,
                     "rfi_search_degraded",
-                    "Semantic retrieval was unavailable; no definitive no-match was recorded.",
+                    "Search coverage was incomplete; no definitive no-match was recorded.",
                 )
             )
         metric = RfiSearchMetrics(
@@ -146,12 +136,17 @@ class RfiSearchService:
             created_at=now,
             retrieval_mode=grounded.retrieval_mode,
             degraded_reason=grounded.degraded_reason,
+            outcome=decision.outcome,
+            assurance=decision.assurance,
+            coverage_status=grounded.coverage_status,
+            profile_space_id=grounded.profile_space_id,
+            corpus_version=grounded.corpus_version,
         )
         updated = self._mutations.save_audited_if_current(
             ticket,
             replace(
                 ticket,
-                state=target_state,
+                state=decision.state,
                 agent_runs=agent_runs,
                 product_offers=offers,
                 search_evidence=grounded.evidence,
@@ -219,18 +214,17 @@ class RfiSearchService:
             ProductOfferStatus.REJECTED,
             reason.strip(),
         )
-        next_state = (
-            TicketState.JIOC_REVIEW
-            if not any(item.status == ProductOfferStatus.OFFERED for item in offers)
-            else TicketState.RFI_MATCH_OFFERED
-        )
+        metric = rejected_metric(ticket, offers)
+        next_state = TicketState.RFI_MATCH_OFFERED
+        if not any(item.status == ProductOfferStatus.OFFERED for item in offers):
+            next_state = state_after_all_offers_rejected(metric)
         updated = self._mutations.save_audited_if_current(
             ticket,
             replace(
                 ticket,
                 state=next_state,
                 product_offers=offers,
-                search_metrics=(*ticket.search_metrics[:-1], rejected_metric(ticket, offers)),
+                search_metrics=(*ticket.search_metrics[:-1], metric),
                 timeline=(
                     *ticket.timeline,
                     timeline(ticket.ticket_id, actor.user_id, "product_offer_rejected", reason),
@@ -283,8 +277,6 @@ class RfiSearchService:
             len(visible_offers) != len(ticket.product_offers)
             or actor.user_id != ticket.requester_user_id
         ):
-            # The source catalogue count is scoped to the requester. Do not
-            # disclose it to collaborators who may have a narrower ACG set.
             metric = replace(
                 metric,
                 candidate_count=(
@@ -308,6 +300,8 @@ class RfiSearchService:
             evidence=visible_evidence,
             retrieval_mode=metric.retrieval_mode if metric else "metadata_only",
             degraded_reason=metric.degraded_reason if metric else None,
+            outcome=metric.outcome if metric else "incomplete",
+            assurance=metric.assurance if metric else "assisted",
         )
 
     def _requester(self, ticket: TicketRecord) -> UserAccount:
@@ -332,7 +326,7 @@ class RfiSearchService:
 def build_rfi_search_service(
     ticket_services: TicketServices,
     store_services: StoreServices,
-    access_repository: AccessRepository,
+    access_repository: UserLookup,
     audit_log: AuditLog,
     embeddings: EmbeddingService,
     grounded: GroundedSearchService,

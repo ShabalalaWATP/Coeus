@@ -5,7 +5,43 @@ import httpx
 from coeus.core.errors import AppError
 
 OPENAI_REALTIME_CALLS_URL = "https://api.openai.com/v1/realtime/calls"
+OPENAI_REALTIME_CLIENT_SECRETS_URL = "https://api.openai.com/v1/realtime/client_secrets"
 MAX_SDP_ANSWER_BYTES = 64 * 1024
+MAX_TEST_RESPONSE_BYTES = 64 * 1024
+
+
+def test_realtime_connection(*, api_key: str, model: str) -> None:
+    """Validate Realtime credentials without opening an audio connection."""
+    try:
+        with httpx.Client(timeout=10) as client:
+            with client.stream(
+                "POST",
+                OPENAI_REALTIME_CLIENT_SECRETS_URL,
+                headers={"Authorization": f"Bearer {api_key}"},
+                json={"session": {"type": "realtime", "model": model}},
+            ) as response:
+                response.raise_for_status()
+                content = bytearray()
+                for chunk in response.iter_bytes():
+                    if len(content) + len(chunk) > MAX_TEST_RESPONSE_BYTES:
+                        raise ValueError("Oversized Realtime test response")
+                    content.extend(chunk)
+            payload = json.loads(content)
+            secret = payload.get("value") if isinstance(payload, dict) else None
+            if not isinstance(secret, str) or not secret.strip():
+                raise ValueError("Invalid Realtime test response")
+    except httpx.HTTPStatusError as exc:
+        raise _provider_status_error(exc.response.status_code) from exc
+    except httpx.HTTPError as exc:
+        raise AppError(
+            502, "voice_provider_unavailable", "The voice provider is temporarily unavailable."
+        ) from exc
+    except (UnicodeError, ValueError) as exc:
+        raise AppError(
+            502,
+            "voice_provider_invalid_response",
+            "The voice provider returned an invalid response.",
+        ) from exc
 
 
 def create_realtime_call(

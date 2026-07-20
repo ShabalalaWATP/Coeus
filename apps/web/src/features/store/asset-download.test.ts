@@ -1,4 +1,4 @@
-import { downloadAssetToDevice, safeDownloadFilename } from "./asset-download";
+import { downloadAssetToDevice } from "./asset-download";
 import { stubObjectUrls } from "./store-test-fixtures";
 
 afterEach(() => {
@@ -27,8 +27,19 @@ test("sanitises asset filenames before handing them to the browser", async () =>
   expect(document.body.querySelector("a")).not.toBeInTheDocument();
 });
 
-test("uses a safe fallback filename when the source name has no usable characters", () => {
-  expect(safeDownloadFilename(" ../<> ")).toBe("asset-download");
+test("uses a safe fallback filename when the source name has no usable characters", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({ ok: true, blob: () => Promise.resolve(new Blob(["mock"])) }),
+  );
+  stubObjectUrls();
+  const anchor = document.createElement("a");
+  vi.spyOn(document, "createElement").mockReturnValue(anchor);
+  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+
+  await downloadAssetToDevice("product-1", "asset-1", "download-token", " ../<> ");
+
+  expect(anchor.download).toBe("asset-download");
 });
 
 test("cleans up object URLs when browser download dispatch fails", async () => {

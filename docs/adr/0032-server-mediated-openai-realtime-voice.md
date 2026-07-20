@@ -23,6 +23,10 @@ silently replace the application-wide text-chat provider.
 - Use browser WebRTC for audio transport. The browser sends its SDP offer to
   Coeus, and Coeus creates the OpenAI Realtime call through
   `/v1/realtime/calls` using the server-held dedicated voice key.
+- Let authorised administrators test the saved key and model separately from
+  enabling voice. The bounded server-side test requests an ephemeral client
+  secret from `/v1/realtime/client_secrets`, validates only the expected
+  response shape and returns a sanitised result without exposing the secret.
 - Require authenticated `chat:use` permission and CSRF for session creation.
 - Hold a dedicated, expiring active-session lease for each successful start,
   with global and per-user caps and authenticated release on browser teardown.
@@ -58,6 +62,10 @@ policy.
 A new Realtime session retains the details spoken within that voice session,
 but does not inherit an existing typed-chat draft. The reviewed transcript is
 merged through the normal chat path after voice stops.
+
+The administration UI distinguishes a key being saved, voice being enabled and
+the latest connection test succeeding. A test neither changes configuration nor
+proves that a customer's browser, microphone or WebRTC path will succeed.
 
 The raw voice envelope is safety-scanned before any speaker filtering. This
 prevents a spoofed speaker label from hiding prompt-injection content, while

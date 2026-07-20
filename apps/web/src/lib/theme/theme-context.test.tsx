@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { ThemeProvider, themeStorageKey, useTheme } from "./theme-context";
+import { ThemeProvider, useTheme } from "./theme-context";
 import { render } from "@testing-library/react";
 
 function ThemeProbe() {
@@ -12,6 +12,8 @@ function ThemeProbe() {
     </button>
   );
 }
+
+const themeStorageKey = "coeus-theme-v1";
 
 test("uses dark theme by default and persists changes", async () => {
   const user = userEvent.setup();

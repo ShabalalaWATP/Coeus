@@ -52,6 +52,11 @@ class RfiSearchMetricsResponse(BaseModel):
     created_at: datetime = Field(serialization_alias="createdAt")
     retrieval_mode: str = Field(serialization_alias="retrievalMode")
     degraded_reason: str | None = Field(serialization_alias="degradedReason")
+    outcome: str
+    assurance: str
+    coverage_status: str = Field(serialization_alias="coverageStatus")
+    profile_space_id: str | None = Field(serialization_alias="profileSpaceId")
+    corpus_version: str | None = Field(serialization_alias="corpusVersion")
 
 
 class RfiSearchResultsResponse(BaseModel):
@@ -63,3 +68,5 @@ class RfiSearchResultsResponse(BaseModel):
     metrics: RfiSearchMetricsResponse | None
     retrieval_mode: str = Field(serialization_alias="retrievalMode")
     degraded_reason: str | None = Field(serialization_alias="degradedReason")
+    outcome: str
+    assurance: str

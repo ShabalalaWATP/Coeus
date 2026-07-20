@@ -2,6 +2,7 @@ export const ROLE_OPTIONS = [
   "Administrator",
   "Customer",
   "JIOC Team Member",
+  "JIOC Manager",
   "RFA Manager",
   "RFA Team Member",
   "CM Manager",

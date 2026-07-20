@@ -1,6 +1,8 @@
 import { CheckCircle2, RotateCcw } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { ControlledDocumentViewer } from "../../components/product/ControlledDocumentViewer";
+import { workflowProductPreviewUrl } from "../../lib/api-client/analyst";
 import { formatWorkflowState } from "../../lib/workflow/state-format";
 import type { AccessControlGroup } from "../../lib/api-client/access";
 import type { QcProduct } from "../../lib/api-client/qc";
@@ -60,11 +62,13 @@ export function QcProductDetail({
   }
   const draft = product.latestDraft;
   const allChecklistComplete = product.checklistKeys.every((key) => checklist[key]);
+  const preflightPassed = product.agentPreflight?.status === "passed";
   const releaseAcgId = selectedAcgId(releaseForm);
   const acgsUnavailable = acgsLoading || acgsFailed;
   const classificationLevel = Number(releaseForm.classificationLevel);
   const canApprove =
     product.state === "QC_REVIEW" &&
+    preflightPassed &&
     Boolean(draft?.content) &&
     Boolean(draft?.assets.length) &&
     allChecklistComplete &&
@@ -90,7 +94,10 @@ export function QcProductDetail({
           </button>
         ) : null}
       </div>
-      <ProductPreview product={product} />
+      <div className="qc-comparison">
+        <ProductPreview product={product} />
+        <AgentPreflight product={product} />
+      </div>
       <MetadataChecks acgId={releaseAcgId} form={releaseForm} product={product} />
       {acgsFailed ? (
         <div className="workspace-alert" role="alert">
@@ -149,8 +156,49 @@ export function QcProductDetail({
   );
 }
 
+function AgentPreflight({ product }: { product: QcProduct }) {
+  const preflight = product.agentPreflight;
+  return (
+    <section className="qc-panel" aria-labelledby="qc-agent-preflight-title">
+      <h3 id="qc-agent-preflight-title">QC Agent preflight</h3>
+      {preflight === null ? (
+        <p>The automated preflight has not completed. Release remains blocked.</p>
+      ) : (
+        <>
+          <p>
+            <strong>{preflight.status === "passed" ? "Passed" : "Blocked"}.</strong> Human QC and
+            the release checklist remain mandatory.
+          </p>
+          <ul>
+            {preflight.checks.map((check) => (
+              <li key={check.key}>
+                {check.passed ? "Passed" : "Blocked"}: {formatKey(check.key)}. {check.detail}
+              </li>
+            ))}
+          </ul>
+          <h4>Spelling and presentation findings</h4>
+          {preflight.findings.length === 0 ? (
+            <p>No deterministic spelling or duplicated-word findings were detected.</p>
+          ) : (
+            <ul className="qc-findings">
+              {preflight.findings.map((finding) => (
+                <li key={finding.id}>
+                  <strong>{finding.category}</strong> at {finding.location}: “{finding.originalText}
+                  ”<span>Suggested: “{finding.suggestedText}”</span>
+                  <small>{finding.detail}</small>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
 function ProductPreview({ product }: { product: QcProduct }) {
   const draft = product.latestDraft;
+  const asset = draft?.assets[0];
   return (
     <section className="qc-panel">
       <h3>Product preview</h3>
@@ -170,7 +218,21 @@ function ProductPreview({ product }: { product: QcProduct }) {
       </dl>
       <p>{product.operationalQuestion}</p>
       {draft === null ? <p>No draft product is attached.</p> : <p>{draft.summary}</p>}
-      {draft === null ? null : <pre className="qc-preview">{draft.content}</pre>}
+      {draft !== null && asset?.previewAvailable ? (
+        <>
+          <ControlledDocumentViewer
+            kind={asset.previewKind}
+            title={`${draft.title} QC preview`}
+            url={workflowProductPreviewUrl(product.ticketId, draft.id, asset.id)}
+          />
+          <details open>
+            <summary>Extracted text for checking</summary>
+            <pre className="qc-preview">{draft.content}</pre>
+          </details>
+        </>
+      ) : draft === null ? null : (
+        <pre className="qc-preview">{draft.content}</pre>
+      )}
     </section>
   );
 }

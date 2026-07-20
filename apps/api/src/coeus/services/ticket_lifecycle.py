@@ -41,22 +41,26 @@ class TicketLifecycleService:
     def no_match_consent(
         self, actor: UserAccount, ticket_id: UUID, task_as_new_request: bool
     ) -> TicketRecord:
-        """Record the requester decision after RFI search finds no product match."""
+        """Record the requester decision after all discovery options are resolved."""
         ticket = self._tickets.get_visible_ticket(actor, ticket_id)
         if not is_owner(actor, ticket):
             raise AppError(403, "forbidden", "Only the requester can decide new tasking.")
-        if ticket.state != TicketState.RFI_NO_MATCH:
+        if ticket.state not in {TicketState.RFI_NO_MATCH, TicketState.NEW_TASKING_CONSENT}:
             raise AppError(
-                409, "invalid_ticket_state", "This request is not awaiting no-match consent."
+                409, "invalid_ticket_state", "This request is not awaiting tasking consent."
             )
-        target_state = TicketState.JIOC_REVIEW if task_as_new_request else TicketState.CANCELLED
+        target_state = (
+            TicketState.JIOC_ROUTING_PENDING
+            if task_as_new_request
+            else TicketState.CLOSED_UNANSWERED
+        )
         if not can_transition(ticket.state, target_state):
             raise AppError(409, "invalid_ticket_state", "This request cannot be updated.")
         event_type = "tasking_confirmed" if task_as_new_request else "tasking_declined"
         body = (
-            "Requester confirmed tasking; queued for JIOC route review."
+            "Requester confirmed new tasking; queued for JIOC routing."
             if task_as_new_request
-            else "customer declined tasking after no-match"
+            else "The search did not answer the question and the requester declined new tasking."
         )
         return self._save_and_audit(
             ticket,

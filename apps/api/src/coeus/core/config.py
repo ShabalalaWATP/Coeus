@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     session_cookie_name: str = "coeus_session"
     session_ttl_seconds: int = 30 * 60
+    session_max_per_user: int = Field(default=5, ge=1, le=100)
+    session_max_entries: int = Field(default=1_000, ge=1, le=100_000)
     secure_cookies: bool = False
     session_secret: str | None = None
     csrf_secret: str | None = None
@@ -71,6 +73,10 @@ class Settings(BaseSettings):
     gemini_api_key: str | None = None
     gemini_api_model: str = "gemini-3.5-flash"
     gemini_embedding_model: str = "gemini-embedding-001"
+    search_approved_releases: list[str] = Field(default_factory=lambda: ["mock:token-hash-v2:1536"])
+    automatic_request_discovery_enabled: bool = True
+    active_work_offers_enabled: bool = True
+    jioc_agent_routing_enabled: bool = True
     gemini_api_timeout_seconds: int = Field(default=10, ge=1, le=60)
     available_gemini_models: list[str] = Field(
         default_factory=lambda: [
@@ -171,6 +177,7 @@ class Settings(BaseSettings):
             *_secret_errors(self),
             *_integration_errors(self),
             *_transport_errors(self),
+            *_identity_errors(self),
             *_local_runtime_errors(self),
         ]
         if errors:
@@ -290,6 +297,12 @@ def _transport_errors(settings: Settings) -> tuple[str, ...]:
             )
             break
     return tuple(errors)
+
+
+def _identity_errors(settings: Settings) -> tuple[str, ...]:
+    if settings.session_max_per_user > settings.session_max_entries:
+        return ("COEUS_SESSION_MAX_PER_USER cannot exceed COEUS_SESSION_MAX_ENTRIES.",)
+    return ()
 
 
 def _local_runtime_errors(settings: Settings) -> tuple[str, ...]:

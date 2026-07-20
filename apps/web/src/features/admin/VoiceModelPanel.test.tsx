@@ -27,6 +27,104 @@ test("requires a dedicated admin-entered key before voice can be enabled", async
   expect(screen.getByText(/Save the dedicated Voice API key/)).toBeVisible();
   expect(screen.getByText(/separate from every text-chat provider key/)).toBeVisible();
   expect(screen.getByRole("button", { name: "Save voice key" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Test connection" })).toBeDisabled();
+});
+
+test("tests the saved voice key without changing the enabled state", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(response(state))
+    .mockResolvedValueOnce(
+      response({
+        ok: true,
+        provider: "openai_realtime",
+        model: "gpt-realtime-mini",
+        message: "OpenAI Realtime accepted gpt-realtime-mini.",
+      }),
+    );
+  vi.stubGlobal("fetch", fetchMock);
+  renderWithProviders(<VoiceModelPanel csrfToken="csrf" />, "/admin/overview");
+
+  await userEvent.click(await screen.findByRole("button", { name: "Test connection" }));
+
+  expect(await screen.findByRole("status")).toHaveTextContent("Connection OK");
+  expect(fetchMock).toHaveBeenLastCalledWith(
+    "http://127.0.0.1:8001/api/v1/admin/voice-model/test",
+    expect.objectContaining({ headers: { "X-CSRF-Token": "csrf" }, method: "POST" }),
+  );
+  expect(screen.getByRole("checkbox")).not.toBeChecked();
+});
+
+test("clears a voice test result when the selected model is only a draft", async () => {
+  const configured = {
+    ...state,
+    availableModels: ["gpt-realtime-mini", "gpt-realtime"],
+  };
+  vi.stubGlobal(
+    "fetch",
+    vi
+      .fn()
+      .mockResolvedValueOnce(response(configured))
+      .mockResolvedValueOnce(
+        response({
+          ok: true,
+          provider: "openai_realtime",
+          model: "gpt-realtime-mini",
+          message: "Connection verified.",
+        }),
+      ),
+  );
+  renderWithProviders(<VoiceModelPanel csrfToken="csrf" />, "/admin/overview");
+
+  await userEvent.click(await screen.findByRole("button", { name: "Test connection" }));
+  expect(await screen.findByText("Tested gpt-realtime-mini")).toBeVisible();
+  await userEvent.selectOptions(screen.getByLabelText("Voice model"), "gpt-realtime");
+
+  expect(screen.queryByText(/Connection OK/)).not.toBeInTheDocument();
+  expect(screen.queryByText("Tested gpt-realtime-mini")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Test connection" })).toBeDisabled();
+  expect(screen.getByText(/Save or clear draft changes before testing/)).toBeVisible();
+});
+
+test("reports a rejected voice connection without exposing provider detail", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi
+      .fn()
+      .mockResolvedValueOnce(response(state))
+      .mockResolvedValueOnce(
+        response({
+          ok: false,
+          provider: "openai_realtime",
+          model: "gpt-realtime-mini",
+          message: "OpenAI rejected the configured Realtime API key.",
+        }),
+      ),
+  );
+  renderWithProviders(<VoiceModelPanel csrfToken="csrf" />, "/admin/overview");
+
+  await userEvent.click(await screen.findByRole("button", { name: "Test connection" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("Connection failed");
+  expect(screen.queryByText("provider detail")).not.toBeInTheDocument();
+});
+
+test("shows a bounded error when the voice connection test cannot run", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi
+      .fn()
+      .mockResolvedValueOnce(response(state))
+      .mockRejectedValueOnce(new Error("provider detail")),
+  );
+  renderWithProviders(<VoiceModelPanel csrfToken="csrf" />, "/admin/overview");
+
+  await userEvent.click(await screen.findByRole("button", { name: "Test connection" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "The voice connection test could not be run.",
+  );
+  expect(screen.queryByText("provider detail")).not.toBeInTheDocument();
 });
 
 test("saves the voice key through its separate admin endpoint", async () => {

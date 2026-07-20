@@ -13,7 +13,12 @@ from coeus.services.analyst_workflow import (
     ANALYST_LINKED_PRODUCT_LIMIT,
     ANALYST_TASK_LIST_LIMIT,
 )
-from rfi_search_helpers import login, submitted_ticket
+from rfi_search_helpers import (
+    ensure_search_index_ready,
+    login,
+    mark_search_complete_for_downstream_fixture,
+    submitted_ticket,
+)
 from routing_helpers import assignment_team_id
 from store_api_helpers import product_payload
 from test_analyst_api import _draft_payload
@@ -28,7 +33,7 @@ def _assert_product_hidden(response: Response, product_id: str) -> None:
 
 @pytest.mark.asyncio
 async def test_every_task_response_reauthorises_linked_products() -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    app = _legacy_routing_app()
     access = app.state.access_services.repository
     original_user = access.get_user_by_username("analyst@example.test")
     assert original_user is not None
@@ -145,7 +150,7 @@ async def _create_published_product(
 
 @pytest.mark.asyncio
 async def test_linking_cannot_create_its_own_draft_audience_authority() -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    app = _legacy_routing_app()
     access = app.state.access_services.repository
     analyst = access.get_user_by_username("analyst@example.test")
     creator = access.get_user_by_username("rfa.manager@example.test")
@@ -213,7 +218,7 @@ async def test_linking_cannot_create_its_own_draft_audience_authority() -> None:
 
 @pytest.mark.asyncio
 async def test_analyst_task_and_link_reauthorisation_work_is_bounded() -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    app = _legacy_routing_app()
     actor = app.state.access_services.repository.get_user_by_username("analyst@example.test")
     assert actor is not None
     async with AsyncClient(
@@ -261,6 +266,7 @@ async def test_analyst_task_and_link_reauthorisation_work_is_bounded() -> None:
 
 
 async def _collection_assigned_ticket(client: AsyncClient, app: FastAPI) -> str:
+    ensure_search_index_ready(app)
     requester = await login(client, "user@example.test")
     csrf = str(requester["csrfToken"])
     ticket_id = await submitted_ticket(
@@ -269,19 +275,27 @@ async def _collection_assigned_ticket(client: AsyncClient, app: FastAPI) -> str:
         title="Arctic sensor collection",
         area_or_region="Arctic fisheries",
         output_format="collection plan",
+        restrictions="Manual JIOC review required for this route fixture.",
     )
     search = await client.post(
         f"/api/v1/rfi-search/{ticket_id}/run", headers={"X-CSRF-Token": csrf}
     )
     assert search.status_code == 200
     if search.json()["ticketState"] == "RFI_MATCH_OFFERED":
+        mark_search_complete_for_downstream_fixture(app, ticket_id)
         for offer in search.json()["offers"]:
             search = await client.post(
                 f"/api/v1/rfi-search/{ticket_id}/offers/{offer['productId']}/reject",
                 headers={"X-CSRF-Token": csrf},
                 json={"reason": "Need a new collection plan."},
             )
-    elif search.json()["ticketState"] == "RFI_NO_MATCH":
+    if search.json()["ticketState"] == "ACTIVE_WORK_REVIEW":
+        search = await client.post(
+            f"/api/v1/similar-requests/tickets/{ticket_id}/continue",
+            headers={"X-CSRF-Token": csrf},
+        )
+    state = search.json().get("ticketState", search.json().get("state"))
+    if state in {"RFI_NO_MATCH", "NEW_TASKING_CONSENT"}:
         search = await client.post(
             f"/api/v1/tickets/{ticket_id}/no-match-consent",
             headers={"X-CSRF-Token": csrf},
@@ -322,3 +336,13 @@ async def _collection_assigned_ticket(client: AsyncClient, app: FastAPI) -> str:
     )
     assert assigned.status_code == 200
     return ticket_id
+
+
+def _legacy_routing_app() -> FastAPI:
+    return create_app(
+        Settings(
+            environment="test",
+            argon2_memory_cost=8_192,
+            automatic_request_discovery_enabled=False,
+        )
+    )

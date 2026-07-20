@@ -5,7 +5,11 @@ Sprint 1 to Sprint 13 entries live in
 2026-07-06 continuation lives in
 [DEVELOPMENT_STORY_2026-07-06.md](DEVELOPMENT_STORY_2026-07-06.md), and the
 2026-07-13 security milestone lives in
-[DEVELOPMENT_STORY_2026-07-13.md](DEVELOPMENT_STORY_2026-07-13.md).
+[DEVELOPMENT_STORY_2026-07-13.md](DEVELOPMENT_STORY_2026-07-13.md). The latest
+admin command-centre milestone is recorded in
+[DEVELOPMENT_STORY_2026-07-17.md](DEVELOPMENT_STORY_2026-07-17.md), and the
+customer-search and JIOC-agent milestone is recorded in
+[DEVELOPMENT_STORY_2026-07-18.md](DEVELOPMENT_STORY_2026-07-18.md).
 
 ## 2026-07-11 cross-role usability and documentation accuracy
 

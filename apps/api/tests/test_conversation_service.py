@@ -48,7 +48,7 @@ def test_new_chat_does_not_persist_blank_ticket_when_assistant_fails() -> None:
     assert audit_log.list_events() == ()
 
 
-def test_failed_remote_fallback_refunds_provider_capacity(monkeypatch) -> None:
+def test_failed_remote_fallback_refunds_provider_capacity() -> None:
     calls = 0
 
     def provider_reply(_call: object) -> str:
@@ -58,7 +58,6 @@ def test_failed_remote_fallback_refunds_provider_capacity(monkeypatch) -> None:
             raise AppError(503, "provider_unavailable", "Synthetic provider failure.")
         return "Synthetic remote reply."
 
-    monkeypatch.setattr("coeus.services.ticket_builder.generate_text", provider_reply)
     settings = Settings(
         environment="test",
         argon2_memory_cost=8_192,
@@ -82,7 +81,7 @@ def test_failed_remote_fallback_refunds_provider_capacity(monkeypatch) -> None:
         tickets,
         tickets.mutations,
         IntakeExtractionService(),
-        ConfigurableIntakeProvider(settings, None),
+        ConfigurableIntakeProvider(settings, None, text_generator=provider_reply),
         audit_log,
         admission,
     )

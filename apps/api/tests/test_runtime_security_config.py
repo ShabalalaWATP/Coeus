@@ -63,6 +63,10 @@ def test_default_database_url_uses_windows_safe_ipv4_loopback() -> None:
             Settings(environment="local", pubsub_enabled=True),
             "COEUS_PUBSUB_ENABLED must remain false",
         ),
+        (
+            Settings(environment="local", session_max_per_user=6, session_max_entries=5),
+            "COEUS_SESSION_MAX_PER_USER cannot exceed COEUS_SESSION_MAX_ENTRIES",
+        ),
     ],
 )
 def test_each_runtime_security_rule_group_is_enforced(settings: Settings, message: str) -> None:

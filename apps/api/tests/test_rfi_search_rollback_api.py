@@ -15,7 +15,7 @@ from rfi_search_helpers import login, submitted_ticket
 async def test_rfi_search_audit_failure_rolls_back_ticket(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    app = _app()
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
@@ -41,7 +41,7 @@ async def test_rfi_search_audit_failure_rolls_back_ticket(
 async def test_offer_accept_audit_failure_rolls_back_ticket(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    app = _app()
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
@@ -70,7 +70,7 @@ async def test_offer_accept_audit_failure_rolls_back_ticket(
 async def test_offer_reject_audit_failure_rolls_back_ticket(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    app = _app()
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
@@ -106,6 +106,16 @@ async def _run_search(client: AsyncClient, ticket_id: str, csrf_token: str) -> R
 
 def _fail_audit(*_args: object, **_kwargs: object) -> None:
     raise RuntimeError("audit unavailable")
+
+
+def _app() -> FastAPI:
+    return create_app(
+        Settings(
+            environment="test",
+            argon2_memory_cost=8_192,
+            automatic_request_discovery_enabled=False,
+        )
+    )
 
 
 def _stored_ticket(app: FastAPI, ticket_id: str) -> TicketRecord:

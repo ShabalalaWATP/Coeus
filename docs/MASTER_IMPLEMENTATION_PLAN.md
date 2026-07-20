@@ -59,6 +59,28 @@ Sprint 19 is implemented and locally verified. It adds 144 deterministic four-pa
 score calibration. Its contract is
 `docs/specs/synthetic-intelligence-library-and-search-assurance.md` and ADR 0031.
 
+The admin command-centre refinement is implemented under
+`docs/specs/admin-command-centre-and-analytics.md`. It adds compact configuration
+disclosures, explicit saved/active/tested states, a bounded Realtime voice
+connection test, admin return navigation and an operational analytics view
+derived only from the existing authorised aggregates. Full local gate evidence
+is green: 507 frontend tests pass at 98.69 per cent line and 95.05 per cent
+branch coverage; 1,072 non-PostgreSQL and 70 real-PostgreSQL backend tests pass
+at 98.08 per cent line and 95.08 per cent branch coverage.
+
+The customer-search and autonomous-routing orchestration is implemented under
+`docs/specs/customer-search-routing-orchestration.md` and ADR 0036. Submission
+now starts bounded product discovery, separates offers from definitive no-match
+and incomplete outcomes, offers authorised active work before owner-only new
+tasking consent, and routes authorised new work through a policy-constrained
+JIOC agent. JIOC managers have an audited on-the-loop intervention queue;
+customers receive safe stage and ETA projections; collection-to-analysis
+handoffs retain versioned context; deterministic QC preflight cannot bypass the
+human release authority. The clean PostgreSQL-backed gate passes 1,176 tests
+with one intentional compatibility skip at 98.09 per cent line and 95.12 per
+cent branch coverage. The frontend passes 518 tests at 98.85 per cent line and
+95.05 per cent branch coverage.
+
 ## Delivery Ledger
 
 | Sprint | Scope                                                                                                                                                                                                                                                                                                     | Status                       | Verification                                                                                                                                                                                                         |
@@ -84,6 +106,8 @@ score calibration. Its contract is
 | 18     | Customer request, conversational intake, searchable ACG, read-first profile and assigned-analyst conversation-context redesign.                                                                                                                                                                          | Implementation complete      | 447 frontend, 922 non-PostgreSQL and 68 PostgreSQL tests pass above the separate 95 percent line and branch gates; browser acceptance is recorded in the delivery handoff.                                             |
 | 19     | Deterministic live-demo PDF corpus, specialist ACG matrix and Store/RFI search assurance.                                                                                                                                                                                                                | Implementation complete      | 993 backend tests pass with PostgreSQL at 97.62 percent combined coverage; frontend passes at 98.54 percent line and 95.09 percent branch coverage, with a successful production build and visual PDF inspection.       |
 | 20     | Grounded generation-aware Intelligence Store retrieval, independent search embedding administration and full-corpus RFI/RFA duplicate assurance.                                                                                                                                                       | Implementation complete      | 1,129 backend tests pass with real PostgreSQL and pgvector at 98.16 percent line and 95.12 percent branch coverage. Live browser checks prove hybrid cited offers, visible-customer duplicate joining and manager RFA discovery. |
+| 21     | Compact admin command centre, explicit provider/key state, Realtime connection assurance, return navigation and separate aggregate-only admin analytics.                                                                                                                                                 | Implementation complete      | 507 frontend, 1,072 non-PostgreSQL and 70 real-PostgreSQL tests pass above the separate 95 per cent line and branch gates; static, contract and live browser acceptance checks pass.                                   |
+| 22     | Customer-controlled product resolution, assured no-match, active-work joining, autonomous policy-constrained JIOC routing, manager intervention, safe tracking and deterministic QC preflight.                                                                                                             | Implementation complete      | 1,176 backend tests and one intentional skip pass at 98.09 per cent line and 95.12 per cent branch coverage; 518 frontend tests pass at 98.85 per cent line and 95.05 per cent branch coverage.                          |
 
 ## Sprint 11 Delivered Scope
 
@@ -252,3 +276,75 @@ delivery and role-walkthrough evidence is recorded in
 - Semgrep hardened scan: 0 findings.
 - Gitleaks committed-history scan: no leaks found.
 - File line limit and Compose config: passed.
+
+## 18 July 2026 External Product Lifecycle Milestone
+
+Status: implemented and verified locally.
+
+- Assigned analysts can upload immutable DOCX, PPTX, PDF, PNG, JPEG and WebP
+  products with title, summary, description, product/source type, owner, area,
+  dates, tags, classification, releasability, caveats and one or more ACGs.
+- File signatures and Office structure are checked server-side. Spoofed types,
+  macros, external Office relationships, malformed files, empty files, EICAR
+  test content and over-limit uploads fail closed.
+- Manager approval pins the exact submission manifest. Human QC sees a safe
+  preview or extracted-text fallback beside deterministic UK-English proofing
+  findings, then releases the same source bytes into the Intelligence Store.
+- Released products use existing Store ACG controls, protected inline preview
+  and exact-byte download. Customer acceptance closes the requirement;
+  rejection returns to the responsible RFA or CM manager, with disagreement
+  adjudicated by an independent JIOC human.
+- Raster images without trusted OCR produce an explicit proofing-coverage
+  warning. Production Office rendition and OCR remain separate worker
+  capabilities, and hosted upload remains unavailable until a malware scanner
+  is configured.
+
+Verification evidence:
+
+- Backend: 1,206 passed, one intentional N-1 compatibility skip, 97.12 per cent
+  combined coverage with disposable PostgreSQL migration, transaction,
+  concurrency, codec and projection tests enabled.
+- Frontend: complete Vitest suite passed at 98.29 per cent lines/statements,
+  95.04 per cent functions and 95.00 per cent branches.
+- Ruff, backend formatting, mypy, ESLint, Prettier, TypeScript, OpenAPI
+  generation, architecture, security-policy, documentation and 350-line gates
+  passed.
+
+## 18 July 2026 Quality, SOLID And Security Remediation
+
+Status: implemented and verified for the supported local-first deployment
+boundary.
+
+- Closed the password-change current-state race and bounded durable sessions
+  with atomic confirmation, expiry pruning, per-user and global admission, and
+  rollback-safe session issue.
+- Replaced coarse draft-preview permissions with one live object policy over
+  the exact ticket, version and asset. Clearance, active ACG membership,
+  workflow state and current analyst, same-route manager or named-QC ownership
+  are checked before any storage read. Administrators have no implicit content
+  authority.
+- Added receive-time upload limits, permission-before-parse ordering, bounded
+  Office archive reads, hardened PPTX XML, Windows-safe restore paths and a
+  capacity-neutral registration response.
+- Removed confirmed dead code, including the superseded similar-request join
+  implementation, and added production Knip plus Python declaration analysis.
+- Moved API composition out of services, narrowed repository and provider
+  ports, enabled C901, centralised frontend route policy and query identity,
+  and split request and routing mutation hotspots.
+- Corrected protected Blob lifetime, forced-reset contract use, dirty-draft
+  refresh, 409 reconciliation, 413 recovery and reported accessibility states.
+
+Verification evidence:
+
+- Backend: 1,233 passed, one intentional external N-1 source-tree skip, 98.13
+  per cent line coverage and 95.15 per cent branch coverage, including the
+  supported PostgreSQL integration stack.
+- Frontend: 530 passed at 98.65 per cent line, 95.05 per cent function and
+  95.14 per cent branch coverage.
+- Formatting, Ruff, strict mypy, ESLint, TypeScript, architecture, C901,
+  350-line, OpenAPI compatibility, documentation, security-policy and both
+  dead-code modes pass. Dependency audits, Bandit and scoped redacted Gitleaks
+  working-tree scans are clean.
+- The closure ledger is
+  `docs/security/SECURITY_REVIEW_REMEDIATION_2026-07-18.md`; ADRs 0038 and 0039
+  record the identity and protected-draft boundaries.

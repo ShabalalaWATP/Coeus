@@ -72,6 +72,7 @@ export type Ticket = Omit<
   | "agentRuns"
   | "clarificationRequests"
   | "timeline"
+  | "customerStatus"
 > & {
   state: TicketState;
   conversationStatus: ConversationStatus;
@@ -82,18 +83,29 @@ export type Ticket = Omit<
   agentRuns: AgentRun[];
   clarificationRequests?: ClarificationRequest[];
   timeline: TimelineEntry[];
+  customerStatus?: ApiSchemas["CustomerStatusResponse"];
 };
 
-export type TicketSummary = Omit<ApiSchemas["TicketSummaryResponse"], "state"> & {
+export type TicketSummary = Omit<
+  ApiSchemas["TicketSummaryResponse"],
+  "state" | "customerStatus"
+> & {
   state: TicketState;
+  customerStatus?: ApiSchemas["CustomerStatusResponse"];
 };
 
 export type TicketState =
   | "DRAFT_INTAKE"
   | "INFO_REQUIRED"
   | "RFI_SEARCHING"
+  | "RFI_SEARCH_INCOMPLETE"
   | "RFI_MATCH_OFFERED"
+  | "ACTIVE_WORK_REVIEW"
+  | "ACTIVE_WORK_SEARCH_INCOMPLETE"
   | "RFI_NO_MATCH"
+  | "NEW_TASKING_CONSENT"
+  | "JIOC_ROUTING_PENDING"
+  | "JIOC_INTERVENTION_HOLD"
   | "JIOC_REVIEW"
   | "COLLECT_CHOICE"
   | "ANALYST_ASSIGNMENT"
@@ -102,8 +114,14 @@ export type TicketState =
   | "REWORK_REQUIRED"
   | "MANAGER_APPROVAL"
   | "DISSEMINATION_READY"
+  | "MANAGER_REANALYSIS_REVIEW"
+  | "JIOC_REANALYSIS_ADJUDICATION"
   | "CLOSED_DELIVERED"
+  | "CLOSED_REQUIREMENT_MET"
+  | "CLOSED_REANALYSIS_DECLINED"
   | "CLOSED_EXISTING_PRODUCT_ACCEPTED"
+  | "CLOSED_UNANSWERED"
+  | "CLOSED_JOINED_EXISTING_WORK"
   | "CANCELLED";
 
 export type IntakeUpdate = Partial<
@@ -280,9 +298,14 @@ export async function listUserDirectory(query: string): Promise<DirectoryUser[]>
   return response.users;
 }
 
-export async function confirmTicketDelivery(ticketId: string, csrfToken: string): Promise<Ticket> {
-  return apiRequestJson<Ticket>(`/api/v1/tickets/${pathSegment(ticketId)}/confirm-delivery`, {
-    headers: { "X-CSRF-Token": csrfToken },
+export async function decideProductOutcome(
+  ticketId: string,
+  payload: { meetsRequirement: boolean; reason: string; unmetCriteria: string[] },
+  csrfToken: string,
+): Promise<Ticket> {
+  return apiRequestJson<Ticket>(`/api/v1/tickets/${pathSegment(ticketId)}/requirement-decision`, {
+    body: JSON.stringify(payload),
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
   });
 }

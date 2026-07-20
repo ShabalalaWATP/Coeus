@@ -1,5 +1,6 @@
 from collections.abc import Iterable
 
+from coeus.core.permissions import Permission
 from coeus.domain.auth import UserAccount
 from coeus.domain.tickets import (
     AgentRun,
@@ -17,6 +18,9 @@ from coeus.schemas.tickets import (
     ChatMessageResponse,
     ClarificationResponse,
     CollaboratorResponse,
+    CustomerEstimateResponse,
+    CustomerJourneyStageResponse,
+    CustomerStatusResponse,
     DirectoryResponse,
     DirectoryUserResponse,
     IntakeChecklistItemResponse,
@@ -25,15 +29,24 @@ from coeus.schemas.tickets import (
     TicketSummaryResponse,
     TimelineEntryResponse,
 )
+from coeus.services.customer_projection import customer_clarifications, customer_timeline
+from coeus.services.customer_status import CustomerStatus, customer_status
 from coeus.services.intake_standard import applicable_entries, entry_satisfied, entry_value
 
 
 def to_ticket_response(ticket: TicketRecord, actor: UserAccount) -> TicketResponse:
+    status = customer_status(ticket, actor)
+    staff_view = Permission.TICKET_READ_ALL in actor.permissions
+    clarifications = (
+        ticket.clarification_requests if staff_view else customer_clarifications(ticket)
+    )
+    history = ticket.timeline if staff_view else customer_timeline(ticket)
     return TicketResponse(
         ticket_id=ticket.ticket_id,
         reference=ticket.reference,
         requester_user_id=ticket.requester_user_id,
         state=ticket.state.value,
+        customer_status=_to_customer_status(status),
         intake=_to_intake_response(ticket.intake),
         intake_checklist=_to_intake_checklist(ticket.intake),
         conversation_status=ticket.conversation_status,
@@ -46,22 +59,21 @@ def to_ticket_response(ticket: TicketRecord, actor: UserAccount) -> TicketRespon
         ],
         messages=[_to_message_response(message) for message in ticket.messages],
         attachments=[_to_attachment_response(attachment) for attachment in ticket.attachments],
-        agent_runs=[_to_agent_run_response(run) for run in ticket.agent_runs],
-        clarification_requests=[
-            _to_clarification_response(item) for item in ticket.clarification_requests
-        ],
-        timeline=[_to_timeline_response(entry) for entry in ticket.timeline],
+        agent_runs=[_to_agent_run_response(run) for run in ticket.agent_runs] if staff_view else [],
+        clarification_requests=[_to_clarification_response(item) for item in clarifications],
+        timeline=[_to_timeline_response(entry) for entry in history],
         created_at=ticket.created_at,
         updated_at=ticket.updated_at,
     )
 
 
-def to_ticket_summary_response(ticket: TicketRecord) -> TicketSummaryResponse:
+def to_ticket_summary_response(ticket: TicketRecord, actor: UserAccount) -> TicketSummaryResponse:
     return TicketSummaryResponse(
         ticket_id=ticket.ticket_id,
         reference=ticket.reference,
         requester_user_id=ticket.requester_user_id,
         state=ticket.state.value,
+        customer_status=_to_customer_status(customer_status(ticket, actor)),
         title=ticket.intake.title,
         priority=ticket.intake.priority,
         is_ready_for_submission=not ticket.intake.missing_information,
@@ -91,6 +103,35 @@ def _visible_product_matches(ticket: TicketRecord, actor: UserAccount) -> list[s
     if ticket.requester_user_id != actor.user_id:
         return []
     return list(ticket.visible_product_matches)
+
+
+def _to_customer_status(status: CustomerStatus) -> CustomerStatusResponse:
+    estimate = status.estimate
+    return CustomerStatusResponse(
+        code=status.code,
+        label=status.label,
+        explanation=status.explanation,
+        current_leg=status.current_leg,
+        action_required=status.action_required,
+        action_type=status.action_type,
+        next_milestone=status.next_milestone,
+        canonical_ticket_id=status.canonical_ticket_id,
+        estimate=CustomerEstimateResponse(
+            earliest=estimate.earliest,
+            likely=estimate.likely,
+            latest=estimate.latest,
+            confidence=estimate.confidence,
+            status=estimate.status,
+            as_of=estimate.as_of,
+            policy_version=estimate.policy_version,
+        )
+        if estimate
+        else None,
+        journey=[
+            CustomerJourneyStageResponse(code=item.code, label=item.label, status=item.status)
+            for item in status.journey
+        ],
+    )
 
 
 def _to_intake_checklist(intake: IntakeDetails) -> list[IntakeChecklistItemResponse]:

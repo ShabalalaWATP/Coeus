@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 
 import { AppShell } from "./AppShell";
 import { resetQueryClientForTests } from "../../app/query-client";
-import { previewProfile } from "../../lib/permissions/route-access";
+import { previewProfile } from "../../test/test-utils";
 import { renderWithProviders } from "../../test/test-utils";
 
 beforeEach(() => {

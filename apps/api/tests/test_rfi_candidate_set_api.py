@@ -39,7 +39,13 @@ def _filler_payload(acg_id: str, index: int) -> dict[str, object]:
 async def test_rfi_search_considers_candidates_beyond_first_store_page() -> None:
     """A matching product must still be offered when more than one store-browse
     page (12) of permitted products sorts ahead of it alphabetically."""
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    app = create_app(
+        Settings(
+            environment="test",
+            argon2_memory_cost=8_192,
+            automatic_request_discovery_enabled=False,
+        )
+    )
     regional_acg = next(
         acg for acg in app.state.access_services.repository.list_acgs() if "ALPHA" in acg.code
     )

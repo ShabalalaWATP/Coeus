@@ -3,27 +3,19 @@ import type { Dispatch, SetStateAction } from "react";
 import { useNavigate } from "react-router-dom";
 
 import type { TicketWorkspaceActions, TicketWorkspacePending } from "./TicketWorkspace";
+import { useRequestDecisionMutations } from "./useRequestDecisionMutations";
 import {
   ticketSummary,
   updateTicketSummary,
   updateTicketSummaryState,
   withAcceptedProduct,
 } from "./request-summary-updates";
-import {
-  acceptProductOffer,
-  rejectProductOffer,
-  runRfiSearch,
-  type RfiSearchResults,
-} from "../../lib/api-client/rfi-search";
-import { joinSimilarRequest } from "../../lib/api-client/similar-requests";
+import type { RfiSearchResults } from "../../lib/api-client/rfi-search";
 import {
   addTicketAttachment,
   addTicketCollaborator,
   addTicketInformation,
   cancelTicket,
-  chooseCollectOption,
-  consentNoMatch,
-  confirmTicketDelivery,
   reopenTicketConversation,
   removeTicketCollaborator,
   sendChatMessage,
@@ -33,6 +25,7 @@ import {
   type IntakeUpdate,
   type Ticket,
 } from "../../lib/api-client/tickets";
+import { ApiError } from "../../lib/api-client/client";
 import { actionErrorMessage } from "../../lib/mutations/action-error";
 
 type UseRequestWorkspaceMutationsInput = {
@@ -59,8 +52,13 @@ export function useRequestWorkspaceMutations({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const clearActionError = () => setActionError(null);
-  const failAction = (message: string) => (error: unknown) =>
+  const failAction = (message: string) => (error: unknown) => {
     setActionError(actionErrorMessage(error, message));
+    if (error instanceof ApiError && error.status === 409) {
+      void queryClient.invalidateQueries({ queryKey: ["tickets", "detail", selectedTicketId] });
+      void queryClient.invalidateQueries({ queryKey: ["tickets"] });
+    }
+  };
 
   const updateTicketCache = (ticket: Ticket) => {
     setActionError(null);
@@ -130,17 +128,6 @@ export function useRequestWorkspaceMutations({
       setJourneyOpen(true);
     },
   });
-  const joinSimilarMutation = useMutation({
-    mutationFn: (relatedTicketId: string) =>
-      joinSimilarRequest(selectedTicketId, relatedTicketId, csrfToken),
-    onError: failAction("The similar request could not be joined. Try again."),
-    onMutate: clearActionError,
-    onSuccess: (joined) => {
-      setDismissedSimilarNoticeIds((current) => [...new Set([...current, selectedTicketId])]);
-      void queryClient.invalidateQueries({ queryKey: ["tickets"] });
-      void navigate(`/app/requests/${encodeURIComponent(joined.joinedTicketId)}`);
-    },
-  });
   const attachmentMutation = useMutation({
     mutationFn: (payload: AttachmentMetadataInput) =>
       addTicketAttachment(selectedTicketId, payload, csrfToken),
@@ -153,25 +140,6 @@ export function useRequestWorkspaceMutations({
     onError: failAction("Additional information could not be added. Try again."),
     onMutate: clearActionError,
     onSuccess: updateTicketCache,
-  });
-  const runRfiMutation = useMutation({
-    mutationFn: () => runRfiSearch(selectedTicketId, csrfToken),
-    onError: failAction("The product search could not be started. Try again."),
-    onMutate: clearActionError,
-    onSuccess: updateRfiCache,
-  });
-  const acceptOfferMutation = useMutation({
-    mutationFn: (productId: string) => acceptProductOffer(selectedTicketId, productId, csrfToken),
-    onError: failAction("The product offer could not be accepted. Try again."),
-    onMutate: clearActionError,
-    onSuccess: updateRfiCache,
-  });
-  const rejectOfferMutation = useMutation({
-    mutationFn: ({ productId, reason }: { productId: string; reason: string }) =>
-      rejectProductOffer(selectedTicketId, productId, reason, csrfToken),
-    onError: failAction("The product offer could not be rejected. Try again."),
-    onMutate: clearActionError,
-    onSuccess: updateRfiCache,
   });
   const addCollaboratorMutation = useMutation({
     mutationFn: ({ username, access }: { username: string; access: "editor" | "viewer" }) =>
@@ -192,58 +160,49 @@ export function useRequestWorkspaceMutations({
     onMutate: clearActionError,
     onSuccess: updateTicketCache,
   });
-  const noMatchConsentMutation = useMutation({
-    mutationFn: (taskAsNewRequest: boolean) =>
-      consentNoMatch(selectedTicketId, taskAsNewRequest, csrfToken),
-    onError: failAction("The tasking decision could not be recorded. Try again."),
-    onMutate: clearActionError,
-    onSuccess: updateTicketCache,
-  });
-  const collectChoiceMutation = useMutation({
-    mutationFn: (analysed: boolean) => chooseCollectOption(selectedTicketId, analysed, csrfToken),
-    onError: failAction("The collect choice could not be recorded. Try again."),
-    onMutate: clearActionError,
-    onSuccess: updateTicketCache,
-  });
-  const confirmDeliveryMutation = useMutation({
-    mutationFn: (confirmTicketId: string) => confirmTicketDelivery(confirmTicketId, csrfToken),
-    onError: failAction("Delivery could not be confirmed. Refresh and try again."),
-    onMutate: clearActionError,
-    onSuccess: (ticket) => {
+  const decisions = useRequestDecisionMutations({
+    clearActionError,
+    csrfToken,
+    failAction,
+    onProductOutcome: (ticket) => {
       setActionError(null);
       queryClient.setQueryData(["tickets", "detail", ticket.id], ticket);
       updateTicketSummary(queryClient, ticketSummary(ticket));
     },
+    onRfiUpdate: updateRfiCache,
+    onTicketUpdate: updateTicketCache,
+    selectedTicketId,
+    setDismissedSimilarNoticeIds,
   });
 
   const actions: TicketWorkspaceActions = {
-    onAccept: (productId) => acceptOfferMutation.mutate(productId),
+    onAccept: (productId) => decisions.acceptOffer.mutate(productId),
     onAddAttachment: (payload, onSuccess) => attachmentMutation.mutate(payload, { onSuccess }),
     onAddCollaborator: (username, access, onSuccess) =>
       addCollaboratorMutation.mutate({ username, access }, { onSuccess }),
     onAddInformation: (body) => informationMutation.mutate(body),
     onCancel: (reason, onSuccess) => cancelMutation.mutate(reason, { onSuccess }),
-    onCollectChoice: (analysed) => collectChoiceMutation.mutate(analysed),
-    onNoMatchConsent: (taskAsNewRequest) => noMatchConsentMutation.mutate(taskAsNewRequest),
-    onReject: (productId, reason) => rejectOfferMutation.mutate({ productId, reason }),
+    onCollectChoice: (analysed) => decisions.collectChoice.mutate(analysed),
+    onNoMatchConsent: (taskAsNewRequest) => decisions.noMatchConsent.mutate(taskAsNewRequest),
+    onReject: (productId, reason) => decisions.rejectOffer.mutate({ productId, reason }),
     onRemoveCollaborator: (userId) => removeCollaboratorMutation.mutate(userId),
     onReopenConversation: () => reopenConversationMutation.mutate(),
-    onRun: () => runRfiMutation.mutate(),
-    onSave: (payload) => intakeMutation.mutate(payload),
+    onRun: () => decisions.runRfi.mutate(),
+    onSave: (payload, onSuccess) => intakeMutation.mutate(payload, { onSuccess }),
     onSend: (message, onSuccess) => chatMutation.mutate(message, { onSuccess }),
     onSubmit: () => submitMutation.mutate(),
   };
   const pending: TicketWorkspacePending = {
-    accepting: acceptOfferMutation.isPending,
+    accepting: decisions.acceptOffer.isPending,
     adding: informationMutation.isPending,
     attaching: attachmentMutation.isPending,
     cancelling: cancelMutation.isPending,
-    choosingCollect: collectChoiceMutation.isPending,
+    choosingCollect: decisions.collectChoice.isPending,
     collaborating: addCollaboratorMutation.isPending || removeCollaboratorMutation.isPending,
-    consenting: noMatchConsentMutation.isPending,
-    rejecting: rejectOfferMutation.isPending,
+    consenting: decisions.noMatchConsent.isPending,
+    rejecting: decisions.rejectOffer.isPending,
     reopening: reopenConversationMutation.isPending,
-    running: runRfiMutation.isPending,
+    running: decisions.runRfi.isPending,
     saving: intakeMutation.isPending,
     sending: chatMutation.isPending,
     submitting: submitMutation.isPending,
@@ -252,10 +211,18 @@ export function useRequestWorkspaceMutations({
   return {
     actions,
     clearActionError,
-    confirmDelivery: (ticketId: string) => confirmDeliveryMutation.mutate(ticketId),
-    isConfirmingDelivery: confirmDeliveryMutation.isPending,
-    isJoiningSimilarRequest: joinSimilarMutation.isPending,
-    joinSimilarRequest: (ticketId: string) => joinSimilarMutation.mutate(ticketId),
+    decideProductOutcome: (
+      ticketId: string,
+      meetsRequirement: boolean,
+      reason: string,
+      unmetCriteria: string[],
+    ) => decisions.productOutcome.mutate({ ticketId, meetsRequirement, reason, unmetCriteria }),
+    isDecidingProductOutcome: decisions.productOutcome.isPending,
+    isResolvingSimilarRequest:
+      decisions.joinSimilar.isPending || decisions.continueSimilar.isPending,
+    continueAfterSimilarRequest: () => decisions.continueSimilar.mutate(),
+    joinSimilarRequest: (ticketId: string) => decisions.joinSimilar.mutate(ticketId),
+    retryActiveWorkSearch: () => decisions.retryActiveWork.mutate(),
     pending,
   };
 }

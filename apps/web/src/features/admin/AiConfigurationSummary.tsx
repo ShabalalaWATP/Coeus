@@ -19,12 +19,18 @@ export function AiConfigurationSummary({ state }: { state: AiModelState }) {
       </div>
       <dl className="ai-live__stats">
         <div>
-          <dt>Embeddings</dt>
-          <dd>{state.embeddingProvider}</dd>
+          <dt>Key</dt>
+          <dd>
+            {state.provider === "mock"
+              ? "Not required"
+              : liveProvider?.apiKeyConfigured
+                ? "Saved"
+                : "Not saved"}
+          </dd>
         </div>
         <div>
-          <dt>Products embedded</dt>
-          <dd>{state.embeddedProductCount}</dd>
+          <dt>Scope</dt>
+          <dd>Text chat only</dd>
         </div>
         {state.changedBy ? (
           <div>

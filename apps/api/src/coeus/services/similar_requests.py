@@ -1,16 +1,11 @@
 from dataclasses import replace
-from datetime import UTC, datetime
 from uuid import UUID
 
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
 from coeus.domain.auth import UserAccount
 from coeus.domain.enums import TicketState
-from coeus.domain.tickets import (
-    CollaboratorAccess,
-    TicketCollaborator,
-    TicketRecord,
-)
+from coeus.domain.tickets import TicketRecord
 from coeus.persistence.search_index_repository import SearchIndexRepository
 from coeus.services.audit import AuditLog
 from coeus.services.embeddings import EmbeddingService
@@ -27,7 +22,7 @@ from coeus.services.similar_request_scoring import (
     SimilarRequestMatch,
     score_similar_requests,
 )
-from coeus.services.ticket_records import is_collaborator, is_owner, timeline
+from coeus.services.ticket_records import timeline
 from coeus.services.tickets import TicketServices
 
 CUSTOMER_NOTICE_STATES = OPEN_SIMILARITY_STATES - {TicketState.INFO_REQUIRED}
@@ -86,62 +81,6 @@ class SimilarRequestService:
                 },
             )
         return visible
-
-    def join_visible_match(
-        self, actor: UserAccount, ticket_id: UUID, related_ticket_id: UUID
-    ) -> TicketRecord:
-        source = self._tickets.tickets.get_visible_ticket(actor, ticket_id)
-        if not is_owner(actor, source):
-            raise AppError(404, "ticket_not_found", "Ticket was not found.")
-        target = self._tickets.tickets.get_visible_ticket(actor, related_ticket_id)
-        match = self._find_match(source, target, CUSTOMER_SIMILARITY_THRESHOLD, actor.user_id)
-        if match is None:
-            raise AppError(404, "similar_request_not_found", "Similar request was not found.")
-        if is_owner(actor, target) or is_collaborator(actor, target):
-            return target
-        collaborator = TicketCollaborator(
-            user_id=actor.user_id,
-            username=actor.username,
-            display_name=actor.display_name,
-            access=CollaboratorAccess.VIEWER,
-            added_by_user_id=actor.user_id,
-            created_at=datetime.now(UTC),
-        )
-        proposed = replace(
-            target,
-            collaborators=(*target.collaborators, collaborator),
-            timeline=(
-                *target.timeline,
-                timeline(
-                    target.ticket_id,
-                    actor.user_id,
-                    "similar_request_joined",
-                    f"{actor.display_name} joined from {source.reference}.",
-                ),
-            ),
-        )
-        return self._tickets.mutations.save_with_audits_if_current(
-            target,
-            proposed,
-            actor,
-            (
-                (
-                    "ticket_collaborator_added",
-                    {
-                        "ticket_id": str(target.ticket_id),
-                        "collaborator_user_id": str(actor.user_id),
-                        "access": CollaboratorAccess.VIEWER.value,
-                    },
-                ),
-                (
-                    "similar_request_joined",
-                    {
-                        "ticket_id": str(source.ticket_id),
-                        "related_ticket_id": str(target.ticket_id),
-                    },
-                ),
-            ),
-        )
 
     def manager_matches(
         self, actor: UserAccount, ticket_id: UUID

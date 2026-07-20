@@ -212,6 +212,7 @@ class AnalystWorkflowService:
             replace(
                 ticket,
                 draft_products=(*ticket.draft_products, version),
+                manager_approved_manifest_hash=None,
                 timeline=(
                     *ticket.timeline,
                     timeline(ticket.ticket_id, actor.user_id, "draft_product_saved", draft.title),

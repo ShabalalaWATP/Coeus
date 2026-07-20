@@ -16,6 +16,10 @@ from coeus.api.presenters.tickets import (
     to_ticket_response,
     to_ticket_summary_response,
 )
+from coeus.api.workflow_dependencies import (
+    get_request_submission_service,
+    get_tasking_consent_service,
+)
 from coeus.core.permissions import Permission
 from coeus.core.resource_limits import DEFAULT_TICKET_PAGE_SIZE, MAX_TICKET_PAGE_SIZE
 from coeus.domain.auth import AuthenticatedSession
@@ -33,6 +37,8 @@ from coeus.schemas.tickets import (
     TicketListResponse,
     TicketResponse,
 )
+from coeus.services.request_submission import RequestSubmissionService
+from coeus.services.tasking_consent import TaskingConsentService
 from coeus.services.ticket_collaborators import TicketCollaboratorService
 from coeus.services.ticket_lifecycle import TicketLifecycleService
 from coeus.services.tickets import TicketServices
@@ -53,7 +59,7 @@ async def list_tickets(
         authenticated.user, cursor=cursor, page_size=page_size
     )
     return TicketListResponse(
-        tickets=[to_ticket_summary_response(ticket) for ticket in page.tickets],
+        tickets=[to_ticket_summary_response(ticket, authenticated.user) for ticket in page.tickets],
         next_cursor=page.next_cursor,
     )
 
@@ -138,10 +144,10 @@ async def add_attachment(
 async def submit_ticket(
     ticket_id: UUID,
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
-    ticket_services: Annotated[TicketServices, Depends(get_ticket_services)],
+    submission: Annotated[RequestSubmissionService, Depends(get_request_submission_service)],
 ) -> TicketResponse:
     return to_ticket_response(
-        ticket_services.tickets.submit(authenticated.user, ticket_id),
+        await submission.submit(authenticated.user, ticket_id),
         authenticated.user,
     )
 
@@ -214,10 +220,10 @@ async def no_match_consent(
     ticket_id: UUID,
     payload: NoMatchConsentRequest,
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
-    lifecycle: Annotated[TicketLifecycleService, Depends(get_ticket_lifecycle_service)],
+    consent: Annotated[TaskingConsentService, Depends(get_tasking_consent_service)],
 ) -> TicketResponse:
     return to_ticket_response(
-        lifecycle.no_match_consent(authenticated.user, ticket_id, payload.task_as_new_request),
+        consent.decide(authenticated.user, ticket_id, payload.task_as_new_request),
         authenticated.user,
     )
 

@@ -38,7 +38,21 @@ def test_manifest_round_trip_and_file_digest(tmp_path: Path) -> None:
     assert safe_relative_path("products/evidence.bin") == Path("products", "evidence.bin")
 
 
-@pytest.mark.parametrize("value", ["", "/absolute", "../escape", "safe/../escape"])
+@pytest.mark.parametrize(
+    "value",
+    [
+        "",
+        "/absolute",
+        "../escape",
+        "safe/../escape",
+        "safe\\..\\escape",
+        "C:/escape",
+        "objects/payload:stream",
+        "objects/CON",
+        "objects/trailing. ",
+        "objects/control\x00.bin",
+    ],
+)
 def test_safe_relative_path_rejects_unsafe_values(value: str) -> None:
     with pytest.raises(ValueError, match="unsafe"):
         safe_relative_path(value)

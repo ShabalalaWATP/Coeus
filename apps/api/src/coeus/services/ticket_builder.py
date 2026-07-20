@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 from coeus.application.ports.admission import ProviderAdmission
 from coeus.application.ports.workflow_transaction import WorkflowTransactionPort
 from coeus.core.config import HOSTED_ENVIRONMENTS, Settings
@@ -109,10 +111,16 @@ class ConfigurableIntakeProvider:
     to the deterministic mock reply rather than losing the customer's message.
     """
 
-    def __init__(self, settings: Settings, ai_models: AiModelService | None) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        ai_models: AiModelService | None,
+        text_generator: Callable[[LlmCall], str] = generate_text,
+    ) -> None:
         self._settings = settings
         self._ai_models = ai_models
         self._mock = MockLlmProvider()
+        self._text_generator = text_generator
         self._circuit = ProviderCircuitBreaker(
             failure_threshold=settings.provider_circuit_failure_threshold,
             cooldown_seconds=settings.provider_circuit_cooldown_seconds,
@@ -136,7 +144,7 @@ class ConfigurableIntakeProvider:
                 self._mock.build_assistant_message(intake, safety_flags), False
             )
         try:
-            text = generate_text(call)
+            text = self._text_generator(call)
         except AppError as error:
             self._circuit.record_failure()
             self._logger.warning(

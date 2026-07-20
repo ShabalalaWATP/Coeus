@@ -5,16 +5,15 @@ from uuid import UUID
 
 from coeus.core.permissions import Permission
 from coeus.domain.enums import TicketState
-from coeus.domain.tickets import RoutingRoute, TicketRecord
-from coeus.services.embeddings import EmbeddingService, cosine_similarity
-from coeus.services.rfi_ranking import (
+from coeus.domain.search_relevance import (
     LEXICAL_SCORE_FLOOR,
     RRF_K,
     VECTOR_SIMILARITY_FLOOR,
-    lexical_text_score,
-    query_text,
-    token_overlap,
 )
+from coeus.domain.store_ranking import lexical_text_score, token_overlap
+from coeus.domain.tickets import RoutingRoute, TicketRecord
+from coeus.services.embeddings import EmbeddingService, cosine_similarity
+from coeus.services.rfi_ranking import query_text
 
 CUSTOMER_SIMILARITY_THRESHOLD = 0.58
 MANAGER_SIMILARITY_THRESHOLD = 0.50
@@ -27,8 +26,12 @@ OPEN_SIMILARITY_STATES = frozenset(
     {
         TicketState.INFO_REQUIRED,
         TicketState.RFI_SEARCHING,
+        TicketState.RFI_SEARCH_INCOMPLETE,
         TicketState.RFI_MATCH_OFFERED,
+        TicketState.ACTIVE_WORK_REVIEW,
         TicketState.RFI_NO_MATCH,
+        TicketState.NEW_TASKING_CONSENT,
+        TicketState.JIOC_ROUTING_PENDING,
         TicketState.JIOC_REVIEW,
         TicketState.COLLECT_CHOICE,
         TicketState.ANALYST_ASSIGNMENT,

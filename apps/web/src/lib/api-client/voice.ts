@@ -7,6 +7,13 @@ export type VoiceModelState = {
   apiKeyConfigured: boolean;
 };
 
+export type VoiceConnectionTest = {
+  ok: boolean;
+  provider: string;
+  model: string;
+  message: string;
+};
+
 export function getAdminVoiceModel(): Promise<VoiceModelState> {
   return apiRequestJson<VoiceModelState>("/api/v1/admin/voice-model", { method: "GET" });
 }
@@ -31,6 +38,13 @@ export function updateAdminVoiceApiKey(
     body: JSON.stringify({ apiKey }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "PUT",
+  });
+}
+
+export function testAdminVoiceConnection(csrfToken: string): Promise<VoiceConnectionTest> {
+  return apiRequestJson<VoiceConnectionTest>("/api/v1/admin/voice-model/test", {
+    headers: { "X-CSRF-Token": csrfToken },
+    method: "POST",
   });
 }
 

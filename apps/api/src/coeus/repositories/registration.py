@@ -40,10 +40,10 @@ class RegistrationRepository:
     ) -> RegistrationReservation | None:
         casefolded = username.casefold()
         with self._lock:
-            if self._has_pending_username(casefolded):
-                return None
             if self._pending_count() + len(self._reservations) >= max_pending:
                 raise RegistrationCapacityFull("Registration capacity is full.")
+            if self._has_pending_username(casefolded):
+                return None
             reservation = RegistrationReservation(uuid4(), casefolded)
             self._reservations[reservation.reservation_id] = casefolded
             return reservation

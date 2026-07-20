@@ -75,6 +75,42 @@ def test_voice_configuration_migrates_an_unavailable_persisted_model() -> None:
     }
 
 
+def test_voice_connection_test_distinguishes_saved_from_verified() -> None:
+    captured: dict[str, str] = {}
+
+    def succeed(**kwargs: str) -> None:
+        captured.update(kwargs)
+
+    service = VoiceModelService(
+        Settings(environment="test"),
+        AuditLog(),
+        MemoryStateStore(),
+        connection_tester=succeed,
+    )
+    missing = service.test_connection()
+    assert missing.ok is False
+    assert missing.message == "No dedicated Voice API key is saved."
+
+    service.configure_api_key("admin", "admin@example.test", "sk-dedicated-voice-key")
+    result = service.test_connection()
+    assert result.ok is True
+    assert result.message == "OpenAI Realtime accepted gpt-realtime-mini."
+    assert captured == {"api_key": "sk-dedicated-voice-key", "model": "gpt-realtime-mini"}
+
+
+def test_voice_connection_test_returns_a_sanitised_provider_failure() -> None:
+    def fail(**_kwargs: str) -> None:
+        raise AppError(503, "voice_provider_credentials_rejected", "The key was rejected.")
+
+    service = VoiceModelService(
+        Settings(environment="test"), AuditLog(), MemoryStateStore(), connection_tester=fail
+    )
+    service.configure_api_key("admin", "admin@example.test", "sk-dedicated-voice-key")
+    result = service.test_connection()
+    assert result.ok is False
+    assert result.message == "The key was rejected."
+
+
 def test_voice_key_configuration_rolls_back_when_audit_fails() -> None:
     store = MemoryStateStore()
     settings = Settings(environment="test")
@@ -144,12 +180,7 @@ def test_voice_session_defends_against_an_inconsistent_missing_key_state() -> No
         session_service.create(uuid4(), "v=0\r\nm=audio offer\r\n")
 
 
-def test_voice_session_releases_capacity_when_start_audit_fails(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(
-        "coeus.services.voice_sessions.create_realtime_call", lambda **_kwargs: "v=0\r\n"
-    )
+def test_voice_session_releases_capacity_when_start_audit_fails() -> None:
     settings = Settings(environment="test")
     admission = VoiceSessionAdmission(max_concurrent=1, max_per_principal=1, ttl_seconds=60)
     service = VoiceSessionService(
@@ -157,6 +188,7 @@ def test_voice_session_releases_capacity_when_start_audit_fails(
         EnabledVoiceModels("sk-voice-test-key"),  # type: ignore[arg-type]
         admission,
         FailingAuditLog(),
+        call_creator=lambda **_kwargs: "v=0\r\n",
     )
     user_id = uuid4()
 

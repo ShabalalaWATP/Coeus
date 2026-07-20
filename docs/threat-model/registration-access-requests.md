@@ -11,9 +11,13 @@ administrator review endpoints under `/api/v1/admin/registrations`.
 
 ## Threats and mitigations
 
-- Account enumeration through registration responses: valid submissions
-  always return the same generic `202 pending` body whether or not the
-  username exists as an account or pending request.
+- Account enumeration through registration responses: when capacity is
+  available, valid submissions always return the same generic `202 pending`
+  body whether or not the username exists as an account or pending request.
+  When capacity is full, existing, pending and unused usernames all receive
+  the same `429 registration_throttled` response. Accepted duplicate and
+  existing-account paths perform the same password hashing work before the
+  submitted verifier is discarded.
 - Credential exposure: passwords are hashed with Argon2 immediately on
   submission; the plaintext is never persisted, logged or echoed, and list
   endpoints exclude the hash.

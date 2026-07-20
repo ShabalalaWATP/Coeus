@@ -84,6 +84,10 @@ class AuditLog:
         with self._lock:
             return tuple(self._events)
 
+    @property
+    def retention_limit(self) -> int:
+        return self._max_events
+
     def refresh_from_store(self) -> None:
         """Refresh the bounded cache after an external transaction commits."""
         with self._lock:

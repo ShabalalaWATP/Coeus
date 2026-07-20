@@ -191,6 +191,41 @@ class CollectChoiceRequest(BaseModel):
     analysed: bool
 
 
+class CustomerEstimateResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    earliest: datetime | None
+    likely: datetime | None
+    latest: datetime | None
+    confidence: str
+    status: str
+    as_of: datetime = Field(serialization_alias="asOf")
+    policy_version: str = Field(serialization_alias="policyVersion")
+
+
+class CustomerJourneyStageResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    code: str
+    label: str
+    status: str
+
+
+class CustomerStatusResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    code: str
+    label: str
+    explanation: str
+    current_leg: str = Field(serialization_alias="currentLeg")
+    action_required: bool = Field(serialization_alias="actionRequired")
+    action_type: str | None = Field(serialization_alias="actionType")
+    next_milestone: str | None = Field(serialization_alias="nextMilestone")
+    canonical_ticket_id: UUID | None = Field(serialization_alias="canonicalTicketId")
+    estimate: CustomerEstimateResponse | None
+    journey: list[CustomerJourneyStageResponse]
+
+
 class TicketResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -198,6 +233,7 @@ class TicketResponse(BaseModel):
     reference: str
     requester_user_id: UUID = Field(serialization_alias="requesterUserId")
     state: str
+    customer_status: CustomerStatusResponse = Field(serialization_alias="customerStatus")
     intake: IntakeDetailsResponse
     intake_checklist: list[IntakeChecklistItemResponse] = Field(
         serialization_alias="intakeChecklist"
@@ -226,6 +262,7 @@ class TicketSummaryResponse(BaseModel):
     reference: str
     requester_user_id: UUID = Field(serialization_alias="requesterUserId")
     state: str
+    customer_status: CustomerStatusResponse = Field(serialization_alias="customerStatus")
     title: str | None
     priority: str | None
     is_ready_for_submission: bool = Field(serialization_alias="isReadyForSubmission")

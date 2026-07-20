@@ -73,7 +73,7 @@ async def test_customer_similarity_filters_hidden_candidates_before_scoring() ->
 
     assert notice.status_code == 200
     assert notice.json() == {"matches": []}
-    assert joined.status_code == 404
+    assert joined.status_code == 409
     assert embeddings.calls == []
 
 

@@ -148,4 +148,7 @@ def _response(state: SearchConfigurationState) -> SearchEmbeddingStateResponse:
         changed_at=state.changed_at,
         last_indexed_at=state.last_indexed_at,
         degraded_reason=state.degraded_reason,
+        release_id=state.release_id,
+        evaluation_status=state.evaluation_status,
+        definitive_no_match_enabled=state.definitive_no_match_enabled,
     )

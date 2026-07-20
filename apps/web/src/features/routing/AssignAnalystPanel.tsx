@@ -10,6 +10,7 @@ import {
   type AnalystTask,
 } from "../../lib/api-client/analyst";
 import type { RoutingRoute } from "../../lib/api-client/routing";
+import { queryKeys } from "../../lib/query-keys";
 
 const MAX_ANALYSTS = 5;
 
@@ -38,6 +39,7 @@ export function AssignAnalystPanel({
   });
   const availableTeams = useMemo(() => teamsQuery.data ?? [], [teamsQuery.data]);
   const selectedTeam = availableTeams.find((team) => team.teamId === teamId);
+  const today = localToday();
   useEffect(() => {
     if (teamId || availableTeams.length === 0) return;
     const suggested = availableTeams.find((team) => team.name === suggestedTeamName);
@@ -50,9 +52,12 @@ export function AssignAnalystPanel({
   });
   const availabilityQuery = useQuery({
     enabled: selectedTeam !== undefined,
-    queryKey: ["team-availability", selectedTeam?.teamId],
-    queryFn: () =>
-      getAssignmentTeamAvailability(areaRoute, selectedTeam?.teamId ?? "", localToday()),
+    queryKey: queryKeys.routing.assignmentAvailability(
+      areaRoute,
+      selectedTeam?.teamId ?? "",
+      today,
+    ),
+    queryFn: () => getAssignmentTeamAvailability(areaRoute, selectedTeam?.teamId ?? "", today),
   });
   const assignMutation = useMutation({
     mutationFn: () =>

@@ -39,6 +39,11 @@ export type RfiSearchMetrics = {
   createdAt: string;
   retrievalMode: string;
   degradedReason: string | null;
+  outcome: "offers" | "no_match" | "incomplete";
+  assurance: "assisted" | "definitive";
+  coverageStatus: "complete" | "partial" | "legacy" | "unknown";
+  profileSpaceId: string | null;
+  corpusVersion: string | null;
 };
 
 export type RfiSearchResults = {
@@ -48,6 +53,8 @@ export type RfiSearchResults = {
   metrics: RfiSearchMetrics | null;
   retrievalMode: string;
   degradedReason: string | null;
+  outcome: "offers" | "no_match" | "incomplete";
+  assurance: "assisted" | "definitive";
 };
 
 export async function getRfiSearchResults(ticketId: string): Promise<RfiSearchResults> {

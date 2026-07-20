@@ -26,10 +26,6 @@ def latest_recommendation(ticket: TicketRecord) -> RouteRecommendation:
     return ticket.route_recommendations[-1]
 
 
-def latest_cm_review(ticket: TicketRecord) -> CmCapabilityReview | None:
-    return ticket.cm_reviews[-1] if ticket.cm_reviews else None
-
-
 def recommend_route(
     ticket_id: UUID,
     rfa_review: RfaCapabilityReview,

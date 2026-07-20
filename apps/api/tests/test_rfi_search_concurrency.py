@@ -15,7 +15,13 @@ from ticket_api_helpers import stored_ticket
 async def test_rfi_search_rejects_stale_snapshot_and_preserves_concurrent_update(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    app = create_app(
+        Settings(
+            environment="test",
+            argon2_memory_cost=8_192,
+            automatic_request_discovery_enabled=False,
+        )
+    )
     started = Event()
     release = Event()
     original_embed = app.state.rfi_search_service._embeddings.embed_cached

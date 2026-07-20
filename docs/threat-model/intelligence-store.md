@@ -25,6 +25,8 @@ and controlled asset access.
 | Asset object key bypasses product access controls. | Asset access is only through API endpoints that use the SQL visible-product lookup, re-evaluate product access and return or redeem signed asset tokens. Token grant and download responses are `no-store`. Break-glass asset tokens carry an explicit emergency flag, require current restricted-read permission at redemption and are issued only after a reasoned audit event. |
 | Product is published without ACGs, required metadata or publication authority. | Product creation defaults to draft and validates required metadata, at least one ACG and at least one asset. Explicit published creation requires `product:publish` in the shared ingestion service used by JSON and multipart routes. Unsupported initial states are rejected before persistence. |
 | Product team adds products into unauthorised ACGs. | Non-administrators can create products only with active ACGs they belong to and the matching team permission. |
+| An authenticated user without product-create authority consumes multipart parser and disk resources. | The upload route checks `product:create_existing` immediately after session and CSRF validation, before admission, multipart parsing or temporary-file creation. The service repeats full status and ACG policy checks before persistence. |
+| Access grants, download tokens or protected preview bytes outlive their browser purpose. | Grants and tokens stay in component-local state, never query keys or the shared query cache. Preview Blobs become short-lived object URLs that are revoked on replacement, grant expiry, logout and unmount. |
 | Store Manager role becomes blanket report reader. | Store Managers can administer product metadata, assets and ACG assignment, but they do not receive `product:read_restricted`; product detail and downloads still require at least one shared active ACG plus clearance. |
 | Site administrator reads restricted report contents through normal store routes. | Normal product search, detail and download paths ignore `product:read_restricted`; administrators outside a product ACG receive not-found. The denied product page shows emergency access only to users with `product:read_restricted`; submitting a reason calls `POST /api/v1/store/products/{id}/break-glass`, requires CSRF and writes `product_break_glass_accessed`. Emergency asset grants use `POST /api/v1/store/products/{id}/assets/{asset_id}/break-glass-access`, require the same restricted-read permission and write `product_asset_break_glass_accessed`. |
 | Hybrid browse returns unrelated products because every embedded row is ranked. | Free-text browse hits require lexical membership or vector similarity at the shared floor. Zero-signal candidates are excluded from totals, pages and reasons. |
@@ -33,7 +35,10 @@ and controlled asset access.
 
 ## Deferred Risks
 
-- Malware scanning and stronger MIME verification are still deferred.
+- Hosted upload remains unavailable until a malware scanner is configured.
+  Local synthetic-data processing performs signature, Office structure and
+  hardened XML checks, but production rendition and malware inspection still
+  belong in a non-networked resource-limited worker.
 - Database-level row security and immutable audit constraints are still deferred.
   Store search, detail and asset grants now apply PostgreSQL-side visibility
   predicates and still recheck API authorisation before returning results.

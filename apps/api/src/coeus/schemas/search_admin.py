@@ -37,6 +37,9 @@ class SearchEmbeddingStateResponse(BaseModel):
     changed_at: datetime | None = Field(serialization_alias="changedAt")
     last_indexed_at: datetime | None = Field(serialization_alias="lastIndexedAt")
     degraded_reason: str | None = Field(serialization_alias="degradedReason")
+    release_id: str = Field(serialization_alias="releaseId")
+    evaluation_status: str = Field(serialization_alias="evaluationStatus")
+    definitive_no_match_enabled: bool = Field(serialization_alias="definitiveNoMatchEnabled")
 
 
 class SearchEmbeddingTestResponse(BaseModel):

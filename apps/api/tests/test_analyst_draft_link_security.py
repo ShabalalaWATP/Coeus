@@ -4,17 +4,18 @@ from uuid import UUID
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from coeus.core.config import Settings
 from coeus.core.permissions import Permission
 from coeus.domain.auth import RoleName
-from coeus.main import create_app
 from store_api_helpers import login, product_payload
-from test_analyst_linked_product_reauthorisation import _collection_assigned_ticket
+from test_analyst_linked_product_reauthorisation import (
+    _collection_assigned_ticket,
+    _legacy_routing_app,
+)
 
 
 @pytest.mark.asyncio
 async def test_creator_visible_draft_cannot_authorise_task_participants() -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    app = _legacy_routing_app()
     users = app.state.auth_service._users
     analyst = users.get_by_username("analyst@example.test")
     assert analyst is not None

@@ -19,3 +19,21 @@ test("falls back for non-API errors", () => {
   );
   expect(actionErrorMessage(undefined, "Fallback message.")).toBe("Fallback message.");
 });
+
+test("keeps the server's conflict reason while callers refresh stale aggregates", () => {
+  const error = new ApiError(
+    409,
+    "ticket_changed",
+    "The ticket changed while the operation was running. Retry the operation.",
+  );
+
+  expect(actionErrorMessage(error, "Fallback message.")).toBe(error.message);
+});
+
+test("maps oversized bodies to actionable recovery guidance", () => {
+  const error = new ApiError(413, "request_too_large", "Backend detail.");
+
+  expect(actionErrorMessage(error, "Fallback message.")).toContain(
+    "The selected file is too large",
+  );
+});

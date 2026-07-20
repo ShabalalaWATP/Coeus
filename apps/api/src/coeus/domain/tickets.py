@@ -3,17 +3,26 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from uuid import UUID
 
+from coeus.domain import qc
 from coeus.domain.capabilities import CandidateTeam
+from coeus.domain.customer_outcomes import ProductOutcomeHistory
 from coeus.domain.enums import TicketState
+from coeus.domain.jioc_intervention import JiocIntervention
+from coeus.domain.jioc_routing import JiocRoutingContext, JiocRoutingDecision
 from coeus.domain.prioritisation import PriorityAssessment
-from coeus.domain.qc import FeedbackRequest, FeedbackSubmission, ProductIndexRecord, QcDecision
+from coeus.domain.product_submission import (
+    DraftProductAsset as DraftProductAsset,
+)
+from coeus.domain.product_submission import (
+    DraftProductVersion as DraftProductVersion,
+)
 from coeus.domain.search_index import GroundedProductEvidence
 from coeus.domain.search_metrics import RfiSearchMetrics
+from coeus.domain.work_discovery import ActiveWorkOffer
 
 
 class MessageAuthor(StrEnum):
-    USER = "user"
-    ASSISTANT = "assistant"
+    USER, ASSISTANT = "user", "assistant"
 
 
 class AgentRunStatus(StrEnum):
@@ -277,30 +286,6 @@ class LinkedAnalystProduct:
 
 
 @dataclass(frozen=True)
-class DraftProductAsset:
-    asset_id: UUID
-    name: str
-    asset_type: str
-    mime_type: str
-    size_bytes: int
-    sha256: str
-
-
-@dataclass(frozen=True)
-class DraftProductVersion:
-    version_id: UUID
-    ticket_id: UUID
-    version_number: int
-    title: str
-    summary: str
-    product_type: str
-    content: str
-    assets: tuple[DraftProductAsset, ...]
-    created_by_user_id: UUID
-    created_at: datetime
-
-
-@dataclass(frozen=True)
 class TicketRecord:
     ticket_id: UUID
     reference: str
@@ -319,6 +304,10 @@ class TicketRecord:
     disseminations: tuple[ProductDissemination, ...] = field(default_factory=tuple)
     search_metrics: tuple[RfiSearchMetrics, ...] = field(default_factory=tuple)
     search_evidence: tuple[GroundedProductEvidence, ...] = field(default_factory=tuple)
+    active_work_offers: tuple[ActiveWorkOffer, ...] = field(default_factory=tuple)
+    jioc_routing_contexts: tuple[JiocRoutingContext, ...] = field(default_factory=tuple)
+    jioc_routing_decisions: tuple[JiocRoutingDecision, ...] = field(default_factory=tuple)
+    jioc_interventions: tuple[JiocIntervention, ...] = field(default_factory=tuple)
     rfa_reviews: tuple[RfaCapabilityReview, ...] = field(default_factory=tuple)
     cm_reviews: tuple[CmCapabilityReview, ...] = field(default_factory=tuple)
     route_recommendations: tuple[RouteRecommendation, ...] = field(default_factory=tuple)
@@ -330,12 +319,15 @@ class TicketRecord:
     analyst_notes: tuple[AnalystNote, ...] = field(default_factory=tuple)
     linked_products: tuple[LinkedAnalystProduct, ...] = field(default_factory=tuple)
     draft_products: tuple[DraftProductVersion, ...] = field(default_factory=tuple)
+    manager_approved_manifest_hash: str | None = None
+    qc_agent_preflights: tuple[qc.QcAgentPreflight, ...] = field(default_factory=tuple)
     qc_reviewer_user_id: UUID | None = None
     qc_claimed_at: datetime | None = None
-    qc_decisions: tuple[QcDecision, ...] = field(default_factory=tuple)
-    product_index_records: tuple[ProductIndexRecord, ...] = field(default_factory=tuple)
-    feedback_requests: tuple[FeedbackRequest, ...] = field(default_factory=tuple)
-    feedback_submissions: tuple[FeedbackSubmission, ...] = field(default_factory=tuple)
+    qc_decisions: tuple[qc.QcDecision, ...] = field(default_factory=tuple)
+    product_index_records: tuple[qc.ProductIndexRecord, ...] = field(default_factory=tuple)
+    feedback_requests: tuple[qc.FeedbackRequest, ...] = field(default_factory=tuple)
+    feedback_submissions: tuple[qc.FeedbackSubmission, ...] = field(default_factory=tuple)
+    product_outcomes: ProductOutcomeHistory = field(default_factory=ProductOutcomeHistory)
     conversation_status: str = "open"
     collect_disposition: str | None = None
     priority_assessment: PriorityAssessment | None = None

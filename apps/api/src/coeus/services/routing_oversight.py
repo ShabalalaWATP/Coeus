@@ -51,6 +51,8 @@ class OversightTask:
     analyst_count: int
     work_package_count: int
     completed_work_package_count: int
+    agent_disposition: str | None
+    agent_confidence: float | None
 
 
 @dataclass(frozen=True)
@@ -76,7 +78,7 @@ class RoutingOversightService:
         self._availability = availability
 
     def view(self, actor: UserAccount) -> RoutingOversight:
-        if Permission.JIOC_REVIEW not in actor.permissions:
+        if Permission.JIOC_OVERSIGHT not in actor.permissions:
             raise AppError(403, "forbidden", "Permission denied.")
         tickets = self._tickets.tickets.assignment_snapshot()
         state_counts = Counter(ticket.state.value for ticket in tickets)
@@ -162,6 +164,9 @@ class RoutingOversightService:
         assignments = active_assignments(ticket)
         latest = assignments[-1] if assignments else None
         route: RoutingRoute | None = approved_route(ticket)
+        agent_decision = (
+            ticket.jioc_routing_decisions[-1] if ticket.jioc_routing_decisions else None
+        )
         return OversightTask(
             ticket.ticket_id,
             ticket.reference,
@@ -172,4 +177,6 @@ class RoutingOversightService:
             len({assignment.analyst_user_id for assignment in assignments}),
             len(ticket.work_packages),
             sum(package.status.value == "complete" for package in ticket.work_packages),
+            agent_decision.disposition if agent_decision else None,
+            agent_decision.confidence if agent_decision else None,
         )

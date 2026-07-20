@@ -1,5 +1,6 @@
 import { AcgCreateForm, AcgEditor, AcgSelector } from "./AcgAdminSections";
 import { useAcgAdminModel } from "./useAcgAdminModel";
+import { AdminReturnLink } from "../../components/ui/AdminReturnLink";
 
 export default function AcgAdminPage() {
   const model = useAcgAdminModel();
@@ -7,6 +8,7 @@ export default function AcgAdminPage() {
     <div className="access-page">
       <section className="overview-hero" aria-labelledby="acg-title">
         <div>
+          <AdminReturnLink />
           <h1 id="acg-title">Access Control Groups</h1>
           <p>MOCK DATA ONLY access groups for product visibility and team access.</p>
         </div>

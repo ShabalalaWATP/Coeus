@@ -16,7 +16,7 @@ export default function ChangePasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const resetRequired = session?.passwordResetRequired === true;
+  const resetRequired = session?.user.passwordResetRequired === true;
   const newPasswordTooShort = newPassword.length > 0 && newPassword.length < MIN_PASSWORD_LENGTH;
   const confirmMismatch = confirmPassword.length > 0 && confirmPassword !== newPassword;
   const canSubmit =

@@ -16,15 +16,31 @@ from coeus.domain.access import (
 )
 from coeus.domain.auth import RoleName, SessionRecord, UserAccount
 from coeus.domain.capabilities import CandidateTeam
+from coeus.domain.customer_outcomes import (
+    CustomerProductDecision,
+    CustomerProductDecisionStatus,
+    JiocReanalysisDecision,
+    JiocReanalysisStatus,
+    ManagerReanalysisDecision,
+    ManagerReanalysisStatus,
+    ProductOutcomeHistory,
+)
 from coeus.domain.enums import TicketState
+from coeus.domain.jioc_intervention import JiocIntervention
+from coeus.domain.jioc_routing import JiocRoutingContext, JiocRoutingDecision
 from coeus.domain.notifications import EmailRecord, NotificationRecord
 from coeus.domain.prioritisation import PriorityAssessment
+from coeus.domain.product_submission import DraftProductAsset, DraftProductVersion
 from coeus.domain.qc import (
     FeedbackRequest,
     FeedbackRequestStatus,
     FeedbackSubmission,
     ProductIndexRecord,
     ProductIndexStatus,
+    QcAgentCheck,
+    QcAgentFinding,
+    QcAgentPreflight,
+    QcAgentPreflightStatus,
     QcChecklistItem,
     QcDecision,
     QcDecisionStatus,
@@ -45,8 +61,6 @@ from coeus.domain.tickets import (
     ClarificationRequest,
     CmCapabilityReview,
     CollaboratorAccess,
-    DraftProductAsset,
-    DraftProductVersion,
     IntakeDetails,
     LinkedAnalystProduct,
     ManagerRoutingDecision,
@@ -64,6 +78,7 @@ from coeus.domain.tickets import (
     WorkflowPlanUpdate,
     WorkPackageStatus,
 )
+from coeus.domain.work_discovery import ActiveWorkOffer
 
 CodecClass = type[Any]
 CodecIdentity = tuple[CodecClass, str]
@@ -72,6 +87,8 @@ CodecIdentity = tuple[CodecClass, str]
 # writes always use the stable semantic identity declared in TYPE_IDENTITIES.
 LEGACY_TYPE_ALIASES: Mapping[str, CodecClass] = {
     "coeus.domain.tickets.RfiSearchMetrics": RfiSearchMetrics,
+    "coeus.domain.tickets.DraftProductAsset": DraftProductAsset,
+    "coeus.domain.tickets.DraftProductVersion": DraftProductVersion,
 }
 
 TYPE_IDENTITIES: tuple[CodecIdentity, ...] = (
@@ -84,12 +101,19 @@ TYPE_IDENTITIES: tuple[CodecIdentity, ...] = (
     (SessionRecord, "auth.session_record"),
     (UserAccount, "auth.user_account"),
     (CandidateTeam, "capabilities.candidate_team"),
+    (CustomerProductDecision, "customer_outcomes.customer_product_decision"),
+    (ManagerReanalysisDecision, "customer_outcomes.manager_reanalysis_decision"),
+    (JiocReanalysisDecision, "customer_outcomes.jioc_reanalysis_decision"),
+    (ProductOutcomeHistory, "customer_outcomes.product_outcome_history"),
     (EmailRecord, "notifications.email_record"),
     (NotificationRecord, "notifications.notification_record"),
     (PriorityAssessment, "prioritisation.priority_assessment"),
     (FeedbackRequest, "qc.feedback_request"),
     (FeedbackSubmission, "qc.feedback_submission"),
     (ProductIndexRecord, "qc.product_index_record"),
+    (QcAgentCheck, "qc.qc_agent_check"),
+    (QcAgentFinding, "qc.qc_agent_finding"),
+    (QcAgentPreflight, "qc.qc_agent_preflight"),
     (QcChecklistItem, "qc.qc_checklist_item"),
     (QcDecision, "qc.qc_decision"),
     (RegistrationRequest, "registration.registration_request"),
@@ -101,6 +125,10 @@ TYPE_IDENTITIES: tuple[CodecIdentity, ...] = (
     (TeamCalendarEntry, "teams.calendar_entry"),
     (UserProfile, "teams.user_profile"),
     (AgentRun, "tickets.agent_run"),
+    (ActiveWorkOffer, "tickets.active_work_offer"),
+    (JiocRoutingContext, "tickets.jioc_routing_context"),
+    (JiocRoutingDecision, "tickets.jioc_routing_decision"),
+    (JiocIntervention, "tickets.jioc_intervention"),
     (AnalystAssignment, "tickets.analyst_assignment"),
     (AnalystNote, "tickets.analyst_note"),
     (AnalystWorkPackage, "tickets.analyst_work_package"),
@@ -133,6 +161,7 @@ ENUM_IDENTITIES: tuple[CodecIdentity, ...] = (
     (Permission, "core.permission"),
     (FeedbackRequestStatus, "qc.feedback_request_status"),
     (ProductIndexStatus, "qc.product_index_status"),
+    (QcAgentPreflightStatus, "qc.qc_agent_preflight_status"),
     (QcDecisionStatus, "qc.qc_decision_status"),
     (RegistrationStatus, "registration.registration_status"),
     (CalendarStatus, "teams.calendar_status"),
@@ -145,6 +174,9 @@ ENUM_IDENTITIES: tuple[CodecIdentity, ...] = (
     (RoutingRoute, "tickets.routing_route"),
     (TicketState, "tickets.ticket_state"),
     (WorkPackageStatus, "tickets.work_package_status"),
+    (CustomerProductDecisionStatus, "customer_outcomes.customer_product_decision_status"),
+    (ManagerReanalysisStatus, "customer_outcomes.manager_reanalysis_status"),
+    (JiocReanalysisStatus, "customer_outcomes.jioc_reanalysis_status"),
 )
 
 

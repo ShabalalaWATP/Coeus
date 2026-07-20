@@ -34,7 +34,8 @@ async def test_chat_creates_ticket_and_returns_follow_up_questions() -> None:
     assert ticket["intake"]["title"] == "North Coast Port Activity"
     assert "priority" in ticket["intake"]["missingInformation"]
     assert ticket["messages"][-1]["author"] == "assistant"
-    assert ticket["agentRuns"][0]["agentName"] == "customer-chatbot-agent"
+    assert ticket["agentRuns"] == []
+    assert _stored_ticket(app, ticket["id"]).agent_runs[0].agent_name == "customer-chatbot-agent"
 
 
 @pytest.mark.asyncio
@@ -79,13 +80,13 @@ async def test_intake_can_be_edited_and_submitted_when_complete() -> None:
     assert edited.json()["isReadyForSubmission"] is True
     assert submitted.status_code == 200
     payload = submitted.json()
-    assert payload["state"] == TicketState.RFI_SEARCHING
-    assert [run["agentName"] for run in payload["agentRuns"]] == [
+    assert payload["state"] == TicketState.RFI_SEARCH_INCOMPLETE
+    assert payload["agentRuns"] == []
+    assert [run.agent_name for run in _stored_ticket(app, ticket_id).agent_runs[:3]] == [
         "customer-chatbot-agent",
         "prioritisation-agent",
         "rfi-search-agent",
     ]
-    assert any(entry["eventType"] == "priority_assessed" for entry in payload["timeline"])
     assert any(entry["eventType"] == "search_started" for entry in payload["timeline"])
 
 
@@ -336,4 +337,7 @@ async def test_prompt_injection_is_flagged_without_escalation_or_fabricated_prod
     assert "system:configure" not in profile.json()["user"]["permissions"]
     assert "hidden prompt" not in ticket["messages"][-1]["body"].casefold()
     assert ticket["visibleProductMatches"] == []
-    assert "prompt_injection_attempt" in ticket["agentRuns"][0]["safetyFlags"]
+    assert ticket["agentRuns"] == []
+    assert (
+        "prompt_injection_attempt" in _stored_ticket(app, ticket["id"]).agent_runs[0].safety_flags
+    )

@@ -29,14 +29,22 @@ export const JOURNEY_STAGES: JourneyStage[] = [
     label: "Search existing intelligence",
     detail: "The RFI agent offers matching products before new tasking.",
     icon: Radar,
-    states: ["RFI_SEARCHING", "RFI_MATCH_OFFERED", "RFI_NO_MATCH"],
+    states: [
+      "RFI_SEARCHING",
+      "RFI_SEARCH_INCOMPLETE",
+      "RFI_MATCH_OFFERED",
+      "ACTIVE_WORK_REVIEW",
+      "ACTIVE_WORK_SEARCH_INCOMPLETE",
+      "RFI_NO_MATCH",
+      "NEW_TASKING_CONSENT",
+    ],
   },
   {
     label: "JIOC route review",
     detail:
       "Capability agents advise and a JIOC team member decides whether collection is required.",
     icon: Route,
-    states: ["JIOC_REVIEW", "COLLECT_CHOICE"],
+    states: ["JIOC_ROUTING_PENDING", "JIOC_INTERVENTION_HOLD", "JIOC_REVIEW", "COLLECT_CHOICE"],
   },
   {
     label: "Team production",
@@ -60,7 +68,13 @@ export const JOURNEY_STAGES: JourneyStage[] = [
     label: "Delivered",
     detail: "The product reaches your dashboard, notifications and the store.",
     icon: PackageOpen,
-    states: ["DISSEMINATION_READY", "CLOSED_DELIVERED", "CLOSED_EXISTING_PRODUCT_ACCEPTED"],
+    states: [
+      "DISSEMINATION_READY",
+      "CLOSED_DELIVERED",
+      "CLOSED_EXISTING_PRODUCT_ACCEPTED",
+      "CLOSED_UNANSWERED",
+      "CLOSED_JOINED_EXISTING_WORK",
+    ],
   },
 ];
 

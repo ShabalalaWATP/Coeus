@@ -60,6 +60,16 @@ type RouteRecommendation = {
   createdAt: string;
 };
 
+type JiocAgentDecision = {
+  id: string;
+  recommendedRoute: "rfa" | "cm" | "clarification";
+  disposition: "auto_applied" | "clarification" | "manager_review";
+  confidence: number;
+  rationaleCodes: string[];
+  policyVersion: string;
+  createdAt: string;
+};
+
 type PriorityAssessment = {
   score: number;
   tier: string;
@@ -77,6 +87,7 @@ export type RoutingTicket = {
   rfaReview: RfaCapabilityReview | null;
   cmReview: CmCapabilityReview | null;
   recommendation: RouteRecommendation | null;
+  jiocAgentDecision?: JiocAgentDecision | null;
   clarifications: {
     id: string;
     route: string;
@@ -103,6 +114,12 @@ export type RoutingTicket = {
     note: string;
     createdAt: string;
   }[];
+  reanalysisContext?: {
+    productId: string;
+    customerReason: string;
+    unmetCriteria: string[];
+    managerRationale: string | null;
+  } | null;
 };
 
 type RoutingStats = {
@@ -150,6 +167,8 @@ export type JiocOversight = {
     analystCount: number;
     workPackageCount: number;
     completedWorkPackageCount: number;
+    agentDisposition?: string | null;
+    agentConfidence?: number | null;
   }[];
 };
 
@@ -165,6 +184,19 @@ export async function listRoutingQueue(
 
 export async function getJiocOversight(): Promise<JiocOversight> {
   return apiRequestJson<JiocOversight>("/api/v1/routing/oversight", { method: "GET" });
+}
+
+export async function interveneInRouting(
+  ticketId: string,
+  action: "hold" | "resume" | "send_to_review",
+  reason: string,
+  csrfToken: string,
+): Promise<RoutingTicket> {
+  return apiRequestJson<RoutingTicket>(`/api/v1/routing/${pathSegment(ticketId)}/intervene`, {
+    body: JSON.stringify({ action, reason }),
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+    method: "POST",
+  });
 }
 
 export async function listCapabilityCatalogue(): Promise<CapabilityCatalogue> {
@@ -253,4 +285,36 @@ export async function requestRouteClarification(
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
   });
+}
+
+export async function decideManagerReanalysis(
+  ticketId: string,
+  decision: "agree" | "refer_to_jioc",
+  rationale: string,
+  csrfToken: string,
+): Promise<RoutingTicket> {
+  return apiRequestJson<RoutingTicket>(
+    `/api/v1/routing/${pathSegment(ticketId)}/reanalysis-manager-decision`,
+    {
+      body: JSON.stringify({ decision, rationale }),
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+      method: "POST",
+    },
+  );
+}
+
+export async function decideJiocReanalysis(
+  ticketId: string,
+  decision: "reanalyse" | "close",
+  rationale: string,
+  csrfToken: string,
+): Promise<RoutingTicket> {
+  return apiRequestJson<RoutingTicket>(
+    `/api/v1/routing/${pathSegment(ticketId)}/jioc-reanalysis-decision`,
+    {
+      body: JSON.stringify({ decision, rationale }),
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+      method: "POST",
+    },
+  );
 }

@@ -27,6 +27,7 @@ def test_composition_uses_local_resources_and_preserves_state_aliases(tmp_path: 
     assert app.state.settings.environment == "test"
     assert app.state.auth_service is not None
     assert app.state.registration_service is not None
+    assert app.state.admin_analytics_service is not None
     assert app.state.store_services is not None
     assert app.state.ticket_services is not None
     assert app.state.quality_control_service is not None

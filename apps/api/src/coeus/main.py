@@ -9,9 +9,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from coeus.api.routes.access import router as access_router
 from coeus.api.routes.admin import router as admin_router
 from coeus.api.routes.analyst import router as analyst_router
+from coeus.api.routes.analyst_files import router as analyst_files_router
 from coeus.api.routes.analytics import router as analytics_router
 from coeus.api.routes.audit import router as audit_router
 from coeus.api.routes.auth import router as auth_router
+from coeus.api.routes.customer_outcomes import router as customer_outcomes_router
 from coeus.api.routes.feedback import router as feedback_router
 from coeus.api.routes.health import router as health_router
 from coeus.api.routes.notifications import router as notifications_router
@@ -22,6 +24,7 @@ from coeus.api.routes.search_admin import router as search_admin_router
 from coeus.api.routes.similar_requests import router as similar_requests_router
 from coeus.api.routes.store import router as store_router
 from coeus.api.routes.store_files import router as store_files_router
+from coeus.api.routes.store_previews import router as store_previews_router
 from coeus.api.routes.teams import profile_router as profiles_router
 from coeus.api.routes.teams import router as teams_router
 from coeus.api.routes.tickets import router as tickets_router
@@ -123,11 +126,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(access_router, prefix="/api/v1")
     app.include_router(store_router, prefix="/api/v1")
     app.include_router(store_files_router, prefix="/api/v1")
+    app.include_router(store_previews_router, prefix="/api/v1")
     app.include_router(tickets_router, prefix="/api/v1")
+    app.include_router(customer_outcomes_router, prefix="/api/v1")
     app.include_router(rfi_search_router, prefix="/api/v1")
     app.include_router(similar_requests_router, prefix="/api/v1")
     app.include_router(routing_router, prefix="/api/v1")
     app.include_router(analyst_router, prefix="/api/v1")
+    app.include_router(analyst_files_router, prefix="/api/v1")
     app.include_router(qc_router, prefix="/api/v1")
     app.include_router(feedback_router, prefix="/api/v1")
     app.include_router(analytics_router, prefix="/api/v1")

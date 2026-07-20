@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 
 from coeus.core.config import LlmProviderName, Settings
@@ -33,6 +33,7 @@ class AiModelService:
         audit_log: AuditLog,
         state_store: StateStore | None = None,
         secret_store: EncryptedIntegrationSecretStore | None = None,
+        model_discovery: Callable[[str, str, int], Sequence[str]] = discover_models,
     ) -> None:
         self._settings = settings
         self._audit_log = audit_log
@@ -48,6 +49,7 @@ class AiModelService:
         self._secret_store = secret_store or EncryptedIntegrationSecretStore(
             state_store or MemoryStateStore(), settings
         )
+        self._model_discovery = model_discovery
         specs = provider_specs(settings)
         self._active_models = {spec.name: spec.default_model for spec in specs}
         self._custom_models: dict[str, list[str]] = {spec.name: [] for spec in specs}
@@ -185,7 +187,7 @@ class AiModelService:
                 "provider_not_configured",
                 "Save an API key for this provider before refreshing its models.",
             )
-        discovered = discover_models(spec.name, key, self._settings.llm_api_timeout_seconds)
+        discovered = self._model_discovery(spec.name, key, self._settings.llm_api_timeout_seconds)
         current = self._discovered_models[spec.name]
         existing = {*spec.models, *self._custom_models[spec.name], *current}
         candidates = [model for model in clean_model_ids(discovered) if model not in existing]

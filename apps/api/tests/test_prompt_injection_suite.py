@@ -6,6 +6,7 @@ from httpx import ASGITransport, AsyncClient
 from coeus.core.config import Settings
 from coeus.main import create_app
 from coeus.services.intake import IntakeExtractionService, MockLlmProvider
+from ticket_api_helpers import stored_ticket
 
 SEED_CREDENTIAL = "CoeusLocal1!"
 
@@ -86,7 +87,11 @@ async def test_prompt_injection_suite_preserves_api_authorisation_boundaries() -
     for ticket in tickets:
         assistant_message = ticket["messages"][-1]["body"].casefold()
         assert ticket["visibleProductMatches"] == []
-        assert "prompt_injection_attempt" in ticket["agentRuns"][0]["safetyFlags"]
+        assert ticket["agentRuns"] == []
+        assert (
+            "prompt_injection_attempt"
+            in stored_ticket(app, ticket["id"]).agent_runs[0].safety_flags
+        )
         assert "system prompt" not in assistant_message
         assert "internal instructions" not in assistant_message
         assert "admin" not in assistant_message

@@ -258,11 +258,11 @@ def test_refresh_requires_a_key_and_preserves_the_actor_for_discovery(
     with pytest.raises(AppError, match="Save an API key"):
         no_key.refresh_models("admin-id", "admin@example.test", "vertex_ai")
 
-    monkeypatch.setattr(ai_models_module, "discover_models", lambda *_args: ["vertex-new"])
     configured = AiModelService(
         Settings(environment="test", vertex_api_key="vertex-key"),
         AuditLog(),
         MemoryStateStore(),
+        model_discovery=lambda *_args: ["vertex-new"],
     )
     state = configured.refresh_models("admin-id", "admin@example.test", "vertex_ai")
     vertex = next(provider for provider in state.providers if provider.name == "vertex_ai")

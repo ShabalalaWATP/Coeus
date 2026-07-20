@@ -16,8 +16,10 @@ from coeus.schemas.routing import (
     CapabilityTeamResponse,
     ClarificationRequestResponse,
     CmCapabilityReviewResponse,
+    JiocAgentDecisionResponse,
     ManagerDecisionResponse,
     PriorityAssessmentResponse,
+    ReanalysisContextResponse,
     RfaCapabilityReviewResponse,
     RouteRecommendationResponse,
     RoutingQueueResponse,
@@ -59,12 +61,35 @@ def ticket_response(ticket: TicketRecord) -> RoutingTicketResponse:
         recommendation=_recommendation_response(ticket.route_recommendations[-1])
         if ticket.route_recommendations
         else None,
+        jioc_agent_decision=_agent_decision_response(ticket)
+        if ticket.jioc_routing_decisions
+        else None,
         clarifications=[_clarification_response(item) for item in ticket.clarification_requests],
         agent_runs=[run.agent_name for run in ticket.agent_runs],
         manager_decisions=[_decision_response(item) for item in ticket.manager_decisions],
         workflow_plan_updates=[
             _workflow_update_response(item) for item in ticket.workflow_plan_updates
         ],
+        reanalysis_context=_reanalysis_context(ticket),
+    )
+
+
+def _reanalysis_context(ticket: TicketRecord) -> ReanalysisContextResponse | None:
+    if not ticket.product_outcomes.customer_decisions:
+        return None
+    customer = ticket.product_outcomes.customer_decisions[-1]
+    manager = (
+        ticket.product_outcomes.manager_decisions[-1]
+        if ticket.product_outcomes.manager_decisions
+        and ticket.product_outcomes.manager_decisions[-1].customer_decision_id
+        == customer.decision_id
+        else None
+    )
+    return ReanalysisContextResponse(
+        product_id=customer.product_id,
+        customer_reason=customer.reason,
+        unmet_criteria=list(customer.unmet_criteria),
+        manager_rationale=manager.rationale if manager else None,
     )
 
 
@@ -156,6 +181,19 @@ def _recommendation_response(
         recommended_route=recommendation.recommended_route.value,
         reasoning_summary=recommendation.reasoning_summary,
         created_at=recommendation.created_at,
+    )
+
+
+def _agent_decision_response(ticket: TicketRecord) -> JiocAgentDecisionResponse:
+    decision = ticket.jioc_routing_decisions[-1]
+    return JiocAgentDecisionResponse(
+        decision_id=decision.decision_id,
+        recommended_route=decision.recommended_route,
+        disposition=decision.disposition,
+        confidence=decision.confidence,
+        rationale_codes=list(decision.rationale_codes),
+        policy_version=decision.policy_version,
+        created_at=decision.created_at,
     )
 
 

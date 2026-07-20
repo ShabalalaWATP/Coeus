@@ -1,5 +1,6 @@
 import {
   getAnalyticsDashboard,
+  getAdminAnalyticsDashboard,
   listFeedbackRequests,
   submitFeedback,
   type AnalyticsDashboard,
@@ -18,7 +19,7 @@ const feedbackRequest: FeedbackRequest = {
 };
 
 const dashboard: AnalyticsDashboard = {
-  audience: "admin",
+  audience: "rfa",
   metrics: {
     totalTickets: 1,
     activeTickets: 1,
@@ -83,15 +84,25 @@ test("lists feedback requests and submits feedback", async () => {
 });
 
 test("loads analytics dashboards", async () => {
-  const fetchMock = vi.fn().mockResolvedValue(jsonResponse(dashboard));
+  const admin = { generatedAt: "2026-07-17T00:00:00Z" };
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(jsonResponse(dashboard))
+    .mockResolvedValueOnce(jsonResponse(admin));
   vi.stubGlobal("fetch", fetchMock);
 
-  await expect(getAnalyticsDashboard("admin")).resolves.toEqual(dashboard);
+  await expect(getAnalyticsDashboard("rfa")).resolves.toEqual(dashboard);
+  await expect(getAdminAnalyticsDashboard()).resolves.toEqual(admin);
 
-  expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8001/api/v1/analytics/admin", {
+  expect(fetchMock).toHaveBeenNthCalledWith(1, "http://127.0.0.1:8001/api/v1/analytics/rfa", {
     credentials: "include",
     method: "GET",
   });
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    2,
+    "http://127.0.0.1:8001/api/v1/analytics/admin/platform",
+    { credentials: "include", method: "GET" },
+  );
 });
 
 test("raises API errors for analytics requests", async () => {

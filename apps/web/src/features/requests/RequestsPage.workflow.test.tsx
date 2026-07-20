@@ -151,8 +151,8 @@ test("shows request mutation failures instead of failing silently", async () => 
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 });
 
-test("runs RFI search and accepts an offered product", async () => {
-  const submittedTicket: Ticket = { ...baseTicket, state: "RFI_SEARCHING" };
+test("loads automatic RFI search results and accepts an offered product", async () => {
+  const submittedTicket: Ticket = { ...baseTicket, state: "RFI_MATCH_OFFERED" };
   const unrelatedTicket: Ticket = {
     ...baseTicket,
     id: "ticket-2",
@@ -166,7 +166,7 @@ test("runs RFI search and accepts an offered product", async () => {
     offers: [{ ...rfiSearchResults.offers[0], status: "accepted" }],
   };
   const fetchMock = vi.fn((url: string, init?: RequestInit) => {
-    if (url.includes("rfi-search") && url.endsWith("/run")) {
+    if (url.includes("rfi-search") && url.endsWith("/results")) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(rfiSearchResults) });
     }
     if (url.includes("/offers/product-1/accept")) {
@@ -187,7 +187,6 @@ test("runs RFI search and accepts an offered product", async () => {
 
   renderRequests("/app/requests/ticket-1");
 
-  await userEvent.click(await screen.findByRole("button", { name: "Run search" }));
   expect(await screen.findByText("Existing Baltic Port Assessment")).toBeVisible();
 
   await userEvent.click(screen.getByRole("button", { name: "Accept" }));
@@ -212,7 +211,7 @@ test("rejects an offered product with a reason", async () => {
   const offeredTicket: Ticket = { ...baseTicket, state: "RFI_MATCH_OFFERED" };
   const rejectedResults = {
     ...rfiSearchResults,
-    ticketState: "ROUTE_ASSESSMENT",
+    ticketState: "NEW_TASKING_CONSENT",
     offers: [{ ...rfiSearchResults.offers[0], status: "rejected", rejectionReason: "Too old." }],
   };
   const fetchMock = vi.fn((url: string, init?: RequestInit) => {

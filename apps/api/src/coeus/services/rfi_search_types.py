@@ -13,3 +13,5 @@ class RfiSearchResults:
     evidence: tuple[GroundedProductEvidence, ...] = ()
     retrieval_mode: str = "metadata_only"
     degraded_reason: str | None = None
+    outcome: str = "incomplete"
+    assurance: str = "assisted"

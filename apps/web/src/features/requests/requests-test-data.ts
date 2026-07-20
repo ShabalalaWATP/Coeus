@@ -78,6 +78,8 @@ export const rfiResultsFixture: RfiSearchResults = {
   ticketState: "RFI_MATCH_OFFERED",
   retrievalMode: "hybrid",
   degradedReason: null,
+  outcome: "offers",
+  assurance: "assisted",
   metrics: {
     runId: "run-1",
     query: "Regional Stability Brief Baltic ports assessment report",
@@ -88,6 +90,11 @@ export const rfiResultsFixture: RfiSearchResults = {
     createdAt: "2026-07-05T00:01:00Z",
     retrievalMode: "hybrid",
     degradedReason: null,
+    outcome: "offers",
+    assurance: "assisted",
+    coverageStatus: "complete",
+    profileSpaceId: "mock:test:g1",
+    corpusVersion: "test-corpus-v1",
   },
   offers: [
     {

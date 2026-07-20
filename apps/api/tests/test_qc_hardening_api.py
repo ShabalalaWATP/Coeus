@@ -93,7 +93,7 @@ async def test_qc_approval_sanitises_free_text_time_periods(tmp_path: Path) -> N
         )
 
     assert missing_asset.status_code == 409
-    assert missing_asset.json()["error"]["code"] == "asset_required"
+    assert missing_asset.json()["error"]["code"] == "qc_agent_preflight_failed"
     assert approved.status_code == 200
     product_id = UUID(approved.json()["ingestedProduct"]["id"])
     product = app.state.store_services.repository.get_product(product_id)
