@@ -158,8 +158,9 @@ test("creates and submits a customer request through PostgreSQL", async ({ page 
   await page.getByRole("button", { name: "Submit", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "Request journey" })).toBeVisible();
   await page.getByLabel("Close journey").click();
-  await page.getByRole("button", { name: "Run search" }).click();
-  await page.getByRole("button", { name: "Yes, task as new request" }).click();
+  const taskAsNewRequest = page.getByRole("button", { name: "Yes, task as new request" });
+  await expect(taskAsNewRequest).toBeVisible();
+  await taskAsNewRequest.click();
   await expect(page.getByText("JIOC review", { exact: true })).toBeVisible();
 });
 
