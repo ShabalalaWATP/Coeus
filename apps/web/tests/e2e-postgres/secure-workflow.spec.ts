@@ -158,6 +158,8 @@ test("creates and submits a customer request through PostgreSQL", async ({ page 
   await page.getByRole("button", { name: "Submit", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "Request journey" })).toBeVisible();
   await page.getByLabel("Close journey").click();
+  await expect(page.getByRole("heading", { name: "Similar request in progress" })).toBeVisible();
+  await page.getByRole("button", { name: "None answer my need" }).click();
   const taskAsNewRequest = page.getByRole("button", { name: "Yes, task as new request" });
   await expect(taskAsNewRequest).toBeVisible();
   await taskAsNewRequest.click();
