@@ -113,6 +113,49 @@ test("requests clarification from an RFA manager review", async () => {
   );
 });
 
+test("JIOC closes a referred re-analysis dispute with full decision context", async () => {
+  const adjudicationTicket: RoutingTicket = {
+    ...reviewedTicket,
+    state: "JIOC_REANALYSIS_ADJUDICATION",
+    reanalysisContext: {
+      productId: "product-1",
+      customerReason: "The July coverage was incomplete.",
+      unmetCriteria: ["July coverage"],
+      managerRationale: "The manager considers the agreed scope complete.",
+    },
+  };
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(jsonResponse(queueWith([adjudicationTicket])))
+    .mockResolvedValueOnce(
+      jsonResponse({ ...adjudicationTicket, state: "CLOSED_REANALYSIS_DECLINED" }),
+    );
+  stubRoutingFetch(fetchMock);
+
+  renderWithProviders(<RoutingQueuePage queue="jioc" />, "/jioc/queue");
+
+  expect(await screen.findByText("The July coverage was incomplete.")).toBeVisible();
+  expect(screen.getByText("The manager considers the agreed scope complete.")).toBeVisible();
+  await userEvent.type(
+    screen.getByLabelText("Decision rationale"),
+    "The released product meets the approved requirement.",
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Close without re-analysis" }));
+
+  expect(await screen.findByText("No tickets in this queue.")).toBeVisible();
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    2,
+    "http://127.0.0.1:8001/api/v1/routing/ticket-1/jioc-reanalysis-decision",
+    expect.objectContaining({
+      body: JSON.stringify({
+        decision: "close",
+        rationale: "The released product meets the approved requirement.",
+      }),
+      method: "POST",
+    }),
+  );
+});
+
 test("renders an empty JIOC queue with the full capability catalogue", async () => {
   stubRoutingFetch(vi.fn().mockResolvedValueOnce(jsonResponse(queueWith([]))));
 

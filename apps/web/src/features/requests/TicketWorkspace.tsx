@@ -20,13 +20,27 @@ import { useAuth } from "../../lib/auth/auth-context";
 import { hasPermissions } from "../../lib/permissions/route-access";
 
 const INTAKE_STATES = new Set(["DRAFT_INTAKE", "INFO_REQUIRED"]);
-const PRODUCT_OFFER_STATES = new Set(["RFI_SEARCHING", "RFI_MATCH_OFFERED", "RFI_NO_MATCH"]);
+const PRODUCT_OFFER_STATES = new Set([
+  "RFI_SEARCHING",
+  "RFI_SEARCH_INCOMPLETE",
+  "RFI_MATCH_OFFERED",
+  "ACTIVE_WORK_REVIEW",
+  "ACTIVE_WORK_SEARCH_INCOMPLETE",
+  "RFI_NO_MATCH",
+  "NEW_TASKING_CONSENT",
+]);
 const CANCELABLE_STATES = new Set([
   "DRAFT_INTAKE",
   "INFO_REQUIRED",
   "RFI_SEARCHING",
+  "RFI_SEARCH_INCOMPLETE",
   "RFI_MATCH_OFFERED",
   "RFI_NO_MATCH",
+  "NEW_TASKING_CONSENT",
+  "JIOC_ROUTING_PENDING",
+  "JIOC_INTERVENTION_HOLD",
+  "ACTIVE_WORK_REVIEW",
+  "ACTIVE_WORK_SEARCH_INCOMPLETE",
   "JIOC_REVIEW",
   "COLLECT_CHOICE",
   "ANALYST_ASSIGNMENT",
@@ -52,7 +66,7 @@ export type TicketWorkspaceActions = {
   onRemoveCollaborator: (userId: string) => void;
   onReopenConversation?: () => void;
   onRun: () => void;
-  onSave: (payload: IntakeUpdate) => void;
+  onSave: (payload: IntakeUpdate, onSuccess?: () => void) => void;
   onSend: (message: string, onSuccess?: () => void) => void;
   onSubmit: () => void;
 };
@@ -151,7 +165,11 @@ export function TicketWorkspace({
         ) : null}
       </div>
       {journeyOpen && ticket ? (
-        <RequestJourney onClose={() => onJourneyToggle(false)} state={ticket.state} />
+        <RequestJourney
+          journey={ticket.customerStatus?.journey}
+          onClose={() => onJourneyToggle(false)}
+          state={ticket.state}
+        />
       ) : null}
       {actionError ? (
         <div className="workspace-alert" role="alert">
@@ -217,7 +235,7 @@ export function TicketWorkspace({
               onRetry={similarNotice.onRetry}
             />
           ) : null}
-          {ticket && isOwner && ticket.state === "RFI_NO_MATCH" ? (
+          {ticket && isOwner && ["RFI_NO_MATCH", "NEW_TASKING_CONSENT"].includes(ticket.state) ? (
             <NoMatchConsentPanel
               isPending={pending.consenting}
               onConsent={actions.onNoMatchConsent}

@@ -14,7 +14,13 @@ SEED_CREDENTIAL = "CoeusLocal1!"
 
 
 def _client() -> AsyncClient:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    app = create_app(
+        Settings(
+            environment="test",
+            argon2_memory_cost=8_192,
+            automatic_request_discovery_enabled=False,
+        )
+    )
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver")
 
 
@@ -115,7 +121,13 @@ async def test_owner_tags_editor_who_can_view_and_edit() -> None:
 
 @pytest.mark.asyncio
 async def test_editor_can_complete_intake_but_cannot_submit_owner_ticket() -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    app = create_app(
+        Settings(
+            environment="test",
+            argon2_memory_cost=8_192,
+            automatic_request_discovery_enabled=False,
+        )
+    )
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:

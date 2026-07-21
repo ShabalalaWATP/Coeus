@@ -15,14 +15,31 @@ from coeus.services.capability_catalogue import CapabilityCataloguePort
 from coeus.services.prioritisation import assessment_or_computed
 
 ASSESSMENT_TERMS = frozenset(
-    {"assessment", "assess", "brief", "briefing", "report", "estimate", "analysis"}
+    {
+        "analyse",
+        "analysis",
+        "analyze",
+        "assess",
+        "assessment",
+        "brief",
+        "briefing",
+        "estimate",
+        "report",
+    }
 )
 COLLECTION_TERMS = frozenset(
     {"collection", "collect", "sensor", "imagery", "source", "monitor", "surveillance"}
 )
 UNSUPPORTED_TERMS = frozenset({"mars", "martian", "tbd", "unbounded"})
+NEGATION_TERMS = frozenset(
+    {"avoid", "avoids", "avoiding", "neither", "never", "no", "not", "without"}
+)
+NEGATION_WINDOW = 3
 
 _TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
+_ROUTING_TOKEN_PATTERN = re.compile(r"[a-z0-9]+|[.!?;,:]")
+_CLAUSE_BOUNDARIES = frozenset(".!?;,:")
+_CONTRACTION_PATTERN = re.compile(r"\b[a-z]+n['\u2019]t\b")
 
 
 @dataclass(frozen=True)
@@ -47,7 +64,6 @@ class RfaCapabilityAgent:
     def review(self, ticket: TicketRecord) -> RfaCapabilityReview:
         text = _intake_text(ticket.intake)
         terms = _terms(text)
-        output_terms = _terms(ticket.intake.required_output_format or "")
         clarifications = _base_clarifications(ticket.intake, terms)
         inputs = _recommendation_inputs(ticket)
         candidates = self._catalogue.recommend_rfa(
@@ -57,16 +73,24 @@ class RfaCapabilityAgent:
             priority_tier=inputs.priority_tier,
         )
         team = self._team_or_triage(candidates)
-        assessment_signal = bool(terms.intersection(ASSESSMENT_TERMS))
-        collection_output = bool(output_terms.intersection(COLLECTION_TERMS)) and not bool(
-            output_terms.intersection(ASSESSMENT_TERMS)
-        )
-        collection_only = collection_output or (
-            bool(terms.intersection(COLLECTION_TERMS)) and not assessment_signal
-        )
+        assessment_signal, assessment_negated = _signal_state(text, ASSESSMENT_TERMS)
+        collection_signal, collection_negated = _signal_state(text, COLLECTION_TERMS)
+        output_text = ticket.intake.required_output_format or ""
+        collection_output, output_collection_negated = _signal_state(output_text, COLLECTION_TERMS)
+        assessment_output, output_assessment_negated = _signal_state(output_text, ASSESSMENT_TERMS)
+        collection_output = collection_output and not assessment_output
+        collection_only = collection_output or (collection_signal and not assessment_signal)
         can_satisfy = not clarifications and assessment_signal and not collection_only
-        confidence = _confidence(can_satisfy, assessment_signal, clarifications)
-        risks = _risks(ticket.intake, terms)
+        confidence = _evidence_strength(can_satisfy, assessment_signal, clarifications)
+        negated_signal = any(
+            (
+                assessment_negated,
+                collection_negated,
+                output_collection_negated,
+                output_assessment_negated,
+            )
+        )
+        risks = _risks(ticket.intake, terms, negated_signal)
         return RfaCapabilityReview(
             review_id=uuid4(),
             ticket_id=ticket.ticket_id,
@@ -115,15 +139,28 @@ class CmCapabilityAgent:
             priority_tier=inputs.priority_tier,
         )
         team = self._catalogue.team(candidates[0].team_id) if candidates else None
-        # A confident answer needs a genuine collection term; a team-keyword
-        # match alone is only an unconfirmed signal.
-        collection_hit = bool(terms.intersection(COLLECTION_TERMS))
+        task_text = " ".join(
+            value
+            for value in (
+                ticket.intake.description,
+                ticket.intake.operational_question,
+                ticket.intake.required_output_format,
+                ticket.intake.customer_success_criteria,
+            )
+            if value
+        )
+        collection_hit, collection_negated = _signal_state(task_text, COLLECTION_TERMS)
         signal_present = collection_hit or team is not None
         if collection_hit and team is None:
             team = self._catalogue.default_cm_team()
         can_satisfy = not clarifications and collection_hit
-        confidence = _confidence(can_satisfy, signal_present, clarifications)
-        risks = _risks(ticket.intake, terms)
+        confidence = _evidence_strength(can_satisfy, signal_present, clarifications)
+        _, assessment_negated = _signal_state(text, ASSESSMENT_TERMS)
+        risks = _risks(
+            ticket.intake,
+            terms,
+            collection_negated or assessment_negated,
+        )
         return CmCapabilityReview(
             review_id=uuid4(),
             ticket_id=ticket.ticket_id,
@@ -176,10 +213,8 @@ def _intake_text(intake: IntakeDetails) -> str:
 
 
 def _terms(text: str) -> frozenset[str]:
-    # Tokenise on alphanumeric runs so punctuation such as "assessment?"
-    # still matches, and fold simple plurals ("sensors" also counts as
-    # "sensor") without a stemming dependency.
-    tokens = set(_TOKEN_PATTERN.findall(text))
+    # Fold simple plurals without adding a stemming dependency.
+    tokens = set(_TOKEN_PATTERN.findall(text.casefold()))
     tokens.update(token[:-1] for token in tuple(tokens) if token.endswith("s") and len(token) > 3)
     return frozenset(tokens)
 
@@ -193,23 +228,79 @@ def _base_clarifications(intake: IntakeDetails, terms: frozenset[str]) -> tuple[
     return tuple(dict.fromkeys(clarifications))
 
 
-def _confidence(can_satisfy: bool, signal_present: bool, clarifications: tuple[str, ...]) -> float:
+def _evidence_strength(
+    can_satisfy: bool, signal_present: bool, clarifications: tuple[str, ...]
+) -> float:
+    """Compatibility field measuring evidence completeness, not probability."""
+
     if clarifications:
-        return 0.28
+        return 0.0
     if can_satisfy:
-        return 0.86
+        return 1.0
     if signal_present:
-        return 0.48
-    return 0.34
+        return 0.5
+    return 0.0
 
 
-def _risks(intake: IntakeDetails, terms: frozenset[str]) -> tuple[str, ...]:
+def _risks(
+    intake: IntakeDetails, terms: frozenset[str], negated_signal: bool = False
+) -> tuple[str, ...]:
     risks: list[str] = []
     if terms.intersection(COLLECTION_TERMS) and not intake.deadline:
         risks.append("Collection timing needs manager confirmation.")
     if (intake.restrictions_or_caveats or "").strip():
         risks.append("Requester restrictions require manager review.")
+    if negated_signal:
+        risks.append("Negated routing language requires manager review.")
     return tuple(risks)
+
+
+def _signal_state(text: str, signal_terms: frozenset[str]) -> tuple[bool, bool]:
+    """Return positive and negated signal presence without treating negation as intent."""
+
+    normalised = _CONTRACTION_PATTERN.sub(" not ", text.casefold())
+    normalised = re.sub(r"\bcannot\b", " not ", normalised)
+    tokens = _ROUTING_TOKEN_PATTERN.findall(normalised)
+    positive = False
+    negated = False
+    for index, token in enumerate(tokens):
+        if not _matches_signal(token, signal_terms):
+            continue
+        if _near_negation(tokens, index):
+            negated = True
+        else:
+            positive = True
+    return positive, negated
+
+
+def _matches_signal(token: str, signal_terms: frozenset[str]) -> bool:
+    if token in signal_terms:
+        return True
+    return token.endswith("s") and len(token) > 3 and token[:-1] in signal_terms
+
+
+def _near_negation(tokens: list[str], signal_index: int) -> bool:
+    before = _clause_window(tokens, signal_index, -1)
+    after = _clause_window(tokens, signal_index, 1)
+    if NEGATION_TERMS.intersection((*before, *after)):
+        return True
+    return (
+        signal_index + 2 < len(tokens)
+        and tokens[signal_index + 1] == "?"
+        and tokens[signal_index + 2] in NEGATION_TERMS
+    )
+
+
+def _clause_window(tokens: list[str], signal_index: int, direction: int) -> tuple[str, ...]:
+    words: list[str] = []
+    index = signal_index + direction
+    while 0 <= index < len(tokens) and len(words) < NEGATION_WINDOW:
+        token = tokens[index]
+        if token in _CLAUSE_BOUNDARIES:
+            break
+        words.append(token)
+        index += direction
+    return tuple(words)
 
 
 def _rfa_work_packages(intake: IntakeDetails, team_name: str) -> tuple[str, ...]:

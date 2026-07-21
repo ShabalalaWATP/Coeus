@@ -1,3 +1,6 @@
+from collections.abc import Iterator
+from contextlib import contextmanager
+
 import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
@@ -5,6 +8,16 @@ from starlette.requests import Request
 
 from coeus.core.errors import AppError, app_error_handler
 from coeus.main import create_app
+
+
+@contextmanager
+def _passthrough_context() -> Iterator[None]:
+    yield
+
+
+def test_app_error_can_propagate_through_generator_context_managers() -> None:
+    with pytest.raises(AppError, match="Conflict detected"), _passthrough_context():
+        raise AppError(409, "conflict", "Conflict detected.")
 
 
 @pytest.mark.asyncio

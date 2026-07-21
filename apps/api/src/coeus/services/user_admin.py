@@ -4,7 +4,7 @@ from uuid import UUID
 
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
-from coeus.domain.auth import RoleName, SessionRecord, UserAccount
+from coeus.domain.auth import RoleName, UserAccount
 from coeus.domain.rbac import permissions_for_roles
 from coeus.repositories.auth import LoginAttemptRepository, SeedUserRepository, SessionRepository
 from coeus.services.audit import AuditLog
@@ -130,17 +130,18 @@ class UserAdminService:
         actor_user_id: str,
         metadata: dict[str, str],
     ) -> None:
-        self._users.save(updated)
-        # Privilege or status changes must not outlive existing sessions.
-        revoked_sessions: tuple[SessionRecord, ...] = ()
-        try:
+        def confirm_change() -> None:
+            # Privilege or status changes must not outlive existing sessions.
             revoked_sessions = self._sessions.delete_for_user(updated.user_id)
-            self._audit_log.record(event_type, actor_user_id, metadata)
-        except Exception:
-            self._users.save(original)
-            for session in revoked_sessions:
-                self._sessions.save(session)
-            raise
+            try:
+                self._audit_log.record(event_type, actor_user_id, metadata)
+            except Exception:
+                for session in revoked_sessions:
+                    self._sessions.save(session)
+                raise
+
+        if not self._users.save_if_current_with_confirmation(original, updated, confirm_change):
+            raise AppError(409, "user_stale", "User state changed; refresh and try again.")
 
     @staticmethod
     def _require(actor: UserAccount, permission: Permission) -> None:

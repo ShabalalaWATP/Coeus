@@ -1,4 +1,4 @@
-from coeus.services.rfi_ranking import lexical_text_score, token_overlap
+from coeus.domain.store_ranking import lexical_text_score, token_overlap
 
 
 def test_lexical_score_stem_folds_safe_plural_variants() -> None:

@@ -150,6 +150,32 @@ test("keeps approval disabled until access control groups are available", async 
   expect(screen.getByRole("button", { name: /Approve and disseminate/ })).toBeDisabled();
 });
 
+test("blocks release when the QC Agent preflight finds a problem", async () => {
+  const blocked: QcProduct = {
+    ...baseProduct,
+    agentPreflight: {
+      ...baseProduct.agentPreflight!,
+      status: "blocked",
+      blockers: ["evidence_review_ready"],
+      checks: [
+        {
+          key: "evidence_review_ready",
+          passed: false,
+          detail: "The evidence narrative is not ready for human review.",
+        },
+      ],
+    },
+  };
+  vi.stubGlobal("fetch", vi.fn(fetchByUrl({ queueProducts: [blocked] })));
+
+  renderWithProviders(<QcQueuePage />, "/qc/queue");
+
+  expect(await screen.findByText("Blocked.")).toBeVisible();
+  await completeQcReview();
+  expect(screen.getByRole("button", { name: /Approve and disseminate/ })).toBeDisabled();
+  expect(screen.getByText(/Human QC and the release checklist remain mandatory/)).toBeVisible();
+});
+
 test("shows a retryable error when QC access control groups cannot load", async () => {
   let acgRequests = 0;
   const fetchMock = vi.fn((url: string) => {

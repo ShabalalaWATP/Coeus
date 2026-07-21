@@ -30,6 +30,7 @@ test("downloads a granted asset with the token in a request header", async () =>
           expiresInSeconds: 900,
         }),
     })
+    .mockResolvedValueOnce({ ok: true, blob: () => Promise.resolve(assetBlob) })
     .mockResolvedValueOnce({ ok: true, blob: () => Promise.resolve(assetBlob) });
   vi.stubGlobal("fetch", fetchMock);
   const { createObjectURL, revokeObjectURL } = stubObjectUrls();
@@ -41,9 +42,19 @@ test("downloads a granted asset with the token in a request header", async () =>
 
   await userEvent.click(await screen.findByRole("button", { name: "Download asset" }));
 
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
   expect(fetchMock).toHaveBeenNthCalledWith(
     3,
+    "http://127.0.0.1:8001/api/v1/store/products/product-regional/assets/asset-brief/preview",
+    {
+      cache: "no-store",
+      credentials: "include",
+      headers: { "X-Asset-Token": "asset-token-asset-brief" },
+      method: "GET",
+    },
+  );
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    4,
     "http://127.0.0.1:8001/api/v1/store/products/product-regional/assets/asset-brief/download",
     {
       cache: "no-store",
@@ -70,6 +81,7 @@ test("shows a visible message when the asset download fails", async () => {
           expiresInSeconds: 900,
         }),
     })
+    .mockResolvedValueOnce({ ok: true, blob: () => Promise.resolve(new Blob(["preview"])) })
     .mockResolvedValueOnce({ ok: false, status: 403, blob: () => Promise.resolve(new Blob()) });
   vi.stubGlobal("fetch", fetchMock);
   stubObjectUrls();

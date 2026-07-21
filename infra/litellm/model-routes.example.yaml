@@ -1,0 +1,24 @@
+# Merge these routes into the model_list of an operator-managed LiteLLM config.
+# Cloud credentials are deliberately absent. LiteLLM resolves AWS credentials
+# through the boto3 provider chain and Google credentials through ADC.
+model_list:
+  - model_name: istari-bedrock-primary
+    litellm_params:
+      # Accepts any LiteLLM-supported Bedrock chat model, inference profile or
+      # provisioned/custom model ARN selected by the deployment operator.
+      model: os.environ/LITELLM_BEDROCK_MODEL
+      aws_region_name: os.environ/AWS_REGION_NAME
+
+  - model_name: istari-vertex-primary
+    litellm_params:
+      # Accepts any LiteLLM-supported Vertex AI chat model or endpoint selected
+      # by the deployment operator.
+      model: os.environ/LITELLM_VERTEX_MODEL
+      vertex_project: os.environ/VERTEXAI_PROJECT
+      vertex_location: os.environ/VERTEXAI_LOCATION
+
+# Merge these settings into the deployment's existing litellm_settings. Do not
+# enable drop_params: Istari must detect models that reject its bounded contract.
+litellm_settings:
+  drop_params: false
+  turn_off_message_logging: true

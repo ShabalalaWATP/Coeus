@@ -7,13 +7,14 @@ from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
 from coeus.domain.access import ProductStatus
 from coeus.domain.auth import UserAccount
+from coeus.domain.product_submission import DraftProductAsset, DraftProductVersion
 from coeus.domain.store import (
     StoreAsset,
     StoreProduct,
     StoreProductMetadata,
     object_key_segment,
 )
-from coeus.domain.tickets import DraftProductAsset, DraftProductVersion, TicketRecord
+from coeus.domain.tickets import TicketRecord
 from coeus.repositories.access import AccessRepository
 from coeus.repositories.store_ids import new_store_product_id
 from coeus.services.analyst_records import approved_route
@@ -22,6 +23,7 @@ from coeus.services.qc_acg_policy import validate_qc_acg_assignment
 from coeus.services.qc_records import preview_kind
 from coeus.services.store import StoreServices
 from coeus.services.store_semantics import derive_semantic_labels
+from coeus.services.workflow_draft_access import WorkflowDraftAccessPolicy
 
 
 @dataclass(frozen=True)
@@ -67,16 +69,19 @@ class ProductAutoIngestionService:
         store: StoreServices,
         access_repository: AccessRepository,
         storage: ObjectStorage,
+        draft_access: WorkflowDraftAccessPolicy,
     ) -> None:
         self._store = store
         self._access = access_repository
         self._storage = storage
+        self._draft_access = draft_access
 
     def ingest(
         self, actor: UserAccount, ticket: TicketRecord, approval: QcApprovalInput
     ) -> StoreProduct:
         self._require(actor, Permission.PRODUCT_CREATE_FROM_QC)
         draft = latest_draft(ticket)
+        self._draft_access.require_version(actor, ticket, draft)
         validate_qc_acg_assignment(self._access, actor, approval.acg_ids, frozenset())
         now = datetime.now(UTC)
         semantic_labels = derive_semantic_labels(
@@ -84,12 +89,12 @@ class ProductAutoIngestionService:
             draft.summary,
             draft.product_type,
             draft.content,
-            ticket.intake.area_or_region or "",
+            draft.area_or_region or ticket.intake.area_or_region or "",
             ticket.intake.required_output_format or "",
         )
         reference = self._store.repository.next_reference()
         prepared_assets = tuple(
-            _prepare_asset(ticket.ticket_id, reference, draft.title, asset)
+            _prepare_asset(ticket.ticket_id, reference, draft.title, asset, self._storage)
             for asset in draft.assets
         )
         product = StoreProduct(
@@ -98,21 +103,27 @@ class ProductAutoIngestionService:
             metadata=StoreProductMetadata(
                 title=draft.title,
                 summary=draft.summary,
-                description=draft.content,
+                description=draft.description or draft.content,
                 product_type=draft.product_type,
-                source_type="qc_approved_draft",
-                owner_team=_owner_team(ticket),
-                area_or_region=ticket.intake.area_or_region or "Not specified",
+                source_type=draft.source_type or "qc_approved_submission",
+                owner_team=draft.owner_team or _owner_team(ticket),
+                area_or_region=(
+                    draft.area_or_region or ticket.intake.area_or_region or "Not specified"
+                ),
                 classification_level=approval.classification_level,
                 releasability=frozenset(approval.releasability),
                 handling_caveats=frozenset(approval.handling_caveats),
-                tags=frozenset({"mock", "qc-approved", ticket.reference.casefold()}),
+                tags=frozenset({"mock", "qc-approved", ticket.reference.casefold(), *draft.tags}),
                 semantic_labels=semantic_labels,
                 acg_ids=approval.acg_ids,
                 # Held as draft until the owning manager performs final release.
                 status=ProductStatus.DRAFT,
-                time_period_start=iso_date_or_none(ticket.intake.time_period_start),
-                time_period_end=iso_date_or_none(ticket.intake.time_period_end),
+                time_period_start=iso_date_or_none(
+                    draft.time_period_start or ticket.intake.time_period_start
+                ),
+                time_period_end=iso_date_or_none(
+                    draft.time_period_end or ticket.intake.time_period_end
+                ),
                 geojson_ref=None,
                 bounding_box=None,
             ),
@@ -156,27 +167,45 @@ def _prepare_asset(
     reference: str,
     product_title: str,
     asset: DraftProductAsset,
+    storage: ObjectStorage,
 ) -> PreparedAsset:
     # The store asset gets its own identity; the object key embeds that same
     # identity so the stored bytes always correspond to the served asset.
     asset_id = uuid4()
     object_key = f"store/qc/{ticket_id}/{asset_id}/{object_key_segment(asset.name)}"
-    content = _placeholder_content(reference, product_title, asset.name)
+    content = _source_content(storage, asset, reference, product_title)
     store_asset = StoreAsset(
         asset_id=asset_id,
         name=asset.name,
         asset_type=asset.asset_type,
-        mime_type=asset.mime_type,
+        mime_type=asset.detected_mime_type or asset.mime_type,
         size_bytes=len(content),
         sha256=sha256(content).hexdigest(),
         object_key=object_key,
-        preview_kind=preview_kind(asset.mime_type, asset.asset_type),
+        preview_kind=(asset.preview_kind or preview_kind(asset.mime_type, asset.asset_type)),
     )
     return PreparedAsset(store_asset, content)
 
 
 def _placeholder_content(reference: str, product_title: str, asset_name: str) -> bytes:
     return (f"MOCK DATA ONLY\n{reference}\n{product_title}\n{asset_name}\n").encode()
+
+
+def _source_content(
+    storage: ObjectStorage,
+    asset: DraftProductAsset,
+    reference: str,
+    product_title: str,
+) -> bytes:
+    # Metadata-only versions are retained solely for old synthetic fixtures.
+    if not asset.object_key:
+        return _placeholder_content(reference, product_title, asset.name)
+    if not storage.exists(asset.object_key):
+        raise AppError(409, "submission_asset_missing", "Approved source asset is unavailable.")
+    content = storage.read_bytes(asset.object_key)
+    if len(content) != asset.size_bytes or sha256(content).hexdigest() != asset.sha256:
+        raise AppError(409, "submission_asset_integrity_failed", "Approved source asset changed.")
+    return content
 
 
 def _owner_team(ticket: TicketRecord) -> str:

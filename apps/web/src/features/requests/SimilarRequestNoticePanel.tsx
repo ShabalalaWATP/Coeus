@@ -38,14 +38,12 @@ export function SimilarRequestNoticePanel({
           <h2>Similar request check</h2>
         </div>
         <p className="auth-error" role="alert">
-          Similar requests could not be checked. Try again or continue this request.
+          In-progress requests could not be checked. Retry before deciding whether to create new
+          work.
         </p>
         <div className="similar-panel__actions">
           <button onClick={onRetry} type="button">
             Retry check
-          </button>
-          <button className="store-action--secondary" onClick={onContinue} type="button">
-            Continue request
           </button>
         </div>
       </section>
@@ -77,14 +75,14 @@ export function SimilarRequestNoticePanel({
             </div>
             <button disabled={isJoining} onClick={() => onJoin(match.ticketId)} type="button">
               <Eye aria-hidden="true" size={16} />
-              Join as viewer
+              Join this work
             </button>
           </article>
         ))}
       </div>
       <div className="similar-panel__actions">
         <button className="store-action--secondary" onClick={onContinue} type="button">
-          Continue request
+          None answer my need
         </button>
       </div>
     </section>

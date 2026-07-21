@@ -3,6 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from coeus.schemas.advisory_agents import AgentAdviceResponse
+
 
 class ChatMessageRequest(BaseModel):
     ticket_id: UUID | None = Field(default=None, validation_alias="ticketId")
@@ -156,6 +158,35 @@ class AgentRunResponse(BaseModel):
     summary: str
     safety_flags: list[str] = Field(serialization_alias="safetyFlags")
     created_at: datetime = Field(serialization_alias="createdAt")
+    execution_kind: str | None = Field(
+        default=None, max_length=40, serialization_alias="executionKind"
+    )
+    provider: str | None = Field(default=None, max_length=100)
+    model: str | None = Field(default=None, max_length=200)
+    duration_ms: int | None = Field(default=None, ge=0, serialization_alias="durationMs")
+    fallback_outcome: str | None = Field(
+        default=None, max_length=80, serialization_alias="fallbackOutcome"
+    )
+    validation_outcome: str | None = Field(
+        default=None, max_length=80, serialization_alias="validationOutcome"
+    )
+    prompt_version: str | None = Field(
+        default=None, max_length=100, serialization_alias="promptVersion"
+    )
+    policy_version: str | None = Field(
+        default=None, max_length=100, serialization_alias="policyVersion"
+    )
+    context_schema_version: str | None = Field(
+        default=None, max_length=100, serialization_alias="contextSchemaVersion"
+    )
+    input_hash: str | None = Field(default=None, max_length=128, serialization_alias="inputHash")
+    output_hash: str | None = Field(default=None, max_length=128, serialization_alias="outputHash")
+    input_token_count: int | None = Field(default=None, ge=0, serialization_alias="inputTokenCount")
+    output_token_count: int | None = Field(
+        default=None, ge=0, serialization_alias="outputTokenCount"
+    )
+    error_class: str | None = Field(default=None, max_length=200, serialization_alias="errorClass")
+    advice: AgentAdviceResponse | None = None
 
 
 class TimelineEntryResponse(BaseModel):
@@ -191,6 +222,41 @@ class CollectChoiceRequest(BaseModel):
     analysed: bool
 
 
+class CustomerEstimateResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    earliest: datetime | None
+    likely: datetime | None
+    latest: datetime | None
+    confidence: str
+    status: str
+    as_of: datetime = Field(serialization_alias="asOf")
+    policy_version: str = Field(serialization_alias="policyVersion")
+
+
+class CustomerJourneyStageResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    code: str
+    label: str
+    status: str
+
+
+class CustomerStatusResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    code: str
+    label: str
+    explanation: str
+    current_leg: str = Field(serialization_alias="currentLeg")
+    action_required: bool = Field(serialization_alias="actionRequired")
+    action_type: str | None = Field(serialization_alias="actionType")
+    next_milestone: str | None = Field(serialization_alias="nextMilestone")
+    canonical_ticket_id: UUID | None = Field(serialization_alias="canonicalTicketId")
+    estimate: CustomerEstimateResponse | None
+    journey: list[CustomerJourneyStageResponse]
+
+
 class TicketResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -198,6 +264,7 @@ class TicketResponse(BaseModel):
     reference: str
     requester_user_id: UUID = Field(serialization_alias="requesterUserId")
     state: str
+    customer_status: CustomerStatusResponse = Field(serialization_alias="customerStatus")
     intake: IntakeDetailsResponse
     intake_checklist: list[IntakeChecklistItemResponse] = Field(
         serialization_alias="intakeChecklist"
@@ -226,6 +293,7 @@ class TicketSummaryResponse(BaseModel):
     reference: str
     requester_user_id: UUID = Field(serialization_alias="requesterUserId")
     state: str
+    customer_status: CustomerStatusResponse = Field(serialization_alias="customerStatus")
     title: str | None
     priority: str | None
     is_ready_for_submission: bool = Field(serialization_alias="isReadyForSubmission")

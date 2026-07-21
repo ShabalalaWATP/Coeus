@@ -2,18 +2,17 @@ from dataclasses import replace
 
 import pytest
 
-from coeus.domain.store import StoreHybridCandidate, StoreProduct, StoreSearchHit
+from coeus.domain.search_relevance import LEXICAL_SCORE_FLOOR
+from coeus.domain.store import StoreHybridCandidate, StoreProduct
+from coeus.domain.store_ranking import lexical_score_for_product
 from coeus.domain.tickets import IntakeDetails
 from coeus.services.rfi_ranking import (
-    LEXICAL_SCORE_FLOOR,
     _date,
     _full_text_score,
     _metadata_score,
     _semantic_score,
-    lexical_score_for_product,
     query_text,
     rank_hybrid_rfi_candidates,
-    rank_rfi_hits,
 )
 from store_projection_helpers import seed_product
 
@@ -46,14 +45,12 @@ def test_strong_vector_score_surfaces_lexically_disjoint_product() -> None:
     )
     query = query_text(intake)
 
-    lexical_offers = rank_rfi_hits((StoreSearchHit(product, 0.0, ()),), intake)
     semantic_offers = rank_hybrid_rfi_candidates(
         (StoreHybridCandidate(product=product, vector_rank=1, vector_score=0.9),),
         intake,
     )
 
     assert lexical_score_for_product(product, query) == 0
-    assert lexical_offers == ()
     assert semantic_offers[0].title == "Vessel Movements, Gulf of Finland"
     assert any(
         reason.startswith("vector-similarity:") for reason in semantic_offers[0].match_reasons

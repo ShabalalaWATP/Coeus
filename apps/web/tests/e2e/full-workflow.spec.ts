@@ -32,11 +32,19 @@ test("drives request, JIOC routing, analyst, manager approval and QC release", a
   await expect(page.getByRole("heading", { name: "Analyst Workbench" })).toBeVisible();
   await page.getByLabel("Assess vessel activity").click();
   await expect(page.getByLabel("Assess vessel activity")).toBeChecked();
+  await page.getByLabel("Product file").setInputFiles({
+    name: "assessment-draft.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("%PDF-1.4\n% MOCK DATA ONLY\n"),
+  });
   await page.getByLabel("Title").fill("North Atlantic Assessment");
   await page.getByLabel("Summary").fill("Synthetic assessment summary.");
-  await page.getByLabel("Content").fill("Synthetic assessment content for QC review.");
-  await page.getByRole("button", { name: "Save draft" }).click();
-  await expect(page.getByText("v1: North Atlantic Assessment")).toBeVisible();
+  await page.getByLabel("Description").fill("Synthetic assessment content for QC review.");
+  await page.getByRole("checkbox", { name: "ACG-ALPHA" }).check();
+  await page.getByRole("button", { name: "Upload product version" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Version 1: North Atlantic Assessment" }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Submit for manager approval" }).click();
   await expect(
     page.getByLabel("Analyst task detail").getByText("Manager approval", { exact: true }),

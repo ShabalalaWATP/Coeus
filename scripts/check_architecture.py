@@ -10,6 +10,35 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "apps" / "api" / "src" / "coeus"
 
 TEMPORARY_ALLOWLIST: frozenset[tuple[str, str]] = frozenset()
+OBJECT_STORAGE_READ_OWNERS = frozenset(
+    {
+        "coeus.services.demo_seed",
+        "coeus.services.qc_ingestion",
+        "coeus.services.search_indexing",
+        "coeus.services.workflow_draft_access",
+    }
+)
+DETERMINISTIC_AUTHORITY_MODULES = frozenset(
+    {
+        "coeus.services.jioc_routing_agent",
+        "coeus.services.jioc_routing_context",
+        "coeus.services.jioc_routing_policy",
+        "coeus.services.prioritisation",
+        "coeus.services.qc_preflight",
+        "coeus.services.routing_evaluation",
+        "coeus.services.routing_agents",
+        "coeus.services.routing_records",
+        "coeus.services.routing_review_updates",
+    }
+)
+OUTBOUND_PROVIDER_IMPORTS = (
+    "boto3",
+    "google",
+    "httpx",
+    "openai",
+    "requests",
+    "coeus.integrations",
+)
 
 
 def module_name(path: Path) -> str:
@@ -29,6 +58,21 @@ def imported_modules(path: Path) -> set[str]:
 
 
 def forbidden(source: str, target: str) -> bool:
+    if source in DETERMINISTIC_AUTHORITY_MODULES and target.startswith(
+        OUTBOUND_PROVIDER_IMPORTS
+    ):
+        return True
+    if source.startswith("coeus.integrations.") and target.startswith(
+        (
+            "coeus.api",
+            "coeus.persistence",
+            "coeus.repositories",
+            "coeus.services",
+        )
+    ):
+        return True
+    if source.startswith("coeus.services."):
+        return target == "fastapi" or target.startswith("fastapi.")
     if source.startswith("coeus.application."):
         return target.startswith(
             (
@@ -57,6 +101,16 @@ def violations() -> list[tuple[str, str, Path]]:
     found: list[tuple[str, str, Path]] = []
     for path in sorted(SOURCE.rglob("*.py")):
         source = module_name(path)
+        content = path.read_text(encoding="utf-8")
+        if source.startswith("coeus.services.") and "app.state" in content:
+            found.append((source, "app.state", path))
+        if (
+            source.startswith("coeus.services.")
+            and "storage.read_bytes(" in content
+            and "object_storage.py" not in path.as_posix()
+            and source not in OBJECT_STORAGE_READ_OWNERS
+        ):
+            found.append((source, "protected draft byte read", path))
         for target in sorted(imported_modules(path)):
             edge = (source, target)
             if forbidden(source, target) and edge not in TEMPORARY_ALLOWLIST:

@@ -8,6 +8,7 @@ import { AuthenticatedShell } from "../components/layout/AuthenticatedShell";
 import { RouteFallback } from "../components/layout/RouteFallback";
 import { RouteRecoveryPage } from "../components/layout/RouteRecoveryPage";
 import type { Permission } from "../lib/api-client/auth";
+import { routePolicy } from "./route-policy";
 import {
   AcgAdminPage,
   AccessGroupsPage,
@@ -66,148 +67,161 @@ export function createAppRouter() {
       children: [
         { index: true, element: <DefaultRouteRedirect /> },
         {
-          path: "account/password",
-          element: protectedPage(<ChangePasswordPage />, []),
+          path: routePolicy.accountPassword.path,
+          element: protectedPage(<ChangePasswordPage />, routePolicy.accountPassword.permissions),
         },
         {
-          path: "account/profile",
-          element: protectedPage(<ProfilePage />, ["user:read_self"]),
+          path: routePolicy.accountProfile.path,
+          element: protectedPage(<ProfilePage />, routePolicy.accountProfile.permissions),
         },
         {
-          path: "app/requests",
-          element: protectedPage(<RequestsPage />, ["ticket:read_own"]),
+          path: routePolicy.requests.path,
+          element: protectedPage(<RequestsPage />, routePolicy.requests.permissions),
         },
         {
-          path: "app/requests/new",
-          element: protectedPage(<RequestsPage />, ["ticket:read_own", "chat:use"]),
+          path: routePolicy.requestNew.path,
+          element: protectedPage(<RequestsPage />, routePolicy.requestNew.permissions),
         },
         {
           // Tagged collaborators from any role can follow a shared request link.
-          path: "app/requests/:ticketId",
-          element: protectedPage(<RequestsPage />, []),
+          path: routePolicy.requestDetail.path,
+          element: protectedPage(<RequestsPage />, routePolicy.requestDetail.permissions),
         },
         {
-          path: "access-groups",
-          element: protectedPage(<AccessGroupsPage />, ["user:read_self"]),
+          path: routePolicy.accessGroups.path,
+          element: protectedPage(<AccessGroupsPage />, routePolicy.accessGroups.permissions),
         },
         {
-          path: "store",
-          element: protectedPage(<StorePage />, ["product:read", "product:search"]),
+          path: routePolicy.store.path,
+          element: protectedPage(<StorePage />, routePolicy.store.permissions),
         },
         {
-          path: "store/my-products",
-          element: protectedPage(<StorePage scope="mine" />, ["product:read", "product:search"]),
+          path: routePolicy.myProducts.path,
+          element: protectedPage(<StorePage scope="mine" />, routePolicy.myProducts.permissions),
         },
         {
-          path: "store/upload",
-          element: protectedPage(<ProductUploadPage />, ["product:create_existing"]),
+          path: routePolicy.storeUpload.path,
+          element: protectedPage(<ProductUploadPage />, routePolicy.storeUpload.permissions),
         },
         {
-          path: "store/products/:productId",
-          element: protectedPage(<ProductDetailPage />, ["product:read"]),
+          path: routePolicy.storeProduct.path,
+          element: protectedPage(<ProductDetailPage />, routePolicy.storeProduct.permissions),
         },
         {
-          path: "store/products/:productId/assets/:assetId",
-          element: protectedPage(<ProductDetailPage />, ["product:read"]),
+          path: routePolicy.storeAsset.path,
+          element: protectedPage(<ProductDetailPage />, routePolicy.storeAsset.permissions),
         },
         {
-          path: "jioc/queue",
-          element: protectedPage(<RoutingQueuePage queue="jioc" />, ["jioc:review"]),
+          path: routePolicy.jiocQueue.path,
+          element: protectedPage(
+            <RoutingQueuePage queue="jioc" />,
+            routePolicy.jiocQueue.permissions,
+          ),
         },
         {
-          path: "jioc/oversight",
-          element: protectedPage(<JiocOversightPage />, ["jioc:review"]),
+          path: routePolicy.jiocOversight.path,
+          element: protectedPage(<JiocOversightPage />, routePolicy.jiocOversight.permissions),
         },
         {
-          path: "rfa/queue",
-          element: protectedPage(<RoutingQueuePage queue="rfa" />, ["rfa:review"]),
+          path: routePolicy.rfaQueue.path,
+          element: protectedPage(
+            <RoutingQueuePage queue="rfa" />,
+            routePolicy.rfaQueue.permissions,
+          ),
         },
         {
-          path: "rfa/products",
+          path: routePolicy.rfaProducts.path,
           element: protectedPage(
             <StorePage
               ownerTeam="RFA"
               title="RFA Products"
               description="Request for Assessment product workspace."
             />,
-            ["rfa:add_product", "product:read", "product:search"],
+            routePolicy.rfaProducts.permissions,
           ),
         },
         {
-          path: "rfa/analytics",
-          element: protectedPage(<AnalyticsDashboardPage audience="rfa" />, [
-            "analytics:view_team",
-            "rfa:review",
-          ]),
+          path: routePolicy.rfaAnalytics.path,
+          element: protectedPage(
+            <AnalyticsDashboardPage audience="rfa" />,
+            routePolicy.rfaAnalytics.permissions,
+          ),
         },
         {
-          path: "collection/queue",
-          element: protectedPage(<RoutingQueuePage queue="cm" />, ["collection:review"]),
+          path: routePolicy.collectionQueue.path,
+          element: protectedPage(
+            <RoutingQueuePage queue="cm" />,
+            routePolicy.collectionQueue.permissions,
+          ),
         },
         {
-          path: "collection/products",
+          path: routePolicy.collectionProducts.path,
           element: protectedPage(
             <StorePage
               ownerTeam="Collection"
               title="Collection Products"
               description="Collection product workspace."
             />,
-            ["collection:add_product", "product:read", "product:search"],
+            routePolicy.collectionProducts.permissions,
           ),
         },
         {
-          path: "collection/analytics",
-          element: protectedPage(<AnalyticsDashboardPage audience="collection" />, [
-            "analytics:view_team",
-            "collection:review",
-          ]),
+          path: routePolicy.collectionAnalytics.path,
+          element: protectedPage(
+            <AnalyticsDashboardPage audience="collection" />,
+            routePolicy.collectionAnalytics.permissions,
+          ),
         },
         {
           // Membership is checked server-side; non-members see an empty state.
-          path: "teams",
-          element: protectedPage(<TeamsPage />, ["user:read_self"]),
+          path: routePolicy.teams.path,
+          element: protectedPage(<TeamsPage />, routePolicy.teams.permissions),
         },
         {
-          path: "analyst/workbench",
-          element: protectedPage(<AnalystWorkbenchPage />, ["analyst:work"]),
+          path: routePolicy.analystWorkbench.path,
+          element: protectedPage(
+            <AnalystWorkbenchPage />,
+            routePolicy.analystWorkbench.permissions,
+          ),
         },
         {
-          path: "analyst/tasks/:taskId",
-          element: protectedPage(<AnalystWorkbenchPage />, ["analyst:work"]),
+          path: routePolicy.analystTask.path,
+          element: protectedPage(<AnalystWorkbenchPage />, routePolicy.analystTask.permissions),
         },
         {
-          path: "qc/queue",
-          element: protectedPage(<QcQueuePage />, ["qc:review"]),
+          path: routePolicy.qcQueue.path,
+          element: protectedPage(<QcQueuePage />, routePolicy.qcQueue.permissions),
         },
         {
-          path: "qc/products/:productId",
-          element: protectedPage(<QcQueuePage />, ["qc:review"]),
+          path: routePolicy.qcProduct.path,
+          element: protectedPage(<QcQueuePage />, routePolicy.qcProduct.permissions),
         },
         {
-          path: "admin/overview",
-          element: protectedPage(<AdminOverviewPage />, ["system:configure"]),
+          path: routePolicy.adminOverview.path,
+          element: protectedPage(<AdminOverviewPage />, routePolicy.adminOverview.permissions),
         },
         {
-          path: "admin/users",
-          element: protectedPage(<UserManagementPage />, ["user:assign_role"]),
+          path: routePolicy.adminUsers.path,
+          element: protectedPage(<UserManagementPage />, routePolicy.adminUsers.permissions),
         },
         {
-          path: "admin/acgs",
-          element: protectedPage(<AcgAdminPage />, ["acg:view"]),
+          path: routePolicy.adminAcgs.path,
+          element: protectedPage(<AcgAdminPage />, routePolicy.adminAcgs.permissions),
         },
         {
-          path: "admin/analytics",
-          element: protectedPage(<AnalyticsDashboardPage audience="admin" />, [
-            "analytics:view_global",
-          ]),
+          path: routePolicy.adminAnalytics.path,
+          element: protectedPage(
+            <AnalyticsDashboardPage audience="admin" />,
+            routePolicy.adminAnalytics.permissions,
+          ),
         },
         {
-          path: "admin/acgs/:acgId",
-          element: protectedPage(<AcgAdminPage />, ["acg:view"]),
+          path: routePolicy.adminAcgDetail.path,
+          element: protectedPage(<AcgAdminPage />, routePolicy.adminAcgDetail.permissions),
         },
         {
-          path: "audit",
-          element: protectedPage(<AuditPage />, ["audit:read"]),
+          path: routePolicy.audit.path,
+          element: protectedPage(<AuditPage />, routePolicy.audit.permissions),
         },
       ],
     },

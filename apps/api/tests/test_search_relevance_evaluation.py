@@ -5,11 +5,11 @@ from uuid import NAMESPACE_URL, uuid5
 
 import pytest
 
+from coeus.domain.search_relevance import LEXICAL_SCORE_FLOOR
 from coeus.domain.store import StoreHybridCandidate
+from coeus.domain.store_ranking import lexical_score_for_product
 from coeus.domain.tickets import IntakeDetails
 from coeus.services.rfi_ranking import (
-    LEXICAL_SCORE_FLOOR,
-    lexical_score_for_product,
     rank_hybrid_rfi_candidates,
 )
 from coeus.services.search_evaluation import SearchEvaluationRun, evaluate_search_runs
@@ -29,11 +29,15 @@ def test_versioned_synthetic_product_relevance_set_passes_release_gates() -> Non
 
     assert report.query_count == 10
     assert report.access_leakage_count == 0
-    assert report.recall_at_5 >= 0.90
-    assert report.precision_at_5 >= 0.70
-    assert report.ndcg_at_5 >= 0.85
-    assert report.no_match_false_offer_rate <= 0.10
+    assert report.recall_at_5 >= 0.95
+    assert report.precision_at_5 >= 0.95
+    assert report.ndcg_at_5 >= 0.90
+    assert report.false_definitive_no_match_rate <= 0.01
+    assert report.false_offer_rate <= 0.02
     assert report.degraded_mode_identification == 1.0
+    assert report.temporal_constraint_violations == 0
+    assert report.citation_identity_rate == 1.0
+    assert report.passage_support_rate >= 0.95
     assert report.passes_release_gates is True
 
 
@@ -47,6 +51,9 @@ def test_evaluation_report_detects_leakage_bad_ranking_and_wrong_mode() -> None:
                 visible_ids=frozenset({"right", "wrong"}),
                 retrieval_mode="hybrid",
                 expected_mode="lexical_only",
+                temporal_constraints_satisfied=False,
+                citation_identity_correct=False,
+                passage_support=0.4,
             ),
             SearchEvaluationRun(
                 query_id="bad-no-match",
@@ -66,6 +73,9 @@ def test_evaluation_report_detects_leakage_bad_ranking_and_wrong_mode() -> None:
     assert report.ndcg_at_5 == 0
     assert report.no_match_false_offer_rate == 1
     assert report.degraded_mode_identification == 0.5
+    assert report.temporal_constraint_violations == 1
+    assert report.citation_identity_rate == 0.5
+    assert report.passage_support_rate == 0.7
     assert report.passes_release_gates is False
 
 

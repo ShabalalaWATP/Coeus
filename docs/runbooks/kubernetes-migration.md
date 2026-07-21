@@ -32,7 +32,8 @@ A non-production Kubernetes evaluation can preserve current semantics with:
 4. A single-writer persistent volume mounted at `/var/lib/coeus/objects`, with
    `COEUS_OBJECT_STORAGE_PROVIDER=local` and
    `COEUS_LOCAL_OBJECT_STORAGE_PATH=/var/lib/coeus/objects`.
-5. Kubernetes Secrets for database, session, CSRF and asset-token secrets.
+5. Kubernetes Secrets for database, session, CSRF, asset-token,
+   configuration-encryption and metrics bearer values.
 6. An HTTPS Ingress routing the web and API origins, with matching CORS and
    secure-cookie settings.
 7. A one-shot migration Job running `alembic upgrade head` before the API rollout.
@@ -54,12 +55,16 @@ COEUS_DATABASE_URL=<PostgreSQL URL from a Kubernetes Secret>
 COEUS_SESSION_SECRET=<at least 32 characters from a Kubernetes Secret>
 COEUS_CSRF_SECRET=<at least 32 characters from a Kubernetes Secret>
 COEUS_ASSET_TOKEN_SECRET=<at least 32 characters from a Kubernetes Secret>
+COEUS_CONFIGURATION_ENCRYPTION_KEY=<at least 32 characters from a Kubernetes Secret>
+COEUS_METRICS_BEARER_TOKEN=<at least 32 characters from a Kubernetes Secret>
 COEUS_SECURE_COOKIES=true
 COEUS_ALLOWED_CORS_ORIGINS=["https://<web-origin>"]
 COEUS_PERSISTENCE_PROVIDER=postgres
+COEUS_TICKET_PERSISTENCE_MODE=relational
 COEUS_OBJECT_STORAGE_PROVIDER=local
 COEUS_LOCAL_OBJECT_STORAGE_PATH=/var/lib/coeus/objects
 COEUS_PUBSUB_ENABLED=false
+COEUS_JIOC_AGENT_ROUTING_ENABLED=disabled
 ```
 
 Keep one API replica and mount the object path on its persistent volume. The
@@ -69,12 +74,20 @@ organisational users. Renaming the environment to `staging` or `prod` is not an
 identity migration: startup fails closed until a persistent production account
 store or approved identity provider replaces the seed repository.
 
+Routing mode must remain explicit in a hosted environment. Use `disabled` as
+the evaluation baseline or `shadow` to gather non-authoritative evidence. Before
+using `active`, set `COEUS_JIOC_ROUTING_APPROVED_RELEASES` to include the exact
+evaluated release `jioc-routing-policy-v2:jioc-routing-eval-v2` and complete the
+production evidence and approval process. The metrics endpoint also needs
+private monitoring ingress in addition to its bearer token.
+
 ## Production readiness gates
 
 Before authoring production manifests or a Helm chart:
 
-- replace whole-namespace, single-writer state with transactional shared
-  persistence and distributed rate-limit/session controls;
+- replace or formally constrain the remaining whole-namespace repositories and
+  add distributed session controls; tickets already use versioned relational
+  aggregates and hosted resource admission uses PostgreSQL;
 - implement and test shared object storage instead of a pod-local or RWO volume;
 - provide a production identity lifecycle and remove development seed accounts;
 - implement automated database and object backup/restore with recovery tests;

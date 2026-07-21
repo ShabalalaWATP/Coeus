@@ -22,6 +22,7 @@ from coeus.services.qc_ingestion import (
     QcApprovalInput,
     latest_draft,
 )
+from coeus.services.qc_preflight import QcPreflightAgent
 from coeus.services.qc_records import (
     checklist_items,
     indexed_product,
@@ -32,6 +33,7 @@ from coeus.services.qc_release import QcReleaseStep, release_target_state
 from coeus.services.store import StoreServices
 from coeus.services.ticket_records import timeline
 from coeus.services.tickets import TicketServices
+from coeus.services.workflow_draft_access import WorkflowDraftAccessPolicy
 
 __all__ = ["QcApprovalInput", "QualityControlService", "ReleaseCheckService"]
 
@@ -87,6 +89,7 @@ class QualityControlService:
         release: QcReleaseStep,
         audit_log: AuditLog,
         assignments: QcAssignmentService,
+        preflight: QcPreflightAgent,
     ) -> None:
         self._tickets = tickets
         self._release_checks = release_checks
@@ -95,6 +98,7 @@ class QualityControlService:
         self._release = release
         self._audit_log = audit_log
         self._assignments = assignments
+        self._preflight = preflight
 
     def queue(self, actor: UserAccount) -> QcQueueView:
         return self._assignments.queue(actor)
@@ -105,6 +109,14 @@ class QualityControlService:
     def claim(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         return self._assignments.claim(actor, ticket_id)
 
+    def prepare_review(self, actor: UserAccount, ticket: TicketRecord) -> TicketRecord:
+        """Persist the preflight after the assignment claim has committed.
+
+        Keeping this separate preserves the single atomic winner semantics of
+        concurrent QC claims. The API composes both operations for reviewers.
+        """
+        return self._preflight.ensure_current(actor, ticket)[0]
+
     def release_claim(self, actor: UserAccount, ticket_id: UUID) -> None:
         self._assignments.release(actor, ticket_id)
 
@@ -114,6 +126,7 @@ class QualityControlService:
         self._require(actor, Permission.QC_APPROVE)
         ticket = self._assignments.claim_for_action(actor, ticket_id)
         self._ensure_state(ticket, TicketState.QC_REVIEW)
+        ticket = self._preflight.require_passed(actor, ticket)
         draft = latest_draft(ticket)
         if draft.created_by_user_id == actor.user_id:
             raise AppError(403, "separation_of_duties", "Drafters cannot approve their own work.")
@@ -225,12 +238,13 @@ def build_quality_control_service(
     storage: ObjectStorage,
     notifications: NotificationService,
     teams: TeamRepository,
+    draft_access: WorkflowDraftAccessPolicy,
     transaction: WorkflowTransactionPort | None = None,
 ) -> QualityControlService:
     return QualityControlService(
         tickets,
         ReleaseCheckService(access_repository),
-        ProductAutoIngestionService(store, access_repository, storage),
+        ProductAutoIngestionService(store, access_repository, storage, draft_access),
         ProductIndexingService(),
         QcReleaseStep(
             tickets,
@@ -242,4 +256,5 @@ def build_quality_control_service(
         ),
         audit_log,
         QcAssignmentService(tickets, teams),
+        QcPreflightAgent(tickets),
     )

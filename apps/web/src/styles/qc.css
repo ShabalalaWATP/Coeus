@@ -199,3 +199,21 @@
     grid-column: auto;
   }
 }
+.qc-comparison {
+  align-items: start;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 3fr) minmax(18rem, 2fr);
+}
+
+.qc-findings li {
+  display: grid;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+@media (max-width: 70rem) {
+  .qc-comparison {
+    grid-template-columns: 1fr;
+  }
+}

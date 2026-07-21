@@ -20,16 +20,17 @@ grant membership or access to protected product content.
 
 | Role                         | Default workspace      | Purpose                                                                                         |
 | ---------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------- |
-| Administrator                | `/admin/overview`      | Governance: access requests, model selection, ACGs, audit, analytics                            |
+| Administrator                | `/admin/overview`      | Governance: access, AI, search, voice, ACGs, audit and analytics                                |
 | Customer                     | `/app/requests`        | Raise and track intelligence requests                                                           |
-| JIOC Team Member             | `/jioc/queue`          | Decide whether a progressed request needs collection (route to CM) or assessment (route to RFA) |
+| JIOC Team Member             | `/jioc/queue`          | Resolve routing exceptions and independently adjudicate referred re-analysis disputes           |
+| JIOC Manager                 | `/jioc/oversight`      | On-loop oversight, audited intervention and routing-exception support                            |
 | RFA Manager                  | `/rfa/queue`           | Lead the RFA team: assign analysts, approve analyst work, manage the team                       |
 | RFA Team Member              | `/rfa/products`        | Contribute assessment products                                                                  |
 | CM Manager                   | `/collection/queue`    | Lead the CM team: assign analysts, approve analyst work, manage the team                        |
 | CM Team Member               | `/collection/products` | Contribute collection products                                                                  |
 | Analyst                      | `/analyst/workbench`   | Produce draft products against assigned tasks                                                   |
 | Quality Control (QC) Manager | `/qc/queue`            | Quality-assure products and perform the final release                                           |
-| Intelligence Store Manager   | `/store`               | Administer product metadata, assets and ACG assignment without blanket content access           |
+| Intelligence Store Manager   | `/store`               | Curate the catalogue and register controlled products without blanket content access             |
 
 Legacy role names ("Request for Assessment Manager", "Collection Manager",
 "Collection Team Member", "Intelligence Analyst", "User") still decode from
@@ -48,8 +49,8 @@ products the user is entitled to see through their access control groups.
 
 Holds every permission. In practice the admin governs rather than operates:
 approves or rejects access requests, manages users, roles, clearance and account
-status, chooses the AI provider and model, manages ACG membership, and reads the
-audit log and global analytics.
+status, configures text-chat AI, search embeddings and Realtime voice, manages
+ACGs, and reads the audit log and global analytics.
 
 ### User (Customer)
 
@@ -59,23 +60,41 @@ audit log and global analytics.
 - Accept or reject RFI product offers.
 - Search the Intelligence Store and download products they are entitled to.
 - Submit feedback and view their own analytics.
+- Confirm whether a released product meets the requirement or request
+  re-analysis with a reason and optional unmet criteria.
 - Cannot see other customers' requests, route tickets, or produce products.
 - Apply for active ACGs and track or withdraw pending applications.
 
 ### JIOC Team Member
 
-- Review progressed requests with the capability recommendation beside them.
-- Decide whether collection is required: yes routes to the CM team, no routes
-  to the RFA team; may query the requester instead.
-- Use JIOC Oversight to monitor workflow-state totals, route totals, active area
-  teams, analyst capacity and bounded task ownership across the whole process.
+- Review requests that the active JIOC Agent cannot safely route automatically,
+  with the capability evidence and routing recommendation beside them.
+- Approve or override CM/RFA routing with a reason, query the requester, reject a
+  route, and review or link similar open requests.
+- Independently adjudicate a customer re-analysis dispute referred by the
+  responsible RFA or Collection manager.
 - Does not assign analysts, edit analyst work or access protected products.
+
+### JIOC Manager
+
+- Remain on the loop through JIOC Oversight rather than approving every routine
+  decision made by the active JIOC Agent.
+- Monitor workflow and route totals, active area teams, analyst capacity,
+  bounded task ownership and shadow Routing Critic evidence.
+- Use audited controls to hold or resume eligible work, or send an eligible
+  automated route to the JIOC exception queue.
+- Can perform JIOC Team Member exception and re-analysis decisions when needed,
+  subject to the same recorded-reason and separation-of-duties controls.
+- Does not gain access to analyst notes, draft bodies or protected product
+  content through oversight.
 
 ### RFA Manager / CM Manager
 
 - Lead their area: select any active team in RFA or CM respectively, then assign
   one to five active analysts from that selected team and define work packages.
 - Approve or return analyst work before it reaches Quality Control.
+- Review a customer's post-release re-analysis request: agree and start a new
+  analysis cycle, or refer a disagreement to an independent JIOC human.
 - Manage the team roster and calendar, and view team analytics.
 - Do not release products: Quality Control performs the final release.
 - A manager sees and acts across their route area; the selected team remains the
@@ -109,8 +128,10 @@ audit log and global analytics.
 
 ### Intelligence Store Manager
 
-- Administer product metadata, assets and product ACG assignment.
-- Manage store operations without receiving unrestricted report-content access.
+- Browse catalogue metadata without first entering a search criterion.
+- Register draft or published existing products for either RFA or Collection,
+  including their metadata, asset records and product ACG assignments.
+- Manage Store operations without receiving unrestricted report-content access.
 - Read product contents only when their account has at least one matching ACG,
   while administrators must use an explicitly audited break-glass endpoint for
   support access outside their ACGs.
@@ -131,16 +152,27 @@ audit log and global analytics.
   follow or help refine the request.
 - As a customer, I want a dashboard of my open requests and a link plus a
   notification when a product is released so that I never miss a delivery.
+- As a customer, I want to confirm whether a released product meets my need and
+  request reasoned re-analysis when it does not.
 
 ### JIOC Team Member
 
-- As a JIOC team member, I want capability agents and the orchestrator to
-  assess feasibility and recommend a route so that I can decide quickly with
-  the reasoning in front of me.
+- As a JIOC team member, I want the active JIOC Agent to route clear eligible
+  requests so that I can focus on ambiguous, restricted or unsafe exceptions.
 - As a JIOC team member, I want to query or reject a route with a recorded
   reason so that the decision trail is auditable.
 - As a JIOC team member, I want to override the recommendation with a
   justification so that I stay in control when the agent is wrong.
+- As an independent JIOC reviewer, I want to adjudicate a referred re-analysis
+  disagreement so that neither the requester nor production team has unilateral
+  authority.
+
+### JIOC Manager
+
+- As a JIOC manager, I want an on-loop view of routing and production outcomes
+  so that routine automation remains observable without requiring my approval.
+- As a JIOC manager, I want audited hold, resume and send-to-review controls so
+  that I can intervene within explicit boundaries when evidence or risk changes.
 
 ### RFA / Collection Manager
 
@@ -151,6 +183,8 @@ audit log and global analytics.
   work with a reason so that nothing reaches Quality Control unreviewed.
 - As an RFA or Collection manager, I want to manage my team's roster and
   calendar so that ownership of my analysts is explicit.
+- As an RFA or Collection manager, I want to review a customer's reasoned
+  re-analysis request and refer disagreements for independent adjudication.
 
 ### Intelligence Analyst
 
@@ -180,6 +214,8 @@ audit log and global analytics.
   so that only vetted people get accounts.
 - As an administrator, I want to choose the AI model the agents use, with tiers
   and descriptions, so that I can balance latency, cost and capability.
+- As an administrator, I want separate search-embedding and Realtime voice
+  controls so each external data path has its own key, test and enablement gate.
 - As an administrator, I want to see who last changed the model and when so that
   the change is accountable.
 - As an administrator, I want realistic need-to-know groups so that product
@@ -198,9 +234,9 @@ audit log and global analytics.
 
 ### Intelligence Store Manager
 
-- As an Intelligence Store Manager, I want to administer product metadata,
-  assets and ACG labels so that the store stays useful without granting me
-  blanket access to report contents.
+- As an Intelligence Store Manager, I want to register controlled product
+  metadata, assets and ACG labels for either area so that the Store stays useful
+  without granting me blanket access to report contents.
 
 ### Pending registrant
 

@@ -10,20 +10,13 @@ from coeus.core.errors import AppError
 from coeus.core.logging import get_logger
 from coeus.domain.search_index import SEARCH_EMBEDDING_DIMENSIONS
 from coeus.persistence.state_store import StateStore
+from coeus.services import search_configuration_codec as codec
 from coeus.services.audit import AuditLog
 from coeus.services.integration_secrets import EncryptedIntegrationSecretStore
-from coeus.services.search_configuration_codec import (
-    SearchIndexStatus,
-    encode_datetime,
-    optional_datetime,
-    optional_string,
-    search_index_status,
-)
 
 SEARCH_CONFIGURATION_NAMESPACE = "search_configuration"
 SEARCH_GEMINI_CREDENTIAL_NAME = "search_embedding:gemini_api"
 SearchProvider = Literal["mock", "gemini_api"]
-
 PROVIDER_MODELS: dict[SearchProvider, tuple[str, ...]] = {
     "mock": ("token-hash-v2",),
     "gemini_api": ("gemini-embedding-2",),
@@ -40,7 +33,7 @@ class SearchConfigurationState:
     api_key_configured: bool
     available_providers: tuple[SearchProvider, ...]
     available_models: tuple[str, ...]
-    index_status: SearchIndexStatus
+    index_status: codec.SearchIndexStatus
     index_generation: int
     product_count: int
     chunk_count: int
@@ -51,6 +44,9 @@ class SearchConfigurationState:
     changed_at: datetime | None
     last_indexed_at: datetime | None
     degraded_reason: str | None
+    release_id: str
+    evaluation_status: str
+    definitive_no_match_enabled: bool
 
     @property
     def space_id(self) -> str:
@@ -97,6 +93,9 @@ class SearchConfigurationService:
             changed_at=None,
             last_indexed_at=None,
             degraded_reason=None,
+            release_id=f"{default_provider}:{default_model}:{SEARCH_EMBEDDING_DIMENSIONS}",
+            evaluation_status="required",
+            definitive_no_match_enabled=False,
         )
         self._index_counts: Callable[[], tuple[int, int, int, int, str]] = lambda: (
             0,
@@ -119,6 +118,8 @@ class SearchConfigurationService:
         ):
             index_status = "stale"
             degraded_reason = "corpus_changed"
+        release_id = f"{self._state.provider}:{self._state.model}:{self._state.dimensions}"
+        approved = release_id in self._settings.search_approved_releases
         return replace(
             self._state,
             api_key_configured=bool(self.api_key()),
@@ -129,6 +130,9 @@ class SearchConfigurationService:
             corpus_version=corpus_version,
             index_status=index_status,
             degraded_reason=degraded_reason,
+            release_id=release_id,
+            evaluation_status="approved" if approved else "required",
+            definitive_no_match_enabled=approved,
         )
 
     def api_key(self) -> str | None:
@@ -320,12 +324,12 @@ class SearchConfigurationService:
             provider=typed_provider,
             model=str(model),
             available_models=PROVIDER_MODELS[typed_provider],
-            index_status=search_index_status(payload.get("index_status")),
+            index_status=codec.search_index_status(payload.get("index_status")),
             index_generation=max(1, int(payload.get("index_generation", 1))),
-            changed_by=optional_string(payload.get("changed_by")),
-            changed_at=optional_datetime(payload.get("changed_at")),
-            last_indexed_at=optional_datetime(payload.get("last_indexed_at")),
-            degraded_reason=optional_string(payload.get("degraded_reason")),
+            changed_by=codec.optional_string(payload.get("changed_by")),
+            changed_at=codec.optional_datetime(payload.get("changed_at")),
+            last_indexed_at=codec.optional_datetime(payload.get("last_indexed_at")),
+            degraded_reason=codec.optional_string(payload.get("degraded_reason")),
         )
         self._persist()
 
@@ -339,8 +343,8 @@ class SearchConfigurationService:
                 "index_status": self._state.index_status,
                 "index_generation": self._state.index_generation,
                 "changed_by": self._state.changed_by,
-                "changed_at": encode_datetime(self._state.changed_at),
-                "last_indexed_at": encode_datetime(self._state.last_indexed_at),
+                "changed_at": codec.encode_datetime(self._state.changed_at),
+                "last_indexed_at": codec.encode_datetime(self._state.last_indexed_at),
                 "degraded_reason": self._state.degraded_reason,
             },
         )

@@ -1,9 +1,10 @@
-import { AnalystDraftForm } from "./AnalystDraftForm";
 import { AnalystConversation } from "./AnalystConversation";
+import { AnalystProductSubmissionForm } from "./AnalystProductSubmissionForm";
 import { AnalystTaskContext } from "./AnalystTaskContext";
 import { LinkedProductsPanel, NotesPanel, WorkPackagesPanel } from "./AnalystTaskPanels";
 import { canSubmitTask, submissionBlockers } from "./analyst-task-policy";
 import { useAnalystTaskActions } from "./useAnalystTaskActions";
+import { SubmissionVersionPreview } from "./SubmissionVersionPreview";
 import type { AnalystTask } from "../../lib/api-client/analyst";
 
 type AnalystTaskDetailProps = {
@@ -60,13 +61,14 @@ export default function AnalystTaskDetail({ onTaskChange, task }: AnalystTaskDet
         task={task}
       />
       <section className="analyst-panel">
-        <h3>Draft product</h3>
-        <AnalystDraftForm
+        <h3>External product submission</h3>
+        <AnalystProductSubmissionForm
           disabled={actions.actionPending}
-          draft={actions.draft}
-          onChange={actions.setDraft}
-          onSubmit={actions.saveDraft}
+          key={task.ticketId}
+          onUploaded={onTaskChange}
+          task={task}
         />
+        <SubmissionVersionPreview task={task} />
         <ol className="analyst-list-items">
           {task.drafts.map((item) => (
             <li key={item.id}>

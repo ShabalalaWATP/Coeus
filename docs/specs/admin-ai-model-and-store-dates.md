@@ -3,12 +3,14 @@
 ## AI providers
 
 Selectable providers (`services/ai_provider_catalog.py`): Gemini API
-(primary, always listed first), OpenAI API, GCP Vertex AI (express-mode API
-key), AWS Bedrock (long-term API key) and the offline mock. All providers
-are key-based over plain HTTPS through one gateway
+(primary, always listed first), OpenAI API, LiteLLM Proxy, GCP Vertex AI
+(express-mode API key), AWS Bedrock (long-term API key) and the offline mock.
+Remote providers are key-based through one gateway
 (`integrations/llm_gateway.py`); keys travel in headers, never in URLs, and
-no vendor SDKs are used. Per-provider model allow-lists and defaults come
-from settings (`available_*_models`) as a curated fallback.
+no vendor SDKs are used by Istari. LiteLLM's virtual key authenticates Istari to
+the proxy, while the separately managed proxy may use boto3, Google ADC or
+Workload Identity Federation upstream. Per-provider model allow-lists and
+defaults come from settings (`available_*_models`) as a curated fallback.
 The curated Gemini API fallback contains `gemini-3.5-flash`,
 `gemini-3.1-pro-preview`, `gemma-4-31b-it`, and `gemma-4-26b-a4b-it`.
 Gemini 3.5 Flash is the default. Coeus continues to use the stateless
@@ -24,9 +26,19 @@ The OpenAI catalogue is also curated. It contains `gpt-5.6-sol`,
 `gpt-5.6-terra`, and `gpt-5.6-luna`, with Terra as the default. Refresh and
 manual model entry are disabled for OpenAI, and legacy additions are pruned.
 
-Vertex AI and Bedrock retain manual model management. Hand-added IDs are
+LiteLLM loads OpenAI-compatible aliases from its deployment-managed
+`/v1/models` endpoint and also permits manual aliases. Its base URL is not an
+administrator API field. Hosted use requires HTTPS; local/test may use a fixed
+HTTP origin such as a local LiteLLM service. Vertex AI and Bedrock retain manual
+model management. Hand-added IDs are
 persisted (they are not secrets), constrained to 2-80 safe characters, and
 each persisted source is capped at 200 entries.
+
+AWS/GCP models routed through LiteLLM use deployment-owned workload identity and
+explicit aliases as described in the
+[LiteLLM Provider Connectivity Runbook](../runbooks/litellm-provider-connectivity.md).
+That is separate from the direct Vertex and Bedrock adapters' existing Coeus API
+key fields.
 
 One `AiModelService` instance serves the whole application, so the active
 provider and model apply to every user at once.
@@ -65,7 +77,8 @@ All endpoints require `system:configure`; writes also require CSRF.
   provider's models from its live API and appends safe new IDs to the
   selectable list (audit: `ai_models_refreshed`). Requires a configured key
   (`409 provider_not_configured`); providers without a usable listing
-  endpoint (Vertex AI, Bedrock) return `422 refresh_not_supported`.
+  endpoint (Gemini, OpenAI, Vertex AI, Bedrock) return
+  `422 refresh_not_supported`. LiteLLM supports bounded live refresh.
 - `POST /api/v1/admin/ai-model/custom-model` with `{provider, model}` adds a
   model ID by hand without activating it, covering brand-new models and
   providers without live listing (audit: `ai_custom_model_added`). The admin
@@ -74,15 +87,17 @@ All endpoints require `system:configure`; writes also require CSRF.
 
 Provider listing and connection-test calls run in FastAPI's worker thread pool,
 so a slow vendor cannot block unrelated sessions on the event loop. Invalid,
-empty or malformed catalogues fail without changing the persisted list. OpenAI's
-list response does not declare endpoint compatibility, so administrators must
-test a newly discovered model before applying it.
+empty, oversized, encoded or malformed catalogues fail without changing the
+persisted list. LiteLLM's OpenAI-compatible list response does not prove chat or
+structured-output compatibility, so administrators must test a newly discovered
+alias before applying it and evaluate it before production approval.
 
 ## Environment configuration
 
 `COEUS_LLM_PROVIDER` plus the matching key env var
-(`COEUS_GEMINI_API_KEY`, `COEUS_OPENAI_API_KEY`, `COEUS_VERTEX_API_KEY`,
-`COEUS_BEDROCK_API_KEY`; Bedrock also reads `COEUS_BEDROCK_REGION`).
+(`COEUS_GEMINI_API_KEY`, `COEUS_OPENAI_API_KEY`, `COEUS_LITELLM_API_KEY`,
+`COEUS_VERTEX_API_KEY`, `COEUS_BEDROCK_API_KEY`; LiteLLM also reads
+`COEUS_LITELLM_BASE_URL`, and Bedrock reads `COEUS_BEDROCK_REGION`).
 An env key alone never switches the provider. Hosted environments refuse to
 boot with a non-mock provider and no key. Locally the provider remains
 `mock` unless explicitly enabled. Search embeddings are a separate switch

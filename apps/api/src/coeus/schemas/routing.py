@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from coeus.schemas.tickets import AgentRunResponse
+
 ClarificationQuestion = Annotated[str, Field(min_length=3, max_length=300)]
 
 
@@ -26,6 +28,11 @@ class RouteClarificationRequest(BaseModel):
     route: str = Field(pattern="^(rfa|cm)$")
     reason: str = Field(min_length=3, max_length=1_000)
     questions: list[ClarificationQuestion] = Field(min_length=1, max_length=5)
+
+
+class JiocInterventionRequest(BaseModel):
+    action: str = Field(pattern="^(hold|resume|send_to_review)$")
+    reason: str = Field(min_length=3, max_length=1_000)
 
 
 class CapabilityTeamResponse(BaseModel):
@@ -109,6 +116,18 @@ class RouteRecommendationResponse(BaseModel):
     created_at: datetime = Field(serialization_alias="createdAt")
 
 
+class JiocAgentDecisionResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    decision_id: UUID = Field(serialization_alias="id")
+    recommended_route: str = Field(serialization_alias="recommendedRoute")
+    disposition: str
+    confidence: float
+    rationale_codes: list[str] = Field(serialization_alias="rationaleCodes")
+    policy_version: str = Field(serialization_alias="policyVersion")
+    created_at: datetime = Field(serialization_alias="createdAt")
+
+
 class ClarificationRequestResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -151,6 +170,15 @@ class PriorityAssessmentResponse(BaseModel):
     reasons: list[str]
 
 
+class ReanalysisContextResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    product_id: UUID = Field(serialization_alias="productId")
+    customer_reason: str = Field(serialization_alias="customerReason")
+    unmet_criteria: list[str] = Field(serialization_alias="unmetCriteria")
+    manager_rationale: str | None = Field(serialization_alias="managerRationale")
+
+
 class RoutingTicketResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -166,11 +194,18 @@ class RoutingTicketResponse(BaseModel):
     rfa_review: RfaCapabilityReviewResponse | None = Field(serialization_alias="rfaReview")
     cm_review: CmCapabilityReviewResponse | None = Field(serialization_alias="cmReview")
     recommendation: RouteRecommendationResponse | None
+    jioc_agent_decision: JiocAgentDecisionResponse | None = Field(
+        serialization_alias="jiocAgentDecision"
+    )
     clarifications: list[ClarificationRequestResponse]
     agent_runs: list[str] = Field(serialization_alias="agentRuns")
+    advisory_runs: list[AgentRunResponse] = Field(serialization_alias="advisoryRuns")
     manager_decisions: list[ManagerDecisionResponse] = Field(serialization_alias="managerDecisions")
     workflow_plan_updates: list[WorkflowPlanUpdateResponse] = Field(
         serialization_alias="workflowPlanUpdates"
+    )
+    reanalysis_context: ReanalysisContextResponse | None = Field(
+        serialization_alias="reanalysisContext"
     )
 
 
@@ -228,6 +263,12 @@ class OversightTaskResponse(BaseModel):
     analyst_count: int = Field(serialization_alias="analystCount")
     work_package_count: int = Field(serialization_alias="workPackageCount")
     completed_work_package_count: int = Field(serialization_alias="completedWorkPackageCount")
+    agent_disposition: str | None = Field(serialization_alias="agentDisposition")
+    agent_confidence: float | None = Field(serialization_alias="agentConfidence")
+    critic_verdict: str | None = Field(serialization_alias="criticVerdict")
+    critic_outcome: str | None = Field(serialization_alias="criticOutcome")
+    critic_challenge_count: int = Field(serialization_alias="criticChallengeCount")
+    critic_missing_evidence_count: int = Field(serialization_alias="criticMissingEvidenceCount")
 
 
 class RoutingOversightResponse(BaseModel):

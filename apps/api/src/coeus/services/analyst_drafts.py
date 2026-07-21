@@ -9,7 +9,7 @@ from coeus.core.resource_limits import (
     MAX_DRAFT_VERSIONS,
     text_bytes,
 )
-from coeus.domain.tickets import DraftProductAsset, DraftProductVersion
+from coeus.domain.product_submission import DraftProductAsset, DraftProductVersion
 
 HASH_PATTERN = r"[a-fA-F0-9]{64}"
 

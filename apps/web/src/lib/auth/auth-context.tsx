@@ -160,9 +160,9 @@ export function AuthProvider({
       },
       onPasswordChangeRequired: () => {
         setSession((current) =>
-          current === null || current.passwordResetRequired === true
+          current === null || current.user.passwordResetRequired === true
             ? current
-            : { ...current, passwordResetRequired: true },
+            : { ...current, user: { ...current.user, passwordResetRequired: true } },
         );
       },
     });

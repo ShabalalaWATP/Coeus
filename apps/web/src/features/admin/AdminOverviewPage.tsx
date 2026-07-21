@@ -18,7 +18,7 @@ const adminActions = [
     to: "/admin/acgs",
   },
   {
-    description: "Open global delivery and reuse analytics.",
+    description: "Review users, AI usage, access and security statistics.",
     icon: BarChart3,
     label: "Analytics",
     to: "/admin/analytics",
@@ -73,11 +73,11 @@ export default function AdminOverviewPage() {
         {overviewQuery.data ? <Activity aria-hidden="true" size={24} /> : null}
       </section>
 
-      <RegistrationApprovalsPanel csrfToken={session?.csrfToken ?? ""} />
+      <RegistrationApprovalsPanel csrfToken={session?.csrfToken ?? ""} initiallyOpen={false} />
 
-      <AiModelPanel csrfToken={session?.csrfToken ?? ""} />
+      <AiModelPanel csrfToken={session?.csrfToken ?? ""} initiallyOpen={false} />
 
-      <SearchEmbeddingsPanel csrfToken={session?.csrfToken ?? ""} />
+      <SearchEmbeddingsPanel csrfToken={session?.csrfToken ?? ""} initiallyOpen={false} />
 
       <section className="admin-action-grid" aria-label="Admin workspaces">
         {adminActions.map((item) => (
@@ -91,7 +91,7 @@ export default function AdminOverviewPage() {
         ))}
       </section>
 
-      <VoiceModelPanel csrfToken={session?.csrfToken ?? ""} />
+      <VoiceModelPanel csrfToken={session?.csrfToken ?? ""} initiallyOpen={false} />
     </div>
   );
 }

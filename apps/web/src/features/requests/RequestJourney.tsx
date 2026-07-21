@@ -5,11 +5,12 @@ import { JOURNEY_STAGES, stageIndexForState } from "./journey-stages";
 import type { TicketState } from "../../lib/api-client/tickets";
 
 type RequestJourneyProps = {
+  journey?: { code: string; label: string; status: string }[];
   onClose: () => void;
   state: TicketState;
 };
 
-export function RequestJourney({ onClose, state }: RequestJourneyProps) {
+export function RequestJourney({ journey, onClose, state }: RequestJourneyProps) {
   const dialogRef = useRef<HTMLElement>(null);
   const currentIndex = stageIndexForState(state);
   const reused = state === "CLOSED_EXISTING_PRODUCT_ACCEPTED";
@@ -65,7 +66,7 @@ export function RequestJourney({ onClose, state }: RequestJourneyProps) {
                 ? "This request was cancelled, so it did not continue through the stages below."
                 : reused
                   ? "An existing product satisfied this request, so it skipped straight to delivery."
-                  : "Each stage is handled by a person supported by Istari agents."}
+                  : "Istari automates bounded search and routing; people provide input, handle exceptions and control release."}
             </p>
           </div>
           <button aria-label="Close journey" onClick={onClose} type="button">
@@ -73,15 +74,24 @@ export function RequestJourney({ onClose, state }: RequestJourneyProps) {
           </button>
         </header>
         <ol className="journey-steps">
-          {JOURNEY_STAGES.map((stage, index) => {
-            const Icon = stage.icon;
-            const status = cancelled
-              ? "next"
-              : index < currentIndex
-                ? "done"
-                : index === currentIndex
-                  ? "current"
-                  : "next";
+          {(journey ?? JOURNEY_STAGES).map((stage, index) => {
+            const fallbackStage = JOURNEY_STAGES[index] ?? JOURNEY_STAGES.at(-1)!;
+            const detail = "detail" in stage ? stage.detail : "Tracked by the workflow service.";
+            const Icon = "icon" in stage ? stage.icon : fallbackStage.icon;
+            const status =
+              "status" in stage
+                ? stage.status === "complete"
+                  ? "done"
+                  : stage.status === "current"
+                    ? "current"
+                    : "next"
+                : cancelled
+                  ? "next"
+                  : index < currentIndex
+                    ? "done"
+                    : index === currentIndex
+                      ? "current"
+                      : "next";
             return (
               <li className={`journey-step journey-step--${status}`} key={stage.label}>
                 <span aria-hidden="true" className="journey-step__icon">
@@ -89,7 +99,7 @@ export function RequestJourney({ onClose, state }: RequestJourneyProps) {
                 </span>
                 <div>
                   <strong>{stage.label}</strong>
-                  <span>{stage.detail}</span>
+                  <span>{detail}</span>
                 </div>
                 {status === "current" ? <em>You are here</em> : null}
               </li>

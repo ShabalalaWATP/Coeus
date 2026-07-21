@@ -9,6 +9,7 @@ import { ProductTypeIcon } from "./ProductTypeIcon";
 import { StoreSearchFiltersPanel, type StoreFilterDraft } from "./StoreSearchFiltersPanel";
 import { productTypeLabel } from "./store-options";
 import { SpotlightCard } from "../../components/effects/SpotlightCard";
+import { AdminReturnLink } from "../../components/ui/AdminReturnLink";
 import { EmptyState, ErrorState } from "../../components/ui/PageState";
 import { searchStoreProducts, type StoreSearchFilters } from "../../lib/api-client/store";
 import { useAuth } from "../../lib/auth/auth-context";
@@ -134,6 +135,7 @@ export default function StorePage({
     <div className="store-page">
       <section className="overview-hero store-hero" aria-labelledby="store-title">
         <div>
+          <AdminReturnLink />
           <h1 id="store-title">
             {title ?? (scope === "mine" ? "My Products" : "Intelligence Store")}
           </h1>

@@ -1,11 +1,10 @@
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
+from coeus.domain.product_submission import DraftProductAsset, DraftProductVersion
 from coeus.domain.tickets import (
     AnalystAssignment,
     AnalystWorkPackage,
-    DraftProductAsset,
-    DraftProductVersion,
     LinkedAnalystProduct,
     ManagerRoutingDecisionStatus,
     RoutingRoute,
@@ -40,6 +39,12 @@ def approved_route(ticket: TicketRecord) -> RoutingRoute | None:
     for decision in reversed(ticket.manager_decisions):
         if decision.status == ManagerRoutingDecisionStatus.APPROVED:
             return decision.route
+    for decision in reversed(getattr(ticket, "jioc_routing_decisions", ())):
+        if decision.disposition == "auto_applied" and decision.recommended_route in {
+            RoutingRoute.RFA.value,
+            RoutingRoute.CM.value,
+        }:
+            return RoutingRoute(decision.recommended_route)
     return None
 
 

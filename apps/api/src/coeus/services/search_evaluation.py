@@ -3,11 +3,14 @@
 from dataclasses import dataclass
 from math import log2
 
-RECALL_AT_5_GATE = 0.90
-PRECISION_AT_5_GATE = 0.70
-NDCG_AT_5_GATE = 0.85
-NO_MATCH_FALSE_OFFER_GATE = 0.10
+RECALL_AT_5_GATE = 0.95
+PRECISION_AT_5_GATE = 0.95
+NDCG_AT_5_GATE = 0.90
+FALSE_DEFINITIVE_NO_MATCH_GATE = 0.01
+FALSE_OFFER_GATE = 0.02
 DEGRADED_IDENTIFICATION_GATE = 1.0
+CITATION_IDENTITY_GATE = 1.0
+PASSAGE_SUPPORT_GATE = 0.95
 
 
 @dataclass(frozen=True)
@@ -19,6 +22,11 @@ class SearchEvaluationRun:
     retrieval_mode: str
     expected_mode: str
     expect_no_match: bool = False
+    reported_outcome: str | None = None
+    reported_assurance: str = "definitive"
+    temporal_constraints_satisfied: bool = True
+    citation_identity_correct: bool = True
+    passage_support: float = 1.0
 
 
 @dataclass(frozen=True)
@@ -28,8 +36,17 @@ class SearchEvaluationReport:
     recall_at_5: float
     precision_at_5: float
     ndcg_at_5: float
-    no_match_false_offer_rate: float
+    false_definitive_no_match_rate: float
+    false_offer_rate: float
     degraded_mode_identification: float
+    temporal_constraint_violations: int
+    citation_identity_rate: float
+    passage_support_rate: float
+
+    @property
+    def no_match_false_offer_rate(self) -> float:
+        """Compatibility name used by the earlier evaluation report."""
+        return self.false_offer_rate
 
     @property
     def passes_release_gates(self) -> bool:
@@ -38,8 +55,12 @@ class SearchEvaluationReport:
             and self.recall_at_5 >= RECALL_AT_5_GATE
             and self.precision_at_5 >= PRECISION_AT_5_GATE
             and self.ndcg_at_5 >= NDCG_AT_5_GATE
-            and self.no_match_false_offer_rate <= NO_MATCH_FALSE_OFFER_GATE
+            and self.false_definitive_no_match_rate <= FALSE_DEFINITIVE_NO_MATCH_GATE
+            and self.false_offer_rate <= FALSE_OFFER_GATE
             and self.degraded_mode_identification >= DEGRADED_IDENTIFICATION_GATE
+            and self.temporal_constraint_violations == 0
+            and self.citation_identity_rate >= CITATION_IDENTITY_GATE
+            and self.passage_support_rate >= PASSAGE_SUPPORT_GATE
         )
 
 
@@ -51,6 +72,7 @@ def evaluate_search_runs(
     positive = tuple(run for run in runs if any(grade > 0 for grade in run.relevance.values()))
     no_match = tuple(run for run in runs if run.expect_no_match)
     degraded = tuple(run for run in runs if run.expected_mode != "hybrid")
+    offered = tuple(run for run in runs if run.ranked_ids[:limit])
     leakage = sum(
         ranked_id not in run.visible_ids for run in runs for ranked_id in run.ranked_ids[:limit]
     )
@@ -60,14 +82,29 @@ def evaluate_search_runs(
         recall_at_5=_mean(tuple(_recall(run, limit) for run in positive)),
         precision_at_5=_mean(tuple(_precision(run, limit) for run in positive)),
         ndcg_at_5=_mean(tuple(_ndcg(run, limit) for run in positive)),
-        no_match_false_offer_rate=_mean(
-            tuple(float(bool(run.ranked_ids[:limit])) for run in no_match)
+        false_definitive_no_match_rate=_mean(
+            tuple(
+                float(
+                    _reported_outcome(run) == "no_match" and run.reported_assurance == "definitive"
+                )
+                for run in positive
+            )
         ),
+        false_offer_rate=_mean(tuple(float(bool(run.ranked_ids[:limit])) for run in no_match)),
         degraded_mode_identification=_mean(
             tuple(float(run.retrieval_mode == run.expected_mode) for run in degraded),
             empty=1.0,
         ),
+        temporal_constraint_violations=sum(not run.temporal_constraints_satisfied for run in runs),
+        citation_identity_rate=_mean(
+            tuple(float(run.citation_identity_correct) for run in offered), empty=1.0
+        ),
+        passage_support_rate=_mean(tuple(run.passage_support for run in offered), empty=1.0),
     )
+
+
+def _reported_outcome(run: SearchEvaluationRun) -> str:
+    return run.reported_outcome or ("offers" if run.ranked_ids else "no_match")
 
 
 def _recall(run: SearchEvaluationRun, limit: int) -> float:

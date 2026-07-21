@@ -1,4 +1,5 @@
 import type { AuthUser, Permission } from "../api-client/auth";
+import { navigationPath, routePolicy } from "../../app/route-policy";
 
 export type UserProfile = AuthUser;
 
@@ -28,175 +29,152 @@ export type NavigationItem = {
   requiredPermissions: readonly Permission[];
 };
 
-export const navigationItems: readonly NavigationItem[] = [
+const navigationItems: readonly NavigationItem[] = [
   {
     label: "Requests",
-    path: "/app/requests",
+    path: navigationPath(routePolicy.requests),
     group: "operations",
     icon: "requests",
-    requiredPermissions: ["ticket:read_own"],
+    requiredPermissions: routePolicy.requests.permissions,
   },
   {
     label: "Access Groups",
-    path: "/access-groups",
+    path: navigationPath(routePolicy.accessGroups),
     group: "operations",
     icon: "admin",
-    requiredPermissions: ["user:read_self"],
+    requiredPermissions: routePolicy.accessGroups.permissions,
   },
   {
     label: "Intelligence Store",
-    path: "/store",
+    path: navigationPath(routePolicy.store),
     group: "operations",
     icon: "store",
-    requiredPermissions: ["product:read", "product:search"],
+    requiredPermissions: routePolicy.store.permissions,
   },
   {
     label: "My Products",
-    path: "/store/my-products",
+    path: navigationPath(routePolicy.myProducts),
     group: "operations",
     icon: "store",
-    requiredPermissions: ["product:read", "product:search"],
+    requiredPermissions: routePolicy.myProducts.permissions,
   },
   {
     label: "My Team",
-    path: "/teams",
+    path: navigationPath(routePolicy.teams),
     group: "teams",
     icon: "analyst",
     // Every authenticated role may open the page; the server only returns
     // teams the user belongs to, and non-members see an empty state.
-    requiredPermissions: ["user:read_self"],
+    requiredPermissions: routePolicy.teams.permissions,
   },
   {
     label: "JIOC Queue",
-    path: "/jioc/queue",
+    path: navigationPath(routePolicy.jiocQueue),
     group: "teams",
     icon: "rfa",
-    requiredPermissions: ["jioc:review"],
+    requiredPermissions: routePolicy.jiocQueue.permissions,
   },
   {
     label: "JIOC Oversight",
-    path: "/jioc/oversight",
+    path: navigationPath(routePolicy.jiocOversight),
     group: "teams",
     icon: "analytics",
-    requiredPermissions: ["jioc:review"],
+    requiredPermissions: routePolicy.jiocOversight.permissions,
   },
   {
     label: "RFA Queue",
-    path: "/rfa/queue",
+    path: navigationPath(routePolicy.rfaQueue),
     group: "teams",
     icon: "rfa",
-    requiredPermissions: ["rfa:review"],
+    requiredPermissions: routePolicy.rfaQueue.permissions,
   },
   {
     label: "RFA Products",
-    path: "/rfa/products",
+    path: navigationPath(routePolicy.rfaProducts),
     group: "teams",
     icon: "rfa",
-    requiredPermissions: ["rfa:add_product", "product:read", "product:search"],
+    requiredPermissions: routePolicy.rfaProducts.permissions,
   },
   {
     label: "RFA Analytics",
-    path: "/rfa/analytics",
+    path: navigationPath(routePolicy.rfaAnalytics),
     group: "teams",
     icon: "analytics",
-    requiredPermissions: ["analytics:view_team", "rfa:review"],
+    requiredPermissions: routePolicy.rfaAnalytics.permissions,
   },
   {
     label: "Collection Queue",
-    path: "/collection/queue",
+    path: navigationPath(routePolicy.collectionQueue),
     group: "teams",
     icon: "collection",
-    requiredPermissions: ["collection:review"],
+    requiredPermissions: routePolicy.collectionQueue.permissions,
   },
   {
     label: "Collection Products",
-    path: "/collection/products",
+    path: navigationPath(routePolicy.collectionProducts),
     group: "teams",
     icon: "collection",
-    requiredPermissions: ["collection:add_product", "product:read", "product:search"],
+    requiredPermissions: routePolicy.collectionProducts.permissions,
   },
   {
     label: "Collection Analytics",
-    path: "/collection/analytics",
+    path: navigationPath(routePolicy.collectionAnalytics),
     group: "teams",
     icon: "analytics",
-    requiredPermissions: ["analytics:view_team", "collection:review"],
+    requiredPermissions: routePolicy.collectionAnalytics.permissions,
   },
   {
     label: "Analyst",
-    path: "/analyst/workbench",
+    path: navigationPath(routePolicy.analystWorkbench),
     group: "teams",
     icon: "analyst",
-    requiredPermissions: ["analyst:work"],
+    requiredPermissions: routePolicy.analystWorkbench.permissions,
   },
   {
     label: "QC",
-    path: "/qc/queue",
+    path: navigationPath(routePolicy.qcQueue),
     group: "teams",
     icon: "qc",
-    requiredPermissions: ["qc:review"],
+    requiredPermissions: routePolicy.qcQueue.permissions,
   },
   {
     label: "Admin",
-    path: "/admin/overview",
+    path: navigationPath(routePolicy.adminOverview),
     group: "governance",
     icon: "admin",
-    requiredPermissions: ["system:configure"],
+    requiredPermissions: routePolicy.adminOverview.permissions,
   },
   {
     label: "Users",
-    path: "/admin/users",
+    path: navigationPath(routePolicy.adminUsers),
     group: "governance",
     icon: "admin",
-    requiredPermissions: ["user:assign_role"],
+    requiredPermissions: routePolicy.adminUsers.permissions,
   },
   {
     label: "Admin Analytics",
-    path: "/admin/analytics",
+    path: navigationPath(routePolicy.adminAnalytics),
     group: "governance",
     icon: "analytics",
-    requiredPermissions: ["analytics:view_global"],
+    requiredPermissions: routePolicy.adminAnalytics.permissions,
   },
   {
     label: "ACGs",
-    path: "/admin/acgs",
+    path: navigationPath(routePolicy.adminAcgs),
     group: "governance",
     icon: "admin",
-    requiredPermissions: ["acg:view"],
+    requiredPermissions: routePolicy.adminAcgs.permissions,
   },
   {
     label: "Audit",
-    path: "/audit",
+    path: navigationPath(routePolicy.audit),
     group: "governance",
     icon: "audit",
-    requiredPermissions: ["audit:read"],
+    requiredPermissions: routePolicy.audit.permissions,
   },
 ];
 
-export const previewProfile: UserProfile = {
-  id: "preview-user",
-  username: "preview@example.test",
-  displayName: "Sprint 2 Operator",
-  roles: ["Administrator"],
-  defaultRoute: "/admin/overview",
-  permissions: [
-    ...navigationItems.flatMap((item) => item.requiredPermissions),
-    "product:create_existing",
-    "product:download",
-    "acg:create",
-    "acg:update",
-    "acg:assign_user",
-    "chat:use",
-    "ticket:create",
-    "ticket:add_information",
-    "ticket:add_comment",
-    "rfi:search",
-    "rfi:accept_product",
-    "rfi:reject_product",
-  ],
-};
-
-export function canAccessRoute(profile: UserProfile, route: NavigationItem) {
+function canAccessRoute(profile: UserProfile, route: NavigationItem) {
   return hasPermissions(profile, route.requiredPermissions);
 }
 
@@ -237,8 +215,4 @@ export function groupedNavigationItems(items: readonly NavigationItem[]) {
     }
   }
   return groups;
-}
-
-export function routeByPath(path: string) {
-  return navigationItems.find((item) => item.path === path);
 }

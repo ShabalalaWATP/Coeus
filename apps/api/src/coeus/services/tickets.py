@@ -26,6 +26,7 @@ from coeus.domain.tickets import (
 )
 from coeus.services.audit import AuditLog
 from coeus.services.intake import RequirementCompletenessService, merge_intake
+from coeus.services.intake_submission_policy import require_submittable_intake
 from coeus.services.prioritisation import (
     assessment_or_computed,
     prioritisation_agent_run,
@@ -203,8 +204,7 @@ class TicketService:
             raise AppError(404, "ticket_not_found", "Ticket was not found.")
         if ticket.state not in {TicketState.DRAFT_INTAKE, TicketState.INFO_REQUIRED}:
             raise AppError(409, "ticket_not_editable", "Ticket intake is no longer editable.")
-        if not self._completeness.is_complete_enough(ticket.intake):
-            raise AppError(409, "intake_incomplete", "Complete the required intake fields first.")
+        require_submittable_intake(ticket.intake)
         if not can_transition(ticket.state, TicketState.RFI_SEARCHING):
             raise AppError(
                 409, "invalid_ticket_state", "Ticket cannot be submitted from this state."

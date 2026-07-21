@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted for Sprint 17, 2026-07-13.
+Accepted for Sprint 17, 2026-07-13. Scope clarified on 2026-07-18 by ADR 0039.
 
 ## Context
 
@@ -16,8 +16,12 @@ an action, but it cannot prove an actor-to-product relationship.
 - Every draft read requires active identity, `PRODUCT_READ`, sufficient
   classification, an active ACG intersection and an explicit draft-audience
   reason.
-- Audience reasons are creator, assigned analyst, responsible workflow manager,
-  assigned QC reviewer, Intelligence Store Manager or platform administrator.
+- Store-draft audience reasons are creator, projected workflow relationship,
+  Intelligence Store Manager or platform administrator. Ticket-local workflow
+  submissions use the stricter live policy in ADR 0039: assigned analyst,
+  responsible same-route area manager or named QC reviewer only. Store
+  administration and platform administration do not create ordinary access to
+  pre-release workflow bytes.
 - Combining roles never creates an audience reason. `PRODUCT_MANAGE_ASSETS`
   permits asset actions only after audience membership is established.
 - Tactical live relationship checks remain authoritative until a persisted,

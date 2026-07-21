@@ -1,6 +1,7 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { ClipboardList } from "lucide-react";
 
+import { AdminReturnLink } from "../../components/ui/AdminReturnLink";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/PageState";
 import { listAuditEvents } from "../../lib/api-client/audit";
 
@@ -17,6 +18,7 @@ export default function AuditPage() {
     <div className="workspace-page">
       <section className="overview-hero" aria-labelledby="audit-title">
         <div>
+          <AdminReturnLink />
           <h1 id="audit-title">Audit</h1>
           <p>Immutable security and workflow events for operational review.</p>
         </div>

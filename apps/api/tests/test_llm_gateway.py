@@ -1,20 +1,41 @@
+import json
 from typing import Any
 
 import pytest
 
 from coeus.core.errors import AppError
-from coeus.integrations.llm_gateway import LlmCall, _reply_text, generate_text
+from coeus.integrations.llm_gateway import (
+    LlmCall,
+    _reply_text,
+    _request_for,
+    _token_usage,
+    generate_text,
+)
 
 
 class FakeResponse:
-    def __init__(self, payload: dict[str, object]) -> None:
+    def __init__(
+        self,
+        payload: object,
+        *,
+        raw: bytes | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> None:
         self._payload = payload
+        self._raw = raw
+        self.headers = headers or {}
+
+    def __enter__(self) -> "FakeResponse":
+        return self
+
+    def __exit__(self, _exc_type: object, _exc: object, _traceback: object) -> None:
+        return None
 
     def raise_for_status(self) -> None:
         return None
 
-    def json(self) -> dict[str, object]:
-        return self._payload
+    def iter_bytes(self):  # type: ignore[no-untyped-def]
+        yield self._raw if self._raw is not None else json.dumps(self._payload).encode()
 
 
 def _fake_client(captured: dict[str, Any], payload: dict[str, object]) -> type:
@@ -28,9 +49,15 @@ def _fake_client(captured: dict[str, Any], payload: dict[str, object]) -> type:
         def __exit__(self, _exc_type: object, _exc: object, _traceback: object) -> None:
             return None
 
-        def post(
-            self, url: str, *, json: dict[str, object], headers: dict[str, str]
+        def stream(
+            self,
+            method: str,
+            url: str,
+            *,
+            json: dict[str, object],
+            headers: dict[str, str],
         ) -> FakeResponse:
+            captured["method"] = method
             captured["url"] = url
             captured["headers"] = headers
             captured["body"] = json
@@ -47,6 +74,9 @@ def _call(provider: str, **overrides: Any) -> LlmCall:
         "prompt": "Harbour brief prompt",
         "timeout": 10,
         "region": "eu-west-2",
+        "instructions": "Trusted instructions",
+        "max_output_tokens": 123,
+        "structured_output": True,
     }
     defaults.update(overrides)
     return LlmCall(**defaults)
@@ -56,7 +86,10 @@ def test_gemini_call_uses_key_header_and_generate_content(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     captured: dict[str, Any] = {}
-    payload = {"candidates": [{"content": {"parts": [{"text": "Gemini says hello."}]}}]}
+    payload = {
+        "candidates": [{"content": {"parts": [{"text": "Gemini says hello."}]}}],
+        "usageMetadata": {"promptTokenCount": 12, "candidatesTokenCount": 4},
+    }
     monkeypatch.setattr(
         "coeus.integrations.provider_http.httpx.Client", _fake_client(captured, payload)
     )
@@ -66,7 +99,16 @@ def test_gemini_call_uses_key_header_and_generate_content(
     assert text == "Gemini says hello."
     assert "models/gemini-3.5-flash:generateContent" in str(captured["url"])
     assert captured["headers"]["x-goog-api-key"] == "test-key"
+    assert captured["headers"]["Accept-Encoding"] == "identity"
     assert "key=" not in str(captured["url"])
+    assert captured["method"] == "POST"
+    assert captured["body"]["systemInstruction"] == {"parts": [{"text": "Trusted instructions"}]}
+    assert captured["body"]["generationConfig"] == {
+        "maxOutputTokens": 123,
+        "responseMimeType": "application/json",
+    }
+    assert text.input_tokens == 12
+    assert text.output_tokens == 4
 
 
 def test_openai_call_uses_bearer_token_and_chat_completions(
@@ -84,6 +126,12 @@ def test_openai_call_uses_bearer_token_and_chat_completions(
     assert captured["url"] == "https://api.openai.com/v1/chat/completions"
     assert captured["headers"]["Authorization"] == "Bearer test-key"
     assert captured["body"]["model"] == "gpt-5.6-terra"
+    assert captured["body"]["messages"] == [
+        {"role": "system", "content": "Trusted instructions"},
+        {"role": "user", "content": "Harbour brief prompt"},
+    ]
+    assert captured["body"]["max_completion_tokens"] == 123
+    assert captured["body"]["response_format"] == {"type": "json_object"}
 
 
 def test_vertex_call_targets_the_publisher_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -100,6 +148,7 @@ def test_vertex_call_targets_the_publisher_endpoint(monkeypatch: pytest.MonkeyPa
         captured["url"]
     )
     assert captured["headers"]["x-goog-api-key"] == "test-key"
+    assert captured["body"]["generationConfig"]["maxOutputTokens"] == 123
 
 
 def test_bedrock_call_targets_the_regional_converse_endpoint(
@@ -118,6 +167,8 @@ def test_bedrock_call_targets_the_regional_converse_endpoint(
     assert str(captured["url"]).endswith("/converse")
     assert captured["headers"]["Authorization"] == "Bearer test-key"
     assert captured["body"]["messages"][0]["content"] == [{"text": "Harbour brief prompt"}]
+    assert captured["body"]["system"] == [{"text": "Trusted instructions"}]
+    assert captured["body"]["inferenceConfig"] == {"maxTokens": 123}
 
 
 def test_unknown_provider_is_rejected_before_any_network_call() -> None:
@@ -138,7 +189,7 @@ def test_network_failures_surface_as_provider_unavailable(
         def __exit__(self, _exc_type: object, _exc: object, _traceback: object) -> None:
             return None
 
-        def post(self, url: str, *, json: object, headers: object) -> FakeResponse:
+        def stream(self, method: str, url: str, *, json: object, headers: object) -> FakeResponse:
             import httpx
 
             raise httpx.ConnectError("mock network failure")
@@ -146,6 +197,68 @@ def test_network_failures_surface_as_provider_unavailable(
     monkeypatch.setattr("coeus.integrations.provider_http.httpx.Client", RaisingClient)
     with pytest.raises(AppError, match="llm_provider_unavailable"):
         generate_text(_call("openai_api"))
+
+
+def test_oversized_response_is_rejected_while_streaming(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, Any] = {}
+    raw = b"x" * 11
+    monkeypatch.setattr(
+        "coeus.integrations.provider_http.httpx.Client",
+        _fake_client(captured, {}),
+    )
+    monkeypatch.setattr("coeus.integrations.llm_gateway.MAX_LLM_PROVIDER_RESPONSE_BYTES", 10)
+
+    class OversizedClient(_fake_client(captured, {})):
+        def stream(self, method: str, url: str, *, json: object, headers: object) -> FakeResponse:
+            return FakeResponse({}, raw=raw)
+
+    monkeypatch.setattr("coeus.integrations.provider_http.httpx.Client", OversizedClient)
+
+    with pytest.raises(AppError, match="llm_provider_invalid_response"):
+        generate_text(_call("openai_api"))
+
+
+def test_invalid_json_and_invalid_output_limit_are_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, Any] = {}
+
+    class InvalidJsonClient(_fake_client(captured, {})):
+        def stream(self, method: str, url: str, *, json: object, headers: object) -> FakeResponse:
+            return FakeResponse({}, raw=b"not-json")
+
+    monkeypatch.setattr("coeus.integrations.provider_http.httpx.Client", InvalidJsonClient)
+    with pytest.raises(AppError, match="llm_provider_invalid_response"):
+        generate_text(_call("openai_api"))
+    with pytest.raises(AppError, match="llm_output_limit_invalid"):
+        generate_text(_call("openai_api", max_output_tokens=0))
+
+
+@pytest.mark.parametrize("provider", ["gemini_api", "vertex_ai", "openai_api", "bedrock"])
+def test_plain_text_request_keeps_data_in_the_user_message(provider: str) -> None:
+    _, _, body = _request_for(
+        _call(provider, instructions="", structured_output=False, max_output_tokens=7)
+    )
+
+    assert "systemInstruction" not in body
+    assert "system" not in body
+    if provider in ("gemini_api", "vertex_ai"):
+        assert body["generationConfig"] == {"maxOutputTokens": 7}
+    elif provider == "openai_api":
+        assert body["messages"] == [{"role": "user", "content": "Harbour brief prompt"}]
+        assert "response_format" not in body
+    else:
+        assert body["inferenceConfig"] == {"maxTokens": 7}
+
+
+def test_usage_metadata_rejects_malformed_or_negative_counts() -> None:
+    assert _token_usage("openai_api", []) == (None, None)
+    assert _token_usage("openai_api", {"usage": "invalid"}) == (None, None)
+    assert _token_usage(
+        "openai_api", {"usage": {"prompt_tokens": -1, "completion_tokens": "four"}}
+    ) == (None, None)
 
 
 def test_reply_text_rejects_malformed_response_shapes() -> None:

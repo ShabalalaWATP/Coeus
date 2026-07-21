@@ -20,7 +20,7 @@ from coeus.persistence.ticket_shadow_schema import ensure_ticket_shadow_schema
 from coeus.repositories.tickets import InMemoryTicketRepository
 
 API_ROOT = Path(__file__).resolve().parents[2]
-HEAD_REVISION = "20260717_0013"
+HEAD_REVISION = "20260720_0014"
 
 pytestmark = pytest.mark.postgres
 
@@ -50,6 +50,11 @@ def test_empty_database_upgrades_to_head(postgres_database_url: str) -> None:
         tables = set(inspect(engine).get_table_names())
         with engine.connect() as connection:
             extensions = set(connection.execute(text("SELECT extname FROM pg_extension")).scalars())
+            indexes = set(
+                connection.execute(
+                    text("SELECT indexname FROM pg_indexes WHERE tablename = 'coeus_outbox'")
+                ).scalars()
+            )
     finally:
         engine.dispose()
 
@@ -71,6 +76,7 @@ def test_empty_database_upgrades_to_head(postgres_database_url: str) -> None:
         "ticket_search_embeddings",
     } <= tables
     assert "vector" in extensions
+    assert "idx_coeus_outbox_dead_letters" in indexes
 
 
 def test_seeded_legacy_database_upgrades_idempotently(

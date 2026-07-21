@@ -18,8 +18,10 @@ controlled. Every diagram reflects the shipped code.
 
 ## Design principles
 
-- **AI-first, human-decided.** Agents extract, rank and advise. A person makes
-  every decision that changes state.
+- **Bounded automation, human-governed.** The active deterministic JIOC Agent may
+  apply an allowlisted CM or RFA route when evidence is sufficient. People make
+  requester, delivery, approval and release decisions. JIOC Managers oversee
+  routine routing on the loop and enter the loop for exceptions or intervention.
 - **Local-first.** The full application runs on a developer machine with no
   cloud dependency. Cloud is a future option, not a requirement.
 - **Controlled by design.** Role-based access, need-to-know access control
@@ -29,7 +31,7 @@ controlled. Every diagram reflects the shipped code.
   services, domain modules and repositories.
 - **Provider boundaries.** Persistence, object storage, the language model, the
   embedding model and email are selected by configuration. Chat supports mock,
-  Gemini API, OpenAI API, Vertex AI and Bedrock. Embeddings support mock,
+  Gemini API, OpenAI API, LiteLLM Proxy, Vertex AI and Bedrock. Embeddings support mock,
   offline local and Gemini API. GCS object storage is not implemented.
 
 ---
@@ -44,7 +46,7 @@ an email provider, both of which default to offline stand-ins.
 flowchart TB
     subgraph people["People (role-based access)"]
         CUST["Customer"]
-        JIOC["JIOC Team Member"]
+        JIOC["JIOC Manager"]
         RFA["RFA Manager"]
         CM["Collection Manager"]
         AN["Intelligence Analyst"]
@@ -56,7 +58,7 @@ flowchart TB
     IST["<b>Istari</b><br/>Tasking and product orchestration<br/>React SPA + FastAPI"]
 
     subgraph ext["External services (optional, off by default)"]
-        LLM["LLM gateway<br/>Gemini, OpenAI, Vertex, Bedrock"]
+        LLM["LLM gateway<br/>Gemini, OpenAI, LiteLLM, Vertex, Bedrock"]
         EMB["Embedding provider<br/>Gemini API when selected"]
         SMTP["SMTP relay<br/>release notifications"]
     end
@@ -81,9 +83,10 @@ flowchart TB
     class LLM,EMB,SMTP ext
 ```
 
-The default local configuration uses a deterministic mock language model, a
-deterministic mock embedding provider and an on-disk email outbox, so nothing
-leaves the machine.
+The default local configuration uses deterministic mock language and embedding
+providers. Notifications and email-outbox records stay in the configured local
+state store, PostgreSQL by default, and the default outbox email provider does
+not send them outside the machine.
 
 ---
 
@@ -111,7 +114,7 @@ flowchart TB
         direction TB
         ROUTES["api/routes<br/>thin handlers, auth + CSRF deps"]
         SERVICES["services<br/>intake, rfi, routing, qc, release, similar"]
-        AGENTS["agents (in services)<br/>chatbot, RFI, capability, orchestrator"]
+        AGENTS["bounded agents (in services)<br/>intake/search planners, RFI,<br/>capability, JIOC router + critic"]
         REPOS["repositories<br/>in-memory aggregates"]
         DOMAIN["domain<br/>dataclasses, enums, state machine"]
         PERSIST["persistence<br/>PostgreSQL state + projection + codec"]

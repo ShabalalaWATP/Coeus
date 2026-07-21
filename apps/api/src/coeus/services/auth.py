@@ -14,6 +14,7 @@ from coeus.repositories.auth import (
     LoginAttemptRepository,
     SeedUserRepository,
     SessionRepository,
+    SessionStoreFull,
 )
 from coeus.services.audit import AuditLog
 from coeus.services.passwords import PasswordHasher
@@ -183,27 +184,27 @@ class AuthService:
             password_reset_required=False,
             credential_version=user.credential_version + 1,
         )
-        attempts_reset = None
-        revoked_sessions: tuple[SessionRecord, ...] = ()
-        new_session: SessionRecord | None = None
-        self._users.save(updated)
-        try:
-            # Invalidate every session for this user, then issue a fresh one for
-            # the caller so a stolen pre-change session cannot survive the change.
+        session_token: str
+        session: SessionRecord | None = None
+
+        def confirm_change() -> None:
+            nonlocal session_token, session
             revoked_sessions = self._sessions.delete_for_user(user.user_id)
             attempts_reset = self._login_attempts.reset(user.username)
-            session_token, session = self._create_session(updated)
-            new_session = session
-            self._audit_log.record("password_changed", str(user.user_id))
-        except Exception:
-            self._users.save(user)
-            if new_session is not None:
-                self._sessions.delete(new_session.session_id)
-            for revoked_session in revoked_sessions:
-                self._sessions.save(revoked_session)
-            if attempts_reset is not None:
+            try:
+                session_token, session = self._create_session(updated)
+                self._audit_log.record("password_changed", str(user.user_id))
+            except Exception:
+                if session is not None:
+                    self._sessions.delete(session.session_id)
+                for revoked_session in revoked_sessions:
+                    self._sessions.save(revoked_session)
                 self._login_attempts.restore_reset(user.username, attempts_reset)
-            raise
+                raise
+
+        changed = self._users.save_if_current_with_confirmation(user, updated, confirm_change)
+        if not changed or session is None:
+            raise self._auth_failed()
         from coeus.domain.rbac import default_route_for_roles
 
         return LoginResult(
@@ -219,7 +220,19 @@ class AuthService:
 
     def _create_session(self, user: UserAccount) -> tuple[str, SessionRecord]:
         session_token, session = self._prepare_session(user)
-        self._sessions.save(session)
+        try:
+            self._sessions.save(session)
+        except SessionStoreFull as exc:
+            self._audit_log.record(
+                "auth_throttled",
+                str(user.user_id),
+                {"reason": "session_capacity_unavailable"},
+            )
+            raise AppError(
+                503,
+                "session_capacity_unavailable",
+                "Authentication is temporarily unavailable.",
+            ) from exc
         return session_token, session
 
     def _prepare_session(self, user: UserAccount) -> tuple[str, SessionRecord]:

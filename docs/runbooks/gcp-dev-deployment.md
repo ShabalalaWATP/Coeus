@@ -22,10 +22,13 @@ All of these conditions must be resolved before the reference can be enabled:
 
 1. The runtime rejects `COEUS_OBJECT_STORAGE_PROVIDER=gcs`; no GCS adapter exists.
 2. The runtime rejects `COEUS_PUBSUB_ENABLED=true`; no worker adapter exists.
-3. The API uses whole-namespace, single-writer state and must remain one instance.
+3. Tickets use per-ticket relational persistence, but other mutable repositories
+   remain whole-namespace state and local object storage is still single-writer.
+   The API must therefore remain one instance.
 4. Hosted identity lifecycle, backup/restore, audit export, monitoring and
    incident-response procedures are incomplete.
-5. Terraform does not currently inject the required hosted asset-token secret.
+5. Terraform does not currently create or inject the required hosted asset-token,
+   configuration-encryption or metrics bearer secrets.
 6. The web API origin is compiled into the Vite bundle. The old bootstrap command
    used `https://bootstrap.invalid`, which cannot produce a working UI.
 7. Full and targeted plans are stopped by `migration_adapters_ready=false`.
@@ -45,8 +48,9 @@ GITHUB_REPOSITORY=<github-owner>/<repository>
 ```
 
 Project IDs, numbers, region and service names are identifiers. Never commit or
-share service-account keys, database passwords, session/CSRF/asset-token secrets,
-API keys, Terraform state or plans.
+share service-account keys, database passwords, session, CSRF, asset-token,
+configuration-encryption or metrics bearer secrets, API keys, Terraform state or
+plans.
 
 ## Required implementation work
 
@@ -56,10 +60,14 @@ Before changing the readiness flag:
   token and rollback guarantees as local storage;
 - implement Pub/Sub publishing and worker idempotency, retry and dead-letter
   behaviour, or keep Pub/Sub disabled and remove unused resources;
-- replace or formally constrain single-writer state; keep Cloud Run API maximum
-  instances at one until distributed invariants are implemented;
+- replace or formally constrain remaining whole-namespace state and shared
+  object storage; keep the Cloud Run API maximum at one until those distributed
+  invariants are implemented;
 - add persistent production user storage or an approved identity provider;
-- add `COEUS_ASSET_TOKEN_SECRET` to Secret Manager and the API mapping;
+- add `COEUS_ASSET_TOKEN_SECRET`, `COEUS_CONFIGURATION_ENCRYPTION_KEY` and
+  `COEUS_METRICS_BEARER_TOKEN` to Secret Manager and the API mapping;
+- keep `COEUS_JIOC_AGENT_ROUTING_ENABLED=disabled` initially; any later `active`
+  mode must explicitly approve the current evaluated routing release;
 - create a Cloud Run Job or other private migration runner for
   `alembic upgrade head`;
 - add database/object backup, restore tests, retained audit export, monitoring,
@@ -96,8 +104,10 @@ apply. Review a complete plan before any apply.
 
 After formal readiness approval, apply the reviewed configuration to create the
 resource shell. Create a least-privilege Cloud SQL application user. Add secret
-versions for database URL, session, CSRF and asset-token secrets plus any selected
-provider credentials. Never store secret values in Terraform variables.
+versions for database URL, session, CSRF, asset-token, configuration-encryption
+and metrics bearer secrets plus any selected provider credentials. Keep JIOC
+routing explicitly disabled until its separate production approval. Never store
+secret values in Terraform variables.
 
 ### 4. Build and publish the API image
 

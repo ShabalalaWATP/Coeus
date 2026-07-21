@@ -1,3 +1,4 @@
+import json
 from typing import Any
 
 import httpx
@@ -18,7 +19,8 @@ def _fake_get_client(captured: dict[str, Any], payload: dict[str, object]) -> ty
         def __exit__(self, _exc_type: object, _exc: object, _traceback: object) -> None:
             return None
 
-        def get(self, url: str, *, headers: dict[str, str]) -> "FakeClient":
+        def stream(self, method: str, url: str, *, headers: dict[str, str]) -> "FakeClient":
+            captured["method"] = method
             captured["url"] = url
             captured["headers"] = headers
             return self
@@ -26,8 +28,12 @@ def _fake_get_client(captured: dict[str, Any], payload: dict[str, object]) -> ty
         def raise_for_status(self) -> None:
             return None
 
-        def json(self) -> dict[str, object]:
-            return payload
+        @property
+        def headers(self) -> dict[str, str]:
+            return {}
+
+        def iter_bytes(self):  # type: ignore[no-untyped-def]
+            yield json.dumps(payload).encode()
 
     return FakeClient
 
@@ -100,7 +106,7 @@ def test_listing_network_failure_surfaces_as_unavailable(
         def __exit__(self, _exc_type: object, _exc: object, _traceback: object) -> None:
             return None
 
-        def get(self, url: str, *, headers: dict[str, str]) -> object:
+        def stream(self, method: str, url: str, *, headers: dict[str, str]) -> object:
             raise httpx.ConnectError("mock network failure")
 
     monkeypatch.setattr("coeus.integrations.provider_http.httpx.Client", FailingClient)

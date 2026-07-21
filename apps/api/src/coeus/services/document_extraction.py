@@ -3,16 +3,26 @@
 from dataclasses import dataclass
 from io import BytesIO
 from re import sub
-from zipfile import ZipFile
+from zipfile import ZipFile, ZipInfo
 
+from defusedxml import ElementTree
+from defusedxml.common import DefusedXmlException
 from pypdf import PdfReader
+
+from coeus.services.office_archive import (
+    OfficeArchiveLimitError,
+    read_bounded_member,
+    validate_office_archive,
+)
 
 MAX_DOCUMENT_BYTES = 20_000_000
 MAX_DOCUMENT_PAGES = 200
 MAX_EXTRACTED_CHARACTERS = 2_000_000
 MAX_ZIP_MEMBERS = 5_000
 MAX_ZIP_EXPANDED_BYTES = 50_000_000
-EXTRACTOR_VERSION = "local-pdf-docx-v1"
+MAX_XML_PART_BYTES = 5_000_000
+EXTRACTOR_VERSION = "local-pdf-docx-pptx-v2"
+PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 
 
 class DocumentExtractionError(ValueError):
@@ -34,6 +44,8 @@ def extract_pages(content: bytes, mime_type: str) -> tuple[ExtractedPage, ...]:
         return _extract_pdf(content)
     if mime_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
         return _extract_docx(content)
+    if mime_type == PPTX_MIME:
+        return _extract_pptx(content)
     raise DocumentExtractionError("asset_type_unsupported")
 
 
@@ -60,12 +72,7 @@ def _extract_docx(content: bytes) -> tuple[ExtractedPage, ...]:
         raise DocumentExtractionError("docx_signature_invalid")
     try:
         with ZipFile(BytesIO(content)) as archive:
-            members = archive.infolist()
-            if len(members) > MAX_ZIP_MEMBERS:
-                raise DocumentExtractionError("docx_archive_too_large")
-            expanded = sum(member.file_size for member in members)
-            if expanded > MAX_ZIP_EXPANDED_BYTES:
-                raise DocumentExtractionError("docx_archive_too_large")
+            members = _validated_office_members(archive, "docx")
             names = {member.filename.casefold() for member in members}
             if "word/vbaproject.bin" in names or "word/document.xml" not in names:
                 raise DocumentExtractionError("docx_not_extractable")
@@ -82,6 +89,64 @@ def _extract_docx(content: bytes) -> tuple[ExtractedPage, ...]:
     except Exception as exc:
         raise DocumentExtractionError("docx_parse_failed") from exc
     return _bounded_pages((ExtractedPage(1, text),))
+
+
+def _extract_pptx(content: bytes) -> tuple[ExtractedPage, ...]:
+    if not content.startswith(b"PK"):
+        raise DocumentExtractionError("pptx_signature_invalid")
+    try:
+        with ZipFile(BytesIO(content)) as archive:
+            members = _validated_office_members(archive, "pptx")
+            names = {member.filename.casefold() for member in members}
+            if "ppt/vbaproject.bin" in names or "ppt/presentation.xml" not in names:
+                raise DocumentExtractionError("pptx_not_extractable")
+            slide_members = sorted(
+                (
+                    member
+                    for member in members
+                    if member.filename.startswith("ppt/slides/slide")
+                    and member.filename.endswith(".xml")
+                ),
+                key=lambda member: _slide_number(member.filename),
+            )
+            if not slide_members or len(slide_members) > MAX_DOCUMENT_PAGES:
+                raise DocumentExtractionError("pptx_not_extractable")
+            pages = tuple(
+                ExtractedPage(
+                    index,
+                    _pptx_text(read_bounded_member(archive, member, MAX_XML_PART_BYTES)),
+                )
+                for index, member in enumerate(slide_members, start=1)
+            )
+    except DocumentExtractionError:
+        raise
+    except Exception as exc:
+        raise DocumentExtractionError("pptx_parse_failed") from exc
+    return _bounded_pages(pages)
+
+
+def _validated_office_members(archive: ZipFile, prefix: str) -> tuple[ZipInfo, ...]:
+    try:
+        return validate_office_archive(
+            archive,
+            max_members=MAX_ZIP_MEMBERS,
+            max_expanded_bytes=MAX_ZIP_EXPANDED_BYTES,
+        )
+    except OfficeArchiveLimitError as exc:
+        raise DocumentExtractionError(f"{prefix}_archive_too_large") from exc
+
+
+def _slide_number(name: str) -> int:
+    stem = name.rsplit("/", 1)[-1].removeprefix("slide").removesuffix(".xml")
+    return int(stem)
+
+
+def _pptx_text(xml: bytes) -> str:
+    try:
+        root = ElementTree.fromstring(xml, forbid_dtd=True)
+    except DefusedXmlException as exc:
+        raise DocumentExtractionError("pptx_xml_unsafe") from exc
+    return _normalise("\n".join(node.text or "" for node in root.iter() if node.tag.endswith("}t")))
 
 
 def _bounded_pages(pages: tuple[ExtractedPage, ...]) -> tuple[ExtractedPage, ...]:

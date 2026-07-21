@@ -14,3 +14,8 @@ class RfiSearchMetrics:
     created_at: datetime
     retrieval_mode: str = "metadata_only"
     degraded_reason: str | None = None
+    outcome: str = "incomplete"
+    assurance: str = "assisted"
+    coverage_status: str = "legacy"
+    profile_space_id: str | None = None
+    corpus_version: str | None = None

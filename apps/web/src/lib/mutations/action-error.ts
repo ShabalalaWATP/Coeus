@@ -8,6 +8,9 @@ import { ApiError } from "../api-client/client";
  * generic transport failures fall back to the caller-supplied message.
  */
 export function actionErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof ApiError && error.status === 413) {
+    return "The selected file is too large. Choose a smaller file and try again.";
+  }
   if (error instanceof ApiError && error.code !== "request_failed") {
     return error.message;
   }

@@ -54,6 +54,7 @@ async def test_qc_approval_releases_the_product_to_the_customer() -> None:
     assert approved.status_code == 200
     body = approved.json()
     assert body["state"] == "DISSEMINATION_READY"
+    assert body["agentPreflight"]["status"] == "passed"
     assert body["decisions"][0]["status"] == "approved"
     assert [record["status"] for record in body["indexRecords"]] == ["queued", "indexed"]
     assert body["ingestedProduct"]["title"] == "Approved Arctic QC product"

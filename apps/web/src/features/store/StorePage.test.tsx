@@ -37,6 +37,10 @@ test("renders visible store products and facets only from authorised results", a
   renderWithProviders(<StorePage />, "/store");
 
   expect(await screen.findByRole("heading", { name: "Intelligence Store" })).toBeVisible();
+  expect(screen.getByRole("link", { name: "Back to Admin" })).toHaveAttribute(
+    "href",
+    "/admin/overview",
+  );
   // Nothing is listed until the user searches.
   expect(screen.getByText("Search the Intelligence Store")).toBeVisible();
   expect(screen.queryByText("Regional Stability Brief")).not.toBeInTheDocument();
@@ -177,6 +181,7 @@ test("catalogue curators still browse without searching", async () => {
       displayName: "Store Curator",
       roles: ["Intelligence Store Manager"],
       defaultRoute: "/store",
+      passwordResetRequired: false,
       permissions: ["product:read", "product:search", "store:browse_all"],
     },
   };

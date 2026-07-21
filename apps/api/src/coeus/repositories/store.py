@@ -65,6 +65,8 @@ class InMemoryStoreRepository:
         projection: StoreProjection | None = None,
         embeddings: EmbeddingPort | None = None,
         draft_audience: DraftAudienceProjection | None = None,
+        *,
+        seed_products: bool = True,
     ) -> None:
         self._access_repository = access_repository
         self._state_store = state_store
@@ -74,7 +76,8 @@ class InMemoryStoreRepository:
         self._initialising = True
         self._products: dict[UUID, StoreProduct] = {}
         self._reference_counter = 1000
-        self._seed_products()
+        if seed_products:
+            self._seed_products()
         self._initialising = False
         self._restore_or_persist()
 

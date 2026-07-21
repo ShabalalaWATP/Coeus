@@ -28,7 +28,7 @@ flowchart TB
             PG[("pgvector/pgvector:pg16<br/>PostgreSQL")]
             MINIO[["MinIO<br/>unused parity scaffolding"]]
         end
-        FS[["Local filesystem<br/>object bytes + email outbox"]]
+        FS[["Local filesystem<br/>object bytes"]]
     end
 
     BROWSER --> VITE --> UVICORN
@@ -45,7 +45,8 @@ flowchart TB
 ```
 
 Default local providers: mock language model, mock embeddings, local filesystem
-object storage, Postgres persistence and an on-disk email outbox. See
+object storage, Postgres persistence and a retained, non-sending email outbox in
+the notification state namespace. See
 [Setup](SETUP.md) for the exact commands and seed accounts.
 
 ---
@@ -57,7 +58,8 @@ GCP hosting is a reference target, not a requirement, and the Terraform in
 In the target design, the API and web run on Cloud Run, state moves to Cloud SQL (with
 pgvector), product bytes move to Cloud Storage buckets, and the language
 provider remains an explicit choice among `mock`, `gemini_api`, `openai_api`,
-`vertex_ai` and `bedrock`. Embeddings remain `mock`, `local` or `gemini_api`.
+`litellm_proxy`, `vertex_ai` and `bedrock`. Embeddings remain `mock`, `local` or
+`gemini_api`.
 Deployments authenticate from GitHub Actions through Workload
 Identity Federation, with no long-lived keys.
 
@@ -87,7 +89,7 @@ flowchart TB
             TOPIC["topics + worker subs"]
             DLQ["dead-letter topics"]
         end
-        SM["Secret Manager<br/>db url, session, csrf, keys"]
+        SM["Secret Manager<br/>db, session, CSRF, asset, metrics and configuration keys"]
         KMS["Cloud KMS<br/>encryption keys"]
         GEMINI["Gemini API<br/>chat + embeddings (optional)"]
     end
@@ -119,10 +121,10 @@ services, IAM with Workload Identity Federation and runtime and deployer service
 accounts, Artifact Registry, Cloud KMS, Secret Manager placeholders, Cloud
 Storage buckets, Pub/Sub topics with worker subscriptions and dead-letter
 topics, a Cloud SQL PostgreSQL instance, and the two Cloud Run services. Secret
-values are never stored in Terraform state. API and web creation is blocked by
-the ADR 0019 readiness gate, but targeted Terraform applies can bypass that
-dependency for resource-shell modules and therefore must not be used. GitHub
-Actions has no cloud deployment step. See the
+values are never stored in Terraform state. Every cloud-creating path is blocked
+by the ADR 0019 readiness precondition, including targeted plans and applies.
+Targeted operations remain prohibited because they are an incomplete review
+surface. GitHub Actions has no cloud deployment step. See the
 [GCP Reference Deployment Runbook](runbooks/gcp-dev-deployment.md).
 
 ---
@@ -137,9 +139,9 @@ adapters and readiness gates pass.
 | --------------- | -------------------------------------- | ----------------------------------- | ------------------------------- |
 | Persistence     | `COEUS_PERSISTENCE_PROVIDER`           | `postgres` (local container)        | `postgres` (Cloud SQL)          |
 | Object storage  | `COEUS_OBJECT_STORAGE_PROVIDER`        | `local` (filesystem)                | `gcs` (Cloud Storage)           |
-| Language model  | `COEUS_LLM_PROVIDER`                   | `mock`; four external APIs optional | Same application gateway        |
+| Language model  | `COEUS_LLM_PROVIDER`                   | `mock`; five external providers optional | Same application gateway        |
 | Embeddings      | `COEUS_EMBEDDING_PROVIDER`             | `mock`                              | `mock`, `local` or `gemini_api` |
-| Email           | `COEUS_EMAIL_PROVIDER`                 | `outbox` (on disk)                  | `smtp`                          |
+| Email           | `COEUS_EMAIL_PROVIDER`                 | `outbox` (persisted state)          | `smtp`                          |
 | Secrets         | configuration key plus encrypted state | ignored local key file              | Secret Manager                  |
 | Deploy identity | n/a                                    | n/a                                 | Workload Identity Federation    |
 
@@ -151,17 +153,24 @@ encrypted in isolated state namespaces and survive restart. The separate
 configuration-encryption key is generated outside PostgreSQL for local mode and
 must come from Secret Manager in hosted environments.
 
+LiteLLM is a separate operator-managed trust boundary. Istari receives a scoped
+virtual key and selects only aliases visible to that key; AWS or GCP workload
+identity, upstream model IDs, regions and fallback routing stay in the proxy
+deployment. The [LiteLLM Provider Connectivity Runbook](runbooks/litellm-provider-connectivity.md)
+defines the supported Bedrock and Vertex route patterns and production gates.
+
 ---
 
 ## Scaling and known constraints
 
-- **Single-writer state.** Repositories are in-memory aggregates serialised as
-  whole-namespace JSONB snapshots in PostgreSQL and mirrored to the relational
-  Store projection. This is correct and simple for one API instance. Running
-  multiple writers safely is a planned redesign toward row-level relational
-  persistence; until then the API runs as a single writer. The Cloud Run
-  reference is pinned to one writable instance and Terraform rejects a larger
-  value while its single-writer flag is active.
+- **Single-writer state.** Tickets now use versioned per-ticket relational
+  aggregates, compare-and-swap and transactional outbox writes. Other mutable
+  repositories, including identity, teams, notifications and configuration,
+  still load in-memory aggregates and persist bounded whole-namespace JSONB
+  snapshots. Local object bytes also require a single writer. Until those
+  remaining boundaries are redesigned or formally constrained, the API runs as
+  one replica. Terraform rejects a larger Cloud Run API value while its
+  single-writer flag is active.
 - **Audit log.** Local audit evidence is append-only in memory, JSONL or a
   PostgreSQL event table. The configured limit bounds recent reads, not durable
   retention. A future hosted design must add externally retained audit export.

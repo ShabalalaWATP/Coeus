@@ -1,73 +1,15 @@
 import { apiRequestJson, pathSegment } from "./client";
+import type { components } from "./generated/openapi";
 
-export type AiProviderState = {
-  name: string;
-  label: string;
-  models: string[];
-  activeModel: string;
-  apiKeyConfigured: boolean;
-  supportsModelRefresh: boolean;
-};
+type ApiSchemas = components["schemas"];
 
-export type AiModelState = {
-  provider: string;
-  activeModel: string;
-  availableModels: string[];
-  apiKeyConfigured: boolean;
-  embeddingProvider: string;
-  embeddedProductCount: number;
-  changedBy: string | null;
-  changedAt: string | null;
-  providers: AiProviderState[];
-};
-
-export type AiConnectionTest = {
-  ok: boolean;
-  provider: string;
-  model: string;
-  message: string;
-};
-
-export type SearchEmbeddingState = {
-  provider: string;
-  model: string;
-  dimensions: number;
-  apiKeyConfigured: boolean;
-  availableProviders: string[];
-  availableModels: string[];
-  indexStatus: string;
-  indexGeneration: number;
-  productCount: number;
-  chunkCount: number;
-  ticketCount: number;
-  failedAssetCount: number;
-  corpusVersion: string;
-  spaceId: string;
-  changedBy: string | null;
-  changedAt: string | null;
-  lastIndexedAt: string | null;
-  degradedReason: string | null;
-};
-
-export type SearchEmbeddingTest = {
-  ok: boolean;
-  provider: string;
-  model: string;
-  message: string;
-};
-
-export type AdminUser = {
-  id: string;
-  username: string;
-  displayName: string;
-  roles: string[];
-  clearanceLevel: number;
-  isActive: boolean;
-};
-
-export type CredentialReset = {
-  temporaryCredential: string;
-};
+export type AiProviderState = ApiSchemas["AiProviderStateResponse"];
+export type AiModelState = ApiSchemas["AiModelStateResponse"];
+export type AiConnectionTest = ApiSchemas["AiConnectionTestResponse"];
+export type SearchEmbeddingState = ApiSchemas["SearchEmbeddingStateResponse"];
+export type SearchEmbeddingTest = ApiSchemas["SearchEmbeddingTestResponse"];
+export type AdminUser = ApiSchemas["AdminUserResponse"];
+export type CredentialReset = ApiSchemas["CredentialResetResponse"];
 
 export type AdminOverview = {
   status: string;

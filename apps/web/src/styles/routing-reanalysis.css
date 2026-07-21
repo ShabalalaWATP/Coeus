@@ -1,0 +1,27 @@
+.routing-reanalysis {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+}
+
+.routing-reanalysis > p,
+.routing-reanalysis > div {
+  margin: 0;
+}
+
+.routing-reanalysis label {
+  display: grid;
+  gap: 7px;
+  font-weight: 750;
+}
+
+.routing-reanalysis textarea {
+  min-height: 110px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  background: var(--surface-muted);
+  color: var(--text);
+}

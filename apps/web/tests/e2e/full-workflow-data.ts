@@ -1,3 +1,5 @@
+import { draftProduct } from "./full-workflow-product-data";
+
 const now = "2026-07-06T12:00:00Z";
 
 export const acg = {
@@ -186,6 +188,7 @@ export function routingTicket(flow: FlowState, overrideState?: string) {
           ? "ANALYST_ASSIGNMENT"
           : "JIOC_REVIEW");
   return {
+    advisoryRuns: [],
     agentRuns: flow.stage === "route" ? [] : ["rfa-capability-agent", "orchestrator-agent"],
     clarifications: [],
     cmReview: flow.stage === "route" ? null : capabilityReview(),
@@ -254,7 +257,7 @@ export function analystTask(flow: FlowState, state = "ANALYST_IN_PROGRESS") {
     ],
     chatSummary: ["Customer requested assessment."],
     description: "Synthetic request.",
-    drafts: flow.draftSaved ? [draft()] : [],
+    drafts: flow.draftSaved ? [draftProduct()] : [],
     linkedProducts: [],
     managerNotes: ["RFA route approved."],
     notes: [],
@@ -273,72 +276,5 @@ export function analystTask(flow: FlowState, state = "ANALYST_IN_PROGRESS") {
         title: "Assess vessel activity",
       },
     ],
-  };
-}
-
-function draft() {
-  return {
-    assets: [
-      {
-        assetType: "pdf",
-        id: "asset-1",
-        mimeType: "application/pdf",
-        name: "assessment-draft.pdf",
-        sha256: "e".repeat(64),
-        sizeBytes: 512,
-      },
-    ],
-    content: "Synthetic assessment content for QC review.",
-    createdAt: now,
-    id: "draft-1",
-    productType: "finished_output",
-    summary: "Synthetic assessment summary.",
-    title: "North Atlantic Assessment",
-    versionNumber: 1,
-  };
-}
-
-export function qcProduct(flow: FlowState) {
-  return {
-    areaOrRegion: "North Atlantic",
-    checklistKeys: ["source_checked", "classification_checked"],
-    decisions: [],
-    disseminations: flow.released
-      ? [{ id: "dissemination-1", productId: "product-1", recipientUserId: "e2e-user" }]
-      : [],
-    feedbackRequests: flow.released
-      ? [
-          {
-            id: "feedback-1",
-            productId: "product-1",
-            requesterUserId: "e2e-user",
-            status: "requested",
-          },
-        ]
-      : [],
-    ingestedProduct:
-      flow.stage === "release"
-        ? {
-            acgIds: ["acg-alpha"],
-            id: "product-1",
-            reference: "PROD-E2E",
-            status: "published",
-            title: "North Atlantic Assessment",
-          }
-        : null,
-    indexRecords:
-      flow.stage === "release"
-        ? [{ id: "index-1", productId: "product-1", status: "indexed", summary: "Indexed." }]
-        : [],
-    latestDraft: draft(),
-    managerNotes: [],
-    operationalQuestion: "What activity matters?",
-    priority: "routine",
-    reference: "TCK-E2E",
-    requesterUserId: "e2e-user",
-    requiredOutputFormat: "Assessment",
-    state: flow.stage === "release" ? "DISSEMINATION_READY" : "QC_REVIEW",
-    ticketId: "ticket-e2e",
-    title: "North Atlantic Activity",
   };
 }

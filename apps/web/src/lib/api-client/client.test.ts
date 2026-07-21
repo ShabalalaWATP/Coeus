@@ -1,11 +1,11 @@
-import { ApiError, apiRequest, getLiveness, pathSegment, resolveApiBaseUrl } from "./client";
+import { ApiError, apiRequest, apiRequestJson, pathSegment, resolveApiBaseUrl } from "./client";
 
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
 });
 
-test("sends request id headers and returns typed JSON", async () => {
+test("returns typed JSON from a checked response", async () => {
   const fetchMock = vi.fn().mockResolvedValue({
     ok: true,
     json: () =>
@@ -18,25 +18,16 @@ test("sends request id headers and returns typed JSON", async () => {
   });
   vi.stubGlobal("fetch", fetchMock);
 
-  const response = await getLiveness("req-web", "http://api.test");
+  const response = await apiRequestJson<{ status: string }>(
+    "/api/v1/health/live",
+    { headers: { "X-Request-ID": "req-web" }, method: "GET" },
+    "http://api.test",
+  );
 
   expect(response.status).toBe("ok");
   expect(fetchMock).toHaveBeenCalledWith("http://api.test/api/v1/health/live", {
     credentials: "include",
     headers: { "X-Request-ID": "req-web" },
-    method: "GET",
-  });
-});
-
-test("omits request id headers when none are provided", async () => {
-  const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
-  vi.stubGlobal("fetch", fetchMock);
-
-  await getLiveness(undefined, "http://api.test");
-
-  expect(fetchMock).toHaveBeenCalledWith("http://api.test/api/v1/health/live", {
-    credentials: "include",
-    headers: undefined,
     method: "GET",
   });
 });

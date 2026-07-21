@@ -27,7 +27,7 @@ This index links the guides and deeper design records.
 | [Specifications](specs/)                                               | One Markdown spec per feature                            |
 | [Architecture Decision Records](adr/)                                  | Why the significant choices were made                    |
 | [Threat Models](threat-model/)                                         | Per-feature threat models and residual risks             |
-| [Security Repair Plan](security/SECURITY_REPAIR_AND_HARDENING_PLAN.md) | Current finding closure, hardening and verification work |
+| [Security Repair Plan](security/SECURITY_REPAIR_AND_HARDENING_PLAN.md) | Historical Sprint 17 implementation evidence and still-open production release gates |
 
 ## Runbooks
 
@@ -37,6 +37,7 @@ README.
 | Runbook                                                                | Read it for                                                                  |
 | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | [Local Development](runbooks/local-development.md)                     | Day-to-day local startup, health checks and local quality gates              |
+| [LiteLLM Provider Connectivity](runbooks/litellm-provider-connectivity.md) | AWS Bedrock and GCP Vertex AI routes, identity, virtual keys and verification |
 | [CI/CD Pipeline](runbooks/ci-cd-pipeline.md)                           | GitHub Actions workflows, required status checks and security gates          |
 | [GitHub Branch Protection](runbooks/github-branch-protection.md)       | `main` ruleset, pull-request requirements and required code-scanning results |
 | [GCP Reference Deployment](runbooks/gcp-dev-deployment.md)             | Future work-owned GCP deployment setup                                       |

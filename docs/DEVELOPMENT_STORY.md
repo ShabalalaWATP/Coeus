@@ -5,7 +5,15 @@ Sprint 1 to Sprint 13 entries live in
 2026-07-06 continuation lives in
 [DEVELOPMENT_STORY_2026-07-06.md](DEVELOPMENT_STORY_2026-07-06.md), and the
 2026-07-13 security milestone lives in
-[DEVELOPMENT_STORY_2026-07-13.md](DEVELOPMENT_STORY_2026-07-13.md).
+[DEVELOPMENT_STORY_2026-07-13.md](DEVELOPMENT_STORY_2026-07-13.md). The latest
+admin command-centre milestone is recorded in
+[DEVELOPMENT_STORY_2026-07-17.md](DEVELOPMENT_STORY_2026-07-17.md), and the
+customer-search and JIOC-agent milestone is recorded in
+[DEVELOPMENT_STORY_2026-07-18.md](DEVELOPMENT_STORY_2026-07-18.md). The current
+agent-safety and LiteLLM work is in
+[DEVELOPMENT_STORY_2026-07-20.md](DEVELOPMENT_STORY_2026-07-20.md), and the
+production-safe Store startup repair is in
+[DEVELOPMENT_STORY_2026-07-21.md](DEVELOPMENT_STORY_2026-07-21.md).
 
 ## 2026-07-11 cross-role usability and documentation accuracy
 
@@ -63,45 +71,18 @@ Sprint 1 to Sprint 13 entries live in
 
 ## 2026-07-09 Access-control audit rollback
 
-- Hardened ACG administration so create, update and membership changes restore
-  previous repository state if audit recording fails. Added regression coverage
-  and updated the ACG product-access threat model.
-- Hardened notification and email side effects so creation, mark-read and
-  email outbox writes restore previous state if persistence or audit recording
-  fails. Updated the manager final-release threat model.
-- Hardened admin AI model configuration so failed model selection or Gemini API
-  key configuration restores the previous provider, model, key and change
-  metadata. Added persistence and audit-failure regression coverage.
-- Hardened RFA and CM routing so route reviews, approvals, rejections and
-  clarification requests restore the original ticket if audit recording fails
-  after the ticket update. Added rollback regression coverage for each path.
-- Hardened QC approval and rejection so audit recording failure restores the
-  original ticket state. Approval also discards the ingested Store product and
-  local placeholder asset bytes so a failed request does not leave an orphaned
-  draft product.
-- Hardened final product release so `product_released` audit failure restores
-  the ticket to `MANAGER_RELEASE`, returns the Store product to draft status
-  and suppresses requester notification.
-- Hardened similar-request customer join and manager link actions so audit
-  recording failure restores the affected ticket records instead of leaving
-  unaudited collaborator grants or related-ticket links.
-- Hardened direct ticket collaborator add and remove actions so audit
-  recording failure restores the original ticket, preventing unaudited access
-  changes.
-- Hardened requester lifecycle actions so cancellation, no-match consent and
-  delivery confirmation restore the original ticket if audit recording fails
-  after the proposed state update.
-- Hardened RFI search run, offer acceptance and offer rejection so audit
-  recording failure restores the original ticket, preventing unaudited search
-  outcomes or product decisions.
-- Hardened analyst assignment, notes, product links, work-package updates,
-  draft saves and QC submission so failed audit recording restores the original
-  ticket state.
-- Hardened Store product ingestion so `product_created` audit failure restores
-  product metadata and uploaded bytes, and storage failure does not leave a
-  false product-created audit event.
-- Hardened auth session lifecycle changes so failed `login_success`, `logout`
-  or `password_changed` audit restores sessions, credentials and login attempts.
+- Made audited ACG administration, ticket collaboration, related-request links
+  and requester lifecycle actions failure-atomic, preventing access or state
+  changes from surviving a failed audit write.
+- Extended rollback coverage across RFA/CM routing, RFI decisions, analyst work,
+  QC decisions and release, including suppression or removal of downstream Store,
+  asset and notification side effects.
+- Made notification and email persistence, administrator AI-model changes and
+  authentication session lifecycle operations restore their exact prior state
+  when persistence or audit recording fails.
+- Hardened Store ingestion so failed storage or audit work cannot leave orphaned
+  bytes, metadata or a false product-created event. Regression tests and relevant
+  threat models cover the failure boundaries.
 - Removed retired workspace sanitisation so old Project permissions and records
   fail closed instead of being accepted by the runtime persistence codec.
 

@@ -8,7 +8,7 @@ from coeus.core.logging import get_logger
 logger = get_logger(__name__)
 
 
-@dataclass(frozen=True)
+@dataclass
 class AppError(Exception):
     status_code: int
     code: str

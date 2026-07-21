@@ -66,10 +66,37 @@ adapter-contract and coordinated restore evidence is release-blocking.
 
 ## Operator checks
 
-Monitor pending age, attempts, expired claims and dead-letter count. A dead
-letter requires investigation of the handler and destination before replay.
-Replay must clear `dead_lettered_at`, reset `available_at`, and retain the same
-`event_id`; do not insert a replacement event.
+Monitor pending age, attempts, expired claims and dead-letter count. Every poll
+consumes the dispatch result and emits bounded structured totals for claimed,
+delivered, failed and newly dead-lettered work. Logs and metrics identify event
+counts and oldest pending age, but never event payloads, credentials or exception
+bodies that could contain customer data. A non-zero dead-letter count is an
+alertable operational failure, not a silently exhausted retry.
+
+`/api/v1/metrics` reads only the dispatcher's cached outbox snapshot, so a scrape
+cannot trigger an outbox-table aggregate or compete with delivery for a database
+connection. Local and test environments may scrape without credentials. Hosted
+environments fail startup without a random `COEUS_METRICS_BEARER_TOKEN` of at
+least 32 characters and require it as an `Authorization: Bearer` credential.
+Keep the route on private monitoring ingress as an additional network boundary;
+never put the token in a URL or log it.
+
+A dead letter requires investigation of the handler and destination before
+replay. The read-only operator view deliberately exposes aggregate pending,
+retrying and dead-letter counts plus oldest pending age. Event-level details and
+payloads are not exposed through the application API.
+
+Replay is an RBAC-protected operator action requiring an explicit reason. It is
+audited and idempotent. Delivered work returns `already_delivered`; pending or
+actively claimed work returns `already_pending`. A successful dead-letter replay
+clears `dead_lettered_at`, resets `available_at`, clears the bounded last error
+and retains the same `event_id`; it never inserts a replacement event. The handler
+and destination still use that event ID as their idempotency key.
+
+Before enabling hosted state-changing automation, exercise retry exhaustion,
+dead-letter alerting and replay against an idempotent handler. The drill proves
+that a repeat replay cannot duplicate the side effect and that logs, metrics and
+the operator view expose no payload data.
 
 Database restore and object-storage restore must use the same recovery point.
 After restore, compare ticket versions and outbox uniqueness before resuming

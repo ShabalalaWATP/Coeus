@@ -110,6 +110,7 @@ async def test_route_reviews_roll_back_when_audit_fails(
     ) as client:
         user = await login(client, "user@example.test")
         ticket_id = await route_assessment_ticket(client, str(user["csrfToken"]))
+        before = _stored_ticket(app, ticket_id)
         jioc = await login(client, "jioc.team@example.test")
         monkeypatch.setattr(app.state.routing_service._audit_log, "record", _fail_audit)
         with pytest.raises(RuntimeError, match="audit unavailable"):
@@ -120,9 +121,9 @@ async def test_route_reviews_roll_back_when_audit_fails(
 
     ticket = _stored_ticket(app, ticket_id)
     assert ticket.state == TicketState.JIOC_REVIEW
-    assert ticket.rfa_reviews == ()
-    assert ticket.cm_reviews == ()
-    assert ticket.route_recommendations == ()
+    assert ticket.rfa_reviews == before.rfa_reviews
+    assert ticket.cm_reviews == before.cm_reviews
+    assert ticket.route_recommendations == before.route_recommendations
 
 
 @pytest.mark.asyncio
