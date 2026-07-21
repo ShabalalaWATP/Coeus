@@ -9,5 +9,8 @@
 - Updated the real PostgreSQL browser journey to prove automatic discovery,
   active JIOC RFA routing, JIOC manager on-loop oversight, bounded external PDF
   processing, RFA assignment, analyst production, human QC and customer download.
+- Replaced an expiring calendar rollback fixture with relative future dates and
+  allowed `AppError` traceback propagation, preventing the real application
+  error from being masked by `FrozenInstanceError` in generator contexts.
 - Verified the focused Store/demo backend tests (28 passed) and the complete
   ten-stage disposable PostgreSQL browser journey (10 passed).
