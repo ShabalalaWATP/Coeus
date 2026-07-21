@@ -25,6 +25,6 @@
     "contracts:check": "uv run --project apps/api python scripts/generate_openapi.py --check && uv run --project apps/api python scripts/check_openapi_compatibility.py --baseline-ref origin/main"
   },
   "devDependencies": {
-    "knip": "^6.24.0"
+    "knip": "^6.26.0"
   }
 }
