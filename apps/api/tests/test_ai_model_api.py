@@ -19,6 +19,7 @@ async def test_admin_reads_state_and_switches_a_provider_model() -> None:
         assert [provider["name"] for provider in providers] == [
             "gemini_api",
             "openai_api",
+            "litellm_proxy",
             "vertex_ai",
             "bedrock",
             "mock",
@@ -100,7 +101,10 @@ async def test_admin_provider_settings_drive_ticket_assistant(
         )
 
     assert response.status_code == 201
-    assert response.json()["messages"][-1]["body"] == "Gemini reply."
+    assert response.json()["messages"][-1]["body"] == (
+        "Thanks, that helps. What is the specific question you would like answered? "
+        "Putting it as a question helps the analysts focus the work."
+    )
     assert "models/gemini-3.1-pro-preview:generateContent" in str(FakeLlmClient.captured["url"])
     headers = {
         str(key).casefold(): value for key, value in FakeLlmClient.captured["headers"].items()

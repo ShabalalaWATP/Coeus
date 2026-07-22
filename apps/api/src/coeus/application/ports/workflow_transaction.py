@@ -4,7 +4,11 @@ from typing import Protocol
 
 from coeus.domain.store import StoreProduct
 from coeus.domain.tickets import TicketRecord
-from coeus.domain.workflow_transaction import ReleaseNotificationIntent, WorkflowAuditIntent
+from coeus.domain.workflow_transaction import (
+    ReleaseNotificationIntent,
+    WorkflowAuditIntent,
+    WorkflowOutboxIntent,
+)
 
 
 class WorkflowTransactionPort(Protocol):
@@ -19,6 +23,7 @@ class WorkflowTransactionPort(Protocol):
         expected: TicketRecord,
         updated: TicketRecord,
         audits: tuple[WorkflowAuditIntent, ...],
+        outbox: tuple[WorkflowOutboxIntent, ...] = (),
     ) -> bool: ...
 
     def commit_ticket_pair(

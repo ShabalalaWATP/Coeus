@@ -3,6 +3,7 @@ import { ArrowLeft, FileText, ShieldAlert } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { AssetGrant } from "./AssetGrant";
+import { StoreAssetPreview } from "./StoreAssetPreview";
 import { productTypeLabel } from "./store-options";
 import type { AssetAccessGrant, StoreProduct } from "../../lib/api-client/store";
 
@@ -85,6 +86,7 @@ export function ProductAssets({
   from?: string;
   product: StoreProduct;
 }) {
+  const selectedAsset = product.assets.find((asset) => asset.id === assetId);
   return (
     <aside className="surface product-assets" aria-labelledby="assets-title">
       <h2 id="assets-title">Assets</h2>
@@ -125,13 +127,18 @@ export function ProductAssets({
         })}
       </div>
       {assetId !== undefined && canRequestAccess ? (
-        <AssetGrant
-          assetId={assetId}
-          assetName={product.assets.find((asset) => asset.id === assetId)?.name ?? "asset-download"}
-          grant={accessGrant}
-          productId={product.id}
-          status={accessStatus}
-        />
+        <>
+          {selectedAsset ? (
+            <StoreAssetPreview asset={selectedAsset} grant={accessGrant} productId={product.id} />
+          ) : null}
+          <AssetGrant
+            assetId={assetId}
+            assetName={selectedAsset?.name ?? "asset-download"}
+            grant={accessGrant}
+            productId={product.id}
+            status={accessStatus}
+          />
+        </>
       ) : null}
     </aside>
   );

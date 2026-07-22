@@ -41,7 +41,7 @@ export function ProductOffersPanel({
 }: ProductOffersPanelProps) {
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const offers = results?.offers ?? [];
-  const canRun = canRunSearch && ticket?.state === "RFI_SEARCHING";
+  const canRetry = canRunSearch && ticket?.state === "RFI_SEARCH_INCOMPLETE";
 
   return (
     <section className="surface product-offers-panel" aria-labelledby="product-offers-title">
@@ -58,10 +58,12 @@ export function ProductOffersPanel({
         <>
           <div className="offer-toolbar">
             <span className="offer-state">{formatWorkflowState(ticket.state)}</span>
-            <button disabled={!canRun || isRunning} onClick={onRun} type="button">
-              <Search aria-hidden="true" size={18} />
-              Run search
-            </button>
+            {ticket.state === "RFI_SEARCH_INCOMPLETE" ? (
+              <button disabled={!canRetry || isRunning} onClick={onRun} type="button">
+                <Search aria-hidden="true" size={18} />
+                {isRunning ? "Retrying..." : "Retry search"}
+              </button>
+            ) : null}
           </div>
           {results?.metrics ? (
             <SearchMetrics metrics={results.metrics} retrievalMode={results.retrievalMode} />
@@ -71,6 +73,9 @@ export function ProductOffersPanel({
               Search is degraded ({(results.retrievalMode ?? "lexical_only").replaceAll("_", " ")}).
               No definitive no-match decision will be made until semantic retrieval recovers.
             </p>
+          ) : null}
+          {ticket.state === "RFI_SEARCHING" ? (
+            <p role="status">Searching the Intelligence Store automatically...</p>
           ) : null}
           {isLoading ? <p>Loading product offers</p> : null}
           {isError ? (
@@ -129,6 +134,10 @@ function SearchMetrics({
       <div>
         <dt>Retrieval</dt>
         <dd>{(metrics.retrievalMode ?? retrievalMode ?? "metadata_only").replaceAll("_", " ")}</dd>
+      </div>
+      <div>
+        <dt>Assurance</dt>
+        <dd>{metrics.assurance}</dd>
       </div>
     </dl>
   );

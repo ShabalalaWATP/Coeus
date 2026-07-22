@@ -5,6 +5,8 @@ from typing import Protocol
 from coeus.domain.tickets import IntakeDetails
 from coeus.services import intake_extractors as extractors
 from coeus.services.intake_answers import apply_direct_answer
+from coeus.services.intake_planner import blocking_intake_reasons
+from coeus.services.intake_planner_types import IntakePlanDraft
 from coeus.services.intake_standard import (
     REQUIRED_INTAKE_FIELDS as REQUIRED_INTAKE_FIELDS,
 )
@@ -70,6 +72,21 @@ class AdmittedAssistantReply:
 
     text: str
     provider_succeeded: bool
+    provider: str | None = None
+    model: str | None = None
+    duration_ms: int | None = None
+    outcome: str = "local_fallback"
+    prompt_version: str | None = None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    fallback_outcome: str | None = None
+    validation_outcome: str | None = None
+    policy_version: str | None = None
+    context_schema_version: str | None = None
+    input_hash: str | None = None
+    output_hash: str | None = None
+    error_class: str | None = None
+    plan: IntakePlanDraft | None = None
 
 
 class MockLlmProvider:
@@ -180,7 +197,8 @@ class RequirementCompletenessService:
         return replace(intake, missing_information=missing, confidence=confidence)
 
     def is_complete_enough(self, intake: IntakeDetails) -> bool:
-        return not self.with_completeness(intake).missing_information
+        complete = self.with_completeness(intake)
+        return not complete.missing_information and not blocking_intake_reasons(complete)
 
 
 def merge_intake(intake: IntakeDetails, updates: dict[str, str | None]) -> IntakeDetails:

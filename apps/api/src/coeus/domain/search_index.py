@@ -114,3 +114,5 @@ class GroundedSearchResult:
     retrieval_mode: str
     degraded_reason: str | None
     profile_space_id: str | None
+    coverage_status: str = "unknown"
+    corpus_version: str | None = None

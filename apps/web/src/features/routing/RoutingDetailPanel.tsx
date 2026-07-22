@@ -1,8 +1,11 @@
 import { MessageCircleQuestion } from "lucide-react";
 
 import { AssignAnalystPanel } from "./AssignAnalystPanel";
+import { AdvisoryEvidencePanel } from "./AdvisoryEvidencePanel";
 import { ManagerApprovalPanel } from "./ManagerApprovalPanel";
 import { SimilarRequestsPanel } from "./SimilarRequestsPanel";
+import { ReanalysisDecisionPanel } from "./ReanalysisDecisionPanel";
+import { RoutingPriorityAssessment } from "./RoutingPriorityAssessment";
 import {
   canApprove,
   canApproveWithOverride,
@@ -11,14 +14,13 @@ import {
   isRouteOverride,
 } from "./routing-model";
 import { PlanUpdates, Recommendation, Review } from "./routing-sections";
-import { formatTaggedReason } from "./routing-labels";
 import { EmptyState } from "../../components/ui/PageState";
 import { StatusPill } from "../../components/ui/StatusPill";
 import type { AnalystTask } from "../../lib/api-client/analyst";
 import type { RoutingRoute, RoutingTicket } from "../../lib/api-client/routing";
 import type { SimilarRequestList } from "../../lib/api-client/similar-requests";
 
-type RoutingDetailPanelProps = {
+export type RoutingDetailState = {
   actionError: string | null;
   actionPending: boolean;
   canDecide: boolean;
@@ -31,6 +33,16 @@ type RoutingDetailPanelProps = {
   isRunningReviews: boolean;
   isSimilarLoading: boolean;
   isSimilarQueryError: boolean;
+  overrideReason: string;
+  rejectReason: string;
+  reanalysisPending: boolean;
+  reanalysisRationale: string;
+  route: RoutingRoute;
+  selectedTicket: RoutingTicket | undefined;
+  similarMatches: SimilarRequestList | undefined;
+};
+
+export type RoutingDetailActions = {
   onApprove: () => void;
   onAssigned: (task: AnalystTask) => void;
   onClarificationQuestionChange: (value: string) => void;
@@ -41,50 +53,87 @@ type RoutingDetailPanelProps = {
   onManagerDecision: (ticket: RoutingTicket) => void;
   onOverrideReasonChange: (value: string) => void;
   onReject: () => void;
+  onReanalysisDecision: (decision: "agree" | "refer_to_jioc" | "reanalyse" | "close") => void;
+  onReanalysisRationaleChange: (value: string) => void;
   onRejectReasonChange: (value: string) => void;
   onRequestClarification: () => void;
   onRetrySimilar: () => void;
   onRunReviews: () => void;
-  overrideReason: string;
-  rejectReason: string;
-  route: RoutingRoute;
-  selectedTicket: RoutingTicket | undefined;
-  similarMatches: SimilarRequestList | undefined;
 };
 
 export function RoutingDetailPanel({
-  actionError,
-  actionPending,
-  canDecide,
-  clarificationQuestion,
-  clarificationReason,
-  csrfToken,
-  decisionRoute,
-  isApprovePending,
-  isLinkingSimilar,
-  isRunningReviews,
-  isSimilarLoading,
-  isSimilarQueryError,
-  onApprove,
-  onAssigned,
-  onClarificationQuestionChange,
-  onClarificationReasonChange,
-  onDecisionRouteChange,
-  onLinkSimilar,
-  onMarkDuplicate,
-  onManagerDecision,
-  onOverrideReasonChange,
-  onReject,
-  onRejectReasonChange,
-  onRequestClarification,
-  onRetrySimilar,
-  onRunReviews,
-  overrideReason,
-  rejectReason,
-  route,
-  selectedTicket,
-  similarMatches,
-}: RoutingDetailPanelProps) {
+  actions,
+  state,
+}: {
+  actions: RoutingDetailActions;
+  state: RoutingDetailState;
+}) {
+  const {
+    actionError,
+    actionPending,
+    canDecide,
+    clarificationQuestion,
+    clarificationReason,
+    csrfToken,
+    decisionRoute,
+    isApprovePending,
+    isLinkingSimilar,
+    isRunningReviews,
+    isSimilarLoading,
+    isSimilarQueryError,
+    overrideReason,
+    rejectReason,
+    reanalysisPending,
+    reanalysisRationale,
+    route,
+    selectedTicket,
+    similarMatches,
+  } = state;
+  const {
+    onApprove,
+    onAssigned,
+    onClarificationQuestionChange,
+    onClarificationReasonChange,
+    onDecisionRouteChange,
+    onLinkSimilar,
+    onManagerDecision,
+    onMarkDuplicate,
+    onOverrideReasonChange,
+    onReanalysisDecision,
+    onReanalysisRationaleChange,
+    onReject,
+    onRejectReasonChange,
+    onRequestClarification,
+    onRetrySimilar,
+    onRunReviews,
+  } = actions;
+  const isReanalysisDecision =
+    selectedTicket?.state === "MANAGER_REANALYSIS_REVIEW" ||
+    selectedTicket?.state === "JIOC_REANALYSIS_ADJUDICATION";
+  if (selectedTicket && isReanalysisDecision) {
+    return (
+      <section className="surface routing-detail" aria-label="Re-analysis decision">
+        <div className="section-heading">
+          <h2>{selectedTicket.reference}</h2>
+          <p>{selectedTicket.title}</p>
+        </div>
+        <StatusPill state={selectedTicket.state} />
+        <ReanalysisDecisionPanel
+          isJioc={selectedTicket.state === "JIOC_REANALYSIS_ADJUDICATION"}
+          onDecide={onReanalysisDecision}
+          onRationaleChange={onReanalysisRationaleChange}
+          pending={reanalysisPending}
+          rationale={reanalysisRationale}
+          ticket={selectedTicket}
+        />
+        {actionError ? (
+          <p className="auth-error" role="alert">
+            {actionError}
+          </p>
+        ) : null}
+      </section>
+    );
+  }
   return (
     <section
       className="surface routing-detail"
@@ -97,21 +146,7 @@ export function RoutingDetailPanel({
             <p>{selectedTicket.title}</p>
           </div>
           <StatusPill state={selectedTicket.state} />
-          {selectedTicket.priorityAssessment ? (
-            <div className="priority-assessment">
-              <span
-                className={`priority-badge priority-badge--${selectedTicket.priorityAssessment.tier.toLowerCase()}`}
-              >
-                {selectedTicket.priorityAssessment.tier}
-              </span>
-              <span>Internal priority score {selectedTicket.priorityAssessment.score}</span>
-              <ul>
-                {selectedTicket.priorityAssessment.reasons.map((reason) => (
-                  <li key={reason}>{formatTaggedReason(reason)}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
+          <RoutingPriorityAssessment ticket={selectedTicket} />
           {!canDecide ? (
             <p className="workspace-alert" role="status">
               {`This request is already routed to the ${
@@ -120,6 +155,7 @@ export function RoutingDetailPanel({
             </p>
           ) : null}
           <Recommendation ticket={selectedTicket} />
+          <AdvisoryEvidencePanel runs={selectedTicket.advisoryRuns} />
           <Review title="RFA recommendation" review={selectedTicket.rfaReview} />
           <Review title="CM recommendation" review={selectedTicket.cmReview} />
           <PlanUpdates ticket={selectedTicket} />

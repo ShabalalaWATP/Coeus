@@ -25,6 +25,45 @@ class FeedbackRequestStatus(StrEnum):
     SUBMITTED = "submitted"
 
 
+class QcAgentPreflightStatus(StrEnum):
+    PASSED = "passed"
+    BLOCKED = "blocked"
+
+
+@dataclass(frozen=True)
+class QcAgentCheck:
+    key: str
+    passed: bool
+    detail: str
+
+
+@dataclass(frozen=True)
+class QcAgentFinding:
+    finding_id: UUID
+    category: str
+    severity: str
+    original_text: str
+    suggested_text: str
+    location: str
+    detail: str
+    confidence: float
+    blocking: bool
+
+
+@dataclass(frozen=True)
+class QcAgentPreflight:
+    preflight_id: UUID
+    ticket_id: UUID
+    draft_version_id: UUID
+    input_hash: str
+    status: QcAgentPreflightStatus
+    checks: tuple[QcAgentCheck, ...]
+    blockers: tuple[str, ...]
+    policy_version: str
+    created_at: datetime
+    findings: tuple[QcAgentFinding, ...] = ()
+
+
 @dataclass(frozen=True)
 class QcChecklistItem:
     key: str

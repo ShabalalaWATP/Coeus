@@ -20,8 +20,12 @@ original `coeus` working name.
 - **Controlled by design.** Role-based access, need-to-know access control
   groups and clearance levels, with security-sensitive and workflow-changing
   actions audited.
-- **AI-first, human-decided.** Agents extract, rank and advise; a person makes
-  every decision that changes state. See [AI Agents](docs/AI_AGENTS.md).
+- **Bounded automation, human-governed.** Deterministic services extract, search
+  and enforce workflow gates. The active JIOC Agent may route an eligible request
+  to CM or RFA; people remain in the loop for requester choices, delivery
+  approvals, release and exception review. JIOC Managers oversee routine routing
+  on the loop and can hold, reopen or refer cases through audited controls. See
+  [AI Agents](docs/AI_AGENTS.md).
 
 ## Documentation
 

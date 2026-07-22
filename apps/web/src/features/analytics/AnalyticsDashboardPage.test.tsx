@@ -7,7 +7,7 @@ import type { AnalyticsDashboard } from "../../lib/api-client/analytics";
 import { renderWithProviders } from "../../test/test-utils";
 
 const dashboard: AnalyticsDashboard = {
-  audience: "admin",
+  audience: "rfa",
   metrics: {
     totalTickets: 2,
     activeTickets: 2,
@@ -41,6 +41,58 @@ const dashboard: AnalyticsDashboard = {
   ],
 };
 
+const adminDashboard = {
+  generatedAt: "2026-07-17T10:00:00Z",
+  users: {
+    total: 12,
+    active: 10,
+    disabled: 2,
+    passwordResetRequired: 1,
+    pendingRegistrations: 3,
+    activeUsers30d: 8,
+    roleCounts: [
+      { role: "Administrator", count: 1 },
+      { role: "Customer", count: 7 },
+    ],
+  },
+  assistant: {
+    provider: "gemini_api",
+    model: "gemini-3.5-flash",
+    apiKeyConfigured: true,
+    chatTurns30d: 46,
+  },
+  search: {
+    provider: "gemini_api",
+    model: "gemini-embedding-2",
+    apiKeyConfigured: true,
+    indexStatus: "ready",
+    searchRuns30d: 9,
+    indexedProducts: 6,
+    indexedPassages: 44,
+    indexedRequests: 18,
+    failedAssets: 1,
+  },
+  voice: {
+    model: "gpt-realtime-mini",
+    enabled: true,
+    apiKeyConfigured: true,
+    sessionsStarted30d: 5,
+    users30d: 3,
+  },
+  audit: {
+    windowDays: 30,
+    retainedEvents: 120,
+    events30d: 93,
+    loginSuccesses30d: 31,
+    loginFailures30d: 2,
+    securityEvents30d: 4,
+    configurationChanges30d: 6,
+    coverageStartsAt: "2026-06-20T10:00:00Z",
+    retentionLimitReached: true,
+  },
+  process: { remoteRequestsAdmitted: 51, remoteRequestsDenied: 2 },
+};
+
 beforeEach(() => {
   resetQueryClientForTests();
 });
@@ -49,16 +101,66 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-test("renders admin analytics metrics, product reuse and trends", async () => {
-  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(dashboard)));
+test("renders aggregate admin analytics without intelligence detail", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(adminDashboard)));
 
   renderWithProviders(<AnalyticsDashboardPage audience="admin" />, "/admin/analytics");
 
   expect(await screen.findByRole("heading", { name: "Admin Analytics" })).toBeVisible();
-  expect(await screen.findByText("Arctic feedback product")).toBeVisible();
-  expect(screen.getByText("Requester satisfaction")).toBeVisible();
-  expect(screen.getByText("82 percent confidence")).toBeVisible();
-  expect(screen.getAllByText("4.5")).toHaveLength(2);
+  expect(screen.getByRole("link", { name: "Back to Admin" })).toHaveAttribute(
+    "href",
+    "/admin/overview",
+  );
+  expect(await screen.findByRole("heading", { name: "Account estate" })).toBeVisible();
+  expect(screen.getByRole("heading", { name: "Text assistant" })).toBeVisible();
+  expect(screen.getByRole("heading", { name: "Search & embeddings" })).toBeVisible();
+  expect(screen.getByRole("heading", { name: "Voice" })).toBeVisible();
+  expect(screen.getByRole("heading", { name: "Security and audit" })).toBeVisible();
+  expect(screen.getByText(/audit retention limit has been reached/i)).toBeVisible();
+  expect(screen.queryByText("Arctic feedback product")).not.toBeInTheDocument();
+  expect(screen.queryByText("Requester satisfaction")).not.toBeInTheDocument();
+});
+
+test("renders empty admin activity and role states", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(
+      jsonResponse({
+        ...adminDashboard,
+        users: { ...adminDashboard.users, roleCounts: [] },
+        audit: {
+          ...adminDashboard.audit,
+          coverageStartsAt: null,
+          retentionLimitReached: false,
+        },
+      }),
+    ),
+  );
+
+  renderWithProviders(<AnalyticsDashboardPage audience="admin" />, "/admin/analytics");
+
+  expect(await screen.findByText("No role assignments recorded.")).toBeVisible();
+  expect(screen.getByText(/when the first event is recorded/)).toBeVisible();
+  expect(screen.queryByText(/retention limit has been reached/)).not.toBeInTheDocument();
+});
+
+test("shows disabled and missing-key AI service states", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(
+      jsonResponse({
+        ...adminDashboard,
+        assistant: { ...adminDashboard.assistant, apiKeyConfigured: false },
+        voice: { ...adminDashboard.voice, apiKeyConfigured: false, enabled: false },
+      }),
+    ),
+  );
+
+  renderWithProviders(<AnalyticsDashboardPage audience="admin" />, "/admin/analytics");
+
+  expect(await screen.findByText("Key missing")).toBeVisible();
+  expect(screen.getByText("Disabled")).toBeVisible();
+  expect(screen.getByText("Missing")).toBeVisible();
 });
 
 test("renders empty collection analytics without reuse records", async () => {
@@ -70,14 +172,7 @@ test("renders empty collection analytics without reuse records", async () => {
         audience: "collection",
         metrics: { ...dashboard.metrics, averageRating: null, totalTickets: 0 },
         productReuse: [],
-        trends: [
-          {
-            title: "No trend baseline yet",
-            summary: "No eligible tickets exist for this analytics scope.",
-            signal: "neutral",
-            confidence: 0.6,
-          },
-        ],
+        trends: [],
       }),
     ),
   );
@@ -86,6 +181,7 @@ test("renders empty collection analytics without reuse records", async () => {
 
   expect(await screen.findByRole("heading", { name: "Collection Analytics" })).toBeVisible();
   expect(await screen.findByText("No product reuse recorded.")).toBeVisible();
+  expect(screen.getByText("No trend signals are available yet.")).toBeVisible();
   expect(screen.getByText("Pending")).toBeVisible();
 });
 
@@ -106,6 +202,7 @@ test("renders pending product reuse feedback ratings", async () => {
   expect(await screen.findByRole("heading", { name: "RFA Analytics" })).toBeVisible();
   expect(await screen.findByText("Arctic feedback product")).toBeVisible();
   expect(screen.getAllByText("Pending")).toHaveLength(2);
+  expect(screen.getAllByRole("progressbar")[0]).toHaveAttribute("aria-valuemax", "100");
 });
 
 test("renders an analytics error state", async () => {

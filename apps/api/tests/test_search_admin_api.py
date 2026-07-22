@@ -173,7 +173,7 @@ async def test_reindex_reports_missing_or_unsupported_asset_warnings() -> None:
 
 
 @pytest.mark.asyncio
-async def test_new_active_request_marks_the_completed_index_stale() -> None:
+async def test_new_active_request_does_not_invalidate_the_product_corpus() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
@@ -191,5 +191,5 @@ async def test_new_active_request_marks_the_completed_index_stale() -> None:
 
     assert reindexed.status_code == 202
     assert ready.json()["indexStatus"] == "ready"
-    assert stale.json()["indexStatus"] == "stale"
-    assert stale.json()["degradedReason"] == "corpus_changed"
+    assert stale.json()["indexStatus"] == "ready"
+    assert stale.json()["degradedReason"] is None

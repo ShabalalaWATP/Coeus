@@ -7,6 +7,13 @@ export type VoiceModelState = {
   apiKeyConfigured: boolean;
 };
 
+export type VoiceConnectionTest = {
+  ok: boolean;
+  provider: string;
+  model: string;
+  message: string;
+};
+
 export function getAdminVoiceModel(): Promise<VoiceModelState> {
   return apiRequestJson<VoiceModelState>("/api/v1/admin/voice-model", { method: "GET" });
 }
@@ -34,6 +41,13 @@ export function updateAdminVoiceApiKey(
   });
 }
 
+export function testAdminVoiceConnection(csrfToken: string): Promise<VoiceConnectionTest> {
+  return apiRequestJson<VoiceConnectionTest>("/api/v1/admin/voice-model/test", {
+    headers: { "X-CSRF-Token": csrfToken },
+    method: "POST",
+  });
+}
+
 export function getVoiceConfig(): Promise<VoiceModelState> {
   return apiRequestJson<VoiceModelState>("/api/v1/voice/config", { method: "GET" });
 }
@@ -41,8 +55,10 @@ export function getVoiceConfig(): Promise<VoiceModelState> {
 export async function createVoiceSession(
   sdp: string,
   csrfToken: string,
+  ticketId?: string,
 ): Promise<{ answer: string; token: string }> {
-  const response = await apiRequest("/api/v1/voice/session", {
+  const query = ticketId ? `?ticketId=${encodeURIComponent(ticketId)}` : "";
+  const response = await apiRequest(`/api/v1/voice/session${query}`, {
     body: sdp,
     headers: { "Content-Type": "application/sdp", "X-CSRF-Token": csrfToken },
     method: "POST",

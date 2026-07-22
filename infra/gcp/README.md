@@ -48,6 +48,19 @@ After Terraform creates the secret placeholders, add versions for:
 - `coeus-dev-llm-provider-config`
 - `coeus-dev-object-storage-config`
 
+The current reference is still blocked because it does not yet create or map
+three secrets required by hosted startup:
+
+- `coeus-dev-asset-token-secret` as `COEUS_ASSET_TOKEN_SECRET`
+- `coeus-dev-configuration-encryption-key` as
+  `COEUS_CONFIGURATION_ENCRYPTION_KEY`
+- `coeus-dev-metrics-bearer-token` as `COEUS_METRICS_BEARER_TOKEN`
+
+Add those placeholders and Cloud Run mappings before readiness approval. The
+reference already sets `COEUS_JIOC_AGENT_ROUTING_ENABLED=disabled` explicitly.
+Any future active mode must also map an explicit approved release list containing
+the evaluated release identifier.
+
 Use Secret Manager in the GCP console or `gcloud secrets versions add`. Never put
 these values in Terraform variables, GitHub workflow files, Markdown or chat.
 

@@ -181,10 +181,6 @@ def import_tables(database_url: str, bundle: Path, backups: tuple[TableBackup, .
         )
 
 
-def database_name(database_url: str) -> str:
-    return str(make_url(database_url).database)
-
-
 def _copy_out(connection: psycopg.Connection[Any], spec: TableSpec, path: Path) -> None:
     columns = sql.SQL(",").join(map(sql.Identifier, spec.columns))
     order = sql.SQL(",").join(map(sql.Identifier, spec.order_by))

@@ -4,7 +4,7 @@ import { useLocation } from "react-router-dom";
 
 import { TopCommandBar } from "./TopCommandBar";
 import { resetQueryClientForTests } from "../../app/query-client";
-import { previewProfile } from "../../lib/permissions/route-access";
+import { previewProfile } from "../../test/test-utils";
 import { renderWithProviders } from "../../test/test-utils";
 
 beforeEach(() => {

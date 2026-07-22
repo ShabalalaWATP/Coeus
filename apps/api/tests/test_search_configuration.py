@@ -46,6 +46,8 @@ def test_search_configuration_is_separate_and_persists_encrypted_key() -> None:
     assert service.state().provider == "mock"
     assert service.state().model == "token-hash-v2"
     assert service.state().dimensions == SEARCH_EMBEDDING_DIMENSIONS
+    assert service.state().evaluation_status == "approved"
+    assert service.state().definitive_no_match_enabled is True
 
     service.configure_key("admin-id", "admin@example.test", "search-secret-value")
     encrypted = state.load(integration_secret_namespace(SEARCH_GEMINI_CREDENTIAL_NAME))
@@ -71,6 +73,27 @@ def test_external_provider_requires_key_and_explicit_egress_confirmation() -> No
     assert state.provider == "gemini_api"
     assert state.model == "gemini-embedding-2"
     assert state.index_status == "stale"
+    assert state.evaluation_status == "required"
+    assert state.definitive_no_match_enabled is False
+
+
+def test_deployment_can_allowlist_an_evaluated_gemini_search_release() -> None:
+    store = MemoryStateStore()
+    settings = Settings(
+        environment="test",
+        embedding_provider="gemini_api",
+        gemini_api_key="synthetic-search-key",
+        search_approved_releases=["gemini_api:gemini-embedding-2:1536"],
+    )
+    service = SearchConfigurationService(
+        settings,
+        AuditLog(),
+        store,
+        EncryptedIntegrationSecretStore(store, settings),
+    )
+
+    assert service.state().evaluation_status == "approved"
+    assert service.state().definitive_no_match_enabled is True
 
 
 def test_reindex_generation_is_single_flight_and_reusable() -> None:

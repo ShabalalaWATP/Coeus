@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { FeedbackPanel } from "./FeedbackPanel";
 import { resetQueryClientForTests } from "../../app/query-client";
 import type { AuthSession } from "../../lib/api-client/auth";
-import { previewProfile } from "../../lib/permissions/route-access";
+import { previewProfile } from "../../test/test-utils";
 import { renderWithProviders } from "../../test/test-utils";
 
 const feedbackSession: AuthSession = {

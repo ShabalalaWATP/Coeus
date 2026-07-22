@@ -2,9 +2,9 @@ from typing import cast
 from uuid import uuid4
 
 from coeus.domain.enums import TicketState
+from coeus.domain.store_ranking import lexical_score_for_product, lexical_text_score
 from coeus.domain.tickets import IntakeDetails, TicketRecord
 from coeus.services.embeddings import EmbeddingService
-from coeus.services.rfi_ranking import lexical_score_for_product, lexical_text_score
 from coeus.services.similar_request_scoring import score_similar_requests
 from coeus.services.store_semantics import product_semantic_text
 from store_projection_helpers import seed_product

@@ -86,9 +86,27 @@ ROLE_DEFINITIONS: dict[RoleName, RoleDefinition] = {
         | frozenset(
             {
                 Permission.JIOC_REVIEW,
+                Permission.JIOC_RESOLVE_CUSTOMER_DISPUTE,
                 Permission.TICKET_CONSOLIDATE,
                 Permission.TICKET_ADD_COMMENT,
                 Permission.ANALYTICS_VIEW_TEAM,
+            }
+        ),
+    ),
+    RoleName.JIOC_MANAGER: RoleDefinition(
+        name=RoleName.JIOC_MANAGER,
+        default_route="/jioc/oversight",
+        permissions=SELF_SERVICE
+        | frozenset(
+            {
+                Permission.JIOC_REVIEW,
+                Permission.JIOC_OVERSIGHT,
+                Permission.JIOC_INTERVENE,
+                Permission.JIOC_RESOLVE_CUSTOMER_DISPUTE,
+                Permission.TICKET_CONSOLIDATE,
+                Permission.TICKET_ADD_COMMENT,
+                Permission.ANALYTICS_VIEW_GLOBAL,
+                Permission.AUDIT_READ,
             }
         ),
     ),

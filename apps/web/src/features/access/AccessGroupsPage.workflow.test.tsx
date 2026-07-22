@@ -14,6 +14,7 @@ const session: AuthSession = {
     displayName: "Requesting User",
     roles: ["Requester"],
     defaultRoute: "/app/requests",
+    passwordResetRequired: false,
     permissions: ["user:read_self"],
   },
 };

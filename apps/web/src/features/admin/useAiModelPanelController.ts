@@ -36,6 +36,10 @@ export function useAiModelPanelController(csrfToken: string) {
     setTestResult(null);
     setTestedConfiguration(null);
   };
+  const updateApiKey = (value: string) => {
+    setApiKey(value);
+    resetTest();
+  };
   const modelMutation = useMutation({
     mutationFn: (model: string) => selectAiModel(model, providerName, csrfToken),
     onError: failActionWith("The model could not be changed. Refresh and try again."),
@@ -133,7 +137,7 @@ export function useAiModelPanelController(csrfToken: string) {
     providerName,
     provider,
     apiKey,
-    setApiKey,
+    setApiKey: updateApiKey,
     testResult,
     modelNote,
     confirmingActivation,
@@ -154,6 +158,8 @@ export function useAiModelPanelController(csrfToken: string) {
     isLive: provider?.name === state?.provider,
     isMock: provider?.name === "mock",
     activationTested: testedConfiguration === currentConfiguration,
+    testedConfiguration,
+    testReady: selectedModel === null && apiKey.trim() === "" && Boolean(provider),
     configurationPending,
   };
 }

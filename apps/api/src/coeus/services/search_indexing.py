@@ -52,12 +52,11 @@ class SearchIndexingService:
         self._tickets = tickets
 
     def corpus_version(self) -> str:
-        return _corpus_version(self._eligible_products(), self._eligible_tickets())
+        return _product_corpus_version(self._eligible_products())
 
     def start(self, actor_id: UUID) -> SearchIndexProfile:
         state = self._configuration.mark_indexing(str(actor_id))
         products = self._eligible_products()
-        tickets = self._eligible_tickets()
         profile = SearchIndexProfile(
             profile_id=uuid4(),
             provider=state.provider,
@@ -67,7 +66,7 @@ class SearchIndexingService:
             space_id=state.space_id,
             status="indexing",
             is_active=False,
-            corpus_version=_corpus_version(products, tickets),
+            corpus_version=_product_corpus_version(products),
             product_count=len(products),
             chunk_count=0,
             indexed_count=0,
@@ -87,7 +86,7 @@ class SearchIndexingService:
         try:
             products = self._eligible_products()
             tickets = self._eligible_tickets()
-            if _corpus_version(products, tickets) != profile.corpus_version:
+            if _product_corpus_version(products) != profile.corpus_version:
                 raise RuntimeError("corpus_changed")
             chunks, asset_states = self._extract_chunks(profile.profile_id, products)
             embeddings = self._embed_chunks(chunks)
@@ -95,10 +94,7 @@ class SearchIndexingService:
             ticket_embeddings = self._embed_tickets(ticket_documents)
             if len(embeddings) != len(chunks) or len(ticket_embeddings) != len(ticket_documents):
                 raise RuntimeError("provider_unavailable")
-            if (
-                _corpus_version(self._eligible_products(), self._eligible_tickets())
-                != profile.corpus_version
-            ):
+            if _product_corpus_version(self._eligible_products()) != profile.corpus_version:
                 raise RuntimeError("corpus_changed")
             completed = replace(
                 profile,
@@ -240,16 +236,13 @@ class SearchIndexingService:
         return tuple(records)
 
 
-def _corpus_version(products: tuple[StoreProduct, ...], tickets: tuple[TicketRecord, ...]) -> str:
+def _product_corpus_version(products: tuple[StoreProduct, ...]) -> str:
     digest = sha256()
     for product in sorted(products, key=lambda item: str(item.product_id)):
         digest.update(str(product.product_id).encode())
         digest.update(product.updated_at.isoformat().encode())
         for asset in product.assets:
             digest.update(asset.sha256.encode())
-    for ticket in sorted(tickets, key=lambda item: str(item.ticket_id)):
-        digest.update(str(ticket.ticket_id).encode())
-        digest.update(ticket.updated_at.isoformat().encode())
     return digest.hexdigest()[:24]
 
 

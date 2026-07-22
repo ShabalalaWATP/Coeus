@@ -1,4 +1,5 @@
 import { apiRequestJson, apiRequestNoContent } from "./client";
+import type { components } from "./generated/openapi";
 
 export type Permission =
   | "auth:login"
@@ -27,6 +28,8 @@ export type Permission =
   | "rfi:accept_product"
   | "rfi:reject_product"
   | "jioc:review"
+  | "jioc:oversight"
+  | "jioc:intervene"
   | "rfa:review"
   | "rfa:assign"
   | "rfa:add_product"
@@ -60,32 +63,21 @@ export type Permission =
   | "audit:read"
   | "system:configure";
 
-export type AuthUser = {
-  id: string;
-  username: string;
-  displayName: string;
+type GeneratedAuthUser = components["schemas"]["UserProfileResponse"];
+
+export type AuthUser = Omit<GeneratedAuthUser, "permissions" | "roles"> & {
   roles: readonly string[];
   permissions: readonly Permission[];
-  defaultRoute: string;
 };
 
-export type AuthSession = {
+export type AuthSession = Omit<components["schemas"]["AuthSessionResponse"], "user"> & {
   user: AuthUser;
-  csrfToken: string;
-  passwordResetRequired?: boolean;
 };
 
-export type LoginRequest = {
-  username: string;
-  password: string;
-};
+export type LoginRequest = components["schemas"]["LoginRequest"];
+export type ChangePasswordRequest = components["schemas"]["PasswordChangeRequest"];
 
-export type ChangePasswordRequest = {
-  currentPassword: string;
-  newPassword: string;
-};
-
-export function login(payload: LoginRequest): Promise<AuthSession> {
+function login(payload: LoginRequest): Promise<AuthSession> {
   return apiRequestJson<AuthSession>("/api/v1/auth/login", {
     body: JSON.stringify(payload),
     headers: { "Content-Type": "application/json" },
@@ -93,21 +85,18 @@ export function login(payload: LoginRequest): Promise<AuthSession> {
   });
 }
 
-export function getCurrentUser(): Promise<AuthSession> {
+function getCurrentUser(): Promise<AuthSession> {
   return apiRequestJson<AuthSession>("/api/v1/auth/me", { method: "GET" });
 }
 
-export function logout(csrfToken: string): Promise<void> {
+function logout(csrfToken: string): Promise<void> {
   return apiRequestNoContent("/api/v1/auth/logout", {
     headers: { "X-CSRF-Token": csrfToken },
     method: "POST",
   });
 }
 
-export function changePassword(
-  payload: ChangePasswordRequest,
-  csrfToken: string,
-): Promise<AuthSession> {
+function changePassword(payload: ChangePasswordRequest, csrfToken: string): Promise<AuthSession> {
   return apiRequestJson<AuthSession>("/api/v1/auth/password", {
     body: JSON.stringify(payload),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },

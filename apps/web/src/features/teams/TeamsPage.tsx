@@ -7,6 +7,7 @@ import { TeamRosterPanel } from "./TeamRosterPanel";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/PageState";
 import { listTeams, teamAvailability } from "../../lib/api-client/teams";
 import { useAuth } from "../../lib/auth/auth-context";
+import { queryKeys } from "../../lib/query-keys";
 
 function isoToday() {
   const today = new Date();
@@ -23,10 +24,11 @@ export default function TeamsPage() {
   const teamsQuery = useQuery({ queryKey: ["teams"], queryFn: listTeams });
   const teams = teamsQuery.data?.teams ?? [];
   const team = teams.find((item) => item.id === selectedTeamId) ?? teams[0];
+  const today = isoToday();
   const availabilityQuery = useQuery({
     enabled: team !== undefined,
-    queryKey: ["team-availability", team?.id],
-    queryFn: () => teamAvailability(team?.id ?? "", isoToday()),
+    queryKey: queryKeys.teams.availability(team?.id ?? "", today),
+    queryFn: () => teamAvailability(team?.id ?? "", today),
   });
 
   return (

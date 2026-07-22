@@ -41,3 +41,14 @@ def test_runtime_pdf_dependency_is_available_in_production_image() -> None:
         dependency.startswith("reportlab")
         for dependency in configuration["project"]["dependencies"]
     )
+
+
+def test_deployment_manifests_declare_jioc_routing_authority() -> None:
+    compose = (REPOSITORY_ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+    gcp_reference = (REPOSITORY_ROOT / "infra/gcp/environments/dev/main.tf").read_text(
+        encoding="utf-8"
+    )
+
+    assert "COEUS_JIOC_AGENT_ROUTING_ENABLED: active" in compose
+    assert "COEUS_JIOC_ROUTING_APPROVED_RELEASES:" in compose
+    assert 'COEUS_JIOC_AGENT_ROUTING_ENABLED = "disabled"' in " ".join(gcp_reference.split())

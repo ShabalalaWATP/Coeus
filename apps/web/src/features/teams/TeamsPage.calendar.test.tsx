@@ -26,7 +26,7 @@ test("adds a calendar entry for a team member", async () => {
 
   renderWithProviders(<TeamsPage />, "/teams");
 
-  await screen.findByLabelText("Month grid");
+  await screen.findByLabelText("Month calendar");
   await userEvent.selectOptions(screen.getByLabelText("Member"), "analyst-1");
   await userEvent.selectOptions(screen.getByLabelText("Activity"), "course");
   await userEvent.click(screen.getByRole("button", { name: "Add entry" }));
@@ -56,7 +56,7 @@ test("adds a block entry when the dates span a range", async () => {
 
   renderWithProviders(<TeamsPage />, "/teams");
 
-  await screen.findByLabelText("Month grid");
+  await screen.findByLabelText("Month calendar");
   await userEvent.selectOptions(screen.getByLabelText("Activity"), "leave");
   fireEvent.change(screen.getByLabelText("To"), { target: { value: endIso } });
   await userEvent.click(screen.getByRole("button", { name: "Add entry" }));
@@ -97,7 +97,7 @@ test("highlights today in the month grid and shows the month title", async () =>
   renderWithProviders(<TeamsPage />, "/teams");
 
   expect(await screen.findByRole("heading", { name: monthFormat.format(now) })).toBeVisible();
-  await screen.findByLabelText("Month grid");
+  await screen.findByLabelText("Month calendar");
   const todayCell = screen.getByRole("button", { name: `Plan ${todayIso}` }).closest(".cal-day");
   expect(todayCell?.className).toContain("cal-day--today");
 });
@@ -114,7 +114,7 @@ test("shows calendar loading feedback before rendering the month grid", async ()
   renderWithProviders(<TeamsPage />, "/teams");
 
   expect(await screen.findByText("Loading team calendar…")).toBeVisible();
-  expect(screen.queryByLabelText("Month grid")).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Month calendar")).not.toBeInTheDocument();
 });
 
 test("shows an empty grid and surfaces entry failures", async () => {
@@ -122,7 +122,7 @@ test("shows an empty grid and surfaces entry failures", async () => {
 
   renderWithProviders(<TeamsPage />, "/teams");
 
-  await screen.findByLabelText("Month grid");
+  await screen.findByLabelText("Month calendar");
   expect(screen.queryByRole("button", { name: /Remove entry/ })).not.toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "Add entry" }));
   expect(await screen.findByText("Failed.")).toBeVisible();
@@ -133,7 +133,7 @@ test("navigates months and picks a day into the form", async () => {
 
   renderWithProviders(<TeamsPage />, "/teams");
 
-  await screen.findByLabelText("Month grid");
+  await screen.findByLabelText("Month calendar");
   const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
   await userEvent.click(screen.getByRole("button", { name: "Next month" }));

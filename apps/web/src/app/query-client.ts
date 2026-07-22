@@ -15,6 +15,7 @@ export function getQueryClient() {
   return queryClient;
 }
 
+/** @internal Test-only singleton reset. */
 export function resetQueryClientForTests() {
   queryClient = undefined;
 }

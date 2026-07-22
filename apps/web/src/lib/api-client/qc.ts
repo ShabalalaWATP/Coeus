@@ -17,7 +17,13 @@ type QcDraft = {
     mimeType: string;
     sizeBytes: number;
     sha256: string;
+    detectedMimeType: string;
+    previewKind: "pdf" | "image" | "text" | "metadata";
+    processingStatus: string;
+    previewAvailable: boolean;
   }[];
+  description: string;
+  manifestHash: string;
 };
 
 export type QcProduct = {
@@ -41,6 +47,26 @@ export type QcProduct = {
     checklist: { key: string; passed: boolean }[];
     createdAt: string;
   }[];
+  agentPreflight: {
+    id: string;
+    draftVersionId: string;
+    status: "passed" | "blocked";
+    checks: { key: string; passed: boolean; detail: string }[];
+    blockers: string[];
+    policyVersion: string;
+    createdAt: string;
+    findings: {
+      id: string;
+      category: string;
+      severity: string;
+      originalText: string;
+      suggestedText: string;
+      location: string;
+      detail: string;
+      confidence: number;
+      blocking: boolean;
+    }[];
+  } | null;
   indexRecords: { id: string; productId: string; status: string; summary: string }[];
   disseminations: { id: string; productId: string; recipientUserId: string }[];
   feedbackRequests: { id: string; productId: string; requesterUserId: string; status: string }[];

@@ -3,16 +3,14 @@ from math import sqrt
 
 from coeus.domain.search_relevance import (
     LEXICAL_SCORE_FLOOR,
-    RRF_K,
     VECTOR_SIMILARITY_FLOOR,
     available_hybrid_legs,
     hybrid_rrf_score,
     matched_tokens,
 )
-from coeus.domain.store import StoreHybridCandidate, StoreProduct, StoreSearchHit
+from coeus.domain.store import StoreHybridCandidate, StoreProduct
 from coeus.domain.store_ranking import (
     lexical_score_for_product,
-    lexical_text_score,
     token_overlap,
     tokenize,
 )
@@ -22,45 +20,22 @@ from coeus.services.store_semantics import product_semantic_text, semantic_label
 RFI_OFFER_THRESHOLD = 0.20
 RFI_MAX_OFFERS = 5
 RFI_RANKING_WORK_LIMIT = 100
-__all__ = [
-    "LEXICAL_SCORE_FLOOR",
-    "RRF_K",
-    "VECTOR_SIMILARITY_FLOOR",
-    "lexical_score_for_product",
-    "lexical_text_score",
-    "query_text",
-    "rank_hybrid_rfi_candidates",
-    "rank_rfi_hits",
-    "token_overlap",
-    "tokenize",
-]
-
-
-def rank_rfi_hits(
-    hits: tuple[StoreSearchHit, ...],
-    intake: IntakeDetails,
-) -> tuple[ProductOffer, ...]:
-    query = query_text(intake)
-    lexical_hits = [(lexical_score_for_product(hit.product, query), hit.product) for hit in hits]
-    candidates = tuple(
-        StoreHybridCandidate(
-            product=product,
-            lexical_rank=index + 1,
-            lexical_score=score,
-            lexical_only=True,
-        )
-        for index, (score, product) in enumerate(
-            sorted(
-                (
-                    (score, product)
-                    for score, product in lexical_hits
-                    if score >= LEXICAL_SCORE_FLOOR
-                ),
-                key=lambda item: (-item[0], item[1].metadata.title),
-            )
-        )
-    )
-    return rank_hybrid_rfi_candidates(candidates, intake)
+_DATE_TITLE_TOKENS = frozenset(
+    {
+        "january",
+        "february",
+        "march",
+        "april",
+        "may",
+        "june",
+        "july",
+        "august",
+        "september",
+        "october",
+        "november",
+        "december",
+    }
+)
 
 
 def rank_hybrid_rfi_candidates(
@@ -80,6 +55,11 @@ def rank_hybrid_rfi_candidates(
         text_score, text_reasons = _score_tokens(query_tokens, product_tokens, "full-text")
         token_score, token_reasons = _semantic_score_from_tokens(query_tokens, product_tokens)
         metadata_score, metadata_reasons = _metadata_score(candidate.product, intake, product_text)
+        # A known non-overlapping product window cannot answer a bounded
+        # requirement, regardless of semantic similarity. Keep the decision
+        # deterministic so an old report is never presented as a current hit.
+        if "metadata:time-mismatch" in metadata_reasons:
+            continue
         label_score, label_reasons = _semantic_label_score(candidate.product, query)
         title_signal = lexical_score_for_product(candidate.product, intake.title or "")
         lexical_signal = max(text_score, candidate.lexical_score, title_signal)
@@ -108,11 +88,31 @@ def rank_hybrid_rfi_candidates(
         )
         if score >= RFI_OFFER_THRESHOLD:
             scored.append((candidate, round(score, 4), tuple(dict.fromkeys(reasons))))
-    ranked = sorted(scored, key=lambda item: (-item[1], item[0].product.metadata.title))
+    ranked = _deduplicate_versions(
+        sorted(scored, key=lambda item: (-item[1], item[0].product.metadata.title))
+    )
     return tuple(
         _offer(candidate.product, score, reasons)
         for candidate, score, reasons in ranked[:RFI_MAX_OFFERS]
     )
+
+
+def _deduplicate_versions(
+    scored: list[tuple[StoreHybridCandidate, float, tuple[str, ...]]],
+) -> list[tuple[StoreHybridCandidate, float, tuple[str, ...]]]:
+    selected: list[tuple[StoreHybridCandidate, float, tuple[str, ...]]] = []
+    topics: set[tuple[str, ...]] = set()
+    for item in scored:
+        topic = tuple(
+            token
+            for token in _tokens(item[0].product.metadata.title)
+            if token not in _DATE_TITLE_TOKENS and not token.isdigit()
+        )
+        if topic and topic in topics:
+            continue
+        topics.add(topic)
+        selected.append(item)
+    return selected
 
 
 def query_text(intake: IntakeDetails) -> str:

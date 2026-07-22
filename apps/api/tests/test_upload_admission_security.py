@@ -11,17 +11,14 @@ import pytest
 from fastapi import Request
 from httpx import ASGITransport, AsyncClient
 
-from coeus.api.routes.store_files import (
-    CHUNK_SIZE,
-    UploadWireLimitExceeded,
-    _install_receive_limit,
-    _stage_upload,
-)
+from coeus.api.routes.store_files import CHUNK_SIZE, _stage_upload
+from coeus.api.upload_limits import UploadWireLimitExceeded, install_receive_limit
 from coeus.core.config import Settings
 from coeus.core.errors import AppError
 from coeus.main import create_app
 from coeus.services.upload_admission import UploadAdmissionController
 from store_api_helpers import login, product_payload
+from test_external_product_workflow import _assigned_ticket, _metadata
 
 
 @pytest.mark.asyncio
@@ -68,6 +65,47 @@ async def test_security_rejection_happens_before_multipart_spooling(
 
 
 @pytest.mark.asyncio
+async def test_store_permission_rejection_precedes_multipart_spooling(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    created_spools: list[object] = []
+
+    def recording_spool(*args: object, **kwargs: object) -> object:
+        spool = SpooledTemporaryFile(*args, **kwargs)  # noqa: SIM115 - parser owns it.
+        created_spools.append(spool)
+        return spool
+
+    monkeypatch.setattr("starlette.formparsers.SpooledTemporaryFile", recording_spool)
+    app = create_app(
+        Settings(
+            environment="test",
+            argon2_memory_cost=8_192,
+            local_object_storage_path=str(tmp_path / "objects"),
+        )
+    )
+    acg_id = str(app.state.access_services.repository.list_acgs()[0].acg_id)
+    metadata = product_payload(acg_id)
+    metadata.pop("assets")
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        session = await login(client, "user@example.test")
+        response = await client.post(
+            "/api/v1/store/products/upload",
+            headers={"X-CSRF-Token": str(session["csrfToken"])},
+            files={
+                "asset": ("blocked.bin", b"blocked bytes", "application/octet-stream"),
+                "metadata": (None, json.dumps(metadata), "application/json"),
+            },
+        )
+
+    assert response.status_code == 403
+    assert created_spools == []
+
+
+@pytest.mark.asyncio
 async def test_content_length_free_body_stops_at_receive_budget(tmp_path: Path) -> None:
     settings = Settings(
         environment="test",
@@ -101,6 +139,40 @@ async def test_content_length_free_body_stops_at_receive_budget(tmp_path: Path) 
     assert response.json()["error"]["code"] == "asset_too_large"
     assert len(app.state.store_services.repository.list_products()) == before
     assert not any((tmp_path / "objects").rglob("*"))
+
+
+@pytest.mark.asyncio
+async def test_analyst_content_length_free_body_stops_before_unbounded_spooling(
+    tmp_path: Path,
+) -> None:
+    settings = Settings(
+        environment="test",
+        argon2_memory_cost=8_192,
+        local_object_storage_path=str(tmp_path / "objects"),
+        local_upload_max_bytes=32,
+        upload_max_inflight_bytes=64,
+    )
+    app = create_app(settings)
+    boundary = "coeus-analyst-security-boundary"
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        ticket_id = await _assigned_ticket(client, app)
+        session = await login(client, "analyst@example.test")
+        acg_id = str(app.state.access_services.repository.list_acgs()[0].acg_id)
+        body = _multipart_body(boundary, json.dumps(_metadata(acg_id)), b"x" * (300 * 1024))
+        response = await client.post(
+            f"/api/v1/analyst/tasks/{ticket_id}/submissions/upload",
+            headers={
+                "Content-Type": f"multipart/form-data; boundary={boundary}",
+                "X-CSRF-Token": str(session["csrfToken"]),
+            },
+            content=_body_chunks(body),
+        )
+
+    assert response.status_code == 413
+    assert response.json()["error"]["code"] == "asset_too_large"
 
 
 @pytest.mark.asyncio
@@ -179,7 +251,7 @@ def test_receive_limit_rejects_invalid_or_oversized_declared_lengths(declared: s
 
     expected = AppError if declared in {"invalid", "-1"} else UploadWireLimitExceeded
     with pytest.raises(expected):
-        _install_receive_limit(request, 10)
+        install_receive_limit(request, 10)
 
 
 @pytest.mark.asyncio
@@ -188,7 +260,7 @@ async def test_receive_limit_preserves_non_body_asgi_messages() -> None:
         return {"type": "http.disconnect"}
 
     request = Request({"type": "http", "headers": []}, receive=disconnect)
-    _install_receive_limit(request, 1)
+    install_receive_limit(request, 1)
 
     assert await request._receive() == {"type": "http.disconnect"}
 

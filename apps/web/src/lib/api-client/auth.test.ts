@@ -1,4 +1,4 @@
-import { changePassword, getCurrentUser, login, logout, type AuthSession } from "./auth";
+import { defaultAuthApi, type AuthSession } from "./auth";
 import { ApiError, apiRequestJson, setAuthEventHandlers } from "./client";
 import { previewSession } from "../../test/test-utils";
 
@@ -6,6 +6,8 @@ afterEach(() => {
   setAuthEventHandlers({});
   vi.unstubAllGlobals();
 });
+
+const { changePassword, getCurrentUser, login, logout } = defaultAuthApi;
 
 test("posts login payloads with credentials included", async () => {
   const fetchMock = vi.fn().mockResolvedValue({

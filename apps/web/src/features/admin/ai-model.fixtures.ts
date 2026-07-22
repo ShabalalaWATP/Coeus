@@ -18,6 +18,14 @@ export const providers = [
     supportsModelRefresh: true,
   },
   {
+    name: "litellm_proxy",
+    label: "LiteLLM Proxy",
+    models: ["default"],
+    activeModel: "default",
+    apiKeyConfigured: false,
+    supportsModelRefresh: true,
+  },
+  {
     name: "vertex_ai",
     label: "GCP Vertex AI",
     models: ["gemini-2.5-flash"],

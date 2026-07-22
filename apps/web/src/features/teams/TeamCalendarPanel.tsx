@@ -20,6 +20,7 @@ import {
   type CalendarEntry,
   type OrgTeam,
 } from "../../lib/api-client/teams";
+import { queryKeys } from "../../lib/query-keys";
 import { useActionError } from "../../lib/mutations/action-error";
 
 type TeamCalendarPanelProps = {
@@ -61,7 +62,9 @@ export function TeamCalendarPanel({ csrfToken, currentUserId, team }: TeamCalend
   }, [currentUserId, team.id, team.members]);
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ["team-calendar", team.id] });
-    void queryClient.invalidateQueries({ queryKey: ["team-availability", team.id] });
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.teams.availabilityPrefix(team.id),
+    });
   };
   const addMutation = useMutation({
     mutationFn: () =>
@@ -133,9 +136,9 @@ export function TeamCalendarPanel({ csrfToken, currentUserId, team }: TeamCalend
       ) : calendarQuery.isError ? (
         <p role="alert">The calendar could not be loaded.</p>
       ) : (
-        <div aria-label="Month grid" className="cal-grid" role="grid">
+        <div aria-label="Month calendar" className="cal-grid">
           {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((weekday) => (
-            <span className="cal-grid__weekday" key={weekday} role="columnheader">
+            <span className="cal-grid__weekday" key={weekday}>
               {weekday}
             </span>
           ))}
@@ -149,7 +152,6 @@ export function TeamCalendarPanel({ csrfToken, currentUserId, team }: TeamCalend
                   day === today ? " cal-day--today" : ""
                 }`}
                 key={day}
-                role="gridcell"
               >
                 <button
                   aria-label={`Plan ${day}`}

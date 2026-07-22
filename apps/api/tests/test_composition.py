@@ -1,10 +1,13 @@
 from pathlib import Path
 
 import pytest
+from fastapi import FastAPI
 
+from coeus.composition import _require_hosted_routing_transaction
 from coeus.core.config import Settings
 from coeus.main import create_app
 from coeus.persistence.state_store import MemoryStateStore
+from coeus.services.jioc_routing_context import LiveRoutingOperationalContext
 from coeus.services.object_storage import LocalObjectStorage
 
 
@@ -27,6 +30,7 @@ def test_composition_uses_local_resources_and_preserves_state_aliases(tmp_path: 
     assert app.state.settings.environment == "test"
     assert app.state.auth_service is not None
     assert app.state.registration_service is not None
+    assert app.state.admin_analytics_service is not None
     assert app.state.store_services is not None
     assert app.state.ticket_services is not None
     assert app.state.quality_control_service is not None
@@ -49,6 +53,10 @@ def test_composition_shares_identity_audit_store_and_workflow_instances(tmp_path
     assert analyst._store is store
     assert quality_control._ingestion._store is store
     assert quality_control._ingestion._storage is app.state.object_storage
+    routing_context = app.state.jioc_deterministic_routing_service._operational_context
+    assert isinstance(routing_context, LiveRoutingOperationalContext)
+    assert routing_context._teams is app.state.team_repository
+    assert routing_context._availability is app.state.team_availability_service
 
 
 def test_composition_rejects_inactive_future_object_storage(tmp_path: Path) -> None:
@@ -56,3 +64,14 @@ def test_composition_rejects_inactive_future_object_storage(tmp_path: Path) -> N
 
     with pytest.raises(ValueError, match="must remain local"):
         create_app(settings)
+
+
+def test_hosted_shadow_routing_requires_a_workflow_transaction() -> None:
+    app = FastAPI()
+    app.state.workflow_transaction = None
+
+    with pytest.raises(ValueError, match="requires a workflow transaction"):
+        _require_hosted_routing_transaction(
+            app,
+            Settings(environment="dev", jioc_agent_routing_enabled="shadow"),
+        )

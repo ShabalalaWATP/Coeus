@@ -4,12 +4,12 @@ import {
   acg,
   analystTask,
   type FlowState,
-  qcProduct,
   routingQueue,
   routingTicket,
   session,
   ticket,
 } from "./full-workflow-data";
+import { qcProduct } from "./full-workflow-product-data";
 
 export { createFlowState, type FlowState } from "./full-workflow-data";
 
@@ -95,7 +95,7 @@ export async function installApiMocks(page: Page, flow: FlowState) {
       flow.workPackageDone = true;
       return json(route, analystTask(flow));
     }
-    if (method === "POST" && path === "/analyst/tasks/ticket-e2e/drafts") {
+    if (method === "POST" && path === "/analyst/tasks/ticket-e2e/submissions/upload") {
       flow.draftSaved = true;
       return json(route, analystTask(flow));
     }

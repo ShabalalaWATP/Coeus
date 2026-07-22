@@ -5,6 +5,7 @@ from fastapi import FastAPI, Request
 
 from coeus.api.dependencies import (
     get_access_services,
+    get_admin_analytics_service,
     get_admission_metrics,
     get_ai_model_service,
     get_analyst_assignment_service,
@@ -12,7 +13,6 @@ from coeus.api.dependencies import (
     get_asset_token_service,
     get_auth_service,
     get_csrf_validated_session,
-    get_embedding_service,
     get_feedback_analytics_service,
     get_manager_approval_service,
     get_manager_queue_service,
@@ -39,6 +39,11 @@ from coeus.api.dependencies import (
     get_user_admin_service,
     get_voice_model_service,
     get_voice_session_service,
+)
+from coeus.api.product_dependencies import (
+    get_customer_outcome_service,
+    get_product_submission_service,
+    get_workflow_draft_access_service,
 )
 from coeus.api.search_dependencies import (
     get_search_configuration_service,
@@ -78,16 +83,31 @@ def test_get_request_id_returns_unknown_when_state_has_no_request_id() -> None:
 
 
 @pytest.mark.parametrize(
+    "dependency",
+    [
+        get_product_submission_service,
+        get_workflow_draft_access_service,
+        get_customer_outcome_service,
+    ],
+)
+def test_missing_product_workflow_dependencies_fail_closed(
+    dependency: Callable[[Request], object],
+) -> None:
+    with pytest.raises(RuntimeError, match="unavailable"):
+        dependency(empty_request())
+
+
+@pytest.mark.parametrize(
     ("dependency", "error_code"),
     [
         (get_settings, "settings_not_configured"),
         (get_admission_metrics, "metrics_not_configured"),
+        (get_admin_analytics_service, "admin_analytics_not_configured"),
         (get_auth_service, "auth_not_configured"),
         (get_ticket_collaborator_service, "collaborators_not_configured"),
         (get_ticket_lifecycle_service, "ticket_lifecycle_not_configured"),
         (get_user_admin_service, "user_admin_not_configured"),
         (get_ai_model_service, "ai_models_not_configured"),
-        (get_embedding_service, "search_not_configured"),
         (get_voice_model_service, "voice_not_configured"),
         (get_voice_session_service, "voice_not_configured"),
         (get_manager_approval_service, "approval_not_configured"),

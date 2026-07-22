@@ -46,8 +46,8 @@ export default function ProductDetailPage() {
       <section className="store-detail-grid">
         <ProductMetadata product={product} />
         <ProductAssets
-          accessGrant={model.accessQuery.data}
-          accessStatus={model.accessQuery.status}
+          accessGrant={model.access.data}
+          accessStatus={model.access.status}
           assetId={model.assetId}
           canRequestAccess={model.canRequestAssetAccess}
           from={model.from}

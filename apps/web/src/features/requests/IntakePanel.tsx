@@ -28,7 +28,7 @@ type IntakePanelProps = {
   isSubmitting: boolean;
   isAddingAttachment: boolean;
   onAddAttachment: (payload: AttachmentMetadataInput, onSuccess?: () => void) => void;
-  onSave: (payload: IntakeUpdate) => void;
+  onSave: (payload: IntakeUpdate, onSuccess?: () => void) => void;
   onSubmit: () => void;
   ticket?: Ticket;
 };
@@ -44,6 +44,8 @@ export function IntakePanel({
   ticket,
 }: IntakePanelProps) {
   const [formState, setFormState] = useState<IntakeUpdate>({});
+  const [dirty, setDirty] = useState(false);
+  const [loadedTicketId, setLoadedTicketId] = useState<string>();
   const [attachment, setAttachment] = useState<AttachmentMetadataInput>({
     name: "",
     description: "",
@@ -53,25 +55,19 @@ export function IntakePanel({
   useEffect(() => {
     if (ticket === undefined) {
       setFormState({});
+      setDirty(false);
+      setLoadedTicketId(undefined);
       return;
     }
-    setFormState({
-      title: ticket.intake.title ?? "",
-      description: ticket.intake.description ?? "",
-      operationalQuestion: ticket.intake.operationalQuestion ?? "",
-      areaOrRegion: ticket.intake.areaOrRegion ?? "",
-      timePeriodStart: ticket.intake.timePeriodStart ?? "",
-      timePeriodEnd: ticket.intake.timePeriodEnd ?? "",
-      priority: ticket.intake.priority ?? "",
-      supportedOperation: ticket.intake.supportedOperation ?? "",
-      urgencyJustification: ticket.intake.urgencyJustification ?? "",
-      deadline: ticket.intake.deadline ?? "",
-      requestingUnit: ticket.intake.requestingUnit ?? "",
-      intelligenceDisciplines: ticket.intake.intelligenceDisciplines ?? "",
-      requiredOutputFormat: ticket.intake.requiredOutputFormat ?? "",
-      customerSuccessCriteria: ticket.intake.customerSuccessCriteria ?? "",
-    });
-  }, [ticket]);
+    if (ticket.id === loadedTicketId && dirty) return;
+    setFormState(formStateFor(ticket));
+    setLoadedTicketId(ticket.id);
+  }, [dirty, loadedTicketId, ticket]);
+
+  function updateField(key: EditableFieldKey, value: string) {
+    setDirty(true);
+    setFormState((current) => ({ ...current, [key]: value }));
+  }
 
   function saveIntake(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -83,7 +79,7 @@ export function IntakePanel({
         payload[key] = value === "" ? null : value;
       }
     }
-    onSave(payload);
+    onSave(payload, () => setDirty(false));
   }
 
   function fieldHint(key: EditableFieldKey, minLength: number) {
@@ -123,17 +119,13 @@ export function IntakePanel({
                   {label}
                   {key === "description" || key === "customerSuccessCriteria" ? (
                     <textarea
-                      onChange={(event) =>
-                        setFormState((current) => ({ ...current, [key]: event.target.value }))
-                      }
+                      onChange={(event) => updateField(key, event.target.value)}
                       rows={3}
                       value={formState[key] ?? ""}
                     />
                   ) : (
                     <input
-                      onChange={(event) =>
-                        setFormState((current) => ({ ...current, [key]: event.target.value }))
-                      }
+                      onChange={(event) => updateField(key, event.target.value)}
                       value={formState[key] ?? ""}
                     />
                   )}
@@ -196,4 +188,23 @@ export function IntakePanel({
       ) : null}
     </section>
   );
+}
+
+function formStateFor(ticket: Ticket): IntakeUpdate {
+  return {
+    title: ticket.intake.title ?? "",
+    description: ticket.intake.description ?? "",
+    operationalQuestion: ticket.intake.operationalQuestion ?? "",
+    areaOrRegion: ticket.intake.areaOrRegion ?? "",
+    timePeriodStart: ticket.intake.timePeriodStart ?? "",
+    timePeriodEnd: ticket.intake.timePeriodEnd ?? "",
+    priority: ticket.intake.priority ?? "",
+    supportedOperation: ticket.intake.supportedOperation ?? "",
+    urgencyJustification: ticket.intake.urgencyJustification ?? "",
+    deadline: ticket.intake.deadline ?? "",
+    requestingUnit: ticket.intake.requestingUnit ?? "",
+    intelligenceDisciplines: ticket.intake.intelligenceDisciplines ?? "",
+    requiredOutputFormat: ticket.intake.requiredOutputFormat ?? "",
+    customerSuccessCriteria: ticket.intake.customerSuccessCriteria ?? "",
+  };
 }

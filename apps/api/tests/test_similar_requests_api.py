@@ -4,7 +4,9 @@ from uuid import UUID
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from active_work_test_helpers import prepare_active_work_review
 from coeus.core.config import Settings
+from coeus.domain.enums import TicketState
 from coeus.domain.tickets import TicketRecord
 from coeus.main import create_app
 
@@ -95,6 +97,7 @@ async def test_customer_sees_visible_similar_ticket_and_can_join_owned_match() -
     ) as client:
         user = await login(client, "user@example.test")
         source_id, target_id = await similar_ticket_pair(client, str(user["csrfToken"]))
+        prepare_active_work_review(app, "user@example.test", source_id)
         notice = await client.get(f"/api/v1/similar-requests/tickets/{source_id}")
         joined = await client.post(
             f"/api/v1/similar-requests/tickets/{source_id}/join/{target_id}",
@@ -142,6 +145,7 @@ async def test_customer_cannot_see_hidden_similar_ticket_detail() -> None:
             description="Assess boat traffic near St Petersburg.",
             output_format="traffic picture",
         )
+        prepare_active_work_review(app, "user@example.test", source_id)
         notice = await client.get(f"/api/v1/similar-requests/tickets/{source_id}")
 
     # The customer path carries zero hidden-ticket signal: no matches, no boolean, no count,
@@ -201,7 +205,7 @@ async def test_customer_notice_is_empty_for_editable_draft_source() -> None:
     assert "similar_request_notified" not in audit_types
 
 
-async def test_customer_join_adds_viewer_when_actor_owns_source_and_can_read_target() -> None:
+async def test_customer_join_closes_source_without_granting_target_access() -> None:
     app = create_app(
         Settings(environment="test", argon2_memory_cost=8_192, persistence_provider="memory")
     )
@@ -228,21 +232,24 @@ async def test_customer_join_adds_viewer_when_actor_owns_source_and_can_read_tar
             description="Assess boat traffic near St Petersburg.",
             output_format="traffic picture",
         )
+        prepare_active_work_review(app, "admin@example.test", source_id)
         joined = await client.post(
             f"/api/v1/similar-requests/tickets/{source_id}/join/{target_id}",
             headers={"X-CSRF-Token": str(admin["csrfToken"])},
         )
 
     target = app.state.ticket_services.tickets._repository.get(UUID(target_id))
+    source = app.state.ticket_services.tickets._repository.get(UUID(source_id))
     assert joined.status_code == 200
     assert target is not None
-    assert any(
-        collaborator.username == "admin@example.test" for collaborator in target.collaborators
+    assert source is not None
+    assert all(
+        collaborator.username != "admin@example.test" for collaborator in target.collaborators
     )
-    assert _timeline_count(target, "similar_request_joined") == 1
+    assert source.state == TicketState.CLOSED_JOINED_EXISTING_WORK
+    assert source.duplicate_of_ticket_id == UUID(target_id)
     audit_types = [event.event_type for event in app.state.auth_service.audit_log.list_events()]
-    assert "similar_request_joined" in audit_types
-    assert "ticket_collaborator_added" in audit_types
+    assert "active_work_joined" in audit_types
 
 
 async def test_manager_lists_and_links_similar_requests_idempotently() -> None:

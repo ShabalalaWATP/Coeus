@@ -4,6 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from coeus.domain.store import normalise_synthetic_release_markers
 from coeus.schemas.tickets import ChatMessageResponse
 
 WorkPackageText = Annotated[str, Field(min_length=3, max_length=180)]
@@ -55,6 +56,28 @@ class DraftProductRequest(BaseModel):
     product_type: str = Field(min_length=3, max_length=80, validation_alias="productType")
     content: str = Field(min_length=10, max_length=20_000)
     assets: list[DraftAssetRequest] = Field(default_factory=list, max_length=5)
+
+
+class ProductSubmissionMetadataRequest(BaseModel):
+    title: str = Field(min_length=3, max_length=180)
+    summary: str = Field(min_length=3, max_length=500)
+    description: str = Field(min_length=3, max_length=2_000)
+    product_type: str = Field(min_length=2, max_length=80, validation_alias="productType")
+    source_type: str = Field(min_length=2, max_length=80, validation_alias="sourceType")
+    owner_team: str = Field(min_length=2, max_length=80, validation_alias="ownerTeam")
+    area_or_region: str = Field(min_length=2, max_length=180, validation_alias="areaOrRegion")
+    classification_level: int = Field(ge=0, le=5, validation_alias="classificationLevel")
+    releasability: list[str] = Field(min_length=1, max_length=12)
+    handling_caveats: list[str] = Field(
+        min_length=1, max_length=12, validation_alias="handlingCaveats"
+    )
+    tags: list[str] = Field(default_factory=list, max_length=30)
+    acg_ids: list[UUID] = Field(min_length=1, max_length=20, validation_alias="acgIds")
+    time_period_start: str | None = Field(default=None, validation_alias="timePeriodStart")
+    time_period_end: str | None = Field(default=None, validation_alias="timePeriodEnd")
+
+    def release_markers(self) -> tuple[tuple[str, ...], tuple[str, ...]]:
+        return normalise_synthetic_release_markers(self.releasability, self.handling_caveats)
 
 
 class AnalystCandidateResponse(BaseModel):
@@ -129,6 +152,10 @@ class DraftAssetResponse(BaseModel):
     mime_type: str = Field(serialization_alias="mimeType")
     size_bytes: int = Field(serialization_alias="sizeBytes")
     sha256: str
+    detected_mime_type: str = Field(serialization_alias="detectedMimeType")
+    preview_kind: str = Field(serialization_alias="previewKind")
+    processing_status: str = Field(serialization_alias="processingStatus")
+    preview_available: bool = Field(serialization_alias="previewAvailable")
 
 
 class DraftProductResponse(BaseModel):
@@ -140,6 +167,16 @@ class DraftProductResponse(BaseModel):
     summary: str
     product_type: str = Field(serialization_alias="productType")
     content: str
+    description: str
+    source_type: str = Field(serialization_alias="sourceType")
+    owner_team: str = Field(serialization_alias="ownerTeam")
+    area_or_region: str = Field(serialization_alias="areaOrRegion")
+    classification_level: int = Field(serialization_alias="classificationLevel")
+    releasability: list[str]
+    handling_caveats: list[str] = Field(serialization_alias="handlingCaveats")
+    tags: list[str]
+    acg_ids: list[UUID] = Field(serialization_alias="acgIds")
+    manifest_hash: str = Field(serialization_alias="manifestHash")
     assets: list[DraftAssetResponse]
     created_at: datetime = Field(serialization_alias="createdAt")
 

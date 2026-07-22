@@ -101,7 +101,3 @@ def test_table_count_rejects_names_outside_the_release_allowlist() -> None:
 
     with pytest.raises(ValueError, match="not in the recovery allow-list"):
         backup._table_count(connection, "example", operation="export")
-
-
-def test_database_name_uses_parsed_url() -> None:
-    assert backup.database_name("postgresql://user:password@localhost/example") == "example"

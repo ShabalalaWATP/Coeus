@@ -4,6 +4,11 @@ Scope: the JIOC routing stage, collect choice, manager approval chain,
 QC-owned release and the CM-to-RFA leg. Supersedes
 `docs/threat-model/manager-final-release.md`.
 
+The original mandatory-human routing boundary is historical. ADR 0036 and the
+agent-orchestration threat model now govern active JIOC Agent decisions and
+on-the-loop manager oversight. The collect, manager-approval and QC controls
+below remain current.
+
 ## Assets
 
 - Route decisions and their audit trail (who sent work to collection).
@@ -16,8 +21,8 @@ QC-owned release and the CM-to-RFA leg. Supersedes
 
 | Threat | Control |
 | --- | --- |
-| A non-JIOC user decides routes | `jioc:review` gates the queue and decisions; managers no longer hold route authority |
-| Route decision forged against agent advice without trace | Overrides require a recorded reason; every decision is an audited `ManagerRoutingDecision` |
+| An unauthorised actor decides routes | Active agent routing is constrained by its pinned deterministic policy, release gate and transition validation. Manual review and audited intervention require `jioc:review`; RFA and CM managers do not gain route authority. |
+| A route or intervention is applied without trace | Agent decisions retain versioned context and policy evidence. Manual intervention requires a recorded reason and creates an audited `ManagerRoutingDecision`. |
 | Someone other than the requester chooses the collect disposition | Collect choice is owner-only (collaborators and admins get 404/409), CSRF-validated and audited |
 | JIOC oversight exposes analyst work content | The bounded JIOC-only projection returns identifiers, workflow state, team ownership and aggregate load counts, never intake text, notes, drafts or products. |
 | Rejected work is resubmitted unchanged | Submission requires a draft created after the latest manager return or QC rejection. |

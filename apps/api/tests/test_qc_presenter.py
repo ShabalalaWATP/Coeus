@@ -4,7 +4,8 @@ from uuid import uuid4
 
 from coeus.api.presenters.qc import draft_response, product_response
 from coeus.domain.enums import TicketState
-from coeus.domain.tickets import DraftProductAsset, DraftProductVersion, IntakeDetails, TicketRecord
+from coeus.domain.product_submission import DraftProductAsset, DraftProductVersion
+from coeus.domain.tickets import IntakeDetails, TicketRecord
 from coeus.services.store import StoreServices
 
 

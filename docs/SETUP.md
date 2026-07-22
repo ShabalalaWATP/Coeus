@@ -1,38 +1,33 @@
 # Setup Guide
 
-Istari is currently designed to run locally on a developer machine with a local
-PostgreSQL database. This keeps local development aligned with the future
-production direction on Google Cloud SQL for PostgreSQL while requiring no GCP
-account or hosted service. Uploaded asset bytes are stored in a local object
-directory for now.
+Istari currently runs locally with PostgreSQL. This keeps development aligned
+with the future Cloud SQL direction without requiring a GCP account or hosted
+service. Uploaded asset bytes remain in a local object directory.
 
 ## Prerequisites
 
-| Tool                             | Version | Purpose                                      |
-| -------------------------------- | ------- | -------------------------------------------- |
-| Python                           | 3.12+   | Backend runtime                              |
-| [uv](https://docs.astral.sh/uv/) | latest  | Python dependency and venv manager           |
-| Node.js                          | 22.12+  | Frontend runtime required by locked Vite 7   |
-| pnpm                             | 11.11.0 | Frontend package manager                     |
-| Docker Desktop                   | latest  | Local PostgreSQL and optional full app stack |
+| Tool                             | Version      | Purpose                                      |
+| -------------------------------- | ------------ | -------------------------------------------- |
+| Python                           | >=3.12,<3.15 | Backend runtime                              |
+| [uv](https://docs.astral.sh/uv/) | latest       | Python dependency and venv manager           |
+| Node.js                          | 22.12+       | Frontend runtime required by locked Vite 7   |
+| pnpm                             | 11.11.0      | Frontend package manager                     |
+| Docker Desktop                   | latest       | Local PostgreSQL and optional full app stack |
 
-When Corepack is available, enable the repository-pinned pnpm version:
+Use Corepack where available:
 
-```bash
+```powershell
 corepack enable
-corepack prepare pnpm@11.11.0 --activate
+corepack pnpm --version
 ```
 
-Some newer Node distributions do not bundle Corepack. In that case, install the
-exact pinned pnpm version from npm, then verify both tools:
+If Node does not bundle Corepack, install the exact pinned version, then verify:
 
-```bash
+```powershell
 npm install --global --ignore-scripts pnpm@11.11.0
 node --version
 pnpm --version
 ```
-
-Node must report `v22.12.0` or newer and pnpm must report `11.11.0`.
 
 ## Install dependencies
 
@@ -56,6 +51,23 @@ and relative `.local-data` paths resolve where documented.
 cp .env.example .env
 ```
 
+### JIOC routing configuration upgrade
+
+Coeus's supported synthetic local/test runtime ships the evaluated JIOC release
+in `active` mode, so eligible new tasking is automatically classified as CM or
+RFA. Unsafe or ambiguous evidence still refers the request to human JIOC review.
+Existing `.env` files override this baseline: set
+`COEUS_JIOC_AGENT_ROUTING_ENABLED=active` and pin the current identifier in
+`COEUS_JIOC_ROUTING_APPROVED_RELEASES`. Hosted deployments must explicitly set
+the mode and release approval; keep them disabled until production evidence is
+approved. `disabled` is the restart/redeployment kill switch; `shadow` records
+evidence only. Legacy `true` requires an explicit release approval.
+
+Hosted environments must also set a random `COEUS_METRICS_BEARER_TOKEN` of at
+least 32 characters. Monitoring sends it in the `Authorization: Bearer` header;
+the metrics route remains unauthenticated only for local and test use when no
+token is configured. Keep hosted metrics on private monitoring ingress as well.
+
 ## Run the app (recommended local development)
 
 This is the supported default for current development and demos. It runs
@@ -75,8 +87,9 @@ docker compose up -d postgres
 uv run --project apps/api uvicorn coeus.main:app --host 127.0.0.1 --port 8001 --workers 1
 ```
 
-Run one API process only. The current local repositories are deliberately
-single-writer; ADR 0019 defines the future scale-out prerequisites.
+Run one API process only. Tickets use versioned per-ticket relational writes,
+but other mutable repositories still persist whole-namespace snapshots and
+local object bytes are not shared. ADR 0019 defines the scale-out prerequisites.
 
 **Terminal 3: web app on port 5173**
 
@@ -115,15 +128,17 @@ Compose waits for the API readiness endpoint before starting the web service.
 
 ## Seed accounts
 
-All local seed accounts use mock `example.test` usernames and the mock local
-credential `CoeusLocal1!`. They exist only in `local` and `test` environments.
+The default local/test seed accounts use mock `example.test` usernames and the
+mock local credential `CoeusLocal1!`. A guarded `dev` evaluation may enable the
+same identities with `COEUS_ALLOW_DEV_SEED_USERS=true`, but must supply a
+non-default `COEUS_LOCAL_SEED_CREDENTIAL` or startup fails closed.
 
 | Username                          | Synthetic display name | Role                       | Lands on               |
 | --------------------------------- | ---------------------- | -------------------------- | ---------------------- |
 | `admin@example.test`              | Andy Robertson         | Administrator              | `/admin/overview`      |
 | `user@example.test`               | John McGinn            | Customer                   | `/app/requests`        |
 | `colleague@example.test`          | Billy Gilmour          | Customer                   | `/app/requests`        |
-| `jioc.team@example.test`          | Scott McTominay        | JIOC Team Member           | `/jioc/queue`          |
+| `jioc.team@example.test`          | Scott McTominay        | JIOC Manager               | `/jioc/oversight`      |
 | `rfa.manager@example.test`        | Kieran Tierney         | RFA Manager                | `/rfa/queue`           |
 | `rfa.team@example.test`           | Ryan Christie          | RFA Team Member            | `/rfa/products`        |
 | `collection.manager@example.test` | Grant Hanley           | CM Manager                 | `/collection/queue`    |
@@ -135,9 +150,6 @@ credential `CoeusLocal1!`. They exist only in `local` and `test` environments.
 | `analyst.4@example.test`          | Che Adams              | Analyst                    | `/analyst/workbench`   |
 | `qc.manager@example.test`         | Angus Gunn             | Quality Control Manager    | `/qc/queue`            |
 | `disabled@example.test`           | James Forrest          | Customer (disabled)        | Blocked from login     |
-
-The display names borrow from Scottish footballers, but every local profile is
-a fictional exercise persona and does not describe the real person.
 
 Four organisational teams are also seeded for the My Team page (`/teams`): the
 RFA Assessment Team (RFA manager plus the analysts), the Collection Management
@@ -184,10 +196,11 @@ Restart through the normal setup command. The deterministic seed users and demo
 dataset will be recreated. These reset commands are for synthetic local data
 only, not backup or production recovery.
 
-To exercise the full workflow, sign in as the customer to raise a request, then
-sign in as the JIOC team member to route it, and as the team manager, analyst
-and QC manager in turn to move it through the pipeline. See the
-[User Guide](USER_GUIDE.md).
+To exercise the full workflow, sign in as the customer to raise a request. The
+active JIOC Agent routes eligible new tasking to CM or RFA. Sign in as the JIOC
+Manager to inspect its evidence or handle a referral, then use the team manager,
+analyst and QC manager accounts to move the request through the pipeline. See
+the [User Guide](USER_GUIDE.md).
 
 ## Local multi-user evaluation
 
@@ -200,32 +213,33 @@ model, not a supported production identity or organisation-wide hosting setup.
 
 ## Running the checks
 
-The same gates run in CI. From the repository root:
+Run these core gates locally. CI also runs PostgreSQL and architecture checks,
+dependency audits, builds and browser suites where applicable:
 
-```bash
+```powershell
 # Frontend: format, lint, types, tests with coverage
 corepack pnpm --filter @coeus/web format:check
 corepack pnpm --filter @coeus/web lint
 corepack pnpm --filter @coeus/web typecheck
 corepack pnpm --filter @coeus/web test
-
 # Backend: format, lint, types, tests with coverage
+docker compose up -d postgres
+$env:COEUS_TEST_DATABASE_URL = "postgresql+psycopg://coeus:coeus-local@127.0.0.1:5432/coeus"
 uv run --directory apps/api ruff format --check src tests
 uv run --directory apps/api ruff check src tests
 uv run --directory apps/api mypy src
 uv run --directory apps/api pytest --cov-report=json:coverage.json
 uv run --project apps/api python scripts/check_backend_coverage.py apps/api/coverage.json
-
 # API contract: fail if packages/contracts/openapi.json is stale
 corepack pnpm contracts:check
-
 # Repository: hand-written files must stay within the 350-line limit and dead code checks
 corepack pnpm line-limit
 corepack pnpm dead-code
 ```
 
-Backend and frontend application code each hold at least 95% line and branch
-coverage. Do not lower the coverage gates.
+Backend and frontend application code each hold at least 95% line and branch coverage.
+Backend release coverage combines ordinary and real PostgreSQL tests, using a
+disposable server where the configured user may create and drop databases.
 
 ## Configuration and secrets
 
@@ -237,11 +251,12 @@ coverage. Do not lower the coverage gates.
   `COEUS_EMAIL_PROVIDER=outbox` and `COEUS_PUBSUB_ENABLED=false` for normal
   local use.
 - `COEUS_PERSISTENCE_PROVIDER=postgres` writes application state to the local
-  PostgreSQL service. The startup path creates the compatibility `coeus_state`
-  JSONB table plus relational Intelligence Store tables for products, assets,
-  ACG joins, semantic labels, full-text search and pgvector-ready embeddings.
-  Store product writes are mirrored into those relational tables, so local
-  development follows the same PostgreSQL shape expected for Cloud SQL later.
+  PostgreSQL service. The default `COEUS_TICKET_PERSISTENCE_MODE=relational`
+  stores versioned ticket aggregates per ticket and supports atomic workflow
+  writes. The compatibility `coeus_state` JSONB table remains for other bounded
+  repository namespaces, including persisted notifications and retained email
+  records. Intelligence Store products, assets, ACG joins, semantic labels,
+  full-text search and pgvector-ready embeddings also use relational tables.
   `memory` is only for isolated tests and throwaway demos; `file` is retained as
   an explicit fallback, not the product target. `COEUS_PERSISTENCE_PATH` is
   ignored unless that fallback is deliberately enabled.
@@ -256,26 +271,30 @@ coverage. Do not lower the coverage gates.
   returned by the asset-access endpoint.
 - To use a real LLM from your machine without deploying, an administrator can
   paste an API key on `/admin/overview`, test the connection, and explicitly
-  activate the provider. Gemini API is the primary provider; OpenAI, GCP
-  Vertex AI (express-mode key) and AWS Bedrock (long-term API key) are
-  optional alternatives. Admin-entered keys are never returned to the browser;
+  activate it. Gemini is primary; OpenAI, LiteLLM, Vertex AI and Bedrock are optional.
+  LiteLLM uses a deployment-owned `COEUS_LITELLM_BASE_URL` plus a scoped virtual key;
+  Docker defaults to `http://host.docker.internal:4000`, while hosted use
+  requires HTTPS. Admin-entered keys are never returned to the browser;
   they are encrypted in isolated provider namespaces and restored after an API
   restart. The active provider and every selected text or voice model are also
   restored. Saving a key does not switch the provider: activation is a
   separate, warned action that applies to every user immediately and notifies
-  all administrators. Leave everything unset for offline mock behaviour.
+  all administrators. Follow the [LiteLLM Provider Connectivity Runbook](runbooks/litellm-provider-connectivity.md)
+  for AWS/GCP setup. Leave everything unset for offline mock behaviour.
 - Local mode creates `.local-data/secrets/configuration.key` when needed. Keep
   that ignored file private and back it up separately from PostgreSQL. Docker
   stores it in the API local-data volume. Hosted deployments must set
   `COEUS_CONFIGURATION_ENCRYPTION_KEY` from a secret manager; losing or changing
   it makes saved admin credentials unreadable. Environment-managed provider
-  keys remain authoritative and cannot be replaced in the UI. Configure them
-  with `COEUS_LLM_PROVIDER` plus the matching key env var
-  (`COEUS_GEMINI_API_KEY`, `COEUS_OPENAI_API_KEY`, `COEUS_VERTEX_API_KEY` or
-  `COEUS_BEDROCK_API_KEY`, with `COEUS_BEDROCK_REGION` for Bedrock).
+  keys remain authoritative. Hosted Intake Planner egress is unavailable until
+  ticket classification is enforceable. Hosted Search Planner and Routing Critic
+  egress stays off until its flag is true; the selected provider and `synthetic`
+  class must also appear in the advisory approval lists in `.env.example`.
 - To send real emails locally, set `COEUS_EMAIL_PROVIDER=smtp`,
   `COEUS_SMTP_HOST`, `COEUS_SMTP_FROM` and any required username/password. The
-  default `outbox` provider records and audits emails without sending them.
+  default `outbox` provider records and audits emails without sending them; with
+  PostgreSQL persistence those bounded records survive restart in application
+  state rather than a separate filesystem outbox.
 - Store search is hybrid: Postgres full text plus a pgvector semantic leg. The
   embedding provider is selected by `COEUS_EMBEDDING_PROVIDER`, which defaults to
   `mock` (deterministic, offline, no dependencies). For a real offline model set
@@ -301,10 +320,10 @@ coverage. Do not lower the coverage gates.
   uv run --project apps/api python -m coeus.tools.backfill_embeddings
   ```
 
-- Outside `local`/`test`, start-up fails closed if session/CSRF secrets are too
-  short, if secure cookies are off in staging/prod, or if dev seed users are
-  enabled without overriding the default seed credential. This is by design: it
-  stops a known default password ever reaching a deployed environment.
+- Hosted startup requires configuration-encryption, session, CSRF, asset-token
+  and metrics bearer secrets plus an explicit JIOC routing mode. Staging/prod
+  also require secure cookies. Guarded dev seed users require a non-default
+  credential, preventing the published password from reaching a deployment.
 
 ## Deployment support
 
@@ -322,8 +341,6 @@ billing details or cloud secrets to committed files.
 
 ## Troubleshooting
 
-- **Login returns "Authentication failed" right after starting the API.** The
-  first request can race the server start; wait a second and retry.
 - **CORS or preflight errors in the browser.** Make sure the web origin matches
   the API's allow-list. If you run the web app on a non-default port, set the
   API's `COEUS_ALLOWED_CORS_ORIGINS` to include that origin.

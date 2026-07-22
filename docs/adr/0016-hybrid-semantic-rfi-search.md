@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted
+Accepted, superseded in part by the later retrieval-assurance implementation.
+The current offer threshold is `0.20`, owned by `rfi_ranking.py`; `0.34` below
+records the original decision.
 
 ## Context
 
@@ -40,7 +42,7 @@ unavailable, search falls back to lexical-only retrieval and logs a structured
 warning without exposing secrets.
 
 Scores are normalised to `0..1` after RRF. Metadata and controlled semantic
-labels are retained as small tie-break bonuses. The offer threshold is `0.34`,
+labels are retained as small tie-break bonuses. The original offer threshold was `0.34`,
 which rejects weak single-leg tail matches but allows strong lexical or semantic
 matches to be offered.
 

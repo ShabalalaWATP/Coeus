@@ -29,8 +29,9 @@ def test_route_aware_similar_request_qrels_pass_release_gates() -> None:
     assert report.access_leakage_count == 0
     assert report.recall_at_5 == 1
     assert report.precision_at_5 == 1
-    assert report.ndcg_at_5 >= 0.85
-    assert report.no_match_false_offer_rate == 0
+    assert report.ndcg_at_5 >= 0.90
+    assert report.false_definitive_no_match_rate == 0
+    assert report.false_offer_rate == 0
     assert report.degraded_mode_identification == 1
     assert report.passes_release_gates is True
 

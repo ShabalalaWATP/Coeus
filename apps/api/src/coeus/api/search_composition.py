@@ -1,3 +1,5 @@
+"""Application composition for search indexing and retrieval services."""
+
 from fastapi import FastAPI
 
 from coeus.core.config import Settings
@@ -28,10 +30,7 @@ def configure_search_services(app: FastAPI, settings: Settings, audit_log: Audit
     )
     embeddings = SearchEmbeddingService(settings, configuration, app.state.provider_admission)
     repository = build_search_index_repository(settings)
-    app.state.search_configuration_service = configuration
-    app.state.search_embedding_service = embeddings
-    app.state.search_index_repository = repository
-    app.state.search_indexing_service = SearchIndexingService(
+    indexing = SearchIndexingService(
         configuration,
         embeddings,
         repository,
@@ -39,6 +38,10 @@ def configure_search_services(app: FastAPI, settings: Settings, audit_log: Audit
         app.state.object_storage,
         app.state.ticket_services,
     )
+    app.state.search_configuration_service = configuration
+    app.state.search_embedding_service = embeddings
+    app.state.search_index_repository = repository
+    app.state.search_indexing_service = indexing
     app.state.grounded_search_service = GroundedSearchService(
         repository,
         configuration,
@@ -47,6 +50,4 @@ def configure_search_services(app: FastAPI, settings: Settings, audit_log: Audit
         app.state.access_services.repository,
     )
     configuration.set_index_counts_provider(repository.counts)
-    configuration.set_current_corpus_version_provider(
-        app.state.search_indexing_service.corpus_version
-    )
+    configuration.set_current_corpus_version_provider(indexing.corpus_version)

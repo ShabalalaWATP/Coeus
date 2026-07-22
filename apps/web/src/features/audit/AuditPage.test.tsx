@@ -37,6 +37,10 @@ test("renders audit events from the API", async () => {
   renderWithProviders(<AuditPage />, "/audit");
 
   expect(await screen.findByRole("heading", { name: "Audit" })).toBeVisible();
+  expect(screen.getByRole("link", { name: "Back to Admin" })).toHaveAttribute(
+    "href",
+    "/admin/overview",
+  );
   expect(await screen.findByText("login_success")).toBeVisible();
   expect(screen.getByText("admin-user")).toBeVisible();
 });

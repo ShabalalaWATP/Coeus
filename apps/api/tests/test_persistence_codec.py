@@ -10,7 +10,7 @@ import pytest
 from coeus.core.permissions import Permission
 from coeus.domain.auth import RoleName, UserAccount
 from coeus.domain.search_metrics import RfiSearchMetrics
-from coeus.domain.tickets import WorkflowPlanUpdate
+from coeus.domain.tickets import AgentExecutionKind, AgentRun, AgentRunStatus, WorkflowPlanUpdate
 from coeus.persistence.codec import CodecWriteFormat, decode_value, encode_value
 from coeus.persistence.codec_registry import ENUM_IDENTITIES, TYPE_IDENTITIES
 
@@ -29,6 +29,93 @@ def test_workflow_plan_update_round_trips() -> None:
     decoded = decode_value(encode_value(update))
 
     assert decoded == update
+
+
+def test_agent_run_provenance_round_trips_without_sensitive_content() -> None:
+    run = AgentRun(
+        run_id=uuid4(),
+        ticket_id=uuid4(),
+        agent_name="customer-chatbot-agent",
+        status=AgentRunStatus.COMPLETED,
+        summary="Provider response validated.",
+        safety_flags=(),
+        created_at=datetime.now(UTC),
+        execution_kind=AgentExecutionKind.PROVIDER_BACKED,
+        provider="synthetic-provider",
+        model="synthetic-chat-model",
+        duration_ms=125,
+        fallback_outcome="not_used",
+        validation_outcome="passed",
+        prompt_version="intake-v2",
+        policy_version="agent-boundaries-v1",
+        context_schema_version="intake-context-v2",
+        input_hash="sha256:" + "a" * 64,
+        output_hash="sha256:" + "b" * 64,
+        input_token_count=42,
+        output_token_count=17,
+    )
+
+    encoded = encode_value(run)
+    decoded = decode_value(encoded)
+
+    assert decoded == run
+    assert encoded["fields"]["execution_kind"]["__enum_id__"] == ("tickets.agent_execution_kind")
+    assert "prompt" not in encoded["fields"]
+    assert "output" not in encoded["fields"]
+
+
+def test_agent_run_from_pre_provenance_payload_uses_safe_defaults() -> None:
+    run = AgentRun(
+        run_id=uuid4(),
+        ticket_id=uuid4(),
+        agent_name="priority-agent",
+        status=AgentRunStatus.COMPLETED,
+        summary="Deterministic assessment completed.",
+        safety_flags=(),
+        created_at=datetime.now(UTC),
+    )
+    payload = encode_value(run)
+    provenance_fields = {
+        "execution_kind",
+        "provider",
+        "model",
+        "duration_ms",
+        "fallback_outcome",
+        "validation_outcome",
+        "prompt_version",
+        "policy_version",
+        "context_schema_version",
+        "input_hash",
+        "output_hash",
+        "input_token_count",
+        "output_token_count",
+        "error_class",
+        "advice",
+    }
+    for field_name in provenance_fields:
+        payload["fields"].pop(field_name)
+
+    decoded = decode_value(payload)
+
+    assert decoded == run
+    assert decoded.execution_kind is None
+    assert decoded.provider is None
+
+
+def test_failed_agent_run_status_round_trips() -> None:
+    run = AgentRun(
+        run_id=uuid4(),
+        ticket_id=uuid4(),
+        agent_name="provider-agent",
+        status=AgentRunStatus.FAILED,
+        summary="Provider execution failed safely.",
+        safety_flags=("provider_failure",),
+        created_at=datetime.now(UTC),
+        execution_kind=AgentExecutionKind.PROVIDER_BACKED,
+        error_class="ProviderUnavailable",
+    )
+
+    assert decode_value(encode_value(run)) == run
 
 
 def test_legacy_role_names_decode_to_the_renamed_roles() -> None:

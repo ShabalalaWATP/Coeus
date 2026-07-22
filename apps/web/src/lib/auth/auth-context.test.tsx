@@ -18,7 +18,9 @@ function AuthProbe() {
     <div>
       <p>{status}</p>
       <p>{session?.user.displayName ?? "No user"}</p>
-      <p>{session?.passwordResetRequired === true ? "reset-required" : "reset-not-required"}</p>
+      <p>
+        {session?.user.passwordResetRequired === true ? "reset-required" : "reset-not-required"}
+      </p>
       <button
         type="button"
         onClick={() =>
@@ -307,8 +309,11 @@ test("flags the session for a forced password change on 403 password_change_requ
 test("refreshes the session from the backend on demand", async () => {
   const refreshedSession: AuthSession = {
     ...previewSession,
-    passwordResetRequired: false,
-    user: { ...previewSession.user, displayName: "Refreshed Operator" },
+    user: {
+      ...previewSession.user,
+      displayName: "Refreshed Operator",
+      passwordResetRequired: false,
+    },
   };
   const client = fakeClient({
     getCurrentUser: vi.fn().mockResolvedValue(refreshedSession),

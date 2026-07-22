@@ -5,13 +5,6 @@ LEXICAL_SCORE_FLOOR = 0.12
 VECTOR_SIMILARITY_FLOOR = 0.18
 
 
-def tokens_match(left: str, right: str) -> bool:
-    """Match whole tokens, allowing only conservative plural folding."""
-    if left == right:
-        return True
-    return bool(_token_forms(left).intersection(_token_forms(right)))
-
-
 def matched_tokens(
     query_tokens: tuple[str, ...],
     document_tokens: tuple[str, ...],

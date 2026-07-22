@@ -106,7 +106,7 @@ async def test_qc_claim_release_allows_a_deliberate_handoff() -> None:
     assert second_user is not None
     assert ticket.qc_reviewer_user_id == second_user.user_id
     assert [entry.event_type for entry in ticket.timeline[-3:]] == [
-        "qc_claimed",
+        "qc_agent_preflight_completed",
         "qc_claim_released",
         "qc_claimed",
     ]

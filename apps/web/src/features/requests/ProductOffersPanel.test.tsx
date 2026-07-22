@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { ProductOffersPanel } from "./ProductOffersPanel";
 import { requestTicket as ticket, rfiResultsFixture as rfiResults } from "./requests-test-data";
 
-test("runs RFI search from the product offer panel", async () => {
+test("only offers a retry after automatic RFI search is incomplete", async () => {
   const onRun = vi.fn();
   render(
     <ProductOffersPanel
@@ -17,11 +17,11 @@ test("runs RFI search from the product offer panel", async () => {
       onAccept={vi.fn()}
       onReject={vi.fn()}
       onRun={onRun}
-      ticket={{ ...ticket, state: "RFI_SEARCHING" }}
+      ticket={{ ...ticket, state: "RFI_SEARCH_INCOMPLETE" }}
     />,
   );
 
-  await userEvent.click(screen.getByRole("button", { name: "Run search" }));
+  await userEvent.click(screen.getByRole("button", { name: "Retry search" }));
 
   expect(onRun).toHaveBeenCalledTimes(1);
   expect(screen.getByText("No product offers")).toBeVisible();
@@ -83,7 +83,7 @@ test("makes degraded retrieval explicit and avoids claiming a definitive no-matc
           ? { ...rfiResults.metrics, retrievalMode: "lexical_only" }
           : null,
       }}
-      ticket={{ ...ticket, state: "RFI_SEARCHING" }}
+      ticket={{ ...ticket, state: "RFI_SEARCH_INCOMPLETE" }}
     />,
   );
 
@@ -156,7 +156,7 @@ test("keeps RFI actions read-only for viewers", async () => {
     />,
   );
 
-  expect(screen.getByRole("button", { name: "Run search" })).toBeDisabled();
+  expect(screen.queryByRole("button", { name: "Retry search" })).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Accept" })).toBeDisabled();
   expect(screen.getByLabelText("Rejection reason")).toBeDisabled();
   expect(screen.getByRole("button", { name: "Reject" })).toBeDisabled();
@@ -165,4 +165,23 @@ test("keeps RFI actions read-only for viewers", async () => {
   expect(onRun).not.toHaveBeenCalled();
   expect(onAccept).not.toHaveBeenCalled();
   expect(onReject).not.toHaveBeenCalled();
+});
+
+test("shows an empty selection state when no request is selected", () => {
+  render(
+    <ProductOffersPanel
+      canManageOffers
+      canRunSearch
+      isAccepting={false}
+      isLoading={false}
+      isRejecting={false}
+      isRunning={false}
+      onAccept={vi.fn()}
+      onReject={vi.fn()}
+      onRun={vi.fn()}
+    />,
+  );
+
+  expect(screen.getByText("No ticket selected")).toBeVisible();
+  expect(screen.queryByText("No product offers")).not.toBeInTheDocument();
 });

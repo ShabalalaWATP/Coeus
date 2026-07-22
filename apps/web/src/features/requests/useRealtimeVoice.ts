@@ -11,9 +11,17 @@ import { voiceStartError } from "./voice-start-error";
 
 type VoiceStatus = "idle" | "connecting" | "connected" | "stopping";
 const CONNECTION_TIMEOUT_MS = 15_000;
-const TRANSCRIPT_DRAIN_MS = 500;
+const TRANSCRIPT_DRAIN_IDLE_MS = 1_000;
+const TRANSCRIPT_DRAIN_SETTLE_MS = 750;
+const TRANSCRIPT_DRAIN_MAX_MS = 2_500;
 
-export function useRealtimeVoice(csrfToken: string, onTranscript: (transcript: string) => void) {
+type TranscriptDrain = ReturnType<typeof createTranscriptDrain>;
+
+export function useRealtimeVoice(
+  csrfToken: string,
+  onTranscript: (transcript: string) => void,
+  ticketId?: string,
+) {
   const [status, setStatus] = useState<VoiceStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
@@ -25,6 +33,7 @@ export function useRealtimeVoice(csrfToken: string, onTranscript: (transcript: s
   const tokenRef = useRef<string | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const transcriptRef = useRef<TranscriptState>(emptyTranscript());
+  const drainRef = useRef<TranscriptDrain | null>(null);
 
   const releaseToken = useCallback(() => {
     const token = tokenRef.current;
@@ -43,6 +52,8 @@ export function useRealtimeVoice(csrfToken: string, onTranscript: (transcript: s
     peerRef.current = null;
     streamRef.current = null;
     audioRef.current = null;
+    drainRef.current?.finish();
+    drainRef.current = null;
     releaseToken();
   }, [releaseToken]);
 
@@ -64,8 +75,11 @@ export function useRealtimeVoice(csrfToken: string, onTranscript: (transcript: s
     if (mountedRef.current) setStatus("stopping");
     const channel = channelRef.current;
     if (channel?.readyState === "open") {
+      const drain = createTranscriptDrain();
+      drainRef.current = drain;
       channel.send(JSON.stringify({ type: "input_audio_buffer.commit" }));
-      await new Promise((resolve) => setTimeout(resolve, TRANSCRIPT_DRAIN_MS));
+      await drain.promise;
+      drainRef.current = null;
     }
     const transcript = completeTranscript(transcriptRef.current);
     closeResources();
@@ -116,11 +130,15 @@ export function useRealtimeVoice(csrfToken: string, onTranscript: (transcript: s
         if (mountedRef.current) setStatus("connected");
         channel.send(JSON.stringify({ type: "response.create" }));
       };
-      channel.onmessage = (event) => collectTranscript(event.data, transcriptRef.current);
+      channel.onmessage = (event) => {
+        const type = collectTranscript(event.data, transcriptRef.current);
+        drainRef.current?.signal(type);
+        if (type === "error") fail("The voice provider reported a session error.");
+      };
       channel.onerror = () => fail("The voice connection encountered an error.");
       const offer = await peer.createOffer();
       await peer.setLocalDescription(offer);
-      const started = await createVoiceSession(offer.sdp ?? "", csrfToken);
+      const started = await createVoiceSession(offer.sdp ?? "", csrfToken, ticketId);
       if (!isCurrent(operationRef, operation, mountedRef)) {
         void releaseVoiceSession(started.token, csrfToken).catch(() => undefined);
         peer.close();
@@ -133,7 +151,7 @@ export function useRealtimeVoice(csrfToken: string, onTranscript: (transcript: s
         fail(voiceStartError(caught));
       }
     }
-  }, [csrfToken, fail]);
+  }, [csrfToken, fail, ticketId]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -144,6 +162,46 @@ export function useRealtimeVoice(csrfToken: string, onTranscript: (transcript: s
     };
   }, [closeResources]);
   return { error, isActive: status !== "idle", start, status, stop };
+}
+
+function createTranscriptDrain() {
+  let finished = false;
+  let resolvePromise!: () => void;
+  let idleTimer: ReturnType<typeof setTimeout>;
+  const promise = new Promise<void>((resolve) => {
+    resolvePromise = resolve;
+  });
+  const maximumTimer = setTimeout(finish, TRANSCRIPT_DRAIN_MAX_MS);
+
+  function finish() {
+    if (finished) return;
+    finished = true;
+    clearTimeout(idleTimer);
+    clearTimeout(maximumTimer);
+    resolvePromise();
+  }
+
+  function schedule(delay: number) {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(finish, delay);
+  }
+
+  function signal(type?: string) {
+    if (type === "error") {
+      finish();
+      return;
+    }
+    if (
+      type?.includes("transcription") ||
+      type?.startsWith("response.output_audio_transcript") ||
+      type === "response.done"
+    ) {
+      schedule(TRANSCRIPT_DRAIN_SETTLE_MS);
+    }
+  }
+
+  schedule(TRANSCRIPT_DRAIN_IDLE_MS);
+  return { finish, promise, signal };
 }
 
 function isCurrent(

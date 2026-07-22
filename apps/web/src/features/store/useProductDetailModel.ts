@@ -3,14 +3,10 @@ import { useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 
 import { ApiError } from "../../lib/api-client/client";
-import {
-  breakGlassAssetAccess,
-  breakGlassStoreProduct,
-  getAssetAccess,
-  getStoreProduct,
-} from "../../lib/api-client/store";
+import { breakGlassStoreProduct, getStoreProduct } from "../../lib/api-client/store";
 import { useAuth } from "../../lib/auth/auth-context";
 import { backNavigationFor } from "./store-navigation";
+import { useEphemeralAssetAccess } from "./useEphemeralAssetAccess";
 
 export function useProductDetailModel() {
   const { assetId, productId } = useStoreRouteIds();
@@ -32,28 +28,21 @@ export function useProductDetailModel() {
   const hasBreakGlassProduct = breakGlassMutation.data !== undefined && breakGlassReason !== null;
   const canDownload = session?.user.permissions.includes("product:download") ?? false;
   const canRequestAssetAccess = canDownload || hasBreakGlassProduct;
-  const accessQuery = useQuery({
+  const access = useEphemeralAssetAccess({
+    assetId,
+    breakGlassReason: hasBreakGlassProduct ? breakGlassReason : null,
+    csrfToken: session?.csrfToken ?? "",
     enabled:
       productId !== undefined &&
       assetId !== undefined &&
       canRequestAssetAccess &&
       (productQuery.data !== undefined || hasBreakGlassProduct),
-    queryKey: ["store-asset-access", productId, assetId],
-    queryFn: () =>
-      hasBreakGlassProduct
-        ? breakGlassAssetAccess(
-            productId ?? "",
-            assetId ?? "",
-            breakGlassReason,
-            session?.csrfToken ?? "",
-          )
-        : getAssetAccess(productId ?? "", assetId ?? ""),
-    retry: false,
+    productId,
   });
   const product = breakGlassMutation.data ?? productQuery.data;
 
   return {
-    accessQuery,
+    access,
     assetId,
     back: backNavigationFor(from),
     canRequestAssetAccess,

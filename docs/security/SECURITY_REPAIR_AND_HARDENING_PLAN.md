@@ -1,11 +1,11 @@
-# Coeus Security Repair And Hardening Plan
+# Istari (Coeus) Security Repair And Hardening Plan
 
 ## Status And Authority
 
-Status: implementation in progress and release-blocking from 2026-07-13.
-
-This plan is the Sprint 17 handoff below `coeus_spec_driven_implementation_plan.md` and must stay in
-step with `docs/MASTER_IMPLEMENTATION_PLAN.md` and `docs/DEVELOPMENT_STORY.md`.
+Status: local-first implementation complete; production release closure remains
+blocked by authorised staging evidence and a fresh sealed candidate scan. This
+is the retained Sprint 17 implementation and release-gate record and stays in
+step with the root and master implementation plans and development story.
 See `SECURITY_REPAIR_CLOSURE_EVIDENCE_2026-07-13.md` for current evidence.
 
 The evidence baseline is the completed deep scan of immutable revision

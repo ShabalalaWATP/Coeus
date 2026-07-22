@@ -5,20 +5,7 @@ import { ChatPanel } from "./ChatPanel";
 import { IntakePanel } from "./IntakePanel";
 import { requestTicket as ticket } from "./requests-test-data";
 import { TimelinePanel } from "./TimelinePanel";
-import { ticketMetrics, upsertTicket } from "./ticket-collection";
-
-test("upserts existing and new tickets", () => {
-  const updated = { ...ticket, reference: "TCK-0002" };
-  const secondTicket = { ...ticket, id: "ticket-2", reference: "TCK-0003" };
-
-  expect(upsertTicket(undefined, ticket)).toEqual([ticket]);
-  expect(upsertTicket([ticket], updated)).toEqual([updated]);
-  expect(upsertTicket([ticket], { ...ticket, id: "ticket-2" })).toHaveLength(2);
-  expect(upsertTicket([ticket, secondTicket], { ...secondTicket, reference: "TCK-0004" })).toEqual([
-    ticket,
-    { ...secondTicket, reference: "TCK-0004" },
-  ]);
-});
+import { ticketMetrics } from "./ticket-collection";
 
 test("calculates ticket metrics for every visible state", () => {
   expect(
@@ -277,7 +264,32 @@ test("sends explicit null only when a saved intake field is cleared", async () =
   await userEvent.type(screen.getByLabelText("Priority"), "  ");
   await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
-  expect(onSave).toHaveBeenCalledWith({ description: null });
+  expect(onSave).toHaveBeenCalledWith({ description: null }, expect.any(Function));
+});
+
+test("preserves unsaved intake edits when polling refreshes the same ticket", async () => {
+  const props = {
+    canSubmit: true,
+    isAddingAttachment: false,
+    isSaving: false,
+    isSubmitting: false,
+    onAddAttachment: vi.fn(),
+    onSave: vi.fn(),
+    onSubmit: vi.fn(),
+  };
+  const rendered = render(<IntakePanel {...props} ticket={ticket} />);
+  const title = screen.getByLabelText("Title");
+  await userEvent.clear(title);
+  await userEvent.type(title, "Unsaved operator title");
+
+  rendered.rerender(
+    <IntakePanel
+      {...props}
+      ticket={{ ...ticket, intake: { ...ticket.intake, title: "Polled server title" } }}
+    />,
+  );
+
+  expect(screen.getByLabelText("Title")).toHaveValue("Unsaved operator title");
 });
 
 test("hints when intake fields are below the minimum length", async () => {

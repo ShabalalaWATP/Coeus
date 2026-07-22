@@ -13,7 +13,6 @@ from pydantic import ValidationError
 from starlette.datastructures import UploadFile
 from starlette.formparsers import MultiPartException
 from starlette.responses import StreamingResponse
-from starlette.types import Message, Receive
 
 from coeus.api.dependencies import (
     get_asset_token_service,
@@ -25,6 +24,7 @@ from coeus.api.dependencies import (
     get_upload_admission,
 )
 from coeus.api.presenters.store import product_draft_from_request, product_response
+from coeus.api.upload_limits import UploadWireLimitExceeded, install_receive_limit
 from coeus.application.ports.admission import ResourceAdmission
 from coeus.core.config import Settings
 from coeus.core.errors import AppError
@@ -34,6 +34,7 @@ from coeus.schemas.store import StoreProductCreateRequest, StoreProductResponse
 from coeus.services.asset_tokens import AssetTokenService
 from coeus.services.object_storage import ObjectStorage
 from coeus.services.store import StoreServices
+from coeus.services.store_creation_policy import require_product_creation_permission
 
 router = APIRouter(prefix="/store", tags=["store"])
 CHUNK_SIZE = 1024 * 1024
@@ -63,10 +64,6 @@ UPLOAD_OPENAPI = {
 }
 
 
-class UploadWireLimitExceeded(Exception):
-    """The cumulative request body exceeded its receive-time budget."""
-
-
 @dataclass(frozen=True)
 class StagedUpload:
     path: Path
@@ -90,6 +87,7 @@ async def upload_product(
     store_services: Annotated[StoreServices, Depends(get_store_services)],
     admission: Annotated[ResourceAdmission, Depends(get_upload_admission)],
 ) -> StoreProductResponse:
+    require_product_creation_permission(authenticated.user)
     try:
         with admission.reserve(authenticated.user.user_id, settings.local_upload_max_bytes):
             staged, product_request = await _parse_and_stage_upload(
@@ -135,7 +133,7 @@ async def _parse_and_stage_upload(
     request: Request,
     max_bytes: int,
 ) -> tuple[StagedUpload, StoreProductCreateRequest]:
-    _install_receive_limit(request, max_bytes + MAX_MULTIPART_OVERHEAD_BYTES)
+    install_receive_limit(request, max_bytes + MAX_MULTIPART_OVERHEAD_BYTES)
     staged: StagedUpload | None = None
     try:
         async with request.form(
@@ -161,32 +159,6 @@ async def _parse_and_stage_upload(
         if staged is not None:
             staged.path.unlink(missing_ok=True)
         raise
-
-
-def _install_receive_limit(request: Request, max_wire_bytes: int) -> None:
-    content_length = request.headers.get("content-length")
-    if content_length is not None:
-        try:
-            declared_length = int(content_length)
-        except ValueError as exc:
-            raise AppError(400, "content_length_invalid", "Content-Length is invalid.") from exc
-        if declared_length < 0:
-            raise AppError(400, "content_length_invalid", "Content-Length is invalid.")
-        if declared_length > max_wire_bytes:
-            raise UploadWireLimitExceeded
-    original_receive: Receive = request._receive
-    received = 0
-
-    async def limited_receive() -> Message:
-        nonlocal received
-        message = await original_receive()
-        if message["type"] == "http.request":
-            received += len(message.get("body", b""))
-            if received > max_wire_bytes:
-                raise UploadWireLimitExceeded
-        return message
-
-    request._receive = limited_receive
 
 
 @router.get("/products/{product_id}/assets/{asset_id}/download")

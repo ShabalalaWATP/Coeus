@@ -183,6 +183,7 @@ export function ChatPanel({
           {csrfToken ? (
             <VoiceCallControls
               csrfToken={csrfToken}
+              ticketId={ticket?.id}
               onTranscript={(transcript) =>
                 setMessage((current) => {
                   const combined = current.trim()

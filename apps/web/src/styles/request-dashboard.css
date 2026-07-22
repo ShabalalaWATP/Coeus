@@ -196,6 +196,35 @@
   text-decoration: none;
 }
 
+.product-outcome-decision {
+  grid-column: 1 / -1;
+  margin: 0 24px 20px;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.product-outcome-decision > p {
+  margin: 6px 0 12px;
+  color: var(--muted);
+}
+
+.request-register-row__decision-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.request-register-row__decision-actions .request-register-row__action {
+  margin: 0;
+}
+
+.product-outcome-decision__reason {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  max-width: 720px;
+}
+
 @media (max-width: 860px) {
   .request-status-ledger {
     grid-template-columns: 1fr;

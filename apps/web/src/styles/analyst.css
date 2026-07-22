@@ -260,3 +260,17 @@
   padding: 7px 10px;
   background: transparent;
 }
+.submission-version-preview {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.controlled-document-viewer {
+  background: var(--surface-strong, #fff);
+  border: 1px solid var(--border-subtle, #cbd5e1);
+  border-radius: 0.5rem;
+  min-height: 32rem;
+  object-fit: contain;
+  width: 100%;
+}

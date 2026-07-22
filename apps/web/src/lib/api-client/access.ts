@@ -11,12 +11,6 @@ export type AccessControlGroup = {
   members?: { id: string; displayName: string; username: string }[];
 };
 
-export type AccessDiagnostics = {
-  allowed: boolean;
-  reason: string;
-  checks: { name: string; passed: boolean; reason: string }[];
-};
-
 export type CreateAccessControlGroupRequest = {
   code: string;
   name: string;
@@ -77,19 +71,4 @@ export function removeAcgMember(acgId: string, userId: string, csrfToken: string
     headers: { "X-CSRF-Token": csrfToken },
     method: "DELETE",
   });
-}
-
-export function diagnoseProductAccess(
-  productId: string,
-  userId: string,
-  csrfToken: string,
-): Promise<AccessDiagnostics> {
-  return apiRequestJson<AccessDiagnostics>(
-    `/api/v1/store/products/${pathSegment(productId)}/access-diagnostics`,
-    {
-      body: JSON.stringify({ userId }),
-      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
-      method: "POST",
-    },
-  );
 }

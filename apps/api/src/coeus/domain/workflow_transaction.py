@@ -17,6 +17,30 @@ class WorkflowAuditIntent:
 
 
 @dataclass(frozen=True)
+class WorkflowOutboxIntent:
+    event_type: str
+    payload: Mapping[str, str]
+
+    def __post_init__(self) -> None:
+        if not self.event_type or len(self.event_type) > 80:
+            raise ValueError("Workflow outbox event type is invalid.")
+        payload = dict(self.payload)
+        if not payload or len(payload) > 16:
+            raise ValueError("Workflow outbox payload is invalid.")
+        if any(
+            not isinstance(key, str)
+            or not key
+            or len(key) > 80
+            or not isinstance(value, str)
+            or not value
+            or len(value) > 200
+            for key, value in payload.items()
+        ):
+            raise ValueError("Workflow outbox payload values are invalid.")
+        object.__setattr__(self, "payload", MappingProxyType(payload))
+
+
+@dataclass(frozen=True)
 class ReleaseNotificationIntent:
     requester_user_id: UUID
     ticket_reference: str

@@ -1,7 +1,8 @@
 """The rich local demo dataset populates every queue and the analytics.
 
-Runs in ``environment="local"`` with the demo seed explicitly enabled; every
-other suite keeps the minimal deterministic seed (see conftest).
+Runs in ``environment="local"`` with the demo seed explicitly enabled. Isolated
+in-memory tests retain minimal deterministic fixtures, while explicit non-demo
+and PostgreSQL starts use an empty Store catalogue.
 """
 
 from hashlib import sha256
@@ -39,6 +40,20 @@ def test_should_seed_demo_is_auto_on_for_local_only() -> None:
     assert Settings(environment="test", seed_demo_content=None).should_seed_demo() is False
     assert Settings(environment="local", seed_demo_content=False).should_seed_demo() is False
     assert Settings(environment="test", seed_demo_content=True).should_seed_demo() is True
+
+
+def test_explicitly_disabled_demo_starts_with_empty_store(tmp_path: Path) -> None:
+    app = create_app(
+        Settings(
+            environment="local",
+            seed_demo_content=False,
+            persistence_provider="memory",
+            argon2_memory_cost=8_192,
+            local_object_storage_path=str(tmp_path / "objects"),
+        )
+    )
+
+    assert app.state.store_services.repository.list_products() == ()
 
 
 @pytest.mark.asyncio

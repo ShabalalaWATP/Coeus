@@ -28,7 +28,10 @@ without changing route handlers or frontend contracts.
   weighted scorer (`services/capability_recommendation.py`: relevance 0.4,
   region 0.3, rank 0.2, priority fit 0.1) returns top-3 candidates with
   reasons on each RFA/CM review. Suggested-team and triage-fallback semantics
-  are unchanged, and managers still approve every route.
+  are unchanged. At the time of this decision managers approved every route;
+  ADR 0036 later superseded that authority rule for an explicitly allowlisted,
+  version-pinned active JIOC Routing Agent. Managers remain responsible for
+  manual-review, clarification and audited intervention paths.
 - No LLM involvement anywhere in ranking or recommendation: both are
   deterministic, explainable and unit-testable.
 

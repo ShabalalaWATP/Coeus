@@ -72,6 +72,7 @@ test("keeps counts and pagination consistent when the mine scope filters client-
       displayName: "Administrator",
       roles: ["Administrator"],
       defaultRoute: "/admin/overview",
+      passwordResetRequired: false,
       permissions: ["product:read", "product:search"],
     },
   };

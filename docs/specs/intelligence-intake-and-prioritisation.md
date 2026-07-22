@@ -1,5 +1,11 @@
 # Spec: Intelligence-Grade Intake, Priority Ranking And Team Recommendation
 
+Status: implemented historical specification. Its mandatory human-routing
+constraint was superseded by ADR 0036 and
+`customer-search-routing-orchestration.md`. Current supported local/test routing
+uses the active deterministic JIOC Agent, with JIOC Managers on the loop and in
+the loop for exception review or audited intervention.
+
 Extends the conversational intake in
 `conversational-intake-standard-and-voice.md`; the field list there is
 superseded by the standard below. All registry content is synthetic demo data
@@ -87,8 +93,8 @@ approves every route.
 
 ## Non-goals
 
-- Autonomous submission, routing or assignment; every state change stays
-  human-approved.
+- Autonomous submission or analyst assignment. The historical prohibition on
+  autonomous routing was superseded as described in the status note above.
 - Linking analyst users to catalogue teams (flagged follow-up).
 - Real operations, units or regionally sensitive weighting; the registries are
   demonstration data.

@@ -1,15 +1,23 @@
 """QC domain-to-API response mapping."""
 
 from coeus.api.presenters.routing import priority_assessment_response
-from coeus.domain.qc import FeedbackRequest, ProductIndexRecord, QcChecklistItem, QcDecision
+from coeus.domain.product_submission import DraftProductAsset, DraftProductVersion
+from coeus.domain.qc import (
+    FeedbackRequest,
+    ProductIndexRecord,
+    QcAgentPreflight,
+    QcChecklistItem,
+    QcDecision,
+)
 from coeus.domain.store import StoreProduct
 from coeus.domain.tickets import (
-    DraftProductAsset,
-    DraftProductVersion,
     ProductDissemination,
     TicketRecord,
 )
 from coeus.schemas.qc import (
+    QcAgentCheckResponse,
+    QcAgentFindingResponse,
+    QcAgentPreflightResponse,
     QcChecklistItemResponse,
     QcDecisionResponse,
     QcDisseminationResponse,
@@ -52,6 +60,11 @@ def product_response(ticket: TicketRecord, store: StoreServices) -> QcProductRes
         latest_draft=draft_response(ticket.draft_products[-1]) if ticket.draft_products else None,
         manager_notes=[decision.reason for decision in ticket.manager_decisions],
         decisions=[decision_response(item) for item in ticket.qc_decisions],
+        agent_preflight=(
+            preflight_response(ticket.qc_agent_preflights[-1])
+            if ticket.qc_agent_preflights
+            else None
+        ),
         index_records=[index_response(item) for item in ticket.product_index_records],
         disseminations=[dissemination_response(item) for item in ticket.disseminations],
         feedback_requests=[feedback_response(item) for item in ticket.feedback_requests],
@@ -67,6 +80,8 @@ def draft_response(draft: DraftProductVersion) -> QcDraftResponse:
         summary=draft.summary,
         product_type=draft.product_type,
         content=draft.content,
+        description=draft.description or draft.content,
+        manifest_hash=draft.manifest_hash,
         created_by_user_id=draft.created_by_user_id,
         created_at=draft.created_at,
         assets=[asset_response(asset) for asset in draft.assets],
@@ -81,6 +96,10 @@ def asset_response(asset: DraftProductAsset) -> QcDraftAssetResponse:
         mime_type=asset.mime_type,
         size_bytes=asset.size_bytes,
         sha256=asset.sha256,
+        detected_mime_type=asset.detected_mime_type or asset.mime_type,
+        preview_kind=asset.preview_kind,
+        processing_status=asset.processing_status,
+        preview_available=bool(asset.object_key),
     )
 
 
@@ -97,6 +116,35 @@ def decision_response(decision: QcDecision) -> QcDecisionResponse:
 
 def checklist_response(item: QcChecklistItem) -> QcChecklistItemResponse:
     return QcChecklistItemResponse(key=item.key, passed=item.passed)
+
+
+def preflight_response(preflight: QcAgentPreflight) -> QcAgentPreflightResponse:
+    return QcAgentPreflightResponse(
+        preflight_id=preflight.preflight_id,
+        draft_version_id=preflight.draft_version_id,
+        status=preflight.status.value,
+        checks=[
+            QcAgentCheckResponse(key=item.key, passed=item.passed, detail=item.detail)
+            for item in preflight.checks
+        ],
+        blockers=list(preflight.blockers),
+        policy_version=preflight.policy_version,
+        created_at=preflight.created_at,
+        findings=[
+            QcAgentFindingResponse(
+                finding_id=item.finding_id,
+                category=item.category,
+                severity=item.severity,
+                original_text=item.original_text,
+                suggested_text=item.suggested_text,
+                location=item.location,
+                detail=item.detail,
+                confidence=item.confidence,
+                blocking=item.blocking,
+            )
+            for item in preflight.findings
+        ],
+    )
 
 
 def index_response(record: ProductIndexRecord) -> QcIndexRecordResponse:

@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { UserCheck, UserX } from "lucide-react";
+import { UserCheck, UserRoundCheck, UserX } from "lucide-react";
 import { useState } from "react";
 
-import { EmptyState, ErrorState } from "../../components/ui/PageState";
+import { AdminDisclosureSummary } from "./AdminDisclosureSummary";
+import { EmptyState, ErrorState, LoadingState } from "../../components/ui/PageState";
 import {
   approveRegistration,
   listPendingRegistrations,
@@ -12,10 +13,15 @@ import {
 
 type RegistrationApprovalsPanelProps = {
   csrfToken: string;
+  initiallyOpen?: boolean;
 };
 
-export function RegistrationApprovalsPanel({ csrfToken }: RegistrationApprovalsPanelProps) {
+export function RegistrationApprovalsPanel({
+  csrfToken,
+  initiallyOpen = true,
+}: RegistrationApprovalsPanelProps) {
   const queryClient = useQueryClient();
+  const [open, setOpen] = useState(initiallyOpen);
   const [actionError, setActionError] = useState<string | null>(null);
   const registrationsQuery = useQuery({
     queryKey: ["registrations"],
@@ -43,41 +49,59 @@ export function RegistrationApprovalsPanel({ csrfToken }: RegistrationApprovalsP
   });
 
   return (
-    <section className="surface approvals-panel" aria-labelledby="approvals-title">
-      <div className="section-heading">
-        <h2 id="approvals-title">Access requests</h2>
-        <p>Approve or reject self-service registration requests.</p>
+    <details
+      className="surface admin-disclosure approvals-panel"
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+      open={open}
+    >
+      <AdminDisclosureSummary
+        description="Approve or reject self-service registration requests."
+        eyebrow="Identity and access"
+        icon={UserRoundCheck}
+        statuses={[
+          registrationsQuery.isLoading
+            ? { label: "Checking requests" }
+            : registrations.length > 0
+              ? { label: `${registrations.length} pending`, tone: "attention" }
+              : { label: "Queue clear", tone: "active" },
+        ]}
+        title="Access requests"
+        titleId="approvals-title"
+      />
+      <div className="admin-disclosure__body">
+        {registrationsQuery.isLoading ? (
+          <LoadingState label="Loading access requests" />
+        ) : registrationsQuery.isError ? (
+          <ErrorState onRetry={() => void registrationsQuery.refetch()} />
+        ) : registrations.length === 0 ? (
+          <EmptyState
+            hint="New requests from the sign-in page appear here for review."
+            title="No pending access requests"
+          />
+        ) : (
+          <>
+            <div className="stack-list">
+              {registrations.map((registration) => (
+                <RegistrationRow
+                  actionPending={approveMutation.isPending || rejectMutation.isPending}
+                  key={registration.id}
+                  onApprove={() => approveMutation.mutate(registration.id)}
+                  onReject={(reason) =>
+                    rejectMutation.mutate({ registrationId: registration.id, reason })
+                  }
+                  registration={registration}
+                />
+              ))}
+            </div>
+          </>
+        )}
+        {actionError ? (
+          <p className="auth-error" role="alert">
+            {actionError}
+          </p>
+        ) : null}
       </div>
-      {registrationsQuery.isError ? (
-        <ErrorState onRetry={() => void registrationsQuery.refetch()} />
-      ) : registrations.length === 0 ? (
-        <EmptyState
-          hint="New requests from the sign-in page appear here for review."
-          title="No pending access requests"
-        />
-      ) : (
-        <>
-          <div className="stack-list">
-            {registrations.map((registration) => (
-              <RegistrationRow
-                actionPending={approveMutation.isPending || rejectMutation.isPending}
-                key={registration.id}
-                onApprove={() => approveMutation.mutate(registration.id)}
-                onReject={(reason) =>
-                  rejectMutation.mutate({ registrationId: registration.id, reason })
-                }
-                registration={registration}
-              />
-            ))}
-          </div>
-        </>
-      )}
-      {actionError ? (
-        <p className="auth-error" role="alert">
-          {actionError}
-        </p>
-      ) : null}
-    </section>
+    </details>
   );
 }
 

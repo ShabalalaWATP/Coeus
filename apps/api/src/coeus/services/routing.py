@@ -71,7 +71,12 @@ class RoutingService:
         queued = (
             ticket
             for ticket in tickets
-            if ticket.state in {TicketState.JIOC_REVIEW, TicketState.COLLECT_CHOICE}
+            if ticket.state
+            in {
+                TicketState.JIOC_ROUTING_PENDING,
+                TicketState.JIOC_REVIEW,
+                TicketState.JIOC_REANALYSIS_ADJUDICATION,
+            }
         )
         return tuple(sorted(queued, key=priority_sort_key))
 

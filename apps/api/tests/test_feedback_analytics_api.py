@@ -1,22 +1,42 @@
 from dataclasses import replace
 from datetime import UTC, datetime
-from typing import cast
 from uuid import UUID, uuid4
 
 import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from coeus.core.config import Settings
-from coeus.domain.tickets import ProductDissemination, TicketRecord
-from coeus.main import create_app
-from rfi_search_helpers import login, submitted_ticket
+from coeus.domain.tickets import ProductDissemination
+from feedback_analytics_test_helpers import (
+    acg_id as _acg_id,
+)
+from feedback_analytics_test_helpers import (
+    approval_payload as _approval_payload,
+)
+from feedback_analytics_test_helpers import (
+    draft_payload as _draft_payload,
+)
+from feedback_analytics_test_helpers import (
+    fail_audit as _fail_audit,
+)
+from feedback_analytics_test_helpers import (
+    legacy_routing_app as _legacy_routing_app,
+)
+from feedback_analytics_test_helpers import (
+    ticket_for_feedback_request as _ticket_for_feedback_request,
+)
+from rfi_search_helpers import (
+    ensure_search_index_ready,
+    login,
+    mark_search_complete_for_downstream_fixture,
+    submitted_ticket,
+)
 from routing_helpers import assignment_team_id
 
 
 @pytest.mark.asyncio
-async def test_customer_submits_feedback_and_admin_dashboard_tracks_reuse() -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+async def test_customer_submits_feedback_and_team_dashboard_tracks_reuse() -> None:
+    app = _legacy_routing_app()
     acg_id = _acg_id(app, "ACG-EU-CYBER")
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
@@ -48,8 +68,8 @@ async def test_customer_submits_feedback_and_admin_dashboard_tracks_reuse() -> N
             headers={"X-CSRF-Token": str(user["csrfToken"])},
             json={"rating": 4, "comment": "Second attempt."},
         )
-        admin = await login(client, "admin@example.test")
-        dashboard = await client.get("/api/v1/analytics/admin")
+        await login(client, "rfa.manager@example.test")
+        dashboard = await client.get("/api/v1/analytics/rfa")
 
     assert requests.status_code == 200
     assert requests.json()["requests"][0]["id"] == request_id
@@ -65,14 +85,13 @@ async def test_customer_submits_feedback_and_admin_dashboard_tracks_reuse() -> N
     assert dashboard.json()["metrics"]["averageRating"] == 5.0
     assert dashboard.json()["productReuse"][0]["feedbackCount"] == 1
     assert "Requester satisfaction" in [item["title"] for item in dashboard.json()["trends"]]
-    assert admin["user"]["username"] == "admin@example.test"
 
 
 @pytest.mark.asyncio
 async def test_feedback_submission_audit_failure_rolls_back_ticket(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    app = _legacy_routing_app()
     acg_id = _acg_id(app, "ACG-EU-CYBER")
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
@@ -96,7 +115,7 @@ async def test_feedback_submission_audit_failure_rolls_back_ticket(
 
 @pytest.mark.asyncio
 async def test_team_dashboards_are_route_scoped_and_protected() -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    app = _legacy_routing_app()
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
@@ -139,7 +158,7 @@ async def test_team_dashboards_are_route_scoped_and_protected() -> None:
 
 @pytest.mark.asyncio
 async def test_team_dashboard_excludes_product_reuse_rows_without_store_access() -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    app = _legacy_routing_app()
     collection_product = next(
         product
         for product in app.state.store_services.repository.list_products()
@@ -233,6 +252,9 @@ async def _approved_route_ticket(
     output_format: str = "assessment report",
     approve: bool = True,
 ) -> str:
+    transport = client._transport
+    assert isinstance(transport, ASGITransport)
+    ensure_search_index_ready(transport.app)
     if not csrf_token:
         user = await login(client, "user@example.test")
         csrf_token = str(user["csrfToken"])
@@ -242,19 +264,27 @@ async def _approved_route_ticket(
         title=title,
         area_or_region="Arctic fisheries",
         output_format=output_format,
+        restrictions="Manual JIOC review required for this analytics fixture.",
     )
     search = await client.post(
         f"/api/v1/rfi-search/{ticket_id}/run",
         headers={"X-CSRF-Token": csrf_token},
     )
     if search.json()["ticketState"] == "RFI_MATCH_OFFERED":
+        mark_search_complete_for_downstream_fixture(transport.app, ticket_id)
         for offer in search.json()["offers"]:
-            await client.post(
+            search = await client.post(
                 f"/api/v1/rfi-search/{ticket_id}/offers/{offer['productId']}/reject",
                 headers={"X-CSRF-Token": csrf_token},
                 json={"reason": "Need a new route."},
             )
-    elif search.json()["ticketState"] == "RFI_NO_MATCH":
+    if search.json()["ticketState"] == "ACTIVE_WORK_REVIEW":
+        search = await client.post(
+            f"/api/v1/similar-requests/tickets/{ticket_id}/continue",
+            headers={"X-CSRF-Token": csrf_token},
+        )
+    state = search.json().get("ticketState", search.json().get("state"))
+    if state in {"RFI_NO_MATCH", "NEW_TASKING_CONSENT"}:
         consent = await client.post(
             f"/api/v1/tickets/{ticket_id}/no-match-consent",
             headers={"X-CSRF-Token": csrf_token},
@@ -291,60 +321,3 @@ async def _approved_route_ticket(
         )
         assert chosen.status_code == 200
     return ticket_id
-
-
-def _approval_payload(acg_id: str) -> dict[str, object]:
-    return {
-        "checklist": {
-            "answers_customer_question": True,
-            "sources_are_sufficient": True,
-            "metadata_complete": True,
-            "classification_checked": True,
-            "releasability_checked": True,
-            "acg_assignment_checked": True,
-            "format_correct": True,
-            "handling_caveats_applied": True,
-            "manager_comments_resolved": True,
-        },
-        "classificationLevel": 2,
-        "releasability": ["MOCK"],
-        "handlingCaveats": ["MOCK DATA ONLY"],
-        "acgIds": [acg_id],
-        "reason": "QC checklist complete.",
-    }
-
-
-def _draft_payload() -> dict[str, object]:
-    return {
-        "title": "Arctic feedback product",
-        "summary": "MOCK DATA ONLY analyst product draft.",
-        "productType": "finished_output",
-        "content": "MOCK DATA ONLY. Assessment content prepared for feedback analytics.",
-        "assets": [
-            {
-                "name": "feedback-draft.pdf",
-                "assetType": "pdf",
-                "mimeType": "application/pdf",
-                "sizeBytes": 512,
-                "sha256": "d" * 64,
-            }
-        ],
-    }
-
-
-def _acg_id(app: FastAPI, code: str) -> str:
-    for acg in app.state.access_services.repository.list_acgs():
-        if acg.code == code:
-            return str(acg.acg_id)
-    raise AssertionError(f"Missing seed ACG {code}")
-
-
-def _ticket_for_feedback_request(app: FastAPI, request_id: str) -> TicketRecord:
-    for ticket in app.state.ticket_services.tickets._repository.list_tickets():
-        if any(request.request_id == UUID(request_id) for request in ticket.feedback_requests):
-            return cast(TicketRecord, ticket)
-    raise AssertionError(f"Missing feedback request {request_id}")
-
-
-def _fail_audit(*_args: object, **_kwargs: object) -> None:
-    raise RuntimeError("audit unavailable")
