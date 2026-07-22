@@ -1,23 +1,40 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
+import { RoutingCriticStatus } from "./RoutingCriticStatus";
 import { ErrorState, LoadingState } from "../../components/ui/PageState";
-import { getJiocOversight, type JiocOversight } from "../../lib/api-client/routing";
+import {
+  getJiocOversight,
+  interveneInRouting,
+  type JiocOversight,
+} from "../../lib/api-client/routing";
+import { useAuth } from "../../lib/auth/auth-context";
 import { formatWorkflowState } from "../../lib/workflow/state-format";
 
 export default function JiocOversightPage() {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
   const oversightQuery = useQuery({
     queryKey: ["jioc-oversight"],
     queryFn: getJiocOversight,
     retry: false,
   });
   const oversight = oversightQuery.data;
+  const intervention = useMutation({
+    mutationFn: (input: {
+      action: "hold" | "resume" | "send_to_review";
+      reason: string;
+      ticketId: string;
+    }) => interveneInRouting(input.ticketId, input.action, input.reason, session?.csrfToken ?? ""),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["jioc-oversight"] }),
+  });
 
   return (
     <div className="workspace-page oversight-page">
       <section className="overview-hero" aria-labelledby="oversight-title">
         <div>
           <h1 id="oversight-title">JIOC Oversight</h1>
-          <p>Read-only task ownership, team capacity and analyst workload across the workflow.</p>
+          <p>Monitor agent routing, team capacity and workload, and intervene when required.</p>
         </div>
         <div className="classification-note">MOCK DATA ONLY</div>
       </section>
@@ -30,7 +47,13 @@ export default function JiocOversightPage() {
             <CountGroup label="By route" counts={oversight.countsByRoute} />
           </section>
           <OversightTeams teams={oversight.teams} />
-          <OversightTasks tasks={oversight.tasks} />
+          <OversightTasks
+            isPending={intervention.isPending}
+            onIntervene={(ticketId, action, reason) =>
+              intervention.mutate({ action, reason, ticketId })
+            }
+            tasks={oversight.tasks}
+          />
           <OversightAnalysts analysts={oversight.analysts} />
         </>
       ) : null}
@@ -94,10 +117,27 @@ function OversightTeams({ teams }: { teams: JiocOversight["teams"] }) {
   );
 }
 
-function OversightTasks({ tasks }: { tasks: JiocOversight["tasks"] }) {
+function OversightTasks({
+  isPending,
+  onIntervene,
+  tasks,
+}: {
+  isPending: boolean;
+  onIntervene: (
+    ticketId: string,
+    action: "hold" | "resume" | "send_to_review",
+    reason: string,
+  ) => void;
+  tasks: JiocOversight["tasks"];
+}) {
   return (
     <section className="surface oversight-section" aria-labelledby="oversight-tasks-title">
       <h2 id="oversight-tasks-title">Task ownership</h2>
+      <p className="workspace-alert" role="note">
+        Routing critic results are advisory evidence only. The shadow-only critic cannot route or
+        change workflow. JIOC managers monitor its challenges and intervene through the separate
+        controls below.
+      </p>
       {tasks.length === 0 ? (
         <p>No active tasks.</p>
       ) : (
@@ -111,6 +151,9 @@ function OversightTasks({ tasks }: { tasks: JiocOversight["tasks"] }) {
                 <th>Team</th>
                 <th>Analysts</th>
                 <th>Work packages</th>
+                <th>Agent decision</th>
+                <th>Routing critic</th>
+                <th>Intervention</th>
               </tr>
             </thead>
             <tbody>
@@ -124,6 +167,23 @@ function OversightTasks({ tasks }: { tasks: JiocOversight["tasks"] }) {
                   <td>
                     {task.completedWorkPackageCount} of {task.workPackageCount}
                   </td>
+                  <td>
+                    {task.agentDisposition
+                      ? `${task.agentDisposition.replaceAll("_", " ")} (${Math.round(
+                          (task.agentConfidence ?? 0) * 100,
+                        )}%)`
+                      : "Legacy or pending"}
+                  </td>
+                  <td>
+                    <RoutingCriticStatus task={task} />
+                  </td>
+                  <td>
+                    <TaskInterventionControls
+                      disabled={isPending}
+                      onIntervene={(action, reason) => onIntervene(task.ticketId, action, reason)}
+                      state={task.state}
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -131,6 +191,64 @@ function OversightTasks({ tasks }: { tasks: JiocOversight["tasks"] }) {
         </div>
       )}
     </section>
+  );
+}
+
+function TaskInterventionControls({
+  disabled,
+  onIntervene,
+  state,
+}: {
+  disabled: boolean;
+  onIntervene: (action: "hold" | "resume" | "send_to_review", reason: string) => void;
+  state: string;
+}) {
+  const [reason, setReason] = useState("");
+  const ready = reason.trim().length >= 3 && !disabled;
+  const onHold = state === "JIOC_INTERVENTION_HOLD";
+  const canReview = ["JIOC_ROUTING_PENDING", "COLLECT_CHOICE", "ANALYST_ASSIGNMENT"].includes(
+    state,
+  );
+  const canHold = [
+    "JIOC_ROUTING_PENDING",
+    "JIOC_REVIEW",
+    "COLLECT_CHOICE",
+    "ANALYST_ASSIGNMENT",
+    "ANALYST_IN_PROGRESS",
+    "MANAGER_APPROVAL",
+    "QC_REVIEW",
+    "REWORK_REQUIRED",
+  ].includes(state);
+  if (!onHold && !canReview && !canHold) return <span>No action available</span>;
+  return (
+    <div className="oversight-intervention">
+      <input
+        aria-label="Intervention reason"
+        onChange={(event) => setReason(event.target.value)}
+        placeholder="Reason required"
+        value={reason}
+      />
+      {onHold ? (
+        <button disabled={!ready} onClick={() => onIntervene("resume", reason)} type="button">
+          Resume
+        </button>
+      ) : (
+        <>
+          <button disabled={!ready} onClick={() => onIntervene("hold", reason)} type="button">
+            Hold
+          </button>
+          {canReview ? (
+            <button
+              disabled={!ready}
+              onClick={() => onIntervene("send_to_review", reason)}
+              type="button"
+            >
+              Send to review
+            </button>
+          ) : null}
+        </>
+      )}
+    </div>
   );
 }
 

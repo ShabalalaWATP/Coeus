@@ -1,42 +1,8 @@
 import { apiRequest, apiRequestJson, pathSegment } from "./client";
+import type { components } from "./generated/openapi";
 
-type StoreAsset = {
-  id: string;
-  name: string;
-  assetType: string;
-  mimeType: string;
-  sizeBytes: number;
-  sha256: string;
-  previewKind: string;
-};
-
-export type StoreProduct = {
-  id: string;
-  reference: string;
-  title: string;
-  summary: string;
-  description: string;
-  productType: string;
-  sourceType: string;
-  ownerTeam: string;
-  areaOrRegion: string;
-  classificationLevel: number;
-  releasability: string[];
-  handlingCaveats: string[];
-  tags: string[];
-  semanticLabels: string[];
-  acgIds: string[];
-  status: string;
-  timePeriodStart: string | null;
-  timePeriodEnd: string | null;
-  geojsonRef: string | null;
-  assets: StoreAsset[];
-};
-
-type StoreSearchProduct = StoreProduct & {
-  matchScore: number;
-  matchReasons: string[];
-};
+export type StoreAsset = components["schemas"]["StoreAssetResponse"];
+export type StoreProduct = components["schemas"]["StoreProductResponse"];
 
 export type StoreSearchFilters = {
   query?: string;
@@ -52,50 +18,9 @@ export type StoreSearchFilters = {
   pageSize?: number;
 };
 
-export type StoreSearchResponse = {
-  products: StoreSearchProduct[];
-  total: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-  facets: {
-    productTypes: string[];
-    regions: string[];
-    tags: string[];
-  };
-};
-
-export type StoreProductCreateInput = {
-  title: string;
-  summary: string;
-  description: string;
-  productType: string;
-  sourceType: string;
-  ownerTeam: string;
-  areaOrRegion: string;
-  classificationLevel: number;
-  releasability: string[];
-  handlingCaveats: string[];
-  tags: string[];
-  semanticLabels?: string[];
-  acgIds: string[];
-  status: string;
-  geojsonRef?: string | null;
-  boundingBox?: { west: number; south: number; east: number; north: number } | null;
-  assets: Array<{
-    name: string;
-    assetType: string;
-    mimeType: string;
-    sizeBytes: number;
-    sha256: string;
-  }>;
-};
-
-export type AssetAccessGrant = {
-  assetId: string;
-  downloadToken: string;
-  expiresInSeconds: number;
-};
+export type StoreSearchResponse = components["schemas"]["StoreSearchResponse"];
+export type StoreProductCreateInput = components["schemas"]["StoreProductCreateRequest"];
+export type AssetAccessGrant = components["schemas"]["AssetAccessResponse"];
 
 export type MetadataSuggestionInput = {
   title: string;
@@ -212,6 +137,22 @@ export async function downloadAssetBlob(
     `/api/v1/store/products/${pathSegment(productId)}/assets/${pathSegment(assetId)}/download`,
     {
       // The response varies with the token header, so bypass the HTTP cache.
+      cache: "no-store",
+      headers: { "X-Asset-Token": token },
+      method: "GET",
+    },
+  );
+  return response.blob();
+}
+
+export async function previewStoreAssetBlob(
+  productId: string,
+  assetId: string,
+  token: string,
+): Promise<Blob> {
+  const response = await apiRequest(
+    `/api/v1/store/products/${pathSegment(productId)}/assets/${pathSegment(assetId)}/preview`,
+    {
       cache: "no-store",
       headers: { "X-Asset-Token": token },
       method: "GET",

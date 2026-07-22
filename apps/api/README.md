@@ -6,6 +6,7 @@ FastAPI service for Coeus.
 
 ```powershell
 uv sync --all-groups
+$env:COEUS_TEST_DATABASE_URL = "postgresql+psycopg://coeus:coeus-local@127.0.0.1:5432/coeus"
 uv run pytest --cov-report=json:coverage.json
 uv run python ../../scripts/check_backend_coverage.py coverage.json
 uv run ruff format --check src tests
@@ -20,7 +21,8 @@ distributed-state migration gates pass.
 
 ## Real PostgreSQL Tests
 
-The migration and concurrency harness creates and drops uniquely named databases.
+The full coverage command above and the focused migration/concurrency harness
+create and drop uniquely named databases.
 Point it only at a disposable PostgreSQL server where the configured user may
 create databases:
 

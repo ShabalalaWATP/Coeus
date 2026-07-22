@@ -29,11 +29,16 @@ test("starts a WebRTC call, captures both transcripts and cleans up on stop", as
   const stopTrack = vi.fn();
   stubBrowser(stopTrack);
   stubVoiceSessionFetch();
-  renderControl(onTranscript);
+  renderControl(onTranscript, false, "ticket-123");
 
   await userEvent.click(await screen.findByRole("button", { name: "Talk with Istari" }));
   await waitFor(() =>
     expect(latestPeer?.remoteDescription).toEqual({ type: "answer", sdp: "v=0\r\nm=audio answer" }),
+  );
+  expect(fetch).toHaveBeenNthCalledWith(
+    2,
+    "http://127.0.0.1:8001/api/v1/voice/session?ticketId=ticket-123",
+    expect.objectContaining({ method: "POST" }),
   );
   act(() => {
     latestPeer?.channel.onmessage?.({
@@ -211,10 +216,12 @@ test("preserves in-flight transcript deltas when the user stops", async () => {
   });
 
   await userEvent.click(screen.getByRole("button", { name: "Stop voice" }));
-  await waitFor(() =>
-    expect(onTranscript).toHaveBeenCalledWith(
-      "Voice drafting transcript:\nYou: Need a China cyber update\nIstari: Which timeframe?",
-    ),
+  await waitFor(
+    () =>
+      expect(onTranscript).toHaveBeenCalledWith(
+        "Voice drafting transcript:\nYou: Need a China cyber update\nIstari: Which timeframe?",
+      ),
+    { timeout: 2_000 },
   );
   expect(latestPeer?.channel.send).toHaveBeenCalled();
 });
@@ -251,11 +258,11 @@ const voiceState = {
   apiKeyConfigured: true,
 };
 
-function renderControl(onTranscript: (value: string) => void, strict = false) {
+function renderControl(onTranscript: (value: string) => void, strict = false, ticketId?: string) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const control = (
     <QueryClientProvider client={queryClient}>
-      <VoiceCallControls csrfToken="csrf" onTranscript={onTranscript} />
+      <VoiceCallControls csrfToken="csrf" onTranscript={onTranscript} ticketId={ticketId} />
     </QueryClientProvider>
   );
   return render(strict ? <StrictMode>{control}</StrictMode> : control);

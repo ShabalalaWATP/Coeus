@@ -3,7 +3,6 @@ from uuid import uuid4
 
 from coeus.domain.access import ProductStatus
 from coeus.domain.enums import TicketState
-from coeus.domain.events import DomainEvent
 from coeus.domain.state_machine import can_transition
 from coeus.domain.store import StoreProduct, StoreVisibilityScope, product_in_scope
 from store_projection_helpers import seed_product
@@ -13,10 +12,24 @@ def test_ticket_state_machine_allows_defined_transition() -> None:
     assert can_transition(TicketState.DRAFT_INTAKE, TicketState.RFI_SEARCHING) is True
 
 
-def test_no_match_state_only_exits_to_jioc_review_or_cancelled() -> None:
+def test_legacy_no_match_state_uses_unified_customer_decision_exits() -> None:
     allowed = {target for target in TicketState if can_transition(TicketState.RFI_NO_MATCH, target)}
 
-    assert allowed == {TicketState.JIOC_REVIEW, TicketState.CANCELLED}
+    assert allowed == {TicketState.JIOC_ROUTING_PENDING, TicketState.CLOSED_UNANSWERED}
+
+
+def test_incomplete_search_cannot_advance_to_routing() -> None:
+    allowed = {
+        target
+        for target in TicketState
+        if can_transition(TicketState.RFI_SEARCH_INCOMPLETE, target)
+    }
+
+    assert allowed == {
+        TicketState.RFI_MATCH_OFFERED,
+        TicketState.NEW_TASKING_CONSENT,
+        TicketState.CANCELLED,
+    }
 
 
 def test_legacy_state_values_decode_to_jioc_review() -> None:
@@ -84,13 +97,3 @@ def test_product_in_scope_hides_drafts_unless_included() -> None:
 
     assert product_in_scope(draft, without_drafts) is False
     assert product_in_scope(draft, with_drafts) is True
-
-
-def test_domain_event_factory_sets_event_fields() -> None:
-    aggregate_id = uuid4()
-
-    event = DomainEvent.create("ticket_created", aggregate_id)
-
-    assert event.event_type == "ticket_created"
-    assert event.aggregate_id == aggregate_id
-    assert event.occurred_at.tzinfo is not None

@@ -1,4 +1,5 @@
 from dataclasses import replace
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import Any, Never, cast
 from uuid import uuid4
@@ -159,6 +160,8 @@ def test_calendar_audit_failures_restore_the_previous_repository_state(
     repository = app.state.team_repository
     manager = _user(app, "rfa.manager@example.test")
     team = _rfa_team(app)
+    first_date = (datetime.now(UTC).date() + timedelta(days=1)).isoformat()
+    second_date = (datetime.now(UTC).date() + timedelta(days=2)).isoformat()
 
     monkeypatch.setattr(calendar._audit_log, "record", _fail_audit)
     with pytest.raises(RuntimeError, match="audit unavailable"):
@@ -166,7 +169,7 @@ def test_calendar_audit_failures_restore_the_previous_repository_state(
             manager,
             team,
             manager.user_id,
-            "2026-07-20",
+            first_date,
             CalendarStatus.LEAVE,
             "Leave",
         )
@@ -177,7 +180,7 @@ def test_calendar_audit_failures_restore_the_previous_repository_state(
         manager,
         team,
         manager.user_id,
-        "2026-07-21",
+        second_date,
         CalendarStatus.ON_TASK,
         "Task",
     )

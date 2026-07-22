@@ -1,6 +1,5 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 
-import { CountUp } from "./CountUp";
 import { ParticleField } from "./ParticleField";
 import { SpotlightCard } from "./SpotlightCard";
 
@@ -56,44 +55,6 @@ test("spotlight card renders without an extra class", () => {
   );
 
   expect(screen.getByText("Plain").parentElement).toHaveClass("spotlight-card");
-});
-
-test("count up renders instantly without matchMedia and when motion is reduced", () => {
-  render(<CountUp value={7} />);
-  expect(screen.getByText("7")).toBeInTheDocument();
-
-  stubMatchMedia(true);
-  render(<CountUp value={12} />);
-  expect(screen.getByText("12")).toBeInTheDocument();
-});
-
-test("count up eases to the final value frame by frame", () => {
-  stubMatchMedia(false);
-  const frames = stubAnimationFrames();
-  vi.spyOn(performance, "now").mockReturnValue(0);
-
-  render(<CountUp durationMs={100} value={100} />);
-  expect(screen.getByText("0")).toBeInTheDocument();
-
-  frames.run(50);
-  const midway = Number(screen.getByText(/\d+/).textContent);
-  expect(midway).toBeGreaterThan(0);
-  expect(midway).toBeLessThan(100);
-
-  frames.run(200);
-  expect(screen.getByText("100")).toBeInTheDocument();
-  expect(frames.pending).toBe(0);
-});
-
-test("count up cancels its animation frame on unmount", () => {
-  stubMatchMedia(false);
-  const frames = stubAnimationFrames();
-  vi.spyOn(performance, "now").mockReturnValue(0);
-
-  const { unmount } = render(<CountUp value={40} />);
-  unmount();
-
-  expect(frames.cancelled.length).toBe(1);
 });
 
 test("particle field stays inert without matchMedia support", () => {

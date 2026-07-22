@@ -15,7 +15,7 @@ from coeus.domain.store import (
     StoreSearchHit,
     StoreSearchResult,
 )
-from coeus.services.rfi_ranking import tokenize
+from coeus.domain.store_ranking import tokenize
 from coeus.services.store_semantics import product_semantic_text, semantic_label_reasons
 
 STORE_LEXICAL_SCORE_FLOOR = 1e-12

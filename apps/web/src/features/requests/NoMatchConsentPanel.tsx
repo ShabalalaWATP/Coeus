@@ -10,9 +10,12 @@ export function NoMatchConsentPanel({ isPending, onConsent }: NoMatchConsentPane
     <section className="surface no-match-panel" aria-labelledby="no-match-title">
       <div className="section-heading access-heading">
         <HelpCircle aria-hidden="true" size={20} />
-        <h2 id="no-match-title">No existing product matches</h2>
+        <h2 id="no-match-title">No accepted existing answer</h2>
       </div>
-      <p>No existing product matches your request. Task this as a new request?</p>
+      <p>
+        The Intelligence Store search did not answer your question. Do you want Istari to create new
+        tasking?
+      </p>
       <div className="no-match-panel__actions">
         <button disabled={isPending} onClick={() => onConsent(true)} type="button">
           <CheckCircle2 aria-hidden="true" size={18} />
@@ -25,7 +28,7 @@ export function NoMatchConsentPanel({ isPending, onConsent }: NoMatchConsentPane
           type="button"
         >
           <XCircle aria-hidden="true" size={18} />
-          No, cancel request
+          No, close unanswered
         </button>
       </div>
     </section>

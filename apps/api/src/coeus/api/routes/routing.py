@@ -22,12 +22,14 @@ from coeus.api.presenters.routing import (
     stats_response,
     ticket_response,
 )
+from coeus.api.workflow_dependencies import get_jioc_intervention_service
 from coeus.domain.auth import AuthenticatedSession
 from coeus.domain.tickets import RoutingRoute, TicketRecord
 from coeus.repositories.teams import TeamRepository
 from coeus.schemas.analyst import AnalystTaskResponse
 from coeus.schemas.routing import (
     CapabilityCatalogueResponse,
+    JiocInterventionRequest,
     OversightAnalystResponse,
     OversightCountResponse,
     OversightTaskResponse,
@@ -42,6 +44,7 @@ from coeus.schemas.routing import (
 )
 from coeus.services.access import AccessServices
 from coeus.services.analyst_workflow import AnalystWorkflowService
+from coeus.services.jioc_intervention import JiocInterventionService
 from coeus.services.manager_approval import ManagerApprovalService
 from coeus.services.manager_queue import ManagerQueueService
 from coeus.services.routing import RoutingService
@@ -52,6 +55,21 @@ from coeus.services.tickets import TicketServices
 router = APIRouter(prefix="/routing", tags=["routing"])
 
 QUEUE_PAGE_SIZE = 25
+
+
+@router.post("/{ticket_id}/intervene", response_model=RoutingTicketResponse)
+async def intervene_in_route(
+    ticket_id: UUID,
+    payload: JiocInterventionRequest,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    service: Annotated[JiocInterventionService, Depends(get_jioc_intervention_service)],
+) -> RoutingTicketResponse:
+    action = {
+        "hold": service.hold,
+        "resume": service.resume,
+        "send_to_review": service.send_to_review,
+    }[payload.action]
+    return ticket_response(action(authenticated.user, ticket_id, payload.reason))
 
 
 @router.get("/oversight", response_model=RoutingOversightResponse)
@@ -103,6 +121,12 @@ async def routing_oversight(
                 analyst_count=item.analyst_count,
                 work_package_count=item.work_package_count,
                 completed_work_package_count=item.completed_work_package_count,
+                agent_disposition=item.agent_disposition,
+                agent_confidence=item.agent_confidence,
+                critic_verdict=item.critic_verdict,
+                critic_outcome=item.critic_outcome,
+                critic_challenge_count=item.critic_challenge_count,
+                critic_missing_evidence_count=item.critic_missing_evidence_count,
             )
             for item in view.tasks
         ],

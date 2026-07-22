@@ -1,16 +1,22 @@
-import { ArrowUpRight, PackageCheck, PackageOpen, UsersRound } from "lucide-react";
+import { ArrowUpRight, PackageOpen, UsersRound } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { EmptyState } from "../../components/ui/PageState";
 import { StatusPill } from "../../components/ui/StatusPill";
 import type { Ticket, TicketSummary } from "../../lib/api-client/tickets";
 import { isAwaitingCustomerAction, ticketMetrics } from "./ticket-collection";
+import { ProductOutcomeDecisionPanel } from "./ProductOutcomeDecisionPanel";
 
 type RequestDashboardProps = {
   canCreate: boolean;
   currentUserId: string;
-  isConfirming: boolean;
-  onConfirmDelivery: (ticketId: string) => void;
+  isDecidingOutcome: boolean;
+  onProductDecision: (
+    ticketId: string,
+    meetsRequirement: boolean,
+    reason: string,
+    unmetCriteria: string[],
+  ) => void;
   onOpen: (ticketId: string) => void;
   tickets: Array<Ticket | TicketSummary>;
 };
@@ -18,8 +24,8 @@ type RequestDashboardProps = {
 export function RequestDashboard({
   canCreate,
   currentUserId,
-  isConfirming,
-  onConfirmDelivery,
+  isDecidingOutcome,
+  onProductDecision,
   onOpen,
   tickets,
 }: RequestDashboardProps) {
@@ -73,7 +79,8 @@ export function RequestDashboard({
         ) : null}
         <div className="request-register">
           {tickets.map((ticket) => {
-            const requiresAction = isAwaitingCustomerAction(ticket.state);
+            const requiresAction =
+              ticket.customerStatus?.actionRequired ?? isAwaitingCustomerAction(ticket.state);
             return (
               <article
                 className={
@@ -92,6 +99,7 @@ export function RequestDashboard({
                   <strong>{ticketTitle(ticket) ?? "Draft request"}</strong>
                   <div className="request-register-row__meta">
                     <StatusPill state={ticket.state} />
+                    <span>{ticket.customerStatus?.label}</span>
                     <span>{ticketPriority(ticket) ?? "Routine priority"}</span>
                     <time dateTime={ticket.updatedAt}>Updated {formatDate(ticket.updatedAt)}</time>
                     {collaboratorCount(ticket) > 0 ? (
@@ -101,6 +109,11 @@ export function RequestDashboard({
                       </span>
                     ) : null}
                   </div>
+                  {ticket.customerStatus ? (
+                    <small>
+                      {ticket.customerStatus.explanation} {formatEstimate(ticket.customerStatus)}
+                    </small>
+                  ) : null}
                   <span className="request-register-row__open">
                     Open
                     <ArrowUpRight aria-hidden="true" size={16} />
@@ -116,17 +129,23 @@ export function RequestDashboard({
                     View released product
                   </Link>
                 ) : null}
+                {ticket.customerStatus?.canonicalTicketId ? (
+                  <Link
+                    className="request-register-row__action"
+                    to={`/app/requests/${encodeURIComponent(ticket.customerStatus.canonicalTicketId)}`}
+                  >
+                    <ArrowUpRight aria-hidden="true" size={15} />
+                    Track joined request
+                  </Link>
+                ) : null}
                 {ticket.state === "DISSEMINATION_READY" &&
                 ticket.requesterUserId === currentUserId ? (
-                  <button
-                    className="request-register-row__action"
-                    disabled={isConfirming}
-                    onClick={() => onConfirmDelivery(ticket.id)}
-                    type="button"
-                  >
-                    <PackageCheck aria-hidden="true" size={15} />
-                    Confirm receipt and close
-                  </button>
+                  <ProductOutcomeDecisionPanel
+                    disabled={isDecidingOutcome}
+                    onDecide={(meetsRequirement, reason, unmetCriteria) =>
+                      onProductDecision(ticket.id, meetsRequirement, reason, unmetCriteria)
+                    }
+                  />
                 ) : null}
               </article>
             );
@@ -159,4 +178,12 @@ function formatDate(value: string) {
     month: "short",
     year: "numeric",
   }).format(new Date(value));
+}
+
+function formatEstimate(status: NonNullable<Ticket["customerStatus"]>) {
+  const estimate = status.estimate;
+  if (!estimate) return "";
+  if (estimate.status === "paused") return "Estimate paused pending action.";
+  if (!estimate.likely || !estimate.latest) return "Estimate available after routing.";
+  return `Provisional delivery ${formatDate(estimate.likely)} to ${formatDate(estimate.latest)}.`;
 }

@@ -3,6 +3,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
+from coeus.api.search_composition import build_search_index_repository
 from coeus.core.config import Settings
 from coeus.domain.search_index import (
     SearchAssetIndexState,
@@ -18,7 +19,6 @@ from coeus.persistence.search_index_repository import (
     _group_rows,
     _vector,
 )
-from coeus.services.search_composition import build_search_index_repository
 from coeus.services.search_configuration import SEARCH_EMBEDDING_DIMENSIONS
 
 VECTOR = (0.0,) * SEARCH_EMBEDDING_DIMENSIONS

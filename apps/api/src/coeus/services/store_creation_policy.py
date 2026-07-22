@@ -7,9 +7,14 @@ from coeus.domain.auth import UserAccount
 
 
 def require_product_creation_status(actor: UserAccount, status: ProductStatus) -> None:
-    if Permission.PRODUCT_CREATE_EXISTING not in actor.permissions:
-        raise AppError(403, "forbidden", "Permission denied.")
+    require_product_creation_permission(actor)
     if status not in {ProductStatus.DRAFT, ProductStatus.PUBLISHED}:
         raise AppError(409, "product_status_invalid", "Product status is not supported.")
     if status == ProductStatus.PUBLISHED and Permission.PRODUCT_PUBLISH not in actor.permissions:
+        raise AppError(403, "forbidden", "Permission denied.")
+
+
+def require_product_creation_permission(actor: UserAccount) -> None:
+    """Fail before a Store upload consumes multipart parsing or staging resources."""
+    if Permission.PRODUCT_CREATE_EXISTING not in actor.permissions:
         raise AppError(403, "forbidden", "Permission denied.")

@@ -42,9 +42,6 @@ class RegistrationService:
     def submit(self, username: str, display_name: str, justification: str, password: str) -> None:
         """Record an access request. Responses stay generic to avoid account enumeration."""
         normalised = username.strip()
-        if self._users.get_by_username(normalised) is not None:
-            self._audit_log.record("registration_existing_user", None)
-            return
         try:
             reservation = self._registrations.reserve_pending_slot(
                 normalised, self._settings.registration_max_pending
@@ -54,16 +51,23 @@ class RegistrationService:
             raise AppError(
                 429, "registration_throttled", "Too many pending requests. Try later."
             ) from exc
-        if reservation is None:
-            self._audit_log.record("registration_duplicate", None)
-            return
         try:
+            password_hash = self._password_hasher.hash(password)
+            if self._users.get_by_username(normalised) is not None:
+                if reservation is not None:
+                    self._registrations.release_reservation(reservation)
+                    reservation = None
+                self._audit_log.record("registration_existing_user", None)
+                return
+            if reservation is None:
+                self._audit_log.record("registration_duplicate", None)
+                return
             registration = RegistrationRequest(
                 registration_id=uuid4(),
                 username=normalised,
                 display_name=display_name.strip(),
                 justification=justification.strip(),
-                password_hash=self._password_hasher.hash(password),
+                password_hash=password_hash,
                 status=RegistrationStatus.PENDING,
                 created_at=datetime.now(UTC),
                 decided_at=None,
@@ -71,7 +75,8 @@ class RegistrationService:
             )
             self._registrations.commit_reserved(reservation, registration)
         except Exception:
-            self._registrations.release_reservation(reservation)
+            if reservation is not None:
+                self._registrations.release_reservation(reservation)
             raise
         try:
             self._audit_log.record(

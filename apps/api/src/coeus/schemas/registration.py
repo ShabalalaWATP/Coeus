@@ -110,6 +110,6 @@ class AiModelStateResponse(BaseModel):
     api_key_configured: bool = Field(serialization_alias="apiKeyConfigured")
     embedding_provider: str = Field(serialization_alias="embeddingProvider")
     embedded_product_count: int = Field(serialization_alias="embeddedProductCount")
-    changed_by: str | None = Field(default=None, serialization_alias="changedBy")
-    changed_at: datetime | None = Field(default=None, serialization_alias="changedAt")
-    providers: list[AiProviderStateResponse] = Field(default_factory=list)
+    changed_by: str | None = Field(serialization_alias="changedBy")
+    changed_at: datetime | None = Field(serialization_alias="changedAt")
+    providers: list[AiProviderStateResponse]

@@ -4,8 +4,9 @@ import userEvent from "@testing-library/user-event";
 import { SearchEmbeddingsPanel } from "./SearchEmbeddingsPanel";
 import { resetQueryClientForTests } from "../../app/query-client";
 import { renderWithProviders } from "../../test/test-utils";
+import type { SearchEmbeddingState } from "../../lib/api-client/admin";
 
-const baseState = {
+const baseState: SearchEmbeddingState = {
   provider: "mock",
   model: "token-hash-v2",
   dimensions: 1536,
@@ -24,6 +25,9 @@ const baseState = {
   changedAt: null,
   lastIndexedAt: null,
   degradedReason: null,
+  releaseId: "mock:token-hash-v2:1536",
+  evaluationStatus: "approved" as const,
+  definitiveNoMatchEnabled: true,
 };
 
 beforeEach(() => resetQueryClientForTests());
@@ -55,6 +59,9 @@ test("requires explicit egress consent before selecting Gemini", async () => {
         provider: "gemini_api",
         model: "gemini-embedding-2",
         indexGeneration: 2,
+        releaseId: "gemini_api:gemini-embedding-2:1536",
+        evaluationStatus: "required" as const,
+        definitiveNoMatchEnabled: false,
       };
     }
     return Promise.resolve({
@@ -69,6 +76,7 @@ test("requires explicit egress consent before selecting Gemini", async () => {
   await user.type(keyInput, "search-key-value");
   await user.click(screen.getByRole("button", { name: /Save search key/ }));
   await waitFor(() => expect(screen.getByLabelText("Embedding provider")).toBeEnabled());
+  expect(screen.getByText(/dedicated Gemini embeddings key is saved/i)).toBeVisible();
   await user.selectOptions(screen.getByLabelText("Embedding provider"), "gemini_api");
 
   const save = screen.getByRole("button", { name: /Save retrieval configuration/ });
@@ -141,6 +149,75 @@ test("tests the active provider and locks an in-progress rebuild", async () => {
   expect(await screen.findByRole("button", { name: "Re-indexing…" })).toBeDisabled();
   await user.click(screen.getByRole("button", { name: "Test connection" }));
   expect(await screen.findByRole("status")).toHaveTextContent("Embedding connection succeeded.");
+});
+
+test("scopes a successful search test to the saved provider and model", async () => {
+  const fetchMock = vi.fn((url: string) =>
+    Promise.resolve({
+      ok: true,
+      json: () =>
+        Promise.resolve(
+          url.endsWith("/test")
+            ? {
+                ok: true,
+                provider: "mock",
+                model: "token-hash-v2",
+                message: "Embedding connection succeeded.",
+              }
+            : baseState,
+        ),
+    }),
+  );
+  vi.stubGlobal("fetch", fetchMock);
+  renderWithProviders(<SearchEmbeddingsPanel csrfToken="csrf" />, "/admin/overview");
+
+  await userEvent.click(await screen.findByRole("button", { name: "Test connection" }));
+  expect(await screen.findByText("Tested token-hash-v2")).toBeVisible();
+  await userEvent.selectOptions(screen.getByLabelText("Embedding provider"), "gemini_api");
+
+  expect(screen.queryByText(/Connection OK/)).not.toBeInTheDocument();
+  expect(screen.queryByText("Tested token-hash-v2")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Test connection" })).toBeDisabled();
+  expect(screen.getByText(/Save or clear draft changes before testing/)).toBeVisible();
+});
+
+test("reports a failed embedding connection separately from saved-key state", async () => {
+  const fetchMock = vi.fn((url: string) =>
+    Promise.resolve({
+      ok: true,
+      json: () =>
+        Promise.resolve(
+          url.endsWith("/test")
+            ? { ok: false, message: "Search embedding connection is unavailable." }
+            : { ...baseState, provider: "gemini_api", apiKeyConfigured: true },
+        ),
+    }),
+  );
+  vi.stubGlobal("fetch", fetchMock);
+  renderWithProviders(<SearchEmbeddingsPanel csrfToken="csrf" />, "/admin/overview");
+
+  await userEvent.click(await screen.findByRole("button", { name: "Test connection" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("Connection failed");
+  expect(screen.getByText(/dedicated Gemini embeddings key is saved/i)).toBeVisible();
+});
+
+test("shows a bounded error when the search connection test cannot run", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(baseState) })
+      .mockRejectedValueOnce(new Error("provider detail")),
+  );
+  renderWithProviders(<SearchEmbeddingsPanel csrfToken="csrf" />, "/admin/overview");
+
+  await userEvent.click(await screen.findByRole("button", { name: "Test connection" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "The search connection test could not be run.",
+  );
+  expect(screen.queryByText("provider detail")).not.toBeInTheDocument();
 });
 
 test("uses provider model fallback and reports rejected mutations", async () => {

@@ -23,7 +23,7 @@ type RealtimeEvent = {
   type?: string;
 };
 
-export function collectTranscript(raw: unknown, state: TranscriptState) {
+export function collectTranscript(raw: unknown, state: TranscriptState): string | undefined {
   if (typeof raw !== "string") return;
   try {
     const event = JSON.parse(raw) as RealtimeEvent;
@@ -40,8 +40,10 @@ export function collectTranscript(raw: unknown, state: TranscriptState) {
     } else if (event.type === "response.done") {
       collectCompletedResponse(state, event.response?.output ?? []);
     }
+    return event.type;
   } catch {
     // Ignore non-JSON WebRTC control messages.
+    return undefined;
   }
 }
 

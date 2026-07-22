@@ -1,10 +1,12 @@
 import hashlib
 import hmac
 from dataclasses import dataclass
+from typing import Protocol
 from uuid import UUID
 
 from coeus.core.config import Settings
 from coeus.core.errors import AppError
+from coeus.domain.tickets import IntakeDetails
 from coeus.integrations.openai_realtime import create_realtime_call
 from coeus.services.audit import AuditLog
 from coeus.services.realtime_intake_prompt import build_realtime_intake_instructions
@@ -12,6 +14,19 @@ from coeus.services.voice_admission import VoiceSessionAdmission
 from coeus.services.voice_models import VoiceModelService
 
 MAX_SDP_BYTES = 64 * 1024
+
+
+class RealtimeCallCreator(Protocol):
+    def __call__(
+        self,
+        *,
+        api_key: str,
+        instructions: str,
+        model: str,
+        voice: str,
+        sdp: str,
+        safety_identifier: str,
+    ) -> str: ...
 
 
 @dataclass(frozen=True)
@@ -27,22 +42,26 @@ class VoiceSessionService:
         voice_models: VoiceModelService,
         admission: VoiceSessionAdmission,
         audit_log: AuditLog,
+        call_creator: RealtimeCallCreator = create_realtime_call,
     ) -> None:
         self._settings = settings
         self._voice_models = voice_models
         self._admission = admission
         self._audit_log = audit_log
+        self._call_creator = call_creator
 
-    def create(self, user_id: UUID, sdp: str) -> VoiceSessionStart:
+    def create(
+        self, user_id: UUID, sdp: str, intake: IntakeDetails | None = None
+    ) -> VoiceSessionStart:
         state = self._voice_models.require_enabled()
         api_key = self._voice_models.api_key()
         if not api_key:
             raise AppError(409, "voice_provider_not_configured", "OpenAI voice is not configured.")
         token = self._admission.acquire(user_id)
         try:
-            answer = create_realtime_call(
+            answer = self._call_creator(
                 api_key=api_key,
-                instructions=build_realtime_intake_instructions(),
+                instructions=build_realtime_intake_instructions(intake),
                 model=state.model,
                 voice=self._settings.openai_realtime_voice,
                 sdp=sdp,

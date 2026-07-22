@@ -5,9 +5,11 @@ import pytest
 
 from coeus.core.config import Settings
 from coeus.core.errors import AppError
+from coeus.domain.tickets import IntakeDetails
 from coeus.persistence.state_store import MemoryStateStore
 from coeus.services.audit import AuditLog
 from coeus.services.integration_secrets import integration_secret_namespace
+from coeus.services.realtime_intake_prompt import build_realtime_intake_instructions
 from coeus.services.voice_admission import VoiceSessionAdmission
 from coeus.services.voice_models import (
     VOICE_CREDENTIAL_NAME,
@@ -39,6 +41,43 @@ class UnusedAdmission:
         raise AssertionError("admission should not be reached")
 
 
+def test_realtime_prompt_uses_bounded_application_context_and_next_action() -> None:
+    intake = IntakeDetails(
+        description="Synthetic vessel activity request",
+        operational_question="What changed?",
+        area_or_region="Synthetic Baltic ports",
+        missing_information=("time_period", "priority", "requesting_unit"),
+    )
+
+    instructions = build_realtime_intake_instructions(intake)
+
+    assert '"operational_question"' in instructions
+    assert "What changed?" not in instructions
+    assert '"missing_fields": ["time_period", "priority", "requesting_unit"]' in instructions
+    assert "What time period should this cover?" in instructions
+    assert (
+        "Could you tell me a little more about what you need"
+        not in instructions.split("# CONVERSATION RULES", 1)[0]
+    )
+    assert "no tools or authority" in instructions
+
+
+def test_realtime_prompt_does_not_send_raw_or_unbounded_ticket_context() -> None:
+    instructions = build_realtime_intake_instructions(
+        IntakeDetails(
+            description="private description that is not provider context",
+            operational_question="Q" * 500,
+            known_context="raw chat history must not be sent",
+            missing_information=("area_or_region",),
+        )
+    )
+
+    assert "private description" not in instructions
+    assert "raw chat history" not in instructions
+    assert "Q" * 100 not in instructions
+    assert '"operational_question"' in instructions
+
+
 def test_voice_configuration_restores_valid_state_and_rejects_disabled_use() -> None:
     store = MemoryStateStore()
     store.save(VOICE_MODEL_NAMESPACE, {"model": "voice-b", "enabled": True})
@@ -68,11 +107,47 @@ def test_voice_configuration_migrates_an_unavailable_persisted_model() -> None:
 
     service = VoiceModelService(Settings(environment="test"), AuditLog(), store)
 
-    assert service.state().model == "gpt-realtime-mini"
+    assert service.state().model == "gpt-realtime-2.1"
     assert store.load(VOICE_MODEL_NAMESPACE) == {
-        "model": "gpt-realtime-mini",
+        "model": "gpt-realtime-2.1",
         "enabled": True,
     }
+
+
+def test_voice_connection_test_distinguishes_saved_from_verified() -> None:
+    captured: dict[str, str] = {}
+
+    def succeed(**kwargs: str) -> None:
+        captured.update(kwargs)
+
+    service = VoiceModelService(
+        Settings(environment="test"),
+        AuditLog(),
+        MemoryStateStore(),
+        connection_tester=succeed,
+    )
+    missing = service.test_connection()
+    assert missing.ok is False
+    assert missing.message == "No dedicated Voice API key is saved."
+
+    service.configure_api_key("admin", "admin@example.test", "sk-dedicated-voice-key")
+    result = service.test_connection()
+    assert result.ok is True
+    assert result.message == "OpenAI Realtime accepted gpt-realtime-2.1."
+    assert captured == {"api_key": "sk-dedicated-voice-key", "model": "gpt-realtime-2.1"}
+
+
+def test_voice_connection_test_returns_a_sanitised_provider_failure() -> None:
+    def fail(**_kwargs: str) -> None:
+        raise AppError(503, "voice_provider_credentials_rejected", "The key was rejected.")
+
+    service = VoiceModelService(
+        Settings(environment="test"), AuditLog(), MemoryStateStore(), connection_tester=fail
+    )
+    service.configure_api_key("admin", "admin@example.test", "sk-dedicated-voice-key")
+    result = service.test_connection()
+    assert result.ok is False
+    assert result.message == "The key was rejected."
 
 
 def test_voice_key_configuration_rolls_back_when_audit_fails() -> None:
@@ -86,7 +161,7 @@ def test_voice_key_configuration_rolls_back_when_audit_fails() -> None:
     assert service.state().api_key_configured is False
     assert service.state().enabled is False
     assert store.load(VOICE_MODEL_NAMESPACE) == {
-        "model": "gpt-realtime-mini",
+        "model": "gpt-realtime-2.1",
         "enabled": False,
     }
     assert store.load(integration_secret_namespace(VOICE_CREDENTIAL_NAME)) == {}
@@ -144,12 +219,7 @@ def test_voice_session_defends_against_an_inconsistent_missing_key_state() -> No
         session_service.create(uuid4(), "v=0\r\nm=audio offer\r\n")
 
 
-def test_voice_session_releases_capacity_when_start_audit_fails(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(
-        "coeus.services.voice_sessions.create_realtime_call", lambda **_kwargs: "v=0\r\n"
-    )
+def test_voice_session_releases_capacity_when_start_audit_fails() -> None:
     settings = Settings(environment="test")
     admission = VoiceSessionAdmission(max_concurrent=1, max_per_principal=1, ttl_seconds=60)
     service = VoiceSessionService(
@@ -157,6 +227,7 @@ def test_voice_session_releases_capacity_when_start_audit_fails(
         EnabledVoiceModels("sk-voice-test-key"),  # type: ignore[arg-type]
         admission,
         FailingAuditLog(),
+        call_creator=lambda **_kwargs: "v=0\r\n",
     )
     user_id = uuid4()
 

@@ -37,6 +37,10 @@ class QcDraftAssetResponse(BaseModel):
     mime_type: str = Field(serialization_alias="mimeType")
     size_bytes: int = Field(serialization_alias="sizeBytes")
     sha256: str
+    detected_mime_type: str = Field(serialization_alias="detectedMimeType")
+    preview_kind: str = Field(serialization_alias="previewKind")
+    processing_status: str = Field(serialization_alias="processingStatus")
+    preview_available: bool = Field(serialization_alias="previewAvailable")
 
 
 class QcDraftResponse(BaseModel):
@@ -48,6 +52,8 @@ class QcDraftResponse(BaseModel):
     summary: str
     product_type: str = Field(serialization_alias="productType")
     content: str
+    description: str
+    manifest_hash: str = Field(serialization_alias="manifestHash")
     created_by_user_id: UUID = Field(serialization_alias="createdByUserId")
     created_at: datetime = Field(serialization_alias="createdAt")
     assets: list[QcDraftAssetResponse]
@@ -62,6 +68,41 @@ class QcDecisionResponse(BaseModel):
     reviewer_user_id: UUID = Field(serialization_alias="reviewerUserId")
     checklist: list[QcChecklistItemResponse]
     created_at: datetime = Field(serialization_alias="createdAt")
+
+
+class QcAgentCheckResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    key: str
+    passed: bool
+    detail: str
+
+
+class QcAgentFindingResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    finding_id: UUID = Field(serialization_alias="id")
+    category: str
+    severity: str
+    original_text: str = Field(serialization_alias="originalText")
+    suggested_text: str = Field(serialization_alias="suggestedText")
+    location: str
+    detail: str
+    confidence: float
+    blocking: bool
+
+
+class QcAgentPreflightResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    preflight_id: UUID = Field(serialization_alias="id")
+    draft_version_id: UUID = Field(serialization_alias="draftVersionId")
+    status: str
+    checks: list[QcAgentCheckResponse]
+    blockers: list[str]
+    policy_version: str = Field(serialization_alias="policyVersion")
+    created_at: datetime = Field(serialization_alias="createdAt")
+    findings: list[QcAgentFindingResponse]
 
 
 class QcIndexRecordResponse(BaseModel):
@@ -122,6 +163,7 @@ class QcProductResponse(BaseModel):
     latest_draft: QcDraftResponse | None = Field(serialization_alias="latestDraft")
     manager_notes: list[str] = Field(serialization_alias="managerNotes")
     decisions: list[QcDecisionResponse]
+    agent_preflight: QcAgentPreflightResponse | None = Field(serialization_alias="agentPreflight")
     index_records: list[QcIndexRecordResponse] = Field(serialization_alias="indexRecords")
     disseminations: list[QcDisseminationResponse]
     feedback_requests: list[QcFeedbackRequestResponse] = Field(

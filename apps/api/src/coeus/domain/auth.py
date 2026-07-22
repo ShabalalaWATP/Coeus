@@ -10,6 +10,7 @@ class RoleName(StrEnum):
     ADMINISTRATOR = "Administrator"
     USER = "Customer"
     JIOC_TEAM_MEMBER = "JIOC Team Member"
+    JIOC_MANAGER = "JIOC Manager"
     RFA_MANAGER = "RFA Manager"
     RFA_TEAM_MEMBER = "RFA Team Member"
     COLLECTION_MANAGER = "CM Manager"

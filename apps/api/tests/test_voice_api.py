@@ -1,4 +1,5 @@
 from typing import Any
+from uuid import uuid4
 
 import pytest
 
@@ -12,8 +13,8 @@ async def test_admin_configures_voice_separately_from_text_provider() -> None:
         initial = await client.get("/api/v1/admin/voice-model")
         assert initial.status_code == 200
         assert initial.json() == {
-            "model": "gpt-realtime-mini",
-            "availableModels": ["gpt-realtime-mini"],
+            "model": "gpt-realtime-2.1",
+            "availableModels": ["gpt-realtime-2.1", "gpt-realtime-mini"],
             "enabled": False,
             "apiKeyConfigured": False,
         }
@@ -80,6 +81,11 @@ async def test_voice_configuration_requires_admin_and_csrf() -> None:
             json={"apiKey": "sk-dedicated-voice-key"},
         )
         assert forbidden_key.status_code == 403
+        forbidden_test = await client.post(
+            "/api/v1/admin/voice-model/test",
+            headers={"X-CSRF-Token": user_csrf},
+        )
+        assert forbidden_test.status_code == 403
 
         admin_csrf = await admin_login(client)
         missing_csrf = await client.put(
@@ -92,6 +98,8 @@ async def test_voice_configuration_requires_admin_and_csrf() -> None:
             json={"apiKey": "sk-dedicated-voice-key"},
         )
         assert missing_key_csrf.status_code == 403
+        missing_test_csrf = await client.post("/api/v1/admin/voice-model/test")
+        assert missing_test_csrf.status_code == 403
         invalid_key = await client.put(
             "/api/v1/admin/voice-model/api-key",
             headers={"X-CSRF-Token": admin_csrf},
@@ -101,17 +109,58 @@ async def test_voice_configuration_requires_admin_and_csrf() -> None:
 
 
 @pytest.mark.asyncio
-async def test_voice_session_validates_sdp_and_proxies_without_exposing_key(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+async def test_admin_tests_voice_without_enabling_it() -> None:
+    captured: dict[str, str] = {}
+
+    def fake_test(**kwargs: str) -> None:
+        captured.update(kwargs)
+
+    def inject_tester(app: Any) -> Any:
+        app.state.voice_model_service._connection_tester = fake_test
+        return app
+
+    async with make_client(app_wrapper=inject_tester) as client:
+        csrf = await admin_login(client)
+        missing = await client.post(
+            "/api/v1/admin/voice-model/test", headers={"X-CSRF-Token": csrf}
+        )
+        assert missing.status_code == 200
+        assert missing.json()["ok"] is False
+
+        await client.put(
+            "/api/v1/admin/voice-model/api-key",
+            headers={"X-CSRF-Token": csrf},
+            json={"apiKey": "sk-dedicated-voice-key"},
+        )
+        tested = await client.post("/api/v1/admin/voice-model/test", headers={"X-CSRF-Token": csrf})
+        assert tested.status_code == 200
+        assert tested.json() == {
+            "ok": True,
+            "provider": "openai_realtime",
+            "model": "gpt-realtime-2.1",
+            "message": "OpenAI Realtime accepted gpt-realtime-2.1.",
+        }
+        assert captured == {
+            "api_key": "sk-dedicated-voice-key",
+            "model": "gpt-realtime-2.1",
+        }
+        state = await client.get("/api/v1/admin/voice-model")
+        assert state.json()["enabled"] is False
+
+
+@pytest.mark.asyncio
+async def test_voice_session_validates_sdp_and_proxies_without_exposing_key() -> None:
     captured: dict[str, Any] = {}
 
     def fake_call(**kwargs: Any) -> str:
         captured.update(kwargs)
         return "v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\n"
 
-    monkeypatch.setattr("coeus.services.voice_sessions.create_realtime_call", fake_call)
-    async with make_client() as client:
+    def inject_call_creator(app: Any) -> Any:
+        app.state.voice_session_service._call_creator = fake_call
+        return app
+
+    async with make_client(app_wrapper=inject_call_creator) as client:
         admin_csrf = await admin_login(client)
         await client.put(
             "/api/v1/admin/voice-model/api-key",
@@ -124,6 +173,13 @@ async def test_voice_session_validates_sdp_and_proxies_without_exposing_key(
             json={"model": "gpt-realtime-mini", "enabled": True},
         )
         user_csrf = await admin_login(client, "user@example.test")
+        drafted = await client.post(
+            "/api/v1/chat/messages",
+            headers={"X-CSRF-Token": user_csrf},
+            json={"message": "I need a synthetic assessment of vessel activity."},
+        )
+        assert drafted.status_code == 201
+        ticket_id = drafted.json()["id"]
 
         wrong_type = await client.post(
             "/api/v1/voice/session",
@@ -162,7 +218,7 @@ async def test_voice_session_validates_sdp_and_proxies_without_exposing_key(
         assert "POST" in preflight.headers["access-control-allow-methods"]
 
         response = await client.post(
-            "/api/v1/voice/session",
+            f"/api/v1/voice/session?ticketId={ticket_id}",
             content="v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\n",
             headers={
                 "Content-Type": "application/sdp",
@@ -178,9 +234,18 @@ async def test_voice_session_validates_sdp_and_proxies_without_exposing_key(
         token = response.headers["x-voice-session-token"]
         assert captured["model"] == "gpt-realtime-mini"
         assert "YOUR ONLY PURPOSE" in captured["instructions"]
+        assert "AUTHORISed SESSION CONTEXT".upper() in captured["instructions"].upper()
+        assert "What is the specific question you would like answered?" in captured["instructions"]
         assert "NEVER say the RFI was created, saved" in captured["instructions"]
         assert captured["api_key"] == "sk-dedicated-voice-key"
         assert len(captured["safety_identifier"]) == 64
+
+        hidden = await client.post(
+            f"/api/v1/voice/session?ticketId={uuid4()}",
+            content="v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\n",
+            headers={"Content-Type": "application/sdp", "X-CSRF-Token": user_csrf},
+        )
+        assert hidden.status_code == 404
 
         capacity = await client.post(
             "/api/v1/voice/session",

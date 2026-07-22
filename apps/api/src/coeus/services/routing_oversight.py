@@ -7,6 +7,7 @@ from uuid import UUID
 
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
+from coeus.domain.advisory_agents import AdviceItemKind, AdvisoryAgentKind
 from coeus.domain.auth import RoleName, UserAccount
 from coeus.domain.teams import OrgTeam, TeamKind, team_member_ids
 from coeus.domain.tickets import RoutingRoute, TicketRecord
@@ -51,6 +52,12 @@ class OversightTask:
     analyst_count: int
     work_package_count: int
     completed_work_package_count: int
+    agent_disposition: str | None
+    agent_confidence: float | None
+    critic_verdict: str | None
+    critic_outcome: str | None
+    critic_challenge_count: int
+    critic_missing_evidence_count: int
 
 
 @dataclass(frozen=True)
@@ -76,7 +83,7 @@ class RoutingOversightService:
         self._availability = availability
 
     def view(self, actor: UserAccount) -> RoutingOversight:
-        if Permission.JIOC_REVIEW not in actor.permissions:
+        if Permission.JIOC_OVERSIGHT not in actor.permissions:
             raise AppError(403, "forbidden", "Permission denied.")
         tickets = self._tickets.tickets.assignment_snapshot()
         state_counts = Counter(ticket.state.value for ticket in tickets)
@@ -162,6 +169,21 @@ class RoutingOversightService:
         assignments = active_assignments(ticket)
         latest = assignments[-1] if assignments else None
         route: RoutingRoute | None = approved_route(ticket)
+        agent_decision = (
+            ticket.jioc_routing_decisions[-1] if ticket.jioc_routing_decisions else None
+        )
+        decision_ref = f"decision:{agent_decision.decision_id}" if agent_decision else None
+        critique = next(
+            (
+                run.advice
+                for run in reversed(ticket.agent_runs)
+                if run.advice is not None
+                and run.advice.agent is AdvisoryAgentKind.ROUTING_CRITIC
+                and decision_ref is not None
+                and decision_ref in run.advice.context_references
+            ),
+            None,
+        )
         return OversightTask(
             ticket.ticket_id,
             ticket.reference,
@@ -172,4 +194,14 @@ class RoutingOversightService:
             len({assignment.analyst_user_id for assignment in assignments}),
             len(ticket.work_packages),
             sum(package.status.value == "complete" for package in ticket.work_packages),
+            agent_decision.disposition if agent_decision else None,
+            agent_decision.confidence if agent_decision else None,
+            critique.verdict if critique else None,
+            critique.provenance.outcome if critique else None,
+            sum(item.kind is AdviceItemKind.ROUTE_CHALLENGE for item in critique.items)
+            if critique
+            else 0,
+            sum(item.kind is AdviceItemKind.MISSING_EVIDENCE for item in critique.items)
+            if critique
+            else 0,
         )

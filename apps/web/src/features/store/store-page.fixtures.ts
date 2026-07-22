@@ -42,6 +42,7 @@ export const readOnlyCollectionSession: AuthSession = {
     displayName: "Collection User",
     roles: ["Collection Manager"],
     defaultRoute: "/store",
+    passwordResetRequired: false,
     permissions: ["product:read", "product:search"],
   },
 };
@@ -54,6 +55,7 @@ export const rfaManagerSession: AuthSession = {
     displayName: "RFA Manager",
     roles: ["Request for Assessment Manager"],
     defaultRoute: "/rfa/queue",
+    passwordResetRequired: false,
     permissions: ["product:read", "product:search"],
   },
 };

@@ -47,5 +47,3 @@ export function useTheme() {
   }
   return value;
 }
-
-export const themeStorageKey = storageKey;

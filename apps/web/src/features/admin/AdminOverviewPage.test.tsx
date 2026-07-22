@@ -73,7 +73,15 @@ test("renders admin action links, approvals and AI model controls", async () => 
   renderWithProviders(<AdminOverviewPage />, "/admin/overview");
 
   expect(await screen.findByRole("heading", { name: "Available" })).toBeVisible();
+  expect(screen.getByText("Gemini API (primary) active")).toBeVisible();
+  expect(screen.getAllByText("No key saved")).toHaveLength(2);
+  expect(screen.getByText("Voice disabled")).toBeVisible();
+  const aiHeading = screen.getByRole("heading", { name: "AI provider and model" });
+  expect(aiHeading.closest("details")).not.toHaveAttribute("open");
+  await userEvent.click(aiHeading);
+  expect(aiHeading.closest("details")).toHaveAttribute("open");
   expect(await screen.findByRole("radio", { name: /gemma-4-31b-it/ })).toBeChecked();
+  await userEvent.click(screen.getByRole("heading", { name: "Access requests" }));
   expect(await screen.findByText("No pending access requests")).toBeVisible();
   expect(screen.getByRole("link", { name: /Access groups/ })).toHaveAttribute(
     "href",
@@ -212,4 +220,7 @@ const searchState = {
   changedAt: null,
   lastIndexedAt: null,
   degradedReason: null,
+  releaseId: "mock:token-hash-v2:1536",
+  evaluationStatus: "approved",
+  definitiveNoMatchEnabled: true,
 };

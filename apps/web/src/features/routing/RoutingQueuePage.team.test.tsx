@@ -167,3 +167,48 @@ test("renders a readable routed-team status message", async () => {
     ),
   ).toBeVisible();
 });
+
+test("manager agrees to customer re-analysis with recorded rationale", async () => {
+  const reviewTicket: RoutingTicket = {
+    ...reviewedTicket,
+    state: "MANAGER_REANALYSIS_REVIEW",
+    reanalysisContext: {
+      productId: "product-1",
+      customerReason: "The eastern sector was omitted.",
+      unmetCriteria: ["Eastern sector"],
+      managerRationale: null,
+    },
+  };
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(jsonResponse(queueWith([reviewTicket])))
+    .mockResolvedValueOnce(jsonResponse({ ...reviewTicket, state: "ANALYST_IN_PROGRESS" }));
+  stubRoutingFetch(fetchMock);
+
+  renderWithProviders(<RoutingQueuePage queue="rfa" />, "/rfa/queue");
+
+  expect(await screen.findByText("The eastern sector was omitted.")).toBeVisible();
+  expect(screen.getByText("Eastern sector")).toBeVisible();
+  const agree = screen.getByRole("button", { name: "Agree and return to analysis" });
+  expect(agree).toBeDisabled();
+  await userEvent.type(
+    screen.getByLabelText("Decision rationale"),
+    "The omission requires a revised assessment.",
+  );
+  await userEvent.click(agree);
+
+  await waitFor(() =>
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "http://127.0.0.1:8001/api/v1/routing/ticket-1/reanalysis-manager-decision",
+      expect.objectContaining({
+        body: JSON.stringify({
+          decision: "agree",
+          rationale: "The omission requires a revised assessment.",
+        }),
+        method: "POST",
+      }),
+    ),
+  );
+  expect((await screen.findAllByText("Analyst in progress")).length).toBeGreaterThan(0);
+});

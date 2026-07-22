@@ -1,7 +1,7 @@
 from contextlib import nullcontext
 from dataclasses import replace
 from datetime import UTC, datetime
-from typing import Protocol
+from typing import Protocol, cast
 from uuid import UUID, uuid4
 
 from coeus.application.ports.admission import ProviderAdmission, TicketAdmission
@@ -13,10 +13,11 @@ from coeus.core.resource_limits import (
     MAX_CHAT_MESSAGES_PER_TICKET,
     text_bytes,
 )
-from coeus.domain.agent_names import CUSTOMER_CHATBOT_AGENT
+from coeus.domain.agent_names import INTAKE_PLANNER_AGENT
 from coeus.domain.auth import UserAccount
 from coeus.domain.enums import TicketState
 from coeus.domain.tickets import (
+    AgentExecutionKind,
     AgentRun,
     AgentRunStatus,
     IntakeDetails,
@@ -25,11 +26,19 @@ from coeus.domain.tickets import (
 )
 from coeus.services import conversation_lifecycle as lifecycle
 from coeus.services.audit import AuditLog
+from coeus.services.conversation_reply_records import (
+    advice_for_reply,
+    deterministic_reply,
+    text_hash,
+)
 from coeus.services.intake import (
     AdmittedAssistantReply,
     IntakeAssistantProvider,
     IntakeExtractionService,
 )
+from coeus.services.intake_planner import deterministic_intake_plan
+from coeus.services.intake_planner_advice import render_intake_plan
+from coeus.services.intake_provider_calls import PreparedIntakeReply
 from coeus.services.intake_standard import next_elicitation
 from coeus.services.intake_transcripts import requester_message
 from coeus.services.prioritisation import with_assessment
@@ -133,14 +142,21 @@ class ConversationService:
         # in intake fields; the message, flags and refusal are still recorded.
         intake = ticket.intake if safety_flags else self._extractor.extract(message, ticket.intake)
         if safety_flags:
-            reply = self._assistant_reply(actor, intake, safety_flags)
+            assistant_reply = self._assistant_reply(actor, intake, safety_flags)
             conversation_status = ticket.conversation_status
         else:
-            reply, conversation_status = self._reply_and_status(
+            assistant_reply, conversation_status = self._reply_and_status(
                 actor,
                 ticket.conversation_status,
                 requester_message(message),
                 intake,
+            )
+        reply = assistant_reply.text
+        if text_bytes(reply) > MAX_ASSISTANT_REPLY_BYTES:
+            raise AppError(
+                502,
+                "assistant_reply_limit_exceeded",
+                "The assistant returned an invalid response.",
             )
         assistant_message = message_record(ticket.ticket_id, MessageAuthor.ASSISTANT, reply)
         if self._chat_bytes(ticket) + text_bytes(message, reply) > MAX_CHAT_HISTORY_BYTES:
@@ -148,7 +164,7 @@ class ConversationService:
         agent_run = AgentRun(
             run_id=uuid4(),
             ticket_id=ticket.ticket_id,
-            agent_name=CUSTOMER_CHATBOT_AGENT,
+            agent_name=INTAKE_PLANNER_AGENT,
             status=AgentRunStatus.COMPLETED,
             summary=(
                 "Message flagged; intake extraction skipped."
@@ -157,6 +173,25 @@ class ConversationService:
             ),
             safety_flags=safety_flags,
             created_at=datetime.now(UTC),
+            execution_kind=(
+                AgentExecutionKind.PROVIDER_BACKED
+                if assistant_reply.provider is not None or assistant_reply.provider_succeeded
+                else AgentExecutionKind.DETERMINISTIC
+            ),
+            provider=assistant_reply.provider,
+            model=assistant_reply.model,
+            duration_ms=assistant_reply.duration_ms,
+            fallback_outcome=assistant_reply.fallback_outcome,
+            validation_outcome=assistant_reply.validation_outcome,
+            prompt_version=assistant_reply.prompt_version,
+            policy_version=assistant_reply.policy_version or "intake-conversation-v1",
+            context_schema_version=(assistant_reply.context_schema_version or "intake-details-v1"),
+            input_hash=assistant_reply.input_hash or text_hash(message),
+            output_hash=assistant_reply.output_hash or text_hash(reply),
+            input_token_count=assistant_reply.input_tokens,
+            output_token_count=assistant_reply.output_tokens,
+            error_class=assistant_reply.error_class,
+            advice=advice_for_reply(assistant_reply),
         )
         state = self._tickets.state_for_intake(ticket.state, intake)
         proposed = with_assessment(
@@ -203,23 +238,42 @@ class ConversationService:
 
     def _reply_and_status(
         self, actor: UserAccount, status: str, message: str, intake: IntakeDetails
-    ) -> tuple[str, str]:
+    ) -> tuple[AdmittedAssistantReply, str]:
         """Deterministic conversation lifecycle; the LLM never decides this."""
-        complete = not intake.missing_information
+        plan = deterministic_intake_plan(intake, intake.missing_information)
+        blocked = bool(plan.contradictions)
+        complete = not intake.missing_information and not blocked
         offered = status == lifecycle.CONVERSATION_CLOSE_OFFERED
         if offered and complete and lifecycle.confirms_close(message):
-            return lifecycle.CLOSED_MESSAGE, lifecycle.CONVERSATION_CLOSED
+            reply = deterministic_reply(lifecycle.CLOSED_MESSAGE, "conversation_closed")
+            return reply, lifecycle.CONVERSATION_CLOSED
         if lifecycle.wants_to_end(message):
             if complete:
-                return lifecycle.CLOSED_MESSAGE, lifecycle.CONVERSATION_CLOSED
-            entry = next_elicitation(intake.missing_information)
-            question = entry.question if entry else ""
+                return deterministic_reply(
+                    lifecycle.CLOSED_MESSAGE, "conversation_closed"
+                ), lifecycle.CONVERSATION_CLOSED
+            if blocked:
+                question = render_intake_plan(plan, intake)
+            else:
+                entry = next_elicitation(intake.missing_information)
+                question = entry.question if entry else ""
             return (
-                lifecycle.cannot_close_message(question).strip(),
+                deterministic_reply(
+                    lifecycle.cannot_close_message(question).strip(),
+                    (
+                        "close_refused_intake_contradiction"
+                        if blocked
+                        else "close_refused_missing_information"
+                    ),
+                ),
                 lifecycle.CONVERSATION_OPEN,
             )
+        if blocked or plan.ambiguities:
+            return self._assistant_reply(actor, intake, ()), lifecycle.CONVERSATION_OPEN
         if complete:
-            return lifecycle.CLOSE_OFFER_MESSAGE, lifecycle.CONVERSATION_CLOSE_OFFERED
+            return deterministic_reply(
+                lifecycle.CLOSE_OFFER_MESSAGE, "close_offered"
+            ), lifecycle.CONVERSATION_CLOSE_OFFERED
         return (
             self._assistant_reply(actor, intake, ()),
             lifecycle.CONVERSATION_OPEN,
@@ -227,20 +281,30 @@ class ConversationService:
 
     def _assistant_reply(
         self, actor: UserAccount, intake: IntakeDetails, safety_flags: tuple[str, ...]
-    ) -> str:
-        uses_remote = getattr(self._llm_provider, "uses_operator_provider", lambda: False)()
-        if not uses_remote or self._provider_admission is None or safety_flags:
-            return self._llm_provider.build_assistant_message(intake, safety_flags)
+    ) -> AdmittedAssistantReply:
+        prepare_reply = cast(
+            object,
+            getattr(self._llm_provider, "prepare_assistant_reply", None),
+        )
+        if not callable(prepare_reply):
+            if self._provider_admission is not None:
+                raise RuntimeError(
+                    "Providers used with admission must prepare an immutable intake reply."
+                )
+            return deterministic_reply(
+                self._llm_provider.build_assistant_message(intake, safety_flags),
+                "safety_refusal" if safety_flags else "local_provider",
+            )
+        prepared = cast(PreparedIntakeReply, prepare_reply(intake, safety_flags))
+        if not prepared.requires_admission:
+            return prepared.execute()
+        if self._provider_admission is None:
+            return prepared.admission_unavailable_reply
         with self._provider_admission.reserve(actor.user_id) as reservation:
-            admitted_reply = getattr(self._llm_provider, "build_admitted_assistant_message", None)
-            if admitted_reply is None:
-                reply = self._llm_provider.build_assistant_message(intake, safety_flags)
-                reservation.commit()
-                return reply
-            outcome: AdmittedAssistantReply = admitted_reply(intake, safety_flags)
+            outcome = prepared.execute()
             if outcome.provider_succeeded:
                 reservation.commit()
-            return outcome.text
+            return outcome
 
     def _create(self, actor: UserAccount, reserved_reference: str | None = None) -> TicketRecord:
         ticket_id = uuid4()

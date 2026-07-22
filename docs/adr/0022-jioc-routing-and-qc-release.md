@@ -2,7 +2,10 @@
 
 ## Status
 
-Accepted (2026-07-11).
+Accepted (2026-07-11), partially superseded. ADR 0036 replaces the mandatory
+human routing step with bounded, version-pinned active JIOC Agent routing and
+on-the-loop manager oversight. The collect choice, manager approval chain and
+QC-owned release decisions in this ADR remain current.
 
 ## Context
 
@@ -16,10 +19,12 @@ manager review of analyst work before QC.
 
 ## Decision
 
-1. **JIOC decides routes.** A new JIOC Team Member role owns a single routing
-   queue (`JIOC_REVIEW`). The capability and orchestrator agents advise; the
-   JIOC member decides whether collection is required (route CM) or not (route
-   RFA). The retired states `ROUTE_ASSESSMENT`, `RFA_MANAGER_REVIEW` and
+1. **Historical route authority, superseded by ADR 0036.** This decision
+   originally gave a JIOC Team Member the routing queue (`JIOC_REVIEW`) and the
+   CM/RFA decision, with capability and orchestrator agents advising. The
+   current active JIOC Routing Agent may apply an eligible route; team members
+   handle manual-review and exception paths, and managers remain on the loop.
+   The retired states `ROUTE_ASSESSMENT`, `RFA_MANAGER_REVIEW` and
    `CM_MANAGER_REVIEW` decode to `JIOC_REVIEW` via a legacy alias so persisted
    tickets still load.
 2. **The customer chooses the collect disposition.** When JIOC routes to CM the

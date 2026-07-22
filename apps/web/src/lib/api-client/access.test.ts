@@ -1,11 +1,4 @@
-import {
-  addAcgMember,
-  createAcg,
-  diagnoseProductAccess,
-  listAcgs,
-  removeAcgMember,
-  updateAcg,
-} from "./access";
+import { addAcgMember, createAcg, listAcgs, removeAcgMember, updateAcg } from "./access";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -63,22 +56,5 @@ test("updates ACG metadata and membership through protected endpoints", async ()
     3,
     "http://127.0.0.1:8001/api/v1/acgs/acg%2Falpha/members/user%2Fbravo",
     expect.any(Object),
-  );
-});
-
-test("requests product access diagnostics", async () => {
-  const diagnostic = {
-    allowed: false,
-    reason: "Denied",
-    checks: [{ name: "acg_membership", passed: false, reason: "Missing ACG" }],
-  };
-  const fetchMock = vi.fn().mockResolvedValue({
-    ok: true,
-    json: () => Promise.resolve(diagnostic),
-  });
-  vi.stubGlobal("fetch", fetchMock);
-
-  await expect(diagnoseProductAccess("product-1", "user-1", "csrf-token")).resolves.toEqual(
-    diagnostic,
   );
 });

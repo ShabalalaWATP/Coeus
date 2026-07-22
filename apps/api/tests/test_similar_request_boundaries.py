@@ -1,6 +1,7 @@
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from active_work_test_helpers import prepare_active_work_review
 from coeus.core.config import Settings
 from coeus.main import create_app
 from test_similar_requests_api import login, similar_ticket_pair, submitted_ticket
@@ -17,6 +18,7 @@ async def test_join_and_link_reject_invalid_relationships(
     ) as client:
         colleague = await login(client, "colleague@example.test")
         source_id, target_id = await similar_ticket_pair(client, str(colleague["csrfToken"]))
+        prepare_active_work_review(app, "colleague@example.test", source_id)
         admin = await login(client, "admin@example.test")
         non_owner_join = await client.post(
             f"/api/v1/similar-requests/tickets/{source_id}/join/{target_id}",
@@ -55,5 +57,5 @@ async def test_join_and_link_reject_invalid_relationships(
         )
 
     assert non_owner_join.status_code == 404
-    assert no_match_join.status_code == 404
+    assert no_match_join.status_code == 409
     assert self_link.status_code == 422

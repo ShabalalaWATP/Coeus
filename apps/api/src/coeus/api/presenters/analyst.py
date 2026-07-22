@@ -1,10 +1,9 @@
 from coeus.domain.auth import UserAccount
+from coeus.domain.product_submission import DraftProductAsset, DraftProductVersion
 from coeus.domain.tickets import (
     AnalystAssignment,
     AnalystNote,
     AnalystWorkPackage,
-    DraftProductAsset,
-    DraftProductVersion,
     LinkedAnalystProduct,
     TicketRecord,
 )
@@ -119,6 +118,16 @@ def _draft_response(draft: DraftProductVersion) -> DraftProductResponse:
         summary=draft.summary,
         product_type=draft.product_type,
         content=draft.content,
+        description=draft.description or draft.content,
+        source_type=draft.source_type,
+        owner_team=draft.owner_team,
+        area_or_region=draft.area_or_region,
+        classification_level=draft.classification_level,
+        releasability=list(draft.releasability),
+        handling_caveats=list(draft.handling_caveats),
+        tags=list(draft.tags),
+        acg_ids=list(draft.acg_ids),
+        manifest_hash=draft.manifest_hash,
         assets=[_draft_asset_response(item) for item in draft.assets],
         created_at=draft.created_at,
     )
@@ -132,4 +141,8 @@ def _draft_asset_response(asset: DraftProductAsset) -> DraftAssetResponse:
         mime_type=asset.mime_type,
         size_bytes=asset.size_bytes,
         sha256=asset.sha256,
+        detected_mime_type=asset.detected_mime_type or asset.mime_type,
+        preview_kind=asset.preview_kind,
+        processing_status=asset.processing_status,
+        preview_available=bool(asset.object_key),
     )

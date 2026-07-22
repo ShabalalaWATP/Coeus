@@ -1,4 +1,5 @@
 import { apiRequestJson, pathSegment } from "./client";
+import type { Ticket } from "./tickets";
 
 type SimilarRequestMatch = {
   ticketId: string;
@@ -50,6 +51,26 @@ export async function joinSimilarRequest(
       method: "POST",
     },
   );
+}
+
+export async function continueAfterSimilarRequest(
+  ticketId: string,
+  csrfToken: string,
+): Promise<Ticket> {
+  return apiRequestJson<Ticket>(
+    `/api/v1/similar-requests/tickets/${pathSegment(ticketId)}/continue`,
+    {
+      headers: { "X-CSRF-Token": csrfToken },
+      method: "POST",
+    },
+  );
+}
+
+export async function retryActiveWorkSearch(ticketId: string, csrfToken: string): Promise<Ticket> {
+  return apiRequestJson<Ticket>(`/api/v1/similar-requests/tickets/${pathSegment(ticketId)}/retry`, {
+    headers: { "X-CSRF-Token": csrfToken },
+    method: "POST",
+  });
 }
 
 export async function listRoutingSimilarRequests(ticketId: string): Promise<SimilarRequestList> {

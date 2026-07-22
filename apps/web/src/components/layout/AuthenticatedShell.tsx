@@ -27,7 +27,7 @@ export function AuthenticatedShell() {
   if (session === null) {
     return <Navigate to="/login" replace />;
   }
-  if (session.passwordResetRequired === true && location.pathname !== "/account/password") {
+  if (session.user.passwordResetRequired && location.pathname !== "/account/password") {
     return <Navigate to="/account/password" replace />;
   }
   return <AppShell profile={session.user} />;

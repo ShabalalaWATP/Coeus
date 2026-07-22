@@ -1,4 +1,6 @@
 import type { AnalystTask } from "../../lib/api-client/analyst";
+import { workflowProductPreviewUrl } from "../../lib/api-client/analyst";
+import { ControlledDocumentViewer } from "../../components/product/ControlledDocumentViewer";
 import { productTypeLabel } from "../store/store-options";
 
 type ManagerWorkReviewProps = {
@@ -7,6 +9,7 @@ type ManagerWorkReviewProps = {
 
 export function ManagerWorkReview({ task }: ManagerWorkReviewProps) {
   const latestDraft = task.drafts.at(-1);
+  const primaryAsset = latestDraft?.assets[0];
 
   return (
     <section className="manager-work-review" aria-label="Submitted analyst work">
@@ -20,7 +23,15 @@ export function ManagerWorkReview({ task }: ManagerWorkReviewProps) {
       {latestDraft ? (
         <>
           <p>{latestDraft.summary}</p>
-          <div className="manager-work-review__content">{latestDraft.content}</div>
+          {primaryAsset?.previewAvailable ? (
+            <ControlledDocumentViewer
+              kind={primaryAsset.previewKind}
+              title={`${latestDraft.title} manager preview`}
+              url={workflowProductPreviewUrl(task.ticketId, latestDraft.id, primaryAsset.id)}
+            />
+          ) : (
+            <div className="manager-work-review__content">{latestDraft.content}</div>
+          )}
           <dl className="manager-work-review__facts">
             <div>
               <dt>Product type</dt>

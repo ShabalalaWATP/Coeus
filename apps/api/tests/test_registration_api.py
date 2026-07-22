@@ -138,6 +138,30 @@ async def test_registration_submissions_are_throttled_at_capacity() -> None:
 
 
 @pytest.mark.asyncio
+async def test_registration_capacity_response_does_not_enumerate_existing_accounts() -> None:
+    settings = Settings(
+        environment="test",
+        argon2_memory_cost=8_192,
+        registration_max_pending=1,
+    )
+    async with _client(settings) as client:
+        accepted = await client.post("/api/v1/auth/register", json=SUBMIT_PAYLOAD)
+        existing = await client.post(
+            "/api/v1/auth/register",
+            json={**SUBMIT_PAYLOAD, "username": "admin@example.test"},
+        )
+        duplicate = await client.post("/api/v1/auth/register", json=SUBMIT_PAYLOAD)
+        unused = await client.post(
+            "/api/v1/auth/register",
+            json={**SUBMIT_PAYLOAD, "username": "unused@example.test"},
+        )
+
+    assert accepted.status_code == 202
+    assert existing.status_code == duplicate.status_code == unused.status_code == 429
+    assert existing.json() == duplicate.json() == unused.json()
+
+
+@pytest.mark.asyncio
 async def test_registration_payload_validation_rejects_bad_input() -> None:
     async with _client() as client:
         bad_email = await client.post(

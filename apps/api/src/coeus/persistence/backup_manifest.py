@@ -42,9 +42,26 @@ def file_sha256(path: Path) -> str:
 
 def safe_relative_path(value: str) -> Path:
     pure = PurePosixPath(value)
-    if pure.is_absolute() or not pure.parts or any(part in {"", ".", ".."} for part in pure.parts):
+    if (
+        pure.is_absolute()
+        or not pure.parts
+        or "\\" in value
+        or any(_unsafe_path_component(part) for part in pure.parts)
+    ):
         raise ValueError("Backup manifest contains an unsafe relative path.")
     return Path(*pure.parts)
+
+
+def _unsafe_path_component(part: str) -> bool:
+    if part in {"", ".", ".."} or ":" in part or any(ord(character) < 32 for character in part):
+        return True
+    if part.rstrip(" .") != part:
+        return True
+    stem = part.split(".", 1)[0].upper()
+    return stem in {"CON", "PRN", "AUX", "NUL"} or stem in {
+        *(f"COM{index}" for index in range(1, 10)),
+        *(f"LPT{index}" for index in range(1, 10)),
+    }
 
 
 def write_manifest(path: Path, manifest: BackupManifest) -> None:

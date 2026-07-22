@@ -4,6 +4,7 @@ from typing import Annotated, cast
 from fastapi import Depends, Header, Request
 
 from coeus.application.ports.admission import ResourceAdmission
+from coeus.application.ports.jioc_routing import JiocRoutingService
 from coeus.core.config import Settings
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
@@ -11,13 +12,13 @@ from coeus.db.session import DatabaseReadinessChecker, readiness_checker_for
 from coeus.domain.auth import AuthenticatedSession
 from coeus.repositories.teams import TeamRepository
 from coeus.services.access import AccessServices
+from coeus.services.admin_analytics import AdminAnalyticsService
 from coeus.services.admission_metrics import AdmissionMetrics
 from coeus.services.ai_models import AiModelService
 from coeus.services.analyst_assignment_service import AnalystAssignmentService
 from coeus.services.analyst_workflow import AnalystWorkflowService
 from coeus.services.asset_tokens import AssetTokenService
 from coeus.services.auth import AuthService
-from coeus.services.embeddings import EmbeddingService
 from coeus.services.feedback_analytics import FeedbackAnalyticsService
 from coeus.services.manager_approval import ManagerApprovalService
 from coeus.services.manager_queue import ManagerQueueService
@@ -97,13 +98,6 @@ def get_ai_model_service(request: Request) -> AiModelService:
     service = getattr(request.app.state, "ai_model_service", None)
     if not isinstance(service, AiModelService):
         raise AppError(500, "ai_models_not_configured", "AI model selection is not configured.")
-    return service
-
-
-def get_embedding_service(request: Request) -> EmbeddingService:
-    service = getattr(request.app.state, "embedding_service", None)
-    if not isinstance(service, EmbeddingService):
-        raise AppError(500, "search_not_configured", "Search embeddings are not available.")
     return service
 
 
@@ -216,6 +210,13 @@ def get_routing_service(request: Request) -> RoutingService:
     return routing_service
 
 
+def get_jioc_routing_agent_service(request: Request) -> JiocRoutingService:
+    service = getattr(request.app.state, "jioc_routing_agent_service", None)
+    if not isinstance(service, JiocRoutingService):
+        raise AppError(500, "jioc_agent_not_configured", "JIOC agent is not configured.")
+    return service
+
+
 def get_manager_queue_service(request: Request) -> ManagerQueueService:
     service = getattr(request.app.state, "manager_queue_service", None)
     if not isinstance(service, ManagerQueueService):
@@ -278,6 +279,13 @@ def get_feedback_analytics_service(request: Request) -> FeedbackAnalyticsService
     service = getattr(request.app.state, "feedback_analytics_service", None)
     if not isinstance(service, FeedbackAnalyticsService):
         raise AppError(500, "feedback_analytics_not_configured", "Analytics is not configured.")
+    return service
+
+
+def get_admin_analytics_service(request: Request) -> AdminAnalyticsService:
+    service = getattr(request.app.state, "admin_analytics_service", None)
+    if not isinstance(service, AdminAnalyticsService):
+        raise AppError(500, "admin_analytics_not_configured", "Admin analytics is not configured.")
     return service
 
 

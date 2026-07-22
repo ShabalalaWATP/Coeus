@@ -8,10 +8,14 @@ from coeus.api.dependencies import (
     get_current_session,
     get_rfi_search_service,
     get_search_admission,
+    get_settings,
 )
+from coeus.api.workflow_dependencies import get_active_work_discovery_service
 from coeus.application.ports.admission import ResourceAdmission
 from coeus.core.async_work import run_bounded_search
+from coeus.core.config import Settings
 from coeus.domain.auth import AuthenticatedSession
+from coeus.domain.enums import TicketState
 from coeus.domain.search_metrics import RfiSearchMetrics
 from coeus.domain.tickets import ProductOffer
 from coeus.schemas.rfi_search import (
@@ -21,6 +25,7 @@ from coeus.schemas.rfi_search import (
     RfiSearchMetricsResponse,
     RfiSearchResultsResponse,
 )
+from coeus.services.active_work_discovery import ActiveWorkDiscoveryService
 from coeus.services.rfi_search import RfiSearchService
 from coeus.services.rfi_search_types import RfiSearchResults
 
@@ -33,9 +38,17 @@ async def run_rfi_search(
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
     rfi_search: Annotated[RfiSearchService, Depends(get_rfi_search_service)],
     admission: Annotated[ResourceAdmission, Depends(get_search_admission)],
+    active_work: Annotated[ActiveWorkDiscoveryService, Depends(get_active_work_discovery_service)],
+    settings: Annotated[Settings, Depends(get_settings)],
 ) -> RfiSearchResultsResponse:
     with admission.reserve(authenticated.user.user_id):
         result = await run_bounded_search(rfi_search.run, authenticated.user, ticket_id)
+    if (
+        result.ticket.state == TicketState.NEW_TASKING_CONSENT
+        and settings.active_work_offers_enabled
+    ):
+        active_work.discover(authenticated.user, ticket_id)
+        result = rfi_search.results(authenticated.user, ticket_id)
     return _to_response(result)
 
 
@@ -65,10 +78,17 @@ async def reject_product_offer(
     payload: RejectProductOfferRequest,
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
     rfi_search: Annotated[RfiSearchService, Depends(get_rfi_search_service)],
+    active_work: Annotated[ActiveWorkDiscoveryService, Depends(get_active_work_discovery_service)],
+    settings: Annotated[Settings, Depends(get_settings)],
 ) -> RfiSearchResultsResponse:
-    return _to_response(
-        rfi_search.reject(authenticated.user, ticket_id, product_id, payload.reason)
-    )
+    result = rfi_search.reject(authenticated.user, ticket_id, product_id, payload.reason)
+    if (
+        result.ticket.state == TicketState.NEW_TASKING_CONSENT
+        and settings.active_work_offers_enabled
+    ):
+        active_work.discover(authenticated.user, ticket_id)
+        result = rfi_search.results(authenticated.user, ticket_id)
+    return _to_response(result)
 
 
 def _to_response(result: RfiSearchResults) -> RfiSearchResultsResponse:
@@ -79,6 +99,8 @@ def _to_response(result: RfiSearchResults) -> RfiSearchResultsResponse:
         metrics=_metrics_response(result.metrics) if result.metrics is not None else None,
         retrieval_mode=result.retrieval_mode,
         degraded_reason=result.degraded_reason,
+        outcome=result.outcome,
+        assurance=result.assurance,
     )
 
 
@@ -131,4 +153,9 @@ def _metrics_response(metrics: RfiSearchMetrics) -> RfiSearchMetricsResponse:
         created_at=metrics.created_at,
         retrieval_mode=metrics.retrieval_mode,
         degraded_reason=metrics.degraded_reason,
+        outcome=metrics.outcome,
+        assurance=metrics.assurance,
+        coverage_status=metrics.coverage_status,
+        profile_space_id=metrics.profile_space_id,
+        corpus_version=metrics.corpus_version,
     )

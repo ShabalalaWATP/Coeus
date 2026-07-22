@@ -1,4 +1,4 @@
-import { apiRequestJson, pathSegment } from "./client";
+import { apiRequestJson, pathSegment, resolveApiBaseUrl } from "./client";
 import type { TicketState } from "./tickets";
 import type { TeamAvailability } from "./teams";
 
@@ -57,7 +57,21 @@ export type AnalystTask = {
       mimeType: string;
       sizeBytes: number;
       sha256: string;
+      detectedMimeType: string;
+      previewKind: "pdf" | "image" | "text" | "metadata";
+      processingStatus: string;
+      previewAvailable: boolean;
     }[];
+    description: string;
+    sourceType: string;
+    ownerTeam: string;
+    areaOrRegion: string;
+    classificationLevel: number;
+    releasability: string[];
+    handlingCaveats: string[];
+    tags: string[];
+    acgIds: string[];
+    manifestHash: string;
   }[];
 };
 
@@ -86,6 +100,23 @@ export type DraftProductInput = {
     sizeBytes: number;
     sha256: string;
   }[];
+};
+
+export type ProductSubmissionMetadataInput = {
+  title: string;
+  summary: string;
+  description: string;
+  productType: string;
+  sourceType: string;
+  ownerTeam: string;
+  areaOrRegion: string;
+  classificationLevel: number;
+  releasability: string[];
+  handlingCaveats: string[];
+  tags: string[];
+  acgIds: string[];
+  timePeriodStart: string | null;
+  timePeriodEnd: string | null;
 };
 
 type AnalystCandidate = {
@@ -209,6 +240,33 @@ export async function saveDraftProduct(
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
   });
+}
+
+export async function uploadAnalystProductSubmission(
+  ticketId: string,
+  metadata: ProductSubmissionMetadataInput,
+  asset: File,
+  csrfToken: string,
+): Promise<AnalystTask> {
+  const body = new FormData();
+  body.set("metadata", JSON.stringify(metadata));
+  body.set("asset", asset, asset.name);
+  return apiRequestJson<AnalystTask>(
+    `/api/v1/analyst/tasks/${pathSegment(ticketId)}/submissions/upload`,
+    {
+      body,
+      headers: { "X-CSRF-Token": csrfToken },
+      method: "POST",
+    },
+  );
+}
+
+export function workflowProductPreviewUrl(
+  ticketId: string,
+  versionId: string,
+  assetId: string,
+): string {
+  return `${resolveApiBaseUrl()}/api/v1/workflow/products/${pathSegment(ticketId)}/versions/${pathSegment(versionId)}/assets/${pathSegment(assetId)}/preview`;
 }
 
 export async function submitTaskForReview(

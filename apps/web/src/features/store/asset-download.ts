@@ -29,7 +29,7 @@ export async function downloadAssetToDevice(
   }
 }
 
-export function safeDownloadFilename(filename: string): string {
+function safeDownloadFilename(filename: string): string {
   const sanitised = Array.from(filename.trim(), (character) =>
     isUnsafeFilenameCharacter(character) ? "_" : character,
   )

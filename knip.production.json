@@ -1,0 +1,22 @@
+{
+  "ignore": [
+    "apps/web/src/lib/api-client/generated/**",
+    "apps/web/playwright.config.ts",
+    "apps/web/src/**/*.fixtures.ts",
+    "apps/web/src/**/*.fixtures.tsx",
+    "apps/web/src/**/*-test-fixtures.ts",
+    "apps/web/src/**/*-test-fixtures.tsx",
+    "apps/web/src/**/requests-test-data.ts",
+    "apps/web/src/test/**",
+    "apps/web/tests/**",
+    "scripts/check-*.mjs"
+  ],
+  "ignoreBinaries": ["pwsh", "uv"],
+  "tags": ["-@internal"],
+  "workspaces": {
+    "apps/web": {
+      "entry": ["src/main.tsx"],
+      "playwright": false
+    }
+  }
+}

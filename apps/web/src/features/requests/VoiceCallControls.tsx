@@ -7,12 +7,14 @@ import { useRealtimeVoice } from "./useRealtimeVoice";
 export function VoiceCallControls({
   csrfToken,
   onTranscript,
+  ticketId,
 }: {
   csrfToken: string;
   onTranscript: (transcript: string) => void;
+  ticketId?: string;
 }) {
   const config = useQuery({ queryKey: ["voice-config"], queryFn: getVoiceConfig, retry: false });
-  const voice = useRealtimeVoice(csrfToken, onTranscript);
+  const voice = useRealtimeVoice(csrfToken, onTranscript, ticketId);
   const supported = typeof RTCPeerConnection !== "undefined" && Boolean(navigator.mediaDevices);
   if (!supported || !config.data?.enabled || !config.data.apiKeyConfigured) return null;
 

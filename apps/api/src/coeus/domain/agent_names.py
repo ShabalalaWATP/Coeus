@@ -1,3 +1,6 @@
 CUSTOMER_CHATBOT_AGENT = "customer-chatbot-agent"
+INTAKE_PLANNER_AGENT = "intake-planner-agent"
+SEARCH_PLANNER_AGENT = "search-planner-agent"
+JIOC_ROUTING_CRITIC_AGENT = "jioc-routing-critic"
 RFI_SEARCH_AGENT = "rfi-search-agent"
 LEGACY_RFI_SEARCH_AGENT = "rfi-search"

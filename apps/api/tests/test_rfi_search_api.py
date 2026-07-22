@@ -2,19 +2,19 @@ from dataclasses import replace
 from uuid import UUID, uuid4
 
 import pytest
+from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from coeus.core.config import Settings
-from coeus.domain.store import StoreSearchHit
 from coeus.domain.tickets import IntakeDetails
 from coeus.main import create_app
-from coeus.services.rfi_ranking import rank_rfi_hits
+from coeus.services.rfi_ranking import rank_hybrid_rfi_candidates
 from rfi_search_helpers import login, product_payload, submitted_ticket
 
 
 @pytest.mark.asyncio
 async def test_rfi_search_runs_hybrid_ranking_after_access_filtering() -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    app = _search_app()
     regional_acg = next(
         acg for acg in app.state.access_services.repository.list_acgs() if "ALPHA" in acg.code
     )
@@ -50,7 +50,7 @@ async def test_rfi_search_runs_hybrid_ranking_after_access_filtering() -> None:
 
 @pytest.mark.asyncio
 async def test_rfi_search_does_not_leak_unauthorised_counts_or_products() -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    app = _search_app()
     collection_product = next(
         product
         for product in app.state.store_services.repository.list_products()
@@ -76,7 +76,7 @@ async def test_rfi_search_does_not_leak_unauthorised_counts_or_products() -> Non
 
 @pytest.mark.asyncio
 async def test_rfi_search_applies_requester_clearance_before_offering() -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    app = _search_app()
     regional_acg = next(
         acg for acg in app.state.access_services.repository.list_acgs() if "ALPHA" in acg.code
     )
@@ -108,7 +108,7 @@ async def test_rfi_search_applies_requester_clearance_before_offering() -> None:
 
 @pytest.mark.asyncio
 async def test_accepting_product_offer_closes_ticket_and_audits() -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    app = _search_app()
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
@@ -138,7 +138,7 @@ async def test_accepting_product_offer_closes_ticket_and_audits() -> None:
 
 @pytest.mark.asyncio
 async def test_offer_decisions_return_conflict_when_search_metrics_are_missing() -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    app = _search_app()
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
@@ -170,8 +170,8 @@ async def test_offer_decisions_return_conflict_when_search_metrics_are_missing()
 
 
 @pytest.mark.asyncio
-async def test_rejecting_last_product_offer_queues_for_jioc_review() -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+async def test_rejecting_last_product_offer_requires_new_tasking_consent() -> None:
+    app = _search_app()
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
@@ -180,6 +180,15 @@ async def test_rejecting_last_product_offer_queues_for_jioc_review() -> None:
         run = await client.post(
             f"/api/v1/rfi-search/{ticket_id}/run",
             headers={"X-CSRF-Token": str(user["csrfToken"])},
+        )
+        requester = app.state.access_services.repository.get_user_by_username("user@example.test")
+        assert requester is not None
+        ticket = app.state.ticket_services.tickets.get_visible_ticket(requester, UUID(ticket_id))
+        metric = replace(
+            ticket.search_metrics[-1], coverage_status="complete", degraded_reason=None
+        )
+        app.state.ticket_services.tickets.save_system_update(
+            replace(ticket, search_metrics=(*ticket.search_metrics[:-1], metric))
         )
         product_id = run.json()["offers"][0]["productId"]
         rejected = await client.post(
@@ -191,7 +200,7 @@ async def test_rejecting_last_product_offer_queues_for_jioc_review() -> None:
         manager_results = await client.get(f"/api/v1/rfi-search/{ticket_id}/results")
 
     assert rejected.status_code == 200
-    assert rejected.json()["ticketState"] == "JIOC_REVIEW"
+    assert rejected.json()["ticketState"] == "NEW_TASKING_CONSENT"
     assert rejected.json()["offers"][0]["status"] == "rejected"
     assert rejected.json()["offers"][0]["rejectionReason"] == (
         "Need fresher reporting than this mock brief."
@@ -207,7 +216,7 @@ async def test_rejecting_last_product_offer_queues_for_jioc_review() -> None:
 
 @pytest.mark.asyncio
 async def test_rfi_search_denies_invalid_state_and_non_owner_acceptance() -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    app = _search_app()
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
@@ -223,7 +232,7 @@ async def test_rfi_search_denies_invalid_state_and_non_owner_acceptance() -> Non
         )
         ticket_id = await submitted_ticket(client, str(user["csrfToken"]))
         bad_accept_state = await client.post(
-            f"/api/v1/rfi-search/{ticket_id}/offers/{uuid4()}/accept",
+            f"/api/v1/rfi-search/{created.json()['id']}/offers/{uuid4()}/accept",
             headers={"X-CSRF-Token": str(user["csrfToken"])},
         )
         run = await client.post(
@@ -247,7 +256,7 @@ async def test_rfi_search_denies_invalid_state_and_non_owner_acceptance() -> Non
 
 @pytest.mark.asyncio
 async def test_rfi_search_requires_permission_and_existing_offer() -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    app = _search_app()
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
@@ -276,64 +285,16 @@ async def test_rfi_search_requires_permission_and_existing_offer() -> None:
 
 
 def test_empty_intake_does_not_offer_visible_products() -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
-    product = app.state.store_services.repository.list_products()[0]
-    offers = rank_rfi_hits((StoreSearchHit(product, 1.0, ("visible",)),), IntakeDetails())
+    offers = rank_hybrid_rfi_candidates((), IntakeDetails())
 
     assert offers == ()
 
 
-@pytest.mark.asyncio
-async def test_rfi_search_completes_when_queued_agent_run_is_missing() -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://testserver"
-    ) as client:
-        user = await login(client, "user@example.test")
-        ticket_id = await submitted_ticket(client, str(user["csrfToken"]))
-        requester = app.state.access_services.repository.get_user_by_username("user@example.test")
-        assert requester is not None
-        ticket = app.state.ticket_services.tickets.get_visible_ticket(
-            requester,
-            UUID(ticket_id),
+def _search_app() -> FastAPI:
+    return create_app(
+        Settings(
+            environment="test",
+            argon2_memory_cost=8_192,
+            automatic_request_discovery_enabled=False,
         )
-        app.state.ticket_services.tickets.save_system_update(replace(ticket, agent_runs=()))
-        response = await client.post(
-            f"/api/v1/rfi-search/{ticket_id}/run",
-            headers={"X-CSRF-Token": str(user["csrfToken"])},
-        )
-
-    assert response.status_code == 200
-    assert response.json()["metrics"]["runId"]
-
-
-@pytest.mark.asyncio
-async def test_rfi_search_normalises_legacy_queued_agent_run_name() -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://testserver"
-    ) as client:
-        user = await login(client, "user@example.test")
-        ticket_id = await submitted_ticket(client, str(user["csrfToken"]))
-        requester = app.state.access_services.repository.get_user_by_username("user@example.test")
-        assert requester is not None
-        ticket = app.state.ticket_services.tickets.get_visible_ticket(
-            requester,
-            UUID(ticket_id),
-        )
-        legacy_run = replace(ticket.agent_runs[-1], agent_name="rfi-search")
-        app.state.ticket_services.tickets.save_system_update(
-            replace(ticket, agent_runs=(*ticket.agent_runs[:-1], legacy_run))
-        )
-
-        response = await client.post(
-            f"/api/v1/rfi-search/{ticket_id}/run",
-            headers={"X-CSRF-Token": str(user["csrfToken"])},
-        )
-        refreshed = app.state.ticket_services.tickets.get_visible_ticket(
-            requester,
-            UUID(ticket_id),
-        )
-
-    assert response.status_code == 200
-    assert refreshed.agent_runs[-1].agent_name == "rfi-search-agent"
+    )

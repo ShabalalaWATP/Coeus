@@ -3,6 +3,7 @@ import { ShieldCheck, UserCog } from "lucide-react";
 import { useState } from "react";
 
 import { CLEARANCE_OPTIONS, ROLE_OPTIONS } from "./user-options";
+import { AdminReturnLink } from "../../components/ui/AdminReturnLink";
 import { ErrorState, LoadingState } from "../../components/ui/PageState";
 import {
   listAdminUsers,
@@ -90,6 +91,7 @@ export default function UserManagementPage() {
     <div className="workspace-page">
       <section className="overview-hero" aria-labelledby="users-title">
         <div>
+          <AdminReturnLink />
           <h1 id="users-title">Users</h1>
           <p>Manage team access, role assignments, clearance levels and account status.</p>
         </div>

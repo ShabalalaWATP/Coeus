@@ -49,7 +49,7 @@ def build_routing_review_update(
             route_recommendations=(*ticket.route_recommendations, recommendation),
             agent_runs=(
                 *ticket.agent_runs,
-                *review_agent_runs(ticket.ticket_id, rfa_review, cm_review, recommendation),
+                *review_agent_runs(ticket, rfa_review, cm_review, recommendation),
             ),
             workflow_plan_updates=(
                 *ticket.workflow_plan_updates,

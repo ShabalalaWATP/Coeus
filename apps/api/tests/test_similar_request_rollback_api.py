@@ -5,6 +5,7 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
+from active_work_test_helpers import prepare_active_work_review
 from coeus.core.config import Settings
 from coeus.domain.tickets import TicketRecord
 from coeus.main import create_app
@@ -12,7 +13,7 @@ from test_similar_requests_api import login, similar_ticket_pair, submitted_tick
 
 
 @pytest.mark.asyncio
-async def test_customer_join_audit_failure_rolls_back_collaborator(
+async def test_customer_join_audit_failure_rolls_back_both_tickets(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     app = create_app(
@@ -41,10 +42,10 @@ async def test_customer_join_audit_failure_rolls_back_collaborator(
             description="Assess boat traffic near St Petersburg.",
             output_format="traffic picture",
         )
-        original = _stored_ticket(app, target_id)
-        monkeypatch.setattr(
-            app.state.similar_request_service._audit_log, "record_many", _fail_audit
-        )
+        prepare_active_work_review(app, "admin@example.test", source_id)
+        original_source = _stored_ticket(app, source_id)
+        original_target = _stored_ticket(app, target_id)
+        monkeypatch.setattr(app.state.similar_request_service._audit_log, "record", _fail_audit)
 
         with pytest.raises(RuntimeError, match="audit unavailable"):
             await client.post(
@@ -52,9 +53,8 @@ async def test_customer_join_audit_failure_rolls_back_collaborator(
                 headers={"X-CSRF-Token": str(admin["csrfToken"])},
             )
 
-    target = _stored_ticket(app, target_id)
-    assert target.collaborators == original.collaborators
-    assert target.timeline == original.timeline
+    assert _stored_ticket(app, source_id) == original_source
+    assert _stored_ticket(app, target_id) == original_target
 
 
 @pytest.mark.asyncio

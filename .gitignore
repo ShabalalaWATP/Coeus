@@ -5,6 +5,7 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+infra/litellm/provider.env
 *.pem
 *.key
 

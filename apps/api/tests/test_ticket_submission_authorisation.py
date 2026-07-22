@@ -12,7 +12,13 @@ from test_ticket_collaborators_api import _create_ticket, _login, _tag
 
 @pytest.mark.asyncio
 async def test_submission_uses_explicit_transition_authority_not_global_write() -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    app = create_app(
+        Settings(
+            environment="test",
+            argon2_memory_cost=8_192,
+            automatic_request_discovery_enabled=False,
+        )
+    )
     colleague = app.state.access_services.repository.get_user_by_username("colleague@example.test")
     assert colleague is not None
 

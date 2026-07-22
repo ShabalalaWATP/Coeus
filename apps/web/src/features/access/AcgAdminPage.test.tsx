@@ -70,6 +70,10 @@ test("renders access control groups and allows creating a group", async () => {
 
   renderWithProviders(<AcgAdminPage />, "/admin/acgs");
 
+  expect(screen.getByRole("link", { name: "Back to Admin" })).toHaveAttribute(
+    "href",
+    "/admin/overview",
+  );
   expect(await screen.findByRole("button", { name: /ACG-ALPHA Alpha Regional/i })).toBeVisible();
   const createForm = within(screen.getByRole("form", { name: "Create access control group" }));
   await userEvent.type(createForm.getByLabelText("Code"), "ACG-BRAVO");
@@ -160,6 +164,7 @@ test("hides mutation forms from view-only access", async () => {
       displayName: "RFA Team Member",
       roles: ["RFA Team Member"],
       defaultRoute: "/rfa/products",
+      passwordResetRequired: false,
       permissions: ["acg:view"],
     },
   };

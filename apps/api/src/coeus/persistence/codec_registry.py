@@ -14,17 +14,40 @@ from coeus.domain.access import (
     ProductRecord,
     ProductStatus,
 )
+from coeus.domain.advisory_agents import (
+    AdviceItemKind,
+    AdvisoryAgentKind,
+    AgentAdvice,
+    AgentAdviceItem,
+    AgentAdviceProvenance,
+)
 from coeus.domain.auth import RoleName, SessionRecord, UserAccount
 from coeus.domain.capabilities import CandidateTeam
+from coeus.domain.customer_outcomes import (
+    CustomerProductDecision,
+    CustomerProductDecisionStatus,
+    JiocReanalysisDecision,
+    JiocReanalysisStatus,
+    ManagerReanalysisDecision,
+    ManagerReanalysisStatus,
+    ProductOutcomeHistory,
+)
 from coeus.domain.enums import TicketState
+from coeus.domain.jioc_intervention import JiocIntervention
+from coeus.domain.jioc_routing import JiocRoutingContext, JiocRoutingDecision
 from coeus.domain.notifications import EmailRecord, NotificationRecord
 from coeus.domain.prioritisation import PriorityAssessment
+from coeus.domain.product_submission import DraftProductAsset, DraftProductVersion
 from coeus.domain.qc import (
     FeedbackRequest,
     FeedbackRequestStatus,
     FeedbackSubmission,
     ProductIndexRecord,
     ProductIndexStatus,
+    QcAgentCheck,
+    QcAgentFinding,
+    QcAgentPreflight,
+    QcAgentPreflightStatus,
     QcChecklistItem,
     QcDecision,
     QcDecisionStatus,
@@ -35,6 +58,7 @@ from coeus.domain.search_metrics import RfiSearchMetrics
 from coeus.domain.store import BoundingBox, StoreAsset, StoreProduct, StoreProductMetadata
 from coeus.domain.teams import CalendarStatus, OrgTeam, TeamCalendarEntry, TeamKind, UserProfile
 from coeus.domain.tickets import (
+    AgentExecutionKind,
     AgentRun,
     AgentRunStatus,
     AnalystAssignment,
@@ -45,8 +69,6 @@ from coeus.domain.tickets import (
     ClarificationRequest,
     CmCapabilityReview,
     CollaboratorAccess,
-    DraftProductAsset,
-    DraftProductVersion,
     IntakeDetails,
     LinkedAnalystProduct,
     ManagerRoutingDecision,
@@ -64,6 +86,7 @@ from coeus.domain.tickets import (
     WorkflowPlanUpdate,
     WorkPackageStatus,
 )
+from coeus.domain.work_discovery import ActiveWorkOffer
 
 CodecClass = type[Any]
 CodecIdentity = tuple[CodecClass, str]
@@ -72,9 +95,14 @@ CodecIdentity = tuple[CodecClass, str]
 # writes always use the stable semantic identity declared in TYPE_IDENTITIES.
 LEGACY_TYPE_ALIASES: Mapping[str, CodecClass] = {
     "coeus.domain.tickets.RfiSearchMetrics": RfiSearchMetrics,
+    "coeus.domain.tickets.DraftProductAsset": DraftProductAsset,
+    "coeus.domain.tickets.DraftProductVersion": DraftProductVersion,
 }
 
 TYPE_IDENTITIES: tuple[CodecIdentity, ...] = (
+    (AgentAdvice, "advisory.agent_advice"),
+    (AgentAdviceItem, "advisory.agent_advice_item"),
+    (AgentAdviceProvenance, "advisory.agent_advice_provenance"),
     (AcgAccessApplication, "access.acg_access_application"),
     (AccessCheck, "access.access_check"),
     (AccessControlGroup, "access.access_control_group"),
@@ -84,12 +112,19 @@ TYPE_IDENTITIES: tuple[CodecIdentity, ...] = (
     (SessionRecord, "auth.session_record"),
     (UserAccount, "auth.user_account"),
     (CandidateTeam, "capabilities.candidate_team"),
+    (CustomerProductDecision, "customer_outcomes.customer_product_decision"),
+    (ManagerReanalysisDecision, "customer_outcomes.manager_reanalysis_decision"),
+    (JiocReanalysisDecision, "customer_outcomes.jioc_reanalysis_decision"),
+    (ProductOutcomeHistory, "customer_outcomes.product_outcome_history"),
     (EmailRecord, "notifications.email_record"),
     (NotificationRecord, "notifications.notification_record"),
     (PriorityAssessment, "prioritisation.priority_assessment"),
     (FeedbackRequest, "qc.feedback_request"),
     (FeedbackSubmission, "qc.feedback_submission"),
     (ProductIndexRecord, "qc.product_index_record"),
+    (QcAgentCheck, "qc.qc_agent_check"),
+    (QcAgentFinding, "qc.qc_agent_finding"),
+    (QcAgentPreflight, "qc.qc_agent_preflight"),
     (QcChecklistItem, "qc.qc_checklist_item"),
     (QcDecision, "qc.qc_decision"),
     (RegistrationRequest, "registration.registration_request"),
@@ -101,6 +136,10 @@ TYPE_IDENTITIES: tuple[CodecIdentity, ...] = (
     (TeamCalendarEntry, "teams.calendar_entry"),
     (UserProfile, "teams.user_profile"),
     (AgentRun, "tickets.agent_run"),
+    (ActiveWorkOffer, "tickets.active_work_offer"),
+    (JiocRoutingContext, "tickets.jioc_routing_context"),
+    (JiocRoutingDecision, "tickets.jioc_routing_decision"),
+    (JiocIntervention, "tickets.jioc_intervention"),
     (AnalystAssignment, "tickets.analyst_assignment"),
     (AnalystNote, "tickets.analyst_note"),
     (AnalystWorkPackage, "tickets.analyst_work_package"),
@@ -127,16 +166,20 @@ TYPE_IDENTITIES: tuple[CodecIdentity, ...] = (
 )
 
 ENUM_IDENTITIES: tuple[CodecIdentity, ...] = (
+    (AdvisoryAgentKind, "advisory.agent_kind"),
+    (AdviceItemKind, "advisory.item_kind"),
     (AcgApplicationStatus, "access.acg_application_status"),
     (ProductStatus, "access.product_status"),
     (RoleName, "auth.role_name"),
     (Permission, "core.permission"),
     (FeedbackRequestStatus, "qc.feedback_request_status"),
     (ProductIndexStatus, "qc.product_index_status"),
+    (QcAgentPreflightStatus, "qc.qc_agent_preflight_status"),
     (QcDecisionStatus, "qc.qc_decision_status"),
     (RegistrationStatus, "registration.registration_status"),
     (CalendarStatus, "teams.calendar_status"),
     (TeamKind, "teams.team_kind"),
+    (AgentExecutionKind, "tickets.agent_execution_kind"),
     (AgentRunStatus, "tickets.agent_run_status"),
     (CollaboratorAccess, "tickets.collaborator_access"),
     (ManagerRoutingDecisionStatus, "tickets.manager_routing_decision_status"),
@@ -145,6 +188,9 @@ ENUM_IDENTITIES: tuple[CodecIdentity, ...] = (
     (RoutingRoute, "tickets.routing_route"),
     (TicketState, "tickets.ticket_state"),
     (WorkPackageStatus, "tickets.work_package_status"),
+    (CustomerProductDecisionStatus, "customer_outcomes.customer_product_decision_status"),
+    (ManagerReanalysisStatus, "customer_outcomes.manager_reanalysis_status"),
+    (JiocReanalysisStatus, "customer_outcomes.jioc_reanalysis_status"),
 )
 
 

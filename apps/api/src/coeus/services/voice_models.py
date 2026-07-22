@@ -1,7 +1,9 @@
 from dataclasses import dataclass
+from typing import Protocol
 
 from coeus.core.config import Settings
 from coeus.core.errors import AppError
+from coeus.integrations.openai_realtime import test_realtime_connection
 from coeus.persistence.state_store import StateStore
 from coeus.services.audit import AuditLog
 from coeus.services.integration_secrets import EncryptedIntegrationSecretStore
@@ -10,12 +12,24 @@ VOICE_MODEL_NAMESPACE = "voice_model"
 VOICE_CREDENTIAL_NAME = "voice:openai_realtime"
 
 
+class VoiceConnectionTester(Protocol):
+    def __call__(self, *, api_key: str, model: str) -> None: ...
+
+
 @dataclass(frozen=True)
 class VoiceModelState:
     model: str
     available_models: tuple[str, ...]
     enabled: bool
     api_key_configured: bool
+
+
+@dataclass(frozen=True)
+class VoiceConnectionTest:
+    ok: bool
+    provider: str
+    model: str
+    message: str
 
 
 class VoiceModelService:
@@ -27,6 +41,7 @@ class VoiceModelService:
         audit_log: AuditLog,
         state_store: StateStore,
         secret_store: EncryptedIntegrationSecretStore | None = None,
+        connection_tester: VoiceConnectionTester = test_realtime_connection,
     ) -> None:
         self._available = tuple(settings.available_openai_realtime_models)
         self._model = settings.openai_realtime_model
@@ -35,6 +50,7 @@ class VoiceModelService:
         self._audit_log = audit_log
         self._state_store = state_store
         self._secret_store = secret_store or EncryptedIntegrationSecretStore(state_store, settings)
+        self._connection_tester = connection_tester
         self._restore()
 
     def state(self) -> VoiceModelState:
@@ -91,6 +107,25 @@ class VoiceModelService:
 
     def api_key(self) -> str | None:
         return self._api_key
+
+    def test_connection(self) -> VoiceConnectionTest:
+        if not self._api_key:
+            return VoiceConnectionTest(
+                False,
+                "openai_realtime",
+                self._model,
+                "No dedicated Voice API key is saved.",
+            )
+        try:
+            self._connection_tester(api_key=self._api_key, model=self._model)
+        except AppError as error:
+            return VoiceConnectionTest(False, "openai_realtime", self._model, error.message)
+        return VoiceConnectionTest(
+            True,
+            "openai_realtime",
+            self._model,
+            f"OpenAI Realtime accepted {self._model}.",
+        )
 
     def require_enabled(self) -> VoiceModelState:
         state = self.state()

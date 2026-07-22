@@ -26,6 +26,7 @@ async def test_rfi_search_returns_answer_only_found_in_docx_with_page_citation(
             environment="test",
             argon2_memory_cost=8_192,
             local_object_storage_path=str(tmp_path / "objects"),
+            automatic_request_discovery_enabled=False,
         )
     )
     regional_acg = next(
@@ -84,7 +85,9 @@ async def test_rfi_search_returns_answer_only_found_in_docx_with_page_citation(
     assert uploaded.status_code == 201
     assert reindexed.status_code == 202
     assert result.status_code == 200
-    assert result.json()["degradedReason"] == "corpus_changed"
+    assert result.json()["degradedReason"] == "asset_coverage_partial"
+    assert result.json()["assurance"] == "assisted"
+    assert result.json()["metrics"]["coverageStatus"] == "partial"
     assert persisted.status_code == 200
     offer = next(
         item

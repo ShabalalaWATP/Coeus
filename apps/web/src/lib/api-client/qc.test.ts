@@ -22,6 +22,7 @@ const product: QcProduct = {
   latestDraft: null,
   managerNotes: [],
   decisions: [],
+  agentPreflight: null,
   indexRecords: [],
   disseminations: [],
   feedbackRequests: [],

@@ -3,7 +3,6 @@ import {
   addTicketCollaborator,
   chooseCollectOption,
   consentNoMatch,
-  confirmTicketDelivery,
   getTicket,
   listTickets,
   listUserDirectory,
@@ -47,27 +46,6 @@ test("calls collaborator endpoints with CSRF-protected mutations", async () => {
     3,
     "http://127.0.0.1:8001/api/v1/tickets/ticket-1/collaborators/user-2",
     { credentials: "include", headers: { "X-CSRF-Token": "csrf" }, method: "DELETE" },
-  );
-});
-
-test("confirms delivery with a CSRF-protected mutation", async () => {
-  const fetchMock = vi.fn().mockResolvedValue({
-    ok: true,
-    json: () => Promise.resolve({ id: "ticket-1", state: "CLOSED_DELIVERED" }),
-  });
-  vi.stubGlobal("fetch", fetchMock);
-
-  await expect(confirmTicketDelivery("ticket-1", "csrf")).resolves.toMatchObject({
-    state: "CLOSED_DELIVERED",
-  });
-
-  expect(fetchMock).toHaveBeenCalledWith(
-    "http://127.0.0.1:8001/api/v1/tickets/ticket-1/confirm-delivery",
-    {
-      credentials: "include",
-      headers: { "X-CSRF-Token": "csrf" },
-      method: "POST",
-    },
   );
 });
 

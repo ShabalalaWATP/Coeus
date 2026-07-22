@@ -88,6 +88,8 @@ corepack pnpm --filter @coeus/web format:check
 corepack pnpm --filter @coeus/web lint
 corepack pnpm --filter @coeus/web typecheck
 corepack pnpm --filter @coeus/web test
+docker compose up -d postgres
+$env:COEUS_TEST_DATABASE_URL = "postgresql+psycopg://coeus:coeus-local@127.0.0.1:5432/coeus"
 uv run --directory apps/api ruff format --check src tests
 uv run --directory apps/api ruff check src tests
 uv run --directory apps/api mypy src
@@ -98,7 +100,8 @@ corepack pnpm dead-code
 ```
 
 Backend and frontend application code each maintain at least 95% line and branch
-coverage. Hand-written files changed during normal work must stay within the
+coverage. Backend coverage combines ordinary and real PostgreSQL tests against
+the disposable database base URL above. Hand-written files changed during normal work must stay within the
 350-line limit. The OpenAPI contract check protects the committed API contract
 from drift. The dead-code check uses Knip for the TypeScript workspace and
 should stay clean before merging frontend changes.

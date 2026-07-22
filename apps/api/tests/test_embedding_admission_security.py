@@ -56,7 +56,13 @@ async def test_store_normalises_and_caches_queries_before_provider_admission() -
 
 @pytest.mark.asyncio
 async def test_rfi_one_run_gate_and_provider_budget_precede_mutation() -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    app = create_app(
+        Settings(
+            environment="test",
+            argon2_memory_cost=8_192,
+            automatic_request_discovery_enabled=False,
+        )
+    )
     provider = CountingRemoteEmbeddingProvider()
     app.state.rfi_search_service._embeddings = EmbeddingService(provider, _admission(2))
 

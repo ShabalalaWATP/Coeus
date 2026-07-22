@@ -27,10 +27,11 @@ OpenAI Realtime speech-to-speech session when an administrator enables it.
 - Voice input via the browser Web Speech API (`useSpeechToText` hook): a
   Dictate button appears only when the browser supports recognition, final
   transcripts append to the message box, and the customer still presses Send.
-- Optional realtime voice uses WebRTC and `gpt-realtime-mini`. A separate
-  setting at the bottom of the admin AI panel accepts its own administrator-only
-  API key, selects and enables the voice model without changing or reusing any
-  text-chat provider key.
+- Optional realtime voice uses WebRTC and defaults to `gpt-realtime-2.1` with
+  low reasoning effort. The earlier `gpt-realtime-mini` remains an explicit
+  compatibility option. A separate setting at the bottom of the admin AI panel
+  accepts its own administrator-only API key, selects and enables the voice
+  model without changing or reusing any text-chat provider key.
 - The dedicated voice key, selected Realtime model and enabled state survive
   API restarts. The key is encrypted under the same configuration-encryption
   service as text-provider keys, but uses a distinct authenticated secret
@@ -45,6 +46,13 @@ OpenAI Realtime speech-to-speech session when an administrator enables it.
   role, context, conversation flow, scope, safety and completion sections. The
   voice agent redirects off-topic requests and cannot claim to submit, route,
   search or approve an RFI.
+- When voice starts from an editable draft, the API authorises its ticket ID
+  through the ordinary editable-ticket boundary. It supplies only derived
+  field-presence, missing-field and deterministic next-action context, not raw
+  history or stored field values.
+- Both curated Realtime models use the same instructions, transcription,
+  tool-free 256-token session contract and transcript path. Realtime 2.1 also
+  uses low reasoning effort and explicit no-preamble guidance.
 - Stopping a voice session places the synthetic conversation transcript in the
   message editor for review and explicit submission through the existing chat
   validation and persistence path.
@@ -56,6 +64,8 @@ OpenAI Realtime speech-to-speech session when an administrator enables it.
   audited state change before accepting further chat messages.
 - Realtime transcript events are ordered by their conversation item identifiers,
   rather than by asynchronous transcription completion time.
+- Stopping uses an event-sensitive quiet period with a hard timeout so delayed
+  final transcription events are captured without unbounded waiting.
 - The reviewed raw transcript remains in chat history, but only `You:` turns can
   populate intake fields or control the conversation lifecycle. `Istari:` turns
   are treated as untrusted routing context, never as customer answers.
@@ -70,9 +80,10 @@ OpenAI Realtime speech-to-speech session when an administrator enables it.
   local fallback.
 - Changing the set of required fields or the submit gate.
 - LLM-driven slot filling; extraction stays deterministic and local.
-- Importing an existing typed-chat draft into a newly started voice session.
-  Realtime retains context spoken during that voice session, and its reviewed
-  transcript enters the normal chat path after stopping.
+- Importing raw typed-chat history or stored field values into a newly started
+  voice session. Realtime receives only derived field-presence, missing-field
+  and next-action context, and the reviewed transcript enters the normal chat
+  path after stopping.
 
 ## Security Notes
 

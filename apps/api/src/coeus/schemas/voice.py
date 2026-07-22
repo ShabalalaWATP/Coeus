@@ -17,3 +17,12 @@ class VoiceModelStateResponse(BaseModel):
     available_models: list[str] = Field(serialization_alias="availableModels")
     enabled: bool
     api_key_configured: bool = Field(serialization_alias="apiKeyConfigured")
+
+
+class VoiceConnectionTestResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    ok: bool
+    provider: str
+    model: str
+    message: str

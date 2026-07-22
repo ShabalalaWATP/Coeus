@@ -7,7 +7,11 @@ from coeus.core.errors import AppError
 from coeus.domain.enums import TicketState
 from coeus.domain.store import StoreProduct
 from coeus.domain.tickets import IntakeDetails, TicketRecord
-from coeus.domain.workflow_transaction import ReleaseNotificationIntent, WorkflowAuditIntent
+from coeus.domain.workflow_transaction import (
+    ReleaseNotificationIntent,
+    WorkflowAuditIntent,
+    WorkflowOutboxIntent,
+)
 from coeus.persistence.audit_store import MemoryAuditEventStore
 from coeus.repositories.tickets import InMemoryTicketRepository
 from coeus.services.audit import AuditLog
@@ -21,6 +25,7 @@ class StubWorkflowTransaction:
         self.pair_result = True
         self.created: TicketRecord | None = None
         self.updated: TicketRecord | None = None
+        self.outbox: tuple[WorkflowOutboxIntent, ...] = ()
         self.paired: tuple[TicketRecord, TicketRecord] | None = None
 
     def commit_ticket_create(self, ticket: TicketRecord, _audit: WorkflowAuditIntent) -> bool:
@@ -32,8 +37,10 @@ class StubWorkflowTransaction:
         _expected: TicketRecord,
         updated: TicketRecord,
         _audits: tuple[WorkflowAuditIntent, ...],
+        outbox: tuple[WorkflowOutboxIntent, ...] = (),
     ) -> bool:
         self.updated = updated
+        self.outbox = outbox
         return self.update_result
 
     def commit_ticket_pair(

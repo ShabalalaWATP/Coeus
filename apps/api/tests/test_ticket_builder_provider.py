@@ -1,3 +1,5 @@
+import json
+
 import httpx
 import pytest
 
@@ -12,6 +14,35 @@ REFUSAL = "I can only help capture the requirement. Please provide the missing d
 PRIORITY_QUESTION = (
     "Thanks, that helps. How urgent is this for you: critical, high, medium, routine or low?"
 )
+
+
+class JsonStream:
+    def __init__(self, payload: object) -> None:
+        self._payload = payload
+
+    def __enter__(self) -> "JsonStream":
+        return self
+
+    def __exit__(self, _exc_type: object, _exc: object, _traceback: object) -> None:
+        return None
+
+    def raise_for_status(self) -> None:
+        return None
+
+    def iter_bytes(self):  # type: ignore[no-untyped-def]
+        yield json.dumps(self._payload).encode()
+
+
+def _structured_reply() -> str:
+    return json.dumps(
+        {
+            "action": "ask_missing_field",
+            "strategy": "ask_one_field",
+            "reason_codes": ["missing_required_field"],
+            "suggested_field": "priority",
+            "abstain": False,
+        }
+    )
 
 
 class ForbiddenClient:
@@ -31,7 +62,7 @@ class FailingClient:
     def __exit__(self, _exc_type: object, _exc: object, _traceback: object) -> None:
         return None
 
-    def post(self, url: str, *, json: object, headers: object) -> object:
+    def stream(self, method: str, url: str, *, json: object, headers: object) -> object:
         raise httpx.ConnectError("mock network failure")
 
 
@@ -67,13 +98,6 @@ def test_key_configuration_alone_does_not_activate_the_provider(
 def test_explicit_provider_activation_routes_replies_to_it(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    class FakeResponse:
-        def raise_for_status(self) -> None:
-            return None
-
-        def json(self) -> dict[str, object]:
-            return {"candidates": [{"content": {"parts": [{"text": "Gemini reply."}]}}]}
-
     class FakeClient:
         def __init__(self, *, timeout: int) -> None:
             self._timeout = timeout
@@ -84,8 +108,9 @@ def test_explicit_provider_activation_routes_replies_to_it(
         def __exit__(self, _exc_type: object, _exc: object, _traceback: object) -> None:
             return None
 
-        def post(self, url: str, *, json: object, headers: object) -> FakeResponse:
-            return FakeResponse()
+        def stream(self, method: str, url: str, *, json: object, headers: object) -> JsonStream:
+            reply = _structured_reply()
+            return JsonStream({"candidates": [{"content": {"parts": [{"text": reply}]}}]})
 
     monkeypatch.setattr("coeus.integrations.provider_http.httpx.Client", FakeClient)
     settings = Settings(environment="test")
@@ -95,7 +120,7 @@ def test_explicit_provider_activation_routes_replies_to_it(
     provider = ConfigurableIntakeProvider(settings, ai_models)
 
     assert ai_models.provider() == "gemini_api"
-    assert provider.build_assistant_message(_intake(), ()) == "Gemini reply."
+    assert provider.build_assistant_message(_intake(), ()) == PRIORITY_QUESTION
 
 
 def test_flagged_messages_are_refused_without_calling_any_provider(
@@ -123,12 +148,10 @@ def test_provider_failure_degrades_to_the_mock_reply(monkeypatch: pytest.MonkeyP
     assert message == PRIORITY_QUESTION
 
 
-def test_admitted_reply_reports_remote_fallback_and_success(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_admitted_reply_reports_remote_fallback_and_success() -> None:
     responses: list[object] = [
         AppError(503, "provider_unavailable", "Synthetic failure."),
-        "Remote response.",
+        _structured_reply(),
     ]
 
     def reply(_call: object) -> str:
@@ -137,10 +160,14 @@ def test_admitted_reply_reports_remote_fallback_and_success(
             raise response
         return str(response)
 
-    monkeypatch.setattr("coeus.services.ticket_builder.generate_text", reply)
     provider = ConfigurableIntakeProvider(
-        Settings(environment="test", llm_provider="gemini_api", gemini_api_key="synthetic"),
+        Settings(
+            environment="test",
+            llm_provider="gemini_api",
+            gemini_api_key="synthetic",
+        ),
         None,
+        text_generator=reply,
     )
 
     fallback = provider.build_admitted_assistant_message(_intake(), ())
@@ -148,13 +175,16 @@ def test_admitted_reply_reports_remote_fallback_and_success(
 
     assert fallback.text == PRIORITY_QUESTION
     assert not fallback.provider_succeeded
-    assert success.text == "Remote response."
+    assert success.text == PRIORITY_QUESTION
     assert success.provider_succeeded
+    assert success.provider == "gemini_api"
+    assert success.model
+    assert success.duration_ms is not None
+    assert success.outcome == "provider_success"
+    assert success.prompt_version == "intake-planner-v2"
 
 
-def test_provider_circuit_stops_repeated_failed_remote_calls(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_provider_circuit_stops_repeated_failed_remote_calls() -> None:
     calls = 0
 
     def fail(_call: object) -> str:
@@ -162,29 +192,25 @@ def test_provider_circuit_stops_repeated_failed_remote_calls(
         calls += 1
         raise AppError(503, "provider_unavailable", "Synthetic provider failure.")
 
-    monkeypatch.setattr("coeus.services.ticket_builder.generate_text", fail)
     settings = Settings(
         environment="test",
         llm_provider="gemini_api",
         gemini_api_key="env-secret",
         provider_circuit_failure_threshold=2,
     )
-    provider = ConfigurableIntakeProvider(settings, None)
+    provider = ConfigurableIntakeProvider(settings, None, text_generator=fail)
 
     assert provider.build_assistant_message(_intake(), ()) == PRIORITY_QUESTION
     assert provider.build_assistant_message(_intake(), ()) == PRIORITY_QUESTION
     assert provider.build_assistant_message(_intake(), ()) == PRIORITY_QUESTION
     assert calls == 2
-    assert not provider.uses_operator_provider()
+    assert not provider.prepare_assistant_reply(_intake(), ()).requires_admission
 
 
-def test_unexpected_provider_failure_is_recorded_and_propagated(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_unexpected_provider_failure_is_recorded_and_falls_back() -> None:
     def fail(_call: object) -> str:
         raise RuntimeError("synthetic unexpected failure")
 
-    monkeypatch.setattr("coeus.services.ticket_builder.generate_text", fail)
     provider = ConfigurableIntakeProvider(
         Settings(
             environment="test",
@@ -193,11 +219,15 @@ def test_unexpected_provider_failure_is_recorded_and_propagated(
             provider_circuit_failure_threshold=1,
         ),
         None,
+        text_generator=fail,
     )
 
-    with pytest.raises(RuntimeError, match="unexpected"):
-        provider.build_assistant_message(_intake(), ())
-    assert not provider.uses_operator_provider()
+    reply = provider.build_admitted_assistant_message(_intake(), ())
+
+    assert reply.text == PRIORITY_QUESTION
+    assert reply.outcome == "provider_error_fallback"
+    assert reply.error_class == "RuntimeError"
+    assert not provider.prepare_assistant_reply(_intake(), ()).requires_admission
 
 
 def test_provider_without_key_degrades_to_the_mock_reply(
@@ -217,13 +247,6 @@ def test_settings_driven_openai_provider_is_called_without_ai_models(
 ) -> None:
     captured: dict[str, object] = {}
 
-    class FakeResponse:
-        def raise_for_status(self) -> None:
-            return None
-
-        def json(self) -> dict[str, object]:
-            return {"choices": [{"message": {"content": "OpenAI reply."}}]}
-
     class FakeClient:
         def __init__(self, *, timeout: int) -> None:
             captured["timeout"] = timeout
@@ -234,10 +257,11 @@ def test_settings_driven_openai_provider_is_called_without_ai_models(
         def __exit__(self, _exc_type: object, _exc: object, _traceback: object) -> None:
             return None
 
-        def post(self, url: str, *, json: object, headers: object) -> FakeResponse:
+        def stream(self, method: str, url: str, *, json: object, headers: object) -> JsonStream:
             captured["url"] = url
             captured["headers"] = headers
-            return FakeResponse()
+            captured["body"] = json
+            return JsonStream({"choices": [{"message": {"content": _structured_reply()}}]})
 
     monkeypatch.setattr("coeus.integrations.provider_http.httpx.Client", FakeClient)
     settings = Settings(environment="test", llm_provider="openai_api", openai_api_key="sk-test")
@@ -245,5 +269,17 @@ def test_settings_driven_openai_provider_is_called_without_ai_models(
 
     message = provider.build_assistant_message(_intake(), ())
 
-    assert message == "OpenAI reply."
+    assert message == PRIORITY_QUESTION
     assert captured["url"] == "https://api.openai.com/v1/chat/completions"
+    body = captured["body"]
+    assert isinstance(body, dict)
+    assert body["max_completion_tokens"] == 256
+    assert body["response_format"] == {"type": "json_object"}
+    messages = body["messages"]
+    assert isinstance(messages, list)
+    assert messages[0]["role"] == "system"
+    assert "PURPOSE: advise the deterministic RFI intake controller only" in messages[0]["content"]
+    assert messages[1]["role"] == "user"
+    prompt = json.loads(messages[1]["content"])
+    assert "Harbour brief" not in messages[1]["content"]
+    assert prompt == {"captured_fields": {}, "missing_fields": ["priority"]}

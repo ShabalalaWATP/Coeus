@@ -5,7 +5,6 @@ from textwrap import wrap
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
-from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.pdfgen.canvas import Canvas
 
 from coeus.domain.store import StoreProduct
@@ -310,8 +309,3 @@ def _indicator_observation(theme: str, index: int) -> str:
         "Fictional after-action reporting recommends further collection.",
     )
     return f"{observations[index]} Theme: {theme.casefold()}."
-
-
-def text_width(value: str, font: str = "Helvetica", size: float = 10) -> float:
-    """Expose a tiny deterministic metric for layout regression tests."""
-    return float(stringWidth(value, font, size))

@@ -2,13 +2,6 @@ import { toApiError } from "./client-errors";
 
 export { ApiError, setAuthEventHandlers } from "./client-errors";
 
-export type HealthResponse = {
-  status: "ok" | "ready" | "not_ready";
-  service: string;
-  environment: string;
-  request_id: string;
-};
-
 export async function apiRequest(
   path: string,
   init: RequestInit,
@@ -39,17 +32,6 @@ export async function apiRequestNoContent(
   baseUrl?: string,
 ): Promise<void> {
   await apiRequest(path, init, baseUrl);
-}
-
-export function getLiveness(requestId?: string, baseUrl?: string): Promise<HealthResponse> {
-  return apiRequestJson<HealthResponse>(
-    "/api/v1/health/live",
-    {
-      headers: requestId === undefined ? undefined : { "X-Request-ID": requestId },
-      method: "GET",
-    },
-    baseUrl,
-  );
 }
 
 export function resolveApiBaseUrl(): string {

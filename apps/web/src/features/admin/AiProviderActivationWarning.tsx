@@ -47,8 +47,9 @@ export function AiProviderActivationWarning({
       <div>
         <strong>This changes the AI provider for every user immediately.</strong>
         <p>
-          All intake assistant replies will be produced by {providerLabel} and all administrators
-          will be notified of this change. Test the connection first.
+          {providerLabel} becomes the remote text and advisory provider where egress is approved.
+          Deterministic fallback remains available, and all administrators will be notified. Test
+          the connection first.
         </p>
         <div className="ai-actions">
           <button className="ai-btn-primary" disabled={pending} onClick={onConfirm} type="button">

@@ -8,8 +8,8 @@ import { requestTicket as ticket } from "./requests-test-data";
 const dashboardDefaults = {
   canCreate: true,
   currentUserId: "preview-user",
-  isConfirming: false,
-  onConfirmDelivery: vi.fn(),
+  isDecidingOutcome: false,
+  onProductDecision: vi.fn(),
 };
 
 test("opens tickets from the dashboard and shows tagged counts", async () => {
@@ -68,22 +68,78 @@ test("links released products from the dashboard", () => {
   );
 });
 
-test("lets the owner confirm receipt of a disseminated request", async () => {
-  const onConfirmDelivery = vi.fn();
+test("links a joined request to its canonical work item", () => {
   render(
     <MemoryRouter>
       <RequestDashboard
         {...dashboardDefaults}
-        onConfirmDelivery={onConfirmDelivery}
+        onOpen={vi.fn()}
+        tickets={[
+          {
+            ...ticket,
+            customerStatus: {
+              ...ticket.customerStatus!,
+              canonicalTicketId: "canonical-ticket-2",
+            },
+          },
+        ]}
+      />
+    </MemoryRouter>,
+  );
+
+  expect(screen.getByRole("link", { name: /Track joined request/ })).toHaveAttribute(
+    "href",
+    "/app/requests/canonical-ticket-2",
+  );
+});
+
+test("lets the owner accept a released product", async () => {
+  const onProductDecision = vi.fn();
+  render(
+    <MemoryRouter>
+      <RequestDashboard
+        {...dashboardDefaults}
+        onProductDecision={onProductDecision}
         onOpen={vi.fn()}
         tickets={[{ ...ticket, state: "DISSEMINATION_READY" }]}
       />
     </MemoryRouter>,
   );
 
-  await userEvent.click(screen.getByRole("button", { name: "Confirm receipt and close" }));
+  await userEvent.click(screen.getByRole("button", { name: "Yes, close request" }));
 
-  expect(onConfirmDelivery).toHaveBeenCalledWith("ticket-1");
+  expect(onProductDecision).toHaveBeenCalledWith(
+    "ticket-1",
+    true,
+    "The released product meets the requirement.",
+    [],
+  );
+});
+
+test("requires a reason before requesting re-analysis", async () => {
+  const onProductDecision = vi.fn();
+  render(
+    <MemoryRouter>
+      <RequestDashboard
+        {...dashboardDefaults}
+        onProductDecision={onProductDecision}
+        onOpen={vi.fn()}
+        tickets={[{ ...ticket, state: "DISSEMINATION_READY" }]}
+      />
+    </MemoryRouter>,
+  );
+
+  await userEvent.click(screen.getByRole("button", { name: "No, request re-analysis" }));
+  const send = screen.getByRole("button", { name: "Send to manager for review" });
+  expect(send).toBeDisabled();
+  await userEvent.type(screen.getByLabelText(/Why does it not meet/), "Coverage is incomplete.");
+  await userEvent.type(screen.getByLabelText(/Unmet criteria/), "Eastern sector, July");
+  await userEvent.click(send);
+
+  expect(onProductDecision).toHaveBeenCalledWith("ticket-1", false, "Coverage is incomplete.", [
+    "Eastern sector",
+    "July",
+  ]);
 });
 
 test("hides the confirm receipt action from non-owners and closed requests", () => {
@@ -98,9 +154,7 @@ test("hides the confirm receipt action from non-owners and closed requests", () 
     </MemoryRouter>,
   );
 
-  expect(
-    screen.queryByRole("button", { name: "Confirm receipt and close" }),
-  ).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Yes, close request" })).not.toBeInTheDocument();
 
   rerender(
     <MemoryRouter>
@@ -111,9 +165,7 @@ test("hides the confirm receipt action from non-owners and closed requests", () 
       />
     </MemoryRouter>,
   );
-  expect(
-    screen.queryByRole("button", { name: "Confirm receipt and close" }),
-  ).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Yes, close request" })).not.toBeInTheDocument();
   expect(screen.getByText("Closed delivered")).toBeVisible();
 });
 

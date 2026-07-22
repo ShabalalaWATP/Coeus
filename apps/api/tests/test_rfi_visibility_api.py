@@ -8,7 +8,13 @@ from rfi_search_helpers import login, submitted_ticket
 
 @pytest.mark.asyncio
 async def test_ticket_response_hides_rfi_matches_from_unauthorised_collaborator() -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    app = create_app(
+        Settings(
+            environment="test",
+            argon2_memory_cost=8_192,
+            automatic_request_discovery_enabled=False,
+        )
+    )
     regional_product = next(
         product
         for product in app.state.store_services.repository.list_products()

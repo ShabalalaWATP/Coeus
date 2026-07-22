@@ -46,7 +46,7 @@ test("changes the password and adopts the rotated session", async () => {
       Promise.resolve({
         ...previewSession,
         csrfToken: "rotated-csrf-token",
-        passwordResetRequired: false,
+        user: { ...previewSession.user, passwordResetRequired: false },
       }),
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -137,7 +137,7 @@ test("shows a generic message for unexpected failures", async () => {
 test("explains the forced flow when a reset is required", () => {
   renderWithProviders(<ChangePasswordPage />, "/account/password", {
     ...previewSession,
-    passwordResetRequired: true,
+    user: { ...previewSession.user, passwordResetRequired: true },
   });
 
   expect(

@@ -50,12 +50,14 @@ export default function RequestsPage() {
     initialPageParam: undefined as string | undefined,
     queryKey: ["tickets"],
     queryFn: ({ pageParam }): Promise<TicketSummaryPage> => listTickets(pageParam),
+    refetchInterval: 25_000,
   });
   const tickets = ticketsQuery.data?.pages.flatMap((page) => page.tickets) ?? EMPTY_TICKETS;
   const selectedTicketQuery = useQuery({
     enabled: !isNewRequest && ticketId !== undefined,
     queryKey: ["tickets", "detail", ticketId],
     queryFn: () => getTicket(ticketId!),
+    refetchInterval: 25_000,
   });
   const selectedTicket = selectedTicketQuery.data;
   const existingTicketLoading =
@@ -79,6 +81,7 @@ export default function RequestsPage() {
     selectedTicket.requesterUserId === session?.user.id &&
     SIMILAR_NOTICE_STATES.has(selectedTicket.state) &&
     !similarNoticeDismissed;
+  const activeWorkSearchIncomplete = selectedTicket?.state === "ACTIVE_WORK_SEARCH_INCOMPLETE";
   const selectedRfiKey = ["rfi-search", selectedTicketId] as const;
   const hasCachedRfiResults =
     selectedTicket !== undefined && queryClient.getQueryData(selectedRfiKey) !== undefined;
@@ -159,18 +162,17 @@ export default function RequestsPage() {
             // Gate on the ticket's CURRENT eligible state, not on cached query data, so a
             // ticket that has left the eligible states (cancelled, closed) never shows a stale
             // notice or a live "Join as viewer" button from persisted react-query data.
-            similarNoticeEligible
+            similarNoticeEligible || activeWorkSearchIncomplete
               ? {
-                  isJoining: mutations.isJoiningSimilarRequest,
+                  isJoining: mutations.isResolvingSimilarRequest,
                   isLoading: similarNoticeQuery.isLoading,
-                  isQueryError: similarNoticeQuery.isError,
+                  isQueryError: activeWorkSearchIncomplete || similarNoticeQuery.isError,
                   notice: similarNoticeQuery.data,
-                  onContinue: () =>
-                    setDismissedSimilarNoticeIds((current) => [
-                      ...new Set([...current, selectedTicketId]),
-                    ]),
+                  onContinue: mutations.continueAfterSimilarRequest,
                   onJoin: mutations.joinSimilarRequest,
-                  onRetry: () => void similarNoticeQuery.refetch(),
+                  onRetry: activeWorkSearchIncomplete
+                    ? mutations.retryActiveWorkSearch
+                    : () => void similarNoticeQuery.refetch(),
                 }
               : undefined
           }
@@ -191,8 +193,8 @@ export default function RequestsPage() {
             <RequestDashboard
               canCreate={canCreate}
               currentUserId={session?.user.id ?? ""}
-              isConfirming={mutations.isConfirmingDelivery}
-              onConfirmDelivery={mutations.confirmDelivery}
+              isDecidingOutcome={mutations.isDecidingProductOutcome}
+              onProductDecision={mutations.decideProductOutcome}
               onOpen={(id) => void navigate(`/app/requests/${encodeURIComponent(id)}`)}
               tickets={tickets}
             />

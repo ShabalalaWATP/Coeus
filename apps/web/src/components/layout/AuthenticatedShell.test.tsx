@@ -58,7 +58,12 @@ test("shows loading while checking the backend session", () => {
 
 test("forces password changes before any other route", () => {
   render(
-    <AppProviders initialAuthSession={{ ...previewSession, passwordResetRequired: true }}>
+    <AppProviders
+      initialAuthSession={{
+        ...previewSession,
+        user: { ...previewSession.user, passwordResetRequired: true },
+      }}
+    >
       <MemoryRouter initialEntries={["/"]}>
         <Routes>
           <Route path="/" element={<AuthenticatedShell />} />

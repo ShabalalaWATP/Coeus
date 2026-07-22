@@ -15,14 +15,16 @@ from rfi_search_helpers import login, submitted_ticket
 async def test_rfi_search_audit_failure_rolls_back_ticket(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    app = _app()
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
         user = await login(client, "user@example.test")
         ticket_id = await submitted_ticket(client, str(user["csrfToken"]))
         original = _stored_ticket(app, ticket_id)
-        monkeypatch.setattr(app.state.rfi_search_service._audit_log, "record", _fail_audit)
+        monkeypatch.setattr(
+            app.state.rfi_search_service._mutations._audit_log, "record_many", _fail_audit
+        )
 
         with pytest.raises(RuntimeError, match="audit unavailable"):
             await client.post(
@@ -41,7 +43,7 @@ async def test_rfi_search_audit_failure_rolls_back_ticket(
 async def test_offer_accept_audit_failure_rolls_back_ticket(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    app = _app()
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
@@ -50,7 +52,9 @@ async def test_offer_accept_audit_failure_rolls_back_ticket(
         run = await _run_search(client, ticket_id, str(user["csrfToken"]))
         product_id = run.json()["offers"][0]["productId"]
         original = _stored_ticket(app, ticket_id)
-        monkeypatch.setattr(app.state.rfi_search_service._audit_log, "record", _fail_audit)
+        monkeypatch.setattr(
+            app.state.rfi_search_service._mutations._audit_log, "record_many", _fail_audit
+        )
 
         with pytest.raises(RuntimeError, match="audit unavailable"):
             await client.post(
@@ -70,7 +74,7 @@ async def test_offer_accept_audit_failure_rolls_back_ticket(
 async def test_offer_reject_audit_failure_rolls_back_ticket(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    app = _app()
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
@@ -79,7 +83,9 @@ async def test_offer_reject_audit_failure_rolls_back_ticket(
         run = await _run_search(client, ticket_id, str(user["csrfToken"]))
         product_id = run.json()["offers"][0]["productId"]
         original = _stored_ticket(app, ticket_id)
-        monkeypatch.setattr(app.state.rfi_search_service._audit_log, "record", _fail_audit)
+        monkeypatch.setattr(
+            app.state.rfi_search_service._mutations._audit_log, "record_many", _fail_audit
+        )
 
         with pytest.raises(RuntimeError, match="audit unavailable"):
             await client.post(
@@ -106,6 +112,16 @@ async def _run_search(client: AsyncClient, ticket_id: str, csrf_token: str) -> R
 
 def _fail_audit(*_args: object, **_kwargs: object) -> None:
     raise RuntimeError("audit unavailable")
+
+
+def _app() -> FastAPI:
+    return create_app(
+        Settings(
+            environment="test",
+            argon2_memory_cost=8_192,
+            automatic_request_discovery_enabled=False,
+        )
+    )
 
 
 def _stored_ticket(app: FastAPI, ticket_id: str) -> TicketRecord:

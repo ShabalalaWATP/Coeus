@@ -2,10 +2,11 @@ import asyncio
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 
 from coeus.api.dependencies import (
     get_csrf_validated_session,
+    get_ticket_services,
     get_voice_model_service,
     get_voice_session_service,
     require_permission,
@@ -15,9 +16,11 @@ from coeus.core.permissions import Permission
 from coeus.domain.auth import AuthenticatedSession
 from coeus.schemas.voice import (
     VoiceApiKeyUpdateRequest,
+    VoiceConnectionTestResponse,
     VoiceModelStateResponse,
     VoiceModelUpdateRequest,
 )
+from coeus.services.tickets import TicketServices
 from coeus.services.voice_models import VoiceModelService, VoiceModelState
 from coeus.services.voice_sessions import MAX_SDP_BYTES, VoiceSessionService
 
@@ -69,6 +72,24 @@ def configure_voice_api_key(
     )
 
 
+@router.post("/admin/voice-model/test", response_model=VoiceConnectionTestResponse)
+def test_voice_connection(
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    permitted: Annotated[
+        AuthenticatedSession, Depends(require_permission(Permission.SYSTEM_CONFIGURE))
+    ],
+    service: Annotated[VoiceModelService, Depends(get_voice_model_service)],
+) -> VoiceConnectionTestResponse:
+    del authenticated, permitted
+    result = service.test_connection()
+    return VoiceConnectionTestResponse(
+        ok=result.ok,
+        provider=result.provider,
+        model=result.model,
+        message=result.message,
+    )
+
+
 @router.get("/voice/config", response_model=VoiceModelStateResponse)
 def voice_config(
     permitted: Annotated[AuthenticatedSession, Depends(require_permission(Permission.CHAT_USE))],
@@ -83,6 +104,8 @@ async def create_voice_session(
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
     permitted: Annotated[AuthenticatedSession, Depends(require_permission(Permission.CHAT_USE))],
     service: Annotated[VoiceSessionService, Depends(get_voice_session_service)],
+    ticket_services: Annotated[TicketServices, Depends(get_ticket_services)],
+    ticket_id: Annotated[UUID | None, Query(alias="ticketId")] = None,
 ) -> Response:
     media_type = request.headers.get("content-type", "").split(";", 1)[0].lower()
     if media_type != "application/sdp":
@@ -104,7 +127,11 @@ async def create_voice_session(
         raise AppError(422, "invalid_sdp", "The SDP offer is invalid.") from exc
     if "\x00" in sdp or not sdp.startswith("v=0") or "m=audio" not in sdp:
         raise AppError(422, "invalid_sdp", "The SDP offer is invalid.")
-    started = await asyncio.to_thread(service.create, authenticated.user.user_id, sdp)
+    intake = None
+    if ticket_id is not None:
+        ticket = ticket_services.tickets.get_editable_ticket(authenticated.user, ticket_id)
+        intake = ticket.intake
+    started = await asyncio.to_thread(service.create, authenticated.user.user_id, sdp, intake)
     return Response(
         started.answer,
         media_type="application/sdp",

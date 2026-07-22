@@ -77,6 +77,10 @@ test("renders users and applies role, clearance and status changes", async () =>
 
   renderWithProviders(<UserManagementPage />, "/admin/users");
 
+  expect(screen.getByRole("link", { name: "Back to Admin" })).toHaveAttribute(
+    "href",
+    "/admin/overview",
+  );
   const analystRow = (await screen.findByText("Analyst Operator")).closest("article");
   expect(analystRow).not.toBeNull();
   expect(screen.getByText("Signed-in account changes are blocked.")).toBeVisible();
