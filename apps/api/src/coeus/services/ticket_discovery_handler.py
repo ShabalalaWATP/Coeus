@@ -61,7 +61,7 @@ class TicketDiscoveryHandler:
             return
         latest = self._tickets.tickets.get_visible_ticket(actor, ticket.ticket_id)
         if not any(item.event_type == "active_work_search_completed" for item in latest.timeline):
-            self._active_work.discover(actor, ticket.ticket_id)
+            self._active_work.discover_automated(actor, ticket.ticket_id)
 
     def _ticket(self, message: OutboxMessage) -> TicketRecord | None:
         return next(
@@ -93,7 +93,7 @@ class TicketDiscoveryHandler:
 
     def _search_allows_active_work(self, actor: UserAccount, ticket: TicketRecord) -> bool:
         if ticket.state == TicketState.RFI_SEARCHING:
-            result = self._rfi_search.run(actor, ticket.ticket_id)
+            result = self._rfi_search.run_automated(actor, ticket.ticket_id)
             if result.ticket.state != TicketState.NEW_TASKING_CONSENT:
                 return False
         return self._active_work_offers_enabled

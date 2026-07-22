@@ -2,9 +2,8 @@ import pytest
 
 from coeus.core.config import Settings
 from coeus.core.errors import AppError
-from coeus.domain.auth import UserAccount
+from coeus.domain.auth import AuthenticatedSession
 from coeus.repositories.auth import SeedUserRepository
-from coeus.repositories.tickets import InMemoryTicketRepository
 from coeus.services.audit import AuditLog
 from coeus.services.conversation_lifecycle import (
     CLOSE_OFFER_MESSAGE,
@@ -13,14 +12,10 @@ from coeus.services.conversation_lifecycle import (
     CONVERSATION_CLOSED,
     CONVERSATION_OPEN,
 )
-from coeus.services.intake import (
-    IntakeExtractionService,
-    MockLlmProvider,
-    RequirementCompletenessService,
-)
+from coeus.services.intake import IntakeExtractionService, MockLlmProvider
 from coeus.services.passwords import PasswordHasher
 from coeus.services.ticket_conversations import ConversationService
-from coeus.services.tickets import TicketService
+from workflow_authority_helpers import authorised_ticket_service
 
 COMPLETE_ROUTINE_MESSAGE = (
     "Need a report titled Harbour Watch for the Baltic from 2026-06-01 to "
@@ -30,14 +25,13 @@ COMPLETE_ROUTINE_MESSAGE = (
 )
 
 
-def _conversations() -> tuple[ConversationService, UserAccount]:
+def _conversations() -> tuple[ConversationService, AuthenticatedSession]:
     settings = Settings(environment="test", argon2_memory_cost=8_192)
     users = SeedUserRepository(settings, PasswordHasher(settings))
     actor = users.get_by_username("user@example.test")
     assert actor is not None
-    repository = InMemoryTicketRepository()
     audit_log = AuditLog()
-    tickets = TicketService(repository, RequirementCompletenessService(), audit_log)
+    repository, tickets, authenticated = authorised_ticket_service(actor, audit_log)
     return (
         ConversationService(
             repository=repository,
@@ -47,7 +41,7 @@ def _conversations() -> tuple[ConversationService, UserAccount]:
             llm_provider=MockLlmProvider(),
             audit_log=audit_log,
         ),
-        actor,
+        authenticated,
     )
 
 
@@ -79,7 +73,7 @@ def test_closed_draft_can_be_reopened_and_continued() -> None:
     ticket = conversations.send_message(actor, COMPLETE_ROUTINE_MESSAGE)
     closed = conversations.send_message(actor, "No, that's all thanks", ticket.ticket_id)
 
-    reopened = conversations.reopen(actor, closed.ticket_id)
+    reopened = conversations.reopen(actor.user, closed.ticket_id)
 
     assert reopened.conversation_status == CONVERSATION_OPEN
     assert reopened.timeline[-1].event_type == "conversation_reopened"
@@ -97,7 +91,7 @@ def test_conversation_that_is_not_closed_cannot_be_reopened() -> None:
     ticket = conversations.send_message(actor, COMPLETE_ROUTINE_MESSAGE)
 
     with pytest.raises(AppError) as denied:
-        conversations.reopen(actor, ticket.ticket_id)
+        conversations.reopen(actor.user, ticket.ticket_id)
 
     assert denied.value.code == "conversation_not_closed"
 

@@ -54,6 +54,8 @@ class UserAdminService:
             "user_roles_changed",
             str(actor.user_id),
             {"user_id": str(user_id), "roles": ",".join(sorted(role.value for role in roles))},
+            actor,
+            Permission.USER_ASSIGN_ROLE,
         )
         return updated
 
@@ -69,6 +71,8 @@ class UserAdminService:
             "user_clearance_changed",
             str(actor.user_id),
             {"user_id": str(user_id), "clearance_level": str(clearance)},
+            actor,
+            Permission.USER_ASSIGN_ROLE,
         )
         return updated
 
@@ -82,6 +86,8 @@ class UserAdminService:
             "user_enabled" if is_active else "user_disabled",
             str(actor.user_id),
             {"user_id": str(user_id)},
+            actor,
+            Permission.USER_DISABLE,
         )
         return updated
 
@@ -104,6 +110,8 @@ class UserAdminService:
                 "user_credential_reset",
                 str(actor.user_id),
                 {"user_id": str(user_id)},
+                actor,
+                Permission.USER_DISABLE,
             )
         except Exception:
             self._login_attempts.restore_reset(user.username, attempt_reset)
@@ -129,6 +137,8 @@ class UserAdminService:
         event_type: str,
         actor_user_id: str,
         metadata: dict[str, str],
+        expected_actor: UserAccount | None = None,
+        required_permission: Permission | None = None,
     ) -> None:
         def confirm_change() -> None:
             # Privilege or status changes must not outlive existing sessions.
@@ -140,7 +150,20 @@ class UserAdminService:
                     self._sessions.save(session)
                 raise
 
-        if not self._users.save_if_current_with_confirmation(original, updated, confirm_change):
+        if expected_actor is None:
+            saved = self._users.save_if_current_with_confirmation(original, updated, confirm_change)
+        else:
+            if required_permission is None:
+                raise ValueError("Authority-fenced changes require a permission.")
+            # Bind the final user write to the authority captured at request start.
+            saved = self._users.save_if_current_authorised_with_confirmation(
+                expected_actor,
+                required_permission,
+                original,
+                updated,
+                confirm_change,
+            )
+        if not saved:
             raise AppError(409, "user_stale", "User state changed; refresh and try again.")
 
     @staticmethod

@@ -9,6 +9,8 @@ from coeus.main import create_app
 from coeus.services.object_storage import LocalObjectStorage
 from store_api_helpers import login, product_payload
 
+PNG_BYTES = b"\x89PNG\r\n\x1a\nMOCK DATA ONLY uploaded asset"
+
 
 class FailingObjectStorage(LocalObjectStorage):
     def write_file(self, object_key: str, source: Path) -> None:
@@ -41,7 +43,7 @@ async def test_restart_never_substitutes_placeholder_bytes_for_a_missing_upload(
             "/api/v1/store/products/upload",
             headers={"X-CSRF-Token": str(session["csrfToken"])},
             files={
-                "asset": ("uploaded-brief.txt", b"user supplied bytes", "text/plain"),
+                "asset": ("uploaded-brief.png", PNG_BYTES, "image/png"),
                 "metadata": (None, json.dumps(metadata), "application/json"),
             },
         )
@@ -80,7 +82,7 @@ async def test_upload_rolls_back_product_when_asset_storage_fails(tmp_path: Path
             "/api/v1/store/products/upload",
             headers={"X-CSRF-Token": str(session["csrfToken"])},
             files={
-                "asset": ("uploaded-brief.txt", b"MOCK DATA ONLY", "text/plain"),
+                "asset": ("uploaded-brief.png", PNG_BYTES, "image/png"),
                 "metadata": (None, json.dumps(metadata), "application/json"),
             },
         )
@@ -123,7 +125,7 @@ async def test_upload_rolls_back_product_and_bytes_when_audit_fails(
                 "/api/v1/store/products/upload",
                 headers={"X-CSRF-Token": str(session["csrfToken"])},
                 files={
-                    "asset": ("uploaded-brief.txt", b"MOCK DATA ONLY", "text/plain"),
+                    "asset": ("uploaded-brief.png", PNG_BYTES, "image/png"),
                     "metadata": (None, json.dumps(metadata), "application/json"),
                 },
             )
@@ -131,7 +133,7 @@ async def test_upload_rolls_back_product_and_bytes_when_audit_fails(
     products = app.state.store_services.repository.list_products()
     assert len(products) == before_count
     assert all(product.metadata.title != "Mock Harbour Activity Brief" for product in products)
-    assert not any(path.name == "uploaded-brief.txt" for path in object_root.rglob("*"))
+    assert not any(path.name == "uploaded-brief.png" for path in object_root.rglob("*"))
 
 
 def _fail_audit(*_args: object, **_kwargs: object) -> None:

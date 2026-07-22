@@ -16,6 +16,15 @@ class TicketRepository(Protocol):
         """Persist only when the compatibility side effect succeeds."""
         ...
 
+    def save_with_guarded_confirmation(
+        self,
+        ticket: TicketRecord,
+        guard: Callable[[], object],
+        confirm: Callable[[], object],
+    ) -> None:
+        """Check external state and create under the state-to-ticket lock order."""
+        ...
+
     def save_pair_with_confirmation(
         self,
         expected: tuple[TicketRecord, TicketRecord],
@@ -34,6 +43,16 @@ class TicketRepository(Protocol):
         confirm: Callable[[], object],
     ) -> bool:
         """Replace one expected snapshot and roll back if confirmation fails."""
+        ...
+
+    def save_if_current_with_guarded_confirmation(
+        self,
+        expected: TicketRecord,
+        updated: TicketRecord,
+        guard: Callable[[], object],
+        confirm: Callable[[], object],
+    ) -> bool:
+        """Check external state and persist using the state-to-ticket lock order."""
         ...
 
     def get(self, ticket_id: UUID) -> TicketRecord | None: ...

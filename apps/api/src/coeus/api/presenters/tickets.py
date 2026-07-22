@@ -1,4 +1,5 @@
 from collections.abc import Iterable
+from uuid import UUID
 
 from coeus.api.presenters.advisory_agents import advice_response
 from coeus.core.permissions import Permission
@@ -34,11 +35,24 @@ from coeus.services.customer_projection import customer_clarifications, customer
 from coeus.services.customer_status import CustomerStatus, customer_status
 from coeus.services.intake_planner import intake_is_ready_for_submission
 from coeus.services.intake_standard import applicable_entries, entry_satisfied, entry_value
+from coeus.services.rfi_result_projection import project_rfi_result_signal
 
 
-def to_ticket_response(ticket: TicketRecord, actor: UserAccount) -> TicketResponse:
-    status = customer_status(ticket, actor)
+def to_ticket_response(
+    ticket: TicketRecord,
+    actor: UserAccount,
+    visible_rfi_product_ids: frozenset[UUID] | None = None,
+) -> TicketResponse:
     staff_view = Permission.TICKET_READ_ALL in actor.permissions
+    ticket = project_rfi_result_signal(
+        ticket,
+        visible_rfi_product_ids or frozenset(),
+        preserve_full=(
+            ticket.requester_user_id == actor.user_id
+            or (visible_rfi_product_ids is None and staff_view)
+        ),
+    )
+    status = customer_status(ticket, actor)
     clarifications = (
         ticket.clarification_requests if staff_view else customer_clarifications(ticket)
     )
@@ -69,7 +83,19 @@ def to_ticket_response(ticket: TicketRecord, actor: UserAccount) -> TicketRespon
     )
 
 
-def to_ticket_summary_response(ticket: TicketRecord, actor: UserAccount) -> TicketSummaryResponse:
+def to_ticket_summary_response(
+    ticket: TicketRecord,
+    actor: UserAccount,
+    visible_rfi_product_ids: frozenset[UUID] | None = None,
+) -> TicketSummaryResponse:
+    ticket = project_rfi_result_signal(
+        ticket,
+        visible_rfi_product_ids or frozenset(),
+        preserve_full=(
+            ticket.requester_user_id == actor.user_id
+            or (visible_rfi_product_ids is None and Permission.TICKET_READ_ALL in actor.permissions)
+        ),
+    )
     return TicketSummaryResponse(
         ticket_id=ticket.ticket_id,
         reference=ticket.reference,

@@ -165,7 +165,7 @@ def test_outbox_handler_covers_fail_closed_and_rollout_paths() -> None:
     handler()(_message(ticket_id))
     tickets.tickets.get_visible_ticket.return_value = SimpleNamespace(timeline=())
     handler()(_message(ticket_id))
-    active_work.discover.assert_called_once_with(actor, ticket_id)
+    active_work.discover_automated.assert_called_once_with(actor, ticket_id)
 
 
 def _message(ticket_id: UUID, *, event_type: str = "ticket_shadow_changed") -> OutboxMessage:

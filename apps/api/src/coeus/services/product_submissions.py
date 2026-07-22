@@ -12,6 +12,7 @@ from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
 from coeus.domain.auth import UserAccount
 from coeus.domain.product_submission import DraftProductAsset, DraftProductVersion
+from coeus.persistence.state_store import StateStore
 from coeus.repositories.access import AccessRepository
 from coeus.services.analyst_drafts import DraftAssetInput, DraftProductInput, ensure_draft_budget
 from coeus.services.analyst_records import next_draft_version
@@ -58,12 +59,14 @@ class ProductSubmissionService:
         access: AccessRepository,
         storage: ObjectStorage,
         settings: Settings,
+        state_store: StateStore,
     ) -> None:
         self._tickets = tickets
         self._analyst = analyst
         self._access = access
         self._storage = storage
         self._settings = settings
+        self._state_store = state_store
 
     def authorise_upload(self, actor: UserAccount, ticket_id: UUID) -> None:
         if Permission.ANALYST_SUBMIT_PRODUCT not in actor.permissions:
@@ -136,16 +139,17 @@ class ProductSubmissionService:
                     ),
                 ),
             )
-            self._tickets.mutations.save_audited_if_current(
+            self._tickets.mutations.save_submission_if_authorised(
                 ticket,
                 updated,
-                "product_submission_uploaded",
                 actor,
                 {
                     "ticket_id": str(ticket_id),
                     "version_id": str(version.version_id),
                     "manifest_hash": version.manifest_hash,
                 },
+                metadata.acg_ids,
+                self._state_store,
             )
         except Exception:
             self._storage.delete_bytes(object_key)

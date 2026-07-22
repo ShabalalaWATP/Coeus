@@ -51,7 +51,7 @@ async def test_admin_can_upload_and_download_real_asset_bytes(tmp_path: Path) ->
     acg_id = str(app.state.access_services.repository.list_acgs()[0].acg_id)
     metadata = product_payload(acg_id)
     metadata.pop("assets")
-    content = b"MOCK DATA ONLY uploaded asset bytes"
+    content = b"\x89PNG\r\n\x1a\nMOCK DATA ONLY uploaded asset bytes"
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
@@ -61,7 +61,7 @@ async def test_admin_can_upload_and_download_real_asset_bytes(tmp_path: Path) ->
             "/api/v1/store/products/upload",
             headers={"X-CSRF-Token": str(session["csrfToken"])},
             files={
-                "asset": ("uploaded-brief.txt", content, "text/plain"),
+                "asset": ("uploaded-brief.png", content, "image/png"),
                 "metadata": (None, json.dumps(metadata), "application/json"),
             },
         )

@@ -76,7 +76,7 @@ async def approve_qc_product(
     store: Annotated[StoreServices, Depends(get_store_services)],
 ) -> QcProductResponse:
     approved = qc.approve(
-        authenticated.user,
+        authenticated,
         ticket_id,
         QcApprovalInput(
             checklist=payload.checklist,

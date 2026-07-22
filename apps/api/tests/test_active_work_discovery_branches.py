@@ -1,4 +1,5 @@
 from dataclasses import replace
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 from uuid import uuid4
@@ -6,7 +7,7 @@ from uuid import uuid4
 import pytest
 
 from coeus.core.errors import AppError
-from coeus.domain.auth import RoleName, UserAccount
+from coeus.domain.auth import AuthenticatedSession, RoleName, SessionRecord, UserAccount
 from coeus.domain.enums import TicketState
 from coeus.domain.tickets import IntakeDetails, TicketRecord
 from coeus.services.active_work_discovery import ActiveWorkDiscoveryService
@@ -30,11 +31,12 @@ def test_discovery_and_incomplete_retries_are_idempotent() -> None:
         draft,
     )
 
-    assert service.discover(actor, review.ticket_id) is review
-    assert service.discover(actor, draft.ticket_id) is draft
-    assert service.discover(actor, completed.ticket_id) is completed
-    assert service.record_incomplete(actor, incomplete.ticket_id, "retry") is incomplete
-    assert service.record_incomplete(actor, draft.ticket_id, "retry") is draft
+    assert service.discover_automated(actor, review.ticket_id) is review
+    assert service.discover_automated(actor, draft.ticket_id) is draft
+    assert service.discover_automated(actor, completed.ticket_id) is completed
+    authenticated = _authenticated(actor)
+    assert service.record_incomplete(authenticated, incomplete.ticket_id, "retry") is incomplete
+    assert service.record_incomplete(authenticated, draft.ticket_id, "retry") is draft
 
 
 def test_visible_offers_drop_decided_hidden_and_closed_targets() -> None:
@@ -114,4 +116,17 @@ def _ticket(actor: UserAccount, state: TicketState, ticket_id=None) -> TicketRec
         actor.user_id,
         state,
         IntakeDetails(title="Synthetic active work", operational_question="What changed?"),
+    )
+
+
+def _authenticated(actor: UserAccount) -> AuthenticatedSession:
+    return AuthenticatedSession(
+        SessionRecord(
+            session_id="active-work-session",
+            user_id=actor.user_id,
+            csrf_token="csrf",  # noqa: S106
+            expires_at=datetime.now(UTC) + timedelta(hours=1),
+            created_at=datetime.now(UTC),
+        ),
+        actor,
     )

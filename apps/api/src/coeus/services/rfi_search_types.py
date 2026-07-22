@@ -1,8 +1,14 @@
 from dataclasses import dataclass
+from typing import Protocol
 
+from coeus.application.ports.access import ActiveAcgReader, UserLookup
 from coeus.domain.search_index import GroundedProductEvidence
 from coeus.domain.search_metrics import RfiSearchMetrics
 from coeus.domain.tickets import ProductOffer, TicketRecord
+
+
+class RfiAccess(UserLookup, ActiveAcgReader, Protocol):
+    pass
 
 
 @dataclass(frozen=True)

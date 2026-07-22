@@ -177,7 +177,7 @@ async def test_analyst_content_length_free_body_stops_before_unbounded_spooling(
 
 @pytest.mark.asyncio
 async def test_multichunk_upload_streams_to_storage_and_preserves_bytes(tmp_path: Path) -> None:
-    content = b"M" * (CHUNK_SIZE * 2 + 17)
+    content = b"\x89PNG\r\n\x1a\n" + b"M" * (CHUNK_SIZE * 2 + 17)
     app = create_app(
         Settings(
             environment="test",
@@ -199,7 +199,7 @@ async def test_multichunk_upload_streams_to_storage_and_preserves_bytes(tmp_path
             "/api/v1/store/products/upload",
             headers={"X-CSRF-Token": str(session["csrfToken"])},
             files={
-                "asset": ("streamed.bin", content, "application/octet-stream"),
+                "asset": ("streamed.png", content, "image/png"),
                 "metadata": (None, json.dumps(metadata), "application/json"),
             },
         )
@@ -274,7 +274,7 @@ def test_staging_failure_before_file_creation_has_no_cleanup_side_effect(
     )
 
     with pytest.raises(OSError, match="unavailable"):
-        _stage_upload(BytesIO(b"synthetic"), "asset.bin", "application/octet-stream", 20)
+        _stage_upload(BytesIO(b"synthetic"), "asset.bin", 20)
 
 
 def test_upload_admission_releases_capacity_after_rejection() -> None:

@@ -23,7 +23,7 @@ ingestion, local indexing, dissemination and feedback request creation.
 | Two reviewers concurrently claim or decide the same submission. | Ticket compare-and-swap produces one claimant. Claim and audit commit atomically in local mode and with the relational workflow transaction in PostgreSQL. Competing reviewers receive `409 qc_already_claimed`. |
 | A reviewer claims work they authored or analysed. | Claim, detail and decision paths reject any reviewer who authored a draft or holds an active analyst assignment. |
 | A released claim leaves stale draft authority. | Draft audiences are derived from the active reviewer and lifecycle. Release or lifecycle exit removes the relationship, and subsequent search/detail checks deny access. |
-| Non-QC user approves or disseminates a product. | QC approval, rejection, product creation and dissemination each check explicit permissions. |
+| A non-QC or concurrently revoked reviewer approves or disseminates a product. | QC approval and rejection require explicit permissions. Guarded release confirms the exact initiating session, live reviewer, QC-team membership, draft access, release-ACG authority and recipient visibility. Another session cannot preserve the operation; restoring the exact initiating session is the positive control. PostgreSQL and local workflow and submission paths use the canonical users, sessions, access, teams, products, ticket lock order. Publication, indexing, dissemination and audit effects occur only after confirmation. |
 | Product is released without complete QC checks. | `ReleaseCheckService` requires all nine checklist keys to pass before approval. |
 | Product is disseminated but the requester cannot read it. | `DisseminationService` calls Store visibility checks for the requester before recording dissemination. |
 | Product is indexed with incomplete or inactive ACG metadata. | Release metadata requires at least one active ACG and accepts only QC-confirmed active ACGs the reviewer is allowed to use. |
@@ -37,6 +37,11 @@ ingestion, local indexing, dissemination and feedback request creation.
 - Local indexing is deterministic and in-process. Hosted release notifications
   use the durable outbox, while a production search-index worker still needs
   operational retry and dead-letter evidence.
+- Ninety-nine local workflow authority tests, four focused real-PostgreSQL
+  authority tests and the unified PostgreSQL lock-order suite at 5/5 pass.
+  The database suite includes QC session-deletion denial and restored-session
+  success; local QC session races also pass.
+  Full backend closure and a clean-revision security rescan remain open.
 - Feedback submission, feedback abuse controls and trend analytics are deferred
   to Sprint 11.
 - Persistent audit immutability depends on later database-backed storage.

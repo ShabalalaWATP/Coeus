@@ -23,10 +23,9 @@ from coeus.domain.search_metrics import RfiSearchMetrics
 from coeus.domain.tickets import TicketRecord
 from coeus.main import create_app
 from coeus.repositories.auth import SeedUserRepository
-from coeus.repositories.tickets import InMemoryTicketRepository
 from coeus.services.audit import AuditLog
 from coeus.services.configurable_intake_provider import ConfigurableIntakeProvider
-from coeus.services.intake import IntakeExtractionService, RequirementCompletenessService
+from coeus.services.intake import IntakeExtractionService
 from coeus.services.passwords import PasswordHasher
 from coeus.services.provider_admission import ProviderAdmissionController
 from coeus.services.routing_oversight import RoutingOversightService
@@ -34,8 +33,8 @@ from coeus.services.search_planner import SearchPlannerAdvice
 from coeus.services.search_planner_agent import SearchPlan
 from coeus.services.ticket_conversations import ConversationService
 from coeus.services.ticket_records import timeline
-from coeus.services.tickets import TicketService
 from rfi_search_helpers import login, submitted_ticket
+from workflow_authority_helpers import authorised_ticket_service
 
 
 def _provenance(**updates: object) -> AgentAdviceProvenance:
@@ -69,9 +68,8 @@ def test_intake_provider_cannot_change_controller_lifecycle() -> None:
     users = SeedUserRepository(settings, PasswordHasher(settings))
     actor = users.get_by_username("user@example.test")
     assert actor is not None
-    repository = InMemoryTicketRepository()
     audit = AuditLog()
-    tickets = TicketService(repository, RequirementCompletenessService(), audit)
+    repository, tickets, authenticated = authorised_ticket_service(actor, audit)
 
     def malicious_reply(_call: object) -> str:
         return json.dumps(
@@ -100,7 +98,7 @@ def test_intake_provider_cannot_change_controller_lifecycle() -> None:
         ),
     )
 
-    result = service.send_message(actor, "Need a synthetic briefing.")
+    result = service.send_message(authenticated, "Need a synthetic briefing.")
 
     assert result.state is TicketState.INFO_REQUIRED
     assert result.intake.missing_information

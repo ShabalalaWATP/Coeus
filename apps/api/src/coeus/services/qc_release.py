@@ -15,7 +15,7 @@ from datetime import UTC, datetime
 from coeus.application.ports.workflow_transaction import WorkflowTransactionPort
 from coeus.core.errors import AppError
 from coeus.domain.access import ProductStatus
-from coeus.domain.auth import UserAccount
+from coeus.domain.auth import AuthenticatedSession, UserAccount
 from coeus.domain.enums import TicketState
 from coeus.domain.store import StoreProduct
 from coeus.domain.tickets import (
@@ -23,6 +23,7 @@ from coeus.domain.tickets import (
     RoutingRoute,
     TicketRecord,
 )
+from coeus.domain.workflow_authority import WorkflowCommitResult
 from coeus.domain.workflow_transaction import ReleaseNotificationIntent, WorkflowAuditIntent
 from coeus.repositories.access import AccessRepository
 from coeus.services.analyst_assignment import deactivate_route_assignments
@@ -30,6 +31,7 @@ from coeus.services.analyst_records import approved_route, linked_product_record
 from coeus.services.audit import AuditLog
 from coeus.services.notifications import NotificationService
 from coeus.services.qc_records import dissemination, feedback_request
+from coeus.services.qc_release_authority import release_authority
 from coeus.services.routing_records import decision as routing_decision
 from coeus.services.store import StoreServices
 from coeus.services.ticket_records import timeline
@@ -87,7 +89,7 @@ class QcReleaseStep:
 
     def complete(
         self,
-        actor: UserAccount,
+        authenticated: AuthenticatedSession,
         expected: TicketRecord,
         ticket: TicketRecord,
         product: StoreProduct,
@@ -95,16 +97,17 @@ class QcReleaseStep:
         """`ticket` carries the QC decision and index records but not yet the
         release outcome; the outcome's ticket has been saved."""
         if forwards_to_rfa(ticket):
-            return self._forward_to_rfa(actor, expected, ticket, product)
-        return self._release_to_customer(actor, expected, ticket, product)
+            return self._forward_to_rfa(authenticated, expected, ticket, product)
+        return self._release_to_customer(authenticated, expected, ticket, product)
 
     def _forward_to_rfa(
         self,
-        actor: UserAccount,
+        authenticated: AuthenticatedSession,
         expected: TicketRecord,
         ticket: TicketRecord,
         product: StoreProduct,
     ) -> QcReleaseOutcome:
+        actor = authenticated.user
         decision = routing_decision(
             ticket.ticket_id,
             actor.user_id,
@@ -137,7 +140,13 @@ class QcReleaseStep:
             ),
         )
         updated = self._commit_or_save(
-            actor, expected, proposed, product, "collect_forwarded_to_rfa", None
+            authenticated,
+            expected,
+            proposed,
+            product,
+            "collect_forwarded_to_rfa",
+            None,
+            None,
         )
         return QcReleaseOutcome(
             ticket=updated,
@@ -149,11 +158,12 @@ class QcReleaseStep:
 
     def _release_to_customer(
         self,
-        actor: UserAccount,
+        authenticated: AuthenticatedSession,
         expected: TicketRecord,
         original_ticket: TicketRecord,
         original_product: StoreProduct,
     ) -> QcReleaseOutcome:
+        actor = authenticated.user
         requester = self._access.get_user(original_ticket.requester_user_id)
         if requester is None or not requester.is_active:
             raise AppError(409, "requester_not_active", "Requester must be active.")
@@ -203,10 +213,14 @@ class QcReleaseStep:
             product_reference=product.reference,
             product_title=product.metadata.title,
         )
-        if self._transaction is None:
-            self._store.repository.save_product(product)
         updated = self._commit_or_save(
-            actor, expected, proposed, product, "product_released", notification
+            authenticated,
+            expected,
+            proposed,
+            product,
+            "product_released",
+            notification,
+            requester,
         )
         return QcReleaseOutcome(
             ticket=updated,
@@ -218,15 +232,23 @@ class QcReleaseStep:
 
     def _commit_or_save(
         self,
-        actor: UserAccount,
+        authenticated: AuthenticatedSession,
         expected: TicketRecord,
         proposed: TicketRecord,
         product: StoreProduct,
         event_type: str,
         notification: ReleaseNotificationIntent | None,
+        recipient: UserAccount | None,
     ) -> TicketRecord:
+        actor = authenticated.user
+        authority = release_authority(authenticated, expected, product, recipient)
         if self._transaction is None:
-            return self._tickets.tickets.save_system_update_if_current(expected, proposed)
+            return self._tickets.mutations.save_authorised_if_current_with_confirmation(
+                expected,
+                proposed,
+                authority,
+                lambda: self._store.repository.save_product(product),
+            )
         committed = replace(proposed, updated_at=datetime.now(UTC))
         audit = WorkflowAuditIntent(
             event_type=event_type,
@@ -237,9 +259,17 @@ class QcReleaseStep:
                 "qc_approved": "true",
             },
         )
-        if not self._transaction.commit_qc_release(
-            expected, committed, product, audit, notification
-        ):
+        result = self._transaction.commit_authorised_qc_release(
+            expected,
+            committed,
+            product,
+            audit,
+            notification,
+            authority,
+        )
+        if result is WorkflowCommitResult.AUTHORITY_REVOKED:
+            raise AppError(403, "forbidden", "Permission denied.")
+        if result is WorkflowCommitResult.TICKET_CHANGED:
             raise AppError(
                 409,
                 "ticket_changed",

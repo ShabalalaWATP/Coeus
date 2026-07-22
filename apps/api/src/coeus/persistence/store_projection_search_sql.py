@@ -47,6 +47,11 @@ WHERE p.product_id = CAST(:product_id AS uuid)
   )
 """
 
+VISIBLE_PRODUCTS_SQL = VISIBLE_PRODUCT_SQL.replace(
+    "p.product_id = CAST(:product_id AS uuid)",
+    "p.product_id = ANY(CAST(:product_ids AS uuid[]))",
+)
+
 SEARCH_PRODUCTS_BASE_SQL = """
 SELECT
     p.product_id,

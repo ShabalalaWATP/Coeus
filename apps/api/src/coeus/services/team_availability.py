@@ -10,13 +10,15 @@ from datetime import UTC, date, datetime, timedelta
 from uuid import UUID, uuid4
 
 from coeus.core.errors import AppError
-from coeus.domain.auth import UserAccount
+from coeus.core.permissions import Permission
+from coeus.domain.auth import RoleName, UserAccount
 from coeus.domain.enums import TicketState
 from coeus.domain.teams import (
     OTHER_COMMITMENT_STATUSES,
     CalendarStatus,
     OrgTeam,
     TeamCalendarEntry,
+    TeamKind,
     entry_covers,
     entry_end,
     team_member_ids,
@@ -36,6 +38,10 @@ IN_FLIGHT_STATES = frozenset(
     }
 )
 MAX_CALENDAR_WINDOW_DAYS = 62
+MANAGER_ROLE_BY_TEAM_KIND = {
+    TeamKind.RFA: RoleName.RFA_MANAGER,
+    TeamKind.CM: RoleName.COLLECTION_MANAGER,
+}
 
 
 @dataclass(frozen=True)
@@ -126,7 +132,12 @@ class TeamAvailabilityService:
 
 def can_write_entry(actor: UserAccount, team: OrgTeam, target_user_id: UUID) -> bool:
     """Members write their own entries; the team's managers write anyone's."""
-    if actor.user_id in team.manager_user_ids:
+    required_role = MANAGER_ROLE_BY_TEAM_KIND.get(team.kind)
+    if (
+        Permission.TEAM_MANAGE in actor.permissions
+        and required_role in actor.roles
+        and actor.user_id in team.manager_user_ids
+    ):
         return target_user_id in team_member_ids(team)
     return actor.user_id == target_user_id and actor.user_id in team_member_ids(team)
 

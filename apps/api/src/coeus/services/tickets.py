@@ -24,6 +24,7 @@ from coeus.domain.tickets import (
     IntakeDetails,
     TicketRecord,
 )
+from coeus.persistence.state_store import StateStore
 from coeus.services.audit import AuditLog
 from coeus.services.intake import RequirementCompletenessService, merge_intake
 from coeus.services.intake_submission_policy import require_submittable_intake
@@ -53,11 +54,12 @@ class TicketService:
         completeness: RequirementCompletenessService,
         audit_log: AuditLog,
         transaction: WorkflowTransactionPort | None = None,
+        state_store: StateStore | None = None,
     ) -> None:
         self._repository = repository
         self._completeness = completeness
         self._audit_log = audit_log
-        self.mutations = TicketMutationService(repository, audit_log, transaction)
+        self.mutations = TicketMutationService(repository, audit_log, transaction, state_store)
 
     def list_visible_tickets(self, actor: UserAccount) -> tuple[TicketRecord, ...]:
         if Permission.TICKET_READ_ALL in actor.permissions:

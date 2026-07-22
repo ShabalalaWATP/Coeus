@@ -2,7 +2,7 @@ import asyncio
 import json
 from dataclasses import dataclass
 from hashlib import sha256
-from pathlib import Path, PurePath
+from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Annotated, BinaryIO
 from urllib.parse import quote
@@ -27,14 +27,21 @@ from coeus.api.presenters.store import product_draft_from_request, product_respo
 from coeus.api.upload_limits import UploadWireLimitExceeded, install_receive_limit
 from coeus.application.ports.admission import ResourceAdmission
 from coeus.core.config import Settings
+from coeus.core.deployment import HOSTED_ENVIRONMENTS
 from coeus.core.errors import AppError
-from coeus.domain.auth import AuthenticatedSession
+from coeus.domain.access import ProductStatus
+from coeus.domain.auth import AuthenticatedSession, UserAccount
 from coeus.domain.store import object_key_segment
 from coeus.schemas.store import StoreProductCreateRequest, StoreProductResponse
 from coeus.services.asset_tokens import AssetTokenService
 from coeus.services.object_storage import ObjectStorage
+from coeus.services.product_processing import ProcessedProductFile, process_product_file
 from coeus.services.store import StoreServices
-from coeus.services.store_creation_policy import require_product_creation_permission
+from coeus.services.store_asset_redemption import redeemable_asset
+from coeus.services.store_creation_policy import (
+    require_product_creation_permission,
+    require_product_creation_status,
+)
 
 router = APIRouter(prefix="/store", tags=["store"])
 CHUNK_SIZE = 1024 * 1024
@@ -68,7 +75,6 @@ UPLOAD_OPENAPI = {
 class StagedUpload:
     path: Path
     name: str
-    mime_type: str
     size_bytes: int
     sha256: str
 
@@ -91,7 +97,10 @@ async def upload_product(
     try:
         with admission.reserve(authenticated.user.user_id, settings.local_upload_max_bytes):
             staged, product_request = await _parse_and_stage_upload(
-                request, settings.local_upload_max_bytes
+                request,
+                settings.local_upload_max_bytes,
+                authenticated.user,
+                hosted_environment=settings.environment in HOSTED_ENVIRONMENTS,
             )
             try:
                 product = store_services.ingestion.create_existing_product(
@@ -132,6 +141,9 @@ async def upload_product(
 async def _parse_and_stage_upload(
     request: Request,
     max_bytes: int,
+    actor: UserAccount,
+    *,
+    hosted_environment: bool,
 ) -> tuple[StagedUpload, StoreProductCreateRequest]:
     install_receive_limit(request, max_bytes + MAX_MULTIPART_OVERHEAD_BYTES)
     staged: StagedUpload | None = None
@@ -146,14 +158,21 @@ async def _parse_and_stage_upload(
             if not isinstance(metadata, str) or not isinstance(asset, UploadFile):
                 raise AppError(422, "product_upload_invalid", "Upload form is invalid.")
             payload = _metadata_payload(metadata)
+            if payload.get("status") == ProductStatus.PUBLISHED.value:
+                require_product_creation_status(actor, ProductStatus.PUBLISHED)
             staged = await asyncio.to_thread(
                 _stage_upload,
                 asset.file,
                 asset.filename or "asset",
-                asset.content_type or "application/octet-stream",
                 max_bytes,
             )
-            payload["assets"] = [_asset_payload(staged)]
+            processed = await asyncio.to_thread(
+                process_product_file,
+                staged.path,
+                staged.name,
+                hosted_environment=hosted_environment,
+            )
+            payload["assets"] = [_asset_payload(staged, processed)]
             return staged, _validated_product_request(payload)
     except Exception:
         if staged is not None:
@@ -173,20 +192,13 @@ def download_asset(
     store_services: Annotated[StoreServices, Depends(get_store_services)],
 ) -> StreamingResponse:
     claims = tokens.verify(token)
-    if (
-        claims.user_id != authenticated.user.user_id
-        or claims.product_id != product_id
-        or claims.asset_id != asset_id
-    ):
-        raise AppError(403, "asset_token_invalid", "Asset token is invalid.")
-    product = (
-        store_services.details.get_restricted_product(authenticated.user, product_id)
-        if claims.break_glass
-        else store_services.details.get_visible_product(authenticated.user, product_id)
+    selected = redeemable_asset(
+        claims,
+        authenticated.user,
+        product_id,
+        asset_id,
+        store_services.details,
     )
-    selected = next((asset for asset in product.assets if asset.asset_id == asset_id), None)
-    if selected is None:
-        raise AppError(404, "asset_not_found", "Asset was not found.")
     if not storage.exists(selected.object_key):
         raise AppError(404, "asset_bytes_not_found", "Asset bytes were not found.")
     filename = quote(object_key_segment(selected.name))
@@ -204,7 +216,6 @@ def download_asset(
 def _stage_upload(
     source: BinaryIO,
     filename: str,
-    mime_type: str,
     max_bytes: int,
 ) -> StagedUpload:
     size = 0
@@ -224,7 +235,6 @@ def _stage_upload(
         return StagedUpload(
             path=path,
             name=object_key_segment(filename),
-            mime_type=mime_type,
             size_bytes=size,
             sha256=digest.hexdigest(),
         )
@@ -251,18 +261,15 @@ def _validated_product_request(payload: dict[str, object]) -> StoreProductCreate
         raise AppError(422, "product_metadata_invalid", "Product metadata is invalid.") from exc
 
 
-def _asset_payload(staged: StagedUpload) -> dict[str, object]:
+def _asset_payload(
+    staged: StagedUpload,
+    processed: ProcessedProductFile,
+) -> dict[str, object]:
     return {
-        "assetType": _asset_type(staged.name, staged.mime_type),
-        "mimeType": staged.mime_type,
+        "assetType": processed.asset_type,
+        "mimeType": processed.detected_mime_type,
         "name": staged.name,
+        "previewKind": processed.preview_kind,
         "sha256": staged.sha256,
         "sizeBytes": staged.size_bytes,
     }
-
-
-def _asset_type(name: str, mime_type: str) -> str:
-    suffix = PurePath(name).suffix.removeprefix(".").casefold()
-    if suffix:
-        return suffix
-    return mime_type.split("/", 1)[0] or "binary"

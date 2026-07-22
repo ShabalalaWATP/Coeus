@@ -3,6 +3,7 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
+from coeus.core.resource_limits import STORE_SEARCH_STATEMENT_TIMEOUT_MS
 from coeus.domain.access import ProductStatus
 from coeus.domain.search_relevance import VECTOR_SIMILARITY_FLOOR
 from coeus.domain.store import (
@@ -22,6 +23,7 @@ from coeus.persistence.store_projection_search_sql import (
     SEARCH_PRODUCTS_SQL,
     SEARCH_SUMMARY_SQL,
     VISIBLE_PRODUCT_SQL,
+    VISIBLE_PRODUCTS_SQL,
 )
 
 
@@ -43,6 +45,27 @@ def get_visible_product(
     return _decode_product(product_rows[0], asset_rows, acg_rows, label_rows)
 
 
+def get_visible_products(
+    connection: Connection,
+    product_ids: frozenset[object],
+    scope: StoreVisibilityScope,
+) -> tuple[StoreProduct, ...]:
+    if not scope.acg_ids or not product_ids:
+        return ()
+    params = _scope_params(scope) | {
+        "product_ids": [str(product_id) for product_id in sorted(product_ids, key=str)]
+    }
+    product_rows = _mapping_rows(connection.execute(text(VISIBLE_PRODUCTS_SQL), params))
+    if not product_rows:
+        return ()
+    visible_ids = [str(row["product_id"]) for row in product_rows]
+    child_params = {"product_ids": visible_ids}
+    asset_rows = _mapping_rows(connection.execute(text(SEARCH_ASSETS_SQL), child_params))
+    acg_rows = _mapping_rows(connection.execute(text(SEARCH_ACGS_SQL), child_params))
+    label_rows = _mapping_rows(connection.execute(text(SEARCH_LABELS_SQL), child_params))
+    return tuple(_decode_product(row, asset_rows, acg_rows, label_rows) for row in product_rows)
+
+
 def search_product_page(
     connection: Connection,
     filters: StoreSearchFilters,
@@ -50,6 +73,10 @@ def search_product_page(
 ) -> StoreProductSearchPage:
     if not scope.acg_ids:
         return StoreProductSearchPage((), 0, StoreFacets((), (), ()))
+    connection.execute(
+        text("SELECT set_config('statement_timeout', :statement_timeout, true)"),
+        {"statement_timeout": f"{STORE_SEARCH_STATEMENT_TIMEOUT_MS}ms"},
+    )
     params = _search_params(filters, scope) | {
         "page_size": filters.page_size,
         "offset": (filters.page - 1) * filters.page_size,

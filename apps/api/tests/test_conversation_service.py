@@ -9,20 +9,18 @@ from coeus.domain.enums import TicketState
 from coeus.domain.tickets import AgentExecutionKind, IntakeDetails, TicketRecord
 from coeus.integrations.llm_gateway import LlmCall
 from coeus.repositories.auth import SeedUserRepository
-from coeus.repositories.tickets import InMemoryTicketRepository
 from coeus.services.ai_models import AiModelService
 from coeus.services.audit import AuditLog
 from coeus.services.intake import (
     AdmittedAssistantReply,
     IntakeExtractionService,
-    RequirementCompletenessService,
 )
 from coeus.services.intake_provider_calls import PreparedIntakeReply
 from coeus.services.passwords import PasswordHasher
 from coeus.services.provider_admission import ProviderAdmissionController
 from coeus.services.ticket_builder import ConfigurableIntakeProvider
 from coeus.services.ticket_conversations import ConversationService
-from coeus.services.tickets import TicketService
+from workflow_authority_helpers import authorised_ticket_service
 
 
 class FailingAssistantProvider:
@@ -37,9 +35,8 @@ def test_new_chat_does_not_persist_blank_ticket_when_assistant_fails() -> None:
     users = SeedUserRepository(settings, PasswordHasher(settings))
     actor = users.get_by_username("user@example.test")
     assert actor is not None
-    repository = InMemoryTicketRepository()
     audit_log = AuditLog()
-    tickets = TicketService(repository, RequirementCompletenessService(), audit_log)
+    repository, tickets, authenticated = authorised_ticket_service(actor, audit_log)
     conversations = ConversationService(
         repository=repository,
         tickets=tickets,
@@ -50,7 +47,7 @@ def test_new_chat_does_not_persist_blank_ticket_when_assistant_fails() -> None:
     )
 
     with pytest.raises(RuntimeError, match="simulated assistant failure"):
-        conversations.send_message(actor, "Need a briefing on Baltic port activity.")
+        conversations.send_message(authenticated, "Need a briefing on Baltic port activity.")
 
     assert repository.list_tickets() == ()
     assert audit_log.list_events() == ()
@@ -85,9 +82,8 @@ def test_failed_remote_fallback_refunds_provider_capacity() -> None:
     users = SeedUserRepository(settings, PasswordHasher(settings))
     actor = users.get_by_username("user@example.test")
     assert actor is not None
-    repository = InMemoryTicketRepository()
     audit_log = AuditLog()
-    tickets = TicketService(repository, RequirementCompletenessService(), audit_log)
+    repository, tickets, authenticated = authorised_ticket_service(actor, audit_log)
     admission = ProviderAdmissionController(
         max_concurrent=1,
         max_calls_per_window=1,
@@ -104,10 +100,10 @@ def test_failed_remote_fallback_refunds_provider_capacity() -> None:
         admission,
     )
 
-    first = conversations.send_message(actor, "Need a synthetic briefing.")
-    second = conversations.send_message(actor, "Focus it on Baltic ports.", first.ticket_id)
+    first = conversations.send_message(authenticated, "Need a synthetic briefing.")
+    second = conversations.send_message(authenticated, "Focus it on Baltic ports.", first.ticket_id)
     with pytest.raises(AppError) as denied:
-        conversations.send_message(actor, "Need another synthetic briefing.")
+        conversations.send_message(authenticated, "Need another synthetic briefing.")
 
     assert calls == 2
     assert second.messages[-1].body == (
@@ -139,9 +135,8 @@ def test_chat_byte_limits_reject_before_and_after_provider_reply(monkeypatch) ->
         "user@example.test"
     )
     assert actor is not None
-    repository = InMemoryTicketRepository()
     audit = AuditLog()
-    tickets = TicketService(repository, RequirementCompletenessService(), audit)
+    repository, tickets, authenticated = authorised_ticket_service(actor, audit)
 
     class OversizedReply:
         def build_assistant_message(
@@ -161,7 +156,7 @@ def test_chat_byte_limits_reject_before_and_after_provider_reply(monkeypatch) ->
     monkeypatch.setattr("coeus.services.ticket_conversations.MAX_CHAT_HISTORY_BYTES", 10)
 
     with pytest.raises(AppError, match="invalid response"):
-        service.send_message(actor, "short")
+        service.send_message(authenticated, "short")
     with pytest.raises(AppError, match="history limit"):
         service._ensure_chat_budget(
             TicketRecord(
@@ -182,9 +177,8 @@ def test_prepared_remote_provider_commits_and_complete_stop_closes() -> None:
         "user@example.test"
     )
     assert actor is not None
-    repository = InMemoryTicketRepository()
     audit = AuditLog()
-    tickets = TicketService(repository, RequirementCompletenessService(), audit)
+    repository, tickets, _authenticated = authorised_ticket_service(actor, audit)
 
     class PreparedRemote:
         def build_assistant_message(
@@ -232,9 +226,8 @@ def test_mock_to_remote_switch_cannot_bypass_provider_admission() -> None:
         "user@example.test"
     )
     assert actor is not None
-    repository = InMemoryTicketRepository()
     audit = AuditLog()
-    tickets = TicketService(repository, RequirementCompletenessService(), audit)
+    repository, tickets, _authenticated = authorised_ticket_service(actor, audit)
     ai_models = AiModelService(settings, audit)
     ai_models.configure_api_key("admin-id", "admin@example.test", "synthetic-key")
     network_calls = 0
@@ -306,9 +299,8 @@ def test_invalid_remote_output_commits_capacity_and_records_safe_provenance() ->
         "user@example.test"
     )
     assert actor is not None
-    repository = InMemoryTicketRepository()
     audit = AuditLog()
-    tickets = TicketService(repository, RequirementCompletenessService(), audit)
+    repository, tickets, authenticated = authorised_ticket_service(actor, audit)
     admission = ProviderAdmissionController(
         max_concurrent=1,
         max_calls_per_window=1,
@@ -325,9 +317,9 @@ def test_invalid_remote_output_commits_capacity_and_records_safe_provenance() ->
         admission,
     )
 
-    ticket = service.send_message(actor, "Sensitive synthetic requirement text.")
+    ticket = service.send_message(authenticated, "Sensitive synthetic requirement text.")
     with pytest.raises(AppError) as denied:
-        service.send_message(actor, "A second request should be rate limited.")
+        service.send_message(authenticated, "A second request should be rate limited.")
 
     run = ticket.agent_runs[-1]
     assert denied.value.status_code == 429

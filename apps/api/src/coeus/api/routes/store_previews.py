@@ -17,6 +17,7 @@ from coeus.services.asset_tokens import AssetTokenService
 from coeus.services.document_extraction import DocumentExtractionError, extract_pages
 from coeus.services.object_storage import ObjectStorage
 from coeus.services.store import StoreServices
+from coeus.services.store_asset_redemption import redeemable_asset
 
 router = APIRouter(prefix="/store", tags=["store"])
 
@@ -32,19 +33,14 @@ def preview_store_asset(
     store: Annotated[StoreServices, Depends(get_store_services)],
 ) -> Response:
     claims = tokens.verify(token)
-    if (
-        claims.user_id != authenticated.user.user_id
-        or claims.product_id != product_id
-        or claims.asset_id != asset_id
-    ):
-        raise AppError(403, "asset_token_invalid", "Asset token is invalid.")
-    product = (
-        store.details.get_restricted_product(authenticated.user, product_id)
-        if claims.break_glass
-        else store.details.get_visible_product(authenticated.user, product_id)
+    asset = redeemable_asset(
+        claims,
+        authenticated.user,
+        product_id,
+        asset_id,
+        store.details,
     )
-    asset = next((item for item in product.assets if item.asset_id == asset_id), None)
-    if asset is None or not storage.exists(asset.object_key):
+    if not storage.exists(asset.object_key):
         raise AppError(404, "asset_not_found", "Asset was not found.")
     content = storage.read_bytes(asset.object_key)
     headers = {

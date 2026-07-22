@@ -11,13 +11,19 @@ from coeus.core.errors import AppError
 from coeus.domain.auth import UserAccount
 from coeus.domain.tickets import TicketRecord
 from coeus.domain.workflow_transaction import WorkflowAuditIntent, WorkflowOutboxIntent
+from coeus.persistence.state_store import StateStore
 from coeus.services.audit import AuditLog
+from coeus.services.authorised_ticket_mutations import AuthorisedTicketMutations
+from coeus.services.submission_authority_commit import (
+    local_submission_authority,
+    raise_submission_conflict,
+)
 from coeus.services.ticket_persistence import save_ticket, save_ticket_if_current
 
 LOGGER = logging.getLogger(__name__)
 
 
-class TicketMutationService:
+class TicketMutationService(AuthorisedTicketMutations):
     """Own ticket writes and their durable audit transaction boundary."""
 
     def __init__(
@@ -25,10 +31,12 @@ class TicketMutationService:
         repository: TicketRepository,
         audit_log: AuditLog,
         transaction: WorkflowTransactionPort | None = None,
+        state_store: StateStore | None = None,
     ) -> None:
         self._repository = repository
         self._audit_log = audit_log
         self._transaction = transaction
+        self._state_store = state_store
 
     def save(self, ticket: TicketRecord) -> TicketRecord:
         return save_ticket(self._repository, ticket)
@@ -70,6 +78,44 @@ class TicketMutationService:
             actor,
             ((event_type, metadata),),
         )
+
+    def save_submission_if_authorised(
+        self,
+        expected: TicketRecord,
+        proposed: TicketRecord,
+        actor: UserAccount,
+        metadata: dict[str, str],
+        required_acg_ids: frozenset[UUID],
+        state_store: StateStore,
+    ) -> TicketRecord:
+        """Commit only while account, ACG and ticket authority are current."""
+        committed = replace(proposed, updated_at=datetime.now(UTC))
+        audit = WorkflowAuditIntent("product_submission_uploaded", actor.user_id, metadata)
+        if self._transaction is not None:
+            result = self._transaction.commit_product_submission(
+                expected,
+                committed,
+                (audit,),
+                actor.user_id,
+                required_acg_ids,
+            )
+            raise_submission_conflict(result, _ticket_changed())
+            self._accept_many((committed,))
+            return committed
+        confirmed = self._repository.save_if_current_with_guarded_confirmation(
+            expected,
+            committed,
+            lambda: raise_submission_conflict(
+                local_submission_authority(state_store, actor.user_id, required_acg_ids),
+                _ticket_changed(),
+            ),
+            lambda: self._audit_log.record(
+                "product_submission_uploaded", str(actor.user_id), metadata
+            ),
+        )
+        if not confirmed:
+            raise _ticket_changed()
+        return committed
 
     def save_audited_with_outbox_if_current(
         self,

@@ -29,7 +29,7 @@ def build_ticket_services(
     metrics = admission_metrics or AdmissionMetrics()
     repository = InMemoryTicketRepository(state_store)
     completeness = RequirementCompletenessService()
-    tickets = TicketService(repository, completeness, audit_log, transaction)
+    tickets = TicketService(repository, completeness, audit_log, transaction, state_store)
     conversations = ConversationService(
         repository,
         tickets,

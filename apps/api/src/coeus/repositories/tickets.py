@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from contextlib import AbstractContextManager, nullcontext
 from threading import RLock
 from typing import Any, Protocol, cast
 from uuid import UUID
@@ -41,12 +42,32 @@ class InMemoryTicketRepository:
                     return reference
 
     def save(self, ticket: TicketRecord) -> None:
-        with self._lock:
+        with self._state_guard(), self._lock:
             self._save_locked(ticket)
 
     def save_with_confirmation(self, ticket: TicketRecord, confirm: Callable[[], object]) -> None:
         """Persist a ticket only when its required side effect also succeeds."""
-        with self._lock:
+        with self._state_guard(), self._lock:
+            tickets = dict(self._tickets)
+            self._save_locked(ticket)
+            try:
+                confirm()
+            except Exception:
+                self._tickets = tickets
+                self._persist()
+                raise
+
+    def save_with_guarded_confirmation(
+        self,
+        ticket: TicketRecord,
+        guard: Callable[[], object],
+        confirm: Callable[[], object],
+    ) -> None:
+        """Create under the ticket lock while external authority stays stable."""
+        if self._state_store is None:
+            raise RuntimeError("Guarded ticket creates require a state store.")
+        with self._state_store.authority_guard(), self._lock:
+            guard()
             tickets = dict(self._tickets)
             self._save_locked(ticket)
             try:
@@ -67,7 +88,7 @@ class InMemoryTicketRepository:
         updated_by_id = {ticket.ticket_id: ticket for ticket in updated}
         if len(expected_by_id) != 2 or set(updated_by_id) != set(expected_by_id):
             raise ValueError("Paired ticket identities must be distinct and unchanged.")
-        with self._lock:
+        with self._state_guard(), self._lock:
             stale = any(
                 self._tickets.get(ticket_id) != ticket
                 for ticket_id, ticket in expected_by_id.items()
@@ -87,7 +108,7 @@ class InMemoryTicketRepository:
 
     def save_if_current(self, expected: TicketRecord, updated: TicketRecord) -> bool:
         """Atomically replace the expected immutable snapshot, or report a conflict."""
-        with self._lock:
+        with self._state_guard(), self._lock:
             if self._tickets.get(expected.ticket_id) != expected:
                 return False
             if self._relational_store is not None:
@@ -109,9 +130,33 @@ class InMemoryTicketRepository:
         confirm: Callable[[], object],
     ) -> bool:
         """Keep compare-and-swap plus its required audit under one lock."""
-        with self._lock:
+        with self._state_guard(), self._lock:
             if self._tickets.get(expected.ticket_id) != expected:
                 return False
+            previous = dict(self._tickets)
+            self._save_locked(updated)
+            try:
+                confirm()
+            except Exception:
+                self._tickets = previous
+                self._persist()
+                raise
+            return True
+
+    def save_if_current_with_guarded_confirmation(
+        self,
+        expected: TicketRecord,
+        updated: TicketRecord,
+        guard: Callable[[], object],
+        confirm: Callable[[], object],
+    ) -> bool:
+        """Fence authority state before acquiring the ticket commit lock."""
+        if self._state_store is None:
+            raise RuntimeError("Guarded ticket updates require a state store.")
+        with self._state_store.authority_guard(), self._lock:
+            if self._tickets.get(expected.ticket_id) != expected:
+                return False
+            guard()
             previous = dict(self._tickets)
             self._save_locked(updated)
             try:
@@ -134,6 +179,10 @@ class InMemoryTicketRepository:
         """Update the cache after a transaction port has durably committed."""
         with self._lock:
             self._tickets[ticket.ticket_id] = ticket
+
+    def _state_guard(self) -> AbstractContextManager[object]:
+        guard = self._state_store.authority_guard() if self._state_store else nullcontext()
+        return cast(AbstractContextManager[object], guard)
 
     def _save_locked(self, ticket: TicketRecord) -> None:
         tickets = dict(self._tickets)

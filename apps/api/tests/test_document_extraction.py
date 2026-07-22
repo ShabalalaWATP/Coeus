@@ -87,6 +87,41 @@ def test_rejects_pdf_page_limit_and_malformed_pdf(monkeypatch: pytest.MonkeyPatc
         extract_pages(b"%PDF-invalid", "application/pdf")
 
 
+def test_stops_pdf_extraction_when_aggregate_budget_is_exceeded(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[int] = []
+
+    class SyntheticPage:
+        def __init__(self, page_number: int) -> None:
+            self.page_number = page_number
+
+        def extract_text(self) -> str:
+            calls.append(self.page_number)
+            return "abc"
+
+    class SyntheticReader:
+        def __init__(self, *_args, **_kwargs) -> None:
+            self.is_encrypted = False
+            self.pages = [SyntheticPage(1), SyntheticPage(2), SyntheticPage(3)]
+
+    monkeypatch.setattr(document_extraction, "PdfReader", SyntheticReader)
+    monkeypatch.setattr(document_extraction, "validate_pdf_decoded_streams", lambda _pages: None)
+    monkeypatch.setattr(document_extraction, "MAX_EXTRACTED_CHARACTERS", 5)
+
+    with pytest.raises(DocumentExtractionError, match="extracted_text_too_large"):
+        extract_pages(b"%PDF-synthetic", "application/pdf")
+
+    assert calls == [1, 2]
+
+    calls.clear()
+    monkeypatch.setattr(document_extraction, "MAX_EXTRACTED_CHARACTERS", 9)
+    pages = extract_pages(b"%PDF-synthetic", "application/pdf")
+
+    assert [page.text for page in pages] == ["abc", "abc", "abc"]
+    assert calls == [1, 2, 3]
+
+
 def test_rejects_docx_archive_limits_and_missing_document(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

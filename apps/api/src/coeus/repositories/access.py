@@ -1,6 +1,8 @@
+from collections.abc import Callable
 from typing import Protocol
 from uuid import UUID, uuid5
 
+from coeus.core.permissions import Permission
 from coeus.domain.access import (
     AccessControlGroup,
     AccessControlGroupMembership,
@@ -9,6 +11,7 @@ from coeus.domain.access import (
 )
 from coeus.domain.auth import UserAccount
 from coeus.persistence.state_store import StateStore
+from coeus.repositories.access_seed_product import build_seed_product
 from coeus.repositories.access_state import load_access_snapshot, save_access_snapshot
 from coeus.repositories.auth import SeedUserRepository
 from coeus.repositories.demo_access_specs import (
@@ -34,6 +37,13 @@ class AccessRepository(Protocol):
     def get_user(self, user_id: UUID) -> UserAccount | None: ...
 
     def get_user_by_username(self, username: str) -> UserAccount | None: ...
+
+    def confirm_current_authority(
+        self,
+        expected_actor: UserAccount,
+        required_permissions: frozenset[Permission],
+        confirm: Callable[[], object],
+    ) -> bool: ...
 
     def list_acgs(self) -> tuple[AccessControlGroup, ...]: ...
 
@@ -84,6 +94,18 @@ class SeedAccessRepository:
 
     def get_user_by_username(self, username: str) -> UserAccount | None:
         return self._users.get_by_username(username)
+
+    def confirm_current_authority(
+        self,
+        expected_actor: UserAccount,
+        required_permissions: frozenset[Permission],
+        confirm: Callable[[], object],
+    ) -> bool:
+        return self._users.confirm_current_authority(
+            expected_actor,
+            required_permissions,
+            confirm,
+        )
 
     def list_acgs(self) -> tuple[AccessControlGroup, ...]:
         return tuple(sorted(self._acgs.values(), key=lambda acg: acg.code))
@@ -247,8 +269,8 @@ class SeedAccessRepository:
             if acg.code not in BILLY_DENIED_ACG_CODES:
                 self.add_membership(acg.acg_id, colleague.user_id)
 
-        regional_product = self._seed_product(
-            "regional-stability-brief",
+        regional_product = build_seed_product(
+            stable_seed_id("product-regional-stability-brief"),
             "Regional Stability Brief",
             "MOCK DATA ONLY assessment summary visible to Alpha Regional members.",
             "assessment_report",
@@ -258,8 +280,8 @@ class SeedAccessRepository:
             frozenset({regional.acg_id}),
             "RFA",
         )
-        collection_product = self._seed_product(
-            "collection-sensor-summary",
+        collection_product = build_seed_product(
+            stable_seed_id("product-collection-sensor-summary"),
             "Collection Sensor Summary",
             "MOCK DATA ONLY collection product for Bravo Collection members.",
             "sigint_mock",
@@ -269,8 +291,8 @@ class SeedAccessRepository:
             frozenset({collection.acg_id}),
             "Collection",
         )
-        assessment_draft = self._seed_product(
-            "assessment-draft-pack",
+        assessment_draft = build_seed_product(
+            stable_seed_id("product-assessment-draft-pack"),
             "Assessment Draft Pack",
             "MOCK DATA ONLY draft pack for assessment team coordination.",
             "finished_output",
@@ -314,30 +336,6 @@ class SeedAccessRepository:
         )
         self.save_acg(acg)
         return acg
-
-    @staticmethod
-    def _seed_product(
-        seed_name: str,
-        title: str,
-        summary: str,
-        product_type: str,
-        status: ProductStatus,
-        classification_level: int,
-        handling_caveats: frozenset[str],
-        acg_ids: frozenset[UUID],
-        owner_team: str,
-    ) -> ProductRecord:
-        return ProductRecord(
-            product_id=stable_seed_id(f"product-{seed_name}"),
-            title=title,
-            summary=summary,
-            product_type=product_type,
-            status=status,
-            classification_level=classification_level,
-            handling_caveats=handling_caveats,
-            acg_ids=acg_ids,
-            owner_team=owner_team,
-        )
 
     def _user(self, username: str) -> UserAccount:
         user = self._users.get_by_username(username)

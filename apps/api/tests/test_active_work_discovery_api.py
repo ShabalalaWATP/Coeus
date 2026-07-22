@@ -50,7 +50,11 @@ async def test_incomplete_active_work_search_must_be_retried_before_consent() ->
         app.state.ticket_services.tickets.save_system_update(
             replace(ticket, state=TicketState.NEW_TASKING_CONSENT)
         )
-        incomplete = service.record_incomplete(actor, UUID(source_id), "provider_unavailable")
+        session_id = client.cookies.get("coeus_session")
+        authenticated = app.state.auth_service.require_session(session_id)
+        incomplete = service.record_incomplete(
+            authenticated, UUID(source_id), "provider_unavailable"
+        )
         retried = await client.post(
             f"/api/v1/similar-requests/tickets/{source_id}/retry",
             headers={"X-CSRF-Token": str(user["csrfToken"])},

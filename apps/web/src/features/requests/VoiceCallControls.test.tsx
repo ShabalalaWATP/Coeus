@@ -61,10 +61,12 @@ test("starts a WebRTC call, captures both transcripts and cleans up on stop", as
   );
   await userEvent.click(screen.getByRole("button", { name: "Stop voice" }));
 
-  await waitFor(() =>
-    expect(onTranscript).toHaveBeenCalledWith(
-      "Voice drafting transcript:\nYou: Need an EW assessment\nIstari: Which region?",
-    ),
+  await waitFor(
+    () =>
+      expect(onTranscript).toHaveBeenCalledWith(
+        "Voice drafting transcript:\nYou: Need an EW assessment\nIstari: Which region?",
+      ),
+    { timeout: 2_000 },
   );
   expect(stopTrack).toHaveBeenCalled();
   expect(latestPeer?.closed).toBe(true);
@@ -244,10 +246,12 @@ test("captures a completed assistant response transcript", async () => {
   });
 
   await userEvent.click(screen.getByRole("button", { name: "Stop voice" }));
-  await waitFor(() =>
-    expect(onTranscript).toHaveBeenCalledWith(
-      "Voice drafting transcript:\nIstari: Tell me the required timeframe.",
-    ),
+  await waitFor(
+    () =>
+      expect(onTranscript).toHaveBeenCalledWith(
+        "Voice drafting transcript:\nIstari: Tell me the required timeframe.",
+      ),
+    { timeout: 2_000 },
   );
 });
 
@@ -334,9 +338,7 @@ function textResponse(payload: string) {
   };
 }
 
-function emptyResponse() {
-  return { ok: true };
-}
+const emptyResponse = () => ({ ok: true });
 
 function deferred<T>() {
   let resolve!: (value: T) => void;

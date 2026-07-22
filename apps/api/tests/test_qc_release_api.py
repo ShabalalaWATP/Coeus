@@ -118,16 +118,16 @@ async def test_ticket_update_failure_rolls_back_the_published_product(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
         ticket_id = await _submitted_qc_ticket(client, app, "Rollback release product")
-        tickets = app.state.ticket_services.tickets
-        original = tickets.save_system_update_if_current
+        mutations = app.state.ticket_services.mutations
+        original = mutations.save_authorised_if_current_with_confirmation
 
-        def fail_save(_expected: TicketRecord, _proposed: TicketRecord) -> TicketRecord:
+        def fail_save(*_args: object, **_kwargs: object) -> TicketRecord:
             raise RuntimeError("simulated release persistence failure")
 
-        monkeypatch.setattr(tickets, "save_system_update_if_current", fail_save)
+        monkeypatch.setattr(mutations, "save_authorised_if_current_with_confirmation", fail_save)
         with pytest.raises(RuntimeError, match="simulated release persistence failure"):
             await _approve(client, ticket_id, _acg_id(app, "ACG-EU-CYBER"))
-        monkeypatch.setattr(tickets, "save_system_update_if_current", original)
+        monkeypatch.setattr(mutations, "save_authorised_if_current_with_confirmation", original)
 
         await login(client, "user@example.test")
         notifications = await client.get("/api/v1/notifications")
