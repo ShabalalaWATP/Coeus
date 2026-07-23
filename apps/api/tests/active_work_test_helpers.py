@@ -17,4 +17,4 @@ def prepare_active_work_review(app: FastAPI, username: str, ticket_id: str) -> N
     ActiveWorkDiscoveryService(
         app.state.ticket_services,
         app.state.similar_request_service,
-    ).discover(actor, UUID(ticket_id))
+    ).discover_automated(actor, UUID(ticket_id))

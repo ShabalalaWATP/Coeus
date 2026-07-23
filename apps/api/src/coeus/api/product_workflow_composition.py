@@ -27,6 +27,7 @@ def configure_product_workflow(
         access,
         app.state.object_storage,
         settings,
+        app.state.state_store,
     )
     app.state.workflow_draft_access_service = WorkflowDraftAccessService(
         app.state.ticket_services,

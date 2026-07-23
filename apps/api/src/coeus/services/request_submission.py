@@ -8,10 +8,11 @@ from coeus.application.ports.admission import ResourceAdmission
 from coeus.core.async_work import run_bounded_search
 from coeus.core.errors import AppError
 from coeus.core.logging import get_logger
-from coeus.domain.auth import UserAccount
+from coeus.domain.auth import AuthenticatedSession
 from coeus.domain.enums import TicketState
 from coeus.domain.search_metrics import RfiSearchMetrics
 from coeus.domain.tickets import TicketRecord
+from coeus.domain.workflow_authority import WorkflowCommitAuthority
 from coeus.services.active_work_discovery import ActiveWorkDiscoveryService
 from coeus.services.rfi_ranking import query_text
 from coeus.services.rfi_records import complete_agent_run, timeline
@@ -40,18 +41,19 @@ class RequestSubmissionService:
         self._automatic_discovery_enabled = automatic_discovery_enabled
         self._active_work_offers_enabled = active_work_offers_enabled
 
-    async def submit(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
+    async def submit(self, authenticated: AuthenticatedSession, ticket_id: UUID) -> TicketRecord:
+        actor = authenticated.user
         submitted = self._tickets.tickets.submit(actor, ticket_id)
         if not self._automatic_discovery_enabled:
             return submitted
         try:
             with self._admission.reserve(actor.user_id):
-                result = await run_bounded_search(self._rfi_search.run, actor, ticket_id)
+                result = await run_bounded_search(self._rfi_search.run, authenticated, ticket_id)
             if (
                 result.ticket.state == TicketState.NEW_TASKING_CONSENT
                 and self._active_work_offers_enabled
             ):
-                return self._active_work.discover(actor, ticket_id)
+                return self._active_work.discover(authenticated, ticket_id)
             return result.ticket
         except Exception as exc:
             logger.exception(
@@ -59,12 +61,18 @@ class RequestSubmissionService:
                 extra={"ticket_id": str(ticket_id), "error": type(exc).__name__},
             )
             reason = exc.code if isinstance(exc, AppError) else "search_failed"
-            return self._record_incomplete(actor, ticket_id, reason)
+            return self._record_incomplete(authenticated, ticket_id, reason)
 
-    def _record_incomplete(self, actor: UserAccount, ticket_id: UUID, reason: str) -> TicketRecord:
+    def _record_incomplete(
+        self,
+        authenticated: AuthenticatedSession,
+        ticket_id: UUID,
+        reason: str,
+    ) -> TicketRecord:
+        actor = authenticated.user
         ticket = self._tickets.tickets.get_visible_ticket(actor, ticket_id)
         if ticket.state == TicketState.NEW_TASKING_CONSENT:
-            return self._active_work.record_incomplete(actor, ticket_id, reason)
+            return self._active_work.record_incomplete(authenticated, ticket_id, reason)
         if ticket.state != TicketState.RFI_SEARCHING:
             return ticket
         now = datetime.now(UTC)
@@ -83,7 +91,7 @@ class RequestSubmissionService:
             assurance="assisted",
             coverage_status="partial",
         )
-        return self._tickets.mutations.save_audited_if_current(
+        return self._tickets.mutations.save_authorised_audited_if_current(
             ticket,
             replace(
                 ticket,
@@ -101,6 +109,6 @@ class RequestSubmissionService:
                 ),
             ),
             "rfi_search_incomplete",
-            actor,
+            WorkflowCommitAuthority(actor, authenticated.session, frozenset()),
             {"ticket_id": str(ticket.ticket_id), "reason": reason},
         )

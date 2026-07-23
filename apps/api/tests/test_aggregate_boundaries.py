@@ -9,15 +9,14 @@ from coeus.core.errors import AppError
 from coeus.domain.tickets import IntakeDetails
 from coeus.main import create_app
 from coeus.repositories.auth import SeedUserRepository
-from coeus.repositories.tickets import InMemoryTicketRepository
 from coeus.schemas.store import StoreProductCreateRequest
 from coeus.services.analyst_drafts import DraftProductInput, ensure_draft_budget
 from coeus.services.audit import AuditLog
-from coeus.services.intake import IntakeExtractionService, RequirementCompletenessService
+from coeus.services.intake import IntakeExtractionService
 from coeus.services.passwords import PasswordHasher
 from coeus.services.ticket_conversations import ConversationService
-from coeus.services.tickets import TicketService
 from ticket_api_helpers import login
+from workflow_authority_helpers import authorised_ticket_service
 
 
 class CountingAssistant:
@@ -37,20 +36,21 @@ def test_chat_count_limit_rejects_before_provider_persistence_and_audit(monkeypa
         "user@example.test"
     )
     assert actor is not None
-    repository = InMemoryTicketRepository()
     audit = AuditLog()
     assistant = CountingAssistant()
-    tickets = TicketService(repository, RequirementCompletenessService(), audit)
+    repository, tickets, authenticated = authorised_ticket_service(actor, audit)
     conversations = ConversationService(
         repository, tickets, tickets.mutations, IntakeExtractionService(), assistant, audit
     )
-    ticket = conversations.send_message(actor, "Need a regional port activity brief.")
+    ticket = conversations.send_message(authenticated, "Need a regional port activity brief.")
     calls = assistant.calls
     events = audit.list_events()
     monkeypatch.setattr("coeus.services.ticket_conversations.MAX_CHAT_MESSAGES_PER_TICKET", 2)
 
     with pytest.raises(AppError) as denied:
-        conversations.send_message(actor, "Add the latest reporting period.", ticket.ticket_id)
+        conversations.send_message(
+            authenticated, "Add the latest reporting period.", ticket.ticket_id
+        )
 
     assert denied.value.code == "chat_history_limit_reached"
     assert assistant.calls == calls

@@ -40,6 +40,10 @@ class StoreRepository(Protocol):
         self, product_id: UUID, scope: StoreVisibilityScope
     ) -> StoreProduct | None: ...
 
+    def get_visible_products(
+        self, product_ids: frozenset[UUID], scope: StoreVisibilityScope
+    ) -> tuple[StoreProduct, ...]: ...
+
     def get_product(self, product_id: UUID) -> StoreProduct | None: ...
 
     def save_product(self, product: StoreProduct) -> None: ...
@@ -144,6 +148,21 @@ class InMemoryStoreRepository:
         if product is not None:
             self._products[product.product_id] = product
         return product
+
+    def get_visible_products(
+        self, product_ids: frozenset[UUID], scope: StoreVisibilityScope
+    ) -> tuple[StoreProduct, ...]:
+        if not product_ids:
+            return ()
+        if self._projection is not None:
+            products = self._projection.get_visible_products(product_ids, scope)
+            self._products.update({product.product_id: product for product in products})
+            return products
+        return tuple(
+            self._products[product_id]
+            for product_id in sorted(product_ids, key=str)
+            if product_id in self._products
+        )
 
     def get_product(self, product_id: UUID) -> StoreProduct | None:
         self._refresh_from_projection(allow_empty=True)

@@ -34,7 +34,8 @@ and RFA discovery.
 | A partial or failed re-index becomes active. | Re-index writes a new generation and promotes it only after all eligible products complete. Failure preserves the previous ready generation or lexical-only mode. |
 | An administrator accidentally sends sensitive text to a cloud provider. | Fresh installs remain offline. The external provider requires a saved key, explicit activation and a data-boundary confirmation, and Admin offers a connection test first. The event is audited. |
 | Search API keys are disclosed or tampered with. | Keys use the encrypted integration secret store, are write-only in the API, never logged, and fail closed on decryption or integrity errors. Environment-managed keys cannot be replaced in Admin. |
-| A malicious PDF or DOCX executes code, fetches a URL or exhausts resources. | Extraction uses non-executing parsers, never enables macros or external resources, and enforces byte, page, character, chunk, concurrency and time budgets. Malformed assets produce bounded warnings. |
+| A malicious PDF or DOCX executes code, fetches a URL or exhausts resources. | Extraction uses non-executing parsers and never enables macros or external resources. PDF content and Form streams are limited to 1,000,000 decoded bytes each and 8,000,000 per document, with 2,048 stream invocations, 2,048 Form invocations, 100,000 operations and Form depth 32. Resource inheritance, resource-free content, repeated Forms and cycles are handled explicitly. DOCX preflight limits rows to 1,024 cells, documents to 10,000 cells, XML depth to 64 and semantic work to 50,000 units before `python-docx`. Analyst parsing uses `asyncio.to_thread`. |
+| Cancellation races staged document parsing. | Staging and multipart context exit are cancellation-safe. Product submission retains admission and the staged file until the parser thread exits, then cleans up without partial product or index state. |
 | Extracted text introduces stored XSS or terminal/control-code injection. | Text is normalised, control characters are removed, excerpts are length bounded and React renders them as escaped text. |
 | Chunk text or provider errors enter logs. | Structured logs contain identifiers, counts and fixed reason codes only. Raw document, query, key and upstream exception bodies are excluded. |
 | Degraded lexical search is mistaken for a definitive no-match. | Retrieval mode is persisted and returned. A lexical-only zero result cannot trigger the same definitive no-match presentation as a healthy hybrid run. |
@@ -67,8 +68,10 @@ and RFA discovery.
 - Embeddings are sensitive derived data and may permit membership inference.
   Database access, backups and exports must protect them like source content.
 - Third-party document parsers can contain vulnerabilities. Dependencies require
-  audit and prompt patching, and a future production deployment should isolate
-  extraction in a sandboxed worker.
+  audit and prompt patching. Semantic preflight and `asyncio.to_thread` protect
+  the demonstrated amplification dimensions and event-loop scheduling but do
+  not provide a killable process sandbox. A future production deployment should
+  isolate extraction in a bounded worker.
 - External embedding quality and availability can change. The stored model ID,
   corpus version and evaluation result make that drift observable but cannot
   eliminate it.

@@ -47,6 +47,16 @@ class StoreDetailService:
             raise AppError(404, "product_not_found", "Product was not found.")
         return product
 
+    def visible_product_ids(
+        self, actor: UserAccount, product_ids: frozenset[UUID]
+    ) -> frozenset[UUID]:
+        products = self._repository.get_visible_products(
+            product_ids, self._policy.visibility_scope(actor)
+        )
+        return frozenset(
+            product.product_id for product in products if self.can_read_product(actor, product)
+        )
+
     def can_read_product(self, actor: UserAccount, product: StoreProduct) -> bool:
         return self._policy.can_read(actor, product)
 

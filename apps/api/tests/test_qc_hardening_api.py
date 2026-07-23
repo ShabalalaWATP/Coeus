@@ -198,13 +198,13 @@ async def test_failed_ticket_update_rolls_back_ingested_product(
     ) as client:
         ticket_id = await _submitted_qc_ticket(client, app, "Rollback QC product")
         qc_manager = await login(client, "qc.manager@example.test")
-        tickets = app.state.ticket_services.tickets
-        original = tickets.save_system_update_if_current
+        mutations = app.state.ticket_services.mutations
+        original = mutations.save_authorised_if_current_with_confirmation
 
-        def boom(_expected: TicketRecord, _proposed: TicketRecord) -> TicketRecord:
+        def boom(*_args: object, **_kwargs: object) -> TicketRecord:
             raise RuntimeError("simulated persistence failure")
 
-        monkeypatch.setattr(tickets, "save_system_update_if_current", boom)
+        monkeypatch.setattr(mutations, "save_authorised_if_current_with_confirmation", boom)
         # The test transport re-raises server-side exceptions directly.
         with pytest.raises(RuntimeError, match="simulated persistence failure"):
             await client.post(
@@ -212,7 +212,11 @@ async def test_failed_ticket_update_rolls_back_ingested_product(
                 headers={"X-CSRF-Token": str(qc_manager["csrfToken"])},
                 json=_approval_payload(acg_id),
             )
-        monkeypatch.setattr(tickets, "save_system_update_if_current", original)
+        monkeypatch.setattr(
+            mutations,
+            "save_authorised_if_current_with_confirmation",
+            original,
+        )
         orphaned = [
             product
             for product in app.state.store_services.repository.list_products()

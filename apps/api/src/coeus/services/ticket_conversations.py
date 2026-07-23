@@ -7,6 +7,7 @@ from uuid import UUID, uuid4
 from coeus.application.ports.admission import ProviderAdmission, TicketAdmission
 from coeus.application.ports.tickets import TicketRepository
 from coeus.core.errors import AppError
+from coeus.core.permissions import Permission
 from coeus.core.resource_limits import (
     MAX_ASSISTANT_REPLY_BYTES,
     MAX_CHAT_HISTORY_BYTES,
@@ -14,7 +15,7 @@ from coeus.core.resource_limits import (
     text_bytes,
 )
 from coeus.domain.agent_names import INTAKE_PLANNER_AGENT
-from coeus.domain.auth import UserAccount
+from coeus.domain.auth import AuthenticatedSession, UserAccount
 from coeus.domain.enums import TicketState
 from coeus.domain.tickets import (
     AgentExecutionKind,
@@ -24,6 +25,7 @@ from coeus.domain.tickets import (
     MessageAuthor,
     TicketRecord,
 )
+from coeus.domain.workflow_authority import WorkflowCommitAuthority
 from coeus.services import conversation_lifecycle as lifecycle
 from coeus.services.audit import AuditLog
 from coeus.services.conversation_reply_records import (
@@ -77,8 +79,12 @@ class ConversationService:
         self._ticket_admission = ticket_admission
 
     def send_message(
-        self, actor: UserAccount, message: str, ticket_id: UUID | None = None
+        self,
+        authenticated: AuthenticatedSession,
+        message: str,
+        ticket_id: UUID | None = None,
     ) -> TicketRecord:
+        actor = authenticated.user
         reservation = (
             self._ticket_admission.reserve(actor.user_id)
             if ticket_id is None and self._ticket_admission is not None
@@ -90,7 +96,17 @@ class ConversationService:
                 if ticket_id
                 else self._create(actor, reference)
             )
-            return self._send_to_ticket(actor, message, ticket, create=ticket_id is None)
+            return self._send_to_ticket(
+                actor,
+                message,
+                ticket,
+                WorkflowCommitAuthority(
+                    actor,
+                    authenticated.session,
+                    frozenset({Permission.CHAT_USE}),
+                ),
+                create=ticket_id is None,
+            )
 
     def reopen(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         ticket = self._tickets.get_editable_ticket(actor, ticket_id)
@@ -126,6 +142,7 @@ class ConversationService:
         actor: UserAccount,
         message: str,
         ticket: TicketRecord,
+        authority: WorkflowCommitAuthority,
         *,
         create: bool = False,
     ) -> TicketRecord:
@@ -211,17 +228,17 @@ class ConversationService:
             )
         )
         if create:
-            return self._mutations.create_audited(
+            return self._mutations.create_authorised_audited(
                 proposed,
                 "ticket_chat_message_received",
-                actor,
+                authority,
                 {"ticket_id": str(ticket.ticket_id)},
             )
-        return self._mutations.save_audited_if_current(
+        return self._mutations.save_authorised_audited_if_current(
             ticket,
             proposed,
             "ticket_chat_message_received",
-            actor,
+            authority,
             {"ticket_id": str(ticket.ticket_id)},
         )
 

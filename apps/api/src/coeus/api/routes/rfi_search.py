@@ -42,12 +42,12 @@ async def run_rfi_search(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> RfiSearchResultsResponse:
     with admission.reserve(authenticated.user.user_id):
-        result = await run_bounded_search(rfi_search.run, authenticated.user, ticket_id)
+        result = await run_bounded_search(rfi_search.run, authenticated, ticket_id)
     if (
         result.ticket.state == TicketState.NEW_TASKING_CONSENT
         and settings.active_work_offers_enabled
     ):
-        active_work.discover(authenticated.user, ticket_id)
+        active_work.discover(authenticated, ticket_id)
         result = rfi_search.results(authenticated.user, ticket_id)
     return _to_response(result)
 
@@ -86,7 +86,7 @@ async def reject_product_offer(
         result.ticket.state == TicketState.NEW_TASKING_CONSENT
         and settings.active_work_offers_enabled
     ):
-        active_work.discover(authenticated.user, ticket_id)
+        active_work.discover(authenticated, ticket_id)
         result = rfi_search.results(authenticated.user, ticket_id)
     return _to_response(result)
 

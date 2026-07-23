@@ -49,6 +49,7 @@
 .offer-meta,
 .offer-reasons,
 .offer-actions,
+.search-details__overview,
 .search-metrics {
   display: flex;
   flex-wrap: wrap;
@@ -206,7 +207,7 @@
 }
 
 .offer-toolbar {
-  justify-content: space-between;
+  justify-content: flex-end;
 }
 
 .search-metrics {
@@ -249,18 +250,35 @@
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 12px;
-  background: var(--surface-muted);
+  background: var(--surface);
 }
 
-.offer-evidence {
+.offer-details,
+.search-details {
   border-top: 1px solid var(--border);
   padding-top: 10px;
 }
 
-.offer-evidence summary {
+.offer-details summary,
+.search-details summary {
   cursor: pointer;
   color: var(--accent);
   font-weight: 760;
+}
+
+.offer-details[open] > summary,
+.search-details[open] > summary {
+  margin-bottom: 12px;
+}
+
+.offer-details__content,
+.search-details__content {
+  display: grid;
+  gap: 12px;
+}
+
+.offer-evidence h4 {
+  margin: 0;
 }
 
 .offer-evidence blockquote {
@@ -284,17 +302,30 @@
 .offer-card__header {
   justify-content: space-between;
 }
-
 .offer-card__header div {
   display: grid;
   gap: 3px;
 }
-
-.offer-card__header span,
+.offer-card__header h3 {
+  font-size: 1rem;
+  margin: 0;
+}
 .offer-card p {
   margin: 0;
-  color: var(--muted);
+  color: var(--text);
   line-height: 1.5;
+}
+.offer-card__title {
+  color: var(--text);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.offer-card__classification {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .score-badge {

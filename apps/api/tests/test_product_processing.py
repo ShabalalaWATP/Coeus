@@ -124,6 +124,101 @@ def test_rejects_spoofed_or_unsafe_products(tmp_path, name, content, code) -> No
         process_product_file(_write(tmp_path, name, content), name, hosted_environment=False)
 
 
+@pytest.mark.parametrize(
+    "relationship",
+    [
+        b"<Relationship TargetMode='External'/>",
+        b'<Relationship Id="rId1" TargetMode = "External"/>',
+        (
+            b"<pr:Relationship xmlns:pr='http://schemas.openxmlformats.org/package/2006/"
+            b"relationships' Target='https://example.invalid' TargetMode = 'External'/>"
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    ("filename", "document_part", "relationship_part"),
+    [
+        ("linked.docx", "word/document.xml", "word/_rels/document.xml.rels"),
+        ("linked.pptx", "ppt/presentation.xml", "ppt/_rels/presentation.xml.rels"),
+    ],
+)
+def test_rejects_semantic_external_office_relationship_variants(
+    tmp_path,
+    relationship: bytes,
+    filename: str,
+    document_part: str,
+    relationship_part: str,
+) -> None:
+    relationships = (
+        b"<Relationships xmlns='http://schemas.openxmlformats.org/package/2006/relationships'>"
+        + relationship
+        + b"</Relationships>"
+    )
+    content = _zip(
+        **{
+            document_part: b"<document />",
+            relationship_part: relationships,
+        }
+    )
+
+    with pytest.raises(AppError, match="office_external_content_rejected"):
+        process_product_file(
+            _write(tmp_path, filename, content),
+            filename,
+            hosted_environment=False,
+        )
+
+
+@pytest.mark.parametrize(
+    "relationships",
+    [
+        b"<Relationships><Relationship></Relationships>",
+        (
+            b"<!DOCTYPE Relationships [<!ENTITY target 'External'>]>"
+            b"<Relationships><Relationship TargetMode='&target;'/></Relationships>"
+        ),
+    ],
+)
+def test_rejects_malformed_or_unsafe_relationship_xml(tmp_path, relationships: bytes) -> None:
+    content = _zip(
+        **{
+            "word/document.xml": b"<document />",
+            "word/_rels/document.xml.rels": relationships,
+        }
+    )
+
+    with pytest.raises(AppError, match="office_relationships_invalid"):
+        process_product_file(
+            _write(tmp_path, "relationships.docx", content),
+            "relationships.docx",
+            hosted_environment=False,
+        )
+
+
+def test_accepts_internal_pptx_relationships(tmp_path) -> None:
+    content = _zip(
+        **{
+            "ppt/presentation.xml": b"<p:presentation xmlns:p='urn:p' />",
+            "ppt/slides/slide1.xml": (
+                b"<p:sld xmlns:p='urn:p' xmlns:a='urn:a'><a:t>Synthetic slide</a:t></p:sld>"
+            ),
+            "ppt/slides/_rels/slide1.xml.rels": (
+                b"<Relationships><Relationship Target='../media/image1.png' "
+                b"TargetMode='Internal'/></Relationships>"
+            ),
+        }
+    )
+
+    processed = process_product_file(
+        _write(tmp_path, "internal.pptx", content),
+        "internal.pptx",
+        hosted_environment=False,
+    )
+
+    assert processed.detected_mime_type == product_processing.PPTX_MIME
+    assert "Synthetic slide" in processed.extracted_text
+
+
 def test_rejects_office_archives_before_unbounded_name_or_relationship_reads(
     tmp_path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -144,6 +239,30 @@ def test_rejects_office_archives_before_unbounded_name_or_relationship_reads(
     with pytest.raises(AppError, match="office_archive_too_large"):
         process_product_file(
             _write(tmp_path, "large-rel.docx", content), "large-rel.docx", hosted_environment=False
+        )
+
+
+def test_rejects_excessive_central_directory_before_zipfile_construction(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    content = _zip(
+        **{
+            "word/document.xml": b"<document />",
+            "word/styles.xml": b"<styles />",
+        }
+    )
+    monkeypatch.setattr(product_processing, "MAX_OFFICE_ZIP_MEMBERS", 1)
+
+    def unexpected_zipfile(*_args, **_kwargs):
+        raise AssertionError("ZipFile must not parse an over-budget central directory")
+
+    monkeypatch.setattr(product_processing, "ZipFile", unexpected_zipfile)
+
+    with pytest.raises(AppError, match="office_archive_too_large"):
+        process_product_file(
+            _write(tmp_path, "many.docx", content),
+            "many.docx",
+            hosted_environment=False,
         )
 
 

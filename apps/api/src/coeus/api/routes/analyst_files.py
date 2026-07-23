@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+from collections.abc import Callable
 from hashlib import sha256
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -65,7 +66,13 @@ async def upload_product_submission(
         with admission.reserve(authenticated.user.user_id, settings.local_upload_max_bytes):
             staged, payload = await _stage_request(request, settings.local_upload_max_bytes)
             try:
-                submissions.create(authenticated.user, ticket_id, _metadata(payload), staged)
+                await _run_submission_create(
+                    submissions.create,
+                    authenticated.user,
+                    ticket_id,
+                    _metadata(payload),
+                    staged,
+                )
             finally:
                 staged.path.unlink(missing_ok=True)
     except UploadWireLimitExceeded as exc:
@@ -74,6 +81,37 @@ async def upload_product_submission(
         raise AppError(422, "product_upload_invalid", "Upload form is invalid.") from exc
     ticket = analyst.task_details(authenticated.user, ticket_id)
     return task_response(ticket, authenticated.user, analyst)
+
+
+async def _run_submission_create(create: Callable[..., object], *args: object) -> None:
+    """Keep non-cancellable thread work protected until it has really stopped."""
+    await _run_protected_thread(create, *args)
+
+
+async def _run_protected_thread[ThreadResult](
+    operation: Callable[..., ThreadResult],
+    *args: object,
+    cancelled_result_cleanup: Callable[[ThreadResult], None] | None = None,
+) -> ThreadResult:
+    """Delay cancellation until thread work and any result cleanup have finished."""
+    worker = asyncio.create_task(asyncio.to_thread(operation, *args))
+    try:
+        return await asyncio.shield(worker)
+    except asyncio.CancelledError as cancelled:
+        while not worker.done():
+            try:
+                await asyncio.shield(worker)
+            except asyncio.CancelledError:
+                continue
+        if worker.cancelled():
+            raise cancelled
+        try:
+            result = worker.result()
+        except BaseException:
+            raise cancelled from None
+        if cancelled_result_cleanup is not None:
+            cancelled_result_cleanup(result)
+        raise cancelled
 
 
 @router.get("/workflow/products/{ticket_id}/versions/{version_id}/assets/{asset_id}/preview")
@@ -112,18 +150,23 @@ async def _stage_request(
             if not isinstance(raw_metadata, str) or not isinstance(asset, UploadFile):
                 raise AppError(422, "product_upload_invalid", "Upload form is invalid.")
             payload = _validate_metadata(raw_metadata)
-            staged = await asyncio.to_thread(
+            staged = await _run_protected_thread(
                 _stage_file,
                 asset.file,
                 asset.filename or "asset",
                 asset.content_type or "application/octet-stream",
                 max_bytes,
+                cancelled_result_cleanup=_unlink_staged,
             )
             return staged, payload
-    except Exception:
+    except BaseException:
         if staged:
             staged.path.unlink(missing_ok=True)
         raise
+
+
+def _unlink_staged(staged: StagedSubmissionFile) -> None:
+    staged.path.unlink(missing_ok=True)
 
 
 def _stage_file(

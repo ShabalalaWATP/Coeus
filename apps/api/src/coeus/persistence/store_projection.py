@@ -85,6 +85,15 @@ class PostgresStoreProjection:
             ensure_relational_schema(connection)
             return get_visible_product(connection, product_id, scope)
 
+    def get_visible_products(
+        self, product_ids: frozenset[UUID], scope: StoreVisibilityScope
+    ) -> tuple[StoreProduct, ...]:
+        from coeus.persistence.store_projection_search import get_visible_products
+
+        with self._engine.begin() as connection:
+            ensure_relational_schema(connection)
+            return get_visible_products(connection, product_ids, scope)
+
     def save_product(self, product: StoreProduct) -> None:
         with self._engine.begin() as connection:
             ensure_relational_schema(connection)

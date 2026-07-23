@@ -12,6 +12,7 @@ from coeus.core.permissions import Permission
 from coeus.domain.auth import UserAccount
 from coeus.domain.enums import TicketState
 from coeus.domain.tickets import IntakeDetails, TicketRecord
+from coeus.persistence.state_store import MemoryStateStore
 from coeus.repositories.access import AccessRepository
 from coeus.repositories.tickets import InMemoryTicketRepository
 from coeus.services.analyst_workflow import AnalystWorkflowService
@@ -33,6 +34,7 @@ def test_upload_and_ticket_state_guards_cover_denial_paths() -> None:
         cast(AccessRepository, SimpleNamespace()),
         cast(ObjectStorage, SimpleNamespace()),
         Settings(environment="test", argon2_memory_cost=8_192),
+        MemoryStateStore(),
     )
     denied = _actor(set())
     _assert_error("forbidden", lambda: submissions.authorise_upload(denied, ticket.ticket_id))

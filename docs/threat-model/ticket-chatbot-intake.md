@@ -26,6 +26,8 @@ metadata placeholders, agent-run records and ticket timeline.
 | Real file upload risks malware or data leakage. | Sprint 4 supports metadata placeholders only. File bytes and object storage are out of scope. |
 | Timeline tampering hides post-submission context. | Timeline entries are append-only in the service surface for Sprint 4 and include actor IDs and timestamps. |
 | Requester lifecycle actions change state without audit evidence. | Cancellation and delivery confirmation restore the original ticket if audit recording fails after the proposed state update. |
+| Ticket creation completes after the creator is disabled, logged out or loses `CHAT_USE`. | Creation carries the exact expected live `UserAccount` and required permission into the final transaction. PostgreSQL locks the users row with the ticket and audit write; local persistence uses the equivalent `authority_guard`; alternate compositions without that proof fail closed. |
+| Provider-assisted chat commits after current chat, ticket or initiating-session authority is revoked. | The final ticket mutation rechecks exact live account, `CHAT_USE`, mutable object authority and the exact initiating session under the same guard as messages, intake state, agent records and audit effects. Another session cannot authorise the delayed commit. |
 | A task list or unassigned analyst exposes customer conversation content. | Task collections retain only their bounded summary. The full ordered transcript is fetched lazily from task detail and uses the existing current-assignment authorisation before any message is returned. |
 | Stored chat text executes markup in the analyst workspace. | Conversation bodies are rendered as plain React text and are never inserted as raw HTML. |
 
@@ -35,6 +37,9 @@ metadata placeholders, agent-run records and ticket timeline.
   migration sprint.
 - Real LLM prompt, retrieval and tool-use controls need a separate threat model
   when live providers are introduced.
+- Valid provider JSON is limited to depth 32. Excessive nesting and decoder
+  recursion normalise to deterministic fallback and one circuit failure rather
+  than escaping the intake boundary.
 - Real file upload needs malware scanning, type validation, size limits and
   object-storage access controls.
 

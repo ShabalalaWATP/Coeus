@@ -34,6 +34,11 @@ class StoreProjection(Protocol):
     ) -> StoreProduct | None:
         pass
 
+    def get_visible_products(
+        self, product_ids: frozenset[UUID], scope: StoreVisibilityScope
+    ) -> tuple[StoreProduct, ...]:
+        pass
+
     def save_product(self, product: StoreProduct) -> None:
         pass
 

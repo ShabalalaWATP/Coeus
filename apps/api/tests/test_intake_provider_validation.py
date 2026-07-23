@@ -8,6 +8,7 @@ from coeus.core.config import Settings
 from coeus.core.errors import AppError
 from coeus.domain.tickets import IntakeDetails
 from coeus.integrations.llm_gateway import LlmCall
+from coeus.services.strict_json import MAX_STRICT_JSON_NESTING
 from coeus.services.ticket_builder import ConfigurableIntakeProvider
 
 PRIORITY_QUESTION = (
@@ -94,6 +95,28 @@ def test_invalid_provider_output_uses_deterministic_fallback(remote_output: str)
     assert outcome.fallback_outcome == "deterministic"
     assert outcome.validation_outcome == "failed"
     assert outcome.error_class == "ProviderOutputValidationError"
+    assert not provider.prepare_assistant_reply(_intake(), ()).requires_admission
+
+
+def test_excessively_nested_output_falls_back_and_opens_the_circuit() -> None:
+    nested = "[" * (MAX_STRICT_JSON_NESTING + 1) + "0" + "]" * (MAX_STRICT_JSON_NESTING + 1)
+    provider = ConfigurableIntakeProvider(
+        Settings(
+            environment="test",
+            llm_provider="gemini_api",
+            gemini_api_key="synthetic",
+            provider_circuit_failure_threshold=1,
+        ),
+        None,
+        text_generator=lambda _call: nested,
+    )
+
+    outcome = provider.build_admitted_assistant_message(_intake(), ())
+
+    assert outcome.text == PRIORITY_QUESTION
+    assert outcome.outcome == "invalid_output_fallback"
+    assert outcome.error_class == "ProviderOutputValidationError"
+    assert provider._circuit.metrics_snapshot() == {"provider_circuit.opened": 1}
     assert not provider.prepare_assistant_reply(_intake(), ()).requires_admission
 
 

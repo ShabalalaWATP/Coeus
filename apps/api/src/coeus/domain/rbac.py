@@ -106,7 +106,6 @@ ROLE_DEFINITIONS: dict[RoleName, RoleDefinition] = {
                 Permission.TICKET_CONSOLIDATE,
                 Permission.TICKET_ADD_COMMENT,
                 Permission.ANALYTICS_VIEW_GLOBAL,
-                Permission.AUDIT_READ,
             }
         ),
     ),

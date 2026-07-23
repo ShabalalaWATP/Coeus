@@ -5,7 +5,7 @@ from uuid import UUID
 from coeus.application.ports.workflow_transaction import WorkflowTransactionPort
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
-from coeus.domain.auth import UserAccount
+from coeus.domain.auth import AuthenticatedSession, UserAccount
 from coeus.domain.enums import TicketState
 from coeus.domain.qc import ProductIndexRecord, QcChecklistItem, QcDecisionStatus
 from coeus.domain.state_machine import can_transition
@@ -121,8 +121,12 @@ class QualityControlService:
         self._assignments.release(actor, ticket_id)
 
     def approve(
-        self, actor: UserAccount, ticket_id: UUID, approval: QcApprovalInput
+        self,
+        authenticated: AuthenticatedSession,
+        ticket_id: UUID,
+        approval: QcApprovalInput,
     ) -> TicketRecord:
+        actor = authenticated.user
         self._require(actor, Permission.QC_APPROVE)
         ticket = self._assignments.claim_for_action(actor, ticket_id)
         self._ensure_state(ticket, TicketState.QC_REVIEW)
@@ -160,7 +164,7 @@ class QualityControlService:
                     ),
                 ),
             )
-            outcome = self._release.complete(actor, ticket, pending, product)
+            outcome = self._release.complete(authenticated, ticket, pending, product)
             # One durable success event avoids a partially written audit trail
             # claiming approval when a second append fails and release is
             # compensated.

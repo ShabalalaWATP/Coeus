@@ -117,7 +117,7 @@ async def test_break_glass_asset_access_is_audited_and_downloadable(tmp_path: Pa
             local_object_storage_path=str(tmp_path / "objects"),
         )
     )
-    content = b"MOCK DATA ONLY break-glass asset bytes"
+    content = b"\x89PNG\r\n\x1a\nMOCK DATA ONLY break-glass asset bytes"
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
@@ -138,7 +138,7 @@ async def test_break_glass_asset_access_is_audited_and_downloadable(tmp_path: Pa
             "/api/v1/store/products/upload",
             headers={"X-CSRF-Token": str(session["csrfToken"])},
             files={
-                "asset": ("hidden-brief.txt", content, "text/plain"),
+                "asset": ("hidden-brief.png", content, "image/png"),
                 "metadata": (None, json.dumps(metadata), "application/json"),
             },
         )
@@ -157,6 +157,10 @@ async def test_break_glass_asset_access_is_audited_and_downloadable(tmp_path: Pa
             f"/api/v1/store/products/{product['id']}/assets/{asset['id']}/download",
             headers={"X-Asset-Token": break_glass_grant.json()["downloadToken"]},
         )
+        previewed = await client.get(
+            f"/api/v1/store/products/{product['id']}/assets/{asset['id']}/preview",
+            headers={"X-Asset-Token": break_glass_grant.json()["downloadToken"]},
+        )
         audit = await client.get("/api/v1/audit")
 
     assert created_acg.status_code == 201
@@ -167,6 +171,8 @@ async def test_break_glass_asset_access_is_audited_and_downloadable(tmp_path: Pa
     assert break_glass_grant.json()["downloadToken"].startswith("asset-token-")
     assert downloaded.status_code == 200
     assert downloaded.content == content
+    assert previewed.status_code == 200
+    assert previewed.content == content
     events = [
         event
         for event in audit.json()["events"]

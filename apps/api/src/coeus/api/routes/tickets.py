@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from coeus.api.dependencies import (
     get_csrf_validated_session,
     get_current_session,
+    get_rfi_search_service,
     get_ticket_collaborator_service,
     get_ticket_lifecycle_service,
     get_ticket_services,
@@ -38,6 +39,7 @@ from coeus.schemas.tickets import (
     TicketResponse,
 )
 from coeus.services.request_submission import RequestSubmissionService
+from coeus.services.rfi_search import RfiSearchService
 from coeus.services.tasking_consent import TaskingConsentService
 from coeus.services.ticket_collaborators import TicketCollaboratorService
 from coeus.services.ticket_lifecycle import TicketLifecycleService
@@ -50,6 +52,7 @@ router = APIRouter(tags=["tickets"])
 async def list_tickets(
     authenticated: Annotated[AuthenticatedSession, Depends(get_current_session)],
     ticket_services: Annotated[TicketServices, Depends(get_ticket_services)],
+    rfi_search: Annotated[RfiSearchService, Depends(get_rfi_search_service)],
     cursor: UUID | None = None,
     page_size: Annotated[
         int, Query(alias="pageSize", ge=1, le=MAX_TICKET_PAGE_SIZE)
@@ -58,8 +61,16 @@ async def list_tickets(
     page = ticket_services.tickets.list_visible_ticket_page(
         authenticated.user, cursor=cursor, page_size=page_size
     )
+    visible_product_ids = rfi_search.visible_offer_product_ids(authenticated.user, page.tickets)
     return TicketListResponse(
-        tickets=[to_ticket_summary_response(ticket, authenticated.user) for ticket in page.tickets],
+        tickets=[
+            to_ticket_summary_response(
+                ticket,
+                authenticated.user,
+                visible_product_ids,
+            )
+            for ticket in page.tickets
+        ],
         next_cursor=page.next_cursor,
     )
 
@@ -69,9 +80,15 @@ async def ticket_details(
     ticket_id: UUID,
     authenticated: Annotated[AuthenticatedSession, Depends(get_current_session)],
     ticket_services: Annotated[TicketServices, Depends(get_ticket_services)],
+    rfi_search: Annotated[RfiSearchService, Depends(get_rfi_search_service)],
 ) -> TicketResponse:
     ticket = ticket_services.tickets.get_visible_ticket(authenticated.user, ticket_id)
-    return to_ticket_response(ticket, authenticated.user)
+    visible_product_ids = rfi_search.visible_offer_product_ids(authenticated.user, (ticket,))
+    return to_ticket_response(
+        ticket,
+        authenticated.user,
+        visible_product_ids,
+    )
 
 
 # Plain def so FastAPI runs this handler in the threadpool: the assistant
@@ -88,7 +105,7 @@ def send_chat_message(
     _csrf_session: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
 ) -> TicketResponse:
     ticket = ticket_services.conversations.send_message(
-        authenticated.user,
+        authenticated,
         payload.message,
         payload.ticket_id,
     )
@@ -147,7 +164,7 @@ async def submit_ticket(
     submission: Annotated[RequestSubmissionService, Depends(get_request_submission_service)],
 ) -> TicketResponse:
     return to_ticket_response(
-        await submission.submit(authenticated.user, ticket_id),
+        await submission.submit(authenticated, ticket_id),
         authenticated.user,
     )
 

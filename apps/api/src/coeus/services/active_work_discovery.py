@@ -5,10 +5,11 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from coeus.core.errors import AppError
-from coeus.domain.auth import UserAccount
+from coeus.domain.auth import AuthenticatedSession, SessionRecord, UserAccount
 from coeus.domain.enums import TicketState
 from coeus.domain.tickets import TicketRecord
 from coeus.domain.work_discovery import ActiveWorkOffer
+from coeus.domain.workflow_authority import WorkflowCommitAuthority
 from coeus.services.similar_request_scoring import OPEN_SIMILARITY_STATES, SimilarRequestMatch
 from coeus.services.similar_requests import SimilarRequestService
 from coeus.services.ticket_records import is_owner, timeline
@@ -20,7 +21,19 @@ class ActiveWorkDiscoveryService:
         self._tickets = tickets
         self._similar = similar
 
-    def discover(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
+    def discover(self, authenticated: AuthenticatedSession, ticket_id: UUID) -> TicketRecord:
+        return self._discover(authenticated.user, authenticated.session, ticket_id)
+
+    def discover_automated(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
+        """Run trusted outbox discovery without an end-user session requirement."""
+        return self._discover(actor, None, ticket_id)
+
+    def _discover(
+        self,
+        actor: UserAccount,
+        session: SessionRecord | None,
+        ticket_id: UUID,
+    ) -> TicketRecord:
         ticket = self._tickets.tickets.get_visible_ticket(actor, ticket_id)
         if ticket.state == TicketState.ACTIVE_WORK_REVIEW:
             return ticket
@@ -34,10 +47,10 @@ class ActiveWorkDiscoveryService:
         ):
             return ticket
         now = datetime.now(UTC)
-        matches = self._similar.customer_notice(actor, ticket_id)
+        matches = self._similar.customer_matches(actor, ticket_id)
         offers = tuple(_offer(match, now) for match in matches)
         target_state = TicketState.ACTIVE_WORK_REVIEW if offers else TicketState.NEW_TASKING_CONSENT
-        return self._tickets.mutations.save_audited_if_current(
+        return self._tickets.mutations.save_authorised_audited_if_current(
             ticket,
             replace(
                 ticket,
@@ -54,17 +67,31 @@ class ActiveWorkDiscoveryService:
                 ),
             ),
             "active_work_search_completed",
-            actor,
+            WorkflowCommitAuthority(actor, session, frozenset()),
             {"ticket_id": str(ticket.ticket_id), "offered_count": str(len(offers))},
+            (
+                (
+                    "similar_request_notified",
+                    self._similar.notice_metadata(ticket.ticket_id, matches),
+                ),
+            )
+            if matches
+            else (),
         )
 
-    def record_incomplete(self, actor: UserAccount, ticket_id: UUID, reason: str) -> TicketRecord:
+    def record_incomplete(
+        self,
+        authenticated: AuthenticatedSession,
+        ticket_id: UUID,
+        reason: str,
+    ) -> TicketRecord:
+        actor = authenticated.user
         ticket = self._tickets.tickets.get_visible_ticket(actor, ticket_id)
         if ticket.state == TicketState.ACTIVE_WORK_SEARCH_INCOMPLETE:
             return ticket
         if ticket.state != TicketState.NEW_TASKING_CONSENT:
             return ticket
-        return self._tickets.mutations.save_audited_if_current(
+        return self._tickets.mutations.save_authorised_audited_if_current(
             ticket,
             replace(
                 ticket,
@@ -80,7 +107,7 @@ class ActiveWorkDiscoveryService:
                 ),
             ),
             "active_work_search_incomplete",
-            actor,
+            WorkflowCommitAuthority(actor, authenticated.session, frozenset()),
             {"ticket_id": str(ticket.ticket_id), "reason": reason},
         )
 

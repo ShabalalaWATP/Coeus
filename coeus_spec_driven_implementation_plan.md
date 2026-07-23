@@ -2727,6 +2727,37 @@ hosted shadow or active routing. ADR 0040 and
 activation and all real-data use remain subject to the documented governance,
 classification, egress, evaluation and production-release gates.
 
+### 22 July 2026: Follow-up security scan remediation
+
+Standard working-tree scan `5af0222d-05d1-4c46-a090-018aff45db2d` reported
+three Medium and eight Low findings after the previous 15-finding remediation.
+The follow-up implements atomic actor-and-target authority for administrator
+mutations and a shared exact-live-account guard for ticket creation,
+active-work discovery, RFI search, intake chat and QC release. Chat, active-work,
+RFI and QC bind the initiating session. RFI rechecks requester active-ACG and
+the union of offered and persisted grounded-evidence product IDs; QC rechecks
+team, draft, release-ACG and recipient visibility. Active-work results and audit
+commit atomically. PostgreSQL and local
+workflow and submission guards use the users, sessions, access, teams, products,
+ticket lock order;
+alternate compositions fail closed and QC publishes only inside confirmation.
+
+Provider JSON depth is limited to 32. PDF work is limited to 1 MB per stream,
+8 MB per document, 2,048 stream and Form invocations, 100,000 operations and
+Form depth 32, including inherited, resource-free, repeated and cyclic cases.
+DOCX limits are 1,024 cells per row, 10,000 per document, depth 64 and 50,000
+work units before `python-docx`. Analyst parsing uses `asyncio.to_thread`;
+staging, multipart exit and submission retain admission and files safely across
+cancellation. Ninety-nine local workflow tests, four focused real-PostgreSQL
+tests and the five-test combined lock-order suite pass, including QC session
+deletion denial and restored exact-session success. The expanded local focused
+compatibility suite passes 77/77, including QC session and non-offered RFI
+evidence-product races. The broader parser suite
+passes 124 tests at 98.53 per cent service coverage and 95.92 per cent upload
+route coverage; dependency audits are clean. The acceptance contract is
+`docs/specs/security-scan-remediation-2026-07-22.md`; full repository gates and
+a fresh sealed scan of a clean resulting revision remain release-blocking.
+
 ## 20. Definition of done for MVP
 
 The MVP is done when:

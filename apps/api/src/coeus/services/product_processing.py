@@ -5,6 +5,10 @@ from io import BytesIO
 from pathlib import Path, PurePath
 from zipfile import BadZipFile, ZipFile, ZipInfo
 
+from defusedxml import ElementTree
+from defusedxml.common import DefusedXmlException
+from defusedxml.ElementTree import ParseError
+
 from coeus.core.errors import AppError
 from coeus.services.document_extraction import (
     PPTX_MIME,
@@ -12,7 +16,9 @@ from coeus.services.document_extraction import (
     extract_pages,
 )
 from coeus.services.office_archive import (
+    OfficeArchiveInvalidError,
     OfficeArchiveLimitError,
+    preflight_office_archive,
     read_bounded_member,
     validate_office_archive,
 )
@@ -33,6 +39,7 @@ ALLOWED_SUFFIXES = {
 MAX_QC_TEXT_CHARACTERS = 100_000
 MAX_OFFICE_ZIP_MEMBERS = 5_000
 MAX_OFFICE_EXPANDED_BYTES = 50_000_000
+MAX_OFFICE_CENTRAL_DIRECTORY_BYTES = 50_000_000
 MAX_RELATIONSHIP_BYTES = 1_000_000
 
 
@@ -91,6 +98,11 @@ def _detect_type(content: bytes) -> str:
 
 def _office_type(content: bytes) -> str:
     try:
+        preflight_office_archive(
+            content,
+            max_members=MAX_OFFICE_ZIP_MEMBERS,
+            max_directory_bytes=MAX_OFFICE_CENTRAL_DIRECTORY_BYTES,
+        )
         with ZipFile(BytesIO(content)) as archive:
             members = validate_office_archive(
                 archive,
@@ -109,6 +121,8 @@ def _office_type(content: bytes) -> str:
             "office_archive_too_large",
             "Office product exceeds safe processing limits.",
         ) from exc
+    except OfficeArchiveInvalidError as exc:
+        raise AppError(422, "office_archive_invalid", "Office product is malformed.") from exc
     except BadZipFile as exc:
         raise AppError(422, "office_archive_invalid", "Office product is malformed.") from exc
     if "word/document.xml" in names:
@@ -120,10 +134,18 @@ def _office_type(content: bytes) -> str:
 
 def _reject_external_relationships(archive: ZipFile, members: tuple[ZipInfo, ...]) -> None:
     for member in members:
-        name = member.filename
-        if name.casefold().endswith(".rels") and b'TargetMode="External"' in (
-            read_bounded_member(archive, member, MAX_RELATIONSHIP_BYTES)
-        ):
+        if not member.filename.casefold().endswith(".rels"):
+            continue
+        content = read_bounded_member(archive, member, MAX_RELATIONSHIP_BYTES)
+        try:
+            root = ElementTree.fromstring(content, forbid_dtd=True)
+        except (DefusedXmlException, ParseError) as exc:
+            raise AppError(
+                422,
+                "office_relationships_invalid",
+                "Office relationship metadata is malformed.",
+            ) from exc
+        if any(node.attrib.get("TargetMode") == "External" for node in root.iter()):
             raise AppError(
                 422,
                 "office_external_content_rejected",

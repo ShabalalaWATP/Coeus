@@ -1,14 +1,14 @@
 """PostgreSQL transaction owner for QC release state and side-effect intent."""
 
-import json
-from datetime import UTC, datetime
-from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
+from uuid import UUID
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Connection
 
 from coeus.domain.store import StoreProduct
+from coeus.domain.submission_authority import SubmissionCommitResult
 from coeus.domain.tickets import TicketRecord
+from coeus.domain.workflow_authority import WorkflowCommitAuthority, WorkflowCommitResult
 from coeus.domain.workflow_transaction import (
     ReleaseNotificationIntent,
     WorkflowAuditIntent,
@@ -24,10 +24,13 @@ from coeus.persistence.state_store import (
     _shadow_ticket_payload,
 )
 from coeus.persistence.store_projection_write import existing_embedding_hashes, save_product
+from coeus.persistence.submission_authority import lock_submission_authority
 from coeus.persistence.ticket_shadow_schema import ensure_ticket_shadow_schema
+from coeus.persistence.workflow_authority import lock_workflow_authority
+from coeus.persistence.workflow_transaction_writes import WorkflowTransactionWrites
 
 
-class PostgresWorkflowTransaction:
+class PostgresWorkflowTransaction(WorkflowTransactionWrites):
     def __init__(self, database_url: str) -> None:
         self._engine = create_engine(synchronous_database_url(database_url), pool_pre_ping=True)
 
@@ -36,10 +39,30 @@ class PostgresWorkflowTransaction:
         ticket: TicketRecord,
         audit: WorkflowAuditIntent,
     ) -> bool:
+        return self._commit_ticket_create(ticket, audit, None) is WorkflowCommitResult.COMMITTED
+
+    def commit_authorised_ticket_create(
+        self,
+        ticket: TicketRecord,
+        audit: WorkflowAuditIntent,
+        authority: WorkflowCommitAuthority,
+    ) -> WorkflowCommitResult:
+        return self._commit_ticket_create(ticket, audit, authority)
+
+    def _commit_ticket_create(
+        self,
+        ticket: TicketRecord,
+        audit: WorkflowAuditIntent,
+        authority: WorkflowCommitAuthority | None,
+    ) -> WorkflowCommitResult:
         payload = encode_value(ticket)
         ticket_id = _encoded_ticket_id(payload)
         with self._engine.begin() as connection:
             self._prepare(connection)
+            if authority is not None:
+                authority_result = lock_workflow_authority(connection, authority)
+                if authority_result is not WorkflowCommitResult.COMMITTED:
+                    return authority_result
             connection.execute(
                 text("SELECT pg_advisory_xact_lock(hashtextextended(:ticket_id, 0))"),
                 {"ticket_id": ticket_id},
@@ -52,10 +75,10 @@ class PostgresWorkflowTransaction:
                 {"ticket_id": ticket_id},
             ).scalar_one_or_none()
             if exists is not None:
-                return False
+                return WorkflowCommitResult.TICKET_CHANGED
             self._write_ticket(connection, payload, ticket_id)
             self._append_audit(connection, audit)
-        return True
+        return WorkflowCommitResult.COMMITTED
 
     def commit_ticket_update(
         self,
@@ -64,17 +87,67 @@ class PostgresWorkflowTransaction:
         audits: tuple[WorkflowAuditIntent, ...],
         outbox: tuple[WorkflowOutboxIntent, ...] = (),
     ) -> bool:
+        return (
+            self._commit_ticket_update(expected, updated, audits, outbox, None)
+            is WorkflowCommitResult.COMMITTED
+        )
+
+    def commit_authorised_ticket_update(
+        self,
+        expected: TicketRecord,
+        updated: TicketRecord,
+        audits: tuple[WorkflowAuditIntent, ...],
+        authority: WorkflowCommitAuthority,
+        outbox: tuple[WorkflowOutboxIntent, ...] = (),
+    ) -> WorkflowCommitResult:
+        return self._commit_ticket_update(expected, updated, audits, outbox, authority)
+
+    def _commit_ticket_update(
+        self,
+        expected: TicketRecord,
+        updated: TicketRecord,
+        audits: tuple[WorkflowAuditIntent, ...],
+        outbox: tuple[WorkflowOutboxIntent, ...],
+        authority: WorkflowCommitAuthority | None,
+    ) -> WorkflowCommitResult:
         expected_payload = encode_value(expected)
         updated_payload = encode_value(updated)
         with self._engine.begin() as connection:
             self._prepare(connection)
+            if authority is not None:
+                authority_result = lock_workflow_authority(connection, authority)
+                if authority_result is not WorkflowCommitResult.COMMITTED:
+                    return authority_result
             ticket_id = self._lock_current(connection, expected_payload)
             if ticket_id is None:
-                return False
+                return WorkflowCommitResult.TICKET_CHANGED
             version = self._write_ticket(connection, updated_payload, ticket_id)
             self._append_audits(connection, audits)
             self._append_outbox_intents(connection, updated.ticket_id, version, outbox)
-        return True
+        return WorkflowCommitResult.COMMITTED
+
+    def commit_product_submission(
+        self,
+        expected: TicketRecord,
+        updated: TicketRecord,
+        audits: tuple[WorkflowAuditIntent, ...],
+        actor_user_id: UUID,
+        required_acg_ids: frozenset[UUID],
+    ) -> SubmissionCommitResult:
+        """Fence live account and ACG authority with the ticket commit."""
+        expected_payload = encode_value(expected)
+        updated_payload = encode_value(updated)
+        with self._engine.begin() as connection:
+            self._prepare(connection)
+            authority = lock_submission_authority(connection, actor_user_id, required_acg_ids)
+            if authority is not SubmissionCommitResult.COMMITTED:
+                return authority
+            ticket_id = self._lock_current(connection, expected_payload)
+            if ticket_id is None:
+                return SubmissionCommitResult.TICKET_CHANGED
+            self._write_ticket(connection, updated_payload, ticket_id)
+            self._append_audits(connection, audits)
+        return SubmissionCommitResult.COMMITTED
 
     def commit_ticket_pair(
         self,
@@ -109,20 +182,49 @@ class PostgresWorkflowTransaction:
         audit: WorkflowAuditIntent,
         notification: ReleaseNotificationIntent | None,
     ) -> bool:
+        return (
+            self._commit_qc_release(expected, updated, product, audit, notification, None)
+            is WorkflowCommitResult.COMMITTED
+        )
+
+    def commit_authorised_qc_release(
+        self,
+        expected: TicketRecord,
+        updated: TicketRecord,
+        product: StoreProduct,
+        audit: WorkflowAuditIntent,
+        notification: ReleaseNotificationIntent | None,
+        authority: WorkflowCommitAuthority,
+    ) -> WorkflowCommitResult:
+        return self._commit_qc_release(expected, updated, product, audit, notification, authority)
+
+    def _commit_qc_release(
+        self,
+        expected: TicketRecord,
+        updated: TicketRecord,
+        product: StoreProduct,
+        audit: WorkflowAuditIntent,
+        notification: ReleaseNotificationIntent | None,
+        authority: WorkflowCommitAuthority | None,
+    ) -> WorkflowCommitResult:
         expected_payload = encode_value(expected)
         updated_payload = encode_value(updated)
         with self._engine.begin() as connection:
             self._prepare(connection)
+            if authority is not None:
+                authority_result = lock_workflow_authority(connection, authority)
+                if authority_result is not WorkflowCommitResult.COMMITTED:
+                    return authority_result
             ticket_id = self._lock_current(connection, expected_payload)
             if ticket_id is None:
-                return False
+                return WorkflowCommitResult.TICKET_CHANGED
             hashes = existing_embedding_hashes(connection, (product.product_id,))
             save_product(connection, product, None, hashes)
             version = self._write_ticket(connection, updated_payload, ticket_id)
             self._append_audit(connection, audit)
             if notification is not None:
                 self._append_notification(connection, expected.ticket_id, version, notification)
-        return True
+        return WorkflowCommitResult.COMMITTED
 
     @staticmethod
     def _prepare(connection: Connection) -> None:
@@ -156,150 +258,3 @@ class PostgresWorkflowTransaction:
                 {"ticket_id": ticket_id},
             ).scalar_one()
         )
-
-    @staticmethod
-    def _append_audit(connection: Connection, audit: WorkflowAuditIntent) -> None:
-        connection.execute(
-            text(
-                """
-                INSERT INTO coeus_audit_events(
-                  event_id, event_type, occurred_at, actor_user_id, metadata
-                ) VALUES (
-                  :event_id, :event_type, :occurred_at, :actor_user_id, CAST(:metadata AS jsonb)
-                )
-                """
-            ),
-            {
-                "event_id": uuid4(),
-                "event_type": audit.event_type,
-                "occurred_at": datetime.now(UTC),
-                "actor_user_id": str(audit.actor_user_id),
-                "metadata": json.dumps(dict(audit.metadata)),
-            },
-        )
-
-    @classmethod
-    def _append_audits(
-        cls, connection: Connection, audits: tuple[WorkflowAuditIntent, ...]
-    ) -> None:
-        for audit in audits:
-            cls._append_audit(connection, audit)
-
-    @classmethod
-    def _append_outbox_intents(
-        cls,
-        connection: Connection,
-        ticket_id: UUID,
-        version: int,
-        intents: tuple[WorkflowOutboxIntent, ...],
-    ) -> None:
-        for intent in intents:
-            cls._append_outbox(connection, ticket_id, version, intent)
-
-    @staticmethod
-    def _append_outbox(
-        connection: Connection,
-        ticket_id: UUID,
-        version: int,
-        intent: WorkflowOutboxIntent,
-    ) -> None:
-        event_id = uuid5(NAMESPACE_URL, f"coeus:{ticket_id}:{version}:{intent.event_type}")
-        payload = dict(intent.payload)
-        connection.execute(
-            text(
-                """
-                INSERT INTO coeus_outbox(
-                  event_id, aggregate_id, aggregate_version, event_type, payload
-                ) VALUES (
-                  :event_id, :ticket_id, :version, :event_type, CAST(:payload AS jsonb)
-                )
-                ON CONFLICT (aggregate_id, aggregate_version, event_type) DO NOTHING
-                """
-            ),
-            {
-                "event_id": event_id,
-                "ticket_id": ticket_id,
-                "version": version,
-                "event_type": intent.event_type,
-                "payload": json.dumps(payload),
-            },
-        )
-        stored = (
-            connection.execute(
-                text(
-                    """
-                SELECT event_id, payload FROM coeus_outbox
-                WHERE aggregate_id = :ticket_id
-                  AND aggregate_version = :version
-                  AND event_type = :event_type
-                """
-                ),
-                {"ticket_id": ticket_id, "version": version, "event_type": intent.event_type},
-            )
-            .mappings()
-            .one()
-        )
-        if stored["event_id"] != event_id or dict(stored["payload"]) != payload:
-            raise RuntimeError("Conflicting workflow outbox intent already exists.")
-
-    @staticmethod
-    def _append_notification(
-        connection: Connection,
-        ticket_id: UUID,
-        version: int,
-        notification: ReleaseNotificationIntent,
-    ) -> None:
-        event_type = "product_release_notification"
-        event_id = uuid5(NAMESPACE_URL, f"coeus:{ticket_id}:{version}:{event_type}")
-        connection.execute(
-            text(
-                """
-                INSERT INTO coeus_outbox(
-                  event_id, aggregate_id, aggregate_version, event_type, payload
-                ) VALUES (
-                  :event_id, :ticket_id, :version, :event_type, CAST(:payload AS jsonb)
-                )
-                ON CONFLICT (aggregate_id, aggregate_version, event_type) DO NOTHING
-                """
-            ),
-            {
-                "event_id": event_id,
-                "ticket_id": ticket_id,
-                "version": version,
-                "event_type": event_type,
-                "payload": json.dumps(
-                    {
-                        "requester_user_id": str(notification.requester_user_id),
-                        "ticket_reference": notification.ticket_reference,
-                        "product_id": str(notification.product_id),
-                        "product_reference": notification.product_reference,
-                        "product_title": notification.product_title,
-                    }
-                ),
-            },
-        )
-        stored = (
-            connection.execute(
-                text(
-                    """
-                SELECT event_id, payload
-                FROM coeus_outbox
-                WHERE aggregate_id = :ticket_id
-                  AND aggregate_version = :version
-                  AND event_type = :event_type
-                """
-                ),
-                {"ticket_id": ticket_id, "version": version, "event_type": event_type},
-            )
-            .mappings()
-            .one()
-        )
-        expected_payload = {
-            "requester_user_id": str(notification.requester_user_id),
-            "ticket_reference": notification.ticket_reference,
-            "product_id": str(notification.product_id),
-            "product_reference": notification.product_reference,
-            "product_title": notification.product_title,
-        }
-        if stored["event_id"] != event_id or dict(stored["payload"]) != expected_payload:
-            raise RuntimeError("Conflicting release notification intent already exists.")

@@ -2,22 +2,21 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from coeus.application.ports.access import UserLookup
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
 from coeus.domain.access import ProductStatus
 from coeus.domain.agent_names import SEARCH_PLANNER_AGENT
-from coeus.domain.auth import UserAccount
+from coeus.domain.auth import AuthenticatedSession, SessionRecord, UserAccount
 from coeus.domain.enums import TicketState
 from coeus.domain.search_index import GroundedProductEvidence
 from coeus.domain.search_metrics import RfiSearchMetrics
 from coeus.domain.store import StoreSearchFilters
 from coeus.domain.tickets import (
     ProductDissemination,
-    ProductOffer,
     ProductOfferStatus,
     TicketRecord,
 )
+from coeus.domain.workflow_authority import RfiCommitAuthority, WorkflowCommitAuthority
 from coeus.services.advisory_records import advisory_agent_run
 from coeus.services.embeddings import EmbeddingService
 from coeus.services.grounded_search import GroundedSearchService
@@ -30,6 +29,7 @@ from coeus.services.rfi_records import (
     set_offer_status,
     timeline,
 )
+from coeus.services.rfi_result_projection import project_rfi_result_signal
 from coeus.services.rfi_search_assurance import (
     RFI_RESULTS_REVIEW_PERMISSIONS,
     RFI_RESULTS_REVIEW_STATES,
@@ -41,7 +41,7 @@ from coeus.services.rfi_search_retrieval import (
     ranked_additive_offers,
     retrieve_with_additive_advice,
 )
-from coeus.services.rfi_search_types import RfiSearchResults
+from coeus.services.rfi_search_types import RfiAccess, RfiSearchResults
 from coeus.services.search_planner_agent import SearchPlannerAgent
 from coeus.services.store import StoreSearchService
 from coeus.services.store_access import StoreDetailService
@@ -56,7 +56,7 @@ class RfiSearchService:
         tickets: TicketService,
         store_search: StoreSearchService,
         store_details: StoreDetailService,
-        access_repository: UserLookup,
+        access_repository: RfiAccess,
         embeddings: EmbeddingService,
         grounded: GroundedSearchService,
         planner: SearchPlannerAgent,
@@ -71,7 +71,19 @@ class RfiSearchService:
         self._planner = planner
         self._mutations = mutations
 
-    def run(self, actor: UserAccount, ticket_id: UUID) -> RfiSearchResults:
+    def run(self, authenticated: AuthenticatedSession, ticket_id: UUID) -> RfiSearchResults:
+        return self._run(authenticated.user, authenticated.session, ticket_id)
+
+    def run_automated(self, actor: UserAccount, ticket_id: UUID) -> RfiSearchResults:
+        """Run trusted outbox retrieval without an end-user session requirement."""
+        return self._run(actor, None, ticket_id)
+
+    def _run(
+        self,
+        actor: UserAccount,
+        session: SessionRecord | None,
+        ticket_id: UUID,
+    ) -> RfiSearchResults:
         self._require(actor, Permission.RFI_SEARCH)
         ticket = self._tickets.get_visible_ticket(actor, ticket_id)
         if not self._can_run_search(actor, ticket):
@@ -79,6 +91,7 @@ class RfiSearchService:
         if ticket.state not in {TicketState.RFI_SEARCHING, TicketState.RFI_SEARCH_INCOMPLETE}:
             raise AppError(409, "invalid_ticket_state", "Ticket is not awaiting RFI search.")
         requester = self._requester(ticket)
+        requester_acgs = self._access_repository.active_acg_ids_for_user(requester.user_id)
         search = self._store_search.search(
             requester,
             StoreSearchFilters(
@@ -153,7 +166,7 @@ class RfiSearchService:
             profile_space_id=grounded.profile_space_id,
             corpus_version=grounded.corpus_version,
         )
-        updated = self._mutations.save_audited_if_current(
+        updated = self._mutations.save_authorised_audited_if_current(
             ticket,
             replace(
                 ticket,
@@ -166,13 +179,32 @@ class RfiSearchService:
                 timeline=(*ticket.timeline, *search_timeline),
             ),
             "rfi_search_completed",
-            actor,
+            WorkflowCommitAuthority(
+                actor,
+                session,
+                frozenset({Permission.RFI_SEARCH}),
+                rfi=RfiCommitAuthority(
+                    requester,
+                    requester_acgs,
+                    frozenset(offer.product_id for offer in offers).union(
+                        evidence.product_id for evidence in grounded.evidence
+                    ),
+                ),
+            ),
             {"ticket_id": str(ticket.ticket_id), "offered_count": str(len(offers))},
         )
         return self._results_for(actor, updated, grounded.evidence)
 
     def results(self, actor: UserAccount, ticket_id: UUID) -> RfiSearchResults:
         return self._results_for(actor, self._results_ticket(actor, ticket_id))
+
+    def visible_offer_product_ids(
+        self, actor: UserAccount, tickets: tuple[TicketRecord, ...]
+    ) -> frozenset[UUID]:
+        candidate_ids = frozenset(
+            offer.product_id for ticket in tickets for offer in ticket.product_offers
+        )
+        return self._store_details.visible_product_ids(actor, candidate_ids)
 
     def accept(self, actor: UserAccount, ticket_id: UUID, product_id: UUID) -> RfiSearchResults:
         self._require(actor, Permission.RFI_ACCEPT_PRODUCT)
@@ -280,27 +312,16 @@ class RfiSearchService:
         ticket: TicketRecord,
         evidence: tuple[GroundedProductEvidence, ...] | None = None,
     ) -> RfiSearchResults:
-        visible_offers = tuple(
-            offer for offer in ticket.product_offers if self._can_read_offer(actor, offer)
+        visible_ids = self.visible_offer_product_ids(actor, (ticket,))
+        ticket = project_rfi_result_signal(
+            ticket,
+            visible_ids,
+            preserve_full=ticket.requester_user_id == actor.user_id,
         )
+        visible_offers = ticket.product_offers
         metric = ticket.search_metrics[-1] if ticket.search_metrics else None
-        if metric is not None and (
-            len(visible_offers) != len(ticket.product_offers)
-            or actor.user_id != ticket.requester_user_id
-        ):
-            metric = replace(
-                metric,
-                candidate_count=(
-                    metric.candidate_count if actor.user_id == ticket.requester_user_id else 0
-                ),
-                offered_count=len(visible_offers),
-                rejected_count=sum(
-                    offer.status == ProductOfferStatus.REJECTED for offer in visible_offers
-                ),
-            )
         if evidence is None:
             evidence = ticket.search_evidence
-        visible_ids = {offer.product_id for offer in visible_offers}
         visible_evidence = tuple(
             item for item in (evidence or ()) if item.product_id in visible_ids
         )
@@ -320,13 +341,6 @@ class RfiSearchService:
         if requester is None or not requester.is_active:
             raise AppError(409, "requester_unavailable", "Ticket requester is unavailable.")
         return requester
-
-    def _can_read_offer(self, actor: UserAccount, offer: ProductOffer) -> bool:
-        try:
-            self._store_details.get_visible_product(actor, offer.product_id)
-        except AppError:
-            return False
-        return True
 
     @staticmethod
     def _require(actor: UserAccount, permission: Permission) -> None:

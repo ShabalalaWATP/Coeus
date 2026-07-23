@@ -65,6 +65,12 @@ class RecordingProjection:
                 return product
         return None
 
+    def get_visible_products(
+        self, product_ids: frozenset[object], _scope: object
+    ) -> tuple[StoreProduct, ...]:
+        requested = {str(product_id) for product_id in product_ids}
+        return tuple(product for product in self.products if str(product.product_id) in requested)
+
     def save_product(self, product: StoreProduct) -> None:
         self.products = (product,)
 
@@ -190,7 +196,7 @@ class FakeConnection:
                 if params
                 else len(self._engine.products)
             )
-            products = self._engine.products[offset : offset + page_size]
+            products = self._requested_products(params)[offset : offset + page_size]
             return FakeResult([_product_row(product) for product in products])
         if sql.startswith("SELECT") and "intelligence_store_assets" in sql:
             products = self._requested_products(params)

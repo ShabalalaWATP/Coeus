@@ -3,6 +3,7 @@ import json
 import httpx
 
 from coeus.core.errors import AppError
+from coeus.integrations.bounded_http import TotalDeadline, total_deadline_client
 
 OPENAI_REALTIME_CALLS_URL = "https://api.openai.com/v1/realtime/calls"
 OPENAI_REALTIME_CLIENT_SECRETS_URL = "https://api.openai.com/v1/realtime/client_secrets"
@@ -13,19 +14,21 @@ MAX_TEST_RESPONSE_BYTES = 64 * 1024
 def test_realtime_connection(*, api_key: str, model: str) -> None:
     """Validate Realtime credentials without opening an audio connection."""
     try:
-        with httpx.Client(timeout=10) as client:
-            with client.stream(
+        with (
+            total_deadline_client(10) as (client, deadline),
+            client.stream(
                 "POST",
                 OPENAI_REALTIME_CLIENT_SECRETS_URL,
-                headers={"Authorization": f"Bearer {api_key}"},
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Accept-Encoding": "identity",
+                },
                 json={"session": _session_identity(model)},
-            ) as response:
-                response.raise_for_status()
-                content = bytearray()
-                for chunk in response.iter_bytes():
-                    if len(content) + len(chunk) > MAX_TEST_RESPONSE_BYTES:
-                        raise ValueError("Oversized Realtime test response")
-                    content.extend(chunk)
+            ) as response,
+        ):
+            deadline.bind_response(response, client)
+            response.raise_for_status()
+            content = _read_bounded_response(response, deadline, MAX_TEST_RESPONSE_BYTES)
             payload = json.loads(content)
             secret = payload.get("value") if isinstance(payload, dict) else None
             if not isinstance(secret, str) or not secret.strip():
@@ -65,21 +68,27 @@ def create_realtime_call(
         },
     }
     try:
-        with httpx.Client(timeout=20) as client:
-            response = client.post(
+        with (
+            total_deadline_client(20) as (client, deadline),
+            client.stream(
+                "POST",
                 OPENAI_REALTIME_CALLS_URL,
                 headers={
                     "Authorization": f"Bearer {api_key}",
                     "OpenAI-Safety-Identifier": safety_identifier,
+                    "Accept-Encoding": "identity",
                 },
                 files={
                     "sdp": (None, sdp),
                     "session": (None, json.dumps(session), "application/json"),
                 },
-            )
+            ) as response,
+        ):
+            deadline.bind_response(response, client)
             response.raise_for_status()
-            answer = response.text
-            if len(answer.encode("utf-8")) > MAX_SDP_ANSWER_BYTES or not answer.startswith("v=0"):
+            content = _read_bounded_response(response, deadline, MAX_SDP_ANSWER_BYTES)
+            answer = content.decode("utf-8", errors="strict")
+            if not answer.startswith("v=0"):
                 raise ValueError("Invalid Realtime SDP answer")
     except httpx.HTTPStatusError as exc:
         raise _provider_status_error(exc.response.status_code) from exc
@@ -94,6 +103,36 @@ def create_realtime_call(
             "The voice provider returned an invalid response.",
         ) from exc
     return answer
+
+
+def _read_bounded_response(
+    response: httpx.Response,
+    deadline: TotalDeadline,
+    max_response_bytes: int,
+) -> bytes:
+    _validate_identity_response(response, max_response_bytes)
+    content = bytearray()
+    for chunk in response.iter_bytes():
+        deadline.check()
+        if len(content) + len(chunk) > max_response_bytes:
+            raise ValueError("Oversized Realtime provider response")
+        content.extend(chunk)
+    deadline.check()
+    return bytes(content)
+
+
+def _validate_identity_response(response: httpx.Response, max_response_bytes: int) -> None:
+    response_headers = getattr(response, "headers", {})
+    content_encoding = response_headers.get("content-encoding", "").strip().casefold()
+    if content_encoding not in {"", "identity"}:
+        raise ValueError("Encoded Realtime SDP answers are not accepted")
+    declared_length = response_headers.get("content-length")
+    if declared_length is not None and (
+        not declared_length.isascii()
+        or not declared_length.isdecimal()
+        or int(declared_length) > max_response_bytes
+    ):
+        raise ValueError("Invalid Realtime SDP answer length")
 
 
 def _session_identity(model: str) -> dict[str, object]:

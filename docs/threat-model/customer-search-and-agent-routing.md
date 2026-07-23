@@ -122,13 +122,33 @@ Controls: subscription is notification/tracking intent only; it does not alter
 ACLs; every canonical work and product read is independently authorised;
 revocation is checked at delivery time.
 
+### Revocation during delayed workflow work
+
+Threat: ticket creation, active-work discovery, RFI search or provider-assisted
+chat passes request-time authorisation, then persists protected state after the
+actor is disabled or loses its required permission or object authority.
+
+Controls: each final mutation carries the exact expected live `UserAccount` and
+required permission. Interactive chat, active-work, RFI and QC release also
+require the exact initiating session. RFI requires current requester active-ACG
+membership, then locks and revalidates the union of offered product IDs and all
+persisted grounded-evidence product IDs. Active-work results and audit commit as
+one unit. PostgreSQL and local guards use the canonical users, sessions, access,
+teams, products, ticket lock order; alternate compositions without equivalent
+proof fail closed. Provider, embedding and search work remains outside the short
+transaction.
+
 ### QC bypass
 
 Threat: an agent or workflow race releases a product without current human QC.
 
 Controls: human QC identity and decision are mandatory release preconditions;
-stale version checks on approval; agent preflight cannot release; release and
-audit write atomically.
+agent preflight cannot release. The release transaction checks ticket freshness,
+locks and confirms the exact live reviewer, required permission, QC-team
+membership, exact initiating session, draft access, release-ACG authority and
+recipient visibility, then
+performs publication, indexing, dissemination, outbox and audit effects only
+inside that guarded commit.
 
 ## Security Verification
 
@@ -136,6 +156,12 @@ audit write atomically.
 - prompt-injection fixtures in product and intake text;
 - stale-index, partial-index, timeout and provider-failure tests;
 - concurrency and idempotency tests for accept, reject, join and consent;
+- deterministic actor-revocation barriers for creation, discovery, RFI, chat
+  and QC release, including fail-closed composition controls;
+- initiating-session, RFI requester/product visibility, active-work audit,
+  QC relationship and canonical lock-order tests in local and PostgreSQL modes;
+- non-offered grounded-evidence visibility races, QC session deletion and
+  restored exact-session compatibility controls;
 - raw-timeline non-disclosure tests for customer APIs;
 - route schema fuzzing and fail-closed policy tests;
 - mixed-signal, negation, stale/missing availability and rollout-mode tests;

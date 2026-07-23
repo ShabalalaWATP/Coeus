@@ -237,6 +237,30 @@ def test_voice_session_releases_capacity_when_start_audit_fails() -> None:
     assert isinstance(admission.acquire(user_id), UUID)
 
 
+def test_voice_session_releases_capacity_when_provider_deadline_expires() -> None:
+    def timed_out_call(**_kwargs: object) -> str:
+        raise AppError(
+            502,
+            "voice_provider_unavailable",
+            "The voice provider is temporarily unavailable.",
+        )
+
+    admission = VoiceSessionAdmission(max_concurrent=1, max_per_principal=1, ttl_seconds=60)
+    service = VoiceSessionService(
+        Settings(environment="test"),
+        EnabledVoiceModels("sk-voice-test-key"),  # type: ignore[arg-type]
+        admission,
+        AuditLog(),
+        call_creator=timed_out_call,
+    )
+    user_id = uuid4()
+
+    with pytest.raises(AppError, match="temporarily unavailable"):
+        service.create(user_id, "v=0\r\nm=audio offer\r\n")
+
+    assert isinstance(admission.acquire(user_id), UUID)
+
+
 def test_voice_session_ignores_an_unknown_release_token() -> None:
     audit_log = AuditLog()
     service = VoiceSessionService(

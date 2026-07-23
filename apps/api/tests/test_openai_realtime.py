@@ -59,10 +59,11 @@ class FakeClient:
         url: str,
         *,
         headers: dict[str, str],
-        json: dict[str, Any],
+        json: dict[str, Any] | None = None,
+        files: dict[str, Any] | None = None,
     ) -> "FakeClient":
         self.captured["method"] = method
-        return self.post(url, headers=headers, json=json)
+        return self.post(url, headers=headers, json=json, files=files)
 
     def raise_for_status(self) -> None:
         if self.status_code is not None:
@@ -83,7 +84,11 @@ class FakeClient:
         return self.raw_content or json.dumps(self.payload).encode()
 
     def iter_bytes(self) -> Iterator[bytes]:
-        content = self.content
+        content = (
+            self.answer.encode("utf-8")
+            if self.captured.get("url") == OPENAI_REALTIME_CALLS_URL
+            else self.content
+        )
         midpoint = max(1, len(content) // 2)
         yield content[:midpoint]
         yield content[midpoint:]
@@ -111,7 +116,10 @@ def test_realtime_connection_creates_a_bounded_client_secret(
     assert FakeClient.captured["timeout"] == 10
     assert FakeClient.captured["method"] == "POST"
     assert FakeClient.captured["url"] == OPENAI_REALTIME_CLIENT_SECRETS_URL
-    assert FakeClient.captured["headers"] == {"Authorization": "Bearer sk-secret"}
+    assert FakeClient.captured["headers"] == {
+        "Authorization": "Bearer sk-secret",
+        "Accept-Encoding": "identity",
+    }
     assert FakeClient.captured["json"] == {
         "session": {"type": "realtime", "model": "gpt-realtime-mini"}
     }
@@ -137,6 +145,23 @@ def test_realtime_connection_rejects_invalid_responses(
     FakeClient.payload = payload
     FakeClient.raw_content = raw_content
     monkeypatch.setattr("coeus.integrations.openai_realtime.httpx.Client", FakeClient)
+
+    with pytest.raises(AppError) as raised:
+        check_realtime_connection(api_key="sk-secret", model="gpt-realtime-mini")
+
+    assert raised.value.code == "voice_provider_invalid_response"
+
+
+def test_realtime_connection_rejects_encoded_responses(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class EncodedClient(FakeClient):
+        headers: ClassVar[dict[str, str]] = {"content-encoding": "gzip"}
+
+    EncodedClient.status_code = None
+    EncodedClient.network_error = False
+    EncodedClient.raw_content = None
+    monkeypatch.setattr("coeus.integrations.openai_realtime.httpx.Client", EncodedClient)
 
     with pytest.raises(AppError) as raised:
         check_realtime_connection(api_key="sk-secret", model="gpt-realtime-mini")
@@ -186,6 +211,7 @@ def test_realtime_models_share_the_guarded_session_contract(
     assert FakeClient.captured["headers"] == {
         "Authorization": "Bearer sk-secret",
         "OpenAI-Safety-Identifier": "safe-user",
+        "Accept-Encoding": "identity",
     }
     files = FakeClient.captured["files"]
     assert files["sdp"] == (None, "v=0\r\nm=audio offer\r\n")
@@ -284,3 +310,35 @@ def test_realtime_call_rejects_an_invalid_answer(
 
     assert raised.value.status_code == 502
     assert raised.value.code == "voice_provider_invalid_response"
+
+
+def test_realtime_call_stops_consuming_when_stream_exceeds_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    consumed = 0
+
+    class CountingClient(FakeClient):
+        def iter_bytes(self) -> Iterator[bytes]:
+            nonlocal consumed
+            yield b"v=0\r\n"
+            consumed += 1
+            yield b"x" * MAX_SDP_ANSWER_BYTES
+            consumed += 1
+            raise AssertionError("The response stream must close immediately on overflow.")
+
+    CountingClient.status_code = None
+    CountingClient.network_error = False
+    monkeypatch.setattr("coeus.integrations.openai_realtime.httpx.Client", CountingClient)
+
+    with pytest.raises(AppError) as raised:
+        create_realtime_call(
+            api_key="sk-secret",
+            instructions="Guarded synthetic RFI intake.",
+            model="gpt-realtime-mini",
+            voice="marin",
+            sdp="v=0\r\nm=audio offer\r\n",
+            safety_identifier="safe-user",
+        )
+
+    assert raised.value.code == "voice_provider_invalid_response"
+    assert consumed == 1

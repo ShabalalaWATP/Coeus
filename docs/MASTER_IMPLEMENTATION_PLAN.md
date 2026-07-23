@@ -332,11 +332,13 @@ point-in-time test counts for each 20 July slice.
   scoped key, bounded discovery and deterministic controllers. Production still
   requires explicit aliases, workload identity, egress/retention approval and
   route evaluation under ADR 0041 and the LiteLLM threat model.
-- Current residual risk: operational availability remains a process-local
-  snapshot in the supported single-worker runtime. A shared authoritative
-  adapter and scale-out evaluation are required before multi-replica routing.
-- Current next step: keep production routing `disabled`, gather labelled shadow
-  evidence, satisfy the real-data governance gates, then run a reviewed canary.
+- Current residual risk: operational availability remains a process-local snapshot
+  until a shared authoritative adapter and scale-out evaluation are complete.
+- Current next step: keep routing `disabled`, gather labelled shadow evidence, satisfy real-data governance gates, then run a reviewed canary.
+
+## 22 July 2026 Sealed-scan remediation
+
+The earlier 15 findings are fixed and verified. Follow-up scan `5af0222d-05d1-4c46-a090-018aff45db2d` reported three Medium and eight Low issues; current evidence covers exact chat, active-work, RFI and QC sessions, RFI offered plus grounded-evidence products, QC relationships, canonical lock order, atomic audit, parser budgets and cancellation-safe submission. Full verification passed 1,606 backend tests with one intentional skip at 98.23/95.33 per cent line/branch coverage and 537 frontend tests at 98.63/95.03 per cent; dependency audits are clean. A fresh sealed clean-revision scan remains release-blocking under `docs/specs/security-scan-remediation-2026-07-22.md`.
 
 ## 20 July 2026 Bounded Advisory Reasoning
 Status: complete and verified for the supported local/test boundary.

@@ -50,6 +50,19 @@ class SimilarRequestService:
     def customer_notice(
         self, actor: UserAccount, ticket_id: UUID
     ) -> tuple[SimilarRequestMatch, ...]:
+        visible = self.customer_matches(actor, ticket_id)
+        if visible:
+            self._audit_log.record(
+                "similar_request_notified",
+                str(actor.user_id),
+                self.notice_metadata(ticket_id, visible),
+            )
+        return visible
+
+    def customer_matches(
+        self, actor: UserAccount, ticket_id: UUID
+    ) -> tuple[SimilarRequestMatch, ...]:
+        """Return visible matches without writing the notification audit."""
         # Object-level check: the querying customer must be able to read the source ticket.
         source = self._tickets.tickets.get_visible_ticket(actor, ticket_id)
         # Only run for submitted, non-editable tickets. Draft or info-required tickets keep
@@ -71,16 +84,16 @@ class SimilarRequestService:
             )
             if self._customer_can_see(actor, match.ticket_id)
         )
-        if visible:
-            self._audit_log.record(
-                "similar_request_notified",
-                str(actor.user_id),
-                {
-                    "ticket_id": str(source.ticket_id),
-                    "visible_match_ids": ",".join(str(match.ticket_id) for match in visible),
-                },
-            )
         return visible
+
+    @staticmethod
+    def notice_metadata(
+        ticket_id: UUID, matches: tuple[SimilarRequestMatch, ...]
+    ) -> dict[str, str]:
+        return {
+            "ticket_id": str(ticket_id),
+            "visible_match_ids": ",".join(str(match.ticket_id) for match in matches),
+        }
 
     def manager_matches(
         self, actor: UserAccount, ticket_id: UUID

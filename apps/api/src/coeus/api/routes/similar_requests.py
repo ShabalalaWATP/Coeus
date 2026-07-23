@@ -69,7 +69,7 @@ def retry_active_work_search(
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
     service: Annotated[ActiveWorkDiscoveryService, Depends(get_active_work_discovery_service)],
 ) -> TicketResponse:
-    ticket = service.discover(authenticated.user, ticket_id)
+    ticket = service.discover(authenticated, ticket_id)
     return to_ticket_response(ticket, authenticated.user)
 
 

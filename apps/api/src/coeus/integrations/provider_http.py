@@ -4,22 +4,25 @@ import json
 
 import httpx
 
+from coeus.integrations.bounded_http import TotalDeadline, total_deadline_client
+
 
 def get_json(
     url: str,
     *,
     headers: dict[str, str],
-    timeout: int,
+    timeout: float,
     max_response_bytes: int,
 ) -> object:
     """Get JSON with the same bounded, uncompressed transport used for POST."""
     _require_response_limit(max_response_bytes)
     request_headers = _request_headers(headers)
     with (
-        httpx.Client(timeout=timeout) as client,
+        total_deadline_client(timeout) as (client, deadline),
         client.stream("GET", url, headers=request_headers) as response,
     ):
-        return _read_json(response, max_response_bytes)
+        deadline.bind_response(response, client)
+        return _read_json(response, max_response_bytes, deadline)
 
 
 def post_json(
@@ -27,17 +30,18 @@ def post_json(
     *,
     headers: dict[str, str],
     body: dict[str, object],
-    timeout: int,
+    timeout: float,
     max_response_bytes: int,
 ) -> object:
     """Post JSON and reject oversized responses before buffering them fully."""
     _require_response_limit(max_response_bytes)
     request_headers = _request_headers(headers)
     with (
-        httpx.Client(timeout=timeout) as client,
+        total_deadline_client(timeout) as (client, deadline),
         client.stream("POST", url, json=body, headers=request_headers) as response,
     ):
-        return _read_json(response, max_response_bytes)
+        deadline.bind_response(response, client)
+        return _read_json(response, max_response_bytes, deadline)
 
 
 def _request_headers(headers: dict[str, str]) -> dict[str, str]:
@@ -46,15 +50,23 @@ def _request_headers(headers: dict[str, str]) -> dict[str, str]:
     return bounded
 
 
-def _read_json(response: httpx.Response, max_response_bytes: int) -> object:
+def _read_json(
+    response: httpx.Response,
+    max_response_bytes: int,
+    deadline: TotalDeadline,
+) -> object:
     response.raise_for_status()
     _validate_response_headers(response, max_response_bytes)
     content = bytearray()
     for chunk in response.iter_bytes():
+        deadline.check()
         if len(content) + len(chunk) > max_response_bytes:
             raise ValueError("The provider response exceeded the allowed byte limit.")
         content.extend(chunk)
-    return json.loads(content)
+    deadline.check()
+    payload = json.loads(content)
+    deadline.check()
+    return payload
 
 
 def _require_response_limit(max_response_bytes: int) -> None:

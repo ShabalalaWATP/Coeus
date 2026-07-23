@@ -1,5 +1,6 @@
 import { BarChart3, Bot, CheckCircle2, PackageCheck, Search, XCircle } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 import type {
   RfiProductOffer,
@@ -42,31 +43,29 @@ export function ProductOffersPanel({
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const offers = results?.offers ?? [];
   const canRetry = canRunSearch && ticket?.state === "RFI_SEARCH_INCOMPLETE";
+  const heading =
+    offers.length === 0
+      ? "Product search"
+      : offers.length === 1
+        ? "Matching product"
+        : "Matching products";
 
   return (
     <section className="surface product-offers-panel" aria-labelledby="product-offers-title">
       <div className="section-heading access-heading">
         <PackageCheck aria-hidden="true" size={20} />
-        <h2 id="product-offers-title">Product Offers</h2>
-        <span className="agent-chip">
-          <Bot aria-hidden="true" size={13} />
-          RFI search agent
-        </span>
+        <h2 id="product-offers-title">{heading}</h2>
       </div>
       {ticket === undefined ? <p>No ticket selected</p> : null}
       {ticket !== undefined ? (
         <>
-          <div className="offer-toolbar">
-            <span className="offer-state">{formatWorkflowState(ticket.state)}</span>
-            {ticket.state === "RFI_SEARCH_INCOMPLETE" ? (
+          {ticket.state === "RFI_SEARCH_INCOMPLETE" ? (
+            <div className="offer-toolbar">
               <button disabled={!canRetry || isRunning} onClick={onRun} type="button">
                 <Search aria-hidden="true" size={18} />
                 {isRunning ? "Retrying..." : "Retry search"}
               </button>
-            ) : null}
-          </div>
-          {results?.metrics ? (
-            <SearchMetrics metrics={results.metrics} retrievalMode={results.retrievalMode} />
+            </div>
           ) : null}
           {results?.degradedReason ? (
             <p className="workspace-alert" role="alert">
@@ -104,9 +103,40 @@ export function ProductOffersPanel({
           ) : (
             <p>No product offers</p>
           )}
+          <SearchDetails
+            metrics={results?.metrics}
+            retrievalMode={results?.retrievalMode}
+            state={ticket.state}
+          />
         </>
       ) : null}
     </section>
+  );
+}
+
+function SearchDetails({
+  metrics,
+  retrievalMode,
+  state,
+}: {
+  metrics?: RfiSearchMetrics | null;
+  retrievalMode?: string;
+  state: Ticket["state"];
+}) {
+  return (
+    <details className="search-details">
+      <summary>Search details</summary>
+      <div className="search-details__content">
+        <div className="search-details__overview">
+          <span className="offer-state">{formatWorkflowState(state)}</span>
+          <span className="agent-chip">
+            <Bot aria-hidden="true" size={13} />
+            RFI search agent
+          </span>
+        </div>
+        {metrics ? <SearchMetrics metrics={metrics} retrievalMode={retrievalMode} /> : null}
+      </div>
+    </details>
   );
 }
 
@@ -174,36 +204,29 @@ function OfferCard({
     <article className="offer-card">
       <div className="offer-card__header">
         <div>
-          <strong>{offer.title}</strong>
-          <span>{productTypeLabel(offer.productType)}</span>
+          <span className="offer-card__classification">Class {offer.classificationLevel}</span>
+          <h3>
+            {offer.offerableToUser ? (
+              <Link
+                className="offer-card__title"
+                to={`/store/products/${encodeURIComponent(offer.productId)}`}
+              >
+                {offer.title}
+              </Link>
+            ) : (
+              offer.title
+            )}
+          </h3>
         </div>
-        <ScoreBadge offer={offer} />
       </div>
       <p>{offer.summary}</p>
-      <div className="offer-meta">
-        <span>Class {offer.classificationLevel}</span>
-        <span>{offer.region}</span>
-        <span>{offer.assetTypes.join(", ") || "metadata"}</span>
-      </div>
-      <div className="offer-reasons">
-        {offer.matchReasons.map((reasonItem) => (
-          <span key={reasonItem}>{reasonLabel(reasonItem)}</span>
-        ))}
-      </div>
-      {passages.length ? (
-        <details className="offer-evidence">
-          <summary>Grounded evidence ({passages.length})</summary>
-          {passages.map((passage) => (
-            <blockquote key={passage.chunkId}>
-              <p>{passage.excerpt}</p>
-              <cite>{passage.citation}</cite>
-            </blockquote>
-          ))}
-        </details>
-      ) : null}
       {offer.rejectionReason ? <p>{offer.rejectionReason}</p> : null}
       <div className="offer-actions">
-        <button disabled={!canAct || isAccepting} onClick={() => onAccept(offer.productId)}>
+        <button
+          disabled={!canAct || isAccepting}
+          onClick={() => onAccept(offer.productId)}
+          type="button"
+        >
           <CheckCircle2 aria-hidden="true" size={18} />
           Accept
         </button>
@@ -217,11 +240,42 @@ function OfferCard({
             value={reason}
           />
         </label>
-        <button disabled={!canAct || reason.trim().length < 3 || isRejecting} onClick={onReject}>
+        <button
+          disabled={!canAct || reason.trim().length < 3 || isRejecting}
+          onClick={onReject}
+          type="button"
+        >
           <XCircle aria-hidden="true" size={18} />
           Reject
         </button>
       </div>
+      <details className="offer-details">
+        <summary>Product details</summary>
+        <div className="offer-details__content">
+          <div className="offer-meta">
+            <span>{productTypeLabel(offer.productType)}</span>
+            <span>{offer.region}</span>
+            <span>{offer.assetTypes.join(", ") || "metadata"}</span>
+            <ScoreBadge offer={offer} />
+          </div>
+          <div className="offer-reasons">
+            {offer.matchReasons.map((reasonItem) => (
+              <span key={reasonItem}>{reasonLabel(reasonItem)}</span>
+            ))}
+          </div>
+          {passages.length ? (
+            <section className="offer-evidence" aria-label="Grounded evidence">
+              <h4>Grounded evidence ({passages.length})</h4>
+              {passages.map((passage) => (
+                <blockquote key={passage.chunkId}>
+                  <p>{passage.excerpt}</p>
+                  <cite>{passage.citation}</cite>
+                </blockquote>
+              ))}
+            </section>
+          ) : null}
+        </div>
+      </details>
     </article>
   );
 }
