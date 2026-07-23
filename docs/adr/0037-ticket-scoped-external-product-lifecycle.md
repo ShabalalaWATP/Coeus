@@ -4,6 +4,11 @@
 
 Accepted on 18 July 2026.
 
+Implementation state: complete for supported synthetic local/test use. Release
+state: hosted and production gates remain open. See the
+[feature contract](../specs/external-product-ingestion-and-customer-acceptance.md)
+and [threat model](../threat-model/external-product-ingestion.md).
+
 ## Context
 
 Analysts author final products outside Istari. The existing analyst draft stores

@@ -4,6 +4,11 @@
 
 Accepted, 21 July 2026.
 
+Implementation state: integrated into `main` at `0cde7010` for supported
+synthetic local/test use. Release state: finding and production closure remain
+open. See the [remediation contract](../specs/security-scan-remediation-2026-07-22.md)
+and [threat model](../threat-model/security-scan-remediation-2026-07-22.md).
+
 ## Context
 
 Standard security scan `59eb4efa-4acb-4504-b43c-bdab86f43cd7` found repeated
@@ -86,4 +91,5 @@ multipart exit and submission preserve admission and the staged file across
 cancellation until parser exit. This keeps the supported local topology but does
 not make third-party parsing a process sandbox. The
 [detailed values and evidence](../specs/security-scan-remediation-2026-07-22.md)
-remain subject to full repository gates and a fresh clean-revision scan.
+passed full repository gates. Authorised staging and a fresh sealed
+whole-repository deep scan of the exact immutable candidate remain open.

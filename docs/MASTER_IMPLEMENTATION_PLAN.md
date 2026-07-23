@@ -1,71 +1,43 @@
 # Istari (Coeus) Master Implementation Plan
 
-The authoritative project implementation plan is
-`coeus_spec_driven_implementation_plan.md` at the repository root. This file is
-the concise delivery tracker and must stay within the repository line limit.
+The [root blueprint](../coeus_spec_driven_implementation_plan.md) preserves the
+original target state. This file is the current delivery, risk and release tracker.
 
 ## Current Stage
 
-Sprints 1 to 23 are implemented for the supported synthetic local/test
-boundary. Sprint 17's implementation is complete, but its production-release
-closure remains blocked by authorised staging checks and a fresh sealed scan of
-the exact release candidate. The historical scan of revision `3e27c82`
-reported 12 findings and four deferred questions; the local controls,
-PostgreSQL workflow and later remediation evidence are recorded below. The
-repository owner deferred the fresh sealed scan on 2026-07-13, so neither scan
-closure nor production readiness is claimed. Local development remains the
-supported runtime; GCP and Kubernetes remain migration targets.
+As of 23 July 2026, Sprints 1 to 23 are implemented for the supported synthetic
+local/test boundary. The 22 July security remediation passed 1,606 backend
+tests with one intentional skip at 98.23/95.33 per cent line/branch coverage
+and 537 frontend tests at 98.63/95.03 per cent. It was integrated into `main` at
+`0cde7010`, and all protected and post-merge workflows passed. See its
+[contract](specs/security-scan-remediation-2026-07-22.md),
+[ADR](adr/0042-enforce-security-policy-at-final-boundaries.md) and [threat
+model](threat-model/security-scan-remediation-2026-07-22.md).
 
-A sealed standard review `87a10d13-14af-48cc-a361-72470abc8d8d` of later
-revision `752d32a` validated eight additional application findings and is the
-current application baseline. The 2026-07-14 remediation candidate
-separates create/publish and edit/transition authority, makes credential and
-session revocation monotonic, bounds shared Argon2 work, makes failed logout
-fail closed in the browser, and prevents draft links creating audience
-authority. The final local gates pass 68 PostgreSQL and 915 non-PostgreSQL
-backend tests at 98.13 percent line and 95.01 percent branch coverage, plus 432
-frontend tests at 98.51 percent line and 95.01 percent branch coverage.
-Dependency audits report no known vulnerabilities. The immutable-candidate
-deep scan and authorised staging evidence remain open, so release closure is
-not claimed.
+Finding closure still requires a fresh sealed whole-repository deep scan of the
+exact immutable candidate, with no unresolved baseline occurrence or new
+reportable finding. Production-release closure also requires authorised staging
+verification. Local development remains the supported runtime; hosted,
+multi-instance, GCP, Kubernetes and production operation remain gated targets.
 
-An approved local-demo workforce refinement is tracked separately from Sprint
-17 security closure. It keeps one generic Analyst role, replaces specialist
-analyst seed identities with neutral numbered logons, adds realistic but wholly
-synthetic Scottish-footballer-named profiles, preserves team-authoritative
-assignment and reconciles existing local seed state without a destructive
-reset. Its contract is `docs/specs/generic-analyst-seed-personas.md` and its
-architecture decision is ADR 0029. The slice is implemented: 68 PostgreSQL and
-919 non-PostgreSQL backend tests pass at 98.13 per cent line and 95.04 per cent
-branch coverage; the full frontend suite passes at 98.51 per cent line and
-95.01 per cent branch coverage, and live local reconciliation was verified.
+Completed post-Sprint-17 product slices include:
 
-A post-Sprint-17 customer-experience slice is now implemented. It replaces
-the request metric-card mosaic, removes the backend completeness checklist from
-the customer chat, adds a searchable selected-detail ACG journey, moves profile
-editing to a read-first account page and provides assigned analysts with lazy
-full conversation context. Its contract is
-`docs/specs/customer-experience-and-analyst-context.md` and ADR 0030. The full
-frontend suite passes with 447 tests at 98.54 percent line and 95.15 percent
-branch coverage. The backend passes 922 non-PostgreSQL and 68 PostgreSQL tests
-at 98.14 percent line and 95.09 percent branch coverage.
+- generic Analyst seed personas with team-authoritative assignment
+  ([contract](specs/generic-analyst-seed-personas.md), [ADR 0029](adr/0029-generic-analyst-role-and-profile-specialisation.md));
+- clearer customer, ACG, profile and assigned-analyst context
+  ([contract](specs/customer-experience-and-analyst-context.md), [ADR 0030](adr/0030-bounded-self-service-and-analyst-context.md));
+- 144 deterministic demo PDFs and calibrated search assurance
+  ([contract](specs/synthetic-intelligence-library-and-search-assurance.md), [ADR 0031](adr/0031-deterministic-live-demo-pdf-corpus.md)); and
+- a compact admin command centre, bounded Realtime connection test and
+  aggregate-only platform analytics
+  ([contract](specs/admin-command-centre-and-analytics.md), [ADR 0035](adr/0035-separate-admin-platform-analytics.md)).
 
-Sprint 19 is implemented and locally verified. It adds 144 deterministic four-page PDF products,
-15 specialist ACGs, an explicit 56-of-58 Billy Gilmour access matrix and search
-score calibration. Its contract is
-`docs/specs/synthetic-intelligence-library-and-search-assurance.md` and ADR 0031.
-
-The admin command-centre refinement is implemented under
-`docs/specs/admin-command-centre-and-analytics.md`. It adds compact configuration
-disclosures, explicit saved/active/tested states, a bounded Realtime voice
-connection test, admin return navigation and an operational analytics view
-derived only from the existing authorised aggregates. Realtime defaults to
-`gpt-realtime-2.1` at low reasoning effort, with `gpt-realtime-mini` retained.
-It preserves the server key boundary, transcript-only authority, explicit
-review, admin controls and bounded draft context under one tool-free contract.
+Their point-in-time verification remains in the delivery ledger and
+[development story](DEVELOPMENT_STORY.md).
 
 The customer-search and autonomous-routing orchestration is implemented under
-`docs/specs/customer-search-routing-orchestration.md` and ADR 0036. Submission
+its [contract](specs/customer-search-routing-orchestration.md) and
+[ADR 0036](adr/0036-customer-search-assurance-and-agent-routing.md). Submission
 now starts bounded product discovery, separates offers from definitive no-match
 and incomplete outcomes, offers authorised active work before owner-only new
 tasking consent, and routes authorised new work through a policy-constrained
@@ -99,7 +71,7 @@ The 21 July 2026 repair aligns Store metadata and object seeding for non-demo an
 | 12     | Inactive future GCP migration reference: Terraform, Cloud Run, Cloud SQL, Cloud Storage, Secret Manager, Pub/Sub, Artifact Registry and AI provider configuration.                                                                                                                                        | Reference complete, inactive | Reference validation passed on 2026-07-05; no live GCP runtime is supported or required.                                                                                                                             |
 | 13     | Security hardening, container scans, SBOM, DAST, Terraform scanning, prompt-injection suite and air-gapped notes.                                                                                                                                                                                         | Complete                     | Local backend, frontend, Semgrep, Checkov and Gitleaks gates passed on 2026-07-05; Docker-backed checks run in GitHub Actions.                                                                                       |
 | 14     | Close the original 2026-07-10 security findings and improve SOLID boundaries, maintainability, independent coverage gates and real integration testing.                                                                                                                                                   | Historical, superseded       | Its later release obligation moved through Sprint 14B and is now owned only by Sprint 17.                                                                                                                             |
-| 14B    | Remediate the sealed 16-finding baseline and its verification findings.                                                                                                                                                                                                                                    | Superseded by Sprint 17      | The original baseline was closed, but deep scan `abf0e143` of later revision `3e27c82` established the current 12-finding baseline.                                                                                  |
+| 14B    | Remediate the sealed 16-finding baseline and its verification findings.                                                                                                                                                                                                                                    | Superseded by Sprint 17      | The original baseline was closed, but deep scan `abf0e143` of later revision `3e27c82` established the then-current 12-finding baseline.                                                                             |
 | 15     | JIOC workflow restructure: role renames plus JIOC Team Member, JIOC routing queue, customer collect choice, manager approval chain, QC-owned release with the CM-to-RFA analysed-collect leg, multi-analyst assignment, teams/profiles/availability calendars, and the permission-refresh-on-restore fix. | Implementation delivered     | Backend and web suites passed; the complete eight-role real-browser acceptance evidence is carried into Sprint 17. See ADR 0022 and the workflow specifications.                                                     |
 | 16     | Cross-role desktop usability, multi-provider AI administration and documentation/deployment accuracy.                                                                                                                                                                                                     | Complete                     | PRs #98-#100 passed protected GitHub checks; coverage remained above 95%; current guides distinguish the supported local runtime from GCP/Kubernetes migration targets.                                              |
 | 17     | Close the current security baseline, introduce secure control ownership, improve SOLID boundaries and reconcile all active documentation without breaking intended behaviour.                                                                                                                            | Implementation complete; release gates open | Local controls, logical restore, N-1 reconciliation, PostgreSQL browser evidence and protected GitHub gates pass. Authorised external staging and a fresh sealed deep scan remain open, so production release closure is not claimed. |
@@ -277,8 +249,10 @@ Verification evidence:
   dead-code modes pass. Dependency audits, Bandit and scoped redacted Gitleaks
   working-tree scans are clean.
 - The closure ledger is
-  `docs/security/SECURITY_REVIEW_REMEDIATION_2026-07-18.md`; ADRs 0038 and 0039
-  record the identity and protected-draft boundaries.
+  [18 July evidence](security/SECURITY_REVIEW_REMEDIATION_2026-07-18.md);
+  [ADR 0038](adr/0038-atomic-identity-security-state-and-session-retention.md)
+  and [ADR 0039](adr/0039-protected-workflow-draft-authorisation.md) record the
+  identity and protected-draft boundaries.
 
 ## 20 July 2026 Agent-Safety Hardening
 
@@ -296,9 +270,9 @@ point-in-time test counts for each 20 July slice.
 - [x] Prove routing fails closed to clarification or human review for
   conflicting or negated signals, stale or missing context, restrictions,
   unavailable or missing candidate-team capacity and unmet evaluation evidence.
-- [x] Approve the versioned `jioc-routing-policy-v2` labelled activation gate;
-  `active` remains blocked until conflict, negation, stale-context, capacity and
-  authority cases pass and the release identifier is allowlisted.
+- [x] Approve and activate the allowlisted `jioc-routing-policy-v2` release for
+  synthetic local/test use after conflict, stale-context, capacity and authority
+  cases passed. Hosted activation remains separately gated.
 - [x] Prove the model-backed action selector has token, identity-encoding, byte
   and timeout bounds, a closed output vocabulary and deterministic fallback,
   while `AgentRun` retains
@@ -332,13 +306,22 @@ point-in-time test counts for each 20 July slice.
   scoped key, bounded discovery and deterministic controllers. Production still
   requires explicit aliases, workload identity, egress/retention approval and
   route evaluation under ADR 0041 and the LiteLLM threat model.
-- Current residual risk: operational availability remains a process-local snapshot
-  until a shared authoritative adapter and scale-out evaluation are complete.
-- Current next step: keep routing `disabled`, gather labelled shadow evidence, satisfy real-data governance gates, then run a reviewed canary.
+- Current residual risks are cumulative across the linked threat models. They
+  include process-local availability, third-party parsers without process
+  isolation, new guarded-write drift and provider/real-data governance.
+- Keep the evaluated release `active` only for synthetic local/test use;
+  `disabled` is the rollback switch. Hosted use requires labelled evidence,
+  real-data governance and a separately reviewed canary.
 
 ## 22 July 2026 Sealed-scan remediation
 
-The earlier 15 findings are fixed and verified. Follow-up scan `5af0222d-05d1-4c46-a090-018aff45db2d` reported three Medium and eight Low issues; current evidence covers exact chat, active-work, RFI and QC sessions, RFI offered plus grounded-evidence products, QC relationships, canonical lock order, atomic audit, parser budgets and cancellation-safe submission. Full verification passed 1,606 backend tests with one intentional skip at 98.23/95.33 per cent line/branch coverage and 537 frontend tests at 98.63/95.03 per cent; dependency audits are clean. A fresh sealed clean-revision scan remains release-blocking under `docs/specs/security-scan-remediation-2026-07-22.md`.
+The earlier 15 findings are fixed and verified. Follow-up scan
+`5af0222d-05d1-4c46-a090-018aff45db2d` reported three Medium and eight Low
+issues; the integrated `0cde7010` remediation covers exact sessions and
+authority, visibility, canonical lock order, atomic audit, parser budgets and
+cancellation-safe submission. Full gates and post-merge workflows passed.
+Authorised staging and the fresh immutable deep scan remain open under the
+[22 July contract](specs/security-scan-remediation-2026-07-22.md).
 
 ## 20 July 2026 Bounded Advisory Reasoning
 Status: complete and verified for the supported local/test boundary.

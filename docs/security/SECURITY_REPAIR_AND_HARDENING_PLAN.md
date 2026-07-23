@@ -2,11 +2,11 @@
 
 ## Status And Authority
 
-Status: local-first implementation complete; production release closure remains
-blocked by authorised staging evidence and a fresh sealed candidate scan. This
-is the retained Sprint 17 implementation and release-gate record and stays in
-step with the root and master implementation plans and development story.
-See `SECURITY_REPAIR_CLOSURE_EVIDENCE_2026-07-13.md` for current evidence.
+Status: historical Sprint 17 plan, not the current security or release tracker.
+Its local work is complete. See the [current tracker](../MASTER_IMPLEMENTATION_PLAN.md),
+[22 July contract](../specs/security-scan-remediation-2026-07-22.md) and [threat
+model](../threat-model/security-scan-remediation-2026-07-22.md). The [13 July
+closure ledger](SECURITY_REPAIR_CLOSURE_EVIDENCE_2026-07-13.md) remains its evidence.
 
 The evidence baseline is the completed deep scan of immutable revision
 `3e27c82d4b62efb683b3fbb81d2486bccafd8fb0`:

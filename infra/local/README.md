@@ -20,8 +20,11 @@ pwsh ./scripts/dev.ps1
 
 Use `pwsh ./scripts/dev.ps1 -Detached` to keep the stack running in the background.
 
-The API initialises the PostgreSQL compatibility state table and the relational
-Intelligence Store schema on startup. Alembic migrations for the same schema live
-in `apps/api/src/coeus/db/migrations` for explicit database management. When
-`COEUS_PERSISTENCE_PROVIDER=postgres` is active, Store products, assets, ACG
-joins and semantic labels are mirrored into those relational tables.
+The API initialises its supported PostgreSQL schema on startup. Versioned ticket
+aggregates, workflow outbox records, audit events, draft audiences, Store
+products and both search indexes use relational tables. The resource-lease
+schema exists for hosted adapters, but supported local admission is
+process-local. Remaining bounded namespaces use the `coeus_state` compatibility
+table. Alembic migrations for the same schema live in
+`apps/api/src/coeus/db/migrations` for explicit database management and
+coordinated recovery evidence.

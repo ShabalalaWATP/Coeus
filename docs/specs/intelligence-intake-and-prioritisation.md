@@ -1,13 +1,13 @@
 # Spec: Intelligence-Grade Intake, Priority Ranking And Team Recommendation
 
 Status: implemented historical specification. Its mandatory human-routing
-constraint was superseded by ADR 0036 and
-`customer-search-routing-orchestration.md`. Current supported local/test routing
+constraint was superseded by ADR 0036 and the
+[customer-search routing contract](customer-search-routing-orchestration.md). Current supported local/test routing
 uses the active deterministic JIOC Agent, with JIOC Managers on the loop and in
 the loop for exception review or audited intervention.
 
-Extends the conversational intake in
-`conversational-intake-standard-and-voice.md`; the field list there is
+Extends the [conversational intake](conversational-intake-standard-and-voice.md);
+the field list there is
 superseded by the standard below. All registry content is synthetic demo data
 (MOCK DATA ONLY) with fictional operations and units.
 
@@ -33,9 +33,10 @@ Thirteen entries in elicitation order; ten always required, three
 The urgency block sits directly after priority so the deep-dive happens the
 moment urgency is claimed ("You mentioned this is urgent. Which operation,
 exercise or tasking is it in support of?"). `REQUIRED_INTAKE_FIELDS`, the
-completeness gate, the workspace checklist (served by the API as
-`intakeChecklist`) and the assistant's questions all derive from
-`INTAKE_STANDARD` in `apps/api/src/coeus/services/intake_standard.py`.
+completeness gate, the then-visible workspace checklist and the assistant's
+questions all derive from `INTAKE_STANDARD`. The later
+[customer-experience contract](customer-experience-and-analyst-context.md)
+removed that checklist from the customer UI while retaining the internal gate.
 
 ## Natural conversation
 

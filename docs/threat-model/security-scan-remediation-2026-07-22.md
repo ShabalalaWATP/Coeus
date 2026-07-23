@@ -8,6 +8,9 @@ based on revision `d1adc99fa6dc5585975c9fdd68a2bea551d2a769`, not a clean
 release candidate. The supported deployment remains local, loopback-bound and
 single-writer.
 
+Companion records: [remediation contract](../specs/security-scan-remediation-2026-07-22.md)
+and [ADR 0042](../adr/0042-enforce-security-policy-at-final-boundaries.md).
+
 ## Assets and actors
 
 Protected assets include administrator role and clearance authority, account
@@ -70,6 +73,10 @@ document and a compromised or malfunctioning configured provider.
 
 ## Residual risk and release gates
 
+These risks are additive to unresolved risks in the
+[21 July threat model](security-scan-remediation-2026-07-21.md); absence from
+this scoped follow-up does not retire an earlier risk.
+
 - `asyncio.to_thread` protects event-loop scheduling but is not a killable
   process sandbox. Unexpected third-party parser CPU, memory or native-code
   behaviour still shares the API process.
@@ -81,5 +88,9 @@ document and a compromised or malfunctioning configured provider.
 - Full PostgreSQL-backed verification passed 1,606 tests with one intentional
   skip at 98.23/95.33 per cent line/branch coverage; the 537-test frontend suite
   passed at 98.63/95.03 per cent line/branch coverage.
-- A fresh sealed scan of a clean immutable revision is required before the 11
-  findings can be treated as release-closed.
+- The remediation was integrated into `main` at `0cde7010`, and its protected
+  plus post-merge workflows passed. That integration evidence is not a rescan.
+- Finding closure requires a fresh sealed whole-repository deep scan of the
+  exact immutable candidate, with no unresolved baseline occurrence or new
+  reportable finding. Production-release closure also requires authorised
+  staging verification.

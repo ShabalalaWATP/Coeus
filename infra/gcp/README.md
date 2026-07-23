@@ -33,22 +33,33 @@ the future distributed-state readiness gates are implemented.
 ## Required Variables
 
 Copy `terraform.tfvars.example` to a private, gitignored `terraform.tfvars` and
-replace every placeholder with values from the work GCP project.
+replace every placeholder with values from the work GCP project. Before adding
+values, confirm the ignore rule from the repository root:
+
+```powershell
+git check-ignore -v infra/gcp/environments/dev/terraform.tfvars
+```
 
 Do not commit `terraform.tfvars`, Terraform state, plans or secrets.
 
 ## Required Secret Values
 
-After Terraform creates the secret placeholders, add versions for:
+The currently mapped runtime placeholders require reviewed values before any
+future hosted start:
 
 - `coeus-dev-database-url`
 - `coeus-dev-session-secret`
 - `coeus-dev-csrf-secret`
 - `coeus-dev-local-seed-credential`
-- `coeus-dev-llm-provider-config`
-- `coeus-dev-object-storage-config`
 
-The current reference is still blocked because it does not yet create or map
+Terraform also declares two unused future scaffolding placeholders:
+
+- `coeus-dev-llm-provider-config` (unused future scaffolding)
+- `coeus-dev-object-storage-config` (unused future scaffolding)
+
+Do not populate the two aggregate provider placeholders until a reviewed schema
+and Cloud Run mapping exist. The current reference is still blocked because it
+does not yet create or map
 three secrets required by hosted startup:
 
 - `coeus-dev-asset-token-secret` as `COEUS_ASSET_TOKEN_SECRET`
@@ -67,8 +78,11 @@ these values in Terraform variables, GitHub workflow files, Markdown or chat.
 ## Future GitHub Variables
 
 Only after every ADR 0019 readiness gate passes and a supported deployment
-workflow is introduced, copy Terraform outputs into a protected GitHub
-Environment named `dev`:
+workflow is introduced, configure a protected GitHub Environment named `dev`.
+Project ID and region come from reviewed Terraform inputs; repository URL,
+service URLs, deployer email and Workload Identity provider are outputs. API and
+web service names need explicit outputs before a workflow may consume them.
+Expected future variables are:
 
 - `GCP_PROJECT_ID`
 - `GCP_REGION`

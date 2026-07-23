@@ -5,6 +5,26 @@ capacity before starting work. Hosted environments use atomic PostgreSQL
 leases. Local and test environments use process-local reservations with the
 same policy semantics.
 
+## Supported local capacity boundary
+
+| Resource | Default | Scope |
+| --- | ---: | --- |
+| API processes and Uvicorn workers | 1 | Supported local topology |
+| Argon2 work | 2 concurrent | Per process |
+| Uploads | 2 concurrent, 1 per user | Per process locally, shared lease when hosted |
+| Upload size | 50,000,000 bytes | Per file |
+| Reserved upload bytes | 100,000,000 | In flight |
+| Search | 2 concurrent, 1 per principal | Per process locally, shared lease when hosted |
+| Provider calls | 4 concurrent | Per process locally, PostgreSQL lease when hosted |
+
+Document parsers apply additional format-specific decoded-byte, structure and
+work-unit budgets recorded in the
+[22 July threat model](../threat-model/security-scan-remediation-2026-07-22.md).
+Additional workers or replicas multiply every process-local pool, parser thread
+and circuit breaker. They are unsupported until the scale-out gates in the
+[deployment architecture](../ARCHITECTURE_DEPLOYMENT.md#scaling-and-known-constraints)
+pass.
+
 ## Enforcement modes
 
 `COEUS_SHARED_RESOURCE_ADMISSION_MODE`, `COEUS_PROVIDER_ADMISSION_MODE` and

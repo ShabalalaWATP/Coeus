@@ -174,13 +174,13 @@ defines the supported Bedrock and Vertex route patterns and production gates.
 - **Audit log.** Local audit evidence is append-only in memory, JSONL or a
   PostgreSQL event table. The configured limit bounds recent reads, not durable
   retention. A future hosted design must add externally retained audit export.
-- **Search scale.** The pgvector HNSW index and Postgres full text serve the
-  expected product volumes comfortably. Very large corpora would tune HNSW
-  `ef_search` and consider iterative scan; the access pre-filter stays the outer
-  boundary of both retrieval legs regardless of scale.
-- **Embeddings.** Written on create, metadata update and QC ingestion, preserved
-  across provider outages, and backfillable in batches. The 384-dimension column
-  matches both the offline local model and the Gemini embedding output.
+- **Search scale.** No production corpus-size or latency SLO is claimed. Load
+  and recall testing must set HNSW and iterative-scan parameters before hosted
+  use; the access pre-filter remains the outer boundary of every retrieval leg.
+- **Embeddings.** Store browse retains a 384-dimensional compatibility
+  projection. Grounded RFI retrieval uses separate 1,536-dimensional passage
+  embeddings keyed by provider, model and index generation. Reindexing keeps
+  the prior active generation until its replacement is ready.
 
 ## 4. Future: Kubernetes
 

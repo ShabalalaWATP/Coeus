@@ -2,7 +2,8 @@
 
 > **Superseded (2026-07-11).** Quality Control now performs the final release
 > at QC approval; the manager release step and its endpoints were retired.
-> See `docs/specs/jioc-workflow-restructure.md` and ADR 0022. Kept for
+> See the [JIOC workflow restructure](jioc-workflow-restructure.md) and
+> [ADR 0022](../adr/0022-jioc-routing-and-qc-release.md). Kept for
 > history.
 
 ## Goal

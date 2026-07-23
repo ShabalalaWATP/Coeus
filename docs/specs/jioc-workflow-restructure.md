@@ -2,8 +2,10 @@
 
 ## Status
 
-Implemented (2026-07-11). See ADR 0022. The mandatory human routing step is
-superseded by `customer-search-routing-orchestration.md` and ADR 0036. This
+Implemented (2026-07-11). See [ADR 0022](../adr/0022-jioc-routing-and-qc-release.md).
+The mandatory human routing step is superseded by the
+[customer-search routing contract](customer-search-routing-orchestration.md) and
+[ADR 0036](../adr/0036-customer-search-assurance-and-agent-routing.md). This
 specification supersedes the older Sprint 8 routing and manager-release designs.
 The roles and state machine below preserve the Sprint 15 design history. They
 are not the current authority for the route-decision entry path.

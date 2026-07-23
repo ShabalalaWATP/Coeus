@@ -70,23 +70,24 @@ turn, and knows how to end: once the intake is complete the assistant offers
 to finish and closes on confirmation, while an early "that's all" gets a
 polite explanation that more information is needed, then the next question.
 Lifecycle decisions are deterministic (`services/conversation_lifecycle.py`),
-never the LLM's. It reads the customer's chat messages only.
+never the LLM's. Local extraction reads each customer message. A remote selector
+receives only the allowlisted extracted fields described below, never raw chat.
 
 ### The intake standard
 
 `INTAKE_STANDARD` defines thirteen entries in elicitation order: ten always
 required and three urgency entries that apply to critical or high priority.
-The completeness gate, workspace checklist and questions all derive from it; see
-`docs/specs/intelligence-intake-and-prioritisation.md` for the full list.
+The completeness gate, internal intake state and questions all derive from it; see
+the [intake specification](specs/intelligence-intake-and-prioritisation.md) for the full list.
 
 On each turn the assistant asks one locally rendered question. Extraction
 (`services/intake_extractors.py`) is heuristic, transparent and cue-gated.
 Nothing the customer does not provide is invented.
 
 `RequirementCompletenessService` recomputes `missing_information` and
-`confidence` (captured / applicable entries) on every message. The workspace
-checklist is a direct view of this, and a ticket can only be submitted once
-`missing_information` is empty and deterministic contradiction checks pass.
+`confidence` (captured / applicable entries) on every message. These remain
+internal so the chat does not expose a backend checklist. Submission requires
+no missing information and no deterministic contradiction.
 
 ### Intake Planner boundary
 
@@ -115,7 +116,7 @@ manually" panel, and nothing is submitted until they press Submit.
 ## 2. RFI Search Agent
 
 - **Lives in:** `apps/api/src/coeus/services/rfi_ranking.py`,
-  `services/rfi_search.py` and `services/embeddings.py`
+  `services/rfi_search.py`, `rfi_search_retrieval.py` and `search_index.py`
 - **Entry point:** `RfiSearchService.run(ticket_id, actor)`
 
 ### Purpose
@@ -134,15 +135,14 @@ has no need-to-know for.
 ### How it scores
 
 The agent builds query text from title, operational question, region, known
-context, output format and success criteria, then runs two retrieval legs over
-the access-filtered product set:
+context, output format and success criteria. It merges two separately governed
+search generations over the access-filtered product set:
 
-| Signal          | Basis                                                                                                                    |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Lexical rank    | PostgreSQL full-text rank when relational search is available, with the deterministic token scorer as the local fallback |
-| Semantic rank   | Cosine similarity against 384-dimension product embeddings from the configured embedding provider                        |
-| Semantic labels | Controlled labels derived from product and request language                                                              |
-| Metadata        | Region and output-format or product-type overlap                                                                         |
+| Index or signal | Basis |
+| --- | --- |
+| Store compatibility | Product-level PostgreSQL full text plus 384-dimensional embeddings selected by `COEUS_EMBEDDING_PROVIDER` |
+| Grounded RFI index | Passage chunks plus 1,536-dimensional, provider/model/generation-aware embeddings configured independently in Admin |
+| Structured signals | Controlled labels, region, output format and product type |
 
 Lexical and semantic ranks are fused with Reciprocal Rank Fusion (`k = 60`).
 Metadata and semantic-label signals are deterministic tie-break bonuses on the
@@ -152,10 +152,12 @@ highest score first. Each offer carries `match_reasons`, including legacy
 reasons such as `metadata:region` plus hybrid reasons such as `lexical-rank:2`,
 `vector-similarity:0.83` and `retrieval:lexical-only`.
 
-`COEUS_EMBEDDING_PROVIDER` is authoritative. The default `mock` provider is
-deterministic and offline. Optional `local` and `gemini_api` providers degrade to
-lexical-only retrieval if unavailable, and Gemini is never called unless the
-operator explicitly selects the Gemini embedding provider.
+The Store compatibility provider defaults to deterministic `mock`; optional
+`local` and `gemini_api` modes degrade to lexical-only if unavailable. The
+grounded index separately supports `mock` or an explicitly selected
+`gemini_api` provider, tracks corpus and index generation, and does not enable a
+definitive no-match claim until its release is approved. Results can carry
+grounded passages, retrieval mode and incomplete-assurance state.
 
 The Search Planner receives bounded intake fields but no corpus, results or
 authorisation context. Strictly validated expansions, entities, date-text hints
@@ -167,7 +169,8 @@ so baseline retrieval still completes.
 ### Output
 
 Zero to five `ProductOffer` records with score, reasons, classification,
-releasability, region, coverage dates and asset types.
+releasability, region, coverage dates, asset types and grounded evidence where
+available.
 
 ### Human control
 
@@ -299,38 +302,37 @@ JIOC, team, analyst and QC queues. Managers see the badge and reasons;
 customers see only their stated priority; nothing changes state automatically.
 The capability agents reuse the tier plus team disciplines, regions and rank
 to attach top-3 `candidate_teams` to each review
-(`services/capability_recommendation.py`). Weights and details:
-`docs/specs/intelligence-intake-and-prioritisation.md` and ADR 0020.
+(`services/capability_recommendation.py`). Weights and details are in the
+[intake specification](specs/intelligence-intake-and-prioritisation.md) and
+[ADR 0020](adr/0020-deterministic-priority-ranking-and-team-recommendation.md).
 
 ---
 
+## 7. QC preflight, trends and hand-off records
+
+`QcPreflightAgent` deterministically checks the immutable submitted version,
+manifest, evidence readiness and UK-English proofing. It records findings and
+may block release, but the assigned human performs the mandatory checklist and
+release decision. Image text that cannot be extracted is reported as uncovered.
+
+`TrendsAnalysisAgent` deterministically summarises already-authorised analytics
+aggregates for region, product reuse and feedback. It has no provider egress or
+write authority. Persisted `orchestrator-agent` hand-off runs are provenance
+labels for application-rendered clarification or collect-choice messages, not a
+model or tool-using runtime.
+
 ## Model provider and selection
 
-The bounded model-backed agents depend on one LLM gateway, not a specific model:
+- `COEUS_LLM_PROVIDER=mock` is the deterministic offline default.
+- Gemini API, OpenAI API, LiteLLM Proxy, Vertex AI and Bedrock share one bounded
+  gateway and model allowlists. LiteLLM routing is deployment-managed; see its
+  [connectivity runbook](runbooks/litellm-provider-connectivity.md).
+- Missing credentials, timeouts, invalid output, admission denial or egress
+  policy cause schema-checked local fallback. The application renders all copy.
 
-- **Local and test default:** `COEUS_LLM_PROVIDER=mock`. Deterministic, no
-  network calls, reproducible in CI.
-- **Selectable providers:** Gemini API, OpenAI API, LiteLLM Proxy, Vertex AI and
-  AWS Bedrock use the same bounded gateway and configured model allowlists.
-  Administrators may select a provider/model and enter its key in the Admin
-  workspace. The LiteLLM address is deployment-managed, not browser-editable.
-  Its Istari virtual key is separate from AWS or GCP workload identity, which
-  remains in the proxy deployment. The
-  [LiteLLM Provider Connectivity Runbook](runbooks/litellm-provider-connectivity.md)
-  defines provider setup and model-route approval.
-  Environment keys remain authoritative and never select a provider by their
-  presence alone.
-- **Graceful degradation:** each agent validates its closed output schema and
-  falls back locally on missing credentials, timeout, provider failure, invalid
-  output or egress denial. Requester-facing copy is rendered by the application.
-- **Future GCP deployment:** the same runtime boundary can point at Google
-  managed services without changing the workflow contracts.
-
-Administrators choose the active provider and model from the Admin workspace
-(`services/ai_models.py`); each selection raises an audited event. Environment
-keys remain authoritative. Admin-entered keys use the configuration-encryption
-service and never appear in generic model state or API responses. See the
-[User Guide](USER_GUIDE.md#administrator) for the catalogue and tiers.
+Administrators select the provider and model in Admin. Environment keys remain
+authoritative; encrypted UI-entered keys never appear in model-state responses.
+See the [User Guide](USER_GUIDE.md#administrator) for the catalogue and tiers.
 
 ## Design principles
 

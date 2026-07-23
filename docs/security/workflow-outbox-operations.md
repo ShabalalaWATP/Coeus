@@ -86,6 +86,11 @@ replay. The read-only operator view deliberately exposes aggregate pending,
 retrying and dead-letter counts plus oldest pending age. Event-level details and
 payloads are not exposed through the application API.
 
+Alert when a configured dispatcher reports `coeus_outbox_available 0`, any
+`coeus_outbox_dead_letter_messages`, or a sustained increase in
+`coeus_outbox_oldest_pending_age_seconds`. A retrying count is an investigation
+signal; correlate it with bounded dispatcher logs before deciding to replay.
+
 Replay is an RBAC-protected operator action requiring an explicit reason. It is
 audited and idempotent. Delivered work returns `already_delivered`; pending or
 actively claimed work returns `already_pending`. A successful dead-letter replay

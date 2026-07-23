@@ -2,7 +2,8 @@
 
 ## Status
 
-Approved for implementation (2026-07-14).
+Implemented and verified for the supported synthetic local/test boundary
+(2026-07-14).
 
 ## Goal
 

@@ -98,7 +98,8 @@ scripts/  Local development and seeding helpers
   schemas or personal account details. Screenshots in [docs/images](docs/images)
   are of synthetic, clearly labelled **MOCK DATA ONLY** content; never commit a
   screenshot of real intelligence.
-- Per-feature threat models live in [docs/threat-model](docs/threat-model/).
+- Per-feature threat models are listed in the
+  [threat-model index](docs/threat-model/README.md).
 
 ## Operations
 

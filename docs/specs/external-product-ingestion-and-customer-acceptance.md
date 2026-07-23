@@ -2,18 +2,24 @@
 
 ## Status
 
-Approved for implementation on 18 July 2026.
+Implemented and verified for the supported synthetic local/test boundary on
+18 July 2026. Hosted and production release remain subject to the repository's
+current release gates.
+
+Related records: [ADR 0037](../adr/0037-ticket-scoped-external-product-lifecycle.md)
+and the [external-product threat model](../threat-model/external-product-ingestion.md).
 
 ## Problem
 
-Analysts normally author intelligence products in Microsoft Word, PowerPoint,
-PDF or image tooling. Istari currently records only asset metadata on an analyst
-draft and creates placeholder bytes during QC ingestion. It therefore cannot
-review, release or return the actual product that the analyst produced.
+Before this feature, analysts normally authored intelligence products in
+Microsoft Word, PowerPoint, PDF or image tooling while Istari retained only
+asset metadata and generated placeholder bytes during QC ingestion. The
+implemented workflow now retains, reviews and releases the analyst's exact
+versioned product.
 
-The released-product workflow also closes on receipt rather than asking whether
-the product met the customer's requirement. Negative feedback does not create a
-controlled re-analysis decision.
+The earlier released-product workflow also closed on receipt rather than asking
+whether the product met the customer's requirement. The implemented workflow
+now provides a controlled satisfaction and re-analysis decision.
 
 ## Outcomes
 
