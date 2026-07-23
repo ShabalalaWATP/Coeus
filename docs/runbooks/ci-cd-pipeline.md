@@ -3,6 +3,8 @@
 This is the source of truth for GitHub Actions, status checks and repository
 security gates. Keep the root README high-level and link here instead of listing
 individual scanners there.
+The [Deployment and Operations Atlas](../architecture/DEPLOYMENT_AND_OPERATIONS.md)
+shows how the independent workflows contribute to merge and release assurance.
 
 ## Current Pipeline
 
@@ -10,7 +12,7 @@ The repository uses GitHub Actions for pull-request and `main` branch checks.
 
 | Workflow | Trigger | Purpose |
 |---|---|---|
-| `Backend CI` | pull request, push to `main` | File limits, Markdown links/images, Ruff, mypy, architecture boundaries, semantic OpenAPI compatibility, generated type drift, real PostgreSQL migration/concurrency tests, independent line/branch coverage, Bandit and pip-audit. |
+| `Backend CI` | pull request, push to `main` | File limits, Markdown links/images/anchors, Mermaid parsing, Ruff, mypy, architecture boundaries, semantic OpenAPI compatibility, generated type drift, real PostgreSQL migration/concurrency tests, independent line/branch coverage, Bandit and pip-audit. |
 | `Frontend CI` | pull request, push to `main` | Prettier, ESLint, TypeScript, Knip, all Vitest coverage gates, production audit, Vite build, fast Playwright journeys and the disposable-PostgreSQL security workflow. |
 | `CodeQL` | pull request, push to `main`, weekly schedule | GitHub CodeQL analysis for Python and JavaScript/TypeScript. |
 | `Semgrep` | pull request, push to `main`, weekly schedule | Semgrep SAST over application source, Dockerfiles and GitHub config, with SARIF upload. |

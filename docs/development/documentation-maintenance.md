@@ -69,6 +69,7 @@ From the repository root:
 
 ```powershell
 corepack pnpm docs:check
+corepack pnpm mermaid:check
 corepack pnpm format:check
 corepack pnpm line-limit
 corepack pnpm architecture:check
@@ -77,9 +78,13 @@ docker compose config --quiet
 ```
 
 `docs:check` enumerates every tracked or non-ignored new Markdown file through
-Git and validates local files, images and GitHub-style heading anchors. External links still need
-periodic review because CI deliberately does not make network availability a
-documentation gate.
+Git and validates local files, images and GitHub-style heading anchors.
+`mermaid:check` parses every Mermaid block with the pinned local renderer and
+requires Atlas diagrams to use the stable allowlisted types plus `accTitle` and
+`accDescr`. It does not prove compatibility with GitHub's future renderer
+versions, so visual review remains part of pull-request review. External links
+still need periodic review because CI deliberately does not make network
+availability a documentation gate.
 
 For a deep audit, also compare current guides with route policy, settings,
 migrations, Compose, workflow definitions and the latest immutable verification

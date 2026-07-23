@@ -3,6 +3,8 @@
 Istari combines deterministic automation with narrowly bounded model-backed
 wording. An "agent" does not imply broad autonomy or tool use. Authority comes
 only from the workflow service and deterministic policy described here.
+The [Data, Search and AI Atlas](architecture/DATA_SEARCH_AND_AI.md) maps model
+advice to deterministic authority, both search indexes and generation activation.
 
 > The offline default makes no external calls. Enabling a remote provider is an
 > explicit, audited deployment choice and does not grant the provider authority

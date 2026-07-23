@@ -30,6 +30,15 @@ upgrade head`. Never migrate while writers are active. Confirm `current` equals
 The bundle path must not exist. The target object root must be absent or empty;
 use a new path for every attempt.
 
+The current validator inventories the complete local object root but reconciles
+that inventory only with relational `intelligence_store_assets`. Draft
+submission bytes under `workflow/submissions/...` are referenced from ticket
+payloads rather than Store asset rows, so their presence causes validation to
+fail. Treat any retained draft object as a blocker for this drill. Do not delete
+it merely to make recovery evidence pass. Until the validator covers ticket
+draft manifests, this drill proves recovery only for an object root containing
+registered Store assets and must not be cited as complete draft-object recovery.
+
 If administrator-entered provider credentials are in use, preserve the
 configuration-encryption key separately from this bundle. For local mode this
 is `COEUS_CONFIGURATION_ENCRYPTION_KEY_PATH`; hosted environments must preserve
@@ -70,8 +79,17 @@ uv run --directory apps/api python -m coeus.tools.coordinated_restore_drill `
   validate, draft audiences have zero drift, and Store asset metadata exactly
   matches restored object key, size and SHA-256.
 
+Grounded-search profiles, chunks and ticket embeddings are derived data and are
+excluded from the logical table allowlist. A restored API safely reports
+unindexed or incomplete coverage, but operators must rebuild and verify a
+grounded-search generation before treating search assurance as complete.
+
 Preserve the JSON success report with the release-candidate revision and CI
 test evidence.
+
+The full consistency boundary, including this draft-object limitation and the
+post-restore reindex step, is shown in the [Deployment and Operations
+Atlas](../architecture/DEPLOYMENT_AND_OPERATIONS.md#6-coordinated-logical-recovery).
 
 ## Failure and rollback
 

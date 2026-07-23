@@ -33,8 +33,9 @@ New here? Start with the [documentation index](docs/README.md).
 
 | Guide                                                    | Read it for                                                              |
 | -------------------------------------------------------- | ------------------------------------------------------------------------ |
+| [Architecture Atlas](docs/architecture/README.md)         | In-depth user, technical, security, workflow and operations diagrams     |
 | [Setup Guide](docs/SETUP.md)                             | Prerequisites, running locally, seed accounts, checks                    |
-| [Architecture](docs/ARCHITECTURE.md)                     | System structure, the request journey, and local and future GCP diagrams |
+| [Architecture](docs/ARCHITECTURE.md)                     | Concise shipped structure, workflow and deployment overview              |
 | [User Guide](docs/USER_GUIDE.md)                         | Current key-workspace screenshots and role workflows                     |
 | [Roles and User Stories](docs/ROLES_AND_USER_STORIES.md) | Roles, permissions, need-to-know groups, user stories                    |
 | [AI Agents](docs/AI_AGENTS.md)                           | What each agent reads, decides and returns                               |

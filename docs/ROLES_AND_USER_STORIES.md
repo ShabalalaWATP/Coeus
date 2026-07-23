@@ -4,6 +4,8 @@ Istari is role-based. Every account holds one or more roles, each role grants a
 fixed set of permissions, and every account lands on a default workspace at sign
 in. Permissions are enforced on the server at the object and action level, not
 just in the UI, so hiding a control is a convenience, never the security boundary.
+The [User and Workflow Atlas](architecture/USER_AND_WORKFLOW.md) visualises all
+roles, non-role responsibilities, default workspaces and authority hand-offs.
 
 Every active account can open `/access-groups` to browse active ACGs, apply for
 membership with a justification, withdraw a pending application and track its

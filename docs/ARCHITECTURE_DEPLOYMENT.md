@@ -6,7 +6,9 @@ see [Architecture](ARCHITECTURE.md) for the system structure and
 [Architecture: Workflow](ARCHITECTURE_WORKFLOW.md) for the request journey. The
 local-first design is retained for any migration. Cloud deployment requires
 additional provider adapters and operational controls; it is not a configuration
-switch in the current build.
+switch in the current build. See [Deployment and Operations
+Atlas](architecture/DEPLOYMENT_AND_OPERATIONS.md) for CI, signals, outbox and
+recovery views.
 
 ---
 
@@ -19,6 +21,9 @@ directly via `uv` and `pnpm`. The default providers keep the system offline.
 
 ```mermaid
 flowchart TB
+    accTitle: Supported local deployment topology
+    accDescr: The browser separately reaches the SPA and configured API origins; one FastAPI process uses Compose PostgreSQL and local object storage while MinIO remains unused.
+
     subgraph dev["Developer machine"]
         direction TB
         BROWSER["Browser<br/>localhost:5173"]
@@ -31,10 +36,11 @@ flowchart TB
         FS[["Local filesystem<br/>object bytes"]]
     end
 
-    BROWSER --> VITE --> UVICORN
+    BROWSER -->|"fetch SPA"| VITE
+    BROWSER -->|"configured API origin"| UVICORN
     UVICORN --> PG
     UVICORN --> FS
-    MINIO -.not currently wired.-> UVICORN
+    MINIO -.->|"not currently wired"| UVICORN
 
     classDef fe fill:#0d9488,stroke:#0f766e,color:#fff,stroke-width:1px
     classDef be fill:#4f46e5,stroke:#3730a3,color:#fff,stroke-width:1px
@@ -65,6 +71,9 @@ Identity Federation, with no long-lived keys.
 
 ```mermaid
 flowchart TB
+    accTitle: Future-gated GCP resource shell
+    accDescr: Terraform can create keyless identity, registry, Cloud Run, SQL, buckets, Pub/Sub and secrets, but deployment plus GCS and Pub/Sub runtime adapters remain unimplemented.
+
     subgraph gh["GitHub"]
         GHA["Future GitHub Actions deploy workflow<br/>not implemented"]
     end
@@ -77,13 +86,14 @@ flowchart TB
         subgraph run["Cloud Run"]
             WEBSVC["Web service<br/>React SPA"]
             APISVC["API service<br/>FastAPI"]
+            GATE["Runtime security gate"]
         end
 
-        SQL[("Cloud SQL for PostgreSQL<br/>+ pgvector")]
+        SQL[("Cloud SQL for PostgreSQL + pgvector<br/>module does not configure CMEK")]
         subgraph buckets["Cloud Storage"]
-            BPROD[["products"]]
-            BPREV[["previews"]]
-            BAUD[["audit exports"]]
+            BPROD[["products<br/>module does not configure CMEK"]]
+            BPREV[["previews<br/>module does not configure CMEK"]]
+            BAUD[["audit exports<br/>module does not configure CMEK"]]
         end
         subgraph msg["Pub/Sub"]
             TOPIC["topics + worker subs"]
@@ -92,19 +102,28 @@ flowchart TB
         SM["Secret Manager<br/>db, session, CSRF, asset, metrics and configuration keys"]
         KMS["Cloud KMS<br/>encryption keys"]
         GEMINI["Gemini API<br/>chat + embeddings (optional)"]
+        GCSAD["MISSING<br/>GCS runtime adapter"]
+        PSAD["MISSING<br/>Pub/Sub runtime adapter"]
     end
 
-    USERS["Users"] --> WEBSVC --> APISVC
+    USERS["Users"] -->|"fetch SPA"| WEBSVC
+    USERS -->|"configured API origin"| APISVC
     GHA -->|OIDC| WIF
-    GHA --> AR --> run
+    GHA -.->|"deployment job not implemented"| AR
+    AR -.-> WEBSVC
+    AR -.-> APISVC
+    APISVC --> GATE
     APISVC --> SQL
-    APISVC --> buckets
-    APISVC --> TOPIC
+    GATE -.->|"startup rejected"| GCSAD
+    GCSAD -.-> BPROD
+    GCSAD -.-> BPREV
+    GCSAD -.-> BAUD
+    GATE -.->|"startup rejected"| PSAD -.-> TOPIC
     TOPIC --> DLQ
     APISVC --> SM
     APISVC -.optional.-> GEMINI
-    SQL --- KMS
-    buckets --- KMS
+    KMS --> AR
+    KMS --> TOPIC
 
     classDef actor fill:#2563eb,stroke:#1e3a8a,color:#fff,stroke-width:1px
     classDef gcp fill:#1a73e8,stroke:#174ea6,color:#fff,stroke-width:1px
@@ -124,7 +143,9 @@ topics, a Cloud SQL PostgreSQL instance, and the two Cloud Run services. Secret
 values are never stored in Terraform state. Every cloud-creating path is blocked
 by the ADR 0019 readiness precondition, including targeted plans and applies.
 Targeted operations remain prohibited because they are an incomplete review
-surface. GitHub Actions has no cloud deployment step. See the
+surface. The current modules attach the customer-managed key to Artifact
+Registry and Pub/Sub, not Cloud SQL or the buckets. GitHub Actions has no cloud
+deployment step. See the
 [GCP Reference Deployment Runbook](runbooks/gcp-dev-deployment.md).
 
 ---

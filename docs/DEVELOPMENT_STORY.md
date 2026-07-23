@@ -159,8 +159,8 @@ date order. They are historical evidence, not current operating instructions.
 
 ## 2026-07-08 Architecture documentation
 
-- Added a grounded architecture guide split by responsibility across three
-  cross-linked documents with ten validated Mermaid diagrams:
+- Added the initial grounded architecture guide split by responsibility across
+  three cross-linked documents with system, workflow and deployment diagrams:
   `docs/ARCHITECTURE.md` (system context, layered application, data and
   persistence, security and need-to-know), `docs/ARCHITECTURE_WORKFLOW.md` (the
   request journey state machine, the end-to-end sequence, the AI agents and
@@ -335,3 +335,9 @@ date order. They are historical evidence, not current operating instructions.
   transfer manifests against ignored, hidden and linked artefacts.
 - Expanded the documentation gate to every Git-known Markdown file and local
   GitHub-style heading anchor.
+- Added an Architecture Atlas with 32 accessible Mermaid views across users,
+  workspaces, workflow hand-offs, components, data, search, AI authority,
+  security, deployment, CI, observability and recovery.
+- Corrected the browser-to-API, workflow, dual-index, GCP KMS, local
+  notification and recovery boundaries against implementation.
+- Added repository-wide Mermaid parsing to local checks and Backend CI.
