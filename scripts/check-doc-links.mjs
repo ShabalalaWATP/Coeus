@@ -56,19 +56,131 @@ function localReference(rawTarget, source) {
   };
 }
 
-function headingText(markdown) {
-  return markdown
-    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
-    .replace(/<[^>]+>/g, "")
-    .replace(/[`*_~]/g, "")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">");
+function closingDelimiter(value, start, opening, closing) {
+  let depth = 0;
+  for (let index = start; index < value.length; index += 1) {
+    if (value[index] === "\\") {
+      index += 1;
+      continue;
+    }
+    if (value[index] === opening) depth += 1;
+    if (value[index] === closing) {
+      depth -= 1;
+      if (depth === 0) return index;
+    }
+  }
+  return -1;
+}
+
+function closingAngle(value, start) {
+  let quote = null;
+  for (let index = start + 1; index < value.length; index += 1) {
+    const character = value[index];
+    if (quote !== null) {
+      if (character === quote) quote = null;
+    } else if (character === '"' || character === "'") {
+      quote = character;
+    } else if (character === ">") {
+      return index;
+    }
+  }
+  return -1;
+}
+
+function visibleEntityText(entity) {
+  const normalised = entity.toLowerCase();
+  if (normalised === "nbsp") return " ";
+  if (["amp", "apos", "gt", "lt", "quot"].includes(normalised)) return "";
+
+  const radix = normalised.startsWith("#x") ? 16 : 10;
+  const digits = normalised.startsWith("#x")
+    ? normalised.slice(2)
+    : normalised.startsWith("#")
+      ? normalised.slice(1)
+      : "";
+  if (!digits) return "";
+  const codePoint = Number.parseInt(digits, radix);
+  if (!Number.isInteger(codePoint) || codePoint > 0x10ffff) return "";
+  const character = String.fromCodePoint(codePoint);
+  return /^[\p{L}\p{N}\s_-]$/u.test(character) ? character : "";
+}
+
+function visibleHeadingText(markdown) {
+  let visible = "";
+  for (let index = 0; index < markdown.length; index += 1) {
+    const character = markdown[index];
+    if (character === "\\" && index + 1 < markdown.length) {
+      visible += markdown[index + 1];
+      index += 1;
+      continue;
+    }
+    if (character === "`") {
+      const marker = markdown.slice(index).match(/^`+/)?.[0] ?? "`";
+      const closing = markdown.indexOf(marker, index + marker.length);
+      if (closing !== -1) {
+        visible += markdown.slice(index + marker.length, closing);
+        index = closing + marker.length - 1;
+        continue;
+      }
+    }
+
+    const bracketStart =
+      character === "["
+        ? index
+        : character === "!" && markdown[index + 1] === "["
+          ? index + 1
+          : -1;
+    if (bracketStart !== -1) {
+      const labelEnd = closingDelimiter(markdown, bracketStart, "[", "]");
+      if (labelEnd !== -1) {
+        visible += visibleHeadingText(
+          markdown.slice(bracketStart + 1, labelEnd),
+        );
+        index = labelEnd;
+        const destinationStart = markdown[index + 1];
+        if (destinationStart === "(" || destinationStart === "[") {
+          const destinationEnd = closingDelimiter(
+            markdown,
+            index + 1,
+            destinationStart,
+            destinationStart === "(" ? ")" : "]",
+          );
+          if (destinationEnd !== -1) index = destinationEnd;
+        }
+        continue;
+      }
+    }
+
+    if (character === "<") {
+      const closing = closingAngle(markdown, index);
+      if (closing !== -1) {
+        const content = markdown.slice(index + 1, closing);
+        const isTag =
+          /^!--/.test(content) ||
+          /^\/?[a-z][a-z0-9-]*(?:\s|\/|$)/i.test(content);
+        if (!isTag) visible += content;
+        index = closing;
+        continue;
+      }
+    }
+
+    if (character === "&") {
+      const entity = markdown
+        .slice(index)
+        .match(/^&(#x?[\da-f]+|[a-z][\da-z]+);/i);
+      if (entity) {
+        visible += visibleEntityText(entity[1]);
+        index += entity[0].length - 1;
+        continue;
+      }
+    }
+    visible += character;
+  }
+  return visible;
 }
 
 function headingSlug(heading) {
-  return headingText(heading)
+  return visibleHeadingText(heading)
     .trim()
     .toLowerCase()
     .replace(/[^\p{L}\p{N}\s_-]/gu, "")

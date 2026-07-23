@@ -6,12 +6,19 @@ import { anchorsFor, isInsideRepository } from "./check-doc-links.mjs";
 
 test("collects GitHub-style headings and duplicate suffixes", () => {
   const anchors = anchorsFor(
-    "# Title\n## Repeated\n## Repeated\n## Access groups (ACGs)\n",
+    "# Title\n## Repeated\n## Repeated\n## Access groups (ACGs)\n## Security & governance\n## [Linked](guide.md) &amp; <span>label</span> &#65;\n",
   );
 
   assert.deepEqual(
     [...anchors],
-    ["title", "repeated", "repeated-1", "access-groups-acgs"],
+    [
+      "title",
+      "repeated",
+      "repeated-1",
+      "access-groups-acgs",
+      "security--governance",
+      "linked--label-a",
+    ],
   );
 });
 
