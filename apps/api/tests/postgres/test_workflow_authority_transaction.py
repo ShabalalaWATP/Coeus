@@ -132,7 +132,8 @@ def test_authorised_update_rejects_a_revoked_exact_session(
         session,
         frozenset({Permission.CHAT_USE}),
     )
-    assert sessions.delete(session.session_id) == session
+    deleted_session = sessions.delete(session.session_id)
+    assert deleted_session == session
 
     denied = app.state.workflow_transaction.commit_authorised_ticket_update(
         ticket,
@@ -228,7 +229,8 @@ def test_authorised_update_revalidates_qc_team_and_release_acgs(
         frozenset({Permission.QC_APPROVE}),
         qc=QcCommitAuthority(0, frozenset(), 0, frozenset({release_acg_id}), None),
     )
-    assert sessions.delete(qc_session.session_id) == qc_session
+    deleted_qc_session = sessions.delete(qc_session.session_id)
+    assert deleted_qc_session == qc_session
     session_denied = app.state.workflow_transaction.commit_authorised_ticket_update(
         ticket, updated, (audit,), authority
     )
