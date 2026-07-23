@@ -1,19 +1,18 @@
 # Coeus Development Story
 
-Sprint 1 to Sprint 13 entries live in
-[DEVELOPMENT_STORY_SPRINTS_01-13.md](DEVELOPMENT_STORY_SPRINTS_01-13.md). The
-2026-07-06 continuation lives in
-[DEVELOPMENT_STORY_2026-07-06.md](DEVELOPMENT_STORY_2026-07-06.md), and the
-2026-07-13 security milestone lives in
-[DEVELOPMENT_STORY_2026-07-13.md](DEVELOPMENT_STORY_2026-07-13.md). The latest
-admin command-centre milestone is recorded in
-[DEVELOPMENT_STORY_2026-07-17.md](DEVELOPMENT_STORY_2026-07-17.md), and the
-customer-search and JIOC-agent milestone is recorded in
-[DEVELOPMENT_STORY_2026-07-18.md](DEVELOPMENT_STORY_2026-07-18.md). The current
-agent-safety and LiteLLM work is in
-[DEVELOPMENT_STORY_2026-07-20.md](DEVELOPMENT_STORY_2026-07-20.md), and the
-production-safe Store startup repair is in
-[DEVELOPMENT_STORY_2026-07-21.md](DEVELOPMENT_STORY_2026-07-21.md).
+Historical development milestones are archived by period:
+
+- [Sprints 1 to 13](DEVELOPMENT_STORY_SPRINTS_01-13.md)
+- [6 July continuation](DEVELOPMENT_STORY_2026-07-06.md)
+- [13 July security milestone](DEVELOPMENT_STORY_2026-07-13.md)
+- [17 July admin command centre](DEVELOPMENT_STORY_2026-07-17.md)
+- [18 July customer search and JIOC agents](DEVELOPMENT_STORY_2026-07-18.md)
+- [20 July agent safety and LiteLLM](DEVELOPMENT_STORY_2026-07-20.md)
+- [21 July production-safe Store startup](DEVELOPMENT_STORY_2026-07-21.md)
+- [22 July security boundaries and product-first results](DEVELOPMENT_STORY_2026-07-22.md)
+
+The retained entries below are grouped by delivery milestone rather than strict
+date order. They are historical evidence, not current operating instructions.
 
 ## 2026-07-11 cross-role usability and documentation accuracy
 
@@ -323,28 +322,16 @@ production-safe Store startup repair is in
   branch coverage. ESLint, TypeScript, Prettier, Knip and the production build
   also passed.
 
-## 2026-07-22 Security boundary remediation
+## 2026-07-23 Documentation accuracy and navigation
 
-- Closed all 15 reportable findings from sealed standard scan
-  `59eb4efa-4acb-4504-b43c-bdab86f43cd7` without removing supported workflows.
-  The remediation covers admission, Store assets and uploads, provider and
-  Realtime transport, pagination, authority races, response projection, team
-  calendar scope and JIOC audit authority.
-- Independent review drove additional fixes for RFI visibility, provider
-  watchdog hand-off, ZIP64 metadata, stale publication and manager authority,
-  local lock ordering and private transport coupling.
-- Split authentication sessions, Store search and seed-product construction by
-  responsibility. Shared bounded HTTP now enforces JSON and Realtime deadlines.
-- Resolved high-severity transitive development-tool advisories with patched `brace-expansion` and `js-yaml` pnpm overrides.
-- PostgreSQL-backed verification passed 1,522 backend tests with one skip at
-  98.14/95.05 per cent line/branch coverage. The 536-test frontend suite passed
-  at 98.63/95.05 per cent, alongside the broader production gates.
-- Independent reviewers found no issue in that settled diff, but follow-up scan `5af0222d-05d1-4c46-a090-018aff45db2d` reported three Medium and eight Low issues. Remediation now fences exact chat, active-work, RFI and QC sessions, the union of offered and grounded-evidence products, QC relationships, atomic active-work audit and canonical lock order; a clean-revision rescan remains pending under `docs/specs/security-scan-remediation-2026-07-22.md`.
-- Expanded parser and cancellation controls pass 124 tests at 98.53 per cent parser-service and 95.92 per cent upload-route coverage. Authority evidence passes 17 administrator, 77/77 local compatibility, 99 local workflow, four focused and 5/5 combined real-PostgreSQL tests, including QC session deletion/restoration and non-offered RFI evidence races; dependency audits and focused quality checks are clean.
-
-## 2026-07-22 Product-first RFI result view
-
-- Returned RFI results now lead with the authorised product title, summary, classification marking and customer actions.
-- Product provenance, match evidence and search diagnostics remain available in collapsed, keyboard-accessible disclosures at the bottom of the result.
-- Added a feature spec and regression coverage for content hierarchy,
-  disclosure defaults, loading, failure, degraded-search and read-only states.
+- Audited current guides, runbooks, plans, component READMEs, specifications,
+  ADRs and threat models against routes, permissions, settings, migrations,
+  workflows and integrated security evidence.
+- Added complete linked indexes and an explicit authority/lifecycle model for
+  current guidance, acceptance contracts, decisions and historical evidence.
+- Corrected persistence, dual search, audit, role, product-upload, reset,
+  air-gap, infrastructure and release-gate guidance.
+- Hardened exact-SHA air-gap packaging, per-image SBOM evidence and recursive
+  transfer manifests against ignored, hidden and linked artefacts.
+- Expanded the documentation gate to every Git-known Markdown file and local
+  GitHub-style heading anchor.

@@ -2,8 +2,9 @@
 
 This guide walks through Istari by role, with screenshots of each workspace. All
 data shown is synthetic and authenticated workspaces are labelled **MOCK DATA
-ONLY**. Desktop is the supported experience. Mobile layouts have not been
-designed or validated and must not be presented as supported.
+ONLY**. Desktop Chrome is the browser-acceptance target. Core layouts are
+designed to remain usable from 320 pixels, but no native mobile app, mobile
+browser acceptance suite or production-device assurance is claimed.
 
 For how to run the app locally see the [Setup Guide](SETUP.md). For the roles and
 their permissions see [Roles and User Stories](ROLES_AND_USER_STORIES.md). For
@@ -12,6 +13,7 @@ how the agents work see [AI Agents](AI_AGENTS.md).
 ## Contents
 
 - [Signing in](#signing-in)
+- [Account, navigation and notifications](#account-navigation-and-notifications)
 - [Requesting access](#requesting-access)
 - [The request journey](#the-request-journey)
 - [Customer](#customer)
@@ -37,6 +39,14 @@ assigned; there is no open self-registration, only a request-access flow.
 
 Local seed accounts (see the [Setup Guide](SETUP.md#seed-accounts)) all use the
 mock credential `CoeusLocal1!`.
+
+## Account, navigation and notifications
+
+The account menu opens profile and password settings. A temporary credential
+forces a password change before the rest of the app is available. The command
+bar provides role-filtered navigation, theme controls and a notification
+popover. The popover shows the latest eight notifications, preserves read state
+and opens the applicable record when a safe destination exists.
 
 ## Requesting access
 
@@ -77,15 +87,21 @@ captures the requirement conversationally without exposing its internal
 completeness checklist. Customers can still open the manual edit panel when
 they want direct control over the structured fields.
 
-![Customer request workspace with intake assistant and checklist](images/04-request-workspace.png)
+![Customer request workspace with intake assistant](images/04-request-workspace.png)
 
 From here a customer can:
 
 - Chat naturally with the intake assistant until it confirms the requirement is
   ready, without needing to manage the assistant's internal checklist.
+- Use browser dictation where supported. **Talk with Istari** is a separately
+  configured, server-brokered Realtime voice option and is not enabled by
+  default.
 - Edit any detail directly in "Edit details manually".
 - Tag colleagues as editors or viewers.
 - Submit the request, then accept or reject any existing-product offers.
+- Read the authorised product first in an RFI result; provenance, match evidence
+  and search diagnostics remain in collapsed disclosures. Degraded retrieval is
+  labelled rather than presented as an assured no-match.
 - If no existing product matches, choose **Yes, task as new request** to continue
   into route assessment, or **No, cancel request** to stop the ticket with a
   recorded reason.
@@ -94,6 +110,8 @@ From here a customer can:
   identify unmet criteria, then asks the responsible RFA or Collection manager
   to decide whether re-analysis is justified. If that manager disagrees, an
   independent JIOC human makes the final re-analysis decision.
+- Submit product feedback from the released request. Customers do not have a
+  separate analytics dashboard.
 
 After submission, Istari also checks open requests for likely overlap. If a
 visible similar request is already in progress, the workspace shows its
@@ -161,14 +179,20 @@ Managers work across their whole RFA or CM area:
   analyst cannot make this decision.
 - **Manage the team** on the My Team page: roster, member profiles and the
   availability calendar.
+- **View area analytics** for all authorised records and the fixed all-time
+  scope; the dashboard does not reveal content outside existing access.
 
 ## Intelligence analyst
 
 The analyst workbench lists only the tasks assigned to the signed-in analyst;
 a task can be shared by several analysts. Selecting a task shows its context,
 work packages, and progressive-disclosure sections for working notes and
-linked products, with the draft form and **Submit for manager approval**
-action below (QC-requested rework resubmits straight to QC). The collapsed
+linked products. Product submission accepts one controlled PDF, DOCX, PPTX,
+PNG, JPEG or WebP file up to the configured 50,000,000-byte local limit. Istari
+records an immutable version and SHA-256 digest, then uses a protected preview
+or a safe fallback when the browser cannot render the format. **Submit for
+manager approval** advances that exact version (QC-requested rework resubmits
+straight to QC). The collapsed
 **Request conversation** section loads the complete customer and Istari history
 only when the assigned analyst opens it.
 
@@ -183,8 +207,11 @@ shared queue without changing the product. Rejected work returns to the same
 reviewer after resubmission. A reviewer cannot claim work they authored or
 actively analysed.
 
-The assigned QC manager reviews submitted drafts and approves or rejects them.
-Approval performs the final release: the product is published, disseminated to
+The assigned QC manager reviews the exact submitted version. Deterministic QC
+preflight checks structure, manifest, evidence readiness and UK-English proofing;
+it may block release but never approves it. The human checklist still requires
+classification, sources, access and releasability confirmation. Approval
+publishes the product and disseminates it to
 the requester with a notification and a recorded email, and the requester is
 asked whether it meets the requirement. For a collect the customer asked to
 have analysed, approval instead forwards the ticket to RFA assignment with the

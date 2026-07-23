@@ -2,18 +2,19 @@
 
 ## Status
 
-Implementation complete for the supported local-first boundary. Production
-release closure remains blocked by the authorised staging and fresh sealed-scan
-gates defined below. This document preserves the Sprint 17 acceptance contract;
-it does not claim those external gates have passed.
+Implementation complete for the supported local-first boundary. This document
+preserves the Sprint 17 acceptance contract, not the latest scan baseline.
+Production remains blocked by authorised staging verification and a fresh
+sealed whole-repository deep scan of the exact immutable release candidate,
+with no unresolved baseline occurrence or new reportable finding.
 
 ## Purpose
 
 Close the 12 findings and four deferred questions from deep scan
 `abf0e143-4656-4646-b133-6fea0d6661ee`, improve SOLID boundaries and reconcile
 the project documentation without removing or changing intended functionality.
-The detailed implementation sequence is in
-`docs/security/SECURITY_REPAIR_AND_HARDENING_PLAN.md`.
+The detailed implementation sequence is in the
+[historical repair plan](../security/SECURITY_REPAIR_AND_HARDENING_PLAN.md).
 
 ## Required Behaviour
 
@@ -106,10 +107,10 @@ The detailed implementation sequence is in
 - Authorised staging closes the deferred proxy, CORS and ingress questions;
   without that boundary Sprint 17 remains explicitly blocked.
 
-## Current Eight-Finding Tranche
+## Historical eight-finding tranche
 
 Sealed standard review `87a10d13-14af-48cc-a361-72470abc8d8d` of later revision
-`752d32a` is the current application baseline. It added eight findings covering
+`752d32a` became the then-current baseline. It added eight findings covering
 publication authority, two session races, ticket submission authority, login
 and registration Argon2 exhaustion, failed browser logout and self-authorising
 draft links. The cross-cutting acceptance contract is

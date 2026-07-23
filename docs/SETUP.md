@@ -230,7 +230,7 @@ uv run --directory apps/api ruff check src tests
 uv run --directory apps/api mypy src
 uv run --directory apps/api pytest --cov-report=json:coverage.json
 uv run --project apps/api python scripts/check_backend_coverage.py apps/api/coverage.json
-# API contract: fail if packages/contracts/openapi.json is stale
+# API contract: fail on generated drift or a breaking change against origin/main
 corepack pnpm contracts:check
 # Repository: hand-written files must stay within the 350-line limit and dead code checks
 corepack pnpm line-limit
@@ -260,12 +260,10 @@ disposable server where the configured user may create and drop databases.
   `memory` is only for isolated tests and throwaway demos; `file` is retained as
   an explicit fallback, not the product target. `COEUS_PERSISTENCE_PATH` is
   ignored unless that fallback is deliberately enabled.
-- Alembic migration files live under `apps/api/src/coeus/db/migrations`; apply
-  them from the repository root with
-  `uv run --project apps/api alembic -c apps/api/alembic.ini upgrade head` when
-  managing a persistent database explicitly. The configuration resolves paths
-  from its own directory, while application settings still load the root
-  `.env`.
+- Alembic migrations live under `apps/api/src/coeus/db/migrations`. Before a
+  coordinated recovery drill, follow its [quiescence, backup and migration
+  boundary](runbooks/coordinated-backup-restore.md#safety-boundary). Never run
+  `upgrade head` while API or worker writers are active.
 - Store uploads write real file bytes under `COEUS_LOCAL_OBJECT_STORAGE_PATH`.
   Downloads require an authenticated session plus the signed, expiring token
   returned by the asset-access endpoint.
@@ -346,5 +344,6 @@ billing details or cloud secrets to committed files.
   API's `COEUS_ALLOWED_CORS_ORIGINS` to include that origin.
 - **`pnpm` not found.** Use `corepack pnpm ...`; pnpm is provided by Corepack and
   may not be on the global PATH.
-- **Stale session after changing persistence mode.** Sign out and in again. If
-  you need a clean local state, stop the API and delete `.local-data`.
+- **Stale session after changing persistence mode.** Sign out and in again. For
+  a clean dataset, use the [coordinated reset commands](#reset-local-synthetic-data-safely);
+  never delete `.local-data` independently of PostgreSQL metadata.

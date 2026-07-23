@@ -12,7 +12,9 @@ It reported three Medium and eight Low findings.
 
 This follows the separate
 [15-finding remediation](security-scan-remediation-2026-07-21.md). A complete
-clean-revision scan is still required before production-release closure.
+clean-revision scan is still required before production-release closure. The
+companion records are [ADR 0042](../adr/0042-enforce-security-policy-at-final-boundaries.md)
+and the [22 July threat model](../threat-model/security-scan-remediation-2026-07-22.md).
 
 ## Security invariants
 
@@ -123,5 +125,11 @@ clean-revision scan is still required before production-release closure.
 Full PostgreSQL-backed verification passed 1,606 tests with one intentional
 compatibility skip at 98.23 per cent line and 95.33 per cent branch coverage.
 The 537-test frontend suite passed at 98.63/95.03 per cent line/branch coverage.
-A fresh sealed scan of a clean resulting revision remains required before
-release-candidate status is claimed.
+The remediation was integrated into `main` at revision `0cde7010`; all protected
+and post-merge workflows passed for that revision. This identifies the
+integration revision but does not substitute for an independent rescan.
+
+Scan closure requires a fresh sealed whole-repository deep scan of the exact
+immutable candidate, with no unresolved baseline occurrence or new reportable
+finding. Production-release closure additionally requires authorised staging
+verification.

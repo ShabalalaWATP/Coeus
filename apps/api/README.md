@@ -2,24 +2,30 @@
 
 FastAPI service for Coeus.
 
-## Local Commands
+## Local commands
+
+Run these commands from the repository root so the API loads the root `.env`
+and agrees with the documented frontend origin:
 
 ```powershell
-uv sync --all-groups
+docker compose up -d postgres
+uv sync --project apps/api --all-groups
 $env:COEUS_TEST_DATABASE_URL = "postgresql+psycopg://coeus:coeus-local@127.0.0.1:5432/coeus"
-uv run pytest --cov-report=json:coverage.json
-uv run python ../../scripts/check_backend_coverage.py coverage.json
-uv run ruff format --check src tests
-uv run ruff check src tests
-uv run mypy src
-uv run uvicorn coeus.main:app --host 0.0.0.0 --port 8000 --workers 1
+uv run --directory apps/api pytest --cov-report=json:coverage.json
+uv run --project apps/api python scripts/check_backend_coverage.py apps/api/coverage.json
+uv run --directory apps/api ruff format --check src tests
+uv run --directory apps/api ruff check src tests
+uv run --directory apps/api mypy src
+uv run --project apps/api uvicorn coeus.main:app --host 127.0.0.1 --port 8001 --workers 1
 ```
 
-The current local-first repositories require exactly one API process. Do not
+The supported local configuration includes published synthetic seed accounts,
+so keep it loopback-bound. The remaining process-local repositories require
+exactly one API process. Do not
 increase the worker count or run multiple API containers until ADR 0019's
 distributed-state migration gates pass.
 
-## Real PostgreSQL Tests
+## Real PostgreSQL tests
 
 The full coverage command above and the focused migration/concurrency harness
 create and drop uniquely named databases.
@@ -28,5 +34,5 @@ create databases:
 
 ```powershell
 $env:COEUS_TEST_DATABASE_URL = "postgresql+psycopg://coeus:coeus-local@127.0.0.1:5432/coeus"
-uv run pytest -m postgres --no-cov tests/postgres
+uv run --directory apps/api pytest -m postgres --no-cov tests/postgres
 ```

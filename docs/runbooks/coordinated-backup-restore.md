@@ -13,6 +13,23 @@ use the live source as the restore target. The tool excludes in-flight resource
 leases and clears restored outbox claims because a new process cannot inherit
 ownership from the recovery point.
 
+The source database must contain an Alembic revision matching the current
+checkout's head. Runtime table bootstrap alone does not make a database eligible
+for this drill. Compare the revisions first with read-only commands:
+
+```powershell
+uv run --project apps/api alembic -c apps/api/alembic.ini heads
+uv run --project apps/api alembic -c apps/api/alembic.ini current
+```
+
+If they differ, stop every API and worker, take and verify a pre-migration
+physical or managed backup with a tested rollback path, then run `alembic
+upgrade head`. Never migrate while writers are active. Confirm `current` equals
+`heads` before starting the logical export.
+
+The bundle path must not exist. The target object root must be absent or empty;
+use a new path for every attempt.
+
 If administrator-entered provider credentials are in use, preserve the
 configuration-encryption key separately from this bundle. For local mode this
 is `COEUS_CONFIGURATION_ENCRYPTION_KEY_PATH`; hosted environments must preserve

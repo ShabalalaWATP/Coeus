@@ -8,6 +8,9 @@ re-analysis adjudication.
 
 All repository examples and tests use synthetic data only.
 
+Companion records: [feature contract](../specs/external-product-ingestion-and-customer-acceptance.md)
+and [ADR 0037](../adr/0037-ticket-scoped-external-product-lifecycle.md).
+
 ## Assets And Trust Boundaries
 
 - Analyst source bytes and immutable hashes.

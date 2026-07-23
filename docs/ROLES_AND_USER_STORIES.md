@@ -12,8 +12,8 @@ up to eight active users from any role or team may administer one ACG.
 Administration permits reviewing other users' applications but does not itself
 grant membership or access to protected product content.
 
-- Role definitions: `apps/api/src/coeus/domain/rbac.py`
-- Permission catalogue: `apps/api/src/coeus/core/permissions.py`
+- Role definitions: [RBAC policy](../apps/api/src/coeus/domain/rbac.py)
+- Permission catalogue: [permission values](../apps/api/src/coeus/core/permissions.py)
 - Access control groups (need-to-know): [ACGs](#access-control-groups-acgs)
 
 ## Roles at a glance
@@ -25,9 +25,9 @@ grant membership or access to protected product content.
 | JIOC Team Member             | `/jioc/queue`          | Resolve routing exceptions and independently adjudicate referred re-analysis disputes           |
 | JIOC Manager                 | `/jioc/oversight`      | On-loop oversight, audited intervention and routing-exception support                            |
 | RFA Manager                  | `/rfa/queue`           | Lead the RFA team: assign analysts, approve analyst work, manage the team                       |
-| RFA Team Member              | `/rfa/products`        | Contribute assessment products                                                                  |
+| RFA Team Member              | `/rfa/products`        | Maintain entitled RFA product metadata and assets                                                |
 | CM Manager                   | `/collection/queue`    | Lead the CM team: assign analysts, approve analyst work, manage the team                        |
-| CM Team Member               | `/collection/products` | Contribute collection products                                                                  |
+| CM Team Member               | `/collection/products` | Maintain entitled Collection product metadata and assets                                         |
 | Analyst                      | `/analyst/workbench`   | Produce draft products against assigned tasks                                                   |
 | Quality Control (QC) Manager | `/qc/queue`            | Quality-assure products and perform the final release                                           |
 | Intelligence Store Manager   | `/store`               | Curate the catalogue and register controlled products without blanket content access             |
@@ -52,14 +52,14 @@ approves or rejects access requests, manages users, roles, clearance and account
 status, configures text-chat AI, search embeddings and Realtime voice, manages
 ACGs, and reads the audit log and global analytics.
 
-### User (Customer)
+### Customer
 
 - Create requests and drive the chat intake.
 - Track their own requests on a dashboard and view the request journey.
 - Tag colleagues on a request as editors or viewers.
 - Accept or reject RFI product offers.
 - Search the Intelligence Store and download products they are entitled to.
-- Submit feedback and view their own analytics.
+- Submit feedback. There is no customer analytics dashboard.
 - Confirm whether a released product meets the requirement or request
   re-analysis with a reason and optional unmet criteria.
 - Cannot see other customers' requests, route tickets, or produce products.
@@ -85,6 +85,8 @@ ACGs, and reads the audit log and global analytics.
   automated route to the JIOC exception queue.
 - Can perform JIOC Team Member exception and re-analysis decisions when needed,
   subject to the same recorded-reason and separation-of-duties controls.
+- View aggregate platform analytics. This does not grant access to protected
+  workflow or product content.
 - Does not gain access to analyst notes, draft bodies or protected product
   content through oversight.
 
@@ -102,11 +104,13 @@ ACGs, and reads the audit log and global analytics.
 
 ### RFA / CM Team Member
 
-- Contribute products for their team and manage product metadata and assets.
+- Maintain metadata and assets for entitled team products.
+- Cannot register a new existing Store product; that upload permission belongs
+  to the corresponding manager and Intelligence Store Manager roles.
 - Read and search entitled products.
 - Do not approve routes, assign analysts or release products.
 
-### Intelligence Analyst
+### Analyst
 
 - See only tasks assigned to them; a task may be shared by up to five analysts.
 - Complete work packages, keep working notes, link supporting products and draft
@@ -131,6 +135,7 @@ ACGs, and reads the audit log and global analytics.
 - Browse catalogue metadata without first entering a search criterion.
 - Register draft or published existing products for either RFA or Collection,
   including their metadata, asset records and product ACG assignments.
+- Add or remove direct ACG membership as a distinct governance action.
 - Manage Store operations without receiving unrestricted report-content access.
 - Read product contents only when their account has at least one matching ACG,
   while administrators must use an explicitly audited break-glass endpoint for
@@ -142,8 +147,8 @@ ACGs, and reads the audit log and global analytics.
 
 - As a customer, I want to describe what I need in plain language so that I do
   not have to learn a form or the workflow.
-- As a customer, I want to be told exactly which details are still missing so
-  that my request is not rejected later for being incomplete.
+- As a customer, I want one clear follow-up question at a time so that Istari
+  can resolve missing detail without exposing an internal checklist.
 - As a customer, I want to be offered existing products first so that I get an
   answer immediately when one already exists.
 - As a customer, I want to see where my request is in the pipeline so that I know
@@ -186,7 +191,7 @@ ACGs, and reads the audit log and global analytics.
 - As an RFA or Collection manager, I want to review a customer's reasoned
   re-analysis request and refer disagreements for independent adjudication.
 
-### Intelligence Analyst
+### Analyst
 
 - As an analyst, I want to see only my assigned tasks so that my workbench is not
   cluttered with everyone else's work.

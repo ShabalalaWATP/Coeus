@@ -39,8 +39,9 @@ controlled. Every diagram reflects the shipped code.
 ## 1. System context
 
 Who uses Istari and what it talks to. Human roles interact through one React
-application; the backend optionally calls a language and embedding provider and
-an email provider, both of which default to offline stand-ins.
+application; the backend optionally calls language, embedding, Realtime voice
+and email providers. Offline stand-ins are the default for text, embeddings and
+email; Realtime voice remains unavailable until explicitly configured.
 
 ```mermaid
 flowchart TB
@@ -60,6 +61,7 @@ flowchart TB
     subgraph ext["External services (optional, off by default)"]
         LLM["LLM gateway<br/>Gemini, OpenAI, LiteLLM, Vertex, Bedrock"]
         EMB["Embedding provider<br/>Gemini API when selected"]
+        VOICE["OpenAI Realtime<br/>server-brokered SDP"]
         SMTP["SMTP relay<br/>release notifications"]
     end
 
@@ -73,6 +75,7 @@ flowchart TB
     ADM --> IST
     IST -.->|"only if configured"| LLM
     IST -.->|"only if configured"| EMB
+    IST -.->|"only if configured"| VOICE
     IST -.->|"only if configured"| SMTP
 
     classDef actor fill:#2563eb,stroke:#1e3a8a,color:#fff,stroke-width:1px
@@ -80,7 +83,7 @@ flowchart TB
     classDef ext fill:#64748b,stroke:#334155,color:#fff,stroke-width:1px
     class CUST,JIOC,RFA,CM,AN,QC,STORE,ADM actor
     class IST core
-    class LLM,EMB,SMTP ext
+    class LLM,EMB,VOICE,SMTP ext
 ```
 
 The default local configuration uses deterministic mock language and embedding
@@ -93,9 +96,9 @@ not send them outside the machine.
 ## 2. Layered application architecture
 
 The frontend is a single-page React application. The backend is a layered
-FastAPI service: thin routes delegate to services, services own the business
-logic and call repositories, repositories hold state and mirror it to the
-relational projection. The domain layer holds pure dataclasses, enums and the
+FastAPI service: thin routes delegate to services, services own business logic
+and call repository ports, and PostgreSQL adapters own durable transaction and
+projection boundaries. The domain layer holds pure dataclasses, enums and the
 ticket state machine.
 
 ```mermaid
@@ -115,9 +118,9 @@ flowchart TB
         ROUTES["api/routes<br/>thin handlers, auth + CSRF deps"]
         SERVICES["services<br/>intake, rfi, routing, qc, release, similar"]
         AGENTS["bounded agents (in services)<br/>intake/search planners, RFI,<br/>capability, JIOC router + critic"]
-        REPOS["repositories<br/>in-memory aggregates"]
+        REPOS["repository ports + adapters<br/>aggregate and relational boundaries"]
         DOMAIN["domain<br/>dataclasses, enums, state machine"]
-        PERSIST["persistence<br/>PostgreSQL state + projection + codec"]
+        PERSIST["persistence<br/>transactions, relational schemas,<br/>compatibility state + codec"]
         INTEG["integrations<br/>LLM HTTP gateway + provider catalogue"]
         ROUTES --> SERVICES
         SERVICES --> AGENTS
@@ -128,7 +131,7 @@ flowchart TB
     end
 
     DB[("PostgreSQL + pgvector")]
-    OBJ[["Object storage<br/>local FS or bucket"]]
+    OBJ[["Object storage<br/>local filesystem today"]]
 
     APICLIENT -->|"HTTPS, cookie session, CSRF"| ROUTES
     PERSIST --> DB
@@ -147,53 +150,63 @@ flowchart TB
 **Why this shape.** Keeping authorisation and business rules in services (not
 routes or components) means the same rule is enforced regardless of entry point,
 and the domain layer stays free of framework and I/O concerns so it is trivially
-testable. Repositories present a simple aggregate interface while the persistence
-layer handles the relational projection and the pgvector index underneath.
+testable. Repository ports isolate services from PostgreSQL transaction details,
+compatibility state and the two search-index generations underneath.
 
 ---
 
 ## 3. Data and persistence
 
-Application state lives in in-memory aggregate repositories that are serialised
-through an allow-listed codec into the PostgreSQL `coeus_state` JSONB table and
-mirrored into a relational Store projection. The relational projection powers
-Store search: full-text via `tsvector` and semantic via a pgvector `vector(384)`
-column with an HNSW cosine index. Uploaded and released product bytes live in
-object storage.
+PostgreSQL is a hybrid authority. Versioned ticket aggregates, workflow outbox
+messages, append-only audit events, draft audiences and Store records use
+dedicated relational tables. Resource-lease tables support hosted adapters;
+supported local/test admission remains process-local. Remaining bounded
+namespaces, such as users, access, teams, notifications and provider
+configuration, use allow-listed JSONB compatibility snapshots in `coeus_state`.
+Uploaded and released product bytes use the local filesystem and must be backed
+up with PostgreSQL as one consistency unit.
 
 ```mermaid
 flowchart TB
     SVC["Services"]
-    subgraph repo["Repositories (aggregates in memory)"]
-        R["tickets, store, users,<br/>access, audit, notifications"]
+    subgraph repo["Repository ports and transaction owners"]
+        R["tickets, Store, users, access,<br/>audit, notifications, configuration"]
     end
-    subgraph persist["Persistence"]
-        STATE["PostgreSQL state<br/>coeus_state JSONB snapshots"]
-        CODEC["Codec<br/>allowlisted encode/decode"]
-        PROJ["Store projection<br/>relational mirror"]
+    subgraph persist["PostgreSQL persistence"]
+        TX["Workflow authority<br/>versioned tickets + outbox"]
+        REL["Dedicated relational tables<br/>audit, hosted leases, audiences, Store"]
+        STATE["Compatibility state<br/>coeus_state + allowlisted codec"]
     end
-    DBREL[("Relational tables<br/>products, assets, ACGs, labels")]
-    DBSEARCH[("Search columns<br/>tsvector + vector(384) HNSW")]
+    STOREIDX[("Store browse index<br/>tsvector + vector(384)")]
+    GROUNDIDX[("Grounded RFI index<br/>chunks + vector(1536)<br/>provider/model/generation")]
     OBJ[["Object storage<br/>product + preview bytes"]]
 
     SVC --> R
-    R --> STATE --> CODEC
-    R --> PROJ
-    PROJ --> DBREL
-    PROJ --> DBSEARCH
+    R --> TX
+    R --> REL
+    R --> STATE
+    REL --> STOREIDX
+    REL --> GROUNDIDX
     SVC --> OBJ
 
     classDef be fill:#4f46e5,stroke:#3730a3,color:#fff,stroke-width:1px
     classDef data fill:#b45309,stroke:#7c2d12,color:#fff,stroke-width:1px
-    class SVC,R,STATE,CODEC,PROJ be
-    class DBREL,DBSEARCH,OBJ data
+    class SVC,R,TX,REL,STATE be
+    class STOREIDX,GROUNDIDX,OBJ data
 ```
 
-Embeddings are written on product create, metadata update and QC ingestion, and
-are preserved (never overwritten with a null) if the embedding provider is
-temporarily unavailable. A backfill routine fills any missing embeddings in
-batches. Today the repositories run as a single writer; horizontal scaling is a
-documented future step (see the
+Store browse retains its 384-dimensional compatibility embedding selected by
+`COEUS_EMBEDDING_PROVIDER`. RFI retrieval also uses a separate 1,536-dimensional,
+generation-aware chunk index selected through the grounded-search configuration.
+RFI search merges authorised candidates, exposes grounded passages and retrieval
+mode, and marks incomplete assurance rather than silently treating a degraded
+leg as complete. Reindex and backfill operations preserve the active generation
+until a replacement is ready.
+
+The outbox dispatcher polls committed workflow intents in process and hands
+idempotent effects to configured adapters. Today the remaining mutable
+repositories and dispatch loop require a single API process; horizontal scaling
+is a documented future step (see the
 [Deployment guide](ARCHITECTURE_DEPLOYMENT.md#scaling-and-known-constraints)).
 
 ---
@@ -212,7 +225,7 @@ flowchart TB
     PERM["Permission check<br/>role -> action"]
     OBJ["Object-level check<br/>ACG membership + clearance +<br/>product/ticket status"]
     ALLOW(["Handler runs"])
-    DENY(["403 / 404 + audit"])
+    DENY(["401 / 403 / 404 denial"])
 
     REQ --> SESS
     SESS -->|ok| CSRF
@@ -232,12 +245,14 @@ flowchart TB
     class DENY bad
 ```
 
-Every allow and deny that matters is audited. Access to controlled product bytes
-uses short-lived, HMAC-signed tokens carried in a request header (not the URL),
-so they do not leak into logs or history. Break-glass reads are explicit and
-audited. The customer-facing similar-request check discloses only work the
-requester already has need-to-know for; overlapping hidden work is surfaced to
-managers, not customers.
+Selected security and workflow events are persisted: authentication lifecycle,
+break-glass reads, configuration changes, authority-bearing mutations, routing,
+QC and release actions. Ordinary CSRF and permission denials return bounded
+errors but are not universally persisted as audit events. Access to controlled
+product bytes uses short-lived, HMAC-signed tokens carried in a request header
+(not the URL), so they do not leak into logs or history. The customer-facing
+similar-request check discloses only work the requester already has
+need-to-know for; overlapping hidden work is surfaced to managers, not customers.
 
 ---
 
@@ -250,5 +265,5 @@ managers, not customers.
 | How to run it and sign in                | [Setup Guide](SETUP.md)                                |
 | Every role's workspace, with screenshots | [User Guide](USER_GUIDE.md)                            |
 | What each agent reads and returns        | [AI Agents](AI_AGENTS.md)                              |
-| Why key choices were made                | [Architecture Decision Records](adr/)                  |
-| Per-feature threat models                | [Threat Models](threat-model/)                         |
+| Why key choices were made                | [Architecture Decision Records](adr/README.md)         |
+| Per-feature threat models                | [Threat Models](threat-model/README.md)                |

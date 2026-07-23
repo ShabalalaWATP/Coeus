@@ -23,8 +23,9 @@ For Terraform and CI/CD, keep project-specific values in checked-in example file
 ## Current delivery overlay
 
 This plan began as the implementation blueprint, so earlier sections preserve
-historical target-state language. The current delivery tracker is
-`docs/MASTER_IMPLEMENTATION_PLAN.md`. As of 20 July 2026:
+historical target-state language. Use the
+[current delivery tracker](docs/MASTER_IMPLEMENTATION_PLAN.md) for concise
+status. As of 23 July 2026:
 
 - Sprints 1 to 23 are implemented for the supported synthetic local/test
   boundary.
@@ -40,8 +41,15 @@ historical target-state language. The current delivery tracker is
   Kubernetes, shared-network, multi-instance and production operation remain
   migration or release targets rather than supported current deployments.
 - Sprint 17 implementation is complete locally, but production release closure
-  remains blocked by authorised staging evidence and a fresh sealed deep scan.
-  Those external gates must not be inferred from later feature completion.
+  remains blocked by authorised staging verification and a fresh sealed
+  whole-repository deep scan of the exact immutable release candidate, with no
+  unresolved baseline occurrence or new reportable finding. Those external
+  gates must not be inferred from later feature completion.
+- The 22 July follow-up remediation passed 1,606 backend tests with one
+  intentional skip at 98.23/95.33 per cent line/branch coverage and 537
+  frontend tests at 98.63/95.03 per cent. It was integrated into `main` at
+  `0cde7010`, and all protected and post-merge workflows passed. Integration
+  evidence does not substitute for the required independent scan.
 
 ## 1. Executive summary
 
@@ -2630,12 +2638,12 @@ The authoritative acceptance contract is
 `docs/specs/security-repair-and-hardening.md`. The ordered implementation,
 migration, rollback and verification work is in
 `docs/security/SECURITY_REPAIR_AND_HARDENING_PLAN.md`.
-Current finding traceability is in
-`docs/security/SECURITY_REPAIR_CLOSURE_EVIDENCE_2026-07-13.md`.
+Historical finding traceability is in the
+[13 July closure ledger](docs/security/SECURITY_REPAIR_CLOSURE_EVIDENCE_2026-07-13.md).
 
 A later sealed standard review `87a10d13-14af-48cc-a361-72470abc8d8d` of
-revision `752d32a` validated eight additional application findings and is the
-current application baseline. The 2026-07-14 remediation slice adds atomic and
+revision `752d32a` validated eight additional application findings and became
+the then-current baseline. The 2026-07-14 remediation slice added atomic and
 credential-versioned revocation, shared Argon2 admission, create/publish and
 edit/transition separation, fail-closed browser logout, and published-only
 external analyst links. Its acceptance contract and evidence are in
@@ -2752,11 +2760,16 @@ cancellation. Ninety-nine local workflow tests, four focused real-PostgreSQL
 tests and the five-test combined lock-order suite pass, including QC session
 deletion denial and restored exact-session success. The expanded local focused
 compatibility suite passes 77/77, including QC session and non-offered RFI
-evidence-product races. The broader parser suite
-passes 124 tests at 98.53 per cent service coverage and 95.92 per cent upload
-route coverage; dependency audits are clean. The acceptance contract is
-`docs/specs/security-scan-remediation-2026-07-22.md`; full repository gates and
-a fresh sealed scan of a clean resulting revision remain release-blocking.
+evidence-product races. The broader parser suite passes 124 tests at 98.53 per
+cent service coverage and 95.92 per cent upload-route coverage; dependency
+audits are clean. Full verification passed 1,606 backend tests with one
+intentional skip at 98.23/95.33 per cent line/branch coverage and 537 frontend
+tests at 98.63/95.03 per cent. The work was integrated into `main` at
+`0cde7010`, and all protected and post-merge workflows passed. See the
+[acceptance contract](docs/specs/security-scan-remediation-2026-07-22.md),
+[ADR 0042](docs/adr/0042-enforce-security-policy-at-final-boundaries.md) and
+[threat model](docs/threat-model/security-scan-remediation-2026-07-22.md).
+Authorised staging and the fresh immutable deep scan remain release-blocking.
 
 ## 20. Definition of done for MVP
 
