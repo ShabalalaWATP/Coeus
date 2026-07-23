@@ -24,6 +24,12 @@ Companion records: [documentation maintenance](../development/documentation-main
 - The documentation index identifies which records describe current behaviour,
   which preserve historical decisions or evidence, and where release status is
   maintained.
+- A linked architecture atlas provides user, workflow, component, data, search,
+  AI, security, deployment and operations views without replacing concise
+  canonical guides.
+- Every Mermaid block parses with the pinned local renderer. Atlas blocks use
+  stable allowlisted diagram types with accessible titles and descriptions;
+  pull-request review still verifies rendering on GitHub.
 - Every tracked Markdown file participates in the local-link and GitHub-style
   heading-anchor check, including component and infrastructure READMEs.
 - Specifications, ADRs and threat models have complete linked indexes. Material
@@ -69,3 +75,6 @@ the supported persistence and reset descriptions, and aligned current delivery
 status with the integrated `0cde7010` security-remediation revision. The
 air-gapped packaging review also isolated exact-SHA build inputs, bound SBOMs to
 the transferred image archives and made nested transfer evidence fail closed.
+A follow-up architecture pass added 32 accessible deep-view diagrams, corrected
+the browser/API, workflow, search, KMS and recovery boundaries, and introduced
+repository-wide Mermaid parsing.

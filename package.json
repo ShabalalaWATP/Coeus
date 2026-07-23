@@ -7,6 +7,7 @@
     "dev": "pwsh ./scripts/dev.ps1",
     "line-limit": "node scripts/check-file-lines.mjs",
     "docs:check": "node --test scripts/check-doc-links.test.mjs && node scripts/check-doc-links.mjs",
+    "mermaid:check": "node --test scripts/check-mermaid.test.mjs && node scripts/check-mermaid.mjs",
     "architecture:check": "uv run --project apps/api python scripts/check_architecture.py",
     "security-policy:check": "node scripts/check-security-policy.mjs",
     "lint": "pnpm --filter @coeus/web lint",
@@ -25,6 +26,8 @@
     "contracts:check": "uv run --project apps/api python scripts/generate_openapi.py --check && uv run --project apps/api python scripts/check_openapi_compatibility.py --baseline-ref origin/main"
   },
   "devDependencies": {
-    "knip": "^6.26.0"
+    "jsdom": "26.1.0",
+    "knip": "^6.26.0",
+    "mermaid": "11.16.0"
   }
 }

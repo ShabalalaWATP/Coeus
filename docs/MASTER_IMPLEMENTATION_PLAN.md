@@ -331,3 +331,16 @@ Status: complete and verified for the supported local/test boundary.
   verification passed 1,432 backend tests with one intentional skip at 98.13/95.07
   per cent line/branch coverage and 533 frontend tests at 98.65/95.05 per cent.
 - Risk: remote advisory use remains blocked by default and still needs labelled evidence plus a separately approved real-data classification, redaction and egress release.
+
+## 23 July 2026 Architecture Atlas
+
+- Added 32 implementation-anchored user, workflow, component, data, search, AI,
+  trust, deployment and operations diagrams plus repository-wide Mermaid parsing.
+- Current limitation: local relational QC release commits a notification intent,
+  but local composition does not install the dispatcher, so the intent can remain
+  pending. Hosted composition owns the delivery path.
+- Current recovery limitation: the logical drill reconciles all object keys only
+  against Store asset rows, so retained draft submission bytes block validation.
+  Grounded indexes are excluded and require a verified post-restore rebuild.
+- Current search-operations limitation: inactive ready generations are retained,
+  with no authorised operator rollback, retirement state or cleanup policy.

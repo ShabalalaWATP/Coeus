@@ -51,8 +51,9 @@ product access filtering and access diagnostics.
 
 ## Open Risks
 
-- ACG, product and audit data use the configured local state store; a
-  normalised relational schema with migrations remains future production work.
+- ACG administration and applications still use bounded compatibility-state
+  repositories in the supported single-process composition. Store products and
+  audit evidence use dedicated relational PostgreSQL tables by default.
 - Approval compensation protects the supported single-process writer. A future
   multi-replica deployment requires one database transaction spanning the
   application decision, membership change and durable audit outbox.

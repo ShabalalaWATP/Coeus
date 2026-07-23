@@ -4,6 +4,8 @@ Threat models record assets, trust boundaries, controls and residual risks for a
 stated scope. They are cumulative unless a later model explicitly retires a
 risk. Use the applicable feature model together with the latest security scan
 models and the [current release gates](../MASTER_IMPLEMENTATION_PLAN.md).
+The [Security and Trust Atlas](../architecture/SECURITY_AND_TRUST.md) maps the
+principal controls and links back to their applicable models.
 
 ## Complete catalogue
 

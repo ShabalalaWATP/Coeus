@@ -6,13 +6,15 @@ searches existing intelligence before new work is raised, tasks analysts,
 quality-controls products and releases them. Security-sensitive and
 workflow-changing actions are audited.
 
-Architecture is documented across three cohesive guides. This one covers the
-structure: how the system is composed, how data is stored, and how access is
-controlled. Every diagram reflects the shipped code.
+This concise guide covers system structure, persistence and access control.
+The [Architecture Atlas](architecture/README.md) adds in-depth user, workflow,
+component, data, security, deployment and operations views. Every current-state
+diagram reflects shipped code unless it is explicitly labelled otherwise.
 
 | Guide                                                  | Read it for                                                        |
 | ------------------------------------------------------ | ------------------------------------------------------------------ |
 | **Architecture (this page)**                           | System context, application layers, data and persistence, security |
+| [Architecture Atlas](architecture/README.md)           | Multi-view diagrams with code, threat-model and runbook anchors     |
 | [Architecture: Workflow](ARCHITECTURE_WORKFLOW.md)     | The request journey, end-to-end sequence, and the AI agents        |
 | [Architecture: Deployment](ARCHITECTURE_DEPLOYMENT.md) | Local runtime, future GCP design, provider matrix, scaling         |
 
@@ -45,15 +47,23 @@ email; Realtime voice remains unavailable until explicitly configured.
 
 ```mermaid
 flowchart TB
+    accTitle: Istari system context
+    accDescr: Eleven account roles plus pending and delegated-administrator personas use Istari, which can call explicitly configured model, embedding, voice and email providers.
+
     subgraph people["People (role-based access)"]
+        PEND["Pending registrant<br/>non-role persona"]
         CUST["Customer"]
+        JTM["JIOC Team Member"]
         JIOC["JIOC Manager"]
+        RFT["RFA Team Member"]
         RFA["RFA Manager"]
-        CM["Collection Manager"]
-        AN["Intelligence Analyst"]
-        QC["QC Manager"]
+        CMT["CM Team Member"]
+        CM["CM Manager"]
+        AN["Analyst"]
+        QC["Quality Control Manager"]
         STORE["Intelligence Store Manager"]
         ADM["Administrator"]
+        DELEG["Delegated ACG administrator<br/>non-role responsibility"]
     end
 
     IST["<b>Istari</b><br/>Tasking and product orchestration<br/>React SPA + FastAPI"]
@@ -65,14 +75,19 @@ flowchart TB
         SMTP["SMTP relay<br/>release notifications"]
     end
 
+    PEND --> IST
     CUST --> IST
+    JTM --> IST
     JIOC --> IST
+    RFT --> IST
     RFA --> IST
+    CMT --> IST
     CM --> IST
     AN --> IST
     QC --> IST
     STORE --> IST
     ADM --> IST
+    DELEG --> IST
     IST -.->|"only if configured"| LLM
     IST -.->|"only if configured"| EMB
     IST -.->|"only if configured"| VOICE
@@ -81,7 +96,7 @@ flowchart TB
     classDef actor fill:#2563eb,stroke:#1e3a8a,color:#fff,stroke-width:1px
     classDef core fill:#4f46e5,stroke:#3730a3,color:#fff,stroke-width:2px
     classDef ext fill:#64748b,stroke:#334155,color:#fff,stroke-width:1px
-    class CUST,JIOC,RFA,CM,AN,QC,STORE,ADM actor
+    class PEND,CUST,JTM,JIOC,RFT,RFA,CMT,CM,AN,QC,STORE,ADM,DELEG actor
     class IST core
     class LLM,EMB,VOICE,SMTP ext
 ```
@@ -103,6 +118,9 @@ ticket state machine.
 
 ```mermaid
 flowchart TB
+    accTitle: Istari layered application architecture
+    accDescr: React feature pages use typed API clients; thin FastAPI routes call domain services, ports and adapters backed by PostgreSQL and local object storage.
+
     subgraph web["Frontend  (apps/web)"]
         direction TB
         PAGES["features/*<br/>role workspaces, request journey"]
@@ -168,6 +186,9 @@ up with PostgreSQL as one consistency unit.
 
 ```mermaid
 flowchart TB
+    accTitle: Istari persistence architecture
+    accDescr: Services write versioned workflow and dedicated relational records, bounded compatibility namespaces, two distinct search indexes and local object bytes.
+
     SVC["Services"]
     subgraph repo["Repository ports and transaction owners"]
         R["tickets, Store, users, access,<br/>audit, notifications, configuration"]
@@ -203,10 +224,12 @@ mode, and marks incomplete assurance rather than silently treating a degraded
 leg as complete. Reindex and backfill operations preserve the active generation
 until a replacement is ready.
 
-The outbox dispatcher polls committed workflow intents in process and hands
-idempotent effects to configured adapters. Today the remaining mutable
-repositories and dispatch loop require a single API process; horizontal scaling
-is a documented future step (see the
+Hosted composition runs an in-process outbox dispatcher that polls committed
+workflow intents and hands idempotent effects to configured adapters. Local
+relational release intents can remain pending because that dispatcher is not
+installed in local composition. Today the remaining mutable repositories and
+local object storage require a single API process; horizontal scaling is a
+documented future step (see the
 [Deployment guide](ARCHITECTURE_DEPLOYMENT.md#scaling-and-known-constraints)).
 
 ---
@@ -219,16 +242,22 @@ memberships then decide, at the object level, what they may see and do.
 
 ```mermaid
 flowchart TB
+    accTitle: Istari request security gates
+    accDescr: Active session checks precede mutation-only CSRF, action permission and object policy, with hidden objects returning not-found.
+
     REQ["Incoming request"]
     SESS["Session check<br/>hashed session id at rest<br/>HttpOnly, SameSite=Strict cookie"]
-    CSRF["CSRF check<br/>X-CSRF-Token on mutations"]
+    MUT{"State-changing request?"}
+    CSRF["CSRF check<br/>X-CSRF-Token"]
     PERM["Permission check<br/>role -> action"]
     OBJ["Object-level check<br/>ACG membership + clearance +<br/>product/ticket status"]
     ALLOW(["Handler runs"])
     DENY(["401 / 403 / 404 denial"])
 
     REQ --> SESS
-    SESS -->|ok| CSRF
+    SESS -->|ok| MUT
+    MUT -->|yes| CSRF
+    MUT -->|no| PERM
     CSRF -->|ok| PERM
     PERM -->|granted| OBJ
     OBJ -->|need-to-know met| ALLOW
@@ -240,7 +269,7 @@ flowchart TB
     classDef sec fill:#dc2626,stroke:#991b1b,color:#fff,stroke-width:1px
     classDef ok fill:#059669,stroke:#065f46,color:#fff,stroke-width:1px
     classDef bad fill:#334155,stroke:#0f172a,color:#fff,stroke-width:1px
-    class REQ,SESS,CSRF,PERM,OBJ sec
+    class REQ,SESS,MUT,CSRF,PERM,OBJ sec
     class ALLOW ok
     class DENY bad
 ```
@@ -260,6 +289,7 @@ need-to-know for; overlapping hidden work is surfaced to managers, not customers
 
 | To understand                            | Read                                                   |
 | ---------------------------------------- | ------------------------------------------------------ |
+| Multiple user, technical and operational views | [Architecture Atlas](architecture/README.md)       |
 | The request journey, sequence and agents | [Architecture: Workflow](ARCHITECTURE_WORKFLOW.md)     |
 | Local runtime and the future GCP design  | [Architecture: Deployment](ARCHITECTURE_DEPLOYMENT.md) |
 | How to run it and sign in                | [Setup Guide](SETUP.md)                                |

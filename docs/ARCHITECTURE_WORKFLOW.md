@@ -4,6 +4,11 @@ How a request moves through Istari, where bounded agents make decisions and
 where people are in or on the loop. See [Architecture](ARCHITECTURE.md) for the
 system structure and [Architecture: Deployment](ARCHITECTURE_DEPLOYMENT.md) for
 runtime and cloud boundaries. Every diagram below describes shipped behaviour.
+For role workspaces, customer-visible phases, alternative outcomes and exception
+loops, use the [User and Workflow Atlas](architecture/USER_AND_WORKFLOW.md).
+For every permitted cancellation, retry, intervention, compatibility and
+outcome edge, use the [Exhaustive Workflow State
+Reference](architecture/WORKFLOW_STATE_REFERENCE.md).
 
 ---
 
@@ -29,6 +34,9 @@ can also occur from the allowlisted states defined by the state machine.
 
 ```mermaid
 stateDiagram-v2
+    accTitle: Principal Istari ticket lifecycle
+    accDescr: The request moves from intake through assured search, routing, assignment, production, quality control and customer outcome, with principal retry and rework transitions.
+
     [*] --> DRAFT_INTAKE: start conversation
     DRAFT_INTAKE --> RFI_SEARCHING: requester submits complete intake
     DRAFT_INTAKE --> INFO_REQUIRED: blocking correction needed
@@ -40,6 +48,7 @@ stateDiagram-v2
     RFI_SEARCH_INCOMPLETE --> RFI_MATCH_OFFERED: retry finds products
     RFI_SEARCH_INCOMPLETE --> NEW_TASKING_CONSENT: definitive retry finds none
     RFI_MATCH_OFFERED --> CLOSED_EXISTING_PRODUCT_ACCEPTED: requester accepts
+    RFI_MATCH_OFFERED --> RFI_SEARCH_INCOMPLETE: rejected final offer had incomplete coverage
     RFI_MATCH_OFFERED --> ACTIVE_WORK_REVIEW: all products rejected, work found
     RFI_MATCH_OFFERED --> NEW_TASKING_CONSENT: all products rejected
 
@@ -88,6 +97,8 @@ to `JIOC_REVIEW`.
 
 ```mermaid
 sequenceDiagram
+    accTitle: End-to-end request decision flow
+    accDescr: A requester, deterministic and bounded model services, JIOC oversight, delivery managers, analysts and quality control exchange authority through the request lifecycle.
     autonumber
     actor C as Requester
     participant I as Intake controller + planner
@@ -96,7 +107,8 @@ sequenceDiagram
     participant J as JIOC Agent
     participant K as Routing Critic
     actor JM as JIOC Manager
-    actor M as RFA or CM manager
+    actor RM as RFA manager
+    actor CM as CM manager
     actor A as Analysts
     actor Q as QC manager
 
@@ -112,20 +124,64 @@ sequenceDiagram
         else consent to new tasking
             C->>J: consent creates routing-pending ticket
             J->>J: evaluate capability, search, capacity and restrictions
-            alt sufficient unambiguous evidence
-                J->>M: apply CM or RFA route
+            alt sufficient RFA evidence
+                J->>RM: apply RFA route
+            else sufficient CM evidence
+                J->>CM: apply CM route
             else clarification or exception
                 J-->>C: request clarification
                 J->>JM: refer explicit review
             end
-            J-->>K: commit exact decision and request shadow critique
-            K-->>JM: oversight-only coded critique
-            JM-->>J: monitor, hold or send eligible case to review
-            M->>A: assign one to five analysts
-            A->>M: submit draft
-            M->>Q: approve, or return for rework
-            Q->>C: QC and release, or return for rework
-            C->>C: accept outcome or request re-analysis
+            opt a delivery route is committed
+                J-->>K: commit exact route and request shadow critique
+                K-->>JM: oversight-only coded critique
+                JM-->>J: monitor, hold or send eligible case to review
+                alt RFA production
+                    RM->>A: assign one to five analysts
+                    A->>RM: submit assessed-product draft
+                    alt RFA manager returns work
+                        RM-->>A: reasoned rework
+                    else RFA manager approves exact draft
+                        RM->>Q: place exact version into QC
+                        alt QC rejects
+                            Q-->>A: return to assigned analyst
+                        else QC releases
+                            Q-->>C: release assessed product
+                            C->>C: accept outcome or request re-analysis
+                        end
+                    end
+                else CM production
+                    CM->>A: assign one to five analysts
+                    A->>CM: submit collection draft
+                    alt CM manager returns work
+                        CM-->>A: reasoned rework
+                    else CM manager approves exact draft
+                        CM->>Q: place exact collect into QC
+                        alt QC rejects
+                            Q-->>A: return to assigned analyst
+                        else analysed collection
+                            Q->>RM: forward collect to RFA assignment
+                            RM->>A: assign follow-up assessment
+                            A->>RM: submit assessed-product draft
+                            alt RFA manager returns assessment
+                                RM-->>A: reasoned follow-up rework
+                            else RFA manager approves assessment
+                                RM->>Q: place exact RFA version into QC
+                                Q->>Q: claim, preflight and human checklist
+                                alt QC rejects assessment
+                                    Q-->>A: return to assigned analyst
+                                else QC releases assessment
+                                    Q-->>C: release assessed product
+                                    C->>C: accept outcome or request re-analysis
+                                end
+                            end
+                        else raw collection
+                            Q-->>C: release controlled collect
+                            C->>C: accept outcome or request re-analysis
+                        end
+                    end
+                end
+            end
         end
     end
 ```
@@ -142,6 +198,9 @@ critique. JIOC Managers see the result as oversight evidence only.
 
 ```mermaid
 flowchart LR
+    accTitle: Bounded automation authority
+    accDescr: Deterministic controllers own lifecycle actions while optional planners and critics provide bounded advice and a JIOC Manager oversees or intervenes.
+
     IN["Intake controller<br/>deterministic safety, extraction,<br/>contradictions + completeness"]
     IP["Intake Planner<br/>bounded missing-field preference"]
     RFI["RFI search<br/>authorised baseline retrieval"]
@@ -190,11 +249,13 @@ erase a locally detected problem.
 
 ## 5. Hybrid Store and RFI search
 
-Store browse and RFI search share the same retrieval boundary. Access policy
-filters by ACG, clearance and product status before ranking. Lexical and semantic
-legs run over that scoped set, Reciprocal Rank Fusion combines them, and
-deterministic metadata and label signals break ties. Offers must pass the
-calibrated threshold and are limited to five.
+Store browse and RFI search share the same outer authorisation boundary, but use
+distinct schemas. Store browse uses its 384-dimensional compatibility projection.
+Grounded RFI retrieval uses generation-aware 1,536-dimensional product chunks
+and open-ticket embeddings. Access policy filters by ACG, clearance, status and
+ticket visibility before retrieval. An authoritative baseline and optional
+additive planner legs are merged and bounded. Offers must pass the calibrated
+threshold and are limited to five.
 
 The embedding provider is selectable: deterministic `mock`, offline `local` or
 explicit `gemini_api`. When embeddings are unavailable, the baseline search
@@ -202,4 +263,6 @@ degrades to lexical retrieval and records the degraded mode. Search assurance
 prevents an incomplete retrieval from being treated as a definitive no-match.
 
 See [AI Agents](AI_AGENTS.md) for each agent's inputs, output schema, fallback,
-owner, versioning and egress boundary.
+owner, versioning and egress boundary. The [Data, Search and AI
+Atlas](architecture/DATA_SEARCH_AND_AI.md) shows both index pipelines and the
+shadow-generation lifecycle.

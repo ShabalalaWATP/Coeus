@@ -8,7 +8,9 @@ browser acceptance suite or production-device assurance is claimed.
 
 For how to run the app locally see the [Setup Guide](SETUP.md). For the roles and
 their permissions see [Roles and User Stories](ROLES_AND_USER_STORIES.md). For
-how the agents work see [AI Agents](AI_AGENTS.md).
+how the agents work see [AI Agents](AI_AGENTS.md). The [User and Workflow
+Atlas](architecture/USER_AND_WORKFLOW.md) maps roles, workspaces, visible
+customer phases, staff hand-offs and exception loops.
 
 ## Contents
 

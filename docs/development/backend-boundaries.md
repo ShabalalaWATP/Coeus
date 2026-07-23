@@ -11,6 +11,11 @@ Coeus uses inward dependencies and composition at the application edge:
   codec and projection adapters. Neither imports services or API code.
 - `composition.py` and explicitly named builders select concrete adapters.
 
+See [Application Component Views](../architecture/APPLICATION_COMPONENTS.md) for
+the route-to-service composition and [Data, Search and AI
+Views](../architecture/DATA_SEARCH_AND_AI.md) for transaction and index
+boundaries.
+
 The AST architecture gate enforces lower-layer import rules. Add an interface
 only for a real boundary, not to wrap a function with one caller. Prefer
 immutable domain values, composition, explicit side effects and typed failures.

@@ -4,6 +4,9 @@ Feature components render state and interactions. Keep API transport in
 `src/lib/api-client`, server state in TanStack Query hooks, permission decisions
 in `src/lib/permissions`, and reusable mutation orchestration in focused hooks.
 Do not fetch directly from a page or duplicate backend role logic in JSX.
+See [Application Component Views](../architecture/APPLICATION_COMPONENTS.md)
+for the router, session, query and API-client structure, and [User and Workflow
+Views](../architecture/USER_AND_WORKFLOW.md) for the role-facing projection.
 
 Generated declarations in `src/lib/api-client/generated/openapi.ts` are the API
 schema source. Compatibility aliases may give components stable ergonomic

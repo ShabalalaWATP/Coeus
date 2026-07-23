@@ -8,6 +8,7 @@ historical evidence.
 
 | Guide | Read it for |
 | --- | --- |
+| [Architecture Atlas](architecture/README.md) | In-depth user, workflow, component, data, security, deployment and operations diagrams |
 | [Setup Guide](SETUP.md) | Prerequisites, installation, local startup, seed accounts and checks |
 | [User Guide](USER_GUIDE.md) | Current role workspaces, screenshots and supported user journeys |
 | [Roles and User Stories](ROLES_AND_USER_STORIES.md) | Roles, permissions, need-to-know groups and user stories |
