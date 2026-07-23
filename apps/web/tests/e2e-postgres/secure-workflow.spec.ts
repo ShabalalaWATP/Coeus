@@ -65,9 +65,9 @@ test("denies an unrelated same-ACG user access to a PostgreSQL draft", async ({ 
     .getByRole("combobox", { name: "ACG", exact: true })
     .selectOption({ label: "ACG-EU-CYBER" });
   await page.getByLabel("Asset file", { exact: true }).setInputFiles({
-    name: "draft-proof.txt",
-    mimeType: "text/plain",
-    buffer: Buffer.from("MOCK DATA ONLY\nDraft byte evidence\n"),
+    name: "draft-proof.pdf",
+    mimeType: "application/pdf",
+    buffer: controlledPdf(),
   });
   const createResponsePromise = page.waitForResponse(
     (response) =>
