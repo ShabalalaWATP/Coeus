@@ -18,6 +18,7 @@ from coeus.domain.tickets import AgentExecutionKind, IntakeDetails, TicketRecord
 from coeus.services.jioc_routing_agent import JiocRoutingAgentService
 from coeus.services.tasking_consent import TaskingConsentService
 from coeus.services.ticket_records import timeline
+from jioc_test_helpers import cm_review, rfa_review
 
 
 def test_routing_defaults_active_with_the_evaluated_release() -> None:
@@ -200,7 +201,36 @@ def test_unsupported_scope_requests_clarification_instead_of_routing() -> None:
     result = service.route(ticket.ticket_id)
 
     assert result.state == TicketState.INFO_REQUIRED
-    assert result.jioc_routing_decisions[-1].evidence_outcome == "clarification_required"
+    decision = result.jioc_routing_decisions[-1]
+    assert decision.evidence_outcome == "clarification_required"
+    assert decision.required_clarifications
+    assert result.clarification_requests[-1].questions == decision.required_clarifications
+    assert all(
+        question in result.messages[-1].body for question in decision.required_clarifications
+    )
+    assert result.timeline[-1].event_type == "customer_clarification_sent"
+
+
+def test_final_policy_clarification_reaches_customer_when_one_route_is_satisfiable() -> None:
+    ticket = _ticket("Assess the available reporting.", "assessment report")
+    rfa = MagicMock()
+    rfa.review.return_value = rfa_review(ticket.ticket_id, can_satisfy=True, confidence=0.86)
+    cm = MagicMock()
+    cm.review.return_value = replace(
+        cm_review(ticket.ticket_id, can_satisfy=False, confidence=0.31),
+        required_clarifications=("Which collection gaps must the assessment address?",),
+    )
+    service, _mutations = _service(ticket, _AvailableContext(), rfa_agent=rfa, cm_agent=cm)
+
+    result = service.route(ticket.ticket_id)
+
+    assert result.state == TicketState.INFO_REQUIRED
+    decision = result.jioc_routing_decisions[-1]
+    assert decision.required_clarifications == (
+        "Which collection gaps must the assessment address?",
+    )
+    assert result.clarification_requests[-1].questions == decision.required_clarifications
+    assert decision.required_clarifications[0] in result.messages[-1].body
 
 
 def _ticket(

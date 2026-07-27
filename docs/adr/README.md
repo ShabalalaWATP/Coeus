@@ -48,3 +48,4 @@ production-release approval. Read later ADRs for refinements and use the
 - [0040: Bounded advisory planners](0040-bounded-advisory-planners.md)
 - [0041: Deployment-managed LiteLLM proxy](0041-deployment-managed-litellm-proxy.md)
 - [0042: Enforce security policy at final boundaries](0042-enforce-security-policy-at-final-boundaries.md)
+- [0043: Separate shared JIOC review from Manager oversight](0043-jioc-human-review-and-manager-oversight.md)

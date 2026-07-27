@@ -1,5 +1,10 @@
 # Threat Model: Intelligence Intake And Prioritisation
 
+> **Superseded routing authority:** the intake and priority controls remain
+> applicable, but the mandatory Manager route approval below is historical.
+> Current routing authority is defined by
+> [Customer Search and Agent Routing](customer-search-and-agent-routing.md).
+
 ## Scope
 
 Intake standard v2 (four new customer-supplied fields and the urgency
@@ -15,7 +20,7 @@ that orders queues, and the scored capability team recommendation.
 | Customer text games the internal queue order (stated region, unit or operation inflates priority) | Scoring is deterministic and bounded (0..1), every score carries reason tags, the submit-time snapshot is recorded as an audited agent run, managers see the breakdown, and no state changes automatically from the score. |
 | Oversized or unbounded field values | Schema length caps on all four new fields (unit/operation 180, disciplines 240, justification 500); extractors cap lifted sentences. |
 | Chat lifecycle abused to lock a ticket | Closing needs a complete intake plus an explicit confirmation; a closed conversation only blocks further chat, while intake editing and submission remain available to the owner. |
-| Recommendation steers work to the wrong team silently | Candidates carry reasons, the suggested team remains a recommendation, and route approval (with override reason and audit) stays with the manager. |
+| Recommendation steers work to the wrong team silently | Candidates carry reasons and remain evidence for the deterministic JIOC Agent or human JIOC reviewer. Unsafe or conflicting evidence refers to human review; off-recommendation overrides require a reason. |
 
 ## Open Risks
 

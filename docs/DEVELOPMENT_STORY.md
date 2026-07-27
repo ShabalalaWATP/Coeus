@@ -14,6 +14,11 @@ Historical development milestones are archived by period:
 The retained entries below are grouped by delivery milestone rather than strict
 date order. They are historical evidence, not current operating instructions.
 
+## 2026-07-23 JIOC operating model and Manager journey
+- Fixed Agent clarification hand-offs and tested distinct Team Member and Manager authority.
+- Added Agent evidence, attention-first oversight, deep links and six JIOC diagrams.
+- Reconciled guides, specifications and threat models with shared human review plus Manager-only oversight and intervention.
+
 ## 2026-07-11 cross-role usability and documentation accuracy
 
 - Completed the desktop cross-role audit across customer, JIOC, team manager,

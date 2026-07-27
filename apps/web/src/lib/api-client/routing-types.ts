@@ -56,10 +56,10 @@ type RouteRecommendation = {
   createdAt: string;
 };
 
-type JiocAgentDecision = {
+export type JiocAgentDecision = {
   id: string;
   recommendedRoute: "rfa" | "cm" | "clarification";
-  disposition: "auto_applied" | "clarification" | "manager_review";
+  disposition: "auto_applied" | "clarification" | "manager_review" | "shadow_recommendation";
   confidence: number;
   rationaleCodes: string[];
   policyVersion: string;
@@ -98,6 +98,7 @@ export type RoutingTicket = {
   reference: string;
   requesterUserId: string;
   state: TicketState;
+  updatedAt: string;
   title: string;
   priority: string | null;
   priorityAssessment?: PriorityAssessment;
@@ -161,6 +162,7 @@ type OversightCount = { key: string; count: number };
 export type JiocOversight = {
   countsByState: OversightCount[];
   countsByRoute: OversightCount[];
+  countsByAgentDisposition: OversightCount[];
   teams: {
     teamId: string;
     name: string;
@@ -179,6 +181,7 @@ export type JiocOversight = {
     ticketId: string;
     reference: string;
     state: TicketState;
+    updatedAt: string;
     route: string | null;
     teamId: string | null;
     teamName: string | null;
@@ -187,6 +190,9 @@ export type JiocOversight = {
     completedWorkPackageCount: number;
     agentDisposition?: string | null;
     agentConfidence?: number | null;
+    agentRoute: string | null;
+    agentRationaleCodes: string[];
+    agentPolicyVersion: string | null;
     criticVerdict: string | null;
     criticOutcome: string | null;
     criticChallengeCount: number;

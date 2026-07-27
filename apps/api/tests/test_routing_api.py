@@ -4,7 +4,7 @@ from httpx import ASGITransport, AsyncClient
 from coeus.core.config import Settings
 from coeus.main import create_app
 from rfi_search_helpers import login
-from routing_helpers import route_assessment_ticket
+from routing_helpers import route_assessment_ticket, routing_version
 
 
 @pytest.mark.asyncio
@@ -165,6 +165,7 @@ async def test_jioc_clarification_is_handed_to_customer_chatbot() -> None:
                 "route": "rfa",
                 "reason": "Scope needs tightening before analyst assignment.",
                 "questions": ["Which mock port should take priority?"],
+                "expectedUpdatedAt": await routing_version(client, ticket_id),
             },
         )
         await login(client, "user@example.test")
@@ -204,7 +205,10 @@ async def test_jioc_approval_to_rfa_moves_to_analyst_assignment() -> None:
         approved = await client.post(
             f"/api/v1/routing/{ticket_id}/approve",
             headers={"X-CSRF-Token": str(jioc["csrfToken"])},
-            json={"route": "rfa"},
+            json={
+                "route": "rfa",
+                "expectedUpdatedAt": await routing_version(client, ticket_id),
+            },
         )
         await login(client, "rfa.manager@example.test")
         manager_queue = await client.get("/api/v1/routing/rfa/queue")
@@ -244,12 +248,19 @@ async def test_off_recommendation_approval_requires_reason_and_is_audited() -> N
         missing_reason = await client.post(
             f"/api/v1/routing/{ticket_id}/approve",
             headers={"X-CSRF-Token": str(jioc["csrfToken"])},
-            json={"route": "rfa"},
+            json={
+                "route": "rfa",
+                "expectedUpdatedAt": await routing_version(client, ticket_id),
+            },
         )
         override = await client.post(
             f"/api/v1/routing/{ticket_id}/approve",
             headers={"X-CSRF-Token": str(jioc["csrfToken"])},
-            json={"route": "rfa", "overrideReason": "JIOC accepts assessment-led risk."},
+            json={
+                "route": "rfa",
+                "overrideReason": "JIOC accepts assessment-led risk.",
+                "expectedUpdatedAt": await routing_version(client, ticket_id),
+            },
         )
         admin = await login(client, "admin@example.test")
         audit = await client.get("/api/v1/audit")
@@ -263,6 +274,46 @@ async def test_off_recommendation_approval_requires_reason_and_is_audited() -> N
     )
     assert "manager_override" in [event["eventType"] for event in audit.json()["events"]]
     assert admin["user"]["username"] == "admin@example.test"
+
+
+@pytest.mark.asyncio
+async def test_jioc_decisions_require_the_displayed_ticket_version() -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        user = await login(client, "user@example.test")
+        ticket_id = await route_assessment_ticket(client, str(user["csrfToken"]))
+        jioc = await login(client, "jioc.team@example.test")
+        await client.post(
+            f"/api/v1/routing/{ticket_id}/run",
+            headers={"X-CSRF-Token": str(jioc["csrfToken"])},
+        )
+        decisions = (
+            ("approve", {"route": "rfa"}),
+            ("reject", {"route": "rfa", "reason": "Revise the synthetic request."}),
+            (
+                "clarification",
+                {
+                    "route": "rfa",
+                    "reason": "Clarify the synthetic scope.",
+                    "questions": ["Which synthetic area takes priority?"],
+                },
+            ),
+        )
+        responses = [
+            await client.post(
+                f"/api/v1/routing/{ticket_id}/{action}",
+                headers={"X-CSRF-Token": str(jioc["csrfToken"])},
+                json=payload,
+            )
+            for action, payload in decisions
+        ]
+
+    assert [response.status_code for response in responses] == [428, 428, 428]
+    assert all(
+        response.json()["error"]["code"] == "ticket_version_required" for response in responses
+    )
 
 
 @pytest.mark.asyncio
