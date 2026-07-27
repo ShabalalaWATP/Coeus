@@ -19,7 +19,7 @@ from coeus.domain.tickets import RoutingRoute
 from coeus.main import create_app
 from coeus.services.analyst_records import active_assignments, approved_route
 from rfi_search_helpers import login
-from routing_helpers import assignment_team_id, route_assessment_ticket
+from routing_helpers import assignment_team_id, route_assessment_ticket, routing_version
 from test_qc_api import _acg_id, _approval_payload, _draft_payload
 
 
@@ -44,7 +44,7 @@ async def _analysed_collect_ticket(client: AsyncClient) -> str:
     approved = await client.post(
         f"/api/v1/routing/{ticket_id}/approve",
         headers={"X-CSRF-Token": str(jioc["csrfToken"])},
-        json={"route": "cm"},
+        json={"route": "cm", "expectedUpdatedAt": await routing_version(client, ticket_id)},
     )
     assert approved.status_code == 200
     user = await login(client, "user@example.test")

@@ -8,6 +8,7 @@ must retain its history and link to its successor.
 
 Current cross-cutting contracts include [documentation accuracy](documentation-and-deployment-accuracy.md),
 [customer search and routing](customer-search-routing-orchestration.md),
+[JIOC operating model](jioc-operating-model-and-manager-journey.md),
 [bounded advisory planners](bounded-advisory-planners.md),
 [LiteLLM connectivity](litellm-proxy-connectivity.md), and the
 [22 July security remediation](security-scan-remediation-2026-07-22.md).
@@ -29,6 +30,7 @@ Current cross-cutting contracts include [documentation accuracy](documentation-a
 - [Hybrid RFI search](hybrid-rfi-search.md)
 - [Intelligence intake and prioritisation](intelligence-intake-and-prioritisation.md)
 - [JIOC workflow restructure](jioc-workflow-restructure.md)
+- [JIOC operating model and Manager journey](jioc-operating-model-and-manager-journey.md)
 - [LiteLLM proxy connectivity](litellm-proxy-connectivity.md)
 - [Local demo dataset](local-demo-dataset.md)
 - [Local-first GCP reference](local-first-gcp-reference.md)

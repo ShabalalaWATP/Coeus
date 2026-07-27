@@ -4,7 +4,7 @@ from httpx import ASGITransport, AsyncClient
 from coeus.core.config import Settings
 from coeus.main import create_app
 from rfi_search_helpers import login
-from routing_helpers import route_assessment_ticket
+from routing_helpers import route_assessment_ticket, routing_version
 
 
 async def _collect_choice_ticket(client: AsyncClient) -> str:
@@ -25,7 +25,7 @@ async def _collect_choice_ticket(client: AsyncClient) -> str:
     approved = await client.post(
         f"/api/v1/routing/{ticket_id}/approve",
         headers={"X-CSRF-Token": str(jioc["csrfToken"])},
-        json={"route": "cm"},
+        json={"route": "cm", "expectedUpdatedAt": await routing_version(client, ticket_id)},
     )
     assert approved.status_code == 200
     assert approved.json()["state"] == "COLLECT_CHOICE"
