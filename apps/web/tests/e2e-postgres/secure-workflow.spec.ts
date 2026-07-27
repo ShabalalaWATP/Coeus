@@ -208,12 +208,17 @@ test("recovers from a retained-ticket 429 without losing the message", async ({ 
 
 test("shows the automatic JIOC decision to the on-loop manager", async ({ page }) => {
   await login(page, "jioc.team@example.test", "JIOC Oversight");
+  await page.getByRole("combobox", { name: "Filter oversight tasks" }).selectOption("agent_routed");
   const task = page.getByRole("row").filter({ hasText: reference });
   await expect(task).toBeVisible();
   await expect(task).toContainText("Analyst assignment");
   await expect(task).toContainText("RFA");
   await expect(task).toContainText("Unassigned");
-  await expect(task).toContainText(/auto applied \(\d+%\)/);
+  const agentDecision = task.getByRole("definition").locator("..");
+  await expect(task).toContainText("auto applied");
+  await expect(agentDecision.filter({ hasText: "Evidence score" })).toContainText(
+    "Not a probability",
+  );
   await expect(task.getByRole("textbox", { name: "Intervention reason" })).toBeVisible();
   await expect(task.getByRole("button", { name: "Hold" })).toBeDisabled();
   await expect(task.getByRole("button", { name: "Send to review" })).toBeDisabled();

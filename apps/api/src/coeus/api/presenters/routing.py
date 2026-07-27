@@ -54,6 +54,7 @@ def ticket_response(ticket: TicketRecord) -> RoutingTicketResponse:
         reference=ticket.reference,
         requester_user_id=ticket.requester_user_id,
         state=ticket.state.value,
+        updated_at=ticket.updated_at,
         title=ticket.intake.title or "Untitled requirement",
         priority=ticket.intake.priority,
         priority_assessment=priority_assessment_response(ticket),

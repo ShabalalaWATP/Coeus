@@ -15,7 +15,7 @@ from coeus.domain.tickets import CmCapabilityReview, RfaCapabilityReview, Routin
 from coeus.main import create_app
 from coeus.services.routing_records import recommend_route
 from rfi_search_helpers import login
-from routing_helpers import route_assessment_ticket
+from routing_helpers import route_assessment_ticket, routing_version
 
 
 @pytest.mark.asyncio
@@ -82,12 +82,19 @@ async def test_jioc_can_override_the_recommendation_with_reason() -> None:
         missing_reason = await client.post(
             f"/api/v1/routing/{ticket_id}/approve",
             headers={"X-CSRF-Token": str(jioc["csrfToken"])},
-            json={"route": "cm"},
+            json={
+                "route": "cm",
+                "expectedUpdatedAt": await routing_version(client, ticket_id),
+            },
         )
         override = await client.post(
             f"/api/v1/routing/{ticket_id}/approve",
             headers={"X-CSRF-Token": str(jioc["csrfToken"])},
-            json={"route": "cm", "overrideReason": "Collection coverage is more suitable."},
+            json={
+                "route": "cm",
+                "overrideReason": "Collection coverage is more suitable.",
+                "expectedUpdatedAt": await routing_version(client, ticket_id),
+            },
         )
 
     assert routed.json()["state"] == "JIOC_REVIEW"
@@ -146,7 +153,10 @@ async def test_route_approval_rolls_back_when_audit_fails(
             await client.post(
                 f"/api/v1/routing/{ticket_id}/approve",
                 headers={"X-CSRF-Token": str(jioc["csrfToken"])},
-                json={"route": "rfa"},
+                json={
+                    "route": "rfa",
+                    "expectedUpdatedAt": await routing_version(client, ticket_id),
+                },
             )
 
     ticket = _stored_ticket(app, ticket_id)
@@ -174,7 +184,11 @@ async def test_route_rejection_rolls_back_when_audit_fails(
             await client.post(
                 f"/api/v1/routing/{ticket_id}/reject",
                 headers={"X-CSRF-Token": str(jioc["csrfToken"])},
-                json={"route": "rfa", "reason": "Not enough scope."},
+                json={
+                    "route": "rfa",
+                    "reason": "Not enough scope.",
+                    "expectedUpdatedAt": await routing_version(client, ticket_id),
+                },
             )
 
     ticket = _stored_ticket(app, ticket_id)
@@ -206,6 +220,7 @@ async def test_route_clarification_rolls_back_when_audit_fails(
                     "route": "rfa",
                     "reason": "Need clearer scope.",
                     "questions": ["Which mock port should take priority?"],
+                    "expectedUpdatedAt": await routing_version(client, ticket_id),
                 },
             )
 

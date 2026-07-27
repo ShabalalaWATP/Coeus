@@ -8,6 +8,8 @@ This page shows Istari from the perspective of people and outcomes. The
 for ticket states; this page explains how those states are projected to users
 and how authority moves between roles. The [Exhaustive Workflow State
 Reference](WORKFLOW_STATE_REFERENCE.md) includes every allowlisted transition.
+The [JIOC operating model](JIOC_OPERATING_MODEL.md) gives the detailed Agent,
+Team Member and Manager journeys.
 
 ## 1. People, responsibilities and workspaces
 
@@ -54,6 +56,7 @@ flowchart LR
     JA -->|"eligible RFA route"| RM
     JA -->|"eligible CM route"| CM
     JA -->|"explicit review or exception"| JT
+    JA -->|"manager covers human review"| JM
     JA -.->|"routine oversight"| JM
     JT -->|"human RFA decision"| RM
     JT -->|"human CM decision"| CM
@@ -82,7 +85,7 @@ draft-audience policy.
 | Administrator              | Admin               | Accounts, roles, configuration, all platform permissions     |
 | Customer                   | Requests            | Own request, product decisions, new-tasking consent, outcome |
 | JIOC Team Member           | JIOC Queue          | Exception routing and dispute adjudication                   |
-| JIOC Manager               | JIOC Oversight      | Oversight, hold/resume/intervention and global aggregates    |
+| JIOC Manager               | JIOC Oversight      | Human review and disputes, oversight, intervention, aggregates |
 | RFA Manager                | RFA Queue           | RFA assignment, manager approval, team and analytics         |
 | RFA Team Member            | RFA Products        | Scoped team product stewardship                              |
 | CM Manager                 | Collection Queue    | Collection assignment, manager approval, team and analytics  |
@@ -241,8 +244,9 @@ sequenceDiagram
 ```
 
 The Routing Critic is advisory after a route is committed. It never delays or
-changes the route. A JIOC Manager is on the loop for routine automation and in
-the loop for holds, intervention and exceptions.
+changes the route. A JIOC Manager is on the loop for routine automation and
+enters the loop for human review, holds and intervention. A Team Member remains
+the primary human exception reviewer.
 
 ## 5. Outcome variants
 
@@ -294,8 +298,7 @@ flowchart TB
 
     SEARCH --> RETRY -->|"complete"| ROUTE
     ROUTE -->|"clarification"| INFO -->|"requester resumes"| ROUTE
-    ROUTE --> HOLD -->|"resume exact state"| ROUTE
-    HOLD -->|"send to review"| ROUTE
+    ROUTE --> HOLD -->|"resume exact state only"| ROUTE
     ROUTE --> ASSIGN --> MREV
     MREV -->|"return"| ASSIGN
     MREV -->|"approve exact manifest"| QREV
