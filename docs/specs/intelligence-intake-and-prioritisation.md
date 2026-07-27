@@ -3,8 +3,8 @@
 Status: implemented historical specification. Its mandatory human-routing
 constraint was superseded by ADR 0036 and the
 [customer-search routing contract](customer-search-routing-orchestration.md). Current supported local/test routing
-uses the active deterministic JIOC Agent, with JIOC Managers on the loop and in
-the loop for exception review or audited intervention.
+uses the active deterministic JIOC Agent. Team Members and Managers share human
+exception review; Managers additionally own oversight and intervention.
 
 Extends the [conversational intake](conversational-intake-standard-and-voice.md);
 the field list there is
@@ -88,9 +88,9 @@ region-flavoured cells such as the African Imagery Exploitation Cell and the
 Eastern Europe Signals Cell. `services/capability_recommendation.py` scores
 teams (relevance 0.4, region 0.3, rank 0.2, priority fit 0.1) and returns the
 top three `CandidateTeam` entries with reasons. The RFA/CM capability agents
-attach `candidate_teams` to their reviews; `suggested_team_id/name` remains
-the top candidate, triage fallbacks are preserved, and the manager still
-approves every route.
+attach `candidate_teams` to their reviews; `suggested_team_id/name` remains the
+top candidate and triage fallbacks are preserved. The following mandatory
+Manager approval was historical and is superseded by ADR 0036.
 
 ## Non-goals
 

@@ -66,7 +66,7 @@ test("runs RFA capability checks and approves the recommended route", async () =
     3,
     "http://127.0.0.1:8001/api/v1/routing/ticket-1/approve",
     {
-      body: JSON.stringify({ route: "rfa" }),
+      body: JSON.stringify({ route: "rfa", expectedUpdatedAt: "2026-07-05T00:00:00Z" }),
       credentials: "include",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": "test-csrf-token" },
       method: "POST",
@@ -105,6 +105,7 @@ test("requests clarification from an RFA manager review", async () => {
         route: "rfa",
         reason: "Need tighter scope.",
         questions: ["Which mock region?"],
+        expectedUpdatedAt: "2026-07-05T00:00:00Z",
       }),
       credentials: "include",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": "test-csrf-token" },
@@ -209,7 +210,11 @@ test("rejects an RFA route with a manager reason", async () => {
     2,
     "http://127.0.0.1:8001/api/v1/routing/ticket-1/reject",
     {
-      body: JSON.stringify({ route: "rfa", reason: "Assessment route is too broad." }),
+      body: JSON.stringify({
+        route: "rfa",
+        reason: "Assessment route is too broad.",
+        expectedUpdatedAt: "2026-07-05T00:00:00Z",
+      }),
       credentials: "include",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": "test-csrf-token" },
       method: "POST",
@@ -246,7 +251,7 @@ test("approves a collection route which pauses for the customer's collect choice
     2,
     "http://127.0.0.1:8001/api/v1/routing/ticket-1/approve",
     {
-      body: JSON.stringify({ route: "cm" }),
+      body: JSON.stringify({ route: "cm", expectedUpdatedAt: "2026-07-05T00:00:00Z" }),
       credentials: "include",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": "test-csrf-token" },
       method: "POST",
