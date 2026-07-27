@@ -6,17 +6,19 @@ allowBuilds:
   msw: true
 blockExoticSubdeps: true
 overrides:
-  brace-expansion@1.1.15: 1.1.16
-  brace-expansion@2.1.1: 2.1.2
+  "brace-expansion@<=5.0.7": 5.0.8
   js-yaml@4.2.0: 4.3.0
+  "minimatch@<=9.0.9": 10.2.5
+  "postcss@<=8.5.17": 8.5.18
 minimumReleaseAge: 10080
 minimumReleaseAgeExclude:
   - "@typescript-eslint/*"
   - baseline-browser-mapping@2.10.41
-  - brace-expansion@5.0.7
+  - brace-expansion@5.0.8
   - caniuse-lite@1.0.30001800
   - electron-to-chromium@1.5.385
   - picomatch@4.0.5
+  - postcss@8.5.18
   - prettier@3.9.4
   - react-router-dom@7.18.1
   - react-router@7.18.1
