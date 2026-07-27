@@ -2,37 +2,70 @@ from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from coeus.schemas.tickets import AgentRunResponse
 
-ClarificationQuestion = Annotated[str, Field(min_length=3, max_length=300)]
+ReasonText = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=3, max_length=1_000),
+]
+ClarificationQuestion = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=3, max_length=300),
+]
 
 
 class RouteApprovalRequest(BaseModel):
     route: str = Field(pattern="^(rfa|cm)$")
-    override_reason: str | None = Field(
+    override_reason: ReasonText | None = Field(
         default=None,
-        min_length=3,
-        max_length=1_000,
         validation_alias="overrideReason",
     )
+    expected_updated_at: datetime | None = Field(default=None, validation_alias="expectedUpdatedAt")
 
 
 class RouteReasonRequest(BaseModel):
     route: str = Field(pattern="^(rfa|cm)$")
-    reason: str = Field(min_length=3, max_length=1_000)
+    reason: ReasonText
+
+
+class RouteDecisionReasonRequest(RouteReasonRequest):
+    expected_updated_at: datetime | None = Field(default=None, validation_alias="expectedUpdatedAt")
 
 
 class RouteClarificationRequest(BaseModel):
     route: str = Field(pattern="^(rfa|cm)$")
-    reason: str = Field(min_length=3, max_length=1_000)
+    reason: ReasonText
     questions: list[ClarificationQuestion] = Field(min_length=1, max_length=5)
+    expected_updated_at: datetime | None = Field(default=None, validation_alias="expectedUpdatedAt")
 
 
 class JiocInterventionRequest(BaseModel):
     action: str = Field(pattern="^(hold|resume|send_to_review)$")
-    reason: str = Field(min_length=3, max_length=1_000)
+    reason: ReasonText
+    expected_updated_at: datetime | None = Field(default=None, validation_alias="expectedUpdatedAt")
+
+
+class JiocInterventionResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    ticket_id: UUID = Field(serialization_alias="ticketId")
+    state: str
+    updated_at: datetime = Field(serialization_alias="updatedAt")
+
+
+class RoutingErrorDetailResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    code: str
+    message: str
+
+
+class RoutingErrorResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    error: RoutingErrorDetailResponse
 
 
 class CapabilityTeamResponse(BaseModel):
@@ -186,6 +219,7 @@ class RoutingTicketResponse(BaseModel):
     reference: str
     requester_user_id: UUID = Field(serialization_alias="requesterUserId")
     state: str
+    updated_at: datetime = Field(serialization_alias="updatedAt")
     title: str
     priority: str | None
     priority_assessment: PriorityAssessmentResponse = Field(
@@ -257,6 +291,7 @@ class OversightTaskResponse(BaseModel):
     ticket_id: UUID = Field(serialization_alias="ticketId")
     reference: str
     state: str
+    updated_at: datetime = Field(serialization_alias="updatedAt")
     route: str | None
     team_id: UUID | None = Field(serialization_alias="teamId")
     team_name: str | None = Field(serialization_alias="teamName")
@@ -265,6 +300,9 @@ class OversightTaskResponse(BaseModel):
     completed_work_package_count: int = Field(serialization_alias="completedWorkPackageCount")
     agent_disposition: str | None = Field(serialization_alias="agentDisposition")
     agent_confidence: float | None = Field(serialization_alias="agentConfidence")
+    agent_route: str | None = Field(serialization_alias="agentRoute")
+    agent_rationale_codes: list[str] = Field(serialization_alias="agentRationaleCodes")
+    agent_policy_version: str | None = Field(serialization_alias="agentPolicyVersion")
     critic_verdict: str | None = Field(serialization_alias="criticVerdict")
     critic_outcome: str | None = Field(serialization_alias="criticOutcome")
     critic_challenge_count: int = Field(serialization_alias="criticChallengeCount")
@@ -275,6 +313,9 @@ class RoutingOversightResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
     counts_by_state: list[OversightCountResponse] = Field(serialization_alias="countsByState")
     counts_by_route: list[OversightCountResponse] = Field(serialization_alias="countsByRoute")
+    counts_by_agent_disposition: list[OversightCountResponse] = Field(
+        serialization_alias="countsByAgentDisposition"
+    )
     teams: list[OversightTeamResponse]
     analysts: list[OversightAnalystResponse]
     tasks: list[OversightTaskResponse]

@@ -46,6 +46,7 @@ class OversightTask:
     ticket_id: UUID
     reference: str
     state: str
+    updated_at: datetime
     route: str | None
     team_id: UUID | None
     team_name: str | None
@@ -54,6 +55,9 @@ class OversightTask:
     completed_work_package_count: int
     agent_disposition: str | None
     agent_confidence: float | None
+    agent_route: str | None
+    agent_rationale_codes: tuple[str, ...]
+    agent_policy_version: str | None
     critic_verdict: str | None
     critic_outcome: str | None
     critic_challenge_count: int
@@ -64,6 +68,7 @@ class OversightTask:
 class RoutingOversight:
     counts_by_state: tuple[tuple[str, int], ...]
     counts_by_route: tuple[tuple[str, int], ...]
+    counts_by_agent_disposition: tuple[tuple[str, int], ...]
     teams: tuple[OversightTeam, ...]
     analysts: tuple[OversightAnalyst, ...]
     tasks: tuple[OversightTask, ...]
@@ -89,6 +94,11 @@ class RoutingOversightService:
         state_counts = Counter(ticket.state.value for ticket in tickets)
         route_counts = Counter(
             route.value for ticket in tickets if (route := approved_route(ticket)) is not None
+        )
+        disposition_counts = Counter(
+            ticket.jioc_routing_decisions[-1].disposition
+            for ticket in tickets
+            if ticket.jioc_routing_decisions
         )
         active_teams = tuple(
             team
@@ -121,6 +131,7 @@ class RoutingOversightService:
         return RoutingOversight(
             tuple(sorted(state_counts.items())),
             tuple(sorted(route_counts.items())),
+            tuple(sorted(disposition_counts.items())),
             teams,
             analysts,
             tuple(self._task(ticket) for ticket in selected),
@@ -188,6 +199,7 @@ class RoutingOversightService:
             ticket.ticket_id,
             ticket.reference,
             ticket.state.value,
+            ticket.updated_at,
             route.value if route else None,
             latest.team_id if latest else None,
             latest.team_name if latest else None,
@@ -196,6 +208,9 @@ class RoutingOversightService:
             sum(package.status.value == "complete" for package in ticket.work_packages),
             agent_decision.disposition if agent_decision else None,
             agent_decision.confidence if agent_decision else None,
+            agent_decision.recommended_route if agent_decision else None,
+            agent_decision.rationale_codes if agent_decision else (),
+            agent_decision.policy_version if agent_decision else None,
             critique.verdict if critique else None,
             critique.provenance.outcome if critique else None,
             sum(item.kind is AdviceItemKind.ROUTE_CHALLENGE for item in critique.items)

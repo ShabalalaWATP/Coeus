@@ -14,6 +14,7 @@ historical evidence.
 | [Roles and User Stories](ROLES_AND_USER_STORIES.md) | Roles, permissions, need-to-know groups and user stories |
 | [Architecture](ARCHITECTURE.md) | Shipped system structure, data, persistence and security |
 | [Architecture: Workflow](ARCHITECTURE_WORKFLOW.md) | Request lifecycle, authority flow and bounded agents |
+| [JIOC Operating Model](architecture/JIOC_OPERATING_MODEL.md) | Agent, Team Member and Manager authority, journeys and intervention |
 | [Architecture: Deployment](ARCHITECTURE_DEPLOYMENT.md) | Supported local runtime and future cloud reference designs |
 | [AI Agents](AI_AGENTS.md) | What each automation reads, decides, returns and may change |
 
@@ -42,6 +43,7 @@ no unresolved baseline occurrence or new reportable finding.
 | Record | Purpose |
 | --- | --- |
 | [Master Implementation Plan](MASTER_IMPLEMENTATION_PLAN.md) | Concise current delivery, risk and release tracker |
+| [ADR 0043](adr/0043-jioc-human-review-and-manager-oversight.md) | Shared JIOC review and Manager oversight authority |
 | [22 July remediation contract](specs/security-scan-remediation-2026-07-22.md) | Latest implemented security invariants and verification evidence |
 | [ADR 0042](adr/0042-enforce-security-policy-at-final-boundaries.md) | Decision to enforce policy at final authority and parser boundaries |
 | [22 July threat model](threat-model/security-scan-remediation-2026-07-22.md) | Latest scan scope, controls, residual risks and open release gates |

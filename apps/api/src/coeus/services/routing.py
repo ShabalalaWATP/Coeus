@@ -1,4 +1,5 @@
 from dataclasses import replace
+from datetime import datetime
 from uuid import UUID
 
 from coeus.core.errors import AppError
@@ -117,9 +118,11 @@ class RoutingService:
         ticket_id: UUID,
         route: RoutingRoute,
         override_reason: str | None,
+        expected_updated_at: datetime | None = None,
     ) -> TicketRecord:
         self._require(actor, Permission.JIOC_REVIEW)
         ticket = self.details(actor, ticket_id)
+        _ensure_expected(ticket, expected_updated_at)
         ensure_jioc_state(ticket)
         recommendation = latest_recommendation(ticket)
         if recommendation.recommended_route != route:
@@ -151,9 +154,11 @@ class RoutingService:
         ticket_id: UUID,
         route: RoutingRoute,
         reason: str,
+        expected_updated_at: datetime | None = None,
     ) -> TicketRecord:
         self._require(actor, Permission.JIOC_REVIEW)
         ticket = self.details(actor, ticket_id)
+        _ensure_expected(ticket, expected_updated_at)
         ensure_jioc_state(ticket)
         self._ensure_transition(ticket.state, TicketState.INFO_REQUIRED)
         manager_decision = decision(
@@ -175,9 +180,11 @@ class RoutingService:
         route: RoutingRoute,
         reason: str,
         questions: tuple[str, ...],
+        expected_updated_at: datetime | None = None,
     ) -> TicketRecord:
         self._require(actor, Permission.JIOC_REVIEW)
         ticket = self.details(actor, ticket_id)
+        _ensure_expected(ticket, expected_updated_at)
         ensure_jioc_state(ticket)
         self._ensure_transition(ticket.state, TicketState.INFO_REQUIRED)
         handoff = manager_clarification_handoff(
@@ -291,3 +298,12 @@ def build_routing_service(ticket_services: TicketServices, audit_log: AuditLog) 
         RfaCapabilityAgent(catalogue),
         CmCapabilityAgent(catalogue),
     )
+
+
+def _ensure_expected(ticket: TicketRecord, expected_updated_at: datetime | None) -> None:
+    if expected_updated_at is not None and ticket.updated_at != expected_updated_at:
+        raise AppError(
+            409,
+            "ticket_changed",
+            "The ticket changed after it was displayed. Refresh and try again.",
+        )
