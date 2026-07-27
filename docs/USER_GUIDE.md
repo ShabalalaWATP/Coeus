@@ -154,17 +154,15 @@ customer is asked whether they want the **raw collect only** or the **collect
 plus an RFA analysis**.
 
 JIOC Managers are normally **on the loop**, supervising outcomes rather than
-approving every routine route. **JIOC Oversight** is their whole-process view.
-It shows ticket totals
-by state and route, active RFA/CM teams, current availability, live analyst task
-counts, bounded task ownership and the shadow routing critic's verdict,
-challenges and missing-evidence counts. Critic output is advisory evidence only:
-it cannot route or change workflow. A JIOC Manager can use separate audited
-controls to hold or resume eligible work, or send an eligible automated route
-to exception review. Oversight does not expose analyst notes, draft bodies or
-protected product content.
-
-![JIOC routing queue with agent recommendations](images/07-rfa-queue.png)
+approving every routine route. **JIOC Oversight** defaults to attention items
+and shows state, route and Agent-outcome totals, operational capacity, bounded
+task ownership and shadow Routing Critic evidence. Each task exposes the Agent
+route, policy version and rationale codes; its decimal evidence score is not a
+probability. A Manager can open an exception directly in the JIOC queue or use
+reasoned controls to hold, resume or send eligible work to review. Critic output
+is advisory and cannot change workflow. Oversight exposes neither protected
+content nor the raw audit log. See the detailed [JIOC operating
+model](architecture/JIOC_OPERATING_MODEL.md).
 
 ## RFA and Collection managers
 

@@ -2,6 +2,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import RoutingQueuePage from "./RoutingQueuePage";
+import { JiocAgentDecisionSummary } from "./routing-sections";
 import { jsonResponse, queueWith, reviewedTicket, stubRoutingFetch } from "./routing-test-fixtures";
 import { resetQueryClientForTests } from "../../app/query-client";
 import type { RoutingTicket } from "../../lib/api-client/routing";
@@ -47,7 +48,11 @@ test("requires an override reason when approving against the recommendation", as
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8001/api/v1/routing/ticket-1/approve",
       expect.objectContaining({
-        body: JSON.stringify({ route: "rfa", overrideReason: "abc and RFA has capacity." }),
+        body: JSON.stringify({
+          route: "rfa",
+          overrideReason: "abc and RFA has capacity.",
+          expectedUpdatedAt: "2026-07-05T00:00:00Z",
+        }),
         method: "POST",
       }),
     ),
@@ -111,4 +116,46 @@ test("clears decision text areas after a successful rejection", async () => {
   await userEvent.click(await screen.findByRole("button", { name: /TCK-0002/ }));
   await userEvent.click(screen.getByText("Query or reject this route"));
   expect(screen.getByLabelText("Rejection reason")).toHaveValue("");
+});
+
+test("shows the deterministic JIOC Agent decision without presenting its score as probability", () => {
+  renderWithProviders(
+    <JiocAgentDecisionSummary
+      decision={{
+        id: "decision-1",
+        recommendedRoute: "rfa",
+        disposition: "manager_review",
+        confidence: 0.42,
+        rationaleCodes: ["risk_review_required"],
+        policyVersion: "jioc-routing-policy-v2",
+        createdAt: "2026-07-23T08:30:00Z",
+      }}
+    />,
+  );
+
+  expect(screen.getByRole("heading", { name: "Human JIOC review: RFA" })).toBeVisible();
+  expect(screen.getByText("Risk review required")).toBeVisible();
+  expect(screen.getByText(/Policy jioc-routing-policy-v2/)).toBeVisible();
+  expect(screen.getByText("0.42")).toBeVisible();
+  expect(screen.queryByText("42%")).not.toBeInTheDocument();
+});
+
+test("opens the task selected by an oversight deep link", async () => {
+  const secondTicket: RoutingTicket = {
+    ...reviewedTicket,
+    ticketId: "ticket-2",
+    reference: "TCK-0002",
+    title: "Selected oversight exception",
+  };
+  stubRoutingFetch(
+    vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(queueWith([reviewedTicket])))
+      .mockResolvedValueOnce(jsonResponse(secondTicket)),
+  );
+
+  renderWithProviders(<RoutingQueuePage queue="jioc" />, "/jioc/queue?ticket=ticket-2");
+
+  expect(await screen.findByRole("heading", { name: "TCK-0002" })).toBeVisible();
+  expect(screen.getByText("Selected oversight exception")).toBeVisible();
 });

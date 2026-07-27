@@ -8,6 +8,7 @@ export const baseTicket: RoutingTicket = {
   reference: "TCK-0001",
   requesterUserId: "user-1",
   state: "JIOC_REVIEW",
+  updatedAt: "2026-07-05T00:00:00Z",
   title: "Arctic Fisheries Assessment",
   priority: "high",
   priorityAssessment: {

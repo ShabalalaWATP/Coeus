@@ -35,7 +35,9 @@ from coeus.services.jioc_routing_policy import (
     target_state as _target,
 )
 from coeus.services.orchestration_handoff import (
+    agent_clarification_handoff,
     append_collect_choice_handoff,
+    append_handoff,
     collect_choice_handoff,
 )
 from coeus.services.routing_agents import (
@@ -61,7 +63,7 @@ JIOC_AGENT_PRINCIPAL = UUID("00000000-0000-0000-0000-000000000002")
 
 
 class JiocRoutingAgentService:
-    """Apply routine route decisions and abstain to JIOC manager review."""
+    """Apply routine route decisions and abstain to human JIOC review."""
 
     def __init__(
         self,
@@ -112,7 +114,11 @@ class JiocRoutingAgentService:
             proposed = _shadow_review(ticket, rfa_review, cm_review, recommendation)
         else:
             review = build_routing_review_update(
-                ticket, JIOC_AGENT_PRINCIPAL, rfa_review, cm_review
+                ticket,
+                JIOC_AGENT_PRINCIPAL,
+                rfa_review,
+                cm_review,
+                include_customer_handoff=False,
             )
             current_recommendation = latest_recommendation(review.proposed)
             if current_recommendation.recommended_route == recommendation.recommended_route:
@@ -192,6 +198,16 @@ class JiocRoutingAgentService:
             ),
             timeline=updated_timeline,
         )
+        if target == TicketState.INFO_REQUIRED and not shadow:
+            proposed = append_handoff(
+                proposed,
+                agent_clarification_handoff(
+                    ticket.ticket_id,
+                    JIOC_AGENT_PRINCIPAL,
+                    _reason(codes),
+                    questions,
+                ),
+            )
         if target == TicketState.COLLECT_CHOICE:
             proposed = append_collect_choice_handoff(
                 proposed, collect_choice_handoff(ticket.ticket_id, JIOC_AGENT_PRINCIPAL)
@@ -300,4 +316,4 @@ def _customer_safe_timeline(target: TicketState) -> str:
         return "The request requires collection; a customer collection choice is needed."
     if target == TicketState.INFO_REQUIRED:
         return "More information is required before the request can be routed."
-    return "The routing agent referred the request for JIOC manager review."
+    return "The routing agent referred the request for human JIOC review."

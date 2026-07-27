@@ -2,6 +2,7 @@ import { Bot } from "lucide-react";
 
 import type {
   CmCapabilityReview,
+  JiocAgentDecision,
   RfaCapabilityReview,
   RoutingQueue,
   RoutingTicket,
@@ -15,6 +16,49 @@ function AgentChip({ label }: { label: string }) {
       {label}
     </span>
   );
+}
+
+export function JiocAgentDecisionSummary({
+  decision,
+}: {
+  decision: JiocAgentDecision | null | undefined;
+}) {
+  if (!decision) return null;
+  return (
+    <article className="routing-recommendation" aria-label="JIOC Agent decision">
+      <AgentChip label="JIOC Agent" />
+      <h3>
+        {formatAgentDisposition(decision.disposition)}: {decision.recommendedRoute.toUpperCase()}
+      </h3>
+      <p>
+        Policy {decision.policyVersion}. This is a deterministic policy outcome, not a probability.
+      </p>
+      <dl>
+        <div>
+          <dt>Evidence score</dt>
+          <dd>{decision.confidence.toFixed(2)}</dd>
+        </div>
+        <div>
+          <dt>Decision time</dt>
+          <dd>
+            {new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(
+              new Date(decision.createdAt),
+            )}
+          </dd>
+        </div>
+      </dl>
+      <h4>Policy reasons</h4>
+      <ul>
+        {decision.rationaleCodes.map((code) => (
+          <li key={code}>{formatTaggedReason(code)}</li>
+        ))}
+      </ul>
+    </article>
+  );
+}
+
+function formatAgentDisposition(disposition: string) {
+  return disposition === "manager_review" ? "Human JIOC review" : formatTaggedReason(disposition);
 }
 
 export function RoutingStats({ queue }: { queue: RoutingQueue }) {

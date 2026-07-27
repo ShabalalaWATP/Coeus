@@ -1,5 +1,11 @@
 # Threat Model: RFA And CM Routing
 
+> **Superseded routing authority:** this Sprint 8 record is historical for the
+> mandatory human-approval path. Current active routing is governed by
+> [Customer Search and Agent Routing](customer-search-and-agent-routing.md) and
+> the [JIOC workflow threat model](jioc-workflow-restructure.md). The JIOC Agent
+> may apply allowlisted routine routes; exceptions require `jioc:review`.
+
 ## Scope
 
 Sprint 8 RFA and CM capability reviews, manager queues, approval, rejection,

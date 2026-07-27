@@ -214,14 +214,18 @@ async def test_cm_manager_selects_only_a_cm_assignment_team() -> None:
         customer = await login(client, "user@example.test")
         ticket_id = await route_assessment_ticket(client, str(customer["csrfToken"]))
         jioc = await login(client, "jioc.team@example.test")
-        await client.post(
+        routed = await client.post(
             f"/api/v1/routing/{ticket_id}/run",
             headers={"X-CSRF-Token": str(jioc["csrfToken"])},
         )
         await client.post(
             f"/api/v1/routing/{ticket_id}/approve",
             headers={"X-CSRF-Token": str(jioc["csrfToken"])},
-            json={"route": "cm", "overrideReason": "Collection is required."},
+            json={
+                "route": "cm",
+                "overrideReason": "Collection is required.",
+                "expectedUpdatedAt": routed.json()["updatedAt"],
+            },
         )
         customer = await login(client, "user@example.test")
         await client.post(

@@ -9,6 +9,8 @@ The mandatory human routing step is superseded by the
 specification supersedes the older Sprint 8 routing and manager-release designs.
 The roles and state machine below preserve the Sprint 15 design history. They
 are not the current authority for the route-decision entry path.
+Current behaviour is in the
+[JIOC operating model](../architecture/JIOC_OPERATING_MODEL.md).
 
 ## Problem
 
@@ -28,7 +30,7 @@ the final release. Tickets also needed to support more than one analyst.
 | Analyst | Workbench | Shared tasks (1 to 5 analysts per assignment) |
 | Quality Control Manager | `/qc/queue` | QC approval performs the final release |
 
-## State machine
+## Historical state machine
 
 ```
 RFI_NO_MATCH | RFI_MATCH_OFFERED -> JIOC_REVIEW
@@ -49,7 +51,7 @@ Retired states decode through `TicketState._missing_` aliases:
 awaiting the retired manager-release step reappear in the QC queue for a
 benign re-approval; this is accepted for local demo data.
 
-## JIOC routing
+## Historical JIOC routing
 
 - `GET /routing/jioc/queue` lists tickets in `JIOC_REVIEW` and
   `COLLECT_CHOICE` (the latter so JIOC can see requests awaiting the

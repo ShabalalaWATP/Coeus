@@ -5,12 +5,13 @@
 Part C implementation specification. This document was written before the Part C
 code changes.
 
-> **Update (2026-07-11):** the JIOC restructure retired `ROUTE_ASSESSMENT`;
-> consent (and last-offer rejection) now land in `JIOC_REVIEW`, where a JIOC
-> team member decides the route. Read `ROUTE_ASSESSMENT` below as
-> `JIOC_REVIEW`. See the [JIOC restructure](jioc-workflow-restructure.md).
-> Its mandatory-human routing step was later superseded by the
-> [customer-search routing contract](customer-search-routing-orchestration.md).
+> **Current behaviour (2026-07-23):** the JIOC restructure retired
+> `ROUTE_ASSESSMENT`. Consent and last-offer rejection now enter
+> `JIOC_ROUTING_PENDING`. The active deterministic JIOC Agent applies one safe
+> route, asks required questions or refers to `JIOC_REVIEW`; shadow and disabled
+> modes refer to human review. The remaining `ROUTE_ASSESSMENT` flow below is
+> historical. See the [current routing contract](customer-search-routing-orchestration.md)
+> and [JIOC operating model](../architecture/JIOC_OPERATING_MODEL.md).
 
 ## Problem
 

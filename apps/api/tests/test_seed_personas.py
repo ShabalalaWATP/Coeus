@@ -1,8 +1,9 @@
 from dataclasses import replace
+from uuid import uuid4
 
 from coeus.core.config import Settings
 from coeus.domain.auth import RoleName
-from coeus.domain.teams import TeamKind, UserProfile, team_member_ids
+from coeus.domain.teams import OrgTeam, TeamKind, UserProfile, team_member_ids
 from coeus.persistence.codec import encode_value
 from coeus.persistence.state_store import MemoryStateStore
 from coeus.repositories.auth import SeedUserRepository
@@ -32,8 +33,8 @@ def test_seed_personas_are_unique_and_analysts_share_one_generic_role() -> None:
     accounts = users.list_users()
     analysts = [user for user in accounts if user.roles == {RoleName.INTELLIGENCE_ANALYST}]
 
-    assert len(accounts) == 15
-    assert len({user.display_name for user in accounts}) == 15
+    assert len(accounts) == 16
+    assert len({user.display_name for user in accounts}) == 16
     assert {user.username for user in analysts} == {
         "analyst@example.test",
         "analyst.2@example.test",
@@ -71,7 +72,7 @@ def test_legacy_seed_identity_reconciliation_preserves_account_authority() -> No
     state_store.save("users", {"users": stored})
     restored = _users(state_store)
 
-    assert len(restored.list_users()) == 15
+    assert len(restored.list_users()) == 16
     for spec in seed_user_specs():
         user = restored.get_by_username(spec.username)
         assert user is not None
@@ -130,3 +131,36 @@ def test_every_generic_analyst_is_seeded_into_an_operational_team() -> None:
 
     analysts = [user for user in users.list_users() if RoleName.INTELLIGENCE_ANALYST in user.roles]
     assert all(analyst.user_id in member_ids for analyst in analysts)
+
+
+def test_existing_untouched_jioc_cell_adds_new_member_without_overwriting_edits() -> None:
+    users = _users()
+    manager = users.get_by_username("jioc.team@example.test")
+    member = users.get_by_username("jioc.member@example.test")
+    custom_member = users.get_by_username("user@example.test")
+    assert manager is not None and member is not None and custom_member is not None
+
+    teams = TeamRepository()
+    old_cell = OrgTeam(
+        team_id=uuid4(),
+        name="JIOC Routing Cell",
+        kind=TeamKind.JIOC,
+        member_user_ids=(manager.user_id,),
+    )
+    teams.save_team(old_cell)
+    seed_teams(teams, users)
+    assert teams.get_team(old_cell.team_id) == replace(
+        old_cell,
+        manager_user_ids=(manager.user_id,),
+        member_user_ids=(member.user_id,),
+    )
+
+    edited_teams = TeamRepository()
+    edited_cell = replace(
+        old_cell,
+        manager_user_ids=(manager.user_id,),
+        member_user_ids=(custom_member.user_id,),
+    )
+    edited_teams.save_team(edited_cell)
+    seed_teams(edited_teams, users)
+    assert edited_teams.get_team(old_cell.team_id) == edited_cell
