@@ -81,9 +81,16 @@ test("posts routing review, approval, rejection and clarification payloads", asy
   vi.stubGlobal("fetch", fetchMock);
 
   await runRoutingReviews("ticket-1", "csrf");
-  await approveRoute("ticket-1", "rfa", "csrf", "Override.");
-  await rejectRoute("ticket-1", "cm", "Not viable.", "csrf");
-  await requestRouteClarification("ticket-1", "rfa", "Need detail.", ["What region?"], "csrf");
+  await approveRoute("ticket-1", "rfa", "csrf", "2026-07-23T09:00:00Z", "Override.");
+  await rejectRoute("ticket-1", "cm", "Not viable.", "csrf", "2026-07-23T09:00:00Z");
+  await requestRouteClarification(
+    "ticket-1",
+    "rfa",
+    "Need detail.",
+    ["What region?"],
+    "csrf",
+    "2026-07-23T09:00:00Z",
+  );
 
   expect(fetchMock).toHaveBeenNthCalledWith(
     1,
@@ -98,7 +105,11 @@ test("posts routing review, approval, rejection and clarification payloads", asy
     2,
     "http://127.0.0.1:8001/api/v1/routing/ticket-1/approve",
     {
-      body: JSON.stringify({ route: "rfa", overrideReason: "Override." }),
+      body: JSON.stringify({
+        route: "rfa",
+        overrideReason: "Override.",
+        expectedUpdatedAt: "2026-07-23T09:00:00Z",
+      }),
       credentials: "include",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": "csrf" },
       method: "POST",
@@ -108,7 +119,11 @@ test("posts routing review, approval, rejection and clarification payloads", asy
     3,
     "http://127.0.0.1:8001/api/v1/routing/ticket-1/reject",
     {
-      body: JSON.stringify({ route: "cm", reason: "Not viable." }),
+      body: JSON.stringify({
+        route: "cm",
+        reason: "Not viable.",
+        expectedUpdatedAt: "2026-07-23T09:00:00Z",
+      }),
       credentials: "include",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": "csrf" },
       method: "POST",
@@ -122,6 +137,7 @@ test("posts routing review, approval, rejection and clarification payloads", asy
         route: "rfa",
         reason: "Need detail.",
         questions: ["What region?"],
+        expectedUpdatedAt: "2026-07-23T09:00:00Z",
       }),
       credentials: "include",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": "csrf" },

@@ -36,9 +36,16 @@ class JiocInterventionService:
     def __init__(self, tickets: TicketServices) -> None:
         self._tickets = tickets
 
-    def hold(self, actor: UserAccount, ticket_id: UUID, reason: str) -> TicketRecord:
+    def hold(
+        self,
+        actor: UserAccount,
+        ticket_id: UUID,
+        reason: str,
+        expected_updated_at: datetime | None = None,
+    ) -> TicketRecord:
         self._require(actor)
         ticket = self._ticket(ticket_id)
+        self._ensure_expected(ticket, expected_updated_at)
         if ticket.state not in HOLDABLE_STATES:
             raise AppError(409, "invalid_ticket_state", "This request cannot be placed on hold.")
         now = datetime.now(UTC)
@@ -53,9 +60,16 @@ class JiocInterventionService:
         )
         return self._save(ticket, actor, TicketState.JIOC_INTERVENTION_HOLD, intervention)
 
-    def resume(self, actor: UserAccount, ticket_id: UUID, reason: str) -> TicketRecord:
+    def resume(
+        self,
+        actor: UserAccount,
+        ticket_id: UUID,
+        reason: str,
+        expected_updated_at: datetime | None = None,
+    ) -> TicketRecord:
         self._require(actor)
         ticket = self._ticket(ticket_id)
+        self._ensure_expected(ticket, expected_updated_at)
         active = next(
             (
                 item
@@ -88,9 +102,16 @@ class JiocInterventionService:
         )
         return self._save(ticket, actor, target, resume, (*history, resume))
 
-    def send_to_review(self, actor: UserAccount, ticket_id: UUID, reason: str) -> TicketRecord:
+    def send_to_review(
+        self,
+        actor: UserAccount,
+        ticket_id: UUID,
+        reason: str,
+        expected_updated_at: datetime | None = None,
+    ) -> TicketRecord:
         self._require(actor)
         ticket = self._ticket(ticket_id)
+        self._ensure_expected(ticket, expected_updated_at)
         if ticket.state not in REVIEWABLE_STATES:
             raise AppError(409, "invalid_ticket_state", "This request cannot be rerouted now.")
         intervention = JiocIntervention(
@@ -151,3 +172,12 @@ class JiocInterventionService:
     def _require(actor: UserAccount) -> None:
         if Permission.JIOC_INTERVENE not in actor.permissions:
             raise AppError(403, "forbidden", "Permission denied.")
+
+    @staticmethod
+    def _ensure_expected(ticket: TicketRecord, expected_updated_at: datetime | None) -> None:
+        if expected_updated_at is not None and ticket.updated_at != expected_updated_at:
+            raise AppError(
+                409,
+                "ticket_changed",
+                "The ticket changed after it was displayed. Refresh and try again.",
+            )

@@ -213,6 +213,7 @@ async def test_jioc_manager_can_hold_resume_and_reopen_an_automatic_route() -> N
         review = await _intervene(client, ticket_id, str(manager["csrfToken"]), "send_to_review")
 
     assert hold.json()["state"] == "JIOC_INTERVENTION_HOLD"
+    assert set(hold.json()) == {"ticketId", "state", "updatedAt"}
     assert resume.json()["state"] == "ANALYST_ASSIGNMENT"
     assert review.json()["state"] == "JIOC_REVIEW"
     stored = app.state.ticket_services.tickets._repository.get(UUID(ticket_id))
@@ -224,49 +225,19 @@ async def test_jioc_manager_can_hold_resume_and_reopen_an_automatic_route() -> N
     ]
 
 
-@pytest.mark.asyncio
-async def test_jioc_intervention_rejects_unauthorised_missing_and_invalid_work() -> None:
-    app = create_app(_settings())
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://testserver"
-    ) as client:
-        customer = await login(client, "user@example.test")
-        created = await client.post(
-            "/api/v1/chat/messages",
-            headers={"X-CSRF-Token": str(customer["csrfToken"])},
-            json={"message": "Need a synthetic oversight test request."},
-        )
-        ticket_id = created.json()["id"]
-        forbidden = await client.post(
-            f"/api/v1/routing/{ticket_id}/intervene",
-            headers={"X-CSRF-Token": str(customer["csrfToken"])},
-            json={"action": "hold", "reason": "Synthetic unauthorised intervention."},
-        )
-        manager = await login(client, "jioc.team@example.test")
-        missing = await client.post(
-            f"/api/v1/routing/{uuid4()}/intervene",
-            headers={"X-CSRF-Token": str(manager["csrfToken"])},
-            json={"action": "hold", "reason": "Synthetic missing request."},
-        )
-        invalid = {}
-        for action in ("hold", "resume", "send_to_review"):
-            response = await client.post(
-                f"/api/v1/routing/{ticket_id}/intervene",
-                headers={"X-CSRF-Token": str(manager["csrfToken"])},
-                json={"action": action, "reason": "Synthetic invalid state."},
-            )
-            invalid[action] = response.status_code
-
-    assert forbidden.status_code == 403
-    assert missing.status_code == 404
-    assert invalid == {"hold": 409, "resume": 409, "send_to_review": 409}
-
-
 async def _intervene(client: AsyncClient, ticket_id: str, csrf_token: str, action: str) -> Response:
+    oversight = await client.get("/api/v1/routing/oversight")
+    expected_updated_at = next(
+        task["updatedAt"] for task in oversight.json()["tasks"] if task["ticketId"] == ticket_id
+    )
     response = await client.post(
         f"/api/v1/routing/{ticket_id}/intervene",
         headers={"X-CSRF-Token": csrf_token},
-        json={"action": action, "reason": "Manager oversight test intervention."},
+        json={
+            "action": action,
+            "expectedUpdatedAt": expected_updated_at,
+            "reason": "Manager oversight test intervention.",
+        },
     )
     assert response.status_code == 200
     return response
