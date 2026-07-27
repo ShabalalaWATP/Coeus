@@ -29,6 +29,9 @@ These terms are canonical across the architecture atlas.
 | Delegated ACG administrator | Group-specific responsibility that can review applications; not an application role and not content access by itself.     |
 | In the loop                 | A human decision is required before the workflow can continue.                                                            |
 | On the loop                 | A human monitors deterministic automation and can intervene through explicit controls.                                    |
+| JIOC Agent                  | Deterministic system service that applies allowlisted routine routes, asks required questions or refers to human review.   |
+| JIOC Team Member            | Account role for human JIOC exception review and independent referred-dispute adjudication.                               |
+| JIOC Manager                | Account role with Team Member authority plus whole-flow oversight, global aggregates and reasoned intervention.           |
 | Separation of duties        | A live policy that prevents the same person approving their own authority-bearing work even when multiple roles are held. |
 
 ## Security and data

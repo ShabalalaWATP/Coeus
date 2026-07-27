@@ -8,6 +8,8 @@ The original mandatory-human routing boundary is historical. ADR 0036 and the
 agent-orchestration threat model now govern active JIOC Agent decisions and
 on-the-loop manager oversight. The collect, manager-approval and QC controls
 below remain current.
+See [ADR 0043](../adr/0043-jioc-human-review-and-manager-oversight.md) and the
+[JIOC operating model](../architecture/JIOC_OPERATING_MODEL.md).
 
 ## Assets
 
@@ -21,8 +23,10 @@ below remain current.
 
 | Threat | Control |
 | --- | --- |
-| An unauthorised actor decides routes | Active agent routing is constrained by its pinned deterministic policy, release gate and transition validation. Manual review and audited intervention require `jioc:review`; RFA and CM managers do not gain route authority. |
-| A route or intervention is applied without trace | Agent decisions retain versioned context and policy evidence. Manual intervention requires a recorded reason and creates an audited `ManagerRoutingDecision`. |
+| An unauthorised actor decides routes | Active agent routing is constrained by its pinned deterministic policy, release gate and transition validation. Human review requires `jioc:review`; only Managers receive the separate `jioc:oversight` and `jioc:intervene` permissions. |
+| A route or intervention is applied without trace | Agent decisions retain versioned context and policy evidence. Manual intervention requires a recorded reason and creates a `JiocIntervention` plus an audit event. |
+| Agent evidence is mistaken for a probability or exposed too broadly | Queue and bounded oversight expose policy version, route and closed rationale codes. The decimal evidence score is explicitly labelled as non-probabilistic; oversight omits intake, draft and product content. |
+| Required Agent clarification questions are lost | The customer hand-off is built from the final policy disposition and exact questions after capability evidence is evaluated; regression tests cover satisfiable capabilities that still require clarification. |
 | Someone other than the requester chooses the collect disposition | Collect choice is owner-only (collaborators and admins get 404/409), CSRF-validated and audited |
 | JIOC oversight exposes analyst work content | The bounded JIOC-only projection returns identifiers, workflow state, team ownership and aggregate load counts, never intake text, notes, drafts or products. |
 | Rejected work is resubmitted unchanged | Submission requires a draft created after the latest manager return or QC rejection. |

@@ -6,6 +6,8 @@ system structure and [Architecture: Deployment](ARCHITECTURE_DEPLOYMENT.md) for
 runtime and cloud boundaries. Every diagram below describes shipped behaviour.
 For role workspaces, customer-visible phases, alternative outcomes and exception
 loops, use the [User and Workflow Atlas](architecture/USER_AND_WORKFLOW.md).
+For Agent, Team Member and Manager responsibilities, use the
+[JIOC operating model](architecture/JIOC_OPERATING_MODEL.md).
 For every permitted cancellation, retry, intervention, compatibility and
 outcome edge, use the [Exhaustive Workflow State
 Reference](architecture/WORKFLOW_STATE_REFERENCE.md).
@@ -19,7 +21,7 @@ Reference](architecture/WORKFLOW_STATE_REFERENCE.md).
 | Intake | Deterministic extraction, safety, completeness and contradiction checks control the permitted next action. A model may only select one already-missing field when admitted. | Requester is in the loop: answers, edits, submits or cancels. |
 | Existing-product search | Access filtering, baseline retrieval, ranking, assurance and lifecycle outcome are deterministic. The Search Planner may add bounded search wording only. | Requester is in the loop: accepts or rejects offers. |
 | Active-work search | Deterministic, access-filtered matching offers visible existing work. | Requester is in the loop: joins existing work or consents to new tasking. |
-| JIOC routing | The active deterministic JIOC Agent may choose CM, RFA, clarification or manager review from versioned evidence. | JIOC Managers are on the loop for routine routes, with metrics, hold, reopen and audited intervention. They enter the loop for explicit review and exceptions. |
+| JIOC routing | The active deterministic JIOC Agent may choose CM, RFA, clarification or human review from versioned evidence. | JIOC Managers are on the loop for routine routes, with metrics, hold, resume and send-to-review intervention. Team Members and Managers share explicit review. |
 | Production and release | Assignment, manager approval, QC preflight and release gates are deterministic controls. | Analysts, delivery managers, QC and the requester are in the loop at their respective decisions. |
 | Outcome review | No agent decides whether released work met the requirement. | Requester, responsible manager and, on dispute, an independent JIOC human are in the loop. |
 
@@ -64,9 +66,10 @@ stateDiagram-v2
     JIOC_ROUTING_PENDING --> COLLECT_CHOICE: agent routes CM
     JIOC_ROUTING_PENDING --> INFO_REQUIRED: agent requests clarification
     JIOC_ROUTING_PENDING --> JIOC_REVIEW: agent abstains, shadows, fails or is disabled
-    JIOC_REVIEW --> ANALYST_ASSIGNMENT: manager routes RFA
-    JIOC_REVIEW --> COLLECT_CHOICE: manager routes CM
-    JIOC_REVIEW --> INFO_REQUIRED: manager requests clarification
+    JIOC_REVIEW --> ANALYST_ASSIGNMENT: human JIOC reviewer routes RFA
+    JIOC_REVIEW --> COLLECT_CHOICE: human JIOC reviewer routes CM
+    JIOC_REVIEW --> INFO_REQUIRED: human JIOC reviewer requests clarification
+    INFO_REQUIRED --> JIOC_REVIEW: requester supplies routing clarification
     COLLECT_CHOICE --> ANALYST_ASSIGNMENT: requester selects collect outcome
 
     ANALYST_ASSIGNMENT --> ANALYST_IN_PROGRESS: manager assigns analysts
@@ -106,6 +109,8 @@ sequenceDiagram
     participant W as Active-work discovery
     participant J as JIOC Agent
     participant K as Routing Critic
+    participant T as Ticket workflow
+    actor JR as Human JIOC reviewer
     actor JM as JIOC Manager
     actor RM as RFA manager
     actor CM as CM manager
@@ -128,14 +133,16 @@ sequenceDiagram
                 J->>RM: apply RFA route
             else sufficient CM evidence
                 J->>CM: apply CM route
-            else clarification or exception
+            else clarification required
                 J-->>C: request clarification
-                J->>JM: refer explicit review
+            else policy exception
+                J->>JR: refer explicit review
             end
             opt a delivery route is committed
                 J-->>K: commit exact route and request shadow critique
                 K-->>JM: oversight-only coded critique
-                JM-->>J: monitor, hold or send eligible case to review
+                JM-->>T: monitor, hold or resume eligible work
+                JM-->>JR: send eligible case to human review
                 alt RFA production
                     RM->>A: assign one to five analysts
                     A->>RM: submit assessed-product draft
@@ -199,7 +206,7 @@ critique. JIOC Managers see the result as oversight evidence only.
 ```mermaid
 flowchart LR
     accTitle: Bounded automation authority
-    accDescr: Deterministic controllers own lifecycle actions while optional planners and critics provide bounded advice and a JIOC Manager oversees or intervenes.
+    accDescr: Deterministic controllers own lifecycle actions, optional planners and critics provide bounded advice, human JIOC reviewers decide exceptions, and a JIOC Manager oversees or intervenes.
 
     IN["Intake controller<br/>deterministic safety, extraction,<br/>contradictions + completeness"]
     IP["Intake Planner<br/>bounded missing-field preference"]
@@ -208,19 +215,24 @@ flowchart LR
     AW["Active-work discovery<br/>authorised open work"]
     CAP["RFA + CM capability agents<br/>deterministic evidence"]
     JIOC["JIOC Agent<br/>active policy route"]
+    FLOW["Ticket workflow<br/>state and version authority"]
     CRIT["Routing Critic<br/>shadow-only challenge"]
-    JM{{"JIOC Manager<br/>on-loop oversight<br/>in-loop exceptions"}}
+    JR{{"Human JIOC reviewer<br/>in-loop exceptions"}}
+    JM{{"JIOC Manager<br/>on-loop oversight<br/>intervention"}}
 
     IP -. advice .-> IN --> RFI
     SP -. supplemental query .-> RFI --> AW --> CAP --> JIOC
+    JIOC -. exception referral .-> JR
     JIOC -. committed facts .-> CRIT -. oversight evidence .-> JM
-    JM -. hold or review .-> JIOC
+    JM -. monitor, hold or resume .-> FLOW
+    JM -. send eligible case to review .-> JR
 
     classDef det fill:#4f46e5,stroke:#3730a3,color:#fff
     classDef model fill:#9333ea,stroke:#6b21a8,color:#fff
     classDef human fill:#dc2626,stroke:#991b1b,color:#fff
-    class IN,RFI,AW,CAP,JIOC det
+    class IN,RFI,AW,CAP,JIOC,FLOW det
     class IP,SP,CRIT model
+    class JR,JM human
     class JM human
 ```
 

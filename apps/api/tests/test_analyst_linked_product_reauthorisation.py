@@ -312,7 +312,7 @@ async def _collection_assigned_ticket(client: AsyncClient, app: FastAPI) -> str:
     approved = await client.post(
         f"/api/v1/routing/{ticket_id}/approve",
         headers={"X-CSRF-Token": jioc_csrf},
-        json={"route": "cm"},
+        json={"route": "cm", "expectedUpdatedAt": routed.json()["updatedAt"]},
     )
     assert routed.status_code == 200
     assert approved.json()["state"] == "COLLECT_CHOICE"

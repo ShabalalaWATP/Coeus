@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
 
-import { RoutingCriticStatus } from "./RoutingCriticStatus";
+import { JiocOversightTasks } from "./JiocOversightTasks";
 import { ErrorState, LoadingState } from "../../components/ui/PageState";
 import {
   getJiocOversight,
@@ -25,7 +24,15 @@ export default function JiocOversightPage() {
       action: "hold" | "resume" | "send_to_review";
       reason: string;
       ticketId: string;
-    }) => interveneInRouting(input.ticketId, input.action, input.reason, session?.csrfToken ?? ""),
+      expectedUpdatedAt: string;
+    }) =>
+      interveneInRouting(
+        input.ticketId,
+        input.action,
+        input.reason,
+        session?.csrfToken ?? "",
+        input.expectedUpdatedAt,
+      ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["jioc-oversight"] }),
   });
 
@@ -45,12 +52,14 @@ export default function JiocOversightPage() {
           <section className="oversight-counts" aria-label="Workflow totals">
             <CountGroup label="By state" counts={oversight.countsByState} formatState />
             <CountGroup label="By route" counts={oversight.countsByRoute} />
+            <CountGroup label="By Agent outcome" counts={oversight.countsByAgentDisposition} />
           </section>
           <OversightTeams teams={oversight.teams} />
-          <OversightTasks
+          <JiocOversightTasks
+            isError={intervention.isError}
             isPending={intervention.isPending}
-            onIntervene={(ticketId, action, reason) =>
-              intervention.mutate({ action, reason, ticketId })
+            onIntervene={(ticketId, action, reason, expectedUpdatedAt) =>
+              intervention.mutate({ action, expectedUpdatedAt, reason, ticketId })
             }
             tasks={oversight.tasks}
           />
@@ -114,141 +123,6 @@ function OversightTeams({ teams }: { teams: JiocOversight["teams"] }) {
         </table>
       </div>
     </section>
-  );
-}
-
-function OversightTasks({
-  isPending,
-  onIntervene,
-  tasks,
-}: {
-  isPending: boolean;
-  onIntervene: (
-    ticketId: string,
-    action: "hold" | "resume" | "send_to_review",
-    reason: string,
-  ) => void;
-  tasks: JiocOversight["tasks"];
-}) {
-  return (
-    <section className="surface oversight-section" aria-labelledby="oversight-tasks-title">
-      <h2 id="oversight-tasks-title">Task ownership</h2>
-      <p className="workspace-alert" role="note">
-        Routing critic results are advisory evidence only. The shadow-only critic cannot route or
-        change workflow. JIOC managers monitor its challenges and intervene through the separate
-        controls below.
-      </p>
-      {tasks.length === 0 ? (
-        <p>No active tasks.</p>
-      ) : (
-        <div className="oversight-table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Reference</th>
-                <th>State</th>
-                <th>Route</th>
-                <th>Team</th>
-                <th>Analysts</th>
-                <th>Work packages</th>
-                <th>Agent decision</th>
-                <th>Routing critic</th>
-                <th>Intervention</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tasks.map((task) => (
-                <tr key={task.ticketId}>
-                  <th>{task.reference}</th>
-                  <td>{formatWorkflowState(task.state)}</td>
-                  <td>{task.route?.toUpperCase() ?? "Unrouted"}</td>
-                  <td>{task.teamName ?? "Unassigned"}</td>
-                  <td>{task.analystCount}</td>
-                  <td>
-                    {task.completedWorkPackageCount} of {task.workPackageCount}
-                  </td>
-                  <td>
-                    {task.agentDisposition
-                      ? `${task.agentDisposition.replaceAll("_", " ")} (${Math.round(
-                          (task.agentConfidence ?? 0) * 100,
-                        )}%)`
-                      : "Legacy or pending"}
-                  </td>
-                  <td>
-                    <RoutingCriticStatus task={task} />
-                  </td>
-                  <td>
-                    <TaskInterventionControls
-                      disabled={isPending}
-                      onIntervene={(action, reason) => onIntervene(task.ticketId, action, reason)}
-                      state={task.state}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
-  );
-}
-
-function TaskInterventionControls({
-  disabled,
-  onIntervene,
-  state,
-}: {
-  disabled: boolean;
-  onIntervene: (action: "hold" | "resume" | "send_to_review", reason: string) => void;
-  state: string;
-}) {
-  const [reason, setReason] = useState("");
-  const ready = reason.trim().length >= 3 && !disabled;
-  const onHold = state === "JIOC_INTERVENTION_HOLD";
-  const canReview = ["JIOC_ROUTING_PENDING", "COLLECT_CHOICE", "ANALYST_ASSIGNMENT"].includes(
-    state,
-  );
-  const canHold = [
-    "JIOC_ROUTING_PENDING",
-    "JIOC_REVIEW",
-    "COLLECT_CHOICE",
-    "ANALYST_ASSIGNMENT",
-    "ANALYST_IN_PROGRESS",
-    "MANAGER_APPROVAL",
-    "QC_REVIEW",
-    "REWORK_REQUIRED",
-  ].includes(state);
-  if (!onHold && !canReview && !canHold) return <span>No action available</span>;
-  return (
-    <div className="oversight-intervention">
-      <input
-        aria-label="Intervention reason"
-        onChange={(event) => setReason(event.target.value)}
-        placeholder="Reason required"
-        value={reason}
-      />
-      {onHold ? (
-        <button disabled={!ready} onClick={() => onIntervene("resume", reason)} type="button">
-          Resume
-        </button>
-      ) : (
-        <>
-          <button disabled={!ready} onClick={() => onIntervene("hold", reason)} type="button">
-            Hold
-          </button>
-          {canReview ? (
-            <button
-              disabled={!ready}
-              onClick={() => onIntervene("send_to_review", reason)}
-              type="button"
-            >
-              Send to review
-            </button>
-          ) : null}
-        </>
-      )}
-    </div>
   );
 }
 
