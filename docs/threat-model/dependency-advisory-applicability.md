@@ -20,6 +20,24 @@ moderate-or-higher advisories remain release-blocking. The exact exception lives
 in `pnpm-workspace.yaml`, and the root `audit:production` script is shared by
 local and CI evaluation so the gate cannot drift.
 
+## Resolved transitive advisories
+
+The dependency policy pins patched transitive versions when an upstream package
+range and the seven-day release-age control would otherwise retain a vulnerable
+release:
+
+| Advisory | Dependency | Patched version | Reachability |
+| --- | --- | --- | --- |
+| `GHSA-mh99-v99m-4gvg` | `brace-expansion` | `5.0.8` | Development tooling through ESLint, OpenAPI generation and Vitest |
+| `GHSA-r28c-9q8g-f849` | `postcss` | `8.5.18` | Frontend build tooling through Vite |
+
+The overrides replace every vulnerable resolved version, rather than silencing
+the advisories. Older `minimatch` releases are lifted to `10.2.5` so all of
+their consumers use the compatible `brace-expansion` 5 export shape. Both
+patched versions are explicit release-age exceptions so a clean install and
+Dependabot resolve the same graph. Lint, type checking, the frontend suite and
+the production build exercise the affected consumers.
+
 ## Change and expiry controls
 
 - Remove the exception when a compatible patched React Router release is
