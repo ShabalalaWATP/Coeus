@@ -3691,8 +3691,25 @@ export interface components {
     JiocInterventionRequest: {
       /** Action */
       action: string;
+      /** Expectedupdatedat */
+      expectedUpdatedAt?: string | null;
       /** Reason */
       reason: string;
+    };
+    /** JiocInterventionResponse */
+    JiocInterventionResponse: {
+      /** State */
+      state: string;
+      /**
+       * Ticketid
+       * Format: uuid
+       */
+      ticketId: string;
+      /**
+       * Updatedat
+       * Format: date-time
+       */
+      updatedAt: string;
     };
     /** JiocReanalysisDecisionRequest */
     JiocReanalysisDecisionRequest: {
@@ -3895,6 +3912,12 @@ export interface components {
       agentConfidence: number | null;
       /** Agentdisposition */
       agentDisposition: string | null;
+      /** Agentpolicyversion */
+      agentPolicyVersion: string | null;
+      /** Agentrationalecodes */
+      agentRationaleCodes: string[];
+      /** Agentroute */
+      agentRoute: string | null;
       /** Analystcount */
       analystCount: number;
       /** Completedworkpackagecount */
@@ -3922,6 +3945,11 @@ export interface components {
        * Format: uuid
        */
       ticketId: string;
+      /**
+       * Updatedat
+       * Format: date-time
+       */
+      updatedAt: string;
       /** Workpackagecount */
       workPackageCount: number;
     };
@@ -4594,6 +4622,8 @@ export interface components {
     };
     /** RouteApprovalRequest */
     RouteApprovalRequest: {
+      /** Expectedupdatedat */
+      expectedUpdatedAt?: string | null;
       /** Overridereason */
       overrideReason?: string | null;
       /** Route */
@@ -4601,8 +4631,19 @@ export interface components {
     };
     /** RouteClarificationRequest */
     RouteClarificationRequest: {
+      /** Expectedupdatedat */
+      expectedUpdatedAt?: string | null;
       /** Questions */
       questions: string[];
+      /** Reason */
+      reason: string;
+      /** Route */
+      route: string;
+    };
+    /** RouteDecisionReasonRequest */
+    RouteDecisionReasonRequest: {
+      /** Expectedupdatedat */
+      expectedUpdatedAt?: string | null;
       /** Reason */
       reason: string;
       /** Route */
@@ -4632,10 +4673,23 @@ export interface components {
       /** Recommendedroute */
       recommendedRoute: string;
     };
+    /** RoutingErrorDetailResponse */
+    RoutingErrorDetailResponse: {
+      /** Code */
+      code: string;
+      /** Message */
+      message: string;
+    };
+    /** RoutingErrorResponse */
+    RoutingErrorResponse: {
+      error: components["schemas"]["RoutingErrorDetailResponse"];
+    };
     /** RoutingOversightResponse */
     RoutingOversightResponse: {
       /** Analysts */
       analysts: components["schemas"]["OversightAnalystResponse"][];
+      /** Countsbyagentdisposition */
+      countsByAgentDisposition: components["schemas"]["OversightCountResponse"][];
       /** Countsbyroute */
       countsByRoute: components["schemas"]["OversightCountResponse"][];
       /** Countsbystate */
@@ -4707,6 +4761,11 @@ export interface components {
       ticketId: string;
       /** Title */
       title: string;
+      /**
+       * Updatedat
+       * Format: date-time
+       */
+      updatedAt: string;
       /** Workflowplanupdates */
       workflowPlanUpdates: components["schemas"]["WorkflowPlanUpdateResponse"][];
     };
@@ -8221,6 +8280,15 @@ export interface operations {
           "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
+      /** @description The expected ticket version is required before this decision. */
+      428: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RoutingErrorResponse"];
+        };
+      };
     };
   };
   request_clarification_api_v1_routing__ticket_id__clarification_post: {
@@ -8258,6 +8326,15 @@ export interface operations {
           "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
+      /** @description The expected ticket version is required before this decision. */
+      428: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RoutingErrorResponse"];
+        };
+      };
     };
   };
   intervene_in_route_api_v1_routing__ticket_id__intervene_post: {
@@ -8283,7 +8360,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["RoutingTicketResponse"];
+          "application/json": components["schemas"]["JiocInterventionResponse"];
         };
       };
       /** @description Validation Error */
@@ -8293,6 +8370,15 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+      /** @description The expected ticket version is required before this decision. */
+      428: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RoutingErrorResponse"];
         };
       };
     };
@@ -8485,7 +8571,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["RouteReasonRequest"];
+        "application/json": components["schemas"]["RouteDecisionReasonRequest"];
       };
     };
     responses: {
@@ -8505,6 +8591,15 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+      /** @description The expected ticket version is required before this decision. */
+      428: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RoutingErrorResponse"];
         };
       };
     };

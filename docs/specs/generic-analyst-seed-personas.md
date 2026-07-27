@@ -25,7 +25,7 @@ demonstrations harder to understand.
   organisational team membership. Every analyst seed profile uses the title
   `Military Intelligence Analyst`; specialisms and biographies provide the
   individual detail.
-- Give all 15 seed accounts distinct display names borrowed from Scottish
+- Give all 16 seed accounts distinct display names borrowed from Scottish
   footballers. These are fictional demonstration personas. Their biographies
   do not describe the real people and must not be interpreted as claims about
   their employment, military service or security clearance.
@@ -55,7 +55,7 @@ No destructive local reset is required for this refresh.
 
 ## Acceptance criteria
 
-- The user directory contains 15 accounts with distinct Scottish-footballer
+- The user directory contains 16 accounts with distinct Scottish-footballer
   display names and no specialised analyst role.
 - The four analyst accounts all report the same `Analyst` role and
   `Military Intelligence Analyst` profile title.

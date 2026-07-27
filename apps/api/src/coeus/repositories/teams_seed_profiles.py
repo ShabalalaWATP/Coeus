@@ -32,11 +32,18 @@ PROFILE_SPECS: dict[str, ProfileSpec] = {
         "constraints before requests enter the assessment workflow.",
     ),
     "jioc.team@example.test": (
-        "JIOC Intelligence Watch Officer",
-        ("Tasking triage", "Route adjudication", "Operational monitoring"),
-        "Synthetic exercise persona maintaining the intelligence operations "
-        "picture, triaging incoming requirements and routing each task to an "
-        "assessment or collection team without changing the underlying need.",
+        "JIOC Duty Manager",
+        ("Automation oversight", "Exception governance", "Operational monitoring"),
+        "Synthetic exercise persona supervising automated routing outcomes, "
+        "monitoring team capacity and intervening when evidence, risk or policy "
+        "requires a controlled human decision.",
+    ),
+    "jioc.member@example.test": (
+        "JIOC Review Officer",
+        ("Exception review", "Route adjudication", "Customer clarification"),
+        "Synthetic exercise persona resolving requests that deterministic routing "
+        "cannot safely decide and independently adjudicating referred customer "
+        "re-analysis disputes.",
     ),
     "rfa.manager@example.test": (
         "Senior Assessment Manager",

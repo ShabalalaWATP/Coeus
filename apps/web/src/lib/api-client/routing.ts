@@ -15,6 +15,7 @@ export type {
   CapabilityCatalogue,
   CapabilityTeam,
   CmCapabilityReview,
+  JiocAgentDecision,
   JiocOversight,
   RfaCapabilityReview,
   RoutingQueue,
@@ -37,14 +38,21 @@ export async function getJiocOversight(): Promise<JiocOversight> {
   return apiRequestJson<JiocOversight>("/api/v1/routing/oversight", { method: "GET" });
 }
 
+export async function getRoutingTicket(ticketId: string): Promise<RoutingTicket> {
+  return apiRequestJson<RoutingTicket>(`/api/v1/routing/${pathSegment(ticketId)}`, {
+    method: "GET",
+  });
+}
+
 export async function interveneInRouting(
   ticketId: string,
   action: "hold" | "resume" | "send_to_review",
   reason: string,
   csrfToken: string,
-): Promise<RoutingTicket> {
-  return apiRequestJson<RoutingTicket>(`/api/v1/routing/${pathSegment(ticketId)}/intervene`, {
-    body: JSON.stringify({ action, reason }),
+  expectedUpdatedAt: string,
+): Promise<{ ticketId: string; state: string; updatedAt: string }> {
+  return apiRequestJson(`/api/v1/routing/${pathSegment(ticketId)}/intervene`, {
+    body: JSON.stringify({ action, reason, expectedUpdatedAt }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
   });
@@ -102,10 +110,11 @@ export async function approveRoute(
   ticketId: string,
   route: RoutingRoute,
   csrfToken: string,
+  expectedUpdatedAt: string,
   overrideReason?: string,
 ): Promise<RoutingTicket> {
   return apiRequestJson<RoutingTicket>(`/api/v1/routing/${pathSegment(ticketId)}/approve`, {
-    body: JSON.stringify({ route, overrideReason }),
+    body: JSON.stringify({ route, overrideReason, expectedUpdatedAt }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
   });
@@ -116,9 +125,10 @@ export async function rejectRoute(
   route: RoutingRoute,
   reason: string,
   csrfToken: string,
+  expectedUpdatedAt: string,
 ): Promise<RoutingTicket> {
   return apiRequestJson<RoutingTicket>(`/api/v1/routing/${pathSegment(ticketId)}/reject`, {
-    body: JSON.stringify({ route, reason }),
+    body: JSON.stringify({ route, reason, expectedUpdatedAt }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
   });
@@ -130,9 +140,10 @@ export async function requestRouteClarification(
   reason: string,
   questions: string[],
   csrfToken: string,
+  expectedUpdatedAt: string,
 ): Promise<RoutingTicket> {
   return apiRequestJson<RoutingTicket>(`/api/v1/routing/${pathSegment(ticketId)}/clarification`, {
-    body: JSON.stringify({ route, reason, questions }),
+    body: JSON.stringify({ route, reason, questions, expectedUpdatedAt }),
     headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
   });

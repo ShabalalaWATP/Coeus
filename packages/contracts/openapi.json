@@ -3836,6 +3836,18 @@
             "title": "Action",
             "type": "string"
           },
+          "expectedUpdatedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expectedupdatedat"
+          },
           "reason": {
             "maxLength": 1000,
             "minLength": 3,
@@ -3848,6 +3860,31 @@
           "reason"
         ],
         "title": "JiocInterventionRequest",
+        "type": "object"
+      },
+      "JiocInterventionResponse": {
+        "properties": {
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "ticketId": {
+            "format": "uuid",
+            "title": "Ticketid",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticketId",
+          "state",
+          "updatedAt"
+        ],
+        "title": "JiocInterventionResponse",
         "type": "object"
       },
       "JiocReanalysisDecisionRequest": {
@@ -4350,6 +4387,35 @@
             ],
             "title": "Agentdisposition"
           },
+          "agentPolicyVersion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agentpolicyversion"
+          },
+          "agentRationaleCodes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Agentrationalecodes",
+            "type": "array"
+          },
+          "agentRoute": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agentroute"
+          },
           "analystCount": {
             "title": "Analystcount",
             "type": "integer"
@@ -4435,6 +4501,11 @@
             "title": "Ticketid",
             "type": "string"
           },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          },
           "workPackageCount": {
             "title": "Workpackagecount",
             "type": "integer"
@@ -4444,6 +4515,7 @@
           "ticketId",
           "reference",
           "state",
+          "updatedAt",
           "route",
           "teamId",
           "teamName",
@@ -4452,6 +4524,9 @@
           "completedWorkPackageCount",
           "agentDisposition",
           "agentConfidence",
+          "agentRoute",
+          "agentRationaleCodes",
+          "agentPolicyVersion",
           "criticVerdict",
           "criticOutcome",
           "criticChallengeCount",
@@ -6140,6 +6215,18 @@
       },
       "RouteApprovalRequest": {
         "properties": {
+          "expectedUpdatedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expectedupdatedat"
+          },
           "overrideReason": {
             "anyOf": [
               {
@@ -6167,6 +6254,18 @@
       },
       "RouteClarificationRequest": {
         "properties": {
+          "expectedUpdatedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expectedupdatedat"
+          },
           "questions": {
             "items": {
               "maxLength": 300,
@@ -6196,6 +6295,39 @@
           "questions"
         ],
         "title": "RouteClarificationRequest",
+        "type": "object"
+      },
+      "RouteDecisionReasonRequest": {
+        "properties": {
+          "expectedUpdatedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expectedupdatedat"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 3,
+            "title": "Reason",
+            "type": "string"
+          },
+          "route": {
+            "pattern": "^(rfa|cm)$",
+            "title": "Route",
+            "type": "string"
+          }
+        },
+        "required": [
+          "route",
+          "reason"
+        ],
+        "title": "RouteDecisionReasonRequest",
         "type": "object"
       },
       "RouteReasonRequest": {
@@ -6249,6 +6381,36 @@
         "title": "RouteRecommendationResponse",
         "type": "object"
       },
+      "RoutingErrorDetailResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "RoutingErrorDetailResponse",
+        "type": "object"
+      },
+      "RoutingErrorResponse": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/RoutingErrorDetailResponse"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "RoutingErrorResponse",
+        "type": "object"
+      },
       "RoutingOversightResponse": {
         "properties": {
           "analysts": {
@@ -6256,6 +6418,13 @@
               "$ref": "#/components/schemas/OversightAnalystResponse"
             },
             "title": "Analysts",
+            "type": "array"
+          },
+          "countsByAgentDisposition": {
+            "items": {
+              "$ref": "#/components/schemas/OversightCountResponse"
+            },
+            "title": "Countsbyagentdisposition",
             "type": "array"
           },
           "countsByRoute": {
@@ -6290,6 +6459,7 @@
         "required": [
           "countsByState",
           "countsByRoute",
+          "countsByAgentDisposition",
           "teams",
           "analysts",
           "tasks"
@@ -6492,6 +6662,11 @@
             "title": "Title",
             "type": "string"
           },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          },
           "workflowPlanUpdates": {
             "items": {
               "$ref": "#/components/schemas/WorkflowPlanUpdateResponse"
@@ -6505,6 +6680,7 @@
           "reference",
           "requesterUserId",
           "state",
+          "updatedAt",
           "title",
           "priority",
           "priorityAssessment",
@@ -13120,6 +13296,16 @@
               }
             },
             "description": "Validation Error"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutingErrorResponse"
+                }
+              }
+            },
+            "description": "The expected ticket version is required before this decision."
           }
         },
         "summary": "Approve Route",
@@ -13189,6 +13375,16 @@
               }
             },
             "description": "Validation Error"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutingErrorResponse"
+                }
+              }
+            },
+            "description": "The expected ticket version is required before this decision."
           }
         },
         "summary": "Request Clarification",
@@ -13243,7 +13439,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RoutingTicketResponse"
+                  "$ref": "#/components/schemas/JiocInterventionResponse"
                 }
               }
             },
@@ -13258,6 +13454,16 @@
               }
             },
             "description": "Validation Error"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutingErrorResponse"
+                }
+              }
+            },
+            "description": "The expected ticket version is required before this decision."
           }
         },
         "summary": "Intervene In Route",
@@ -13610,7 +13816,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/RouteReasonRequest"
+                "$ref": "#/components/schemas/RouteDecisionReasonRequest"
               }
             }
           },
@@ -13636,6 +13842,16 @@
               }
             },
             "description": "Validation Error"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutingErrorResponse"
+                }
+              }
+            },
+            "description": "The expected ticket version is required before this decision."
           }
         },
         "summary": "Reject Route",

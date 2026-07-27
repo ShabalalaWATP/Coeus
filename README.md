@@ -24,7 +24,7 @@ original `coeus` working name.
   and enforce workflow gates. The active JIOC Agent may route an eligible request
   to CM or RFA; people remain in the loop for requester choices, delivery
   approvals, release and exception review. JIOC Managers oversee routine routing
-  on the loop and can hold, reopen or refer cases through audited controls. See
+  on the loop and can hold, resume or send cases to review through audited controls. See
   [AI Agents](docs/AI_AGENTS.md).
 
 ## Documentation

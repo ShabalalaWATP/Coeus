@@ -15,7 +15,7 @@ boundary or operational control in depth.
 | Audience                      | Recommended path                                                                                                  |
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | Decision-maker                | [User and workflow](USER_AND_WORKFLOW.md), then [deployment and operations](DEPLOYMENT_AND_OPERATIONS.md)         |
-| Product or service owner      | [User and workflow](USER_AND_WORKFLOW.md), then the canonical [workflow state model](../ARCHITECTURE_WORKFLOW.md) |
+| Product or service owner      | [User and workflow](USER_AND_WORKFLOW.md), [JIOC operating model](JIOC_OPERATING_MODEL.md), then the canonical [workflow state model](../ARCHITECTURE_WORKFLOW.md) |
 | Frontend or backend developer | [Application components](APPLICATION_COMPONENTS.md), then [data, search and AI](DATA_SEARCH_AND_AI.md)            |
 | Security reviewer             | [Security and trust](SECURITY_AND_TRUST.md), then [data, search and AI](DATA_SEARCH_AND_AI.md)                    |
 | Operator                      | [Deployment and operations](DEPLOYMENT_AND_OPERATIONS.md), then the linked runbooks                               |
@@ -46,6 +46,7 @@ flowchart TB
 | View                                                      | Questions it answers                                                                                                      |
 | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | [User and workflow](USER_AND_WORKFLOW.md)                 | Who uses Istari, which workspace do they see, who decides, and how does a request feel to the customer?                   |
+| [JIOC operating model](JIOC_OPERATING_MODEL.md)           | How do the Agent, Team Member and Manager divide routine routing, exceptions, oversight, intervention and disputes?       |
 | [Exhaustive workflow states](WORKFLOW_STATE_REFERENCE.md) | Which state movements are permitted, including cancellation, intervention, retry, compatibility and outcome paths?        |
 | [Application components](APPLICATION_COMPONENTS.md)       | Which runtime component receives a request, where do rules live, and how are synchronous and background effects composed? |
 | [Data, search and AI](DATA_SEARCH_AND_AI.md)              | Which store is authoritative, how are bytes protected, how do the two indexes work, and where may models advise?          |

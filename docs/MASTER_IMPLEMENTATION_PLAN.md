@@ -344,3 +344,6 @@ Status: complete and verified for the supported local/test boundary.
   Grounded indexes are excluded and require a verified post-restore rebuild.
 - Current search-operations limitation: inactive ready generations are retained,
   with no authorised operator rollback, retirement state or cleanup policy.
+- JIOC Team Members and Managers share exception review; Managers own on-loop
+  oversight and intervention. [ADR 0043](adr/0043-jioc-human-review-and-manager-oversight.md)
+  covers Agent evidence, attention filtering and role-specific seeded journeys.
