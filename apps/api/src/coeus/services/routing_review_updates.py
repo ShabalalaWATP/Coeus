@@ -29,6 +29,8 @@ def build_routing_review_update(
     actor_user_id: UUID,
     rfa_review: RfaCapabilityReview,
     cm_review: CmCapabilityReview,
+    *,
+    include_customer_handoff: bool = True,
 ) -> RoutingReviewUpdate:
     recommendation = recommend_route(ticket.ticket_id, rfa_review, cm_review)
     target_state = state_for_recommendation(recommendation)
@@ -38,7 +40,7 @@ def build_routing_review_update(
         recommendation.reasoning_summary,
         (*rfa_review.required_clarifications, *cm_review.required_clarifications),
     )
-    if target_state != TicketState.INFO_REQUIRED:
+    if target_state != TicketState.INFO_REQUIRED or not include_customer_handoff:
         handoff = None
     proposed = append_handoff(
         replace(

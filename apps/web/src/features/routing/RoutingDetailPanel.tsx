@@ -13,7 +13,7 @@ import {
   canSubmitClarification,
   isRouteOverride,
 } from "./routing-model";
-import { PlanUpdates, Recommendation, Review } from "./routing-sections";
+import { JiocAgentDecisionSummary, PlanUpdates, Recommendation, Review } from "./routing-sections";
 import { EmptyState } from "../../components/ui/PageState";
 import { StatusPill } from "../../components/ui/StatusPill";
 import type { AnalystTask } from "../../lib/api-client/analyst";
@@ -154,6 +154,7 @@ export function RoutingDetailPanel({
               } team. The recommendations below are retained as decision context.`}
             </p>
           ) : null}
+          <JiocAgentDecisionSummary decision={selectedTicket.jiocAgentDecision} />
           <Recommendation ticket={selectedTicket} />
           <AdvisoryEvidencePanel runs={selectedTicket.advisoryRuns} />
           <Review title="RFA recommendation" review={selectedTicket.rfaReview} />

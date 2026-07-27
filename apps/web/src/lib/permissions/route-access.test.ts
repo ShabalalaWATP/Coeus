@@ -88,3 +88,32 @@ test("route metadata includes active navigation paths", () => {
     "acg:view",
   ]);
 });
+
+test("separates JIOC Team Member review from Manager oversight navigation", () => {
+  const member: UserProfile = {
+    id: "jioc-member",
+    username: "jioc.member@example.test",
+    displayName: "JIOC Review Officer",
+    roles: ["JIOC Team Member"],
+    defaultRoute: "/jioc/queue",
+    passwordResetRequired: false,
+    permissions: ["jioc:review"],
+  };
+  const manager: UserProfile = {
+    ...member,
+    id: "jioc-manager",
+    username: "jioc.team@example.test",
+    displayName: "JIOC Duty Manager",
+    roles: ["JIOC Manager"],
+    defaultRoute: "/jioc/oversight",
+    permissions: ["jioc:review", "jioc:oversight", "analytics:view_global"],
+  };
+
+  expect(visibleNavigationItems(member).map((item) => item.label)).toEqual(["JIOC Queue"]);
+  expect(visibleNavigationItems(manager).map((item) => item.label)).toEqual([
+    "JIOC Queue",
+    "JIOC Oversight",
+    "Admin Analytics",
+  ]);
+  expect(visibleNavigationItems(manager).map((item) => item.label)).not.toContain("Audit");
+});

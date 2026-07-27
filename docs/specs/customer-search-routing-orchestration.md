@@ -86,9 +86,9 @@ Deterministic validation enforces required intake, route eligibility, legal stat
 transitions and access boundaries. Policy outcomes are explicit eligibility,
 ambiguity, insufficient evidence or prohibition, not fixed pseudo-probabilities.
 Both routes eligible, negated or contradictory intent, missing/stale facts,
-restrictions and policy exceptions route to manual review. The JIOC Manager is on
-the loop through an oversight queue, analytics and an audited intervention action,
-not a mandatory approval gate.
+restrictions and policy exceptions route to a human JIOC reviewer. Team Members
+and Managers share review authority. The Manager is on the loop through
+oversight, analytics and audited intervention, not a mandatory approval gate.
 
 Routing has three mutually exclusive operational modes:
 

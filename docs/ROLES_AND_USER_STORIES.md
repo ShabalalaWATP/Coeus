@@ -25,7 +25,7 @@ grant membership or access to protected product content.
 | Administrator                | `/admin/overview`      | Governance: access, AI, search, voice, ACGs, audit and analytics                                |
 | Customer                     | `/app/requests`        | Raise and track intelligence requests                                                           |
 | JIOC Team Member             | `/jioc/queue`          | Resolve routing exceptions and independently adjudicate referred re-analysis disputes           |
-| JIOC Manager                 | `/jioc/oversight`      | On-loop oversight, audited intervention and routing-exception support                            |
+| JIOC Manager                 | `/jioc/oversight`      | Shared exception review plus on-loop oversight, intervention and global aggregates               |
 | RFA Manager                  | `/rfa/queue`           | Lead the RFA team: assign analysts, approve analyst work, manage the team                       |
 | RFA Team Member              | `/rfa/products`        | Maintain entitled RFA product metadata and assets                                                |
 | CM Manager                   | `/collection/queue`    | Lead the CM team: assign analysts, approve analyst work, manage the team                        |
@@ -71,8 +71,8 @@ ACGs, and reads the audit log and global analytics.
 
 - Review requests that the active JIOC Agent cannot safely route automatically,
   with the capability evidence and routing recommendation beside them.
-- Approve or override CM/RFA routing with a reason, query the requester, reject a
-  route, and review or link similar open requests.
+- Approve the recommendation, override it with a reason, request clarification
+  or reject with a recorded reason, and review or link similar open requests.
 - Independently adjudicate a customer re-analysis dispute referred by the
   responsible RFA or Collection manager.
 - Does not assign analysts, edit analyst work or access protected products.
@@ -82,7 +82,8 @@ ACGs, and reads the audit log and global analytics.
 - Remain on the loop through JIOC Oversight rather than approving every routine
   decision made by the active JIOC Agent.
 - Monitor workflow and route totals, active area teams, analyst capacity,
-  bounded task ownership and shadow Routing Critic evidence.
+  Agent outcome counts, bounded task ownership and shadow Routing Critic
+  evidence. The Agent evidence score is not a calibrated probability.
 - Use audited controls to hold or resume eligible work, or send an eligible
   automated route to the JIOC exception queue.
 - Can perform JIOC Team Member exception and re-analysis decisions when needed,

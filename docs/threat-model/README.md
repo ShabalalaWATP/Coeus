@@ -17,6 +17,7 @@ principal controls and links back to their applicable models.
 - [Auth, RBAC and sessions](auth-rbac-sessions.md)
 - [Bounded advisory planners](bounded-advisory-planners.md)
 - [Customer search and agent routing](customer-search-and-agent-routing.md)
+- [Dependency advisory applicability](dependency-advisory-applicability.md)
 - [External product ingestion](external-product-ingestion.md)
 - [Feedback and analytics](feedback-analytics.md)
 - [GCP deployment](gcp-deployment.md)
