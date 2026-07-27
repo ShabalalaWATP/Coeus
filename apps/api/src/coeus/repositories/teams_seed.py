@@ -1,5 +1,6 @@
 """Seed the organisational teams and member profiles from the seed users."""
 
+from dataclasses import replace
 from uuid import UUID, uuid4
 
 from coeus.domain.teams import OrgTeam, TeamKind, UserProfile
@@ -37,8 +38,8 @@ _TEAM_SPECS: tuple[tuple[str, TeamKind, str | None, tuple[str, ...], tuple[str, 
         "JIOC Routing Cell",
         TeamKind.JIOC,
         None,
-        (),
         ("jioc.team@example.test",),
+        ("jioc.member@example.test",),
     ),
     (
         "Quality Control Cell",
@@ -53,6 +54,7 @@ _TEAM_SPECS: tuple[tuple[str, TeamKind, str | None, tuple[str, ...], tuple[str, 
 def seed_teams(teams: TeamRepository, users: SeedUserRepository) -> None:
     """Create seed teams and reconcile untouched synthetic profiles."""
     if teams.list_teams():
+        _ensure_jioc_seed_member(teams, users)
         _ensure_profiles(teams, users)
         return
     for name, kind, capability_team_id, manager_names, member_names in _TEAM_SPECS:
@@ -69,6 +71,31 @@ def seed_teams(teams: TeamRepository, users: SeedUserRepository) -> None:
             )
         )
     _ensure_profiles(teams, users)
+
+
+def _ensure_jioc_seed_member(teams: TeamRepository, users: SeedUserRepository) -> None:
+    """Upgrade only the untouched pre-Team-Member synthetic JIOC cell."""
+    users_by_name = {user.username: user.user_id for user in users.list_users()}
+    manager_id = users_by_name.get("jioc.team@example.test")
+    member_id = users_by_name.get("jioc.member@example.test")
+    if manager_id is None or member_id is None:
+        return
+    for team in teams.list_teams():
+        if (
+            team.name == "JIOC Routing Cell"
+            and team.kind is TeamKind.JIOC
+            and team.capability_team_id is None
+            and not team.manager_user_ids
+            and team.member_user_ids == (manager_id,)
+        ):
+            teams.save_team(
+                replace(
+                    team,
+                    manager_user_ids=(manager_id,),
+                    member_user_ids=(member_id,),
+                )
+            )
+            return
 
 
 def _ensure_profiles(teams: TeamRepository, users: SeedUserRepository) -> None:

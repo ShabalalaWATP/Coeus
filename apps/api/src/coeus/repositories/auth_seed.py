@@ -29,6 +29,12 @@ def seed_user_specs() -> tuple[SeedUserSpec, ...]:
             "JIOC Manager",
         ),
         _spec(
+            "jioc.member@example.test",
+            "Callum McGregor",
+            RoleName.JIOC_TEAM_MEMBER,
+            "JIOC Team Member",
+        ),
+        _spec(
             "rfa.manager@example.test",
             "Kieran Tierney",
             RoleName.RFA_MANAGER,

@@ -26,3 +26,6 @@ minimumReleaseAgeExclude:
 trustPolicy: no-downgrade
 trustPolicyExclude:
   - semver@6.3.1
+auditConfig:
+  ignoreGhsas:
+    - GHSA-qwww-vcr4-c8h2

@@ -23,7 +23,7 @@ invalid replies that fall back locally; incomplete calls refund it. Metrics omit
 | Search Planner | Model-backed bounded advisory | Suggest expansions, entities, date-text interpretations and alternative terminology | Admitted advice and a separate additive retrieval leg; the independent baseline leg and its offers are preserved | Invalid output, provider failure, egress disabled or admission denial | Intelligence Store owner | Prompt, query-admission policy and context schema recorded per run | Minimized intake only, never corpus/results; hosted remote egress disabled by default |
 | Similar Request Check | Deterministic advisory and customer decision gate | Compare authorised open-work summaries | Persisted offers; requester endpoints join visible work or continue new tasking; manager endpoints may link related work | Match is hidden, access is lost or retrieval is degraded | Workflow owner | Search/context versions | No hidden match content leaves the access boundary |
 | RFA / CM Capability | Deterministic advisory | Assess route signals against intake and capability facts | Review and candidate-team records only | Signals conflict, facts are missing/stale, restrictions or risks exist | RFA / CM managers | Capability catalogue and policy versions | No external egress; active only as advice |
-| JIOC Routing | Deterministic state-changing | Decide CM versus RFA from a versioned routing context | Route decision and allowed transition, or manager-review/clarification state | Conflicting signals, stale/missing evidence, restrictions, policy exception or unsafe mode | JIOC Manager | `jioc-routing-policy-v2` plus context schema | No external egress; evaluated release active in local/test, hosted mode explicit |
+| JIOC Routing | Deterministic state-changing | Decide CM versus RFA from a versioned routing context | Route decision and allowed transition, or human-review/clarification state | Conflicting signals, stale/missing evidence, restrictions, policy exception or unsafe mode | JIOC Manager, with human JIOC reviewers as the exception destination | `jioc-routing-policy-v2` plus context schema | No external egress; evaluated release active in local/test, hosted mode explicit |
 | JIOC Routing Critic | Deterministic checks plus model-backed shadow advice | Challenge the committed route from structured route, disposition, state, search, capability and capacity facts | Admitted coded critique visible to staff oversight only; hosted processing starts from an identifier-only exact-decision outbox request | Invalid/unavailable output, egress disabled or incomplete critic context | JIOC Manager | Critic prompt, policy and route-context schema recorded per run | Permanently shadow-only; remote egress disabled by default; output cannot propose a route, state, action, disposition or tool call |
 | Prioritisation | Deterministic advisory | Order queues from synthetic registry weights | Priority assessment and run record | Required policy inputs are unavailable | JIOC Manager | Prioritisation policy version | No external egress; never changes lifecycle state |
 | QC Preflight | Deterministic state-changing gate | Check draft structure, evidence readiness and immutable manifest | Preflight/run/audit records; may block release | Any check fails or the draft changes | QC officer | `qc-preflight-v1` | No external egress; cannot release |
@@ -52,7 +52,7 @@ invalid replies that fall back locally; incomplete calls refund it. Metrics omit
 | --- | --- | --- | --- |
 | Intake | Safety, extraction, contradiction and ambiguity detection, required-field set, close/submit eligibility and the permitted next action | When the deterministic action is already `ask_missing_field`, admitted model advice may prefer one supplied missing field | Requester is in the loop: answers, edits and submits |
 | Search | Requester identity, visible corpus, baseline leg, structured filters, ranking threshold, coverage, assurance and workflow outcome | Search Planner may add a bounded supplemental leg but cannot remove or displace baseline offers | Requester is in the loop for offer acceptance/rejection and consent to new tasking |
-| JIOC route | Versioned policy validates evidence and actively chooses CM, RFA, clarification or manager review | Routing Critic observes the committed result and may challenge it using closed reason codes | JIOC Managers are on the loop through visibility, metrics, hold/reopen and audited intervention; they enter the loop only on explicit review paths |
+| JIOC route | Versioned policy validates evidence and actively chooses CM, RFA, clarification or human review | Routing Critic observes the committed result and may challenge it using closed reason codes | JIOC Managers are on the loop through visibility, metrics, hold/resume/send-to-review controls; Team Members and Managers share explicit review paths |
 | Delivery and release | Assignment, manager approval, QC preflight and release gates | No advisory planner receives these authorities | RFA/CM managers and QC officers remain in the loop at their existing approval gates |
 
 ---
@@ -228,10 +228,9 @@ ticket timelines and the audit log.
 
 ### Purpose
 
-Advise RFA and Collection managers on whether the request is better served by an
-assessment-led route (RFA, Request for Assessment) or a collection-led route (CM,
-Collection Management), and surface the clarifications and risks a manager should
-weigh.
+Provide capability evidence to the deterministic JIOC Agent or human reviewer
+deciding between assessment (RFA) and collection (CM), including the
+clarifications and risks that decision-maker must weigh.
 
 ### What they read
 
@@ -284,7 +283,7 @@ Local/test runtime records the critique best-effort after routing. Hosted runtim
 commits an identifier-only outbox intent atomically with the route; a retry-safe
 worker resolves the exact immutable records and writes the critique later. The
 critic never delays, reverses or replaces the route. JIOC Managers are on the
-loop for routine decisions through queue visibility, metrics and audit. They
+loop for routine decisions through oversight metrics and decision evidence. They
 enter the loop for explicit review, hold/resume, rerouting intervention and
 post-release dispute adjudication.
 

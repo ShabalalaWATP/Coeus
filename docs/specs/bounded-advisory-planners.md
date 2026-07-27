@@ -116,8 +116,8 @@ mock critique inline to keep development feedback immediate.
 - The JIOC Routing Agent is active when the deployment's separately controlled
   routing mode and release gates permit it.
 - JIOC Managers are on the loop through visibility of the deterministic decision
-  and shadow critique, analytics and audited intervention. They are in the loop
-  only for explicit clarification, manual-review or intervention paths.
+  and shadow critique, analytics and audited intervention. Team Members and
+  Managers share explicit clarification and manual-review paths.
 - RFA and Collection Managers remain in the loop for their existing work
   approval and assignment responsibilities. The planners do not alter them.
 - Human QC remains the product release authority.

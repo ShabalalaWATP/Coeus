@@ -139,6 +139,7 @@ non-default `COEUS_LOCAL_SEED_CREDENTIAL` or startup fails closed.
 | `user@example.test`               | John McGinn            | Customer                   | `/app/requests`        |
 | `colleague@example.test`          | Billy Gilmour          | Customer                   | `/app/requests`        |
 | `jioc.team@example.test`          | Scott McTominay        | JIOC Manager               | `/jioc/oversight`      |
+| `jioc.member@example.test`        | Callum McGregor        | JIOC Team Member           | `/jioc/queue`          |
 | `rfa.manager@example.test`        | Kieran Tierney         | RFA Manager                | `/rfa/queue`           |
 | `rfa.team@example.test`           | Ryan Christie          | RFA Team Member            | `/rfa/products`        |
 | `collection.manager@example.test` | Grant Hanley           | CM Manager                 | `/collection/queue`    |
@@ -196,11 +197,10 @@ Restart through the normal setup command. The deterministic seed users and demo
 dataset will be recreated. These reset commands are for synthetic local data
 only, not backup or production recovery.
 
-To exercise the full workflow, sign in as the customer to raise a request. The
-active JIOC Agent routes eligible new tasking to CM or RFA. Sign in as the JIOC
-Manager to inspect its evidence or handle a referral, then use the team manager,
-analyst and QC manager accounts to move the request through the pipeline. See
-the [User Guide](USER_GUIDE.md).
+To exercise the workflow, sign in as the customer and raise a request. The active
+JIOC Agent routes eligible tasking to CM or RFA. Use the JIOC Team Member for an
+exception, the JIOC Manager for oversight or intervention, then the team manager,
+analyst and QC accounts to complete the pipeline. See the [User Guide](USER_GUIDE.md).
 
 ## Local multi-user evaluation
 
