@@ -97,7 +97,7 @@ async def analyst_assignment_ticket(
     approved = await client.post(
         f"/api/v1/routing/{ticket_id}/approve",
         headers={"X-CSRF-Token": str(jioc["csrfToken"])},
-        json={"route": "rfa"},
+        json={"route": "rfa", "expectedUpdatedAt": routed.json()["updatedAt"]},
     )
     assert routed.status_code == 200
     assert approved.status_code == 200
@@ -109,3 +109,9 @@ async def assignment_team_id(client: AsyncClient, route: str = "rfa") -> str:
     response = await client.get(f"/api/v1/analyst/assignment-teams?route={route}")
     assert response.status_code == 200
     return str(response.json()["teams"][0]["teamId"])
+
+
+async def routing_version(client: AsyncClient, ticket_id: str) -> str:
+    response = await client.get(f"/api/v1/routing/{ticket_id}")
+    assert response.status_code == 200
+    return str(response.json()["updatedAt"])

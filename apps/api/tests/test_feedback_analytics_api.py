@@ -302,13 +302,17 @@ async def _approved_route_ticket(
     approved = await client.post(
         f"/api/v1/routing/{ticket_id}/approve",
         headers={"X-CSRF-Token": str(jioc["csrfToken"])},
-        json={"route": route},
+        json={"route": route, "expectedUpdatedAt": routed.json()["updatedAt"]},
     )
     if approved.status_code == 422:
         approved = await client.post(
             f"/api/v1/routing/{ticket_id}/approve",
             headers={"X-CSRF-Token": str(jioc["csrfToken"])},
-            json={"route": route, "overrideReason": "Route override for analytics fixture."},
+            json={
+                "route": route,
+                "overrideReason": "Route override for analytics fixture.",
+                "expectedUpdatedAt": routed.json()["updatedAt"],
+            },
         )
     assert routed.status_code == 200
     assert approved.status_code == 200

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import type { RoutingDetailActions, RoutingDetailState } from "./RoutingDetailPanel";
 import { isRouteOverride, upsertRoutingTicket } from "./routing-model";
@@ -8,6 +9,7 @@ import {
   approveRoute,
   decideJiocReanalysis,
   decideManagerReanalysis,
+  getRoutingTicket,
   listRoutingQueue,
   rejectRoute,
   requestRouteClarification,
@@ -41,10 +43,13 @@ const EMPTY_QUEUE: RoutingQueue = {
 export function useRoutingQueueController(queueKind: RoutingQueueKind) {
   const { session } = useAuth();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
   const csrfToken = session?.csrfToken ?? "";
   const isJioc = queueKind === "jioc";
   const catalogueRoute: RoutingRoute = queueKind === "jioc" ? "rfa" : queueKind;
-  const [selectedTicketId, setSelectedTicketId] = useState<string>();
+  const [selectedTicketId, setSelectedTicketId] = useState<string | undefined>(
+    () => searchParams.get("ticket") ?? undefined,
+  );
   const [decisionRoute, setDecisionRoute] = useState<RoutingRoute>("rfa");
   const [clarificationReason, setClarificationReason] = useState("");
   const [clarificationQuestion, setClarificationQuestion] = useState("");
@@ -74,10 +79,21 @@ export function useRoutingQueueController(queueKind: RoutingQueueKind) {
       });
     },
   });
-  const selectedTicket = useMemo(
-    () => queue.tickets.find((ticket) => ticket.ticketId === selectedTicketId) ?? queue.tickets[0],
+  const selectedQueueTicket = useMemo(
+    () => queue.tickets.find((ticket) => ticket.ticketId === selectedTicketId),
     [queue.tickets, selectedTicketId],
   );
+  const directTicketQuery = useQuery({
+    enabled:
+      selectedTicketId !== undefined &&
+      queueQuery.dataUpdatedAt > 0 &&
+      selectedQueueTicket === undefined,
+    queryFn: () => getRoutingTicket(selectedTicketId ?? ""),
+    queryKey: ["routing-ticket", selectedTicketId],
+    retry: false,
+  });
+  const selectedTicket =
+    selectedQueueTicket ?? (selectedTicketId ? directTicketQuery.data : queue.tickets[0]);
   const selectedSimilarKey = ["similar-requests", "routing", selectedTicket?.ticketId] as const;
   const similarRequestsQuery = useQuery({
     enabled: selectedTicket !== undefined,
@@ -107,7 +123,7 @@ export function useRoutingQueueController(queueKind: RoutingQueueKind) {
     setSelectedTicketId(undefined);
   };
   const runMutation = useMutation({
-    mutationFn: () => runRoutingReviews(selectedTicket.ticketId, csrfToken),
+    mutationFn: () => runRoutingReviews(selectedTicket!.ticketId, csrfToken),
     onError: failActionWith("The capability checks could not be run. Try again."),
     onMutate: clearActionError,
     onSuccess: updateQueue,
@@ -115,10 +131,11 @@ export function useRoutingQueueController(queueKind: RoutingQueueKind) {
   const approveMutation = useMutation({
     mutationFn: () =>
       approveRoute(
-        selectedTicket.ticketId,
+        selectedTicket!.ticketId,
         decisionRoute,
         csrfToken,
-        isRouteOverride(selectedTicket, decisionRoute) ? overrideReason.trim() : undefined,
+        selectedTicket!.updatedAt,
+        isRouteOverride(selectedTicket!, decisionRoute) ? overrideReason.trim() : undefined,
       ),
     onError: failActionWith("The route could not be approved. Try again."),
     onMutate: clearActionError,
@@ -128,7 +145,14 @@ export function useRoutingQueueController(queueKind: RoutingQueueKind) {
     },
   });
   const rejectMutation = useMutation({
-    mutationFn: () => rejectRoute(selectedTicket.ticketId, decisionRoute, rejectReason, csrfToken),
+    mutationFn: () =>
+      rejectRoute(
+        selectedTicket!.ticketId,
+        decisionRoute,
+        rejectReason,
+        csrfToken,
+        selectedTicket!.updatedAt,
+      ),
     onError: failActionWith("The route could not be rejected. Try again."),
     onMutate: clearActionError,
     onSuccess: (ticket) => {
@@ -139,11 +163,12 @@ export function useRoutingQueueController(queueKind: RoutingQueueKind) {
   const clarificationMutation = useMutation({
     mutationFn: () =>
       requestRouteClarification(
-        selectedTicket.ticketId,
+        selectedTicket!.ticketId,
         decisionRoute,
         clarificationReason,
         [clarificationQuestion],
         csrfToken,
+        selectedTicket!.updatedAt,
       ),
     onError: failActionWith("The clarification request could not be sent. Try again."),
     onMutate: clearActionError,
@@ -158,13 +183,13 @@ export function useRoutingQueueController(queueKind: RoutingQueueKind) {
       const rationale = reanalysisRationale.trim();
       return isJioc
         ? decideJiocReanalysis(
-            selectedTicket.ticketId,
+            selectedTicket!.ticketId,
             decision as "reanalyse" | "close",
             rationale,
             csrfToken,
           )
         : decideManagerReanalysis(
-            selectedTicket.ticketId,
+            selectedTicket!.ticketId,
             decision as "agree" | "refer_to_jioc",
             rationale,
             csrfToken,

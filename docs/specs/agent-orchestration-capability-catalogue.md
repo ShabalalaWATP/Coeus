@@ -6,9 +6,9 @@ Align the workflow with a customer chatbot, an orchestrator agent and separate
 RFA/CM capability agents. This specification originally required every route
 to be human-approved. That authority rule was superseded by
 `customer-search-routing-orchestration.md` and ADR 0036: the active,
-version-pinned JIOC Routing Agent may apply an eligible RFA or CM transition,
-while JIOC Managers remain on the loop and handle explicit manual-review,
-clarification and intervention paths.
+version-pinned JIOC Routing Agent may apply an eligible RFA or CM transition.
+JIOC Team Members and Managers share explicit review and clarification;
+Managers additionally own on-loop oversight and intervention.
 
 ## Status
 

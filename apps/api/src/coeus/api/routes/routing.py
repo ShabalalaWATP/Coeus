@@ -22,6 +22,7 @@ from coeus.api.presenters.routing import (
     stats_response,
     ticket_response,
 )
+from coeus.api.routing_contracts import VERSION_REQUIRED_RESPONSE, required_version
 from coeus.api.workflow_dependencies import get_jioc_intervention_service
 from coeus.domain.auth import AuthenticatedSession
 from coeus.domain.tickets import RoutingRoute, TicketRecord
@@ -30,12 +31,14 @@ from coeus.schemas.analyst import AnalystTaskResponse
 from coeus.schemas.routing import (
     CapabilityCatalogueResponse,
     JiocInterventionRequest,
+    JiocInterventionResponse,
     OversightAnalystResponse,
     OversightCountResponse,
     OversightTaskResponse,
     OversightTeamResponse,
     RouteApprovalRequest,
     RouteClarificationRequest,
+    RouteDecisionReasonRequest,
     RouteReasonRequest,
     RoutingOversightResponse,
     RoutingQueueResponse,
@@ -57,19 +60,33 @@ router = APIRouter(prefix="/routing", tags=["routing"])
 QUEUE_PAGE_SIZE = 25
 
 
-@router.post("/{ticket_id}/intervene", response_model=RoutingTicketResponse)
+@router.post(
+    "/{ticket_id}/intervene",
+    response_model=JiocInterventionResponse,
+    responses=VERSION_REQUIRED_RESPONSE,
+)
 async def intervene_in_route(
     ticket_id: UUID,
     payload: JiocInterventionRequest,
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
     service: Annotated[JiocInterventionService, Depends(get_jioc_intervention_service)],
-) -> RoutingTicketResponse:
+) -> JiocInterventionResponse:
     action = {
         "hold": service.hold,
         "resume": service.resume,
         "send_to_review": service.send_to_review,
     }[payload.action]
-    return ticket_response(action(authenticated.user, ticket_id, payload.reason))
+    ticket = action(
+        authenticated.user,
+        ticket_id,
+        payload.reason,
+        required_version(payload.expected_updated_at),
+    )
+    return JiocInterventionResponse(
+        ticket_id=ticket.ticket_id,
+        state=ticket.state.value,
+        updated_at=ticket.updated_at,
+    )
 
 
 @router.get("/oversight", response_model=RoutingOversightResponse)
@@ -89,6 +106,10 @@ async def routing_oversight(
         ],
         counts_by_route=[
             OversightCountResponse(key=key, count=count) for key, count in view.counts_by_route
+        ],
+        counts_by_agent_disposition=[
+            OversightCountResponse(key=key, count=count)
+            for key, count in view.counts_by_agent_disposition
         ],
         teams=[
             OversightTeamResponse(
@@ -115,6 +136,7 @@ async def routing_oversight(
                 ticket_id=item.ticket_id,
                 reference=item.reference,
                 state=item.state,
+                updated_at=item.updated_at,
                 route=item.route,
                 team_id=item.team_id,
                 team_name=item.team_name,
@@ -123,6 +145,9 @@ async def routing_oversight(
                 completed_work_package_count=item.completed_work_package_count,
                 agent_disposition=item.agent_disposition,
                 agent_confidence=item.agent_confidence,
+                agent_route=item.agent_route,
+                agent_rationale_codes=list(item.agent_rationale_codes),
+                agent_policy_version=item.agent_policy_version,
                 critic_verdict=item.critic_verdict,
                 critic_outcome=item.critic_outcome,
                 critic_challenge_count=item.critic_challenge_count,
@@ -246,7 +271,11 @@ async def run_route_reviews(
     return ticket_response(routing.run_reviews(authenticated.user, ticket_id))
 
 
-@router.post("/{ticket_id}/approve", response_model=RoutingTicketResponse)
+@router.post(
+    "/{ticket_id}/approve",
+    response_model=RoutingTicketResponse,
+    responses=VERSION_REQUIRED_RESPONSE,
+)
 async def approve_route(
     ticket_id: UUID,
     payload: RouteApprovalRequest,
@@ -259,23 +288,38 @@ async def approve_route(
             ticket_id,
             RoutingRoute(payload.route),
             payload.override_reason,
+            required_version(payload.expected_updated_at),
         )
     )
 
 
-@router.post("/{ticket_id}/reject", response_model=RoutingTicketResponse)
+@router.post(
+    "/{ticket_id}/reject",
+    response_model=RoutingTicketResponse,
+    responses=VERSION_REQUIRED_RESPONSE,
+)
 async def reject_route(
     ticket_id: UUID,
-    payload: RouteReasonRequest,
+    payload: RouteDecisionReasonRequest,
     authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
     routing: Annotated[RoutingService, Depends(get_routing_service)],
 ) -> RoutingTicketResponse:
     return ticket_response(
-        routing.reject(authenticated.user, ticket_id, RoutingRoute(payload.route), payload.reason)
+        routing.reject(
+            authenticated.user,
+            ticket_id,
+            RoutingRoute(payload.route),
+            payload.reason,
+            required_version(payload.expected_updated_at),
+        )
     )
 
 
-@router.post("/{ticket_id}/clarification", response_model=RoutingTicketResponse)
+@router.post(
+    "/{ticket_id}/clarification",
+    response_model=RoutingTicketResponse,
+    responses=VERSION_REQUIRED_RESPONSE,
+)
 async def request_clarification(
     ticket_id: UUID,
     payload: RouteClarificationRequest,
@@ -289,5 +333,6 @@ async def request_clarification(
             RoutingRoute(payload.route),
             payload.reason,
             tuple(payload.questions),
+            required_version(payload.expected_updated_at),
         )
     )
