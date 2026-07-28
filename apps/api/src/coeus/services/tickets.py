@@ -15,6 +15,7 @@ from coeus.core.resource_limits import (
 from coeus.domain.agent_names import RFI_SEARCH_AGENT
 from coeus.domain.auth import UserAccount
 from coeus.domain.enums import TicketState
+from coeus.domain.routing_phase import routing_history_present
 from coeus.domain.state_machine import can_transition
 from coeus.domain.ticket_page import TicketPage
 from coeus.domain.tickets import (
@@ -132,7 +133,7 @@ class TicketService:
         intake = self._completeness.with_completeness(merge_intake(ticket.intake, updates))
         resumed_routing = (
             ticket.state == TicketState.INFO_REQUIRED
-            and bool(ticket.route_recommendations)
+            and routing_history_present(ticket)
             and self._completeness.is_complete_enough(intake)
         )
         entry = timeline(ticket.ticket_id, actor.user_id, "intake_updated", "Intake updated.")
@@ -260,7 +261,7 @@ class TicketService:
             raise AppError(404, "ticket_not_found", "Ticket was not found.")
         state = (
             TicketState.JIOC_REVIEW
-            if ticket.state == TicketState.INFO_REQUIRED and ticket.route_recommendations
+            if ticket.state == TicketState.INFO_REQUIRED and routing_history_present(ticket)
             else ticket.state
         )
         entries = (

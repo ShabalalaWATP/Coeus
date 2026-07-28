@@ -5,6 +5,7 @@ final release, so the rollback, notification and access invariants attach to
 the QC approve endpoint instead of a separate release endpoint.
 """
 
+from dataclasses import replace
 from uuid import UUID
 
 import pytest
@@ -72,8 +73,9 @@ async def test_unreadable_product_fails_approval_without_an_orphan() -> None:
         )
 
     ticket = _stored_ticket(app, ticket_id)
-    assert failed.status_code == 404
-    assert failed.json()["error"]["code"] == "product_not_found"
+    assert failed.status_code == 409
+    assert failed.json()["error"]["code"] == "requester_access_lost"
+    assert "requester" in failed.json()["error"]["message"]
     assert ticket.state == TicketState.QC_REVIEW
     assert ticket.disseminations == ()
     assert ticket.product_index_records == ()
@@ -82,6 +84,42 @@ async def test_unreadable_product_fails_approval_without_an_orphan() -> None:
         product.metadata.title != "Too restricted release product"
         for product in app.state.store_services.repository.list_products()
     )
+
+
+@pytest.mark.asyncio
+async def test_qc_detail_warns_when_draft_metadata_locks_out_the_requester() -> None:
+    app = _app()
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        ticket_id = await _submitted_qc_ticket(client, app, "Lockout warning product")
+        qc_manager = await login(client, "qc.manager@example.test")
+        clean = await client.post(
+            f"/api/v1/qc/products/{ticket_id}/claim",
+            headers={"X-CSRF-Token": str(qc_manager["csrfToken"])},
+        )
+        ticket = _stored_ticket(app, ticket_id)
+        restricted = replace(
+            ticket.draft_products[-1],
+            acg_ids=frozenset({UUID(_acg_id(app, "ACG-CHARLIE-ASSESSMENT"))}),
+            classification_level=2,
+        )
+        app.state.ticket_services.tickets._repository.save(
+            replace(ticket, draft_products=(*ticket.draft_products[:-1], restricted))
+        )
+        warned = await client.get(f"/api/v1/qc/products/{ticket_id}")
+        queue = await client.get("/api/v1/qc/queue")
+
+    assert clean.status_code == 200
+    assert clean.json()["requesterAccessWarning"] is None
+    assert warned.status_code == 200
+    warning = warned.json()["requesterAccessWarning"]
+    assert warning is not None and "access control groups" in warning
+    # The queue landing view must carry the same advisory for claimed work.
+    queued = next(
+        product for product in queue.json()["products"] if product["ticketId"] == ticket_id
+    )
+    assert queued["requesterAccessWarning"] == warning
 
 
 @pytest.mark.asyncio

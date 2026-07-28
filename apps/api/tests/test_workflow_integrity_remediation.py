@@ -1,5 +1,5 @@
 from dataclasses import replace
-from datetime import date
+from datetime import UTC, datetime, timezone
 from uuid import UUID, uuid4
 
 import pytest
@@ -256,20 +256,16 @@ async def test_cm_manager_selects_only_a_cm_assignment_team() -> None:
     assert assignment["teamName"] == cm_team.name
 
 
-def test_oversight_availability_uses_the_server_local_date(
+def test_oversight_availability_uses_the_utc_date(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    class LocalNow:
-        def astimezone(self) -> "LocalNow":
-            return self
-
-        def date(self) -> date:
-            return date(2030, 2, 3)
-
     class FakeDateTime:
         @classmethod
-        def now(cls) -> LocalNow:
-            return LocalNow()
+        def now(cls, tz: timezone | None = None) -> datetime:
+            # The capacity snapshot and calendar validation work in UTC days;
+            # oversight must ask for the same calendar day.
+            assert tz is UTC
+            return datetime(2030, 2, 3, 23, 30, tzinfo=UTC)
 
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     captured: list[str] = []

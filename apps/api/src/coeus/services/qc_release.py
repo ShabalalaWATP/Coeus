@@ -172,7 +172,12 @@ class QcReleaseStep:
             metadata=replace(original_product.metadata, status=ProductStatus.PUBLISHED),
         )
         if not self._store.details.can_read_product(requester, product):
-            raise AppError(404, "product_not_found", "Product was not found.")
+            raise AppError(
+                409,
+                "requester_access_lost",
+                "The selected access groups or classification would prevent the "
+                "requester reading their own product. Adjust the release metadata.",
+            )
         proposed = replace(
             original_ticket,
             state=TicketState.DISSEMINATION_READY,

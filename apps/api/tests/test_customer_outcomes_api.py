@@ -6,7 +6,7 @@ from httpx import ASGITransport, AsyncClient
 from coeus.core.config import Settings
 from coeus.main import create_app
 from rfi_search_helpers import login
-from test_qc_api import _acg_id, _approval_payload, _submitted_qc_ticket
+from test_qc_api import _acg_id, _approval_payload, _draft_payload, _submitted_qc_ticket
 
 
 @pytest.mark.asyncio
@@ -117,14 +117,40 @@ async def test_manager_agreement_starts_a_new_analysis_cycle() -> None:
                 "rationale": "The omitted indicator requires a revised assessment.",
             },
         )
+        analyst = await login(client, "analyst@example.test")
+        tasks = await client.get(f"/api/v1/analyst/tasks/{ticket_id}")
+        for package in tasks.json()["workPackages"]:
+            await client.patch(
+                f"/api/v1/analyst/tasks/{ticket_id}/work-packages/{package['id']}",
+                headers={"X-CSRF-Token": str(analyst["csrfToken"])},
+                json={"status": "complete"},
+            )
+        unchanged = await client.post(
+            f"/api/v1/analyst/tasks/{ticket_id}/submit",
+            headers={"X-CSRF-Token": str(analyst["csrfToken"])},
+        )
+        revised = await client.post(
+            f"/api/v1/analyst/tasks/{ticket_id}/drafts",
+            headers={"X-CSRF-Token": str(analyst["csrfToken"])},
+            json=_draft_payload("Re-analysed external product"),
+        )
+        resubmitted = await client.post(
+            f"/api/v1/analyst/tasks/{ticket_id}/submit",
+            headers={"X-CSRF-Token": str(analyst["csrfToken"])},
+        )
 
     stored = app.state.ticket_services.tickets._repository.get(UUID(ticket_id))
     assert agreed.status_code == 200
     assert agreed.json()["state"] == "ANALYST_IN_PROGRESS"
     assert stored is not None
-    assert stored.manager_approved_manifest_hash is None
     assert stored.qc_reviewer_user_id is None
-    assert all(package.status.value == "pending" for package in stored.work_packages)
+    assert stored.manager_approved_manifest_hash is None
+    # The identical version cannot be resubmitted after a re-analysis order.
+    assert unchanged.status_code == 409
+    assert unchanged.json()["error"]["code"] == "revised_draft_required"
+    assert revised.status_code == 200
+    assert resubmitted.status_code == 200
+    assert resubmitted.json()["state"] == "MANAGER_APPROVAL"
 
 
 async def _released_ticket(client: AsyncClient, app, title: str) -> tuple[str, str]:

@@ -1,17 +1,17 @@
 # Istari AI Agents And Automations
 
 Istari combines deterministic automation with narrowly bounded model-backed
-wording. An "agent" does not imply broad autonomy or tool use. Authority comes
-only from the workflow service and deterministic policy described here.
-The [Data, Search and AI Atlas](architecture/DATA_SEARCH_AND_AI.md) maps model
-advice to deterministic authority, both search indexes and generation activation.
+wording. An "agent" does not imply broad autonomy or tool use; authority comes
+only from the workflow service and deterministic policy described here. The
+[Data, Search and AI Atlas](architecture/DATA_SEARCH_AND_AI.md) maps model
+advice to deterministic authority across both search indexes and generation.
 
 > The offline default makes no external calls. Enabling a remote provider is an
 > explicit, audited deployment choice and does not grant the provider authority
-> to read repositories, call tools or mutate workflow state.
-
-Remote calls reserve shared capacity. Completed calls commit one unit, including
-invalid replies that fall back locally; incomplete calls refund it. Metrics omit user IDs.
+> to read repositories, call tools or mutate workflow state. Remote calls
+> reserve shared capacity: completed calls commit one unit (including invalid
+> replies that fall back locally), incomplete calls refund it, metrics omit
+> user IDs.
 
 ## Authority matrix
 
@@ -28,21 +28,22 @@ invalid replies that fall back locally; incomplete calls refund it. Metrics omit
 | Prioritisation | Deterministic advisory | Order queues from synthetic registry weights | Priority assessment and run record | Required policy inputs are unavailable | JIOC Manager | Prioritisation policy version | No external egress; never changes lifecycle state |
 | QC Preflight | Deterministic state-changing gate | Check draft structure, evidence readiness and immutable manifest | Preflight/run/audit records; may block release | Any check fails or the draft changes | QC officer | `qc-preflight-v1` | No external egress; cannot release |
 | QC release | Human-only release action | Confirm classification, sources, access and releasability | Published product, dissemination, audit and durable notification intent | Preflight is absent/stale, authority is missing, or version changed | QC officer | Human checklist and release policy | No agent or model can invoke release authority |
+| Realtime Voice Intake | Model-backed voice channel with no mutation path | Speak with the requester over an authorised, leased realtime session using a prompt-only intake persona | None directly: the transcript re-enters the ordinary chat endpoint, where raw-message safety scanning, extraction and deterministic lifecycle apply unchanged | Missing credentials, invalid or oversized SDP, lease exhaustion, closed conversation or safety-flagged transcript | Product owner | Realtime intake prompt version | Explicit `openai_api` opt-in only; session brokering is CSRF-validated and per-principal leased; no workflow authority |
 
 ### Common authority contract
 
-- Inputs are allowlisted, minimized, versioned and access-filtered before evaluation.
-- Model-backed intake receives extracted fields, not raw conversation history;
-  other planners receive only their separately documented structured facts.
+- Inputs are allowlisted, minimized, versioned and access-filtered. Model-backed
+  intake receives extracted fields, never raw conversation history; other
+  planners receive only their separately documented structured facts.
 - Provider output is untrusted: token and byte ceilings, identity-only response
   encoding, a closed action vocabulary and deterministic fallback apply before
   application-owned copy is persisted or displayed.
 - Runs record enough provenance to identify provider/model (where applicable),
   prompt, policy and context versions, latency, validation and fallback outcome.
 - The evaluated release runs in `active` mode for supported synthetic local/test
-  use and decides CM versus RFA. `disabled` invokes no capability agent and refers the
-  ticket to `JIOC_REVIEW`; `shadow` records evidence and makes the same referral.
-  Any conflict or stale/missing context goes to manual review.
+  use and decides CM versus RFA. `disabled` invokes no capability agent;
+  `shadow` records evidence; both refer the ticket to `JIOC_REVIEW`, and any
+  conflict or stale/missing context goes to manual review.
 - Humans alone approve final dissemination. Automation cannot expand its own
   permissions, invoke tools, alter policy or bypass object-level authorisation.
 
@@ -66,14 +67,13 @@ invalid replies that fall back locally; incomplete calls refund it. Metrics omit
 ### Purpose
 
 Turn a free-text conversation into a structured, submittable requirement
-without ever sounding like a form: chat copy never mentions required fields,
-checklists or counts. The chat opens with a greeting, asks one question per
-turn, and knows how to end: once the intake is complete the assistant offers
-to finish and closes on confirmation, while an early "that's all" gets a
-polite explanation that more information is needed, then the next question.
-Lifecycle decisions are deterministic (`services/conversation_lifecycle.py`),
-never the LLM's. Local extraction reads each customer message. A remote selector
-receives only the allowlisted extracted fields described below, never raw chat.
+without sounding like a form: chat copy never mentions required fields,
+checklists or counts. The chat greets, asks one question per turn and knows
+how to end: a complete intake gets an offer to finish, an early "that's all"
+gets a polite explanation and the next question. Lifecycle decisions are
+deterministic (`services/conversation_lifecycle.py`), never the LLM's; local
+extraction reads each message, and a remote selector receives only the
+allowlisted extracted fields described below, never raw chat.
 
 ### The intake standard
 
@@ -83,13 +83,12 @@ The completeness gate, internal intake state and questions all derive from it; s
 the [intake specification](specs/intelligence-intake-and-prioritisation.md) for the full list.
 
 On each turn the assistant asks one locally rendered question. Extraction
-(`services/intake_extractors.py`) is heuristic, transparent and cue-gated.
-Nothing the customer does not provide is invented.
-
+(`services/intake_extractors.py`) is heuristic, transparent and cue-gated;
+nothing the customer does not provide is invented.
 `RequirementCompletenessService` recomputes `missing_information` and
-`confidence` (captured / applicable entries) on every message. These remain
-internal so the chat does not expose a backend checklist. Submission requires
-no missing information and no deterministic contradiction.
+`confidence` on every message, kept internal so the chat never exposes a
+backend checklist. Submission requires no missing information and no
+deterministic contradiction.
 
 ### Intake Planner boundary
 
@@ -123,16 +122,14 @@ manually" panel, and nothing is submitted until they press Submit.
 
 ### Purpose
 
-Answer "does an existing product already satisfy this?" before any new tasking
-is raised, so effort is not duplicated. This is the "search before you task"
-principle.
+Answer "does an existing product already satisfy this?" before any new
+tasking is raised: the "search before you task" principle.
 
 ### What it reads
 
-Only products the requesting user is allowed to see. The candidate set is
-produced by the store's access policy first (ACG membership, clearance and
-product status), so the agent can never rank, score or reveal a product the user
-has no need-to-know for.
+Only products the requesting user is allowed to see: the store's access policy
+(ACG membership, clearance and product status) produces the candidate set, so
+the agent can never rank, score or reveal a product without need-to-know.
 
 ### How it scores
 
@@ -146,27 +143,26 @@ search generations over the access-filtered product set:
 | Grounded RFI index | Passage chunks plus 1,536-dimensional, provider/model/generation-aware embeddings configured independently in Admin |
 | Structured signals | Controlled labels, region, output format and product type |
 
-Lexical and semantic ranks are fused with Reciprocal Rank Fusion (`k = 60`).
-Metadata and semantic-label signals are deterministic tie-break bonuses on the
-fused score. Scores are normalised to 0..1, and a product is offered only when it
-is at or above the calibrated hybrid threshold. At most five offers are returned,
-highest score first. Each offer carries `match_reasons`, including legacy
-reasons such as `metadata:region` plus hybrid reasons such as `lexical-rank:2`,
+Lexical and semantic ranks are fused with Reciprocal Rank Fusion (`k = 60`);
+metadata and semantic-label signals are deterministic tie-break bonuses on the
+fused score. Scores are normalised to 0..1 and a product is offered only at or
+above the calibrated hybrid threshold, at most five offers, highest first, each
+carrying `match_reasons` such as `metadata:region`, `lexical-rank:2`,
 `vector-similarity:0.83` and `retrieval:lexical-only`.
 
 The Store compatibility provider defaults to deterministic `mock`; optional
 `local` and `gemini_api` modes degrade to lexical-only if unavailable. The
-grounded index separately supports `mock` or an explicitly selected
-`gemini_api` provider, tracks corpus and index generation, and does not enable a
-definitive no-match claim until its release is approved. Results can carry
-grounded passages, retrieval mode and incomplete-assurance state.
+grounded index separately supports `mock` or explicit `gemini_api`, tracks
+corpus and index generation, and does not enable a definitive no-match claim
+until its release is approved. Results can carry grounded passages, retrieval
+mode and incomplete-assurance state.
 
 The Search Planner receives bounded intake fields but no corpus, results or
 authorisation context. Strictly validated expansions, entities, date-text hints
-and alternative terminology form a separate supplemental query. The authorised
-baseline query always runs first, and its offers remain ahead of supplemental
-offers. Invalid output, provider failure or egress denial produces empty advice,
-so baseline retrieval still completes.
+and alternative terminology form a separate supplemental query; the authorised
+baseline query always runs first and its offers stay ahead. Invalid output,
+provider failure or egress denial produces empty advice, so baseline retrieval
+still completes.
 
 ### Output
 
@@ -176,11 +172,10 @@ available.
 
 ### Human control
 
-The requester accepts or rejects each offer. Acceptance closes the ticket as
+The requester accepts or rejects each offer; acceptance closes the ticket as
 `CLOSED_EXISTING_PRODUCT_ACCEPTED`. After assured no-match or rejection, the
-active-work check may offer an authorised in-progress request to join. Otherwise
-the requester reaches `NEW_TASKING_CONSENT` and decides whether to create new
-work. Search cannot consent or route on the requester's behalf.
+active-work check may offer authorised in-progress work to join, otherwise the
+requester reaches `NEW_TASKING_CONSENT`. Search cannot consent or route.
 
 ---
 
@@ -198,17 +193,16 @@ can consolidate early without blocking a customer's submitted request.
 
 ### What it reads
 
-The allowlisted open states from information correction through released-product
-review, excluding drafts, holds, cancelled and closed work. The source ticket is
-never compared with itself.
+The allowlisted open states from information correction through
+released-product review, excluding drafts, holds, cancelled and closed work;
+a ticket is never compared with itself.
 
 ### How it scores
 
-The check reuses the hybrid retrieval approach over each ticket's intake text:
-lexical rank plus embedding similarity are fused with Reciprocal Rank Fusion
-(`k = 60`), then small region and output-format bonuses are applied. Customer
-notices use a higher threshold than manager panels because customer disclosure is
-more sensitive.
+The check reuses hybrid retrieval over each ticket's intake text: lexical rank
+plus embedding similarity fused with Reciprocal Rank Fusion (`k = 60`), then
+small region and output-format bonuses. Customer notices use a higher threshold
+than manager panels because customer disclosure is more sensitive.
 
 ### Human control and visibility
 
@@ -322,6 +316,14 @@ write authority. Persisted `orchestrator-agent` hand-off runs are provenance
 labels for application-rendered clarification or collect-choice messages, not a
 model or tool-using runtime.
 
+## 8. Realtime Voice Intake channel
+
+`voice_sessions.py`, `voice_admission.py` and `integrations/openai_realtime.py`
+broker CSRF-validated, per-principal-leased realtime sessions with strict SDP
+validation. The model speaks with prompt-only guardrails and has no mutation
+path: every transcript re-enters the ordinary chat endpoint, where injection
+scanning, budgets, extraction and lifecycle decisions apply unchanged.
+
 ## Model provider and selection
 
 - `COEUS_LLM_PROVIDER=mock` is the deterministic offline default.
@@ -344,6 +346,5 @@ See the [User Guide](USER_GUIDE.md#administrator) for the catalogue and tiers.
   product, so agents cannot leak what a user may not see.
 - **Deterministic and auditable.** Local agents are pure functions of their
   inputs, and every human decision they inform is written to the audit log.
-- **No tool use in any provider path.** Mock, Gemini, OpenAI, LiteLLM, Vertex and
-  Bedrock calls cannot act on instructions. Flagged intake is refused locally
-  before any external call is made.
+- **No tool use in any provider path.** No provider call can act on
+  instructions, and flagged intake is refused locally before any external call.

@@ -29,13 +29,14 @@ const PRODUCT_OFFER_STATES = new Set([
   "RFI_NO_MATCH",
   "NEW_TASKING_CONSENT",
 ]);
+// Legacy RFI_NO_MATCH is deliberately absent: the API only allows consent
+// decisions from that state, so a cancel control would always 409.
 const CANCELABLE_STATES = new Set([
   "DRAFT_INTAKE",
   "INFO_REQUIRED",
   "RFI_SEARCHING",
   "RFI_SEARCH_INCOMPLETE",
   "RFI_MATCH_OFFERED",
-  "RFI_NO_MATCH",
   "NEW_TASKING_CONSENT",
   "JIOC_ROUTING_PENDING",
   "JIOC_INTERVENTION_HOLD",

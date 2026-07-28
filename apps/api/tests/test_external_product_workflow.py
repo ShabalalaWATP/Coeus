@@ -1,6 +1,7 @@
 import json
 from hashlib import sha256
 from io import BytesIO
+from typing import Any
 from uuid import UUID
 
 import pytest
@@ -110,6 +111,113 @@ async def test_external_docx_survives_qc_release_byte_for_byte_and_is_proofed(
     assert store_asset["sha256"] == sha256(content).hexdigest()
     assert downloaded.content == content
     assert "definately confirmed" in store_preview.text
+
+
+@pytest.mark.asyncio
+async def test_uploaded_rework_can_pass_qc_preflight_and_release(tmp_path) -> None:
+    """QC rejection of an uploaded version must not deadlock the rework loop."""
+    app = create_app(
+        Settings(
+            environment="test",
+            argon2_memory_cost=8_192,
+            local_object_storage_path=str(tmp_path / "objects"),
+        )
+    )
+    reworked_content = _docx("MOCK DATA ONLY. Revised synthetic movement assessment.")
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        ticket_id = await _assigned_ticket(client, app)
+        analyst = await login(client, "analyst@example.test")
+        acg_id = next(
+            str(acg.acg_id)
+            for acg in app.state.access_services.repository.list_acgs()
+            if acg.code == "ACG-EU-CYBER"
+        )
+        await _upload_version(
+            client, analyst, ticket_id, acg_id, _docx("MOCK DATA ONLY. First synthetic draft.")
+        )
+        await _complete_work_packages(client, analyst, ticket_id)
+        submitted = await client.post(
+            f"/api/v1/analyst/tasks/{ticket_id}/submit",
+            headers={"X-CSRF-Token": str(analyst["csrfToken"])},
+        )
+        assert submitted.json()["state"] == "MANAGER_APPROVAL"
+        manager = await login(client, "rfa.manager@example.test")
+        approved = await client.post(
+            f"/api/v1/routing/{ticket_id}/manager-approval",
+            headers={"X-CSRF-Token": str(manager["csrfToken"])},
+        )
+        assert approved.json()["state"] == "QC_REVIEW"
+        qc = await login(client, "qc.manager@example.test")
+        rejected = await client.post(
+            f"/api/v1/qc/products/{ticket_id}/reject",
+            headers={"X-CSRF-Token": str(qc["csrfToken"])},
+            json={"reason": "Mock provenance must be restated in the summary."},
+        )
+        assert rejected.json()["state"] == "REWORK_REQUIRED"
+        analyst = await login(client, "analyst@example.test")
+        reworked = await _upload_version(client, analyst, ticket_id, acg_id, reworked_content)
+        await _complete_work_packages(client, analyst, ticket_id)
+        resubmitted = await client.post(
+            f"/api/v1/analyst/tasks/{ticket_id}/submit",
+            headers={"X-CSRF-Token": str(analyst["csrfToken"])},
+        )
+        qc = await login(client, "qc.manager@example.test")
+        released = await client.post(
+            f"/api/v1/qc/products/{ticket_id}/approve",
+            headers={"X-CSRF-Token": str(qc["csrfToken"])},
+            json=_approval_payload(acg_id),
+        )
+
+    assert resubmitted.status_code == 200
+    assert resubmitted.json()["state"] == "QC_REVIEW"
+    stored = app.state.ticket_services.tickets._repository.get(UUID(ticket_id))
+    assert stored is not None
+    assert stored.manager_approved_manifest_hash == reworked["manifestHash"]
+    assert released.status_code == 200
+    assert released.json()["state"] == "DISSEMINATION_READY"
+    assert released.json()["agentPreflight"]["status"] == "passed"
+
+
+async def _upload_version(
+    client: AsyncClient,
+    analyst: dict[str, object],
+    ticket_id: str,
+    acg_id: str,
+    content: bytes,
+) -> dict[str, Any]:
+    uploaded = await client.post(
+        f"/api/v1/analyst/tasks/{ticket_id}/submissions/upload",
+        headers={"X-CSRF-Token": str(analyst["csrfToken"])},
+        files={
+            "asset": (
+                "assessment.docx",
+                content,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ),
+            "metadata": (None, json.dumps(_metadata(acg_id)), "application/json"),
+        },
+    )
+    assert uploaded.status_code == 201
+    version = uploaded.json()["drafts"][-1]
+    assert isinstance(version, dict)
+    return version
+
+
+async def _complete_work_packages(
+    client: AsyncClient, analyst: dict[str, object], ticket_id: str
+) -> None:
+    tasks = await client.get(f"/api/v1/analyst/tasks/{ticket_id}")
+    for package in tasks.json()["workPackages"]:
+        if package["status"] == "complete":
+            continue
+        completed = await client.patch(
+            f"/api/v1/analyst/tasks/{ticket_id}/work-packages/{package['id']}",
+            headers={"X-CSRF-Token": str(analyst["csrfToken"])},
+            json={"status": "complete"},
+        )
+        assert completed.status_code == 200
 
 
 async def _assigned_ticket(client: AsyncClient, app) -> str:

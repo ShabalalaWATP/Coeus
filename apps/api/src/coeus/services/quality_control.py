@@ -16,6 +16,7 @@ from coeus.repositories.teams import TeamRepository
 from coeus.services.audit import AuditLog
 from coeus.services.notifications import NotificationService
 from coeus.services.object_storage import ObjectStorage
+from coeus.services.qc_acg_policy import requester_access_warning
 from coeus.services.qc_assignment import QcAssignmentService, QcQueueView
 from coeus.services.qc_ingestion import (
     ProductAutoIngestionService,
@@ -47,6 +48,9 @@ class ReleaseCheckService:
         if not all(item.passed for item in checklist):
             raise AppError(409, "qc_checklist_incomplete", "Complete every QC checklist item.")
         return checklist
+
+    def requester_warning(self, ticket: TicketRecord) -> str | None:
+        return requester_access_warning(self._access, ticket)
 
     def validate_release_metadata(self, approval: QcApprovalInput) -> None:
         if not approval.releasability:
@@ -105,6 +109,9 @@ class QualityControlService:
 
     def details(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         return self._assignments.details(actor, ticket_id)
+
+    def requester_warning(self, ticket: TicketRecord) -> str | None:
+        return self._release_checks.requester_warning(ticket)
 
     def claim(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         return self._assignments.claim(actor, ticket_id)
@@ -259,6 +266,6 @@ def build_quality_control_service(
             transaction,
         ),
         audit_log,
-        QcAssignmentService(tickets, teams),
+        QcAssignmentService(tickets, teams, access_repository),
         QcPreflightAgent(tickets),
     )

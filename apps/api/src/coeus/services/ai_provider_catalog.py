@@ -67,8 +67,12 @@ def spec_for(settings: Settings, name: str) -> ProviderSpec | None:
 
 
 def initial_api_keys(settings: Settings) -> dict[LlmProviderName, str | None]:
-    """Environment-supplied keys per provider; mock never needs one."""
-    return {
+    """Environment-supplied keys per provider; mock never needs one.
+
+    Dotenv files commonly ship placeholder empty values; an empty string
+    must mean "not configured", never a present key.
+    """
+    supplied: dict[LlmProviderName, str | None] = {
         "gemini_api": settings.gemini_api_key,
         "openai_api": settings.openai_api_key,
         "litellm_proxy": settings.litellm_api_key,
@@ -76,6 +80,7 @@ def initial_api_keys(settings: Settings) -> dict[LlmProviderName, str | None]:
         "bedrock": settings.bedrock_api_key,
         "mock": None,
     }
+    return {provider: key or None for provider, key in supplied.items()}
 
 
 def _spec(

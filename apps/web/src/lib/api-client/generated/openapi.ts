@@ -4320,6 +4320,8 @@ export interface components {
       priorityAssessment: components["schemas"]["PriorityAssessmentResponse"];
       /** Reference */
       reference: string;
+      /** Requesteraccesswarning */
+      requesterAccessWarning?: string | null;
       /**
        * Requesteruserid
        * Format: uuid

@@ -93,10 +93,13 @@ def assignment_change(
         team_id,
         assignment_team,
     )
+    # Reassignment must not move the lifecycle: a rework ticket stays in
+    # REWORK_REQUIRED so the replacement analyst still resubmits to QC.
+    target_state = ticket.state if reassignment else TicketState.ANALYST_IN_PROGRESS
     return AssignmentChange(
         ticket=replace(
             ticket,
-            state=TicketState.ANALYST_IN_PROGRESS,
+            state=target_state,
             analyst_assignments=(*existing, *new_assignments),
             work_packages=(*ticket.work_packages, *packages),
             timeline=(

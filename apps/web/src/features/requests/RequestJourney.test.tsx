@@ -14,6 +14,10 @@ test("maps workflow states onto journey stages with a safe fallback", () => {
   expect(stageIndexForState("MANAGER_APPROVAL")).toBe(4);
   expect(stageIndexForState("QC_REVIEW")).toBe(5);
   expect(stageIndexForState("CLOSED_DELIVERED")).toBe(6);
+  expect(stageIndexForState("MANAGER_REANALYSIS_REVIEW")).toBe(6);
+  expect(stageIndexForState("JIOC_REANALYSIS_ADJUDICATION")).toBe(6);
+  expect(stageIndexForState("CLOSED_REQUIREMENT_MET")).toBe(6);
+  expect(stageIndexForState("CLOSED_REANALYSIS_DECLINED")).toBe(6);
   expect(stageIndexForState("CANCELLED")).toBe(0);
 });
 

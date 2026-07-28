@@ -246,11 +246,20 @@ class AnalystWorkflowService:
         event_type = "submitted_to_qc" if rework else "submitted_to_manager"
         summary = "Resubmitted to QC." if rework else "Submitted to the team manager."
         self._ensure_transition(ticket.state, target)
+        # QC-requested rework bypasses the manager by design, so the QC
+        # preflight version pin must attest the exact resubmitted version;
+        # without this an uploaded rework can never pass preflight.
+        pinned_hash = (
+            ticket.draft_products[-1].manifest_hash
+            if rework
+            else ticket.manager_approved_manifest_hash
+        )
         return self._tickets.mutations.save_audited_if_current(
             ticket,
             replace(
                 ticket,
                 state=target,
+                manager_approved_manifest_hash=pinned_hash,
                 timeline=(
                     *ticket.timeline,
                     timeline(ticket.ticket_id, actor.user_id, event_type, summary),
@@ -272,7 +281,14 @@ class AnalystWorkflowService:
         markers.extend(
             entry.created_at
             for entry in ticket.timeline
-            if entry.event_type == "manager_returned_rework"
+            # A re-analysis order is a rework request: the same product must
+            # not be resubmitted and re-released unchanged.
+            if entry.event_type
+            in {
+                "manager_returned_rework",
+                "manager_reanalysis_agreed",
+                "jioc_reanalysis_ordered",
+            }
         )
         return not markers or latest_draft_at > max(markers)
 
