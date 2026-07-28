@@ -6,6 +6,7 @@ import pytest
 from coeus.core.errors import AppError
 from coeus.domain.admission import AdmissionMode
 from coeus.domain.enums import TicketState
+from coeus.domain.ticket_retention import TERMINAL_TICKET_STATES
 from coeus.domain.tickets import IntakeDetails, TicketRecord
 from coeus.repositories.tickets import InMemoryTicketRepository
 from coeus.services.ticket_admission import TicketAdmissionController
@@ -23,11 +24,7 @@ def _ticket(principal_id: UUID, reference: str) -> TicketRecord:
 
 @pytest.mark.parametrize(
     "terminal_state",
-    [
-        TicketState.CANCELLED,
-        TicketState.CLOSED_DELIVERED,
-        TicketState.CLOSED_EXISTING_PRODUCT_ACCEPTED,
-    ],
+    sorted(TERMINAL_TICKET_STATES, key=lambda state: state.value),
 )
 def test_ticket_admission_enforces_principal_quota_and_recovers_terminal_capacity(
     terminal_state: TicketState,

@@ -78,10 +78,13 @@ class AnalystAssignmentService:
         ticket = self._tickets.tickets.get_workflow_ticket(
             actor, ticket_id, ASSIGNMENT_READ_PERMISSIONS
         )
-        # Managers may reassign an in-progress ticket, e.g. after an analyst
-        # account is deactivated; the state stays ANALYST_IN_PROGRESS.
-        reassignment = ticket.state == TicketState.ANALYST_IN_PROGRESS
-        if ticket.state not in {TicketState.ANALYST_ASSIGNMENT, TicketState.ANALYST_IN_PROGRESS}:
+        # Managers may reassign in-progress or rework tickets, e.g. after an
+        # analyst account is deactivated; the ticket state does not change.
+        reassignment = ticket.state in {
+            TicketState.ANALYST_IN_PROGRESS,
+            TicketState.REWORK_REQUIRED,
+        }
+        if ticket.state != TicketState.ANALYST_ASSIGNMENT and not reassignment:
             raise AppError(409, "invalid_ticket_state", "Ticket is not awaiting assignment.")
         route = approved_route(ticket)
         if route is None:

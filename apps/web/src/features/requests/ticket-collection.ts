@@ -15,6 +15,8 @@ export function ticketMetrics(
   ]);
   const completedStates = new Set([
     "CLOSED_DELIVERED",
+    "CLOSED_REQUIREMENT_MET",
+    "CLOSED_REANALYSIS_DECLINED",
     "CLOSED_EXISTING_PRODUCT_ACCEPTED",
     "CLOSED_UNANSWERED",
     "CLOSED_JOINED_EXISTING_WORK",

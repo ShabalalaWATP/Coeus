@@ -5378,6 +5378,17 @@
             "title": "Reference",
             "type": "string"
           },
+          "requesterAccessWarning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requesteraccesswarning"
+          },
           "requesterUserId": {
             "format": "uuid",
             "title": "Requesteruserid",

@@ -31,7 +31,10 @@ async def qc_queue(
 ) -> QcQueueResponse:
     queue = qc.queue(authenticated.user)
     return QcQueueResponse(
-        products=[product_response(ticket, store) for ticket in queue.assigned_products],
+        products=[
+            product_response(ticket, store, qc.requester_warning(ticket))
+            for ticket in queue.assigned_products
+        ],
         items=[queue_item_response(item) for item in queue.items],
     )
 
@@ -43,7 +46,8 @@ async def qc_product(
     qc: Annotated[QualityControlService, Depends(get_quality_control_service)],
     store: Annotated[StoreServices, Depends(get_store_services)],
 ) -> QcProductResponse:
-    return product_response(qc.details(authenticated.user, ticket_id), store)
+    ticket = qc.details(authenticated.user, ticket_id)
+    return product_response(ticket, store, qc.requester_warning(ticket))
 
 
 @router.post("/products/{ticket_id}/claim", response_model=QcProductResponse)
@@ -54,7 +58,8 @@ async def claim_qc_product(
     store: Annotated[StoreServices, Depends(get_store_services)],
 ) -> QcProductResponse:
     claimed = qc.claim(authenticated.user, ticket_id)
-    return product_response(qc.prepare_review(authenticated.user, claimed), store)
+    prepared = qc.prepare_review(authenticated.user, claimed)
+    return product_response(prepared, store, qc.requester_warning(prepared))
 
 
 @router.delete("/products/{ticket_id}/claim", status_code=204)

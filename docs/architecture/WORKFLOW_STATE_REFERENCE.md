@@ -115,6 +115,29 @@ stateDiagram-v2
 An allowed transition is still subject to live role, assignment,
 separation-of-duties, claim, exact-version and object-policy checks.
 
+Operational guarantees on these edges:
+
+- A routing-phase `INFO_REQUIRED` ticket (one holding any routing artefact)
+  resumes to `JIOC_REVIEW` when the requester answers through intake edits,
+  added information or chat. It never regresses into the intake loop.
+- QC-requested rework resubmits straight to `QC_REVIEW`; the immutable
+  version pin is refreshed to the exact resubmitted version so uploaded
+  external products pass the QC preflight version check.
+- Managers may reassign analysts in `ANALYST_IN_PROGRESS` and
+  `REWORK_REQUIRED` without changing the lifecycle state, for example after
+  an analyst account is deactivated; assignment from `ANALYST_ASSIGNMENT`
+  starts production as before.
+- A QC claim held by a reviewer who is no longer active or QC-eligible can be
+  taken over by an eligible reviewer, recorded as `qc_claim_transferred`.
+- Release fails closed with `requester_access_lost` when the selected access
+  groups or classification would prevent the requester reading their own
+  product; the QC detail also carries an advisory warning computed from the
+  draft metadata.
+- A re-analysis order (`manager_reanalysis_agreed` or
+  `jioc_reanalysis_ordered`) requires a revised draft before resubmission.
+- Every state with no onward transition releases admission capacity; the
+  terminal set is derived from this edge list.
+
 ## 3. Intervention and outcome transitions
 
 ```mermaid

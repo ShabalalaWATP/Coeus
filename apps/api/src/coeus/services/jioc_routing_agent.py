@@ -124,7 +124,12 @@ class JiocRoutingAgentService:
             if current_recommendation.recommended_route == recommendation.recommended_route:
                 recommendation = current_recommendation
             else:
-                handoff_runs = review.proposed.agent_runs[len(ticket.agent_runs) + 3 :]
+                replacement_runs = review_agent_runs(ticket, rfa_review, cm_review, recommendation)
+                # The rebuilt runs mirror the original builder output, so their
+                # length locates where the customer-handoff runs begin.
+                handoff_runs = review.proposed.agent_runs[
+                    len(ticket.agent_runs) + len(replacement_runs) :
+                ]
                 review = replace(
                     review,
                     proposed=replace(
@@ -133,11 +138,7 @@ class JiocRoutingAgentService:
                             *review.proposed.route_recommendations[:-1],
                             recommendation,
                         ),
-                        agent_runs=(
-                            *ticket.agent_runs,
-                            *review_agent_runs(ticket, rfa_review, cm_review, recommendation),
-                            *handoff_runs,
-                        ),
+                        agent_runs=(*ticket.agent_runs, *replacement_runs, *handoff_runs),
                     ),
                 )
             proposed = review.proposed

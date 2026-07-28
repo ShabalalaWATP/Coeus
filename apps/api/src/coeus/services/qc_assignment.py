@@ -12,6 +12,7 @@ from coeus.domain.qc import QcClaimStatus
 from coeus.domain.qc_assignment import active_qc_reviewer_id, qc_claim_status
 from coeus.domain.teams import TeamKind, team_member_ids
 from coeus.domain.tickets import TicketRecord
+from coeus.repositories.access import AccessRepository
 from coeus.repositories.teams import TeamRepository
 from coeus.services.prioritisation import priority_sort_key
 from coeus.services.ticket_records import timeline
@@ -42,9 +43,12 @@ class QcQueueView:
 
 
 class QcAssignmentService:
-    def __init__(self, tickets: TicketServices, teams: TeamRepository) -> None:
+    def __init__(
+        self, tickets: TicketServices, teams: TeamRepository, access: AccessRepository
+    ) -> None:
         self._tickets = tickets
         self._teams = teams
+        self._access = access
 
     def queue(self, actor: UserAccount) -> QcQueueView:
         self.require_eligible_actor(actor)
@@ -90,20 +94,31 @@ class QcAssignmentService:
         reviewer_id = active_qc_reviewer_id(ticket)
         if reviewer_id == actor.user_id:
             return ticket
-        if reviewer_id is not None:
+        # A claim held by a deactivated or no-longer-eligible reviewer must
+        # not strand the ticket: an eligible reviewer may take it over.
+        if reviewer_id is not None and self._holder_still_eligible(reviewer_id):
             raise self._already_claimed()
+        event_type = "qc_claimed" if reviewer_id is None else "qc_claim_transferred"
+        summary = (
+            "QC review claimed."
+            if reviewer_id is None
+            else "QC claim taken over; the previous reviewer is no longer eligible."
+        )
+        metadata = {"ticket_id": str(ticket_id)}
+        if reviewer_id is not None:
+            metadata["previous_reviewer_user_id"] = str(reviewer_id)
         proposed = replace(
             ticket,
             qc_reviewer_user_id=actor.user_id,
             qc_claimed_at=datetime.now(UTC),
             timeline=(
                 *ticket.timeline,
-                timeline(ticket.ticket_id, actor.user_id, "qc_claimed", "QC review claimed."),
+                timeline(ticket.ticket_id, actor.user_id, event_type, summary),
             ),
         )
         try:
             return self._tickets.mutations.save_audited_if_current(
-                ticket, proposed, "qc_claimed", actor, {"ticket_id": str(ticket_id)}
+                ticket, proposed, event_type, actor, metadata
             )
         except AppError as exc:
             if exc.code != "ticket_changed":
@@ -146,14 +161,25 @@ class QcAssignmentService:
 
     def require_eligible_actor(self, actor: UserAccount) -> None:
         self._require_permission(actor, Permission.QC_REVIEW)
-        if not actor.is_active or RoleName.QUALITY_CONTROL_MANAGER not in actor.roles:
+        if not self._eligible_reviewer(actor):
             raise AppError(403, "forbidden", "Permission denied.")
-        eligible = any(
-            team.is_active and team.kind == TeamKind.QC and actor.user_id in team_member_ids(team)
-            for team in self._teams.list_teams()
+
+    def _eligible_reviewer(self, account: UserAccount) -> bool:
+        return (
+            account.is_active
+            and RoleName.QUALITY_CONTROL_MANAGER in account.roles
+            and Permission.QC_REVIEW in account.permissions
+            and any(
+                team.is_active
+                and team.kind == TeamKind.QC
+                and account.user_id in team_member_ids(team)
+                for team in self._teams.list_teams()
+            )
         )
-        if not eligible:
-            raise AppError(403, "forbidden", "Permission denied.")
+
+    def _holder_still_eligible(self, reviewer_id: UUID) -> bool:
+        account = self._access.get_user(reviewer_id)
+        return account is not None and self._eligible_reviewer(account)
 
     @staticmethod
     def ensure_separation_of_duties(actor: UserAccount, ticket: TicketRecord) -> None:

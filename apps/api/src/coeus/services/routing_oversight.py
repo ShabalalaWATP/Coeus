@@ -2,7 +2,7 @@
 
 from collections import Counter
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from coeus.core.errors import AppError
@@ -112,7 +112,9 @@ class RoutingOversightService:
             for assignment in active_assignments(ticket)
             if assignment.team_id is not None
         )
-        today = datetime.now().astimezone().date().isoformat()
+        # UTC keeps oversight aligned with the routing capacity snapshot and
+        # calendar validation, which both work in UTC days.
+        today = datetime.now(UTC).date().isoformat()
         teams = tuple(
             OversightTeam(
                 team.team_id,

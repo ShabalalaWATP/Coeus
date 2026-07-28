@@ -113,6 +113,55 @@ async def test_qc_claim_release_allows_a_deliberate_handoff() -> None:
 
 
 @pytest.mark.asyncio
+async def test_claim_held_by_a_deactivated_reviewer_can_be_taken_over() -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    second_username = _add_second_qc_reviewer(app)
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        ticket_id = await _submitted_qc_ticket(client, app, "Stranded QC claim product")
+        first = await login(client, "qc.manager@example.test")
+        claimed = await client.post(
+            f"/api/v1/qc/products/{ticket_id}/claim",
+            headers={"X-CSRF-Token": str(first["csrfToken"])},
+        )
+        users = app.state.access_services.repository
+        holder = users.get_user_by_username("qc.manager@example.test")
+        assert holder is not None
+        users._users.save(replace(holder, is_active=False))
+        second = await login(client, second_username)
+        taken_over = await client.post(
+            f"/api/v1/qc/products/{ticket_id}/claim",
+            headers={"X-CSRF-Token": str(second["csrfToken"])},
+        )
+        rejected = await client.post(
+            f"/api/v1/qc/products/{ticket_id}/reject",
+            headers={"X-CSRF-Token": str(second["csrfToken"])},
+            json={"reason": "Restate the synthetic provenance."},
+        )
+
+    assert claimed.status_code == 200
+    assert taken_over.status_code == 200
+    second_user = app.state.access_services.repository.get_user_by_username(second_username)
+    assert second_user is not None
+    ticket = app.state.ticket_services.tickets._repository.get(UUID(ticket_id))
+    assert ticket is not None
+    assert ticket.qc_reviewer_user_id == second_user.user_id
+    assert "qc_claim_transferred" in [entry.event_type for entry in ticket.timeline]
+    holder = app.state.access_services.repository.get_user_by_username("qc.manager@example.test")
+    assert holder is not None
+    transfer_events = [
+        event
+        for event in app.state.quality_control_service._audit_log.list_events()
+        if event.event_type == "qc_claim_transferred"
+    ]
+    assert transfer_events
+    assert transfer_events[0].metadata["previous_reviewer_user_id"] == str(holder.user_id)
+    assert rejected.status_code == 200
+    assert rejected.json()["state"] == "REWORK_REQUIRED"
+
+
+@pytest.mark.asyncio
 async def test_competing_memory_claims_have_one_winner_and_one_audit(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

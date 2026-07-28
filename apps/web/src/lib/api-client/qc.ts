@@ -77,6 +77,7 @@ export type QcProduct = {
     status: string;
     acgIds: string[];
   } | null;
+  requesterAccessWarning?: string | null;
 };
 
 export type QcQueue = {

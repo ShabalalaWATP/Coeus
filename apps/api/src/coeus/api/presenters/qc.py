@@ -43,7 +43,11 @@ def queue_item_response(item: QcQueueItem) -> QcQueueItemResponse:
     )
 
 
-def product_response(ticket: TicketRecord, store: StoreServices) -> QcProductResponse:
+def product_response(
+    ticket: TicketRecord,
+    store: StoreServices,
+    requester_access_warning: str | None = None,
+) -> QcProductResponse:
     intake = ticket.intake
     return QcProductResponse(
         ticket_id=ticket.ticket_id,
@@ -69,6 +73,7 @@ def product_response(ticket: TicketRecord, store: StoreServices) -> QcProductRes
         disseminations=[dissemination_response(item) for item in ticket.disseminations],
         feedback_requests=[feedback_response(item) for item in ticket.feedback_requests],
         ingested_product=_ingested_product(ticket, store),
+        requester_access_warning=requester_access_warning,
     )
 
 

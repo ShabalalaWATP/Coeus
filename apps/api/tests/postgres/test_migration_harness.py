@@ -20,7 +20,7 @@ from coeus.persistence.ticket_shadow_schema import ensure_ticket_shadow_schema
 from coeus.repositories.tickets import InMemoryTicketRepository
 
 API_ROOT = Path(__file__).resolve().parents[2]
-HEAD_REVISION = "20260720_0014"
+HEAD_REVISION = "20260727_0015"
 
 pytestmark = pytest.mark.postgres
 

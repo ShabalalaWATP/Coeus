@@ -33,6 +33,7 @@ from coeus.services.conversation_reply_records import (
     deterministic_reply,
     text_hash,
 )
+from coeus.services.conversation_routing_resume import chat_reply_projection
 from coeus.services.intake import (
     AdmittedAssistantReply,
     IntakeAssistantProvider,
@@ -210,7 +211,9 @@ class ConversationService:
             error_class=assistant_reply.error_class,
             advice=advice_for_reply(assistant_reply),
         )
-        state = self._tickets.state_for_intake(ticket.state, intake)
+        state, entries = chat_reply_projection(
+            ticket, actor.user_id, intake, safety_flags, self._tickets.state_for_intake
+        )
         proposed = with_assessment(
             replace(
                 ticket,
@@ -219,12 +222,7 @@ class ConversationService:
                 conversation_status=conversation_status,
                 messages=(*ticket.messages, user_message, assistant_message),
                 agent_runs=(*ticket.agent_runs, agent_run),
-                timeline=(
-                    *ticket.timeline,
-                    timeline(
-                        ticket.ticket_id, actor.user_id, "chat_message", "User chat received."
-                    ),
-                ),
+                timeline=entries,
             )
         )
         if create:

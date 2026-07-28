@@ -7,47 +7,37 @@ original target state. This file is the current delivery, risk and release track
 
 As of 23 July 2026, Sprints 1 to 23 are implemented for the supported synthetic
 local/test boundary. The 22 July security remediation passed 1,606 backend
-tests with one intentional skip at 98.23/95.33 per cent line/branch coverage
-and 537 frontend tests at 98.63/95.03 per cent. It was integrated into `main` at
-`0cde7010`, and all protected and post-merge workflows passed. See its
-[contract](specs/security-scan-remediation-2026-07-22.md),
-[ADR](adr/0042-enforce-security-policy-at-final-boundaries.md) and [threat
-model](threat-model/security-scan-remediation-2026-07-22.md).
+tests (one intentional skip) at 98.23/95.33 line/branch and 537 frontend tests
+at 98.63/95.03, integrated at `0cde7010` with all protected and post-merge
+workflows passing; see its [contract](specs/security-scan-remediation-2026-07-22.md),
+[ADR](adr/0042-enforce-security-policy-at-final-boundaries.md) and
+[threat model](threat-model/security-scan-remediation-2026-07-22.md).
 
 Finding closure still requires a fresh sealed whole-repository deep scan of the
-exact immutable candidate, with no unresolved baseline occurrence or new
-reportable finding. Production-release closure also requires authorised staging
+exact immutable candidate with no unresolved baseline occurrence or new
+reportable finding, and production-release closure requires authorised staging
 verification. Local development remains the supported runtime; hosted,
 multi-instance, GCP, Kubernetes and production operation remain gated targets.
 
-Completed post-Sprint-17 product slices include:
+Completed post-Sprint-17 product slices, with point-in-time verification in
+the delivery ledger and [development story](DEVELOPMENT_STORY.md):
 
-- generic Analyst seed personas with team-authoritative assignment
-  ([contract](specs/generic-analyst-seed-personas.md), [ADR 0029](adr/0029-generic-analyst-role-and-profile-specialisation.md));
-- clearer customer, ACG, profile and assigned-analyst context
-  ([contract](specs/customer-experience-and-analyst-context.md), [ADR 0030](adr/0030-bounded-self-service-and-analyst-context.md));
-- 144 deterministic demo PDFs and calibrated search assurance
-  ([contract](specs/synthetic-intelligence-library-and-search-assurance.md), [ADR 0031](adr/0031-deterministic-live-demo-pdf-corpus.md)); and
-- a compact admin command centre, bounded Realtime connection test and
-  aggregate-only platform analytics
-  ([contract](specs/admin-command-centre-and-analytics.md), [ADR 0035](adr/0035-separate-admin-platform-analytics.md)).
-
-Their point-in-time verification remains in the delivery ledger and
-[development story](DEVELOPMENT_STORY.md).
+- generic Analyst seed personas ([contract](specs/generic-analyst-seed-personas.md), [ADR 0029](adr/0029-generic-analyst-role-and-profile-specialisation.md));
+- clearer customer, ACG and analyst context ([contract](specs/customer-experience-and-analyst-context.md), [ADR 0030](adr/0030-bounded-self-service-and-analyst-context.md));
+- 144 demo PDFs and calibrated search assurance ([contract](specs/synthetic-intelligence-library-and-search-assurance.md), [ADR 0031](adr/0031-deterministic-live-demo-pdf-corpus.md)); and
+- the admin command centre and aggregate-only analytics ([contract](specs/admin-command-centre-and-analytics.md), [ADR 0035](adr/0035-separate-admin-platform-analytics.md)).
 
 The customer-search and autonomous-routing orchestration is implemented under
 its [contract](specs/customer-search-routing-orchestration.md) and
 [ADR 0036](adr/0036-customer-search-assurance-and-agent-routing.md). Submission
-now starts bounded product discovery, separates offers from definitive no-match
-and incomplete outcomes, offers authorised active work before owner-only new
-tasking consent, and routes authorised new work through a policy-constrained
-JIOC agent. JIOC managers have an audited on-the-loop intervention queue;
-customers receive safe stage and ETA projections; collection-to-analysis
-handoffs retain versioned context; deterministic QC preflight cannot bypass the
-human release authority. The clean PostgreSQL-backed gate passes 1,176 tests
-with one intentional compatibility skip at 98.09 per cent line and 95.12 per
-cent branch coverage. The frontend passes 518 tests at 98.85 per cent line and
-95.05 per cent branch coverage.
+starts bounded product discovery, separates offers from definitive no-match and
+incomplete outcomes, offers authorised active work before owner-only consent,
+and routes new work through a policy-constrained JIOC agent. JIOC managers have
+an audited on-the-loop intervention queue; customers receive safe stage and ETA
+projections; collection-to-analysis handoffs retain versioned context;
+deterministic QC preflight cannot bypass the human release authority. Its
+point-in-time gate passed 1,176 backend tests (one intentional skip) at
+98.09/95.12 line/branch and 518 frontend tests at 98.85/95.05.
 
 The 20 July 2026 agent-safety hardening milestone is complete. The evaluated v2 JIOC release is active by default for supported synthetic local/test use and autonomously decides CM versus RFA. Hosted mode and approval remain explicit; unsafe cases fail closed to human review. The release approval is independently pinned. Model, provenance, authority and outbox safety passed the local gates.
 
@@ -298,20 +288,32 @@ point-in-time test counts for each 20 July slice.
 
 ### Deferred Gates, Risks And Next Step
 
-- Before real or sensitive data, require approved classification,
-  DLP/redaction and egress policy; provider/model/region allowlists; retention;
-  a representative human-labelled corpus; calibration, drift and rollback
-  evidence; and a decision on any richer provider context.
-- LiteLLM connectivity is implemented behind a deployment-managed URL, encrypted
-  scoped key, bounded discovery and deterministic controllers. Production still
-  requires explicit aliases, workload identity, egress/retention approval and
-  route evaluation under ADR 0041 and the LiteLLM threat model.
-- Current residual risks are cumulative across the linked threat models. They
-  include process-local availability, third-party parsers without process
-  isolation, new guarded-write drift and provider/real-data governance.
-- Keep the evaluated release `active` only for synthetic local/test use;
-  `disabled` is the rollback switch. Hosted use requires labelled evidence,
+- Before real or sensitive data: approved classification, DLP/redaction and
+  egress policy; provider/model/region allowlists; retention; a representative
+  human-labelled corpus; calibration, drift and rollback evidence; and a
+  decision on any richer provider context.
+- LiteLLM connectivity sits behind a deployment-managed URL, encrypted scoped
+  key, bounded discovery and deterministic controllers; production still needs
+  explicit aliases, workload identity, egress/retention approval and route
+  evaluation under ADR 0041 and the LiteLLM threat model.
+- Residual risks are cumulative across the linked threat models:
+  process-local availability, third-party parsers without process isolation,
+  new guarded-write drift and provider/real-data governance.
+- Keep the evaluated release `active` only for synthetic local/test use with
+  `disabled` as the rollback switch; hosted use requires labelled evidence,
   real-data governance and a separately reviewed canary.
+
+## 27 July 2026 Workflow review remediation
+
+A four-angle workflow review confirmed eight defect groups on `main`; all are
+fixed under the [remediation contract](specs/workflow-review-remediation-2026-07-27.md)
+with no state-machine edge changes: terminal states derive from the state
+machine and release capacity (migration `20260727_0015`); clarification
+answers resume `JIOC_REVIEW` from every channel; uploaded rework passes the QC
+version pin; deactivation strands are recoverable; chunk-index access
+predicates gained tripwire and Postgres tests; requester lockout fails clearly
+and warns early; re-analysis requires a revised draft. Deferred as product
+decisions: workflow-wide push notifications and any incomplete-search override.
 
 ## 22 July 2026 Sealed-scan remediation
 
@@ -319,7 +321,7 @@ The earlier 15 findings are fixed and verified. Follow-up scan
 `5af0222d-05d1-4c46-a090-018aff45db2d` reported three Medium and eight Low
 issues; the integrated `0cde7010` remediation covers exact sessions and
 authority, visibility, canonical lock order, atomic audit, parser budgets and
-cancellation-safe submission. Full gates and post-merge workflows passed.
+cancellation-safe submission, with full gates and post-merge workflows passed.
 Authorised staging and the fresh immutable deep scan remain open under the
 [22 July contract](specs/security-scan-remediation-2026-07-22.md).
 
@@ -327,9 +329,8 @@ Authorised staging and the fresh immutable deep scan remain open under the
 Status: complete and verified for the supported local/test boundary.
 
 - [x] Implement the feature spec and ADR 0040 with deterministic authority and safe staff-only provenance.
-- [x] Complete all quality/security gates and independent reviews. Final combined
-  verification passed 1,432 backend tests with one intentional skip at 98.13/95.07
-  per cent line/branch coverage and 533 frontend tests at 98.65/95.05 per cent.
+- [x] All quality/security gates and independent reviews passed: 1,432 backend
+  tests (one intentional skip) at 98.13/95.07 and 533 frontend tests at 98.65/95.05.
 - Risk: remote advisory use remains blocked by default and still needs labelled evidence plus a separately approved real-data classification, redaction and egress release.
 
 ## 23 July 2026 Architecture Atlas

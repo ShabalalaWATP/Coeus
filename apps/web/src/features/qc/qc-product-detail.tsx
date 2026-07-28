@@ -99,6 +99,11 @@ export function QcProductDetail({
         <AgentPreflight product={product} />
       </div>
       <MetadataChecks acgId={releaseAcgId} form={releaseForm} product={product} />
+      {product.requesterAccessWarning ? (
+        <div className="workspace-alert" role="alert">
+          <span>{product.requesterAccessWarning}</span>
+        </div>
+      ) : null}
       {acgsFailed ? (
         <div className="workspace-alert" role="alert">
           <span>Access groups could not be loaded. Refresh and try again.</span>

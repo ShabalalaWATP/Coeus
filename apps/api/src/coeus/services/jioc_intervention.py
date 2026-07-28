@@ -7,6 +7,7 @@ from coeus.core.permissions import Permission
 from coeus.domain.auth import UserAccount
 from coeus.domain.enums import TicketState
 from coeus.domain.jioc_intervention import JiocIntervention
+from coeus.domain.state_machine import can_transition
 from coeus.domain.tickets import TicketRecord
 from coeus.services.ticket_records import timeline
 from coeus.services.tickets import TicketServices
@@ -80,7 +81,16 @@ class JiocInterventionService:
         )
         if ticket.state != TicketState.JIOC_INTERVENTION_HOLD or active is None:
             raise AppError(409, "invalid_ticket_state", "This request is not on JIOC hold.")
-        target = TicketState(active.previous_state)
+        try:
+            target = TicketState(active.previous_state)
+        except ValueError as exc:
+            raise AppError(
+                409, "intervention_state_invalid", "The held state can no longer be restored."
+            ) from exc
+        if not can_transition(TicketState.JIOC_INTERVENTION_HOLD, target):
+            raise AppError(
+                409, "intervention_state_invalid", "The held state can no longer be restored."
+            )
         resumed_at = datetime.now(UTC)
         completed_hold = replace(
             active,

@@ -106,6 +106,26 @@ test("declines no-match tasking and closes the request unanswered", async () => 
   expect((await screen.findAllByText("Closed unanswered"))[0]).toBeVisible();
 });
 
+test("legacy no-match tickets offer consent decisions but never a cancel control", async () => {
+  const legacyTicket: Ticket = { ...noMatchTicket, state: "RFI_NO_MATCH" };
+  const fetchMock = vi.fn((url: string) => {
+    if (url.includes("/api/v1/tickets") && !url.includes("/no-match-consent")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ tickets: [legacyTicket] }),
+      });
+    }
+    return Promise.resolve(_responseFor(url, undefined, legacyTicket));
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderRequests("/app/requests/ticket-1");
+
+  expect(await screen.findByRole("button", { name: "Yes, task as new request" })).toBeVisible();
+  // The API forbids cancellation from RFI_NO_MATCH, so no control is offered.
+  expect(screen.queryByText("Cancel request")).not.toBeInTheDocument();
+});
+
 test("shows no-match consent failures through the shared action error", async () => {
   const fetchMock = vi.fn((url: string) => {
     if (url.includes("/no-match-consent")) {

@@ -4,9 +4,9 @@ import json
 from hashlib import sha256
 from typing import Any
 
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 
-from coeus.domain.ticket_retention import ticket_consumes_capacity
+from coeus.domain.ticket_retention import terminal_state_names, ticket_consumes_capacity
 from coeus.domain.tickets import TicketRecord
 from coeus.persistence.codec import decode_value
 from coeus.persistence.draft_audience_projection import ensure_draft_audience_schema
@@ -48,10 +48,20 @@ def ensure_ticket_shadow_schema(connection: Any) -> None:
               requester_user_id = (payload -> 'fields' -> 'requester_user_id' ->> '__uuid__')::uuid,
               state = payload -> 'fields' -> 'state' ->> 'value',
               consumes_capacity = payload -> 'fields' -> 'state' ->> 'value'
-                NOT IN ('CANCELLED', 'CLOSED_DELIVERED', 'CLOSED_EXISTING_PRODUCT_ACCEPTED')
+                NOT IN :terminal_states
             WHERE requester_user_id IS NULL OR state IS NULL OR consumes_capacity IS NULL
             """
-        )
+        ).bindparams(bindparam("terminal_states", expanding=True)),
+        {"terminal_states": list(terminal_state_names())},
+    )
+    # Repair rows projected before a state became terminal, so startup
+    # reconciliation against the domain predicate cannot fail.
+    connection.execute(
+        text(
+            "UPDATE coeus_ticket_aggregates SET consumes_capacity = false "
+            "WHERE consumes_capacity AND state IN :terminal_states"
+        ).bindparams(bindparam("terminal_states", expanding=True)),
+        {"terminal_states": list(terminal_state_names())},
     )
     connection.execute(
         text("ALTER TABLE coeus_ticket_aggregates ALTER COLUMN requester_user_id SET NOT NULL")

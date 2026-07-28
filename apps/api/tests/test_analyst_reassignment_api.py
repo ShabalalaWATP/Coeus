@@ -95,6 +95,83 @@ async def test_reassignment_is_blocked_before_first_assignment_completes() -> No
 
 
 @pytest.mark.asyncio
+async def test_rework_ticket_can_be_reassigned_after_analyst_deactivation() -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    repository = app.state.access_services.repository
+    original = repository.get_user_by_username("analyst@example.test")
+    replacement = repository.get_user_by_username("analyst.2@example.test")
+    assert original is not None and replacement is not None
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        ticket_id = await _assigned_ticket(client, app)
+        analyst = await login(client, "analyst@example.test")
+        draft = await client.post(
+            f"/api/v1/analyst/tasks/{ticket_id}/drafts",
+            headers={"X-CSRF-Token": str(analyst["csrfToken"])},
+            json=_draft_payload("Arctic rework draft"),
+        )
+        for package in draft.json()["workPackages"]:
+            await client.patch(
+                f"/api/v1/analyst/tasks/{ticket_id}/work-packages/{package['id']}",
+                headers={"X-CSRF-Token": str(analyst["csrfToken"])},
+                json={"status": "complete"},
+            )
+        await client.post(
+            f"/api/v1/analyst/tasks/{ticket_id}/submit",
+            headers={"X-CSRF-Token": str(analyst["csrfToken"])},
+        )
+        manager = await login(client, "rfa.manager@example.test")
+        await client.post(
+            f"/api/v1/routing/{ticket_id}/manager-approval",
+            headers={"X-CSRF-Token": str(manager["csrfToken"])},
+        )
+        qc = await login(client, "qc.manager@example.test")
+        rejected = await client.post(
+            f"/api/v1/qc/products/{ticket_id}/reject",
+            headers={"X-CSRF-Token": str(qc["csrfToken"])},
+            json={"reason": "Restate the mock sourcing chain."},
+        )
+        admin = await login(client, "admin@example.test")
+        disabled = await client.put(
+            f"/api/v1/admin/users/{original.user_id}/status",
+            headers={"X-CSRF-Token": str(admin["csrfToken"])},
+            json={"isActive": False},
+        )
+        manager = await login(client, "rfa.manager@example.test")
+        reassigned = await client.post(
+            f"/api/v1/analyst/tasks/{ticket_id}/assign",
+            headers={"X-CSRF-Token": str(manager["csrfToken"])},
+            json={
+                "analystUserIds": [str(replacement.user_id)],
+                "teamId": await assignment_team_id(client),
+            },
+        )
+        new_analyst = await login(client, "analyst.2@example.test")
+        revised = await client.post(
+            f"/api/v1/analyst/tasks/{ticket_id}/drafts",
+            headers={"X-CSRF-Token": str(new_analyst["csrfToken"])},
+            json=_draft_payload("Arctic rework draft revised"),
+        )
+        resubmitted = await client.post(
+            f"/api/v1/analyst/tasks/{ticket_id}/submit",
+            headers={"X-CSRF-Token": str(new_analyst["csrfToken"])},
+        )
+
+    assert rejected.json()["state"] == "REWORK_REQUIRED"
+    assert disabled.status_code == 200
+    assert reassigned.status_code == 200
+    assert reassigned.json()["state"] == "REWORK_REQUIRED"
+    assert [item["analystUserId"] for item in reassigned.json()["assignments"]] == [
+        str(replacement.user_id)
+    ]
+    assert revised.status_code == 200
+    assert resubmitted.status_code == 200
+    assert resubmitted.json()["state"] == "QC_REVIEW"
+
+
+@pytest.mark.asyncio
 async def test_setting_work_package_to_current_status_is_a_no_op() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     async with AsyncClient(

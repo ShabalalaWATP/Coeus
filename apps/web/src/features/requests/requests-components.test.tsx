@@ -18,6 +18,15 @@ test("calculates ticket metrics for every visible state", () => {
   ).toEqual({ total: 4, draft: 2, awaitingAction: 1, inProgress: 1, completed: 0 });
 });
 
+test("counts accepted and declined outcome closures as completed", () => {
+  expect(
+    ticketMetrics([
+      { ...ticket, state: "CLOSED_REQUIREMENT_MET" },
+      { ...ticket, state: "CLOSED_REANALYSIS_DECLINED" },
+    ]),
+  ).toEqual({ total: 2, draft: 0, awaitingAction: 0, inProgress: 0, completed: 2 });
+});
+
 test("disables sending short chat messages and shows a hint", async () => {
   const onSend = vi.fn();
   render(<ChatPanel isSending={false} onSend={onSend} />);

@@ -170,6 +170,9 @@ class QcProductResponse(BaseModel):
         serialization_alias="feedbackRequests"
     )
     ingested_product: QcProductSummaryResponse | None = Field(serialization_alias="ingestedProduct")
+    requester_access_warning: str | None = Field(
+        default=None, serialization_alias="requesterAccessWarning"
+    )
 
 
 class QcQueueItemResponse(BaseModel):
