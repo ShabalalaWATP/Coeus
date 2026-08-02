@@ -13,7 +13,19 @@ actions are audited. The product brand is
 Istari; internal package, module and infrastructure identifiers keep the
 original `coeus` working name.
 
-![Istari sign-in and splash page](docs/images/01-splash-login.png)
+## Current interface
+
+The screenshots below were refreshed from the current 1440 x 1000 desktop
+interface on 2 August 2026. The [User Guide](docs/USER_GUIDE.md) contains the
+complete role-by-role walkthrough and key-workspace screenshot set.
+
+| Sign in                                                            | Customer requests                                                    |
+| ------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| ![Istari sign-in and splash page](docs/images/01-splash-login.png) | ![Customer request dashboard](docs/images/03-customer-dashboard.png) |
+
+| Intelligence Store                                                                               | JIOC oversight                                                         |
+| ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| ![Intelligence Store search results and personal library](docs/images/06-intelligence-store.png) | ![JIOC Manager oversight workspace](docs/images/14-jioc-oversight.png) |
 
 ## What it does
 
@@ -71,8 +83,8 @@ uv run --project apps/api uvicorn coeus.main:app --host 127.0.0.1 --port 8001 --
 corepack pnpm --filter @coeus/web dev
 ```
 
-Open <http://127.0.0.1:5173> and sign in as `user@example.test` with the mock
-credential `CoeusLocal1!`. The full list of seed accounts is in the
+Open <http://127.0.0.1:5173> and sign in as `user@example.test` with the
+local-only password `CoeusLocal1!`. The full list of seed accounts is in the
 [Setup Guide](docs/SETUP.md#seed-accounts).
 
 ## Tech stack
@@ -82,8 +94,9 @@ credential `CoeusLocal1!`. The full list of seed accounts is in the
 - **Frontend:** React 19, Vite, TypeScript, React Router, TanStack Query,
   react-hook-form, Zod; tested with Vitest and Playwright.
 - **Quality gates:** ruff, mypy, ESLint, Prettier, tsc, OpenAPI contract drift,
-  a 350-line file limit, and at least 95% line and branch coverage on both
-  backend and frontend.
+  a 350-line limit for hand-written source and configuration files, and at
+  least 95% line and branch coverage on both backend and frontend. Markdown
+  documentation is deliberately exempt from the source-file line limit.
 
 ## Project structure
 

@@ -1,7 +1,7 @@
 # Security and Trust Views
 
-Status: **implemented** unless marked otherwise. Verified against `e44b66b6` on
-23 July 2026.
+Status: **implemented** unless marked otherwise. Verified against `747f19b4` on
+2 August 2026.
 
 These views show where identity, policy and human authority are re-evaluated.
 They are an orientation aid, not a replacement for the linked threat models.
@@ -69,7 +69,7 @@ flowchart TB
     MUT{"State-changing?"}
     CSRF{"CSRF token matches?"}
     PERM{"Required action<br/>permission?"}
-    OBJECT{"Object policy passes?<br/>owner, team, clearance, ACG,<br/>status, audience and role"}
+    OBJECT{"Object policy passes?<br/>owner, personal-library owner, team,<br/>clearance, ACG, status, audience and role"}
     SERVICE["Service command"]
     FINAL{"Sensitive commit or<br/>asset redemption?"}
     FENCE{"Re-read mutable authority,<br/>version and canonical hash"}
@@ -102,6 +102,11 @@ flowchart TB
 Frontend route policy improves navigation but is never an authorisation
 boundary. Ordinary denials are not described as audit evidence unless the
 governing service explicitly records them.
+
+Personal Store folders take their owner only from the authenticated session.
+Saved products are references rather than access grants, and each listing or
+save re-runs current product visibility policy. A hidden saved product exposes
+no metadata and contributes only to an aggregate unavailable count.
 
 ## 3. Session and credential lifecycle
 
@@ -284,4 +289,4 @@ provider release.
 | Product policy and grants     | [Store access](../../apps/api/src/coeus/services/store_access.py), [asset redemption](../../apps/api/src/coeus/services/store_asset_redemption.py), [file routes](../../apps/api/src/coeus/api/routes/store_files.py)                                                                        |
 | ACG governance                | [Access service](../../apps/api/src/coeus/services/access.py), [ACG applications](../../apps/api/src/coeus/services/acg_applications.py), [ACG catalogue](../../apps/api/src/coeus/services/acg_catalogue.py)                                                                                |
 | External integration controls | [AI models](../../apps/api/src/coeus/services/ai_models.py), [voice models](../../apps/api/src/coeus/services/voice_models.py), [Realtime adapter](../../apps/api/src/coeus/integrations/openai_realtime.py), [browser voice hook](../../apps/web/src/features/requests/useRealtimeVoice.ts) |
-| Threat models                 | [Auth and sessions](../threat-model/auth-rbac-sessions.md), [ACG and product access](../threat-model/acg-product-access.md), [Bounded advisory planners](../threat-model/bounded-advisory-planners.md), [Realtime voice](../threat-model/realtime-voice.md)                                      |
+| Threat models                 | [Auth and sessions](../threat-model/auth-rbac-sessions.md), [ACG and product access](../threat-model/acg-product-access.md), [Bounded advisory planners](../threat-model/bounded-advisory-planners.md), [Realtime voice](../threat-model/realtime-voice.md)                                  |

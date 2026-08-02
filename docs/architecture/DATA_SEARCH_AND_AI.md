@@ -1,7 +1,7 @@
 # Data, Search and AI Views
 
-Status: **implemented** unless marked otherwise. Verified against `e44b66b6` on
-23 July 2026.
+Status: **implemented** unless marked otherwise. Verified against `747f19b4` on
+2 August 2026.
 
 This page distinguishes authoritative records, compatibility projections,
 derived indexes and optional model assistance. These distinctions matter during
@@ -17,7 +17,7 @@ flowchart TB
     subgraph domains["Application-owned domains"]
         ID["Identity and authority"]
         WF["Versioned workflow"]
-        STORE["Intelligence Store"]
+        STORE["Intelligence Store<br/>catalogue and personal references"]
         AUD["Audit evidence"]
         CFG["Configuration and notifications"]
         SEARCH["Derived search"]
@@ -74,12 +74,16 @@ This is a domain-level ERD, not a complete physical schema.
 ```mermaid
 erDiagram
     accTitle: Core workflow, Store and search relationships
-    accDescr: Tickets relate to drafts, audit and outbox intents; Store products relate to assets and access groups; generation profiles own derived chunks and embeddings.
+    accDescr: Tickets relate to drafts, audit and outbox intents; users own personal folders and saved product references; Store products relate to assets and access groups; generation profiles own derived chunks and embeddings.
 
     USER ||--o{ SESSION : owns
     USER }o--o{ ROLE : holds
     USER }o--o{ ACCESS_GROUP : member_of
     USER ||--o{ TICKET : requests
+    USER ||--o{ PERSONAL_FOLDER : owns
+    USER ||--o{ SAVED_PRODUCT : saves
+    PERSONAL_FOLDER o|--o{ SAVED_PRODUCT : organises
+    STORE_PRODUCT ||--o{ SAVED_PRODUCT : referenced_by
     TICKET ||--o{ DRAFT_AUDIENCE : projects
     TICKET o|--o{ AUDIT_EVENT : "optional ticket metadata subset"
     TICKET ||--o{ OUTBOX_INTENT : emits
@@ -113,6 +117,16 @@ erDiagram
         string object_key
         string sha256
     }
+    PERSONAL_FOLDER {
+        uuid id PK
+        uuid user_id
+        string name
+    }
+    SAVED_PRODUCT {
+        uuid user_id
+        uuid product_id
+        uuid folder_id
+    }
     INDEX_PROFILE {
         string id PK
         string provider
@@ -121,6 +135,11 @@ erDiagram
         boolean active
     }
 ```
+
+Personal folders and saved products are bounded, user-owned compatibility-state
+records in the current single-process composition. They contain references, not
+product snapshots. Listing them resolves every referenced product through live
+Store visibility policy, so a saved item cannot preserve revoked access.
 
 ## 3. Object-byte custody
 
@@ -290,14 +309,14 @@ Realtime voice is a separate browser-to-provider trust boundary documented in
 
 ## Sources and companion records
 
-| Concern                 | Authority                                                                                                                                            |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Relational schemas      | `apps/api/src/coeus/persistence/relational_schema.py`, `search_index_schema.py`                                                                      |
-| Workflow transactions   | `apps/api/src/coeus/persistence/workflow_transaction.py`, `workflow_authority.py`                                                                    |
-| Object lifecycle        | `product_submissions.py`, `qc_ingestion.py`, `qc_release.py`, `object_storage.py`                                                                    |
-| Retrieval and assurance | `grounded_search.py`, `rfi_search_retrieval.py`, `rfi_search.py`                                                                                     |
-| Index generation        | `search_indexing.py`, `search_index_repository.py`                                                                                                   |
+| Concern                 | Authority                                                                                                                                                                                                                           |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Relational schemas      | `apps/api/src/coeus/persistence/relational_schema.py`, `search_index_schema.py`                                                                                                                                                     |
+| Workflow transactions   | `apps/api/src/coeus/persistence/workflow_transaction.py`, `workflow_authority.py`                                                                                                                                                   |
+| Object lifecycle        | `product_submissions.py`, `qc_ingestion.py`, `qc_release.py`, `object_storage.py`                                                                                                                                                   |
+| Retrieval and assurance | `grounded_search.py`, `rfi_search_retrieval.py`, `rfi_search.py`                                                                                                                                                                    |
+| Index generation        | `search_indexing.py`, `search_index_repository.py`                                                                                                                                                                                  |
 | Feature contracts       | [Conversational intake](../specs/conversational-intake-standard-and-voice.md), [Hybrid RFI search](../specs/hybrid-rfi-search.md), [Search retrieval and duplicate assurance](../specs/search-retrieval-and-duplicate-assurance.md) |
-| AI authority decision   | [Bounded current-answer intake interpretation](../adr/0045-bounded-current-answer-intake-interpretation.md)                                                   |
-| AI threat model         | [Bounded advisory planners](../threat-model/bounded-advisory-planners.md)                                                                                        |
-| Operations              | [Coordinated backup and restore](../runbooks/coordinated-backup-restore.md), including separate key preservation                                     |
+| AI authority decision   | [Bounded current-answer intake interpretation](../adr/0045-bounded-current-answer-intake-interpretation.md)                                                                                                                         |
+| AI threat model         | [Bounded advisory planners](../threat-model/bounded-advisory-planners.md)                                                                                                                                                           |
+| Operations              | [Coordinated backup and restore](../runbooks/coordinated-backup-restore.md), including separate key preservation                                                                                                                    |

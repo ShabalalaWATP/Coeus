@@ -61,10 +61,12 @@ extraction outcomes and do not mean the embedding connection failed.
 Compose upgrades the database before starting the API. The generation-integrity
 migration deliberately clears derived request documents and vectors, and marks
 older ready generations failed so they cannot be reused without matching request
-data. Rebuild once after that migration. Each later promotion verifies unique,
-one-to-one chunk and request identities plus matching source hashes before any
-candidate can become active. Generation, corpus, release and vector details are
-available under the collapsed **Technical details** section for diagnosis.
+data. Startup automatically queues a replacement generation after that
+migration. An operator uses **Try automatic update again** only if the queued
+attempt fails. Each later promotion verifies unique, one-to-one chunk and
+request identities plus matching source hashes before any candidate can become
+active. Generation, corpus, release and vector details are available under the
+collapsed **Technical details** section for diagnosis.
 
 See the [user workflow](../USER_GUIDE.md#search-embeddings),
 [retrieval architecture](../architecture/DATA_SEARCH_AND_AI.md#4-two-index-retrieval-and-assurance)

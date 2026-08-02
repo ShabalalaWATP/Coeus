@@ -52,3 +52,4 @@ production-release approval. Read later ADRs for refinements and use the
 - [0044: Closure-gated customer feedback](0044-closure-gated-customer-feedback.md)
 - [0045: Bounded current-answer intake interpretation](0045-bounded-current-answer-intake-interpretation.md)
 - [0046: Automatic local retrieval rebuilds](0046-automatic-local-retrieval-rebuilds.md)
+- [0047: User-owned Intelligence Store library](0047-user-owned-intelligence-store-library.md)

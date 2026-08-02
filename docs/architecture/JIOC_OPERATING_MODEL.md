@@ -2,7 +2,7 @@
 
 Status: Current implementation
 
-Last verified: 23 July 2026
+Last verified: 2 August 2026 against `747f19b4`
 
 Primary owners: JIOC operations and platform engineering
 
@@ -17,16 +17,16 @@ The Agent is a system principal, not a role that can be assigned to a person.
 Both human roles can review exceptions and adjudicate referred disputes. The
 Manager additionally supervises the whole flow and can intervene.
 
-| Capability | JIOC Agent | JIOC Team Member | JIOC Manager |
-| --- | --- | --- | --- |
-| Evaluate versioned routing evidence | Runs policy | Inspects evidence | Inspects evidence and trends |
-| Apply a routine eligible route | Yes, in active mode | Yes, from review | Yes, from review |
-| Request required clarification | Yes, through a customer hand-off | Yes | Yes |
-| Decide an exception or override | Refers only | Yes, reason required for an override | Yes, reason required for an override |
-| Adjudicate a referred re-analysis dispute | No | Yes, subject to independence checks | Yes, subject to independence checks |
-| See whole-flow oversight | No | No | Yes |
-| Hold, resume or send eligible work to review | No | No | Yes |
-| Read the raw audit log | No | No | No |
+| Capability                                   | JIOC Agent                       | JIOC Team Member                     | JIOC Manager                         |
+| -------------------------------------------- | -------------------------------- | ------------------------------------ | ------------------------------------ |
+| Evaluate versioned routing evidence          | Runs policy                      | Inspects evidence                    | Inspects evidence and trends         |
+| Apply a routine eligible route               | Yes, in active mode              | Yes, from review                     | Yes, from review                     |
+| Request required clarification               | Yes, through a customer hand-off | Yes                                  | Yes                                  |
+| Decide an exception or override              | Refers only                      | Yes, reason required for an override | Yes, reason required for an override |
+| Adjudicate a referred re-analysis dispute    | No                               | Yes, subject to independence checks  | Yes, subject to independence checks  |
+| See whole-flow oversight                     | No                               | No                                   | Yes                                  |
+| Hold, resume or send eligible work to review | No                               | No                                   | Yes                                  |
+| Read the raw audit log                       | No                               | No                                   | No                                   |
 
 ```mermaid
 flowchart LR

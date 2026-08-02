@@ -1,16 +1,21 @@
 # Istari User Guide
 
-This guide walks through Istari by role, with screenshots of each workspace. All
-data shown is synthetic and authenticated workspaces are labelled **MOCK DATA
-ONLY**. Desktop Chrome is the browser-acceptance target. Core layouts are
-designed to remain usable from 320 pixels, but no native mobile app, mobile
-browser acceptance suite or production-device assurance is claimed.
+This guide walks through Istari by role, with screenshots of key workspaces. All
+data shown is synthetic. Authenticated workspaces carry one persistent
+**Synthetic exercise** indicator; handling metadata and generated documents
+retain their more specific synthetic markings. The screenshots were refreshed
+from the current 1440 x 1000 desktop interface on 2 August 2026. Desktop Chrome
+is the browser-acceptance target. Core layouts are designed to remain usable
+from 320 pixels, but no native mobile app, mobile browser acceptance suite or
+production-device assurance is claimed.
 
 For how to run the app locally see the [Setup Guide](SETUP.md). For the roles and
 their permissions see [Roles and User Stories](ROLES_AND_USER_STORIES.md). For
 how the agents work see [AI Agents](AI_AGENTS.md). The [User and Workflow
 Atlas](architecture/USER_AND_WORKFLOW.md) maps roles, workspaces, visible
 customer phases, staff hand-offs and exception loops.
+Capture metadata for every image is in the [screenshot
+inventory](images/README.md).
 
 ## Contents
 
@@ -42,7 +47,7 @@ assigned; there is no open self-registration, only a request-access flow.
 The Docker Compose seed accounts (see the [Setup Guide](SETUP.md#seed-accounts))
 use usernames `admin1` through `admin16` and the temporary password `admin`.
 Direct host-process development retains the canonical `example.test` usernames
-and mock credential `CoeusLocal1!` unless numbered logins are explicitly enabled.
+and local-only password `CoeusLocal1!` unless numbered logins are explicitly enabled.
 
 ## Account, navigation and notifications
 
@@ -138,6 +143,21 @@ so a customer only ever sees products they are entitled to.
 
 ![Intelligence Store search and results](images/06-intelligence-store.png)
 
+Every user has a private **Saved intelligence** library. A user can save an
+authorised product, create personal folders, organise the saved item into one
+folder at a time, and later move or remove it. Folder names and saved-product
+membership are visible only to that user. Saving a product does not copy it or preserve
+access if the underlying ACG, clearance or product-status policy later changes.
+
+Opening a result puts assets and the controlled preview first. **Metadata and
+handling** is collapsed by default and contains provenance, semantic labels and
+technical handling detail. PDF previews are served through Istari's
+authenticated, tokenised preview path rather than a direct object URL. If a
+product was opened from an RFI result, a safe return link leads back to that
+request; ordinary Store browsing does not create one.
+
+![Intelligence product assets with collapsed metadata](images/15-product-detail.png)
+
 Each result carries rich metadata: reference, owning team, region,
 classification, coverage window, tags and format. RFA and Collection managers
 can register existing products for their own area. Intelligence Store Managers
@@ -170,9 +190,13 @@ is advisory and cannot change workflow. Oversight exposes neither protected
 content nor the raw audit log. See the detailed [JIOC operating
 model](architecture/JIOC_OPERATING_MODEL.md).
 
+![JIOC Manager oversight workspace](images/14-jioc-oversight.png)
+
 ## RFA and Collection managers
 
 Managers work across their whole RFA or CM area:
+
+![RFA manager queue and decision context](images/07-rfa-queue.png)
 
 - **Assign one to five analysts** after selecting any active team in their area
   once the JIOC agent or exception reviewer approves the route. Candidates are scoped
@@ -325,7 +349,7 @@ chat. Disabling voice leaves typed chat available.
 
 ### Access control groups
 
-The governance **ACGs** workspace manages the 43 seeded need-to-know groups,
+The governance **ACGs** workspace manages the 58 seeded need-to-know groups,
 direct membership and delegated administrators. Each group can have up to eight
 active administrators from any role or team. Adding someone as an ACG
 administrator does not add them as a member. Application decisions are made
