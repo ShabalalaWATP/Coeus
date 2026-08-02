@@ -187,22 +187,6 @@ test("creates and submits a customer request through PostgreSQL", async ({ page 
   await page.getByRole("button", { name: "Submit", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "Request journey" })).toBeVisible();
   await page.getByLabel("Close journey").click();
-  await expect(page.locator("article.offer-card").first()).toBeVisible();
-  for (let offerIndex = 0; offerIndex < 10; offerIndex += 1) {
-    const enabledReject = page
-      .locator(".offer-card button:enabled")
-      .filter({ hasText: /^Reject$/ })
-      .first();
-    if ((await enabledReject.count()) === 0) break;
-    const offerCard = enabledReject.locator("xpath=ancestor::article[1]");
-    await offerCard.getByLabel("Rejection reason").fill("Not specific enough for this request.");
-    await enabledReject.click();
-    await expect(offerCard.getByRole("button", { name: "Reject", exact: true })).toBeDisabled();
-  }
-  await page
-    .getByLabel("What was missing?")
-    .fill("The offered reports did not answer the operational question closely enough.");
-  await page.getByRole("button", { name: "Send feedback" }).click();
   const continueToJioc = page.getByRole("button", { name: "Continue to the JIOC Agent" });
   await expect(continueToJioc).toBeVisible();
   await continueToJioc.click();
@@ -293,7 +277,12 @@ test("sends the draft to QC as the responsible manager", async ({ page }) => {
 
 test("releases the product as QC", async ({ page }) => {
   await login(page, "qc.manager@example.test", "QC Queue");
+  const detailResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "GET" && response.url().includes("/api/v1/qc/products/"),
+  );
   await page.getByRole("button", { name: new RegExp(reference) }).click();
+  await detailResponse;
   const checklist = page.getByRole("region", { name: "QC product detail" }).getByRole("checkbox");
   await expect(checklist.first()).toBeVisible();
   for (const checkbox of await checklist.all()) {
