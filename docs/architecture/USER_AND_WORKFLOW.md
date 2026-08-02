@@ -113,7 +113,7 @@ flowchart TB
     C["4. Collection<br/>optional collection production"]
     A["5. Assessment<br/>analyst production and manager review"]
     Q["6. Quality<br/>QC claim, preflight and release"]
-    D["7. Delivery<br/>accept, feedback or request re-analysis"]
+    D["7. Delivery<br/>accept or request re-analysis<br/>feedback after closure"]
 
     I --> S --> R
     R -->|"RFA route"| A

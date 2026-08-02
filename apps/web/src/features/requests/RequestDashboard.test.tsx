@@ -142,7 +142,7 @@ test("requires a reason before requesting re-analysis", async () => {
   ]);
 });
 
-test("hides the confirm receipt action from non-owners and closed requests", () => {
+test("hides the confirm receipt action from non-owners and closed requests", async () => {
   const { rerender } = render(
     <MemoryRouter>
       <RequestDashboard
@@ -166,7 +166,31 @@ test("hides the confirm receipt action from non-owners and closed requests", () 
     </MemoryRouter>,
   );
   expect(screen.queryByRole("button", { name: "Yes, close request" })).not.toBeInTheDocument();
+  await userEvent.click(screen.getByText("Closed requests"));
   expect(screen.getByText("Closed delivered")).toBeVisible();
+});
+
+test("keeps closed requests in a disclosure that is collapsed by default", async () => {
+  render(
+    <MemoryRouter>
+      <RequestDashboard
+        {...dashboardDefaults}
+        onOpen={vi.fn()}
+        tickets={[
+          ticket,
+          { ...ticket, id: "closed-ticket", reference: "TCK-0099", state: "CLOSED_DELIVERED" },
+        ]}
+      />
+    </MemoryRouter>,
+  );
+
+  expect(screen.getByRole("heading", { name: "Open requests" })).toBeVisible();
+  expect(screen.getByRole("button", { name: /TCK-0001/ })).toBeVisible();
+  expect(screen.getByRole("button", { name: /TCK-0099/ })).not.toBeVisible();
+
+  await userEvent.click(screen.getByText("Closed requests"));
+
+  expect(screen.getByRole("button", { name: /TCK-0099/ })).toBeVisible();
 });
 
 test("renders fallback titles and an empty dashboard state", () => {

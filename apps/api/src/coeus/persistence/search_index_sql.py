@@ -30,11 +30,11 @@ ON CONFLICT (profile_id, chunk_id) DO NOTHING
 
 UPSERT_TICKET_DOCUMENT_SQL = """
 INSERT INTO ticket_search_documents(
- ticket_id, state, content, content_hash, search_document, updated_at
+ profile_id, ticket_id, state, content, content_hash, search_document, updated_at
 ) VALUES (
- CAST(:ticket_id AS uuid), :state, :content, :content_hash,
+ CAST(:profile_id AS uuid), CAST(:ticket_id AS uuid), :state, :content, :content_hash,
  to_tsvector('english', :content), now()
-) ON CONFLICT (ticket_id) DO UPDATE SET
+) ON CONFLICT (profile_id, ticket_id) DO UPDATE SET
  state = EXCLUDED.state, content = EXCLUDED.content,
  content_hash = EXCLUDED.content_hash, search_document = EXCLUDED.search_document,
  updated_at = CASE WHEN ticket_search_documents.content_hash <> EXCLUDED.content_hash
@@ -62,11 +62,12 @@ ON CONFLICT (profile_id, asset_id) DO UPDATE SET
 """
 
 ACTIVATE_PROFILE_SQL = """
-UPDATE search_index_profiles SET status = 'ready', is_active = true,
+UPDATE search_index_profiles SET status = 'ready', is_active = false,
  product_count = :product_count, chunk_count = :chunk_count,
  indexed_count = :indexed_count, failed_count = :failed_count,
  completed_at = now(), error_code = NULL
 WHERE profile_id = CAST(:profile_id AS uuid) AND status = 'indexing'
+RETURNING profile_id
 """
 
 SEARCH_CHUNKS_SQL = """
@@ -111,7 +112,9 @@ SEARCH_TICKETS_SQL = """
 WITH scoped AS (
  SELECT document.*, embedding.embedding
  FROM ticket_search_documents document
- JOIN ticket_search_embeddings embedding USING (ticket_id)
+ JOIN ticket_search_embeddings embedding
+   ON embedding.profile_id = document.profile_id
+  AND embedding.ticket_id = document.ticket_id
  JOIN search_index_profiles profile
    ON profile.profile_id = embedding.profile_id AND profile.is_active
  WHERE document.ticket_id = ANY(CAST(:ticket_ids AS uuid[]))

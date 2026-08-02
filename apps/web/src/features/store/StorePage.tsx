@@ -7,7 +7,7 @@ import { PaginationControls, PaginationSummary } from "./StorePagination";
 import { StoreMatchReasons } from "./StoreMatchReasons";
 import { ProductTypeIcon } from "./ProductTypeIcon";
 import { StoreSearchFiltersPanel, type StoreFilterDraft } from "./StoreSearchFiltersPanel";
-import { productTypeLabel } from "./store-options";
+import { productTypeLabel, visibleProductTags } from "./store-options";
 import { SpotlightCard } from "../../components/effects/SpotlightCard";
 import { AdminReturnLink } from "../../components/ui/AdminReturnLink";
 import { EmptyState, ErrorState } from "../../components/ui/PageState";
@@ -68,7 +68,7 @@ function ownerTeamForRoles(roleNames: readonly string[]): string | undefined {
 }
 
 export default function StorePage({
-  description = "MOCK DATA ONLY controlled product search, metadata review and asset access.",
+  description = "Controlled product search, metadata review and asset access.",
   ownerTeam,
   scope = "all",
   title,
@@ -146,9 +146,7 @@ export default function StorePage({
             <Upload aria-hidden="true" size={18} />
             Upload product
           </Link>
-        ) : (
-          <div className="classification-note">MOCK DATA ONLY</div>
-        )}
+        ) : null}
       </section>
 
       {!hasOwnedProductScope ? (
@@ -263,11 +261,13 @@ export default function StorePage({
                               {product.timePeriodStart} to {product.timePeriodEnd ?? "ongoing"}
                             </span>
                           ) : null}
-                          {product.tags.slice(0, 4).map((tag) => (
-                            <span className="store-chip store-chip--tag" key={tag}>
-                              {tag}
-                            </span>
-                          ))}
+                          {visibleProductTags(product.tags)
+                            .slice(0, 4)
+                            .map((tag) => (
+                              <span className="store-chip store-chip--tag" key={tag}>
+                                {tag}
+                              </span>
+                            ))}
                         </div>
                       </div>
                       <dl>

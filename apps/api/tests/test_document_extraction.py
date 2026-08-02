@@ -3,6 +3,7 @@ from zipfile import ZIP_DEFLATED, ZipFile
 
 import pytest
 from docx import Document
+from PIL import Image
 from reportlab.pdfgen.canvas import Canvas
 
 from coeus.services import document_extraction
@@ -41,6 +42,42 @@ def test_extracts_docx_paragraphs_and_tables() -> None:
     assert len(pages) == 1
     assert "Synthetic intelligence report" in pages[0].text
     assert "Mock harbour" in pages[0].text
+
+
+@pytest.mark.parametrize(
+    ("content", "mime_type", "expected"),
+    [
+        (b"day,activity\n1,vehicle movement\n", "text/csv", "vehicle movement"),
+        (
+            b'{"type":"FeatureCollection","features":[]}',
+            "application/geo+json",
+            "FeatureCollection",
+        ),
+    ],
+)
+def test_extracts_bounded_structured_text(content: bytes, mime_type: str, expected: str) -> None:
+    pages = extract_pages(content, mime_type)
+
+    assert len(pages) == 1
+    assert expected in pages[0].text
+
+
+def test_verifies_image_metadata_without_ocr() -> None:
+    stream = BytesIO()
+    Image.new("RGB", (32, 24), "navy").save(stream, format="PNG")
+
+    pages = extract_pages(stream.getvalue(), "image/png")
+
+    assert len(pages) == 1
+    assert "32 by 24 pixels" in pages[0].text
+    assert "Colour mode RGB" in pages[0].text
+
+
+def test_rejects_invalid_structured_text_and_images() -> None:
+    with pytest.raises(DocumentExtractionError, match="structured_text_encoding_invalid"):
+        extract_pages(b"\xff", "text/csv")
+    with pytest.raises(DocumentExtractionError, match="image_not_extractable"):
+        extract_pages(b"not an image", "image/png")
 
 
 @pytest.mark.parametrize(

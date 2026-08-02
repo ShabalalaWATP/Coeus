@@ -10,9 +10,8 @@ export default function AcgAdminPage() {
         <div>
           <AdminReturnLink />
           <h1 id="acg-title">Access Control Groups</h1>
-          <p>MOCK DATA ONLY access groups for product visibility and team access.</p>
+          <p>Manage access groups for product visibility and team access.</p>
         </div>
-        <div className="classification-note">MOCK DATA ONLY</div>
       </section>
       {model.routedAcgMissing ? (
         <p className="workspace-alert" role="alert">

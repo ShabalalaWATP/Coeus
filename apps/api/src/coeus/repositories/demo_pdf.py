@@ -1,4 +1,4 @@
-"""Deterministic four-page PDFs for the synthetic local demo Store."""
+"""Deterministic eight-page PDFs for the synthetic local demo Store."""
 
 from io import BytesIO
 from textwrap import wrap
@@ -8,6 +8,12 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen.canvas import Canvas
 
 from coeus.domain.store import StoreProduct
+from coeus.repositories.demo_pdf_narrative import (
+    assessment_sections,
+    indicator_observation,
+    judgements,
+)
+from coeus.repositories.demo_pdf_operational import TOTAL_PAGES, draw_operational_pages
 
 PAGE_WIDTH, PAGE_HEIGHT = A4
 MARGIN = 54
@@ -16,7 +22,7 @@ BLUE = colors.HexColor("#2F8CFF")
 PALE = colors.HexColor("#EAF3FF")
 INK = colors.HexColor("#172433")
 MUTED = colors.HexColor("#526579")
-MOCK_BANNER = "MOCK DATA ONLY - SYNTHETIC EXERCISE PRODUCT"
+SYNTHETIC_MARKER = "SYNTHETIC EXERCISE PRODUCT"
 
 
 def build_demo_pdf_bytes(product: StoreProduct) -> bytes:
@@ -32,8 +38,9 @@ def build_demo_pdf_bytes(product: StoreProduct) -> bytes:
     pdf.setTitle(product.metadata.title)
     _cover(pdf, product)
     _executive_summary(pdf, product)
-    _indicator_matrix(pdf, product)
-    _assessment(pdf, product)
+    draw_operational_pages(pdf, product, SYNTHETIC_MARKER)
+    _indicator_matrix(pdf, product, 7)
+    _assessment(pdf, product, 8)
     pdf.save()
     return buffer.getvalue()
 
@@ -46,7 +53,7 @@ def _cover(pdf: Canvas, product: StoreProduct) -> None:
     pdf.rect(0, PAGE_HEIGHT - 16, PAGE_WIDTH, 16, fill=1, stroke=0)
     pdf.setFillColor(colors.white)
     pdf.setFont("Helvetica-Bold", 11)
-    pdf.drawString(MARGIN, PAGE_HEIGHT - 62, "COEUS SYNTHETIC INTELLIGENCE LIBRARY")
+    pdf.drawString(MARGIN, PAGE_HEIGHT - 62, "ISTARI INTELLIGENCE LIBRARY")
     y = PAGE_HEIGHT - 145
     y = _draw_wrapped(pdf, metadata.title, MARGIN, y, 26, 30, 33, "Helvetica-Bold")
     pdf.setFillColor(PALE)
@@ -56,7 +63,7 @@ def _cover(pdf: Canvas, product: StoreProduct) -> None:
     _metadata_card(pdf, product, y)
     pdf.setFillColor(colors.white)
     pdf.setFont("Helvetica-Bold", 13)
-    pdf.drawString(MARGIN, 82, MOCK_BANNER)
+    pdf.drawString(MARGIN, 82, SYNTHETIC_MARKER)
     pdf.setFont("Helvetica", 9)
     pdf.drawString(
         MARGIN, 62, "Contains no real reporting, units, sources or operational locations."
@@ -73,7 +80,7 @@ def _executive_summary(pdf: Canvas, product: StoreProduct) -> None:
     y = _paragraph(pdf, metadata.description, y)
     y -= 8
     y = _section(pdf, "Key judgements", y)
-    for judgement in _judgements(product):
+    for judgement in judgements(product):
         y = _bullet(pdf, judgement, y)
     y -= 8
     y = _section(pdf, "Confidence statement", y)
@@ -82,8 +89,8 @@ def _executive_summary(pdf: Canvas, product: StoreProduct) -> None:
     pdf.showPage()
 
 
-def _indicator_matrix(pdf: Canvas, product: StoreProduct) -> None:
-    _page_header(pdf, product, "Synthetic indicator matrix", 3)
+def _indicator_matrix(pdf: Canvas, product: StoreProduct, page: int) -> None:
+    _page_header(pdf, product, "Synthetic indicator matrix", page)
     y = PAGE_HEIGHT - 122
     pdf.setFillColor(MUTED)
     pdf.setFont("Helvetica", 9)
@@ -93,10 +100,12 @@ def _indicator_matrix(pdf: Canvas, product: StoreProduct) -> None:
     headings = ("Theme", "Synthetic observation", "Confidence")
     _table_row(pdf, y, widths, headings, header=True)
     y -= 32
-    tags = sorted(product.metadata.tags)
+    tags = sorted(
+        product.metadata.tags - {"mock-data", "synthetic-exercise", "synthetic-conflict"}
+    ) or ["activity", "readiness", "warning"]
     for index in range(6):
         theme = tags[index % len(tags)].replace("-", " ").title()
-        observation = _indicator_observation(theme, index)
+        observation = indicator_observation(product, theme, index)
         confidence = ("Moderate", "Low", "Moderate", "High", "Low", "Moderate")[index]
         _table_row(pdf, y, widths, (theme, observation, confidence))
         y -= 58
@@ -108,40 +117,14 @@ def _indicator_matrix(pdf: Canvas, product: StoreProduct) -> None:
         "must not be used for operational planning or external reporting.",
         y,
     )
-    _footer(pdf, product, 3)
+    _footer(pdf, product, page)
     pdf.showPage()
 
 
-def _assessment(pdf: Canvas, product: StoreProduct) -> None:
-    _page_header(pdf, product, "Assessment and collection gaps", 4)
+def _assessment(pdf: Canvas, product: StoreProduct, page: int) -> None:
+    _page_header(pdf, product, "Assessment and collection gaps", page)
     y = PAGE_HEIGHT - 118
-    sections = (
-        (
-            "Assessment",
-            "The fictional pattern suggests a training-cycle emphasis on integration, readiness "
-            "and command-and-control resilience. Alternative explanations remain deliberately "
-            "plausible because this product is designed to exercise analytic comparison.",
-        ),
-        (
-            "Implications",
-            "A synthetic customer could use this product to frame follow-on questions about force "
-            "protection, logistics, spectrum management and decision timelines. It does not "
-            "support a real-world judgement.",
-        ),
-        (
-            "Collection gaps",
-            "The exercise record intentionally lacks verified unit identity, precise location, "
-            "source provenance and technical parameters. Analysts should state these gaps before "
-            "using the mock assessment in a workflow.",
-        ),
-        (
-            "Methodology",
-            "Coeus generated this document deterministically from public-repository-safe source "
-            "specifications. Searchable metadata mirrors the document themes. No external data, "
-            "network source or generative model contributed to the content.",
-        ),
-    )
-    for heading, body in sections:
+    for heading, body in assessment_sections(product):
         y = _section(pdf, heading, y)
         y = _paragraph(pdf, body, y)
         y -= 16
@@ -151,11 +134,11 @@ def _assessment(pdf: Canvas, product: StoreProduct) -> None:
     pdf.setFont("Helvetica-Bold", 11)
     pdf.drawString(MARGIN + 16, 165, "Handling")
     pdf.setFont("Helvetica", 10)
-    pdf.drawString(MARGIN + 16, 144, "MOCK releasability. Synthetic exercise use only.")
+    pdf.drawString(MARGIN + 16, 144, "Release boundary: synthetic exercise use only.")
     pdf.drawString(
         MARGIN + 16, 125, "Do not interpret as reporting about any real country or organisation."
     )
-    _footer(pdf, product, 4)
+    _footer(pdf, product, page)
     pdf.showPage()
 
 
@@ -184,7 +167,8 @@ def _metadata_card(pdf: Canvas, product: StoreProduct, y: float) -> None:
         pdf.drawString(x, row_y, label.upper())
         pdf.setFillColor(colors.white)
         pdf.setFont("Helvetica", 10)
-        pdf.drawString(x, row_y - 17, value[:37])
+        for line_index, line in enumerate(wrap(value, width=37)[:2]):
+            pdf.drawString(x, row_y - 17 - line_index * 12, line)
 
 
 def _page_header(pdf: Canvas, product: StoreProduct, title: str, page: int) -> None:
@@ -194,9 +178,11 @@ def _page_header(pdf: Canvas, product: StoreProduct, title: str, page: int) -> N
     pdf.rect(0, PAGE_HEIGHT - 78, PAGE_WIDTH, 78, fill=1, stroke=0)
     pdf.setFillColor(colors.white)
     pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawString(MARGIN, PAGE_HEIGHT - 32, MOCK_BANNER)
+    pdf.drawString(MARGIN, PAGE_HEIGHT - 32, SYNTHETIC_MARKER)
     pdf.setFont("Helvetica", 8)
-    pdf.drawRightString(PAGE_WIDTH - MARGIN, PAGE_HEIGHT - 32, f"{product.reference} | {page}/4")
+    pdf.drawRightString(
+        PAGE_WIDTH - MARGIN, PAGE_HEIGHT - 32, f"{product.reference} | {page}/{TOTAL_PAGES}"
+    )
     pdf.setFillColor(INK)
     pdf.setFont("Helvetica-Bold", 20)
     pdf.drawString(MARGIN, PAGE_HEIGHT - 104, title)
@@ -207,8 +193,10 @@ def _footer(pdf: Canvas, product: StoreProduct, page: int, *, dark: bool = False
     pdf.line(MARGIN, 42, PAGE_WIDTH - MARGIN, 42)
     pdf.setFillColor(colors.white if dark else MUTED)
     pdf.setFont("Helvetica", 8)
-    pdf.drawString(MARGIN, 27, MOCK_BANNER)
-    pdf.drawRightString(PAGE_WIDTH - MARGIN, 27, f"{product.reference} | Page {page} of 4")
+    pdf.drawString(MARGIN, 27, "ISTARI EXERCISE LIBRARY")
+    pdf.drawRightString(
+        PAGE_WIDTH - MARGIN, 27, f"{product.reference} | Page {page} of {TOTAL_PAGES}"
+    )
 
 
 def _section(pdf: Canvas, heading: str, y: float) -> float:
@@ -282,30 +270,3 @@ def _table_row(
         for line_index, line in enumerate(lines):
             pdf.drawString(x + 8, y - 19 - line_index * 13, line)
         x += width
-
-
-def _judgements(product: StoreProduct) -> tuple[str, ...]:
-    metadata = product.metadata
-    themes = sorted(metadata.tags - {"mock-data", "synthetic-exercise"})
-    primary = themes[0].replace("-", " ") if themes else "capability"
-    secondary = themes[1].replace("-", " ") if len(themes) > 1 else "readiness"
-    return (
-        f"The fictional exercise pattern places {primary} activity inside a bounded "
-        "training cycle.",
-        f"Synthetic indicators suggest {secondary} integration is uneven but improving.",
-        "No indicator is independently verified; alternative explanations remain "
-        "equally plausible.",
-        "Any follow-on tasking should preserve the ACG boundary and restate the mock-data caveat.",
-    )
-
-
-def _indicator_observation(theme: str, index: int) -> str:
-    observations = (
-        "Exercise reporting shows a fictional increase in scheduled activity.",
-        "Synthetic logs suggest coordination across two mock capability areas.",
-        "A simulated readiness check records mixed equipment availability.",
-        "Invented communications traffic rises during a training window.",
-        "A mock logistics note identifies a deliberately unresolved dependency.",
-        "Fictional after-action reporting recommends further collection.",
-    )
-    return f"{observations[index]} Theme: {theme.casefold()}."

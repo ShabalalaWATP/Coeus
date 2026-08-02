@@ -3522,7 +3522,10 @@ export interface components {
     };
     /** FeedbackSubmissionRequest */
     FeedbackSubmissionRequest: {
-      /** Comment */
+      /**
+       * Comment
+       * @default
+       */
       comment: string;
       /**
        * Followuprequested
@@ -4853,6 +4856,21 @@ export interface components {
       spaceId: string;
       /** Ticketcount */
       ticketCount: number;
+    };
+    /**
+     * SearchEmbeddingTestRequest
+     * @description A candidate selection to verify without activating it.
+     */
+    SearchEmbeddingTestRequest: {
+      /**
+       * Confirmexternalegress
+       * @default false
+       */
+      confirmExternalEgress: boolean;
+      /** Model */
+      model: string;
+      /** Provider */
+      provider: string;
     };
     /** SearchEmbeddingTestResponse */
     SearchEmbeddingTestResponse: {
@@ -6482,7 +6500,11 @@ export interface operations {
       path?: never;
       cookie?: never;
     };
-    requestBody?: never;
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["SearchEmbeddingTestRequest"] | null;
+      };
+    };
     responses: {
       /** @description Successful Response */
       200: {

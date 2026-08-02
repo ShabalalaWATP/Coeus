@@ -1,13 +1,15 @@
 from dataclasses import replace
 from uuid import uuid4
 
+import pytest
+
 from coeus.core.config import Settings
 from coeus.domain.auth import RoleName
 from coeus.domain.teams import OrgTeam, TeamKind, UserProfile, team_member_ids
 from coeus.persistence.codec import encode_value
 from coeus.persistence.state_store import MemoryStateStore
 from coeus.repositories.auth import SeedUserRepository
-from coeus.repositories.auth_seed import seed_user_specs
+from coeus.repositories.auth_seed import NUMBERED_SEED_LOGIN_PROFILE, seed_user_specs
 from coeus.repositories.teams import TeamRepository
 from coeus.repositories.teams_seed import seed_teams
 from coeus.repositories.teams_seed_profiles import LEGACY_PROFILE_SPECS, PROFILE_SPECS
@@ -83,6 +85,121 @@ def test_legacy_seed_identity_reconciliation_preserves_account_authority() -> No
         assert user.password_hash == expected_hashes[spec.username]
         for legacy_username in spec.legacy_usernames:
             assert restored.get_by_username(legacy_username) is None
+
+
+def test_numbered_local_seed_identities_migrate_credentials_without_login_aliases() -> None:
+    baseline = _users()
+    state_store = MemoryStateStore()
+    state_store.save(
+        "users",
+        {"users": [encode_value(user) for user in baseline.list_users()]},
+    )
+    settings = Settings(
+        environment="local",
+        local_numbered_seed_usernames=True,
+        local_seed_credential="admin",
+    )
+
+    numbered = SeedUserRepository(settings, StaticPasswordHasher(), state_store)
+    accounts = sorted(numbered.list_users(), key=lambda user: int(user.username[5:]))
+
+    assert [user.username for user in accounts] == [f"admin{index}" for index in range(1, 17)]
+    for index, spec in enumerate(seed_user_specs(), start=1):
+        canonical = baseline.get_by_username(spec.username)
+        renamed = numbered.get_by_username(f"admin{index}")
+        assert canonical is not None and renamed is not None
+        assert numbered.get_by_username(spec.username) is None
+        assert numbered.get_seed_by_canonical_username(spec.username) is renamed
+        assert numbered.username_is_reserved(spec.username)
+        assert numbered.username_is_reserved(f"admin{index}")
+        assert all(numbered.username_is_reserved(alias) for alias in spec.legacy_usernames)
+        assert renamed.user_id == canonical.user_id
+        assert renamed.roles == canonical.roles
+        assert renamed.password_hash == StaticPasswordHasher().hash("admin")
+        assert renamed.credential_version == canonical.credential_version + 1
+
+    payload = state_store.load("users")
+    assert payload is not None
+    assert payload["seed_login_profile"] == NUMBERED_SEED_LOGIN_PROFILE
+
+    teams = TeamRepository()
+    seed_teams(teams, numbered)
+    assert all(teams.get_profile(user.user_id) is not None for user in accounts)
+
+
+def test_numbered_seed_credential_migration_runs_only_once() -> None:
+    baseline = _users()
+    state_store = MemoryStateStore()
+    state_store.save(
+        "users",
+        {"users": [encode_value(user) for user in baseline.list_users()]},
+    )
+    settings = Settings(
+        environment="local",
+        local_numbered_seed_usernames=True,
+        local_seed_credential="admin",
+    )
+    migrated = SeedUserRepository(settings, StaticPasswordHasher(), state_store)
+    admin = migrated.get_by_username("admin1")
+    assert admin is not None
+    updated_hash = StaticPasswordHasher().hash("user-changed-password")
+    changed = replace(
+        admin,
+        password_hash=updated_hash,
+        credential_version=admin.credential_version + 1,
+    )
+    migrated.save(changed)
+
+    restarted = SeedUserRepository(settings, StaticPasswordHasher(), state_store)
+
+    restored = restarted.get_by_username("admin1")
+    assert restored is not None
+    assert restored.password_hash == changed.password_hash
+    assert restored.credential_version == changed.credential_version
+
+
+def test_disabling_numbered_profile_restores_canonical_names_without_duplicates() -> None:
+    state_store = MemoryStateStore()
+    numbered_settings = Settings(
+        environment="local",
+        local_numbered_seed_usernames=True,
+        local_seed_credential="admin",
+    )
+    numbered = SeedUserRepository(numbered_settings, StaticPasswordHasher(), state_store)
+    admin = numbered.get_by_username("admin1")
+    assert admin is not None
+
+    canonical = SeedUserRepository(
+        Settings(environment="local"), StaticPasswordHasher(), state_store
+    )
+
+    restored = canonical.get_by_username("admin@example.test")
+    assert restored is not None
+    assert restored.user_id == admin.user_id
+    assert restored.password_hash == admin.password_hash
+    assert canonical.get_by_username("admin1") is None
+    assert len(canonical.list_users()) == 16
+
+
+def test_numbered_local_seed_identity_conflicts_fail_closed() -> None:
+    baseline = _users()
+    admin = baseline.get_by_username("admin@example.test")
+    customer = baseline.get_by_username("user@example.test")
+    assert admin is not None and customer is not None
+    state_store = MemoryStateStore()
+    state_store.save(
+        "users",
+        {
+            "users": [
+                encode_value(admin),
+                encode_value(replace(customer, username="admin1")),
+            ]
+        },
+    )
+
+    settings = Settings(environment="local", local_numbered_seed_usernames=True)
+    with pytest.raises(ValueError, match="Conflicting synthetic accounts"):
+        SeedUserRepository(settings, StaticPasswordHasher(), state_store)
 
 
 def test_seed_profile_reconciliation_updates_only_untouched_profiles() -> None:

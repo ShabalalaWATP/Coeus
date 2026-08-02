@@ -1,8 +1,10 @@
 import re
 from dataclasses import dataclass, replace
+from datetime import date
 from typing import Protocol
 
 from coeus.domain.tickets import IntakeDetails
+from coeus.services import conversation_lifecycle as lifecycle
 from coeus.services import intake_extractors as extractors
 from coeus.services.intake_answers import apply_direct_answer
 from coeus.services.intake_planner import blocking_intake_reasons
@@ -106,12 +108,19 @@ class MockLlmProvider:
 
 
 class IntakeExtractionService:
+    def __init__(self, *, today: date | None = None) -> None:
+        self._today = today
+
     def extract(self, message: str, existing: IntakeDetails | None = None) -> IntakeDetails:
         turns = voice_turns(message)
         if turns is None:
             return self._extract_text(message, existing or IntakeDetails())
         original = existing or IntakeDetails()
-        requester_text = " ".join(turn.text for turn in turns if turn.speaker == "user")
+        requester_text = " ".join(
+            turn.text
+            for turn in turns
+            if turn.speaker == "user" and not lifecycle.wants_to_end(turn.text)
+        )
         current = (
             self._extract_text(
                 requester_text,
@@ -123,8 +132,15 @@ class IntakeExtractionService:
             else RequirementCompletenessService().with_completeness(original)
         )
         for answer in voice_answers(turns):
+            if lifecycle.wants_to_end(answer.text):
+                continue
             if answer.field is None:
-                current = self._extract_text(answer.text, current)
+                current = self._extract_text(
+                    answer.text,
+                    current,
+                    apply_context=False,
+                    infer_title=False,
+                )
             else:
                 current = apply_direct_answer(
                     current,
@@ -134,6 +150,11 @@ class IntakeExtractionService:
                 )
                 current = RequirementCompletenessService().with_completeness(current)
         return current
+
+    def extract_for_field(self, message: str, existing: IntakeDetails, field: str) -> IntakeDetails:
+        """Apply a clarification only to its active field, replacing the stale value."""
+        updated = apply_direct_answer(existing, field, message, overwrite=True)
+        return RequirementCompletenessService().with_completeness(updated)
 
     def _extract_text(
         self,
@@ -147,7 +168,13 @@ class IntakeExtractionService:
         lowered = text.casefold()
         base = RequirementCompletenessService().with_completeness(existing)
         expected = next_elicitation(base.missing_information)
-        time_period_start, time_period_end = extractors.extract_time_window(text)
+        time_period_start, time_period_end = extractors.extract_time_window(text, today=self._today)
+        replace_time_period = time_period_start is not None and not (
+            extractors.is_resolved_time_window(
+                base.time_period_start,
+                base.time_period_end,
+            )
+        )
         can_infer_title = (
             infer_title
             if infer_title is not None
@@ -159,8 +186,10 @@ class IntakeExtractionService:
             description=base.description or text,
             operational_question=base.operational_question or extractors.extract_question(text),
             area_or_region=base.area_or_region or extractors.extract_region(text),
-            time_period_start=base.time_period_start or time_period_start,
-            time_period_end=base.time_period_end or time_period_end,
+            time_period_start=(
+                time_period_start if replace_time_period else base.time_period_start
+            ),
+            time_period_end=time_period_end if replace_time_period else base.time_period_end,
             priority=base.priority or extractors.extract_priority(lowered),
             deadline=base.deadline or extractors.extract_deadline(text),
             required_output_format=base.required_output_format

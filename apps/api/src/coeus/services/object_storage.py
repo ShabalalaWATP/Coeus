@@ -5,7 +5,7 @@ from typing import Protocol, runtime_checkable
 from uuid import uuid4
 
 from coeus.core.config import Settings
-from coeus.domain.store import StoreProduct, object_key_segment
+from coeus.domain.store import object_key_segment
 
 
 @runtime_checkable
@@ -89,20 +89,6 @@ class LocalObjectStorage:
             except OSError:
                 return
             current = current.parent
-
-
-def seed_store_asset_placeholders(
-    storage: ObjectStorage,
-    products: tuple[StoreProduct, ...],
-) -> None:
-    for product in products:
-        for asset in product.assets:
-            if storage.exists(asset.object_key):
-                continue
-            content = (
-                f"MOCK DATA ONLY\n{product.reference}\n{product.metadata.title}\n{asset.name}\n"
-            ).encode()
-            storage.write_bytes(asset.object_key, content)
 
 
 def build_object_storage(settings: Settings) -> ObjectStorage:

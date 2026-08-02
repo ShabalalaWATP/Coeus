@@ -29,10 +29,22 @@ services:
     volumes:
       - coeus-minio:/data
 
-  api:
+  migrate:
+    image: coeus-api:local
     build:
       context: .
       dockerfile: infra/docker/api.Dockerfile
+    command: ["/app/apps/api/.venv/bin/alembic", "upgrade", "head"]
+    environment:
+      COEUS_ENVIRONMENT: local
+      COEUS_DATABASE_URL: postgresql+asyncpg://coeus:coeus-local@postgres:5432/coeus
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    image: coeus-api:local
     environment:
       COEUS_ENVIRONMENT: local
       COEUS_DATABASE_URL: postgresql+asyncpg://coeus:coeus-local@postgres:5432/coeus
@@ -44,6 +56,11 @@ services:
       COEUS_ASSET_TOKEN_SECRET: local-docker-only-asset-token-secret-32
       COEUS_CONFIGURATION_ENCRYPTION_KEY_PATH: /var/lib/coeus/secrets/configuration.key
       COEUS_EMAIL_PROVIDER: outbox
+      # Preserve a guardrail while allowing repeated synthetic request exercises.
+      COEUS_TICKET_MAX_RETAINED_PER_PRINCIPAL: ${COEUS_TICKET_MAX_RETAINED_PER_PRINCIPAL:-500}
+      # Deliberately weak, local-only demonstration logins requested for role testing.
+      COEUS_LOCAL_NUMBERED_SEED_USERNAMES: "true"
+      COEUS_LOCAL_SEED_CREDENTIAL: admin
       # A host-run LiteLLM Proxy is reachable from the API container at this fixed address.
       COEUS_LITELLM_BASE_URL: ${COEUS_LITELLM_BASE_URL:-http://host.docker.internal:4000}
       COEUS_JIOC_AGENT_ROUTING_ENABLED: active
@@ -55,6 +72,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test:
         [
@@ -73,7 +92,8 @@ services:
       context: .
       dockerfile: infra/docker/web.Dockerfile
     environment:
-      VITE_API_BASE_URL: http://localhost:8000
+      # Match localhost or 127.0.0.1 as opened by the browser so session cookies stay same-site.
+      VITE_API_BASE_URL: browser-host:8000
     ports:
       - "127.0.0.1:5173:5173"
     depends_on:

@@ -16,6 +16,10 @@ class SearchEmbeddingConfigurationRequest(BaseModel):
     )
 
 
+class SearchEmbeddingTestRequest(SearchEmbeddingConfigurationRequest):
+    """A candidate selection to verify without activating it."""
+
+
 class SearchEmbeddingStateResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 

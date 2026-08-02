@@ -1,7 +1,7 @@
 from contextlib import nullcontext
 from dataclasses import replace
 from datetime import UTC, datetime
-from typing import Protocol, cast
+from typing import Protocol
 from uuid import UUID, uuid4
 
 from coeus.application.ports.admission import ProviderAdmission, TicketAdmission
@@ -28,22 +28,24 @@ from coeus.domain.tickets import (
 from coeus.domain.workflow_authority import WorkflowCommitAuthority
 from coeus.services import conversation_lifecycle as lifecycle
 from coeus.services.audit import AuditLog
+from coeus.services.conversation_chat_budget import chat_bytes, ensure_chat_budget
 from coeus.services.conversation_reply_records import (
     advice_for_reply,
-    deterministic_reply,
     text_hash,
 )
+from coeus.services.conversation_response import conversation_reply_and_status
 from coeus.services.conversation_routing_resume import chat_reply_projection
 from coeus.services.intake import (
     AdmittedAssistantReply,
     IntakeAssistantProvider,
     IntakeExtractionService,
 )
-from coeus.services.intake_planner import deterministic_intake_plan
-from coeus.services.intake_planner_advice import render_intake_plan
-from coeus.services.intake_provider_calls import PreparedIntakeReply
-from coeus.services.intake_standard import next_elicitation
-from coeus.services.intake_transcripts import requester_message
+from coeus.services.intake_interpretation_records import finalise_interpreted_reply
+from coeus.services.intake_provider_execution import (
+    execute_intake_reply,
+    execute_planned_intake_reply,
+)
+from coeus.services.intake_turn_interpretation import interpret_intake_turn
 from coeus.services.prioritisation import with_assessment
 from coeus.services.ticket_mutations import TicketMutationService
 from coeus.services.ticket_records import message as message_record
@@ -156,9 +158,24 @@ class ConversationService:
         self._ensure_chat_budget(ticket, message)
         user_message = message_record(ticket.ticket_id, MessageAuthor.USER, message)
         safety_flags = self._extractor.safety_flags_for(message)
+        customer_answer = ""
         # Flagged messages are never extracted, so injected text cannot land
         # in intake fields; the message, flags and refusal are still recorded.
-        intake = ticket.intake if safety_flags else self._extractor.extract(message, ticket.intake)
+        intake = ticket.intake
+        interpretation = None
+        if not safety_flags:
+            interpreted = interpret_intake_turn(
+                actor.user_id,
+                message,
+                ticket.intake,
+                ticket.messages,
+                self._extractor,
+                self._llm_provider,
+                self._provider_admission,
+            )
+            customer_answer = interpreted.customer_answer
+            intake = interpreted.intake
+            interpretation = interpreted.provider_outcome
         if safety_flags:
             assistant_reply = self._assistant_reply(actor, intake, safety_flags)
             conversation_status = ticket.conversation_status
@@ -166,9 +183,21 @@ class ConversationService:
             assistant_reply, conversation_status = self._reply_and_status(
                 actor,
                 ticket.conversation_status,
-                requester_message(message),
+                customer_answer,
                 intake,
+                use_provider=interpreted.allow_provider_reply,
             )
+            assistant_reply = finalise_interpreted_reply(
+                assistant_reply,
+                ticket.messages,
+                intake,
+                interpretation,
+            )
+            if interpreted.reply_override is not None:
+                assistant_reply = replace(
+                    assistant_reply,
+                    text=interpreted.reply_override,
+                )
         reply = assistant_reply.text
         if text_bytes(reply) > MAX_ASSISTANT_REPLY_BYTES:
             raise AppError(
@@ -242,84 +271,55 @@ class ConversationService:
 
     @staticmethod
     def _chat_bytes(ticket: TicketRecord) -> int:
-        return sum(text_bytes(item.body) for item in ticket.messages)
+        return chat_bytes(ticket)
 
     def _ensure_chat_budget(self, ticket: TicketRecord, message: str) -> None:
-        if len(ticket.messages) + 2 > MAX_CHAT_MESSAGES_PER_TICKET:
-            raise AppError(409, "chat_history_limit_reached", "The chat history limit was reached.")
-        projected = self._chat_bytes(ticket) + text_bytes(message) + MAX_ASSISTANT_REPLY_BYTES
-        if projected > MAX_CHAT_HISTORY_BYTES:
-            raise AppError(409, "chat_history_limit_reached", "The chat history limit was reached.")
+        ensure_chat_budget(
+            ticket,
+            message,
+            max_messages=MAX_CHAT_MESSAGES_PER_TICKET,
+            max_history_bytes=MAX_CHAT_HISTORY_BYTES,
+            max_reply_bytes=MAX_ASSISTANT_REPLY_BYTES,
+        )
 
     def _reply_and_status(
-        self, actor: UserAccount, status: str, message: str, intake: IntakeDetails
+        self,
+        actor: UserAccount,
+        status: str,
+        message: str,
+        intake: IntakeDetails,
+        *,
+        use_provider: bool = True,
     ) -> tuple[AdmittedAssistantReply, str]:
         """Deterministic conversation lifecycle; the LLM never decides this."""
-        plan = deterministic_intake_plan(intake, intake.missing_information)
-        blocked = bool(plan.contradictions)
-        complete = not intake.missing_information and not blocked
-        offered = status == lifecycle.CONVERSATION_CLOSE_OFFERED
-        if offered and complete and lifecycle.confirms_close(message):
-            reply = deterministic_reply(lifecycle.CLOSED_MESSAGE, "conversation_closed")
-            return reply, lifecycle.CONVERSATION_CLOSED
-        if lifecycle.wants_to_end(message):
-            if complete:
-                return deterministic_reply(
-                    lifecycle.CLOSED_MESSAGE, "conversation_closed"
-                ), lifecycle.CONVERSATION_CLOSED
-            if blocked:
-                question = render_intake_plan(plan, intake)
-            else:
-                entry = next_elicitation(intake.missing_information)
-                question = entry.question if entry else ""
-            return (
-                deterministic_reply(
-                    lifecycle.cannot_close_message(question).strip(),
-                    (
-                        "close_refused_intake_contradiction"
-                        if blocked
-                        else "close_refused_missing_information"
-                    ),
-                ),
-                lifecycle.CONVERSATION_OPEN,
-            )
-        if blocked or plan.ambiguities:
-            return self._assistant_reply(actor, intake, ()), lifecycle.CONVERSATION_OPEN
-        if complete:
-            return deterministic_reply(
-                lifecycle.CLOSE_OFFER_MESSAGE, "close_offered"
-            ), lifecycle.CONVERSATION_CLOSE_OFFERED
-        return (
-            self._assistant_reply(actor, intake, ()),
-            lifecycle.CONVERSATION_OPEN,
+        return conversation_reply_and_status(
+            status,
+            message,
+            intake,
+            lambda current: self._planned_reply(actor, current, use_provider),
+        )
+
+    def _planned_reply(
+        self, actor: UserAccount, intake: IntakeDetails, use_provider: bool
+    ) -> AdmittedAssistantReply:
+        return execute_planned_intake_reply(
+            actor.user_id,
+            self._llm_provider,
+            self._provider_admission,
+            intake,
+            use_provider=use_provider,
         )
 
     def _assistant_reply(
         self, actor: UserAccount, intake: IntakeDetails, safety_flags: tuple[str, ...]
     ) -> AdmittedAssistantReply:
-        prepare_reply = cast(
-            object,
-            getattr(self._llm_provider, "prepare_assistant_reply", None),
+        return execute_intake_reply(
+            actor.user_id,
+            self._llm_provider,
+            self._provider_admission,
+            intake,
+            safety_flags,
         )
-        if not callable(prepare_reply):
-            if self._provider_admission is not None:
-                raise RuntimeError(
-                    "Providers used with admission must prepare an immutable intake reply."
-                )
-            return deterministic_reply(
-                self._llm_provider.build_assistant_message(intake, safety_flags),
-                "safety_refusal" if safety_flags else "local_provider",
-            )
-        prepared = cast(PreparedIntakeReply, prepare_reply(intake, safety_flags))
-        if not prepared.requires_admission:
-            return prepared.execute()
-        if self._provider_admission is None:
-            return prepared.admission_unavailable_reply
-        with self._provider_admission.reserve(actor.user_id) as reservation:
-            outcome = prepared.execute()
-            if outcome.provider_succeeded:
-                reservation.commit()
-            return outcome
 
     def _create(self, actor: UserAccount, reserved_reference: str | None = None) -> TicketRecord:
         ticket_id = uuid4()

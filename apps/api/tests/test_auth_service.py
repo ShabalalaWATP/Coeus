@@ -241,6 +241,58 @@ def test_seed_user_repository_restores_missing_required_seed_users() -> None:
     assert restored.get_by_username("user@example.test") is not None
 
 
+def test_numbered_seed_login_migration_revokes_old_identity_and_session() -> None:
+    state_store = MemoryStateStore()
+    canonical_settings = Settings(
+        environment="test",
+        argon2_memory_cost=8_192,
+        local_seed_credential="OldLocalCredential1!",
+    )
+    password_hasher = PasswordHasher(canonical_settings)
+    canonical_users = SeedUserRepository(canonical_settings, password_hasher, state_store)
+    canonical_sessions = SessionRepository(state_store)
+    canonical_service = AuthService(
+        settings=canonical_settings,
+        users=canonical_users,
+        sessions=canonical_sessions,
+        login_attempts=LoginAttemptRepository(),
+        password_hasher=password_hasher,
+        audit_log=AuditLog(),
+    )
+    old_session = canonical_service.login(
+        "admin@example.test", "OldLocalCredential1!"
+    ).session_token
+
+    numbered_settings = Settings(
+        environment="local",
+        argon2_memory_cost=8_192,
+        local_numbered_seed_usernames=True,
+        local_seed_credential="admin",
+    )
+    numbered_users = SeedUserRepository(numbered_settings, password_hasher, state_store)
+    numbered_service = AuthService(
+        settings=numbered_settings,
+        users=numbered_users,
+        sessions=SessionRepository(state_store),
+        login_attempts=LoginAttemptRepository(),
+        password_hasher=password_hasher,
+        audit_log=AuditLog(),
+    )
+
+    assert numbered_service.login("admin1", "admin").user.username == "admin1"
+    for username, credential in (
+        ("admin@example.test", "admin"),
+        ("admin1", "OldLocalCredential1!"),
+        ("admin16", "admin"),
+    ):
+        with pytest.raises(AppError) as exc_info:
+            numbered_service.login(username, credential)
+        assert exc_info.value.code == "authentication_failed"
+    with pytest.raises(AppError) as stale_session:
+        numbered_service.require_session(old_session)
+    assert stale_session.value.code == "not_authenticated"
+
+
 def test_restored_users_get_permissions_rederived_from_their_roles() -> None:
     """Persisted permission snapshots must not survive role-definition changes.
 

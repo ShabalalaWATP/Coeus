@@ -11,8 +11,8 @@ import { ApiError } from "../../lib/api-client/client";
 import { useAuth } from "../../lib/auth/auth-context";
 
 const loginSchema = z.object({
-  username: z.string().email("Enter a valid username."),
-  password: z.string().min(1, "Enter your password."),
+  username: z.string().min(3, "Enter a valid username.").max(254, "Enter a valid username."),
+  password: z.string().min(1, "Enter your password.").max(256, "Password is too long."),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -113,7 +113,7 @@ export default function LoginPage() {
                     autoComplete="username"
                     disabled={isSubmitting}
                     id="login-username"
-                    type="email"
+                    type="text"
                     {...register("username")}
                   />
                   {errors.username ? <small>{errors.username.message}</small> : null}

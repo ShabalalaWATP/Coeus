@@ -134,7 +134,6 @@ export default function RequestsPage() {
             Open new request
           </button>
         ) : null}
-        {!canCreate ? <div className="classification-note">MOCK DATA ONLY</div> : null}
       </section>
       {ticketsQuery.isError ? (
         <section className="surface">

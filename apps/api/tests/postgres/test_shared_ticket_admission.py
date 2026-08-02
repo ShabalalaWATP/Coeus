@@ -61,8 +61,9 @@ def test_terminal_ticket_releases_durable_principal_capacity(
     repository.save(ticket)
     controller = _controller(postgres_database_url, total=1)
 
-    with pytest.raises(AppError, match="Ticket capacity"), controller.reserve(principal):
+    with pytest.raises(AppError) as error, controller.reserve(principal):
         pass
+    assert error.value.message == "Ticket capacity is temporarily unavailable."
 
     repository.save_if_current(ticket, replace(ticket, state=terminal_state))
     with controller.reserve(principal) as reference:
@@ -90,8 +91,12 @@ def test_postgres_ticket_modes_stage_principal_enforcement(
     principal = uuid4()
     with controller.reserve(principal):
         if denied:
-            with pytest.raises(AppError), controller.reserve(principal):
+            with pytest.raises(AppError) as error, controller.reserve(principal):
                 pass
+            assert error.value.message == (
+                "You have reached the active request limit. Close or cancel an existing request "
+                "before opening another."
+            )
         else:
             with controller.reserve(principal):
                 pass

@@ -35,7 +35,7 @@ export const providers = [
   },
   {
     name: "mock",
-    label: "Mock (offline)",
+    label: "Local assistant",
     models: ["mock"],
     activeModel: "mock",
     apiKeyConfigured: false,

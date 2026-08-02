@@ -19,6 +19,7 @@ from coeus.persistence.search_index_repository import (
     _group_rows,
     _vector,
 )
+from coeus.persistence.search_index_validation import embedding_source_hash
 from coeus.services.search_configuration import SEARCH_EMBEDDING_DIMENSIONS
 
 VECTOR = (0.0,) * SEARCH_EMBEDDING_DIMENSIONS
@@ -30,7 +31,7 @@ def test_memory_index_search_honours_an_explicit_empty_visibility_set() -> None:
     chunk = _chunk(product_id, "Synthetic Russian armour movement in Donbas")
     profile = _profile(1, "first", products=1, chunks=1, active=True)
     repository.begin(_profile(1, "first", products=1, chunks=0))
-    repository.activate(profile, (chunk,), (_embedding(chunk),))
+    repository.activate(profile, (chunk,), (_embedding(chunk, profile),))
 
     scope = StoreVisibilityScope(frozenset({uuid4()}), 3, False)
     assert repository.search(scope, "Russian armour", None, frozenset()) == ()
@@ -47,13 +48,13 @@ def test_failed_shadow_activation_restores_the_previous_ready_profile() -> None:
     first_chunk = _chunk(first_product, "first generation evidence")
     first = _profile(1, "first", products=1, chunks=1, active=True)
     repository.begin(_profile(1, "first", products=1, chunks=0))
-    repository.activate(first, (first_chunk,), (_embedding(first_chunk),))
+    repository.activate(first, (first_chunk,), (_embedding(first_chunk, first),))
 
     second_product = uuid4()
     second_chunk = _chunk(second_product, "second generation evidence")
     second = _profile(2, "second", products=1, chunks=1, active=True)
     repository.begin(_profile(2, "second", products=1, chunks=0))
-    repository.activate(second, (second_chunk,), (_embedding(second_chunk),))
+    repository.activate(second, (second_chunk,), (_embedding(second_chunk, second),))
     repository.rollback_activation(second.profile_id, "index_write_failed")
 
     assert repository.counts() == (1, 1, 0, 0, "first")
@@ -74,7 +75,13 @@ def test_index_rejects_missing_or_malformed_vectors() -> None:
         repository.activate(
             profile,
             (chunk,),
-            (SearchChunkEmbedding(chunk.chunk_id, "source", (0.0,) * 12),),
+            (
+                SearchChunkEmbedding(
+                    chunk.chunk_id,
+                    embedding_source_hash(profile.space_id, chunk.content_hash),
+                    (0.0,) * 12,
+                ),
+            ),
         )
 
 
@@ -93,7 +100,7 @@ def test_ticket_search_prefilters_authorised_ids_and_active_states() -> None:
         (),
         (),
         documents,
-        tuple(_ticket_embedding(document, 0) for document in documents),
+        tuple(_ticket_embedding(document, 0, profile) for document in documents),
     )
 
     hits = repository.search_tickets(
@@ -129,7 +136,7 @@ def test_index_counts_include_active_tickets_and_asset_warnings() -> None:
         (),
         (),
         (document,),
-        (_ticket_embedding(document, 0),),
+        (_ticket_embedding(document, 0, profile),),
         (
             SearchAssetIndexState(
                 profile.profile_id,
@@ -166,7 +173,7 @@ def test_search_ignores_stale_chunks_and_irrelevant_evidence() -> None:
     old_chunk = _chunk(old_product, "old unrelated evidence")
     old = _profile(1, "old", products=1, chunks=1, active=True)
     repository.begin(_profile(1, "old", products=1, chunks=0))
-    repository.activate(old, (old_chunk,), (_embedding(old_chunk),))
+    repository.activate(old, (old_chunk,), (_embedding(old_chunk, old),))
 
     current = _profile(2, "current", products=0, chunks=0, active=True)
     repository.begin(_profile(2, "current", products=0, chunks=0))
@@ -188,7 +195,7 @@ def test_ticket_search_skips_missing_embeddings_and_below_threshold_scores() -> 
         (),
         (),
         (document,),
-        (_ticket_embedding(document, 0),),
+        (_ticket_embedding(document, 0, profile),),
     )
     repository._ticket_embeddings.clear()
 
@@ -297,8 +304,12 @@ def _chunk(product_id: UUID, content: str) -> SearchChunk:
     )
 
 
-def _embedding(chunk: SearchChunk) -> SearchChunkEmbedding:
-    return SearchChunkEmbedding(chunk.chunk_id, "source", VECTOR)
+def _embedding(chunk: SearchChunk, profile: SearchIndexProfile) -> SearchChunkEmbedding:
+    return SearchChunkEmbedding(
+        chunk.chunk_id,
+        embedding_source_hash(profile.space_id, chunk.content_hash),
+        VECTOR,
+    )
 
 
 def _ticket_document(ticket_id: UUID, state: str, content: str) -> SearchTicketDocument:
@@ -307,8 +318,16 @@ def _ticket_document(ticket_id: UUID, state: str, content: str) -> SearchTicketD
     return SearchTicketDocument(ticket_id, state, content, sha256(content.encode()).hexdigest())
 
 
-def _ticket_embedding(document: SearchTicketDocument, dimension: int) -> SearchTicketEmbedding:
-    return SearchTicketEmbedding(document.ticket_id, document.content_hash, _unit_vector(dimension))
+def _ticket_embedding(
+    document: SearchTicketDocument,
+    dimension: int,
+    profile: SearchIndexProfile,
+) -> SearchTicketEmbedding:
+    return SearchTicketEmbedding(
+        document.ticket_id,
+        embedding_source_hash(profile.space_id, document.content_hash),
+        _unit_vector(dimension),
+    )
 
 
 def _unit_vector(dimension: int) -> tuple[float, ...]:

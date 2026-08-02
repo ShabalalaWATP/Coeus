@@ -40,7 +40,7 @@ test("filters my products by owner team and hides upload without create permissi
   expect(screen.getByText("2026-05-01 to ongoing")).toBeVisible();
   expect(screen.queryByText("Regional Stability Brief")).not.toBeInTheDocument();
   expect(screen.queryByRole("link", { name: "Upload product" })).not.toBeInTheDocument();
-  expect(screen.getByText("MOCK DATA ONLY")).toBeVisible();
+  expect(screen.queryByText("MOCK DATA ONLY")).not.toBeInTheDocument();
 });
 
 test("scopes my products to the RFA team for an assessment manager", async () => {

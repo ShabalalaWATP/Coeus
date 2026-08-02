@@ -95,7 +95,6 @@ export default function UserManagementPage() {
           <h1 id="users-title">Users</h1>
           <p>Manage team access, role assignments, clearance levels and account status.</p>
         </div>
-        <div className="classification-note">MOCK DATA ONLY</div>
       </section>
 
       <section className="surface admin-users" aria-label="User management">

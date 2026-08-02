@@ -17,6 +17,7 @@ from coeus.schemas.search_admin import (
     SearchEmbeddingConfigurationRequest,
     SearchEmbeddingKeyRequest,
     SearchEmbeddingStateResponse,
+    SearchEmbeddingTestRequest,
     SearchEmbeddingTestResponse,
 )
 from coeus.services.search_configuration import (
@@ -87,20 +88,27 @@ def test_search_embeddings(
         AuthenticatedSession,
         Depends(require_permission(Permission.SYSTEM_CONFIGURE)),
     ],
-    configuration: Annotated[SearchConfigurationService, Depends(get_search_configuration_service)],
     embeddings: Annotated[SearchEmbeddingService, Depends(get_search_embedding_service)],
+    configuration: Annotated[SearchConfigurationService, Depends(get_search_configuration_service)],
+    payload: SearchEmbeddingTestRequest | None = None,
 ) -> SearchEmbeddingTestResponse:
     del permitted
-    state = configuration.state()
-    vector = embeddings.embed(
-        "MOCK DATA ONLY Coeus retrieval connection test",
-        purpose="test",
+    active = configuration.state()
+    provider = payload.provider if payload is not None else active.provider
+    model = payload.model if payload is not None else active.model
+    confirm_external_egress = (
+        payload.confirm_external_egress if payload is not None else provider == "gemini_api"
+    )
+    vector = embeddings.test_candidate(
+        provider,
+        model,
+        confirm_external_egress=confirm_external_egress,
         principal_id=authenticated.user.user_id,
     )
     return SearchEmbeddingTestResponse(
         ok=vector is not None,
-        provider=state.provider,
-        model=state.model,
+        provider=provider,
+        model=model,
         message=(
             "Search embedding connection succeeded."
             if vector is not None

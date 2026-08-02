@@ -42,7 +42,7 @@ ASSET_KINDS: dict[str, tuple[tuple[str, str, str, str, int], ...]] = {
     "image": (("imagery.png", "image", "image/png", "image", 240_000),),
     "geojson": (("layer.geojson", "geojson", "application/geo+json", "geojson", 32_000),),
     "csv": (("dataset.csv", "csv", "text/csv", "text_metadata", 48_000),),
-    "sigint": (("parametric.dat", "dataset", "application/octet-stream", "text_metadata", 96_000),),
+    "sigint": (("parametric.csv", "dataset", "text/csv", "text_metadata", 96_000),),
     "bundle": (
         ("brief.pdf", "pdf", "application/pdf", "pdf_metadata", 18_000),
         ("overlay.png", "image", "image/png", "image", 240_000),

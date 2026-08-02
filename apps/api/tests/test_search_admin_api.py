@@ -44,24 +44,9 @@ async def test_admin_configures_search_key_without_changing_chat_key() -> None:
 async def test_admin_selects_recommended_model_tests_and_reindexes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    class FakeClient:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *_args: object) -> None:
-            return None
-
-        def post(self, *_args: object, **_kwargs: object):
-            return self
-
-        def raise_for_status(self) -> None:
-            return None
-
-        def json(self) -> dict[str, object]:
-            return {"embedding": {"values": [1.0] * 1536}}
-
     monkeypatch.setattr(
-        "coeus.services.search_embeddings.httpx.Client", lambda **_kwargs: FakeClient()
+        "coeus.services.search_embeddings.post_json",
+        lambda *_args, **_kwargs: {"embedding": {"values": [1.0] * 1536}},
     )
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
     async with AsyncClient(
@@ -82,6 +67,16 @@ async def test_admin_selects_recommended_model_tests_and_reindexes(
                 "confirmExternalEgress": False,
             },
         )
+        tested = await client.post(
+            "/api/v1/admin/search-embeddings/test",
+            headers={"X-CSRF-Token": csrf},
+            json={
+                "provider": "gemini_api",
+                "model": "gemini-embedding-2",
+                "confirmExternalEgress": True,
+            },
+        )
+        still_mock = await client.get("/api/v1/admin/search-embeddings")
         selected = await client.put(
             "/api/v1/admin/search-embeddings/configuration",
             headers={"X-CSRF-Token": csrf},
@@ -91,17 +86,81 @@ async def test_admin_selects_recommended_model_tests_and_reindexes(
                 "confirmExternalEgress": True,
             },
         )
+
+    assert denied.status_code == 422
+    assert tested.status_code == 200
+    assert tested.json() == {
+        "ok": True,
+        "provider": "gemini_api",
+        "model": "gemini-embedding-2",
+        "message": "Search embedding connection succeeded.",
+    }
+    assert still_mock.json()["provider"] == "mock"
+    assert selected.status_code == 200
+    assert selected.json()["model"] == "gemini-embedding-2"
+    assert selected.json()["indexStatus"] == "stale"
+
+
+@pytest.mark.asyncio
+async def test_search_connection_test_validates_candidate_without_mutation() -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        csrf = await _login(client, "admin@example.test")
+        tested = await client.post(
+            "/api/v1/admin/search-embeddings/test",
+            headers={"X-CSRF-Token": csrf},
+            json={
+                "provider": "mock",
+                "model": "token-hash-v2",
+                "confirmExternalEgress": False,
+            },
+        )
+        bad_model = await client.post(
+            "/api/v1/admin/search-embeddings/test",
+            headers={"X-CSRF-Token": csrf},
+            json={
+                "provider": "mock",
+                "model": "not-a-model",
+                "confirmExternalEgress": False,
+            },
+        )
+        missing_key = await client.post(
+            "/api/v1/admin/search-embeddings/test",
+            headers={"X-CSRF-Token": csrf},
+            json={
+                "provider": "gemini_api",
+                "model": "gemini-embedding-2",
+                "confirmExternalEgress": True,
+            },
+        )
+
+    assert tested.status_code == 200
+    assert tested.json()["provider"] == "mock"
+    assert bad_model.status_code == 422
+    assert missing_key.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_search_connection_test_without_body_checks_active_configuration() -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        csrf = await _login(client, "admin@example.test")
         tested = await client.post(
             "/api/v1/admin/search-embeddings/test",
             headers={"X-CSRF-Token": csrf},
         )
 
-    assert denied.status_code == 422
-    assert selected.status_code == 200
-    assert selected.json()["model"] == "gemini-embedding-2"
-    assert selected.json()["indexStatus"] == "stale"
     assert tested.status_code == 200
-    assert tested.json()["ok"] is True
+    assert tested.json() == {
+        "ok": True,
+        "provider": "mock",
+        "model": "token-hash-v2",
+        "message": "Search embedding connection succeeded.",
+    }
 
 
 @pytest.mark.asyncio

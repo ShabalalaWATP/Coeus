@@ -8,13 +8,16 @@ Test environments do not load this; see ``Settings.should_seed_demo``. Product
 and asset IDs and references are stable, so re-seeding never duplicates.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
+from hashlib import sha256
 from uuid import UUID
 
 from coeus.domain.access import ProductStatus
+from coeus.domain.auth import RoleName
 from coeus.domain.store import BoundingBox, StoreAsset, StoreProduct, StoreProductMetadata
 from coeus.repositories.access import AccessRepository, stable_seed_id
+from coeus.repositories.demo_asset_content import build_demo_asset_bytes
 from coeus.repositories.demo_catalogue_data import (
     ASSET_KINDS,
     BOUNDING_BOX,
@@ -51,23 +54,34 @@ class DemoCatalogue:
 
 
 def build_demo_catalogue(access_repository: AccessRepository) -> DemoCatalogue:
-    admin = access_repository.get_user_by_username("admin@example.test")
+    admin = next(
+        (user for user in access_repository.list_users() if RoleName.ADMINISTRATOR in user.roles),
+        None,
+    )
     if admin is None:
         raise RuntimeError("Missing required seed user admin@example.test.")
     acg_ids = {acg.code: acg.acg_id for acg in access_repository.list_acgs()}
     now = datetime.now(UTC)
     products: list[StoreProduct] = []
+    base_assets: list[tuple[str, bytes]] = []
     used_codes: set[str] = set()
     for index, spec in enumerate(_normalised_specs()):
         acg_id = acg_ids.get(spec.acg_code)
         if acg_id is None:
             continue
         used_codes.add(spec.acg_code)
-        products.append(_build_product(spec, index, acg_id, admin.user_id, now))
+        product = _build_product(spec, index, acg_id, admin.user_id, now)
+        product, generated = _materialise_assets(product)
+        products.append(product)
+        base_assets.extend(generated)
     pdf_products, generated_assets, pdf_codes = build_pdf_corpus(acg_ids, admin.user_id)
     products.extend(pdf_products)
     used_codes.update(pdf_codes)
-    return DemoCatalogue(tuple(products), frozenset(used_codes), generated_assets)
+    return DemoCatalogue(
+        tuple(products),
+        frozenset(used_codes),
+        tuple(base_assets) + generated_assets,
+    )
 
 
 def _normalised_specs() -> list[ProductSpec]:
@@ -136,10 +150,10 @@ def _build_product(
         reference=reference,
         metadata=StoreProductMetadata(
             title=spec.title,
-            summary=f"MOCK DATA ONLY {type_label} covering {area}.",
+            summary=f"{type_label.title()} covering {area}.",
             description=(
-                f"Synthetic {type_label} for {area} ({discipline} reporting). "
-                "MOCK DATA ONLY, generated for the local demo dataset."
+                f"Exercise {type_label} for {area} ({discipline} reporting). "
+                "Generated for the local demonstration dataset."
             ),
             product_type=spec.product_type,
             source_type=_SOURCE_TYPES.get(discipline, "finished_assessment"),
@@ -166,7 +180,7 @@ def _build_product(
 
 def _build_assets(seed_name: str, asset_kind: str, product_id: UUID) -> tuple[StoreAsset, ...]:
     assets: list[StoreAsset] = []
-    for suffix, asset_type, mime_type, preview_kind, size_bytes in ASSET_KINDS[asset_kind]:
+    for suffix, asset_type, mime_type, preview_kind, _size_bytes in ASSET_KINDS[asset_kind]:
         asset_id = stable_seed_id(f"store-asset-{seed_name}-{suffix}")
         name = f"{seed_name}-{suffix}"
         assets.append(
@@ -175,13 +189,30 @@ def _build_assets(seed_name: str, asset_kind: str, product_id: UUID) -> tuple[St
                 name=name,
                 asset_type=asset_type,
                 mime_type=mime_type,
-                size_bytes=size_bytes,
-                sha256="c" * 64,
+                size_bytes=0,
+                sha256="0" * 64,
                 object_key=f"store/{product_id}/{asset_id}/{name}",
                 preview_kind=preview_kind,
             )
         )
     return tuple(assets)
+
+
+def _materialise_assets(
+    product: StoreProduct,
+) -> tuple[StoreProduct, tuple[tuple[str, bytes], ...]]:
+    assets: list[StoreAsset] = []
+    objects: list[tuple[str, bytes]] = []
+    for asset in product.assets:
+        content = build_demo_asset_bytes(product, asset)
+        materialised = replace(
+            asset,
+            size_bytes=len(content),
+            sha256=sha256(content).hexdigest(),
+        )
+        assets.append(materialised)
+        objects.append((materialised.object_key, content))
+    return replace(product, assets=tuple(assets)), tuple(objects)
 
 
 _SOURCE_TYPES = {

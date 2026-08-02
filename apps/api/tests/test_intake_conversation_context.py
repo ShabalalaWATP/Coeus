@@ -45,6 +45,42 @@ def test_invalid_or_reversed_uk_date_answer_does_not_satisfy_time_period() -> No
     assert reversed_range.missing_information[0] == "time_period"
 
 
+def test_natural_year_range_advances_past_the_time_period_question() -> None:
+    service = IntakeExtractionService()
+    current = RequirementCompletenessService().with_completeness(
+        IntakeDetails(
+            description="Assess synthetic vessel activity.",
+            operational_question="What changed?",
+            area_or_region="Baltic",
+        )
+    )
+
+    updated = service.extract("all of 2025-2026", current)
+
+    assert updated.time_period_start == "2025-01-01"
+    assert updated.time_period_end == "2026-12-31"
+    assert updated.missing_information[0] == "priority"
+
+
+def test_concrete_date_answer_replaces_an_unresolved_time_window() -> None:
+    service = IntakeExtractionService()
+    current = RequirementCompletenessService().with_completeness(
+        IntakeDetails(
+            description="Assess synthetic vessel activity.",
+            operational_question="What changed?",
+            area_or_region="Baltic",
+            time_period_start="last year",
+            time_period_end="last year",
+        )
+    )
+
+    updated = service.extract("1st Jan 2025 to 30th Dec 2026", current)
+
+    assert updated.time_period_start == "2025-01-01"
+    assert updated.time_period_end == "2026-12-30"
+    assert updated.missing_information[0] == "priority"
+
+
 def test_unrecognised_direct_priority_answer_remains_missing() -> None:
     service = IntakeExtractionService()
     current = RequirementCompletenessService().with_completeness(

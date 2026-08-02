@@ -305,33 +305,25 @@ point-in-time test counts for each 20 July slice.
 
 ## 27 July 2026 Workflow review remediation
 
-A four-angle workflow review confirmed eight defect groups on `main`; all are
-fixed under the [remediation contract](specs/workflow-review-remediation-2026-07-27.md)
-with no state-machine edge changes: terminal states derive from the state
-machine and release capacity (migration `20260727_0015`); clarification
-answers resume `JIOC_REVIEW` from every channel; uploaded rework passes the QC
-version pin; deactivation strands are recoverable; chunk-index access
-predicates gained tripwire and Postgres tests; requester lockout fails clearly
-and warns early; re-analysis requires a revised draft. Deferred as product
-decisions: workflow-wide push notifications and any incomplete-search override.
+All eight defect groups are fixed under the
+[remediation contract](specs/workflow-review-remediation-2026-07-27.md) without
+state-machine edge changes. Workflow-wide push notifications and any
+incomplete-search override remain product decisions.
 
 ## 22 July 2026 Sealed-scan remediation
 
-The earlier 15 findings are fixed and verified. Follow-up scan
-`5af0222d-05d1-4c46-a090-018aff45db2d` reported three Medium and eight Low
-issues; the integrated `0cde7010` remediation covers exact sessions and
-authority, visibility, canonical lock order, atomic audit, parser budgets and
-cancellation-safe submission, with full gates and post-merge workflows passed.
-Authorised staging and the fresh immutable deep scan remain open under the
+The earlier findings and follow-up scan are fixed and verified, covering exact
+sessions and authority, visibility, lock order, atomic audit, parser budgets
+and cancellation-safe submission. Authorised staging remains open under the
 [22 July contract](specs/security-scan-remediation-2026-07-22.md).
 
 ## 20 July 2026 Bounded Advisory Reasoning
 Status: complete and verified for the supported local/test boundary.
 
-- [x] Implement the feature spec and ADR 0040 with deterministic authority and safe staff-only provenance.
+- [x] Implement the feature spec and ADR 0040 with deterministic authority.
 - [x] All quality/security gates and independent reviews passed: 1,432 backend
   tests (one intentional skip) at 98.13/95.07 and 533 frontend tests at 98.65/95.05.
-- Risk: remote advisory use remains blocked by default and still needs labelled evidence plus a separately approved real-data classification, redaction and egress release.
+- Risk: remote use remains blocked pending labelled evidence and real-data approval.
 
 ## 23 July 2026 Architecture Atlas
 
@@ -348,3 +340,10 @@ Status: complete and verified for the supported local/test boundary.
 - JIOC Team Members and Managers share exception review; Managers own on-loop
   oversight and intervention. [ADR 0043](adr/0043-jioc-human-review-and-manager-oversight.md)
   covers Agent evidence, attention filtering and role-specific seeded journeys.
+
+## 2 August 2026 Retrieval readiness and richer exercise products
+
+- [x] Retain natural provider labels, fixed provenance and explicit cloud activation.
+- [x] Automatically rebuild local retrieval and clear all 35 legacy asset warnings.
+- [x] Generate and visually verify eight-page operational exercise reports.
+- [x] Activate the verified Gemini key and simplify automatic-update status for non-technical users.

@@ -46,7 +46,7 @@ def test_connection(
             ok=True,
             provider=spec.name,
             model=model,
-            message="The mock provider replies locally; no external call was made.",
+            message="The local assistant replied on this device; no external call was made.",
         )
     api_key = ai_models.api_key(spec.name)
     if not api_key:

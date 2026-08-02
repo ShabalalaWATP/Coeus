@@ -19,23 +19,20 @@ from coeus.domain.search_index import (
 from coeus.domain.store import StoreVisibilityScope
 from coeus.persistence.database_url import synchronous_database_url
 from coeus.persistence.relational_schema import ensure_relational_schema
+from coeus.persistence.search_index_postgres_write import (
+    validate_generation,
+    write_generation,
+)
 from coeus.persistence.search_index_repository import (
     SEARCH_LEG_LIMIT,
     SearchIndexRepository,
     _group_rows,
-    _validate_vector,
     _vector,
 )
 from coeus.persistence.search_index_sql import (
-    ACTIVATE_PROFILE_SQL,
-    INSERT_ASSET_INDEX_STATE_SQL,
-    INSERT_EMBEDDING_SQL,
     INSERT_PROFILE_SQL,
-    INSERT_TICKET_EMBEDDING_SQL,
     SEARCH_CHUNKS_SQL,
     SEARCH_TICKETS_SQL,
-    UPSERT_CHUNK_SQL,
-    UPSERT_TICKET_DOCUMENT_SQL,
 )
 
 
@@ -62,55 +59,17 @@ class PostgresSearchIndexRepository:
         ticket_embeddings: tuple[SearchTicketEmbedding, ...] = (),
         asset_states: tuple[SearchAssetIndexState, ...] = (),
     ) -> None:
-        if len(chunks) != len(embeddings):
-            raise ValueError("Every search chunk must have exactly one embedding.")
-        for chunk_embedding in embeddings:
-            _validate_vector(chunk_embedding.vector)
-        if len(ticket_documents) != len(ticket_embeddings):
-            raise ValueError("Every search ticket must have exactly one embedding.")
-        for ticket_embedding in ticket_embeddings:
-            _validate_vector(ticket_embedding.vector)
+        validate_generation(profile, chunks, embeddings, ticket_documents, ticket_embeddings)
         with self._engine.begin() as connection:
             ensure_relational_schema(connection)
-            for chunk in chunks:
-                connection.execute(text(UPSERT_CHUNK_SQL), _dataclass_params(chunk))
-            for chunk_embedding in embeddings:
-                connection.execute(
-                    text(INSERT_EMBEDDING_SQL),
-                    {
-                        "profile_id": str(profile.profile_id),
-                        "chunk_id": str(chunk_embedding.chunk_id),
-                        "source_hash": chunk_embedding.source_hash,
-                        "embedding": _vector(chunk_embedding.vector),
-                    },
-                )
-            for document in ticket_documents:
-                connection.execute(text(UPSERT_TICKET_DOCUMENT_SQL), _dataclass_params(document))
-            for ticket_embedding in ticket_embeddings:
-                connection.execute(
-                    text(INSERT_TICKET_EMBEDDING_SQL),
-                    {
-                        "profile_id": str(profile.profile_id),
-                        "ticket_id": str(ticket_embedding.ticket_id),
-                        "source_hash": ticket_embedding.source_hash,
-                        "embedding": _vector(ticket_embedding.vector),
-                    },
-                )
-            for asset_state in asset_states:
-                connection.execute(
-                    text(INSERT_ASSET_INDEX_STATE_SQL),
-                    _dataclass_params(asset_state),
-                )
-            connection.execute(text("UPDATE search_index_profiles SET is_active = false"))
-            connection.execute(
-                text(ACTIVATE_PROFILE_SQL),
-                {
-                    "profile_id": str(profile.profile_id),
-                    "product_count": profile.product_count,
-                    "chunk_count": profile.chunk_count,
-                    "indexed_count": len(embeddings),
-                    "failed_count": profile.failed_count,
-                },
+            write_generation(
+                connection,
+                profile,
+                chunks,
+                embeddings,
+                ticket_documents,
+                ticket_embeddings,
+                asset_states,
             )
 
     def fail(self, profile_id: UUID, error_code: str) -> None:
@@ -145,6 +104,18 @@ class PostgresSearchIndexRepository:
                 ),
                 {"profile_id": str(profile_id)},
             )
+
+    def recover_interrupted(self) -> int:
+        with self._engine.begin() as connection:
+            ensure_relational_schema(connection)
+            result = connection.execute(
+                text(
+                    "UPDATE search_index_profiles SET status = 'failed', is_active = false, "
+                    "error_code = 'worker_interrupted', completed_at = now() "
+                    "WHERE status = 'indexing'"
+                )
+            )
+            return int(result.rowcount or 0)
 
     def counts(self) -> tuple[int, int, int, int, str]:
         with self._engine.begin() as connection:

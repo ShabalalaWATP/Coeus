@@ -77,6 +77,7 @@ supersession:
 | [Local Multi-User Operations](runbooks/local-multi-user-operations.md) | Local onboarding, roles, teams, ACGs and account lifecycle |
 | [Session Revocation](runbooks/session-revocation.md) | Revocation semantics, incident checks and recovery |
 | [LiteLLM Provider Connectivity](runbooks/litellm-provider-connectivity.md) | Bedrock and Vertex routes, identity, virtual keys and verification |
+| [Search Embeddings](runbooks/search-embeddings.md) | Compatibility backfill and grounded-index test, apply, rebuild and recovery |
 | [CI/CD Pipeline](runbooks/ci-cd-pipeline.md) | GitHub Actions, required checks and security gates |
 | [GitHub Branch Protection](runbooks/github-branch-protection.md) | `main` ruleset, pull requests and code-scanning results |
 | [GCP Reference Deployment](runbooks/gcp-dev-deployment.md) | Future work-owned GCP migration setup and blockers |

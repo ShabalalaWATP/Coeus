@@ -56,9 +56,9 @@ def product_semantic_text(product: StoreProduct) -> str:
             metadata.source_type,
             metadata.owner_team,
             metadata.area_or_region,
-            " ".join(metadata.tags),
-            " ".join(effective_semantic_labels(product)),
-            " ".join(asset.asset_type for asset in product.assets),
+            " ".join(sorted(metadata.tags)),
+            " ".join(sorted(effective_semantic_labels(product))),
+            " ".join(sorted(asset.asset_type for asset in product.assets)),
         )
     )
 

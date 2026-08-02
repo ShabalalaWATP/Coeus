@@ -49,7 +49,10 @@ The selected quality model is not an implicit runtime default. Fresh local and
 CI environments remain on `mock`, use no network and work without cloud access.
 An administrator must save a Gemini credential, explicitly confirm the egress
 boundary, activate the search configuration and start a re-index before corpus
-embedding calls occur. Admin also provides a connection test before activation.
+embedding calls occur. Admin tests the selected draft provider and model before
+activation. The result names that exact selection; changing the provider,
+model or saved credential invalidates it. The fixed test probe contains no
+Store or ticket text.
 
 ## Index Identity and Lifecycle
 
@@ -81,7 +84,17 @@ Index states are `ready`, `stale`, `indexing`, `degraded` and `failed`. State
 includes product count, chunk count, last successful completion, bounded error
 summary and corpus version. Re-indexing is idempotent and auditable. Only one
 re-index can run at a time. A failed re-index retains lexical search and does
-not promote a partial generation to `ready`.
+not promote a partial generation to `ready`. Candidate completion and promotion
+are atomic, so the previous ready generation remains active unless its successor
+has been fully written. A process restart marks an abandoned `indexing`
+candidate `worker_interrupted` and allows a later retry.
+
+The product corpus version hashes canonical indexed metadata and each asset's
+identity, MIME type, byte length and content hash, together with extractor and
+chunker versions. Creation and update timestamps are not index inputs and do
+not make an unchanged corpus stale. Ticket documents and embeddings both carry
+the generation identity, so activation and rollback cannot pair text from one
+generation with a vector from another.
 
 ## Document Extraction and Chunking
 
@@ -243,6 +256,11 @@ mock results are never described as proof of its semantic quality.
   unqualified no-match outcome.
 - The Admin page persists search provider, model and key configuration across a
   restart and shows index progress and corpus version.
+- Testing a mock draft cannot authorise applying a Gemini draft, and every test
+  result identifies the provider and model actually contacted.
+- An interrupted build is recovered on restart, a failed promotion leaves the
+  previous generation active and generation rollback restores matching ticket
+  text and vectors.
 - A relevant active ticket placed after 100 unrelated tickets remains
   discoverable, including an RFA-routed and a collection-routed example.
 - Manager matches show route, team, time window and operation, and duplicate

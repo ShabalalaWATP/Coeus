@@ -1,10 +1,10 @@
-import { ArrowUpRight, PackageOpen, UsersRound } from "lucide-react";
+import { Archive, ArrowUpRight, ChevronDown, PackageOpen, UsersRound } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { EmptyState } from "../../components/ui/PageState";
 import { StatusPill } from "../../components/ui/StatusPill";
 import type { Ticket, TicketSummary } from "../../lib/api-client/tickets";
-import { isAwaitingCustomerAction, ticketMetrics } from "./ticket-collection";
+import { isAwaitingCustomerAction, isClosedTicket, ticketMetrics } from "./ticket-collection";
 import { ProductOutcomeDecisionPanel } from "./ProductOutcomeDecisionPanel";
 
 type RequestDashboardProps = {
@@ -30,6 +30,8 @@ export function RequestDashboard({
   tickets,
 }: RequestDashboardProps) {
   const metrics = ticketMetrics(tickets);
+  const openTickets = tickets.filter((ticket) => !isClosedTicket(ticket.state));
+  const closedTickets = tickets.filter((ticket) => isClosedTicket(ticket.state));
 
   return (
     <>
@@ -41,19 +43,19 @@ export function RequestDashboard({
         </div>
         <dl>
           <div>
-            <dt>Total</dt>
-            <dd>{metrics.total}</dd>
+            <dt>Open</dt>
+            <dd>{metrics.total - metrics.completed}</dd>
           </div>
           <div>
             <dt>Draft</dt>
             <dd>{metrics.draft}</dd>
           </div>
           <div>
-            <dt>Active</dt>
+            <dt>In progress</dt>
             <dd>{metrics.inProgress}</dd>
           </div>
           <div>
-            <dt>Delivered</dt>
+            <dt>Closed</dt>
             <dd>{metrics.completed}</dd>
           </div>
         </dl>
@@ -63,96 +65,162 @@ export function RequestDashboard({
         <div className="request-list__heading">
           <div>
             <span>Request register</span>
-            <h2 id="request-list-title">My requests</h2>
+            <h2 id="request-list-title">Open requests</h2>
           </div>
-          <p>Open a request to continue the conversation or review its progress.</p>
+          <p>Continue current work or review a request that needs your action.</p>
         </div>
-        {tickets.length === 0 ? (
+        {openTickets.length === 0 ? (
           <EmptyState
             hint={
-              canCreate
-                ? "Open a new request and the assistant will capture the details in chat."
-                : "Requests shared with you appear here once you are tagged."
+              tickets.length > 0
+                ? "Completed and cancelled requests are available in the closed section below."
+                : canCreate
+                  ? "Open a new request and the assistant will capture the details in chat."
+                  : "Requests shared with you appear here once you are tagged."
             }
-            title="No requests yet"
+            title={tickets.length > 0 ? "No open requests" : "No requests yet"}
           />
         ) : null}
-        <div className="request-register">
-          {tickets.map((ticket) => {
-            const requiresAction =
-              ticket.customerStatus?.actionRequired ?? isAwaitingCustomerAction(ticket.state);
-            return (
-              <article
-                className={
-                  requiresAction
-                    ? "request-register-row request-register-row--action"
-                    : "request-register-row"
-                }
-                key={ticket.id}
-              >
-                <button
-                  className="request-register-row__main"
-                  onClick={() => onOpen(ticket.id)}
-                  type="button"
-                >
-                  <span className="mono-ref">{ticket.reference}</span>
-                  <strong>{ticketTitle(ticket) ?? "Draft request"}</strong>
-                  <div className="request-register-row__meta">
-                    <StatusPill state={ticket.state} />
-                    <span>{ticket.customerStatus?.label}</span>
-                    <span>{ticketPriority(ticket) ?? "Routine priority"}</span>
-                    <time dateTime={ticket.updatedAt}>Updated {formatDate(ticket.updatedAt)}</time>
-                    {collaboratorCount(ticket) > 0 ? (
-                      <span>
-                        <UsersRound aria-hidden="true" size={13} />
-                        {collaboratorCount(ticket)} tagged
-                      </span>
-                    ) : null}
-                  </div>
-                  {ticket.customerStatus ? (
-                    <small>
-                      {ticket.customerStatus.explanation} {formatEstimate(ticket.customerStatus)}
-                    </small>
-                  ) : null}
-                  <span className="request-register-row__open">
-                    Open
-                    <ArrowUpRight aria-hidden="true" size={16} />
-                  </span>
-                </button>
-                {releasedProductId(ticket) ? (
-                  <Link
-                    className="request-register-row__action"
-                    state={{ from: "/app/requests" }}
-                    to={`/store/products/${encodeURIComponent(releasedProductId(ticket) ?? "")}`}
-                  >
-                    <PackageOpen aria-hidden="true" size={15} />
-                    View released product
-                  </Link>
-                ) : null}
-                {ticket.customerStatus?.canonicalTicketId ? (
-                  <Link
-                    className="request-register-row__action"
-                    to={`/app/requests/${encodeURIComponent(ticket.customerStatus.canonicalTicketId)}`}
-                  >
-                    <ArrowUpRight aria-hidden="true" size={15} />
-                    Track joined request
-                  </Link>
-                ) : null}
-                {ticket.state === "DISSEMINATION_READY" &&
-                ticket.requesterUserId === currentUserId ? (
-                  <ProductOutcomeDecisionPanel
-                    disabled={isDecidingOutcome}
-                    onDecide={(meetsRequirement, reason, unmetCriteria) =>
-                      onProductDecision(ticket.id, meetsRequirement, reason, unmetCriteria)
-                    }
-                  />
-                ) : null}
-              </article>
-            );
-          })}
-        </div>
+        <RequestRegister
+          currentUserId={currentUserId}
+          isDecidingOutcome={isDecidingOutcome}
+          onOpen={onOpen}
+          onProductDecision={onProductDecision}
+          tickets={openTickets}
+        />
       </section>
+
+      {closedTickets.length > 0 ? (
+        <details className="surface request-archive">
+          <summary>
+            <Archive aria-hidden="true" size={19} />
+            <span>
+              <strong>Closed requests</strong>
+              <small>Completed and cancelled requests are kept here.</small>
+            </span>
+            <span className="request-archive__count">{closedTickets.length}</span>
+            <ChevronDown aria-hidden="true" className="request-archive__chevron" size={19} />
+          </summary>
+          <RequestRegister
+            currentUserId={currentUserId}
+            isDecidingOutcome={isDecidingOutcome}
+            onOpen={onOpen}
+            onProductDecision={onProductDecision}
+            tickets={closedTickets}
+          />
+        </details>
+      ) : null}
     </>
+  );
+}
+
+type RequestRegisterProps = Pick<
+  RequestDashboardProps,
+  "currentUserId" | "isDecidingOutcome" | "onOpen" | "onProductDecision" | "tickets"
+>;
+
+function RequestRegister({
+  currentUserId,
+  isDecidingOutcome,
+  onOpen,
+  onProductDecision,
+  tickets,
+}: RequestRegisterProps) {
+  if (tickets.length === 0) return null;
+  return (
+    <div className="request-register">
+      {tickets.map((ticket) => (
+        <RequestRegisterRow
+          currentUserId={currentUserId}
+          isDecidingOutcome={isDecidingOutcome}
+          key={ticket.id}
+          onOpen={onOpen}
+          onProductDecision={onProductDecision}
+          ticket={ticket}
+        />
+      ))}
+    </div>
+  );
+}
+
+type RequestRegisterRowProps = Omit<RequestRegisterProps, "tickets"> & {
+  ticket: Ticket | TicketSummary;
+};
+
+function RequestRegisterRow({
+  currentUserId,
+  isDecidingOutcome,
+  onOpen,
+  onProductDecision,
+  ticket,
+}: RequestRegisterRowProps) {
+  const requiresAction =
+    ticket.customerStatus?.actionRequired ?? isAwaitingCustomerAction(ticket.state);
+  return (
+    <article
+      className={
+        requiresAction
+          ? "request-register-row request-register-row--action"
+          : "request-register-row"
+      }
+    >
+      <button
+        className="request-register-row__main"
+        onClick={() => onOpen(ticket.id)}
+        type="button"
+      >
+        <span className="mono-ref">{ticket.reference}</span>
+        <strong>{ticketTitle(ticket) ?? "Draft request"}</strong>
+        <div className="request-register-row__meta">
+          <StatusPill state={ticket.state} />
+          <span>{ticket.customerStatus?.label}</span>
+          <span>{ticketPriority(ticket) ?? "Routine priority"}</span>
+          <time dateTime={ticket.updatedAt}>Updated {formatDate(ticket.updatedAt)}</time>
+          {collaboratorCount(ticket) > 0 ? (
+            <span>
+              <UsersRound aria-hidden="true" size={13} />
+              {collaboratorCount(ticket)} tagged
+            </span>
+          ) : null}
+        </div>
+        {ticket.customerStatus ? (
+          <small>
+            {ticket.customerStatus.explanation} {formatEstimate(ticket.customerStatus)}
+          </small>
+        ) : null}
+        <span className="request-register-row__open">
+          Open
+          <ArrowUpRight aria-hidden="true" size={16} />
+        </span>
+      </button>
+      {releasedProductId(ticket) ? (
+        <Link
+          className="request-register-row__action"
+          state={{ from: "/app/requests" }}
+          to={`/store/products/${encodeURIComponent(releasedProductId(ticket) ?? "")}`}
+        >
+          <PackageOpen aria-hidden="true" size={15} />
+          View released product
+        </Link>
+      ) : null}
+      {ticket.customerStatus?.canonicalTicketId ? (
+        <Link
+          className="request-register-row__action"
+          to={`/app/requests/${encodeURIComponent(ticket.customerStatus.canonicalTicketId)}`}
+        >
+          <ArrowUpRight aria-hidden="true" size={15} />
+          Track joined request
+        </Link>
+      ) : null}
+      {ticket.state === "DISSEMINATION_READY" && ticket.requesterUserId === currentUserId ? (
+        <ProductOutcomeDecisionPanel
+          disabled={isDecidingOutcome}
+          onDecide={(meetsRequirement, reason, unmetCriteria) =>
+            onProductDecision(ticket.id, meetsRequirement, reason, unmetCriteria)
+          }
+        />
+      ) : null}
+    </article>
   );
 }
 

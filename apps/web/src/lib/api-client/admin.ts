@@ -118,9 +118,15 @@ export function configureSearchEmbeddings(
   });
 }
 
-export function testSearchEmbeddings(csrfToken: string): Promise<SearchEmbeddingTest> {
+export function testSearchEmbeddings(
+  provider: string,
+  model: string,
+  confirmExternalEgress: boolean,
+  csrfToken: string,
+): Promise<SearchEmbeddingTest> {
   return apiRequestJson<SearchEmbeddingTest>("/api/v1/admin/search-embeddings/test", {
-    headers: { "X-CSRF-Token": csrfToken },
+    body: JSON.stringify({ provider, model, confirmExternalEgress }),
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
     method: "POST",
   });
 }

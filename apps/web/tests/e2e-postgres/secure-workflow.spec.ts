@@ -147,10 +147,9 @@ test("rejects an oversized upload without losing form input or creating a produc
 test("creates and submits a customer request through PostgreSQL", async ({ page }) => {
   await login(page, "admin@example.test", "Admin");
   await page.getByRole("heading", { name: "Search & embeddings" }).click();
-  await page.getByRole("button", { name: "Rebuild search index" }).click();
-  await expect(
-    page.getByLabel("Search index status").getByText("ready", { exact: true }),
-  ).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("Local search is ready", { exact: true })).toBeVisible({
+    timeout: 30_000,
+  });
   await logout(page);
 
   await login(page, "user@example.test", "My Requests");
@@ -201,7 +200,7 @@ test("recovers from a retained-ticket 429 without losing the message", async ({ 
   await page.getByLabel("Message").fill(message);
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByRole("alert")).toContainText(
-    "Ticket capacity is temporarily unavailable.",
+    "You have reached the active request limit. Close or cancel an existing request before opening another.",
   );
   await expect(page.getByLabel("Message")).toHaveValue(message);
 });

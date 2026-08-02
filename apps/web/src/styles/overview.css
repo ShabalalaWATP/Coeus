@@ -3,6 +3,21 @@
   gap: 20px;
 }
 
+.environment-provenance {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border: 1px solid color-mix(in srgb, var(--warning) 32%, var(--border));
+  border-radius: 999px;
+  padding: 0 10px;
+  background: color-mix(in srgb, var(--warning) 6%, transparent);
+  color: color-mix(in srgb, var(--warning) 82%, var(--text));
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.025em;
+  white-space: nowrap;
+}
+
 .overview-hero {
   display: flex;
   align-items: flex-end;
@@ -16,19 +31,6 @@
   font-size: clamp(1.7rem, 3vw, 2.4rem);
   letter-spacing: -0.015em;
   line-height: 1.04;
-}
-
-.classification-note {
-  flex-shrink: 0;
-  border: 1px solid color-mix(in srgb, var(--warning) 48%, var(--border));
-  border-radius: var(--radius-sm);
-  padding: 7px 12px;
-  color: var(--warning);
-  background: color-mix(in srgb, var(--warning) 7%, transparent);
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
 }
 
 .request-metrics,

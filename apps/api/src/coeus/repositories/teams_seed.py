@@ -5,6 +5,7 @@ from uuid import UUID, uuid4
 
 from coeus.domain.teams import OrgTeam, TeamKind, UserProfile
 from coeus.repositories.auth import SeedUserRepository
+from coeus.repositories.auth_seed import canonical_seed_username
 from coeus.repositories.teams import TeamRepository
 from coeus.repositories.teams_seed_profiles import LEGACY_PROFILE_SPECS, PROFILE_SPECS
 
@@ -75,9 +76,9 @@ def seed_teams(teams: TeamRepository, users: SeedUserRepository) -> None:
 
 def _ensure_jioc_seed_member(teams: TeamRepository, users: SeedUserRepository) -> None:
     """Upgrade only the untouched pre-Team-Member synthetic JIOC cell."""
-    users_by_name = {user.username: user.user_id for user in users.list_users()}
-    manager_id = users_by_name.get("jioc.team@example.test")
-    member_id = users_by_name.get("jioc.member@example.test")
+    user_ids = {canonical_seed_username(user.username): user.user_id for user in users.list_users()}
+    manager_id = user_ids.get("jioc.team@example.test")
+    member_id = user_ids.get("jioc.member@example.test")
     if manager_id is None or member_id is None:
         return
     for team in teams.list_teams():
@@ -106,13 +107,14 @@ def _ensure_profiles(teams: TeamRepository, users: SeedUserRepository) -> None:
     users are never overwritten on restart.
     """
     for user in users.list_users():
-        spec = PROFILE_SPECS.get(user.username)
+        canonical_username = canonical_seed_username(user.username)
+        spec = PROFILE_SPECS.get(canonical_username)
         existing = teams.get_profile(user.user_id)
         if spec is None:
             if existing is None:
                 teams.save_profile(UserProfile(user_id=user.user_id, title=user.display_name))
             continue
-        legacy = LEGACY_PROFILE_SPECS.get(user.username)
+        legacy = LEGACY_PROFILE_SPECS.get(canonical_username)
         if existing is not None and not _matches_profile(existing, legacy):
             continue
         title, specialisms, bio = spec
@@ -131,7 +133,7 @@ def _matches_profile(profile: UserProfile, spec: tuple[str, tuple[str, ...], str
 def _user_ids(users: SeedUserRepository, usernames: tuple[str, ...]) -> tuple[UUID, ...]:
     ids: list[UUID] = []
     for username in usernames:
-        user = users.get_by_username(username)
+        user = users.get_seed_by_canonical_username(username)
         if user is not None:
             ids.append(user.user_id)
     return tuple(ids)

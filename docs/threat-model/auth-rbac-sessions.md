@@ -39,7 +39,9 @@ Sprint 2 authentication, sessions, RBAC, audit events and frontend auth routes.
 | Token persistence in browser local storage | Auth session and CSRF token are kept in React state; tests assert no token-like local storage entry. |
 | The browser misses a forced password reset because its session type drifts from the API | The frontend auth client derives its response shape from generated OpenAPI types and reads `passwordResetRequired` from the returned user profile. Protected routing and password-change-required events update that same field. |
 | Local seed user exposure | Application startup rejects the seed user repository outside `local` and `test` environments. |
-| Seed identity refresh duplicates accounts or breaks active references | Startup renames only recognised legacy synthetic usernames, preserves the existing user ID and credential state, and reconciles before adding missing seed users. Sessions and team links therefore retain their user-ID reference. |
+| Seed identity refresh duplicates accounts or breaks active references | Startup renames only recognised synthetic usernames, fails closed on target-name collisions and preserves user IDs and authority. The one-time numbered local profile deliberately replaces seed credentials, advances credential versions and persists the profile marker with the users; sessions and team links retain their user-ID reference while prior sessions become invalid. |
+| Canonical seed aliases bypass username lockout | Authentication lookup remains exact. Canonical names are available only through a separate internal seed resolver, and registration reserves both forms while numbered local logins are active. |
+| Shared local demonstration password reaches a hosted environment | Numbered usernames are rejected outside `environment=local`. Compose enables the profile explicitly, documentation labels it deliberately weak and hosted startup retains its independent seed-user and secret gates. |
 | Seed refresh overwrites local administrator changes | Display names update only when they still equal a recognised legacy seed value; edited values remain authoritative. Profile reconciliation applies the same exact-match rule. |
 | Privileged account change abuse or mid-request revocation | The admin user-management API requires `user:assign_role` for role and clearance changes or `user:disable` for account status changes, and blocks self-modification. Changes atomically compare the exact current actor and target, confirm the required live permission, apply target and session effects, and record audit evidence under one repository authority boundary. |
 | Credential reset secret leakage | Admin credential reset generates a temporary credential server-side, returns it once, never stores or audits the plaintext value, revokes target sessions and clears target login-attempt lockout state. |
@@ -56,3 +58,6 @@ Sprint 2 authentication, sessions, RBAC, audit events and frontend auth routes.
   aggregate memory budget.
 - Non-local environments require persistent user storage before startup because public seed users are local/test only.
 - Admin user-management and credential reset are implemented for local/test seed users. Persistent production user storage remains required before non-local startup.
+- Every active Docker Compose seed account initially shares the public password
+  `admin`. Loopback binding reduces exposure but does not make the credential
+  suitable for a shared workstation or any network-accessible deployment.

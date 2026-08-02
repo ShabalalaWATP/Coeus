@@ -16,6 +16,10 @@ from coeus.services.advisory_provider_selection import (
 )
 from coeus.services.ai_models import AiModelService
 from coeus.services.intake import AdmittedAssistantReply, MockLlmProvider
+from coeus.services.intake_interpretation_provider import (
+    ConfigurableIntakeInterpreter,
+    PreparedIntakeInterpretation,
+)
 from coeus.services.intake_planner import (
     INTAKE_PLANNER_CONTEXT_SCHEMA_VERSION,
     INTAKE_PLANNER_POLICY_VERSION,
@@ -47,7 +51,15 @@ class ConfigurableIntakeProvider:
             failure_threshold=settings.provider_circuit_failure_threshold,
             cooldown_seconds=settings.provider_circuit_cooldown_seconds,
         )
+        self._interpreter = ConfigurableIntakeInterpreter(
+            settings, ai_models, self._circuit, text_generator
+        )
         self._logger = get_logger(__name__)
+
+    def prepare_intake_interpretation(
+        self, current_answer: str, target_field: str
+    ) -> PreparedIntakeInterpretation | None:
+        return self._interpreter.prepare(current_answer, target_field)
 
     def build_assistant_message(self, intake: IntakeDetails, safety_flags: tuple[str, ...]) -> str:
         return self.build_admitted_assistant_message(intake, safety_flags).text

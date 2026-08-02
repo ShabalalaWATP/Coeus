@@ -51,7 +51,7 @@ test("renders secure login controls and toggles password visibility", async () =
   expect(screen.getByLabelText("Password")).toHaveAttribute("type", "text");
 });
 
-test("submits credentials and navigates to the backend default route", async () => {
+test("accepts a numbered username and navigates to the backend default route", async () => {
   const user = userEvent.setup();
   const login = vi.fn().mockResolvedValue({
     ...previewSession,
@@ -59,14 +59,14 @@ test("submits credentials and navigates to the backend default route", async () 
   });
   renderLogin(fakeClient({ login }));
 
-  await user.type(screen.getByLabelText("Username"), "admin@example.test");
-  await user.type(screen.getByLabelText("Password"), "CoeusLocal1!");
+  await user.type(screen.getByLabelText("Username"), "admin2");
+  await user.type(screen.getByLabelText("Password"), "admin");
   await user.click(screen.getByRole("button", { name: "Sign in to Istari" }));
 
   await waitFor(() => expect(screen.getByText("Requests route")).toBeVisible());
   expect(login).toHaveBeenCalledWith({
-    username: "admin@example.test",
-    password: "CoeusLocal1!",
+    username: "admin2",
+    password: "admin",
   });
   expect(window.localStorage.getItem("token")).toBeNull();
 });

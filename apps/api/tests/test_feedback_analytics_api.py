@@ -41,13 +41,13 @@ async def test_customer_submits_feedback_and_team_dashboard_tracks_reuse() -> No
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
-        request_id = await _approved_feedback_request(client, app, acg_id)
+        _, request_id = await _approved_feedback_request(client, app, acg_id)
         user = await login(client, "user@example.test")
         requests = await client.get("/api/v1/feedback/requests")
-        short_comment = await client.post(
+        invalid_rating = await client.post(
             f"/api/v1/feedback/requests/{request_id}/submit",
             headers={"X-CSRF-Token": str(user["csrfToken"])},
-            json={"rating": 5, "comment": "x"},
+            json={"rating": 6},
         )
         missing_request = await client.post(
             f"/api/v1/feedback/requests/{uuid4()}/submit",
@@ -57,11 +57,7 @@ async def test_customer_submits_feedback_and_team_dashboard_tracks_reuse() -> No
         submitted = await client.post(
             f"/api/v1/feedback/requests/{request_id}/submit",
             headers={"X-CSRF-Token": str(user["csrfToken"])},
-            json={
-                "rating": 5,
-                "comment": "Useful mock product with clear action points.",
-                "followUpRequested": True,
-            },
+            json={"rating": 5},
         )
         duplicate = await client.post(
             f"/api/v1/feedback/requests/{request_id}/submit",
@@ -73,12 +69,13 @@ async def test_customer_submits_feedback_and_team_dashboard_tracks_reuse() -> No
 
     assert requests.status_code == 200
     assert requests.json()["requests"][0]["id"] == request_id
-    assert short_comment.status_code == 422
+    assert invalid_rating.status_code == 422
     assert missing_request.status_code == 404
     assert submitted.status_code == 200
     assert submitted.json()["status"] == "submitted"
     assert submitted.json()["submission"]["rating"] == 5
-    assert submitted.json()["submission"]["followUpRequested"] is True
+    assert submitted.json()["submission"]["comment"] == ""
+    assert submitted.json()["submission"]["followUpRequested"] is False
     assert duplicate.status_code == 409
     assert dashboard.status_code == 200
     assert dashboard.json()["metrics"]["feedbackSubmitted"] == 1
@@ -96,7 +93,7 @@ async def test_feedback_submission_audit_failure_rolls_back_ticket(
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
-        request_id = await _approved_feedback_request(client, app, acg_id)
+        _, request_id = await _approved_feedback_request(client, app, acg_id)
         original = _ticket_for_feedback_request(app, request_id)
         user = await login(client, "user@example.test")
         monkeypatch.setattr(app.state.feedback_analytics_service._audit_log, "record", _fail_audit)
@@ -196,7 +193,9 @@ async def test_team_dashboard_excludes_product_reuse_rows_without_store_access()
     }
 
 
-async def _approved_feedback_request(client: AsyncClient, app: FastAPI, acg_id: str) -> str:
+async def _approved_feedback_request(
+    client: AsyncClient, app: FastAPI, acg_id: str
+) -> tuple[str, str]:
     ticket_id = await _approved_route_ticket(client, "", "rfa")
     analyst_user = app.state.access_services.repository.get_user_by_username("analyst@example.test")
     assert analyst_user is not None
@@ -240,7 +239,24 @@ async def _approved_feedback_request(client: AsyncClient, app: FastAPI, acg_id: 
     assert submitted.status_code == 200
     assert manager_approved.status_code == 200
     assert approved.status_code == 200
-    return str(details.json()["feedbackRequests"][0]["id"])
+    request_id = str(details.json()["feedbackRequests"][0]["id"])
+    user = await login(client, "user@example.test")
+    hidden_while_open = await client.get("/api/v1/feedback/requests")
+    rejected_while_open = await client.post(
+        f"/api/v1/feedback/requests/{request_id}/submit",
+        headers={"X-CSRF-Token": str(user["csrfToken"])},
+        json={"rating": 5},
+    )
+    closed = await client.post(
+        f"/api/v1/tickets/{ticket_id}/requirement-decision",
+        headers={"X-CSRF-Token": str(user["csrfToken"])},
+        json={"meetsRequirement": True},
+    )
+    assert hidden_while_open.json() == {"requests": []}
+    assert rejected_while_open.status_code == 409
+    assert rejected_while_open.json()["error"]["code"] == "feedback_ticket_open"
+    assert closed.status_code == 200
+    return ticket_id, request_id
 
 
 async def _approved_route_ticket(

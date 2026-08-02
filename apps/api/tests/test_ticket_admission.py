@@ -37,8 +37,12 @@ def test_ticket_admission_enforces_principal_quota_and_recovers_terminal_capacit
         repository, max_retained=10, max_retained_per_principal=1
     )
 
-    with pytest.raises(AppError, match="Ticket capacity"), controller.reserve(principal):
+    with pytest.raises(AppError) as error, controller.reserve(principal):
         pass
+    assert error.value.message == (
+        "You have reached the active request limit. Close or cancel an existing request before "
+        "opening another."
+    )
 
     repository.save(replace(existing, state=terminal_state))
     with controller.reserve(principal) as reference:
@@ -55,6 +59,22 @@ def test_ticket_admission_counts_pending_reservations_atomically() -> None:
         controller.reserve(uuid4()),
     ):
         pass
+
+
+def test_ticket_admission_keeps_deployment_denial_non_disclosing() -> None:
+    repository = InMemoryTicketRepository()
+    controller = TicketAdmissionController(
+        repository, max_retained=1, max_retained_per_principal=10
+    )
+
+    with (
+        controller.reserve(uuid4()),
+        pytest.raises(AppError) as error,
+        controller.reserve(uuid4()),
+    ):
+        pass
+
+    assert error.value.message == "Ticket capacity is temporarily unavailable."
 
 
 @pytest.mark.parametrize(

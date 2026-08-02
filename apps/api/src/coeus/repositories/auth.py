@@ -17,7 +17,13 @@ from coeus.repositories.auth_attempts import (
     LoginAttemptReset,
     LoginAttemptState,
 )
-from coeus.repositories.auth_seed import reconcile_seed_user_identities, seed_user_specs
+from coeus.repositories.auth_seed import (
+    CANONICAL_SEED_LOGIN_PROFILE,
+    NUMBERED_SEED_LOGIN_PROFILE,
+    numbered_seed_username,
+    reconcile_seed_user_identities,
+    seed_user_specs,
+)
 from coeus.repositories.sessions import (
     SessionRepository as SessionRepository,
 )
@@ -49,17 +55,28 @@ class SeedUserRepository:
         self._state_store = state_store
         self._lock = RLock()
         self._initialising = True
+        self._numbered_seed_usernames = settings.local_numbered_seed_usernames
+        self._seed_login_profile = (
+            NUMBERED_SEED_LOGIN_PROFILE
+            if self._numbered_seed_usernames
+            else CANONICAL_SEED_LOGIN_PROFILE
+        )
         self._users_by_username: dict[str, UserAccount] = {}
         self._users_by_id: dict[UUID, UserAccount] = {}
         self._seed_users(settings.local_seed_credential, password_hasher)
         self._initialising = False
-        self._restore_or_persist()
+        self._restore_or_persist(settings.local_seed_credential, password_hasher)
 
     def _seed_users(self, seed_credential: str, password_hasher: PasswordHashPort) -> None:
         for spec in seed_user_specs():
+            username = (
+                numbered_seed_username(spec.username)
+                if self._numbered_seed_usernames
+                else spec.username
+            )
             account = UserAccount(
                 user_id=uuid4(),
-                username=spec.username,
+                username=username,
                 display_name=spec.display_name,
                 roles=spec.roles,
                 permissions=permissions_for_roles(spec.roles),
@@ -181,6 +198,36 @@ class SeedUserRepository:
         with self._lock:
             return self._users_by_username.get(username.casefold())
 
+    def get_seed_by_canonical_username(self, username: str) -> UserAccount | None:
+        """Resolve a canonical seed identity for internal demo construction only."""
+        with self._lock:
+            resolved = (
+                numbered_seed_username(username) if self._numbered_seed_usernames else username
+            )
+            return self._users_by_username.get(resolved.casefold())
+
+    def username_is_reserved(self, username: str) -> bool:
+        """Protect both the active login and its canonical seed identity from reuse."""
+        with self._lock:
+            key = username.casefold()
+            if key in self._users_by_username:
+                return True
+            for spec in seed_user_specs():
+                aliases = {
+                    spec.username.casefold(),
+                    numbered_seed_username(spec.username).casefold(),
+                    *(legacy.casefold() for legacy in spec.legacy_usernames),
+                }
+                if key not in aliases:
+                    continue
+                active = (
+                    numbered_seed_username(spec.username)
+                    if self._numbered_seed_usernames
+                    else spec.username
+                )
+                return active.casefold() in self._users_by_username
+            return False
+
     def get_by_id(self, user_id: UUID) -> UserAccount | None:
         with self._lock:
             return self._users_by_id.get(user_id)
@@ -189,7 +236,7 @@ class SeedUserRepository:
         with self._lock:
             return tuple(self._users_by_id.values())
 
-    def _restore_or_persist(self) -> None:
+    def _restore_or_persist(self, seed_credential: str, password_hasher: PasswordHashPort) -> None:
         if self._state_store is None:
             return
         payload = self._state_store.load("users")
@@ -197,12 +244,17 @@ class SeedUserRepository:
             self._persist()
             return
         seeded_users = dict(self._users_by_username)
+        stored_profile = payload.get("seed_login_profile")
         # Roles are the persisted source of truth; permissions are re-derived
         # from the current role definitions so code-level permission changes
         # (grants AND revocations) apply to existing accounts on startup.
         users = reconcile_seed_user_identities(
-            _with_current_permissions(decode_value(item)) for item in payload.get("users", [])
+            (_with_current_permissions(decode_value(item)) for item in payload.get("users", [])),
+            numbered_usernames=self._numbered_seed_usernames,
+            allow_numbered_sources=stored_profile == NUMBERED_SEED_LOGIN_PROFILE,
         )
+        if self._numbered_seed_usernames and stored_profile != NUMBERED_SEED_LOGIN_PROFILE:
+            users = _apply_numbered_seed_credentials(users, seed_credential, password_hasher)
         self._users_by_username = {user.username.casefold(): user for user in users}
         self._users_by_id = {user.user_id: user for user in users}
         self._persist()
@@ -214,8 +266,35 @@ class SeedUserRepository:
         if self._state_store is None or self._initialising:
             return
         users = sorted(self._users_by_id.values(), key=lambda user: user.username)
-        self._state_store.save("users", {"users": [encode_value(user) for user in users]})
+        self._state_store.save(
+            "users",
+            {
+                "seed_login_profile": self._seed_login_profile,
+                "users": [encode_value(user) for user in users],
+            },
+        )
 
 
 def _with_current_permissions(user: UserAccount) -> UserAccount:
     return replace(user, permissions=permissions_for_roles(user.roles))
+
+
+def _apply_numbered_seed_credentials(
+    users: tuple[UserAccount, ...],
+    seed_credential: str,
+    password_hasher: PasswordHashPort,
+) -> tuple[UserAccount, ...]:
+    numbered_usernames = {
+        numbered_seed_username(spec.username).casefold() for spec in seed_user_specs()
+    }
+    return tuple(
+        replace(
+            user,
+            password_hash=password_hasher.hash(seed_credential),
+            password_reset_required=False,
+            credential_version=user.credential_version + 1,
+        )
+        if user.username.casefold() in numbered_usernames
+        else user
+        for user in users
+    )

@@ -20,7 +20,7 @@ from coeus.persistence.ticket_shadow_schema import ensure_ticket_shadow_schema
 from coeus.repositories.tickets import InMemoryTicketRepository
 
 API_ROOT = Path(__file__).resolve().parents[2]
-HEAD_REVISION = "20260727_0015"
+HEAD_REVISION = "20260801_0016"
 
 pytestmark = pytest.mark.postgres
 
@@ -55,6 +55,16 @@ def test_empty_database_upgrades_to_head(postgres_database_url: str) -> None:
                     text("SELECT indexname FROM pg_indexes WHERE tablename = 'coeus_outbox'")
                 ).scalars()
             )
+            search_indexes = set(
+                connection.execute(
+                    text(
+                        "SELECT indexname FROM pg_indexes WHERE tablename = 'search_index_profiles'"
+                    )
+                ).scalars()
+            )
+            ticket_document_key = inspect(engine).get_pk_constraint("ticket_search_documents")[
+                "constrained_columns"
+            ]
     finally:
         engine.dispose()
 
@@ -77,6 +87,83 @@ def test_empty_database_upgrades_to_head(postgres_database_url: str) -> None:
     } <= tables
     assert "vector" in extensions
     assert "idx_coeus_outbox_dead_letters" in indexes
+    assert "idx_search_index_one_building" in search_indexes
+    assert ticket_document_key == ["profile_id", "ticket_id"]
+
+
+def test_search_generation_upgrade_invalidates_profiles_with_cleared_ticket_data(
+    postgres_database_url: str,
+) -> None:
+    config = _alembic(postgres_database_url)
+    command.upgrade(config, "20260727_0015")
+    profile_id = uuid4()
+    ticket_id = uuid4()
+    engine = create_engine(postgres_database_url)
+    try:
+        with engine.begin() as connection:
+            connection.execute(text("DROP TABLE ticket_search_embeddings"))
+            connection.execute(text("DROP TABLE ticket_search_documents"))
+            connection.execute(
+                text(
+                    "CREATE TABLE ticket_search_documents ("
+                    "ticket_id uuid PRIMARY KEY, state text NOT NULL, content text NOT NULL, "
+                    "content_hash char(64) NOT NULL, search_document tsvector NOT NULL, "
+                    "updated_at timestamptz NOT NULL DEFAULT now())"
+                )
+            )
+            connection.execute(
+                text(
+                    "CREATE TABLE ticket_search_embeddings ("
+                    "profile_id uuid NOT NULL REFERENCES search_index_profiles(profile_id) "
+                    "ON DELETE CASCADE, ticket_id uuid NOT NULL REFERENCES "
+                    "ticket_search_documents(ticket_id) ON DELETE CASCADE, "
+                    "source_hash char(64) NOT NULL, embedding vector(1536) NOT NULL, "
+                    "indexed_at timestamptz NOT NULL DEFAULT now(), "
+                    "PRIMARY KEY(profile_id, ticket_id))"
+                )
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO search_index_profiles("
+                    "profile_id, provider, model, dimensions, generation, space_id, status, "
+                    "is_active, corpus_version, product_count, chunk_count, indexed_count, "
+                    "failed_count, created_by_user_id, completed_at) VALUES ("
+                    ":profile_id, 'mock', 'token-hash-v2', 1536, 1, 'migration-test', "
+                    "'ready', true, 'corpus', 1, 1, 1, 0, :user_id, now())"
+                ),
+                {"profile_id": profile_id, "user_id": uuid4()},
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO ticket_search_documents("
+                    "ticket_id, state, content, content_hash, search_document) VALUES ("
+                    ":ticket_id, 'RFI_SEARCHING', 'synthetic request', :content_hash, "
+                    "to_tsvector('english', 'synthetic request'))"
+                ),
+                {"ticket_id": ticket_id, "content_hash": "a" * 64},
+            )
+
+        command.upgrade(config, "head")
+        with engine.connect() as connection:
+            profile = connection.execute(
+                text(
+                    "SELECT status, is_active, error_code FROM search_index_profiles "
+                    "WHERE profile_id = :profile_id"
+                ),
+                {"profile_id": profile_id},
+            ).one()
+            document_count = connection.execute(
+                text("SELECT count(*) FROM ticket_search_documents")
+            ).scalar_one()
+            ticket_document_key = inspect(engine).get_pk_constraint("ticket_search_documents")[
+                "constrained_columns"
+            ]
+    finally:
+        engine.dispose()
+
+    assert tuple(profile) == ("failed", False, "index_write_failed")
+    assert document_count == 0
+    assert ticket_document_key == ["profile_id", "ticket_id"]
 
 
 def test_seeded_legacy_database_upgrades_idempotently(

@@ -42,9 +42,13 @@ def apply_direct_answer(
 
 
 def _apply_time_period(intake: IntakeDetails, answer: str, overwrite: bool) -> IntakeDetails:
-    if intake.time_period_start and not overwrite:
-        return intake
     start, end = extractors.extract_time_window(answer)
+    if intake.time_period_start and not overwrite:
+        existing_is_resolved = extractors.is_resolved_time_window(
+            intake.time_period_start, intake.time_period_end
+        )
+        if existing_is_resolved or start is None:
+            return intake
     if start is None:
         if extractors.contains_explicit_date_range(answer) or not _TIME_WORDS.search(answer):
             return intake

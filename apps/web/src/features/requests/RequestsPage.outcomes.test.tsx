@@ -1,9 +1,19 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { resetQueryClientForTests } from "../../app/query-client";
+import type { AuthSession } from "../../lib/api-client/auth";
 import type { Ticket } from "../../lib/api-client/tickets";
 import { baseTicket, renderRequests } from "../../test/requests-fixtures";
+import { previewSession } from "../../test/test-utils";
+
+const feedbackSession: AuthSession = {
+  ...previewSession,
+  user: {
+    ...previewSession.user,
+    permissions: [...previewSession.user.permissions, "feedback:create"],
+  },
+};
 
 beforeEach(() => {
   resetQueryClientForTests();
@@ -23,12 +33,16 @@ test("accepts a released product from the dashboard", async () => {
     if (url.includes("/api/v1/tickets")) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve({ tickets: [readyTicket] }) });
     }
+    if (url.includes("/feedback/requests")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ requests: [] }) });
+    }
     return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
   });
   vi.stubGlobal("fetch", fetchMock);
 
-  renderRequests("/app/requests");
+  renderRequests("/app/requests", feedbackSession);
   await userEvent.click(await screen.findByRole("button", { name: "Yes, close request" }));
+  await userEvent.click(await screen.findByText("Closed requests"));
 
   expect(await screen.findByText("Closed requirement met")).toBeVisible();
   expect(screen.queryByRole("button", { name: "Yes, close request" })).not.toBeInTheDocument();
@@ -46,6 +60,11 @@ test("accepts a released product from the dashboard", async () => {
       },
       method: "POST",
     }),
+  );
+  await waitFor(() =>
+    expect(
+      fetchMock.mock.calls.filter(([url]) => String(url).includes("/feedback/requests")),
+    ).toHaveLength(2),
   );
 });
 
@@ -106,6 +125,7 @@ test("clears a product-decision error after a successful retry", async () => {
   expect(await screen.findByRole("alert")).toHaveTextContent("Not ready to close.");
 
   await userEvent.click(confirm);
+  await userEvent.click(await screen.findByText("Closed requests"));
 
   expect(await screen.findByText("Closed requirement met")).toBeVisible();
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();

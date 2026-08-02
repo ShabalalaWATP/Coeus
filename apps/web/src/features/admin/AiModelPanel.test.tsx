@@ -269,8 +269,8 @@ test("cancelling the activation warning sends nothing", async () => {
 
   renderWithProviders(<AiModelPanel csrfToken="test-csrf-token" />, "/admin/overview");
 
-  await userEvent.click(await screen.findByRole("button", { name: /Mock \(offline\)/ }));
-  expect(screen.getByText(/answers locally with deterministic replies/)).toBeVisible();
+  await userEvent.click(await screen.findByRole("button", { name: /Local assistant/ }));
+  expect(screen.getByText(/keeps deterministic responses on this device/)).toBeVisible();
   await userEvent.click(screen.getByRole("button", { name: "Test connection" }));
   await userEvent.click(screen.getByRole("button", { name: "Make active provider" }));
   await userEvent.click(screen.getByRole("button", { name: "Cancel" }));

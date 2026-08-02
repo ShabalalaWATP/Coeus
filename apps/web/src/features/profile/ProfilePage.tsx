@@ -12,7 +12,6 @@ export default function ProfilePage() {
           <h1 id="profile-title">My Profile</h1>
           <p>Keep your professional context useful to the people you work with.</p>
         </div>
-        <div className="classification-note">MOCK DATA ONLY</div>
       </section>
       <MyProfilePanel csrfToken={session.csrfToken} identity={session.user} />
     </div>

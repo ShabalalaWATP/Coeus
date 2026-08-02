@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from coeus.domain.access import AccessControlGroup, ProductStatus
+from coeus.domain.auth import RoleName
 from coeus.domain.store import BoundingBox, StoreAsset, StoreProduct, StoreProductMetadata
 from coeus.repositories.access import AccessRepository, stable_seed_id
 
@@ -32,7 +33,10 @@ def seed_store_products(access_repository: AccessRepository) -> tuple[StoreProdu
     regional = _acg_by_code(access_repository, "ACG-ALPHA-REGIONAL")
     collection = _acg_by_code(access_repository, "ACG-BRAVO-COLLECTION")
     assessment = _acg_by_code(access_repository, "ACG-CHARLIE-ASSESSMENT")
-    admin = access_repository.get_user_by_username("admin@example.test")
+    admin = next(
+        (user for user in access_repository.list_users() if RoleName.ADMINISTRATOR in user.roles),
+        None,
+    )
     if admin is None:
         raise RuntimeError("Missing required seed user admin@example.test.")
     now = datetime.now(UTC)
@@ -44,8 +48,8 @@ def seed_store_products(access_repository: AccessRepository) -> tuple[StoreProdu
                 time_period=("2026-03-01", "2026-04-30"),
                 reference="PROD-1001",
                 title="Regional Stability Brief",
-                summary="MOCK DATA ONLY assessment summary for Baltic regional stability.",
-                description="Synthetic customer-facing assessment linked to Alpha Regional.",
+                summary="Assessment summary for Baltic regional stability.",
+                description="Customer-facing assessment linked to Alpha Regional.",
                 product_type="assessment_report",
                 source_type="finished_assessment",
                 owner_team="RFA",
@@ -61,14 +65,14 @@ def seed_store_products(access_repository: AccessRepository) -> tuple[StoreProdu
                 time_period=("2026-05-01", "2026-06-15"),
                 reference="PROD-1002",
                 title="Collection Sensor Summary",
-                summary="MOCK DATA ONLY sensor summary for collection team members.",
-                description="Synthetic collection product protected by Bravo Collection.",
+                summary="Sensor summary for collection team members.",
+                description="Collection product protected by Bravo Collection.",
                 product_type="sigint_mock",
                 source_type="sensor",
                 owner_team="Collection",
                 area_or_region="North Sea",
                 classification_level=3,
-                tags=frozenset({"collection", "sensor", "mock"}),
+                tags=frozenset({"collection", "sensor"}),
                 semantic_labels=frozenset({"collection", "sigint"}),
                 acg_ids=frozenset({collection.acg_id}),
                 status=ProductStatus.PUBLISHED,
@@ -78,14 +82,14 @@ def seed_store_products(access_repository: AccessRepository) -> tuple[StoreProdu
                 time_period=("2026-06-01", "2026-06-30"),
                 reference="PROD-1003",
                 title="Assessment Draft Pack",
-                summary="MOCK DATA ONLY draft material for assessment team coordination.",
-                description="Synthetic draft pack visible only to product-management users.",
+                summary="Draft material for assessment team coordination.",
+                description="Draft pack visible only to product-management users.",
                 product_type="finished_output",
                 source_type="working_draft",
                 owner_team="RFA",
                 area_or_region="Baltic ports",
                 classification_level=3,
-                tags=frozenset({"draft", "assessment", "mock"}),
+                tags=frozenset({"draft", "assessment"}),
                 semantic_labels=frozenset({"assessment"}),
                 acg_ids=frozenset({assessment.acg_id}),
                 status=ProductStatus.DRAFT,

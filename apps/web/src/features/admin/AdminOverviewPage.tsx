@@ -57,7 +57,6 @@ export default function AdminOverviewPage() {
           <h1 id="admin-title">Admin</h1>
           <p>Operational controls for access, analytics, audit and product governance.</p>
         </div>
-        <div className="classification-note">MOCK DATA ONLY</div>
       </section>
 
       <section className="surface workspace-summary" aria-label="Admin service status">

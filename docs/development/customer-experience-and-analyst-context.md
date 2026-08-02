@@ -15,5 +15,15 @@
 - Added lazy, assignment-authorised full chatbot history to analyst task detail
   without expanding task-list payloads.
 
+## 2026-08-01 refinement
+
+- Kept the primary customer register focused on draft and active work, with
+  completed and cancelled requests in a native disclosure collapsed by default.
+- Replaced the permanent feedback queue with one sequential prompt that names
+  the closed ticket and product, asks whether it answered the request and
+  accepts an optional learning note.
+- Enforced ticket closure in the feedback service for both listing and direct
+  submission, while preserving immutable feedback analytics.
+
 Verification evidence is tracked in `docs/MASTER_IMPLEMENTATION_PLAN.md` and
 the acceptance contract is `docs/specs/customer-experience-and-analyst-context.md`.

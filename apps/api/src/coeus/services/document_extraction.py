@@ -7,6 +7,7 @@ from zipfile import ZipFile, ZipInfo
 
 from defusedxml import ElementTree
 from defusedxml.common import DefusedXmlException
+from PIL import Image, UnidentifiedImageError
 from pypdf import PdfReader
 
 from coeus.services.docx_geometry import (
@@ -32,8 +33,11 @@ MAX_ZIP_MEMBERS = 5_000
 MAX_ZIP_EXPANDED_BYTES = 50_000_000
 MAX_ZIP_CENTRAL_DIRECTORY_BYTES = MAX_DOCUMENT_BYTES
 MAX_XML_PART_BYTES = 5_000_000
-EXTRACTOR_VERSION = "local-pdf-docx-pptx-v2"
+EXTRACTOR_VERSION = "local-documents-and-media-v3"
 PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+TEXT_MIME_TYPES = frozenset({"text/csv", "application/geo+json"})
+IMAGE_MIME_TYPES = frozenset({"image/png", "image/jpeg", "image/webp"})
+MAX_IMAGE_PIXELS = 25_000_000
 
 
 class DocumentExtractionError(ValueError):
@@ -57,7 +61,42 @@ def extract_pages(content: bytes, mime_type: str) -> tuple[ExtractedPage, ...]:
         return _extract_docx(content)
     if mime_type == PPTX_MIME:
         return _extract_pptx(content)
+    if mime_type in TEXT_MIME_TYPES:
+        return _extract_bounded_text(content)
+    if mime_type in IMAGE_MIME_TYPES:
+        return _extract_image_metadata(content, mime_type)
     raise DocumentExtractionError("asset_type_unsupported")
+
+
+def _extract_bounded_text(content: bytes) -> tuple[ExtractedPage, ...]:
+    try:
+        text = content.decode("utf-8", errors="strict")
+    except UnicodeDecodeError as exc:
+        raise DocumentExtractionError("structured_text_encoding_invalid") from exc
+    return _bounded_pages((ExtractedPage(1, _normalise(text)),))
+
+
+def _extract_image_metadata(content: bytes, mime_type: str) -> tuple[ExtractedPage, ...]:
+    expected = {"image/png": "PNG", "image/jpeg": "JPEG", "image/webp": "WEBP"}[mime_type]
+    try:
+        with Image.open(BytesIO(content)) as image:
+            width, height = image.size
+            image_format = image.format
+            mode = image.mode
+            if image_format != expected or width * height > MAX_IMAGE_PIXELS:
+                raise DocumentExtractionError("image_not_extractable")
+            image.verify()
+    except DocumentExtractionError:
+        raise
+    except (UnidentifiedImageError, OSError, ValueError) as exc:
+        raise DocumentExtractionError("image_not_extractable") from exc
+    return (
+        ExtractedPage(
+            1,
+            f"Verified {image_format} imagery asset. Dimensions {width} by {height} pixels. "
+            f"Colour mode {mode}.",
+        ),
+    )
 
 
 def _extract_pdf(content: bytes) -> tuple[ExtractedPage, ...]:

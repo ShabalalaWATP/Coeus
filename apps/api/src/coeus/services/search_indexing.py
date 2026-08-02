@@ -20,6 +20,7 @@ from coeus.domain.search_index import (
 from coeus.domain.store import StoreAsset, StoreProduct
 from coeus.domain.tickets import TicketRecord
 from coeus.persistence.search_index_repository import SearchIndexRepository
+from coeus.persistence.search_index_validation import embedding_source_hash
 from coeus.services.document_extraction import DocumentExtractionError, extract_pages
 from coeus.services.object_storage import ObjectStorage
 from coeus.services.rfi_ranking import query_text
@@ -53,6 +54,14 @@ class SearchIndexingService:
 
     def corpus_version(self) -> str:
         return _product_corpus_version(self._eligible_products())
+
+    def recover_interrupted(self) -> bool:
+        """Fail an in-process job that could not survive an application restart."""
+        recovered = self._index.recover_interrupted()
+        if self._configuration.state().index_status == "indexing":
+            self._configuration.mark_failed("system", "worker_interrupted")
+            return True
+        return recovered > 0
 
     def start(self, actor_id: UUID) -> SearchIndexProfile:
         state = self._configuration.mark_indexing(str(actor_id))
@@ -89,9 +98,9 @@ class SearchIndexingService:
             if _product_corpus_version(products) != profile.corpus_version:
                 raise RuntimeError("corpus_changed")
             chunks, asset_states = self._extract_chunks(profile.profile_id, products)
-            embeddings = self._embed_chunks(chunks)
+            embeddings = self._embed_chunks(chunks, profile.space_id)
             ticket_documents = _ticket_documents(tickets)
-            ticket_embeddings = self._embed_tickets(ticket_documents)
+            ticket_embeddings = self._embed_tickets(ticket_documents, profile.space_id)
             if len(embeddings) != len(chunks) or len(ticket_embeddings) != len(ticket_documents):
                 raise RuntimeError("provider_unavailable")
             if _product_corpus_version(self._eligible_products()) != profile.corpus_version:
@@ -189,7 +198,9 @@ class SearchIndexingService:
                 )
         return tuple(chunks), tuple(asset_states)
 
-    def _embed_chunks(self, chunks: tuple[SearchChunk, ...]) -> tuple[SearchChunkEmbedding, ...]:
+    def _embed_chunks(
+        self, chunks: tuple[SearchChunk, ...], space_id: str
+    ) -> tuple[SearchChunkEmbedding, ...]:
         records: list[SearchChunkEmbedding] = []
         for start in range(0, len(chunks), EMBEDDING_BATCH_SIZE):
             batch = chunks[start : start + EMBEDDING_BATCH_SIZE]
@@ -202,9 +213,7 @@ class SearchIndexingService:
             records.extend(
                 SearchChunkEmbedding(
                     chunk_id=chunk.chunk_id,
-                    source_hash=sha256(
-                        f"{self._embeddings.space_id}\n{chunk.content_hash}".encode()
-                    ).hexdigest(),
+                    source_hash=embedding_source_hash(space_id, chunk.content_hash),
                     vector=vector,
                 )
                 for chunk, vector in zip(batch, vectors, strict=True)
@@ -212,7 +221,7 @@ class SearchIndexingService:
         return tuple(records)
 
     def _embed_tickets(
-        self, documents: tuple[SearchTicketDocument, ...]
+        self, documents: tuple[SearchTicketDocument, ...], space_id: str
     ) -> tuple[SearchTicketEmbedding, ...]:
         records: list[SearchTicketEmbedding] = []
         for start in range(0, len(documents), EMBEDDING_BATCH_SIZE):
@@ -226,9 +235,7 @@ class SearchIndexingService:
             records.extend(
                 SearchTicketEmbedding(
                     ticket_id=document.ticket_id,
-                    source_hash=sha256(
-                        f"{self._embeddings.space_id}\n{document.content_hash}".encode()
-                    ).hexdigest(),
+                    source_hash=embedding_source_hash(space_id, document.content_hash),
                     vector=vector,
                 )
                 for document, vector in zip(batch, vectors, strict=True)
@@ -238,11 +245,17 @@ class SearchIndexingService:
 
 def _product_corpus_version(products: tuple[StoreProduct, ...]) -> str:
     digest = sha256()
+    digest.update(b"coeus-product-corpus-v2\n")
     for product in sorted(products, key=lambda item: str(item.product_id)):
-        digest.update(str(product.product_id).encode())
-        digest.update(product.updated_at.isoformat().encode())
-        for asset in product.assets:
-            digest.update(asset.sha256.encode())
+        metadata = metadata_chunk(product)
+        digest.update(
+            f"{product.product_id}|{metadata.content_hash}|{metadata.extractor_version}|"
+            f"{metadata.chunker_version}\n".encode()
+        )
+        for asset in sorted(product.assets, key=lambda item: str(item.asset_id)):
+            digest.update(
+                f"{asset.asset_id}|{asset.mime_type}|{asset.size_bytes}|{asset.sha256}\n".encode()
+            )
     return digest.hexdigest()[:24]
 
 

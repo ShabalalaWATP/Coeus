@@ -124,33 +124,37 @@ This exposes:
 
 Current uploads use the app's local object-storage adapter rather than MinIO.
 MinIO remains in the stack as future object-storage parity scaffolding.
-Compose waits for the API readiness endpoint before starting the web service.
+Compose runs `alembic upgrade head` in a one-shot migration service after
+PostgreSQL is healthy, starts the API only after that service succeeds, then
+waits for API readiness before starting the web service. A failed migration
+therefore prevents application writers from starting against an older schema.
 
 ## Seed accounts
 
-The default local/test seed accounts use mock `example.test` usernames and the
-mock local credential `CoeusLocal1!`. A guarded `dev` evaluation may enable the
-same identities with `COEUS_ALLOW_DEV_SEED_USERS=true`, but must supply a
-non-default `COEUS_LOCAL_SEED_CREDENTIAL` or startup fails closed.
+The Docker Compose stack uses short, local-only usernames `admin1` through
+`admin16`, all with the temporary password `admin`. Canonical `example.test`
+identities remain the default for tests and non-Compose development. Numbered
+usernames are rejected outside `environment=local`.
+This deliberately weak shared credential is for local role evaluation only; do not expose the Compose web or API ports beyond the development machine.
 
-| Username                          | Synthetic display name | Role                       | Lands on               |
-| --------------------------------- | ---------------------- | -------------------------- | ---------------------- |
-| `admin@example.test`              | Andy Robertson         | Administrator              | `/admin/overview`      |
-| `user@example.test`               | John McGinn            | Customer                   | `/app/requests`        |
-| `colleague@example.test`          | Billy Gilmour          | Customer                   | `/app/requests`        |
-| `jioc.team@example.test`          | Scott McTominay        | JIOC Manager               | `/jioc/oversight`      |
-| `jioc.member@example.test`        | Callum McGregor        | JIOC Team Member           | `/jioc/queue`          |
-| `rfa.manager@example.test`        | Kieran Tierney         | RFA Manager                | `/rfa/queue`           |
-| `rfa.team@example.test`           | Ryan Christie          | RFA Team Member            | `/rfa/products`        |
-| `collection.manager@example.test` | Grant Hanley           | CM Manager                 | `/collection/queue`    |
-| `collection.team@example.test`    | Kenny McLean           | CM Team Member             | `/collection/products` |
-| `store.manager@example.test`      | Craig Gordon           | Intelligence Store Manager | `/store`               |
-| `analyst@example.test`            | Lewis Ferguson         | Analyst                    | `/analyst/workbench`   |
-| `analyst.2@example.test`          | Nathan Patterson       | Analyst                    | `/analyst/workbench`   |
-| `analyst.3@example.test`          | Ben Doak               | Analyst                    | `/analyst/workbench`   |
-| `analyst.4@example.test`          | Che Adams              | Analyst                    | `/analyst/workbench`   |
-| `qc.manager@example.test`         | Angus Gunn             | Quality Control Manager    | `/qc/queue`            |
-| `disabled@example.test`           | James Forrest          | Customer (disabled)        | Blocked from login     |
+| Username  | Synthetic display name | Role                       | Lands on               |
+| --------- | ---------------------- | -------------------------- | ---------------------- |
+| `admin1`  | Andy Robertson         | Administrator              | `/admin/overview`      |
+| `admin2`  | John McGinn            | Customer                   | `/app/requests`        |
+| `admin3`  | Billy Gilmour          | Customer                   | `/app/requests`        |
+| `admin4`  | Scott McTominay        | JIOC Manager               | `/jioc/oversight`      |
+| `admin5`  | Callum McGregor        | JIOC Team Member           | `/jioc/queue`          |
+| `admin6`  | Kieran Tierney         | RFA Manager                | `/rfa/queue`           |
+| `admin7`  | Ryan Christie          | RFA Team Member            | `/rfa/products`        |
+| `admin8`  | Grant Hanley           | CM Manager                 | `/collection/queue`    |
+| `admin9`  | Kenny McLean           | CM Team Member             | `/collection/products` |
+| `admin10` | Craig Gordon           | Intelligence Store Manager | `/store`               |
+| `admin11` | Lewis Ferguson         | Analyst                    | `/analyst/workbench`   |
+| `admin12` | Nathan Patterson       | Analyst                    | `/analyst/workbench`   |
+| `admin13` | Ben Doak               | Analyst                    | `/analyst/workbench`   |
+| `admin14` | Che Adams              | Analyst                    | `/analyst/workbench`   |
+| `admin15` | Angus Gunn             | Quality Control Manager    | `/qc/queue`            |
+| `admin16` | James Forrest          | Customer (disabled)        | Blocked from login     |
 
 Four organisational teams are also seeded for the My Team page (`/teams`): the
 RFA Assessment Team (RFA manager plus the analysts), the Collection Management
@@ -165,10 +169,10 @@ and every canonical product type (standardised reports, intelligence
 summaries, satellite imagery, GeoJSON geographic overlays, database extracts,
 SIGINT datasets, multi-asset bundles and fused outputs) with type-appropriate
 assets, metadata and tags; a ticket in every workflow state (populating the
-customer, JIOC, team, analyst and QC queues); delivered tickets with feedback
-that feed the analytics dashboards; and team calendar entries. It is committed
-as deterministic seed code, so a `git pull` brings it with the repository and
-it repopulates any fresh database automatically. It is auto-on for
+customer, JIOC, team, analyst and QC queues); delivered products plus
+closure-gated feedback that feeds the analytics dashboards; and team calendar
+entries. It is committed as deterministic seed code, so a `git pull` brings it
+with the repository and repopulates fresh databases. It is auto-on for
 `environment=local` only; override with `COEUS_SEED_DEMO_CONTENT=true|false`.
 The catalogue refreshes on restart even on an existing database; demo tickets
 and calendars seed only on a fresh dataset. See
@@ -260,7 +264,9 @@ disposable server where the configured user may create and drop databases.
   `memory` is only for isolated tests and throwaway demos; `file` is retained as
   an explicit fallback, not the product target. `COEUS_PERSISTENCE_PATH` is
   ignored unless that fallback is deliberately enabled.
-- Alembic migrations live under `apps/api/src/coeus/db/migrations`. Before a
+- Alembic migrations live under `apps/api/src/coeus/db/migrations`. Compose
+  applies them automatically while the API is stopped. For host-run or other
+  deployments, apply them as a separate pre-start step. Before a
   coordinated recovery drill, follow its [quiescence, backup and migration
   boundary](runbooks/coordinated-backup-restore.md#safety-boundary). Never run
   `upgrade head` while API or worker writers are active.
@@ -278,7 +284,7 @@ disposable server where the configured user may create and drop databases.
   restored. Saving a key does not switch the provider: activation is a
   separate, warned action that applies to every user immediately and notifies
   all administrators. Follow the [LiteLLM Provider Connectivity Runbook](runbooks/litellm-provider-connectivity.md)
-  for AWS/GCP setup. Leave everything unset for offline mock behaviour.
+  for AWS/GCP setup. Leave everything unset to use the local, no-key assistant.
 - Local mode creates `.local-data/secrets/configuration.key` when needed. Keep
   that ignored file private and back it up separately from PostgreSQL. Docker
   stores it in the API local-data volume. Hosted deployments must set
@@ -293,30 +299,9 @@ disposable server where the configured user may create and drop databases.
   default `outbox` provider records and audits emails without sending them; with
   PostgreSQL persistence those bounded records survive restart in application
   state rather than a separate filesystem outbox.
-- Store search is hybrid: Postgres full text plus a pgvector semantic leg. The
-  embedding provider is selected by `COEUS_EMBEDDING_PROVIDER`, which defaults to
-  `mock` (deterministic, offline, no dependencies). For a real offline model set
-  `COEUS_EMBEDDING_PROVIDER=local` and install the optional extra:
-
-  ```powershell
-  uv sync --project apps/api --extra embeddings
-  ```
-
-  The model (`BAAI/bge-small-en-v1.5`, 384 dimensions) loads from
-  `COEUS_EMBEDDING_MODEL_PATH` (default `.local-data/embedding-models`); download
-  it there in advance for a fully offline machine. `gemini_api` uses the
-  configured Gemini key. The provider setting is authoritative: a key present in
-  the environment never switches the provider on by itself. If the provider is
-  unavailable at query time, search degrades to the lexical leg alone rather than
-  failing.
-
-- Embeddings are written when products are created, updated or ingested at QC.
-  To populate embeddings for products that predate the feature (or after
-  enabling a provider), run the batched, idempotent backfill:
-
-  ```powershell
-  uv run --project apps/api python -m coeus.tools.backfill_embeddings
-  ```
+- Store search has separate compatibility and generation-aware embedding
+  projections. Follow the [Search Embeddings Runbook](runbooks/search-embeddings.md)
+  for local model setup, backfill and the Admin test, apply and rebuild workflow.
 
 - Hosted startup requires configuration-encryption, session, CSRF, asset-token
   and metrics bearer secrets plus an explicit JIOC routing mode. Staging/prod

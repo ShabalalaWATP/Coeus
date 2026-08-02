@@ -1,3 +1,5 @@
+from collections.abc import Callable
+from dataclasses import replace
 from typing import Protocol
 from uuid import UUID
 
@@ -60,6 +62,9 @@ class StoreRepository(Protocol):
 
     def accept_committed(self, product: StoreProduct) -> None: ...
 
+    def set_change_listener(self, listener: Callable[[], None]) -> None:
+        raise NotImplementedError
+
 
 class InMemoryStoreRepository:
     def __init__(
@@ -78,6 +83,7 @@ class InMemoryStoreRepository:
         self._embeddings = embeddings
         self._draft_audience = draft_audience
         self._initialising = True
+        self._change_listener: Callable[[], None] = lambda: None
         self._products: dict[UUID, StoreProduct] = {}
         self._reference_counter = 1000
         if seed_products:
@@ -179,6 +185,7 @@ class InMemoryStoreRepository:
             self._products = products
             self._reference_counter = reference_counter
             raise
+        self._notify_changed()
 
     def upsert_products(self, products: tuple[StoreProduct, ...]) -> None:
         """Merge a deterministic seed batch with one durable persistence pass."""
@@ -187,16 +194,25 @@ class InMemoryStoreRepository:
         self._refresh_from_projection(allow_empty=True)
         previous_products = dict(self._products)
         previous_counter = self._reference_counter
-        self._products.update({product.product_id: product for product in products})
+        changed = False
+        for product in products:
+            existing = self._products.get(product.product_id)
+            merged = _merge_seed_product(existing, product)
+            if merged != existing:
+                self._products[product.product_id] = merged
+                changed = True
         self._reference_counter = max_store_reference_counter(
             tuple(self._products.values()), self._reference_counter
         )
+        if not changed and self._reference_counter == previous_counter:
+            return
         try:
             self._persist()
         except Exception:
             self._products = previous_products
             self._reference_counter = previous_counter
             raise
+        self._notify_changed()
 
     def delete_product(self, product_id: UUID) -> None:
         """Remove a product, e.g. rolling back a failed QC approval."""
@@ -210,6 +226,7 @@ class InMemoryStoreRepository:
                 self._products = products
                 self._reference_counter = reference_counter
                 raise
+            self._notify_changed()
 
     def embedded_product_count(self) -> int:
         if self._projection is None:
@@ -233,6 +250,13 @@ class InMemoryStoreRepository:
     def accept_committed(self, product: StoreProduct) -> None:
         """Update the cache after a transaction port has durably committed."""
         self._products[product.product_id] = product
+        self._notify_changed()
+
+    def set_change_listener(self, listener: Callable[[], None]) -> None:
+        self._change_listener = listener
+
+    def _notify_changed(self) -> None:
+        self._change_listener()
 
     def _restore_or_persist(self) -> None:
         if self._restore_from_projection():
@@ -298,3 +322,16 @@ class InMemoryStoreRepository:
         products = seed_store_products(self._access_repository)
         self._products = {product.product_id: product for product in products}
         self._reference_counter = STORE_SEED_REFERENCE_COUNTER
+
+
+def _merge_seed_product(existing: StoreProduct | None, incoming: StoreProduct) -> StoreProduct:
+    if existing is None:
+        return incoming
+    unchanged = replace(
+        incoming,
+        created_at=existing.created_at,
+        updated_at=existing.updated_at,
+    )
+    if unchanged == existing:
+        return existing
+    return replace(incoming, created_at=existing.created_at)

@@ -197,6 +197,16 @@ def test_proxy_count_requires_trusted_networks() -> None:
         Settings(environment="local", trusted_proxy_count=1).require_runtime_security()
 
 
+def test_numbered_seed_usernames_are_local_only() -> None:
+    with pytest.raises(ValueError, match="COEUS_LOCAL_NUMBERED_SEED_USERNAMES"):
+        Settings(
+            environment="dev",
+            allow_dev_seed_users=True,
+            local_seed_credential="NonDefaultDevelopmentCredential1!",
+            local_numbered_seed_usernames=True,
+        ).require_runtime_security()
+
+
 def test_proxy_networks_must_be_valid() -> None:
     with pytest.raises(ValueError, match="invalid IP network"):
         Settings(

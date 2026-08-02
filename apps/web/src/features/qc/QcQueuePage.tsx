@@ -162,7 +162,6 @@ export default function QcQueuePage() {
           <h1 id="qc-title">QC Queue</h1>
           <p>Review submitted products, release metadata and controlled dissemination.</p>
         </div>
-        <div className="classification-note">MOCK DATA ONLY</div>
       </section>
       <section className="qc-grid">
         <aside className="surface qc-list" aria-label="QC products">

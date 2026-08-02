@@ -6,6 +6,7 @@ import pytest
 from coeus.core.errors import AppError
 from coeus.integrations.llm_gateway import (
     LlmCall,
+    LlmGeneration,
     _reply_text,
     _request_for,
     _token_usage,
@@ -109,6 +110,34 @@ def test_gemini_call_uses_key_header_and_generate_content(
     }
     assert text.input_tokens == 12
     assert text.output_tokens == 4
+
+
+def test_provider_usage_counts_outside_provenance_range_are_discarded() -> None:
+    oversized = 2_147_483_648
+
+    assert _token_usage(
+        "openai_api",
+        {"usage": {"prompt_tokens": oversized, "completion_tokens": 7}},
+    ) == (None, 7)
+    generation = LlmGeneration(
+        "valid reply",
+        input_tokens=oversized,
+        output_tokens=7,
+    )
+    assert generation.input_tokens is None
+    assert generation.output_tokens == 7
+
+    assert _token_usage(
+        "openai_api",
+        {"usage": {"prompt_tokens": True, "completion_tokens": False}},
+    ) == (None, None)
+    boolean_generation = LlmGeneration(
+        "valid reply",
+        input_tokens=True,
+        output_tokens=False,
+    )
+    assert boolean_generation.input_tokens is None
+    assert boolean_generation.output_tokens is None
 
 
 def test_openai_call_uses_bearer_token_and_chat_completions(

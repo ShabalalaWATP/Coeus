@@ -272,7 +272,7 @@ class SeedAccessRepository:
         regional_product = build_seed_product(
             stable_seed_id("product-regional-stability-brief"),
             "Regional Stability Brief",
-            "MOCK DATA ONLY assessment summary visible to Alpha Regional members.",
+            "Assessment summary visible to Alpha Regional members.",
             "assessment_report",
             ProductStatus.PUBLISHED,
             2,
@@ -283,7 +283,7 @@ class SeedAccessRepository:
         collection_product = build_seed_product(
             stable_seed_id("product-collection-sensor-summary"),
             "Collection Sensor Summary",
-            "MOCK DATA ONLY collection product for Bravo Collection members.",
+            "Collection product for Bravo Collection members.",
             "sigint_mock",
             ProductStatus.PUBLISHED,
             3,
@@ -294,7 +294,7 @@ class SeedAccessRepository:
         assessment_draft = build_seed_product(
             stable_seed_id("product-assessment-draft-pack"),
             "Assessment Draft Pack",
-            "MOCK DATA ONLY draft pack for assessment team coordination.",
+            "Draft pack for assessment team coordination.",
             "finished_output",
             ProductStatus.DRAFT,
             3,
@@ -338,7 +338,7 @@ class SeedAccessRepository:
         return acg
 
     def _user(self, username: str) -> UserAccount:
-        user = self._users.get_by_username(username)
+        user = self._users.get_seed_by_canonical_username(username)
         if user is None:
             raise RuntimeError(f"Missing required seed user {username}.")
         return user

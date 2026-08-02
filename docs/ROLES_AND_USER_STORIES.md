@@ -61,7 +61,8 @@ ACGs, and reads the audit log and global analytics.
 - Tag colleagues on a request as editors or viewers.
 - Accept or reject RFI product offers.
 - Search the Intelligence Store and download products they are entitled to.
-- Submit feedback. There is no customer analytics dashboard.
+- Submit concise product-outcome feedback after the request closes. There is no
+  customer analytics dashboard.
 - Confirm whether a released product meets the requirement or request
   re-analysis with a reason and optional unmet criteria.
 - Cannot see other customers' requests, route tickets, or produce products.

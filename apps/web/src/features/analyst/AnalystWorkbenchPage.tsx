@@ -42,7 +42,6 @@ export default function AnalystWorkbenchPage() {
           <h1 id="analyst-title">Analyst Workbench</h1>
           <p>Assigned task production and manager review.</p>
         </div>
-        <div className="classification-note">MOCK DATA ONLY</div>
       </section>
       {requestedMissing ? (
         <p className="workspace-alert" role="alert">
