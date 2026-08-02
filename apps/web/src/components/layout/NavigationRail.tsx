@@ -38,7 +38,12 @@ export function NavigationRail({ activePath, items }: NavigationRailProps) {
   return (
     <aside className="nav-rail" aria-label="Primary navigation">
       <div className="brand">
-        <img alt="" aria-hidden="true" className="brand__mark" src="/istari-logo-64.png" />
+        <img
+          alt=""
+          aria-hidden="true"
+          className="brand__mark"
+          src="/istari-logo-64.png?v=20260802"
+        />
         <div>
           <p className="brand__name">Istari</p>
           <p className="brand__strapline">Knowledge-led intelligence tasking</p>

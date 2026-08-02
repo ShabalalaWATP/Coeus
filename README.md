@@ -1,5 +1,11 @@
 # Istari
 
+<p align="center">
+  <img src="istari-logo.png" alt="Istari logo" width="420" />
+</p>
+
+**ISTARI** stands for **Integrated System for Tasking, Analysis, Reporting and Intelligence**.
+
 Istari is a security-conscious, role-based platform for intelligence tasking
 and product orchestration: it routes customer requests, tasks analysts, and
 releases quality-assured products. Security-sensitive and workflow-changing

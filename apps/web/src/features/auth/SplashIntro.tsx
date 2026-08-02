@@ -32,7 +32,7 @@ export function SplashIntro() {
             className="splash-intro__logo"
             decoding="async"
             height={148}
-            src="/istari-logo-256.png"
+            src="/istari-logo-256.png?v=20260802"
             width={148}
           />
         </div>

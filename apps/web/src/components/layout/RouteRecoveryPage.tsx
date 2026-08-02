@@ -7,7 +7,7 @@ export function RouteRecoveryPage() {
   return (
     <main className="route-recovery">
       <div>
-        <img alt="" aria-hidden="true" src="/istari-logo-256.png" />
+        <img alt="" aria-hidden="true" src="/istari-logo-256.png?v=20260802" />
         <AlertTriangle aria-hidden="true" size={24} />
         <p className="eyebrow">Istari workspace</p>
         <h1>{notFound ? "Workspace not found" : "This workspace could not be opened"}</h1>
