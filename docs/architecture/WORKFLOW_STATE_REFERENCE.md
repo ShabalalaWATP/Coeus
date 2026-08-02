@@ -1,7 +1,7 @@
 # Exhaustive Workflow State Reference
 
 Status: **implemented**. Reconciled with
-`apps/api/src/coeus/domain/state_machine.py` at `e44b66b6` on 23 July 2026.
+`apps/api/src/coeus/domain/state_machine.py` at `747f19b4` on 2 August 2026.
 
 The canonical workflow guide deliberately shows the principal journey. These
 three slices include every edge in `ALLOWED_TRANSITIONS`, including legacy,

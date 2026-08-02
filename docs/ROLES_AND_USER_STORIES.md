@@ -20,19 +20,19 @@ grant membership or access to protected product content.
 
 ## Roles at a glance
 
-| Role                         | Default workspace      | Purpose                                                                                         |
-| ---------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------- |
-| Administrator                | `/admin/overview`      | Governance: access, AI, search, voice, ACGs, audit and analytics                                |
-| Customer                     | `/app/requests`        | Raise and track intelligence requests                                                           |
-| JIOC Team Member             | `/jioc/queue`          | Resolve routing exceptions and independently adjudicate referred re-analysis disputes           |
-| JIOC Manager                 | `/jioc/oversight`      | Shared exception review plus on-loop oversight, intervention and global aggregates               |
-| RFA Manager                  | `/rfa/queue`           | Lead the RFA team: assign analysts, approve analyst work, manage the team                       |
-| RFA Team Member              | `/rfa/products`        | Maintain entitled RFA product metadata and assets                                                |
-| CM Manager                   | `/collection/queue`    | Lead the CM team: assign analysts, approve analyst work, manage the team                        |
-| CM Team Member               | `/collection/products` | Maintain entitled Collection product metadata and assets                                         |
-| Analyst                      | `/analyst/workbench`   | Produce draft products against assigned tasks                                                   |
-| Quality Control (QC) Manager | `/qc/queue`            | Quality-assure products and perform the final release                                           |
-| Intelligence Store Manager   | `/store`               | Curate the catalogue and register controlled products without blanket content access             |
+| Role                         | Default workspace      | Purpose                                                                               |
+| ---------------------------- | ---------------------- | ------------------------------------------------------------------------------------- |
+| Administrator                | `/admin/overview`      | Governance: access, AI, search, voice, ACGs, audit and analytics                      |
+| Customer                     | `/app/requests`        | Raise and track intelligence requests                                                 |
+| JIOC Team Member             | `/jioc/queue`          | Resolve routing exceptions and independently adjudicate referred re-analysis disputes |
+| JIOC Manager                 | `/jioc/oversight`      | Shared exception review plus on-loop oversight, intervention and global aggregates    |
+| RFA Manager                  | `/rfa/queue`           | Lead the RFA team: assign analysts, approve analyst work, manage the team             |
+| RFA Team Member              | `/rfa/products`        | Maintain entitled RFA product metadata and assets                                     |
+| CM Manager                   | `/collection/queue`    | Lead the CM team: assign analysts, approve analyst work, manage the team              |
+| CM Team Member               | `/collection/products` | Maintain entitled Collection product metadata and assets                              |
+| Analyst                      | `/analyst/workbench`   | Produce draft products against assigned tasks                                         |
+| Quality Control (QC) Manager | `/qc/queue`            | Quality-assure products and perform the final release                                 |
+| Intelligence Store Manager   | `/store`               | Curate the catalogue and register controlled products without blanket content access  |
 
 Legacy role names ("Request for Assessment Manager", "Collection Manager",
 "Collection Team Member", "Intelligence Analyst", "User") still decode from
@@ -60,7 +60,11 @@ ACGs, and reads the audit log and global analytics.
 - Track their own requests on a dashboard and view the request journey.
 - Tag colleagues on a request as editors or viewers.
 - Accept or reject RFI product offers.
+- After rejecting every offer, record what was missing, then refine the search,
+  authorise JIOC-controlled new tasking or close the request as unfulfilled.
 - Search the Intelligence Store and download products they are entitled to.
+- Save authorised products to a private Store library and organise them into
+  personal folders without changing the underlying access policy.
 - Submit concise product-outcome feedback after the request closes. There is no
   customer analytics dashboard.
 - Confirm whether a released product meets the requirement or request
@@ -155,6 +159,8 @@ ACGs, and reads the audit log and global analytics.
   can resolve missing detail without exposing an internal checklist.
 - As a customer, I want to be offered existing products first so that I get an
   answer immediately when one already exists.
+- As a customer, I want Istari to ask what was missing after I reject every
+  result so that I can refine the search, authorise new work or close cleanly.
 - As a customer, I want to see where my request is in the pipeline so that I know
   what happens next without asking anyone.
 - As a customer, I want to tag a colleague as a viewer or editor so that they can
@@ -163,6 +169,8 @@ ACGs, and reads the audit log and global analytics.
   notification when a product is released so that I never miss a delivery.
 - As a customer, I want to confirm whether a released product meets my need and
   request reasoned re-analysis when it does not.
+- As a customer, I want to save useful intelligence products in private folders
+  so that I can return to them without weakening need-to-know controls.
 
 ### JIOC Team Member
 
@@ -258,7 +266,7 @@ ACGs, and reads the audit log and global analytics.
 
 Need-to-know is enforced by access control groups. A product is visible to a user
 only if they are in one of the product's ACGs (and meet its clearance and status
-rules). Istari seeds 43 groups:
+rules). Istari seeds 58 groups:
 
 - Three original workflow groups (Alpha Regional, Bravo Collection, Charlie
   Assessment).
@@ -266,6 +274,9 @@ rules). Istari seeds 43 groups:
   Eastern, Asia-Pacific, North American, South American, Arctic, Maritime)
   crossed with five disciplines (Cyber, HUMINT, SIGINT, GEOINT, OSINT), for
   example "European Cyber" (`ACG-EU-CYBER`) or "Maritime GEOINT".
+- Fifteen specialist country and capability groups for Russia, Iran and China,
+  covering land systems, electronic warfare, SIGINT, missiles, uncrewed systems
+  or cyber as applicable.
 
 Every user can request membership from the Access Groups workspace. Delegated
 ACG administrators decide applications for their groups, while platform

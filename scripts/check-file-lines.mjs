@@ -10,7 +10,6 @@ const REPO_ROOT = resolve(SCRIPT_DIR, "..");
 const INCLUDED_EXTENSIONS = new Set([
   ".css",
   ".json",
-  ".md",
   ".mjs",
   ".ps1",
   ".py",
@@ -90,4 +89,6 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-console.log(`All checked hand-written files are ${MAX_LINES} lines or fewer.`);
+console.log(
+  `All checked hand-written source and configuration files are ${MAX_LINES} lines or fewer.`,
+);

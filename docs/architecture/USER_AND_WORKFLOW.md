@@ -1,7 +1,7 @@
 # User and Workflow Views
 
 Status: **implemented**, except where a limitation is called out. Verified
-against `e44b66b6` on 23 July 2026.
+against `747f19b4` on 2 August 2026.
 
 This page shows Istari from the perspective of people and outcomes. The
 [canonical workflow guide](../ARCHITECTURE_WORKFLOW.md) remains authoritative
@@ -80,22 +80,27 @@ draft-audience policy.
 
 ## 2. Role-to-workspace summary
 
-| Role                       | Default workspace   | Primary authority                                            |
-| -------------------------- | ------------------- | ------------------------------------------------------------ |
-| Administrator              | Admin               | Accounts, roles, configuration, all platform permissions     |
-| Customer                   | Requests            | Own request, product decisions, new-tasking consent, outcome |
-| JIOC Team Member           | JIOC Queue          | Exception routing and dispute adjudication                   |
-| JIOC Manager               | JIOC Oversight      | Human review and disputes, oversight, intervention, aggregates |
-| RFA Manager                | RFA Queue           | RFA assignment, manager approval, team and analytics         |
-| RFA Team Member            | RFA Products        | Scoped team product stewardship                              |
-| CM Manager                 | Collection Queue    | Collection assignment, manager approval, team and analytics  |
-| CM Team Member             | Collection Products | Scoped team product stewardship                              |
-| Intelligence Store Manager | Store               | Catalogue, product and ACG membership administration         |
-| Analyst                    | Analyst Workbench   | Assigned work packages and immutable draft versions          |
-| Quality Control Manager    | QC Queue            | QC claim, human checklist, release or rejection              |
+| Role                       | Default workspace   | Primary authority                                                  |
+| -------------------------- | ------------------- | ------------------------------------------------------------------ |
+| Administrator              | Admin               | Accounts, roles, configuration, all platform permissions           |
+| Customer                   | Requests and Store  | Own request, product decisions, personal library, consent, outcome |
+| JIOC Team Member           | JIOC Queue          | Exception routing and dispute adjudication                         |
+| JIOC Manager               | JIOC Oversight      | Human review and disputes, oversight, intervention, aggregates     |
+| RFA Manager                | RFA Queue           | RFA assignment, manager approval, team and analytics               |
+| RFA Team Member            | RFA Products        | Scoped team product stewardship                                    |
+| CM Manager                 | Collection Queue    | Collection assignment, manager approval, team and analytics        |
+| CM Team Member             | Collection Products | Scoped team product stewardship                                    |
+| Intelligence Store Manager | Store               | Catalogue, product and ACG membership administration               |
+| Analyst                    | Analyst Workbench   | Assigned work packages and immutable draft versions                |
+| Quality Control Manager    | QC Queue            | QC claim, human checklist, release or rejection                    |
 
 The frontend uses permission-based navigation. Backend services, object policy
 and commit-time authority are the enforcement boundaries.
+
+Every authenticated user can save currently authorised Store products into a
+private library and organise those references into personal folders. Saving a
+reference never preserves access: each library read applies the current
+clearance, ACG, status and audience policy again.
 
 ## 3. Customer-visible journey and internal projection
 
@@ -169,12 +174,20 @@ sequenceDiagram
     SYS-->>C: Authorised product offers or bounded retry state
     alt product accepted
         C->>SYS: Accept product and close
-    else no accepted product
-        SYS-->>C: Visible matching work or new-tasking consent
-        alt join visible work
-            C->>SYS: Join and close duplicate request
-        else create new work
-            C->>SYS: Explicitly consent
+    else every offer rejected
+        SYS-->>C: Ask what was missing
+        C->>SYS: Record short follow-up feedback
+        alt refine the requirement
+            C->>SYS: Search again with additive feedback
+            SYS-->>C: New authorised offers or bounded retry state
+        else close without new work
+            C->>SYS: Close as unfulfilled
+        else consider new work
+            SYS-->>C: Visible matching work or new-tasking consent
+            alt join visible work
+                C->>SYS: Join and close duplicate request
+            else authorise new tasking
+                C->>SYS: Explicitly consent
             SYS->>JA: Versioned evidence and capability reviews
             alt eligible deterministic RFA route
                 JA->>RM: Commit RFA route
@@ -241,6 +254,7 @@ sequenceDiagram
             end
         end
     end
+    end
 ```
 
 The Routing Critic is advisory after a route is committed. It never delays or
@@ -253,10 +267,12 @@ the primary human exception reviewer.
 ```mermaid
 flowchart LR
     accTitle: Implemented request outcome variants
-    accDescr: Five implemented branches show how product reuse, joined work, RFA, raw collection and collection plus analysis reach closure.
+    accDescr: Implemented branches show how product reuse, rejected-result recovery, joined work, RFA, raw collection and collection plus analysis reach closure.
 
     START["Submitted requirement"]
     PRODUCT["Existing authorised product"]
+    REFINE["Reject all<br/>record what was missing"]
+    UNFULFILLED["Close unfulfilled<br/>CLOSED_UNANSWERED"]
     WORK["Visible active work"]
     RFA["New RFA task"]
     RAW["New raw collection task"]
@@ -269,6 +285,12 @@ flowchart LR
     APROD["CM production and QC forwarding<br/>then RFA production and QC release"]
 
     START --> PRODUCT --> PEND
+    PRODUCT --> REFINE
+    REFINE -->|"search again"| START
+    REFINE -->|"do not create work"| UNFULFILLED
+    REFINE -->|"authorise new tasking"| RFA
+    REFINE -->|"authorise new tasking"| RAW
+    REFINE -->|"authorise new tasking"| BOTH
     START --> WORK --> JOIN
     START --> RFA --> RPROD
     START --> RAW --> CPROD

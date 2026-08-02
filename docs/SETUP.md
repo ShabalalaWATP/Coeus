@@ -164,10 +164,11 @@ editable profile and a shared availability calendar.
 ### Local demo dataset
 
 On a fresh local run the app also loads a rich demo dataset so no queue starts
-empty: ~43 Intelligence Store products across the themed need-to-know groups
-and every canonical product type (standardised reports, intelligence
-summaries, satellite imagery, GeoJSON geographic overlays, database extracts,
-SIGINT datasets, multi-asset bundles and fused outputs) with type-appropriate
+empty: 261 deterministic Intelligence Store products across 58 themed and
+specialist need-to-know groups and every canonical product type (standardised
+reports, intelligence summaries, satellite imagery, GeoJSON geographic
+overlays, database extracts, SIGINT datasets, multi-asset bundles and fused
+outputs) with type-appropriate
 assets, metadata and tags; a ticket in every workflow state (populating the
 customer, JIOC, team, analyst and QC queues); delivered products plus
 closure-gated feedback that feeds the analytics dashboards; and team calendar
@@ -236,7 +237,8 @@ uv run --directory apps/api pytest --cov-report=json:coverage.json
 uv run --project apps/api python scripts/check_backend_coverage.py apps/api/coverage.json
 # API contract: fail on generated drift or a breaking change against origin/main
 corepack pnpm contracts:check
-# Repository: hand-written files must stay within the 350-line limit and dead code checks
+# Repository: hand-written source and configuration files must stay within the
+# 350-line limit; Markdown documentation is exempt
 corepack pnpm line-limit
 corepack pnpm dead-code
 ```
@@ -300,8 +302,9 @@ disposable server where the configured user may create and drop databases.
   PostgreSQL persistence those bounded records survive restart in application
   state rather than a separate filesystem outbox.
 - Store search has separate compatibility and generation-aware embedding
-  projections. Follow the [Search Embeddings Runbook](runbooks/search-embeddings.md)
-  for local model setup, backfill and the Admin test, apply and rebuild workflow.
+  projections. Product and search-service changes queue index updates
+  automatically. Follow the [Search Embeddings Runbook](runbooks/search-embeddings.md)
+  for provider setup, testing, activation and failed-update recovery.
 
 - Hosted startup requires configuration-encryption, session, CSRF, asset-token
   and metrics bearer secrets plus an explicit JIOC routing mode. Staging/prod

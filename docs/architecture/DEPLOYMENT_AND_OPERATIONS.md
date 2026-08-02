@@ -1,8 +1,8 @@
 # Deployment and Operations Views
 
 Status: local views are **implemented**. Cloud paths are **future gated** unless
-explicitly marked as Terraform-created resources. Verified against `e44b66b6`
-on 23 July 2026.
+explicitly marked as Terraform-created resources. Verified against `747f19b4`
+on 2 August 2026.
 
 ## 1. Supported local modes
 

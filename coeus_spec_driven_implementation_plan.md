@@ -18,14 +18,20 @@ Google Cloud project number: `<work-gcp-project-number>`
 Default development environment name: dev
 ```
 
-For Terraform and CI/CD, keep project-specific values in checked-in example files and environment-specific values in GitHub environment variables or Google Secret Manager. Use examples such as `.env.example`, `terraform.tfvars.example`, and GitHub Actions documentation rather than committing real secrets.
+For Terraform and CI/CD, keep project-specific values in checked-in example
+files and environment-specific values in GitHub environment variables or
+Google Secret Manager. Use examples such as `.env.example`,
+`terraform.tfvars.example`, and GitHub Actions documentation rather than
+committing real secrets. Documentation may include approved screenshots of the
+clearly identified synthetic exercise interface. Never commit screenshots of
+real data, private environments, credentials or internal infrastructure.
 
 ## Current delivery overlay
 
 This plan began as the implementation blueprint, so earlier sections preserve
 historical target-state language. Use the
 [current delivery tracker](docs/MASTER_IMPLEMENTATION_PLAN.md) for concise
-status. As of 23 July 2026:
+status. As of 2 August 2026:
 
 - Sprints 1 to 23 are implemented for the supported synthetic local/test
   boundary.
@@ -50,6 +56,12 @@ status. As of 23 July 2026:
   frontend tests at 98.63/95.03 per cent. It was integrated into `main` at
   `0cde7010`, and all protected and post-merge workflows passed. Integration
   evidence does not substitute for the required independent scan.
+- Current local retrieval automatically queues a validated shadow generation
+  after Store or search-service changes. User-owned Store libraries retain only
+  access-revalidated product references and optional personal folders.
+- Rejecting every RFI result now requires short feedback before the customer
+  may refine and search again, authorise JIOC-controlled new tasking, or close
+  the request as unfulfilled. Accepting a result closes it as fulfilled.
 
 ## 1. Executive summary
 
@@ -66,7 +78,6 @@ The platform must be built with:
 The application must be dark themed by default, with a light theme option. It must support a professional login page with space for the Istari logo. MFA is out of scope because the target end state is an air-gapped private hosting environment, but session security, password handling, rate limiting, audit, and RBAC must still be treated as critical.
 
 Important public repository rule: `ShabalalaWATP/coeus` is planned as a public repository. The repo must never contain real intelligence products, real operational examples, real screenshots, real API schemas, real credentials, internal URLs, classified strings, classification-marked content, or real organisational data. All seed data must be synthetic and clearly labelled as mock.
-
 
 ## 2. Coding-agent operating rules
 
@@ -126,17 +137,17 @@ coeus/
 
 ## 4. Key terms
 
-| Term | Meaning |
-|---|---|
-| RFI | Request for Intelligence raised by a customer or user. |
-| RFA | Request for Assessment route, used when an assessment team can answer the requirement. |
-| CM | Collection Management route, used when the answer requires collection tasking or collection coordination. |
+| Term                 | Meaning                                                                                                                            |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| RFI                  | Request for Intelligence raised by a customer or user.                                                                             |
+| RFA                  | Request for Assessment route, used when an assessment team can answer the requirement.                                             |
+| CM                   | Collection Management route, used when the answer requires collection tasking or collection coordination.                          |
 | Intelligence Product | A stored report, assessment, imagery product, SIGINT-style mock product, geospatial layer, structured dataset, or finished output. |
-| Intelligence Store | The searchable, access-controlled repository of intelligence products and supporting assets. |
-| ACG | Access Control Group. Product visibility is governed by ACG membership as well as RBAC. |
-| Orchestration Agent | The agent that manages intake, routing, agent coordination, and customer-facing status. |
-| Existing Product | A product already present in the Intelligence Store before the current RFI was raised. |
-| New Product | A product produced by analysts during the workflow and automatically ingested into the Intelligence Store after QC approval. |
+| Intelligence Store   | The searchable, access-controlled repository of intelligence products and supporting assets.                                       |
+| ACG                  | Access Control Group. Product visibility is governed by ACG membership as well as RBAC.                                            |
+| Orchestration Agent  | The agent that manages intake, routing, agent coordination, and customer-facing status.                                            |
+| Existing Product     | A product already present in the Intelligence Store before the current RFI was raised.                                             |
+| New Product          | A product produced by analysts during the workflow and automatically ingested into the Intelligence Store after QC approval.       |
 
 ## 5. Product identity and UI direction
 
@@ -205,16 +216,16 @@ flowchart LR
 
 ### 7.1 Roles
 
-| Role | Purpose | Default view |
-|---|---|---|
-| Administrator | Platform administration, users, roles, ACGs, products, audit, settings, global dashboards. | `/admin/overview` |
-| User / Customer | Raise RFIs, chat with Coeus, view own tickets, view permitted products, provide feedback. | `/app/requests` |
-| Request for Assessment Manager | Review RFA capability decisions, assign analysts, approve route, view RFA analytics. | `/rfa/queue` |
-| Request for Assessment Team Member | Add existing products, support RFA work, view RFA-authorised products and assigned work. | `/rfa/products` |
-| Collection Manager | Review CM capability decisions, approve collection route, view CM analytics. | `/collection/queue` |
-| Collection Team Member | Add existing collection products, support CM work, view CM-authorised products and assigned work. | `/collection/products` |
-| Intelligence Analyst | Work on assigned tasks, draft products, add notes, submit to QC. | `/analyst/workbench` |
-| Quality Control Manager | Review products, approve, reject, disseminate, trigger Intelligence Store indexing. | `/qc/queue` |
+| Role                               | Purpose                                                                                           | Default view           |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------- | ---------------------- |
+| Administrator                      | Platform administration, users, roles, ACGs, products, audit, settings, global dashboards.        | `/admin/overview`      |
+| User / Customer                    | Raise RFIs, chat with Coeus, view own tickets, view permitted products, provide feedback.         | `/app/requests`        |
+| Request for Assessment Manager     | Review RFA capability decisions, assign analysts, approve route, view RFA analytics.              | `/rfa/queue`           |
+| Request for Assessment Team Member | Add existing products, support RFA work, view RFA-authorised products and assigned work.          | `/rfa/products`        |
+| Collection Manager                 | Review CM capability decisions, approve collection route, view CM analytics.                      | `/collection/queue`    |
+| Collection Team Member             | Add existing collection products, support CM work, view CM-authorised products and assigned work. | `/collection/products` |
+| Intelligence Analyst               | Work on assigned tasks, draft products, add notes, submit to QC.                                  | `/analyst/workbench`   |
+| Quality Control Manager            | Review products, approve, reject, disseminate, trigger Intelligence Store indexing.               | `/qc/queue`            |
 
 A person can have multiple roles. The permission system must support multiple role assignments per user.
 
@@ -323,26 +334,26 @@ async def can_view_product(user: User, product: IntelligenceProduct) -> bool:
 
 Every transition must be performed by the backend state machine. Every transition must create an immutable event.
 
-| State | Owner | Description | Exit condition |
-|---|---|---|---|
-| `DRAFT_INTAKE` | User and Orchestration Agent | Chatbot collects the requirement. | Minimum intake fields complete. |
-| `INFO_REQUIRED` | User | More detail is needed. | User supplies the missing information. |
-| `RFI_SEARCHING` | RFI Search Agent | Search existing products in the Intelligence Store and permitted connectors. | Match found or no useful match. |
-| `RFI_MATCH_OFFERED` | User | Existing products are offered. | User accepts or rejects. |
-| `CLOSED_EXISTING_PRODUCT_ACCEPTED` | System | User accepted an existing product. | Ticket closed. |
-| `ROUTE_ASSESSMENT` | Orchestration Agent | RFA and CM capability checks are requested. | Capability responses received. |
-| `RFA_MANAGER_REVIEW` | RFA Manager | RFA route needs human approval. | Approved, rejected, or clarification requested. |
-| `CM_MANAGER_REVIEW` | Collection Manager | CM route needs human approval. | Approved, rejected, or clarification requested. |
-| `ANALYST_ASSIGNMENT` | RFA or CM Manager | Work is assigned to analysts. | Analyst accepts assignment. |
-| `ANALYST_IN_PROGRESS` | Intelligence Analyst | Product is being produced. | Product submitted to QC. |
-| `QC_REVIEW` | QC Manager | Product is checked. | Approved or returned for rework. |
-| `REWORK_REQUIRED` | Analyst and Manager | Product needs changes. | Resubmitted to QC. |
-| `DISSEMINATION_READY` | QC Manager | Product is approved and ready to send. | Dissemination confirmed. |
-| `DISSEMINATED` | System | Product has been sent and stored. | Feedback requested. |
-| `FEEDBACK_PENDING` | User | User can accept, reject, or request changes. | Feedback received. |
-| `CLOSED_ACCEPTED` | System | User accepted final output. | Ticket closed. |
-| `CLOSED_REJECTED` | System | User rejected and no further action is authorised. | Ticket closed. |
-| `CANCELLED` | User or Manager | Ticket cancelled. | Ticket closed. |
+| State                              | Owner                        | Description                                                                  | Exit condition                                  |
+| ---------------------------------- | ---------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------- |
+| `DRAFT_INTAKE`                     | User and Orchestration Agent | Chatbot collects the requirement.                                            | Minimum intake fields complete.                 |
+| `INFO_REQUIRED`                    | User                         | More detail is needed.                                                       | User supplies the missing information.          |
+| `RFI_SEARCHING`                    | RFI Search Agent             | Search existing products in the Intelligence Store and permitted connectors. | Match found or no useful match.                 |
+| `RFI_MATCH_OFFERED`                | User                         | Existing products are offered.                                               | User accepts or rejects.                        |
+| `CLOSED_EXISTING_PRODUCT_ACCEPTED` | System                       | User accepted an existing product.                                           | Ticket closed.                                  |
+| `ROUTE_ASSESSMENT`                 | Orchestration Agent          | RFA and CM capability checks are requested.                                  | Capability responses received.                  |
+| `RFA_MANAGER_REVIEW`               | RFA Manager                  | RFA route needs human approval.                                              | Approved, rejected, or clarification requested. |
+| `CM_MANAGER_REVIEW`                | Collection Manager           | CM route needs human approval.                                               | Approved, rejected, or clarification requested. |
+| `ANALYST_ASSIGNMENT`               | RFA or CM Manager            | Work is assigned to analysts.                                                | Analyst accepts assignment.                     |
+| `ANALYST_IN_PROGRESS`              | Intelligence Analyst         | Product is being produced.                                                   | Product submitted to QC.                        |
+| `QC_REVIEW`                        | QC Manager                   | Product is checked.                                                          | Approved or returned for rework.                |
+| `REWORK_REQUIRED`                  | Analyst and Manager          | Product needs changes.                                                       | Resubmitted to QC.                              |
+| `DISSEMINATION_READY`              | QC Manager                   | Product is approved and ready to send.                                       | Dissemination confirmed.                        |
+| `DISSEMINATED`                     | System                       | Product has been sent and stored.                                            | Feedback requested.                             |
+| `FEEDBACK_PENDING`                 | User                         | User can accept, reject, or request changes.                                 | Feedback received.                              |
+| `CLOSED_ACCEPTED`                  | System                       | User accepted final output.                                                  | Ticket closed.                                  |
+| `CLOSED_REJECTED`                  | System                       | User rejected and no further action is authorised.                           | Ticket closed.                                  |
+| `CANCELLED`                        | User or Manager              | Ticket cancelled.                                                            | Ticket closed.                                  |
 
 ## 9. Intelligence Store
 
@@ -356,16 +367,16 @@ The Intelligence Store must allow authorised teams to store, tag, search, retrie
 
 Support these product types from the start:
 
-| Product type | File or data examples |
-|---|---|
-| Assessment report | PDF, DOCX, Markdown-derived PDF, structured JSON summary. |
-| Intelligence summary | PDF, DOCX, HTML preview. |
-| Satellite imagery product | PNG, JPEG, GeoTIFF placeholder metadata in MVP. |
-| SIGINT-style mock data | CSV, JSON, TXT summary, structured signal event records. |
-| Geographic product | GeoJSON, KML, shapefile placeholder metadata, PostGIS geometry. |
-| Database extract | CSV, JSON, Parquet placeholder metadata. |
-| Product bundle | Multiple assets linked to one product record. |
-| Finished Coeus output | QC-approved analyst product generated by the workflow. |
+| Product type              | File or data examples                                           |
+| ------------------------- | --------------------------------------------------------------- |
+| Assessment report         | PDF, DOCX, Markdown-derived PDF, structured JSON summary.       |
+| Intelligence summary      | PDF, DOCX, HTML preview.                                        |
+| Satellite imagery product | PNG, JPEG, GeoTIFF placeholder metadata in MVP.                 |
+| SIGINT-style mock data    | CSV, JSON, TXT summary, structured signal event records.        |
+| Geographic product        | GeoJSON, KML, shapefile placeholder metadata, PostGIS geometry. |
+| Database extract          | CSV, JSON, Parquet placeholder metadata.                        |
+| Product bundle            | Multiple assets linked to one product record.                   |
+| Finished Coeus output     | QC-approved analyst product generated by the workflow.          |
 
 ### 9.3 Who can add existing products
 
@@ -382,19 +393,19 @@ New products created during Coeus workflows are automatically added to the Intel
 
 Use rich metadata from the start. Search quality will depend on this.
 
-| Metadata group | Fields |
-|---|---|
-| Core | `title`, `summary`, `description`, `product_type`, `language`, `version`, `status`, `origin`, `source_system`, `created_by`, `created_at`, `updated_at`. |
-| Security and access | `classification`, `handling_caveats`, `releasability`, `acg_ids`, `owner_team_id`, `clearance_required`, `need_to_know_tags`, `review_required`. |
-| Temporal | `time_period_start`, `time_period_end`, `reporting_period`, `event_time`, `collection_time`, `published_at`. |
-| Geographic | `area_or_region`, `country`, `admin_area`, `grid_reference`, `bounding_box`, `centroid`, `geojson_ref`, `geometry`, `spatial_confidence`. |
-| Source and collection | `source_type`, `collection_method`, `source_reliability`, `information_credibility`, `collector_team`, `sensor_type`, `source_ids`. |
-| Entities | `people`, `organisations`, `locations`, `equipment`, `facilities`, `networks`, `keywords`. Use synthetic entities in seed data. |
-| Analytical | `themes`, `threat_categories`, `confidence`, `assessment_type`, `key_judgements`, `assumptions`, `intelligence_gaps`. |
-| Workflow | `linked_ticket_ids`, `linked_task_ids`, `qc_review_id`, `dissemination_ids`, `feedback_ids`. |
-| Assets | `asset_count`, `primary_asset_id`, `asset_types`, `file_hashes`, `mime_types`, `object_storage_keys`. |
-| Search | `tags`, `aliases`, `full_text`, `embedding_model`, `embedding`, `search_boost`, `last_indexed_at`. |
-| Quality | `qc_status`, `qc_reviewer_id`, `release_manager_id`, `review_notes`, `expiry_review_date`, `superseded_by_product_id`. |
+| Metadata group        | Fields                                                                                                                                                   |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Core                  | `title`, `summary`, `description`, `product_type`, `language`, `version`, `status`, `origin`, `source_system`, `created_by`, `created_at`, `updated_at`. |
+| Security and access   | `classification`, `handling_caveats`, `releasability`, `acg_ids`, `owner_team_id`, `clearance_required`, `need_to_know_tags`, `review_required`.         |
+| Temporal              | `time_period_start`, `time_period_end`, `reporting_period`, `event_time`, `collection_time`, `published_at`.                                             |
+| Geographic            | `area_or_region`, `country`, `admin_area`, `grid_reference`, `bounding_box`, `centroid`, `geojson_ref`, `geometry`, `spatial_confidence`.                |
+| Source and collection | `source_type`, `collection_method`, `source_reliability`, `information_credibility`, `collector_team`, `sensor_type`, `source_ids`.                      |
+| Entities              | `people`, `organisations`, `locations`, `equipment`, `facilities`, `networks`, `keywords`. Use synthetic entities in seed data.                          |
+| Analytical            | `themes`, `threat_categories`, `confidence`, `assessment_type`, `key_judgements`, `assumptions`, `intelligence_gaps`.                                    |
+| Workflow              | `linked_ticket_ids`, `linked_task_ids`, `qc_review_id`, `dissemination_ids`, `feedback_ids`.                                                             |
+| Assets                | `asset_count`, `primary_asset_id`, `asset_types`, `file_hashes`, `mime_types`, `object_storage_keys`.                                                    |
+| Search                | `tags`, `aliases`, `full_text`, `embedding_model`, `embedding`, `search_boost`, `last_indexed_at`.                                                       |
+| Quality               | `qc_status`, `qc_reviewer_id`, `release_manager_id`, `review_notes`, `expiry_review_date`, `superseded_by_product_id`.                                   |
 
 ### 9.5 Search behaviour
 
@@ -431,15 +442,15 @@ The seed data must be synthetic, deterministic, and safe for a public repository
 
 Initial seed should create at least:
 
-| Asset category | Initial count | Format |
-|---|---:|---|
-| Mock assessment reports | 40 | PDF and DOCX |
-| Mock intelligence summaries | 40 | PDF and DOCX |
-| Mock imagery products | 30 | PNG and JPEG |
-| Mock geographic layers | 25 | GeoJSON and KML |
-| Mock SIGINT-style records | 25 | CSV and JSON |
-| Mock database extracts | 15 | CSV and JSON |
-| Mixed product bundles | 15 | Linked PDF, image, GeoJSON, and CSV assets |
+| Asset category              | Initial count | Format                                     |
+| --------------------------- | ------------: | ------------------------------------------ |
+| Mock assessment reports     |            40 | PDF and DOCX                               |
+| Mock intelligence summaries |            40 | PDF and DOCX                               |
+| Mock imagery products       |            30 | PNG and JPEG                               |
+| Mock geographic layers      |            25 | GeoJSON and KML                            |
+| Mock SIGINT-style records   |            25 | CSV and JSON                               |
+| Mock database extracts      |            15 | CSV and JSON                               |
+| Mixed product bundles       |            15 | Linked PDF, image, GeoJSON, and CSV assets |
 
 ### 10.3 Seed scripts
 
@@ -506,18 +517,18 @@ Include seed scenarios for:
 
 Agents must be implemented as backend services behind interfaces. Agents recommend and summarise; they do not silently approve controlled workflow steps.
 
-| Agent | Responsibility |
-|---|---|
-| Orchestration Agent | Owns the conversation, missing information, routing, user-facing status, and coordination. |
-| Intake Agent | Extracts structured fields from natural language. |
-| RFI Search Agent | Searches the Intelligence Store and mock connectors, ranks permitted products, explains matches. |
-| RFA Capability Agent | Checks whether RFA teams can meet the request and what they need. |
-| CM Capability Agent | Checks whether collection can meet the request and what they need. |
-| Task Breakdown Agent | Converts approved requirements into work packages. |
+| Agent                             | Responsibility                                                                                                                                        |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Orchestration Agent               | Owns the conversation, missing information, routing, user-facing status, and coordination.                                                            |
+| Intake Agent                      | Extracts structured fields from natural language.                                                                                                     |
+| RFI Search Agent                  | Searches the Intelligence Store and mock connectors, ranks permitted products, explains matches.                                                      |
+| RFA Capability Agent              | Checks whether RFA teams can meet the request and what they need.                                                                                     |
+| CM Capability Agent               | Checks whether collection can meet the request and what they need.                                                                                    |
+| Task Breakdown Agent              | Converts approved requirements into work packages.                                                                                                    |
 | Intelligence Store Metadata Agent | Suggests tags, entities, summaries, ACG candidates, and metadata for uploaded mock products. Human confirmation required for access control metadata. |
-| Quality Support Agent | Assists QC with checklist prompts and metadata completeness. It cannot approve. |
-| Trends Analysis Agent | Reviews process data to identify demand, bottlenecks, and repeated gaps. |
-| Feedback Learning Agent | Summarises user feedback and suggests process improvements. |
+| Quality Support Agent             | Assists QC with checklist prompts and metadata completeness. It cannot approve.                                                                       |
+| Trends Analysis Agent             | Reviews process data to identify demand, bottlenecks, and repeated gaps.                                                                              |
+| Feedback Learning Agent           | Summarises user feedback and suggests process improvements.                                                                                           |
 
 LLM provider interface:
 
@@ -551,142 +562,142 @@ Use these as the first backlog. Each story should become one or more tickets wit
 
 ### 12.1 Authentication, roles and sessions
 
-| ID | Actor | User story | Acceptance criteria |
-|---|---|---|---|
-| AUTH-001 | User | As a user, I want to log in securely so that I can access Coeus. | Valid credentials create a secure session cookie, invalid credentials return a generic error, auth event is audited. |
-| AUTH-002 | User | As a user, I want to log out so that my session is ended. | Logout invalidates the server-side session and redirects to login. |
-| AUTH-003 | User | As a user, I want expired sessions to be handled cleanly so that I know why I must log in again. | Expired session returns 401 and frontend shows session expired page. |
-| AUTH-004 | Administrator | As an administrator, I want to create users so that people can access the platform. | Admin can create users with one or more roles, clearance level, and starting ACGs. |
-| AUTH-005 | Administrator | As an administrator, I want to disable users so that leavers or blocked users cannot access the system. | Disabled users cannot log in and active sessions are revoked. |
-| AUTH-006 | Administrator | As an administrator, I want to assign roles so that users receive the correct views and permissions. | Role changes are audited and effective after refresh. |
-| AUTH-007 | Security reviewer | As a security reviewer, I want RBAC enforced in the backend so that frontend bypasses do not grant access. | Direct API calls without permission return 403. |
-| AUTH-008 | User | As a user, I want errors to avoid leaking account validity so that login cannot be enumerated. | Failed username and failed password produce the same response. |
-| AUTH-009 | Administrator | As an administrator, I want login failures rate-limited so that brute-force attacks are slowed. | Repeated failures trigger lockout or cooldown and audit events. |
-| AUTH-010 | User | As a user, I want theme preference saved so that my preferred display mode persists. | Dark is default, light toggle persists locally and later in profile. |
+| ID       | Actor             | User story                                                                                                 | Acceptance criteria                                                                                                  |
+| -------- | ----------------- | ---------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| AUTH-001 | User              | As a user, I want to log in securely so that I can access Coeus.                                           | Valid credentials create a secure session cookie, invalid credentials return a generic error, auth event is audited. |
+| AUTH-002 | User              | As a user, I want to log out so that my session is ended.                                                  | Logout invalidates the server-side session and redirects to login.                                                   |
+| AUTH-003 | User              | As a user, I want expired sessions to be handled cleanly so that I know why I must log in again.           | Expired session returns 401 and frontend shows session expired page.                                                 |
+| AUTH-004 | Administrator     | As an administrator, I want to create users so that people can access the platform.                        | Admin can create users with one or more roles, clearance level, and starting ACGs.                                   |
+| AUTH-005 | Administrator     | As an administrator, I want to disable users so that leavers or blocked users cannot access the system.    | Disabled users cannot log in and active sessions are revoked.                                                        |
+| AUTH-006 | Administrator     | As an administrator, I want to assign roles so that users receive the correct views and permissions.       | Role changes are audited and effective after refresh.                                                                |
+| AUTH-007 | Security reviewer | As a security reviewer, I want RBAC enforced in the backend so that frontend bypasses do not grant access. | Direct API calls without permission return 403.                                                                      |
+| AUTH-008 | User              | As a user, I want errors to avoid leaking account validity so that login cannot be enumerated.             | Failed username and failed password produce the same response.                                                       |
+| AUTH-009 | Administrator     | As an administrator, I want login failures rate-limited so that brute-force attacks are slowed.            | Repeated failures trigger lockout or cooldown and audit events.                                                      |
+| AUTH-010 | User              | As a user, I want theme preference saved so that my preferred display mode persists.                       | Dark is default, light toggle persists locally and later in profile.                                                 |
 
 ### 12.2 Access Control Groups and product access
 
-| ID | Actor | User story | Acceptance criteria |
-|---|---|---|---|
-| ACG-001 | Administrator | As an administrator, I want to create ACGs so that product access can be controlled. | ACG has name, description, owner, status, and audit history. |
-| ACG-002 | Administrator | As an administrator, I want to add users to ACGs so that they can see permitted products. | User membership is effective immediately and audited. |
-| ACG-003 | Administrator | As an administrator, I want to remove users from ACGs so that access can be withdrawn. | Removed users lose product access on next request. |
-| ACG-004 | Product owner | As a product owner, I want to attach ACGs to products so that only permitted users can see them. | Product requires at least one ACG before publication. |
-| ACG-005 | User | As a user, I want search results filtered by my ACGs so that I only see products I am allowed to access. | Unauthorised products do not appear in search results or counts. |
-| ACG-006 | Administrator | As an administrator, I want to see why a product is or is not visible to a user so that access issues can be resolved. | Access diagnostic page explains RBAC, ACG, clearance, caveat, and product status outcomes. |
-| ACG-009 | Administrator | As an administrator, I want ACG changes to be auditable so that access decisions are traceable. | Every membership and product ACG change creates immutable audit entries. |
-| ACG-010 | Security reviewer | As a security reviewer, I want object-level tests so that IDOR issues are caught. | Tests prove users cannot fetch unauthorised products, assets or tickets by ID. |
+| ID      | Actor             | User story                                                                                                             | Acceptance criteria                                                                        |
+| ------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| ACG-001 | Administrator     | As an administrator, I want to create ACGs so that product access can be controlled.                                   | ACG has name, description, owner, status, and audit history.                               |
+| ACG-002 | Administrator     | As an administrator, I want to add users to ACGs so that they can see permitted products.                              | User membership is effective immediately and audited.                                      |
+| ACG-003 | Administrator     | As an administrator, I want to remove users from ACGs so that access can be withdrawn.                                 | Removed users lose product access on next request.                                         |
+| ACG-004 | Product owner     | As a product owner, I want to attach ACGs to products so that only permitted users can see them.                       | Product requires at least one ACG before publication.                                      |
+| ACG-005 | User              | As a user, I want search results filtered by my ACGs so that I only see products I am allowed to access.               | Unauthorised products do not appear in search results or counts.                           |
+| ACG-006 | Administrator     | As an administrator, I want to see why a product is or is not visible to a user so that access issues can be resolved. | Access diagnostic page explains RBAC, ACG, clearance, caveat, and product status outcomes. |
+| ACG-009 | Administrator     | As an administrator, I want ACG changes to be auditable so that access decisions are traceable.                        | Every membership and product ACG change creates immutable audit entries.                   |
+| ACG-010 | Security reviewer | As a security reviewer, I want object-level tests so that IDOR issues are caught.                                      | Tests prove users cannot fetch unauthorised products, assets or tickets by ID.             |
 
 ### 12.3 Chatbot intake and ticket creation
 
-| ID | Actor | User story | Acceptance criteria |
-|---|---|---|---|
-| CHAT-001 | User | As a user, I want to describe my intelligence requirement in natural language so that I do not need to fill a long form first. | Chat accepts free text and starts a `DRAFT_INTAKE` ticket. |
-| CHAT-002 | User | As a user, I want Coeus to ask follow-up questions so that the requirement is complete enough for analysts. | Missing required fields produce targeted questions. |
-| CHAT-003 | User | As a user, I want to see extracted requirement details so that I can correct them. | Extracted fields are shown in an editable panel. |
-| CHAT-004 | User | As a user, I want to submit the requirement only when enough information has been collected. | Submit button stays disabled until minimum field completeness is met. |
-| CHAT-005 | User | As a user, I want to attach supporting material metadata so that the team understands what I already have. | MVP supports attachment metadata placeholders and later real upload. |
-| CHAT-006 | User | As a user, I want to add information after submission so that new context reaches the right team. | Additional information is added to ticket timeline and routed by orchestration. |
-| CHAT-007 | Orchestration Agent | As the orchestration agent, I want structured intake output so that downstream services receive predictable data. | Pydantic model validation blocks malformed agent output. |
-| CHAT-008 | Manager | As a manager, I want to see original chat context so that I understand user intent. | Authorised managers see chat transcript, extracted fields and edits. |
-| CHAT-009 | Security reviewer | As a security reviewer, I want prompt injection regression tests so that malicious user text cannot alter system rules. | Tests cover attempts to bypass RBAC, reveal hidden prompts, and fabricate products. |
+| ID       | Actor               | User story                                                                                                                     | Acceptance criteria                                                                 |
+| -------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| CHAT-001 | User                | As a user, I want to describe my intelligence requirement in natural language so that I do not need to fill a long form first. | Chat accepts free text and starts a `DRAFT_INTAKE` ticket.                          |
+| CHAT-002 | User                | As a user, I want Coeus to ask follow-up questions so that the requirement is complete enough for analysts.                    | Missing required fields produce targeted questions.                                 |
+| CHAT-003 | User                | As a user, I want to see extracted requirement details so that I can correct them.                                             | Extracted fields are shown in an editable panel.                                    |
+| CHAT-004 | User                | As a user, I want to submit the requirement only when enough information has been collected.                                   | Submit button stays disabled until minimum field completeness is met.               |
+| CHAT-005 | User                | As a user, I want to attach supporting material metadata so that the team understands what I already have.                     | MVP supports attachment metadata placeholders and later real upload.                |
+| CHAT-006 | User                | As a user, I want to add information after submission so that new context reaches the right team.                              | Additional information is added to ticket timeline and routed by orchestration.     |
+| CHAT-007 | Orchestration Agent | As the orchestration agent, I want structured intake output so that downstream services receive predictable data.              | Pydantic model validation blocks malformed agent output.                            |
+| CHAT-008 | Manager             | As a manager, I want to see original chat context so that I understand user intent.                                            | Authorised managers see chat transcript, extracted fields and edits.                |
+| CHAT-009 | Security reviewer   | As a security reviewer, I want prompt injection regression tests so that malicious user text cannot alter system rules.        | Tests cover attempts to bypass RBAC, reveal hidden prompts, and fabricate products. |
 
 ### 12.4 RFI search and product offer
 
-| ID | Actor | User story | Acceptance criteria |
-|---|---|---|---|
-| RFI-001 | RFI Search Agent | As the search agent, I want to search existing products so that repeated work is avoided. | Agent searches permitted Intelligence Store products using hybrid search. |
-| RFI-002 | User | As a user, I want to be offered matching products so that I can close the request quickly if the answer already exists. | Matched products appear with summary, reason, date, product type and confidence. |
-| RFI-003 | User | As a user, I want only products I am allowed to see. | Offer list is ACG, clearance, caveat and releasability filtered. |
-| RFI-004 | User | As a user, I want to accept an existing product so that the ticket can close. | Accepting creates dissemination record and closes ticket as existing product accepted. |
-| RFI-005 | User | As a user, I want to reject an existing product with a reason so that the team knows what is missing. | Rejection reason is captured and routed to RFA and CM checks. |
-| RFI-006 | Manager | As a manager, I want to know why search failed so that we can improve tags and products. | No-match outcome records query, filters and safe diagnostic reason. |
-| RFI-007 | Administrator | As an administrator, I want search metrics so that product reuse can be measured. | Dashboard includes hit rate and existing product acceptance rate. |
-| RFI-008 | Security reviewer | As a security reviewer, I want no leakage in search counts so that unauthorised users cannot infer product existence. | Counts and facets are calculated only after access filtering. |
+| ID      | Actor             | User story                                                                                                              | Acceptance criteria                                                                    |
+| ------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| RFI-001 | RFI Search Agent  | As the search agent, I want to search existing products so that repeated work is avoided.                               | Agent searches permitted Intelligence Store products using hybrid search.              |
+| RFI-002 | User              | As a user, I want to be offered matching products so that I can close the request quickly if the answer already exists. | Matched products appear with summary, reason, date, product type and confidence.       |
+| RFI-003 | User              | As a user, I want only products I am allowed to see.                                                                    | Offer list is ACG, clearance, caveat and releasability filtered.                       |
+| RFI-004 | User              | As a user, I want to accept an existing product so that the ticket can close.                                           | Accepting creates dissemination record and closes ticket as existing product accepted. |
+| RFI-005 | User              | As a user, I want to reject an existing product with a reason so that the team knows what is missing.                   | Rejection reason is captured and routed to RFA and CM checks.                          |
+| RFI-006 | Manager           | As a manager, I want to know why search failed so that we can improve tags and products.                                | No-match outcome records query, filters and safe diagnostic reason.                    |
+| RFI-007 | Administrator     | As an administrator, I want search metrics so that product reuse can be measured.                                       | Dashboard includes hit rate and existing product acceptance rate.                      |
+| RFI-008 | Security reviewer | As a security reviewer, I want no leakage in search counts so that unauthorised users cannot infer product existence.   | Counts and facets are calculated only after access filtering.                          |
 
 ### 12.5 Intelligence Store product management
 
-| ID | Actor | User story | Acceptance criteria |
-|---|---|---|---|
-| STORE-001 | Administrator | As an administrator, I want to add an existing product so that the store can be populated. | Admin can upload product metadata and one or more assets. |
-| STORE-002 | RFA Team Member | As an RFA team member, I want to add existing RFA products so that future RFIs can reuse them. | Role can create products only within allowed teams and ACGs. |
-| STORE-003 | Collection Team Member | As a collection team member, I want to add collection products so that collection outputs become discoverable. | Role can create products only within allowed collection ACGs. |
-| STORE-004 | Product creator | As a product creator, I want to tag products with rich metadata so that they are searchable. | Required metadata fields must be completed before publication. |
-| STORE-005 | Product creator | As a product creator, I want to attach ACGs so that product access is controlled. | Product cannot be published with zero ACGs. |
-| STORE-006 | Product creator | As a product creator, I want metadata suggestions so that tagging is faster. | Metadata agent suggests tags but human confirms before save. |
-| STORE-007 | User | As a user, I want to search permitted products so that I can self-serve knowledge. | User sees only permitted products and safe previews. |
-| STORE-008 | User | As a user, I want to filter products by type, date, region and tag so that I can find relevant products quickly. | Search filters work and update result counts after access filtering. |
-| STORE-009 | Analyst | As an analyst, I want to link store products to my task so that evidence and context are traceable. | Analyst can attach permitted products to task notes. |
-| STORE-010 | QC Manager | As a QC manager, I want approved products automatically stored so that finished outputs are reusable. | QC approval triggers product creation, asset storage, embeddings and indexing. |
-| STORE-011 | Product owner | As a product owner, I want to supersede old products so that users find the latest version. | Product can link to replacement and search can prioritise latest. |
-| STORE-012 | Product owner | As a product owner, I want to archive products so that outdated products are not offered by default. | Archived products are hidden from default search but visible to authorised admins. |
-| STORE-013 | User | As a user, I want to preview product metadata before opening an asset so that I can decide whether it is relevant. | Product detail shows summary, tags, time, region, type and access caveats. |
-| STORE-014 | User | As a user, I want to download permitted assets so that I can use the product. | Signed or controlled download succeeds only if access check passes. |
-| STORE-015 | Security reviewer | As a security reviewer, I want asset access checks so that object storage URLs do not bypass RBAC or ACGs. | Asset download endpoint checks product access before issuing URL or streaming file. |
-| STORE-016 | Data steward | As a data steward, I want file hashes recorded so that product integrity can be checked. | Each asset stores hash, size, MIME type and object key. |
-| STORE-017 | Data steward | As a data steward, I want geospatial metadata stored so that map and location search work. | GeoJSON/KML products store bounding box, centroid and geometry when available. |
-| STORE-018 | Administrator | As an administrator, I want seed scripts to create mock products so that dev and test environments are useful. | Seed creates PDF, DOCX, images, GeoJSON, KML, CSV and JSON products with ACGs. |
+| ID        | Actor                  | User story                                                                                                         | Acceptance criteria                                                                 |
+| --------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| STORE-001 | Administrator          | As an administrator, I want to add an existing product so that the store can be populated.                         | Admin can upload product metadata and one or more assets.                           |
+| STORE-002 | RFA Team Member        | As an RFA team member, I want to add existing RFA products so that future RFIs can reuse them.                     | Role can create products only within allowed teams and ACGs.                        |
+| STORE-003 | Collection Team Member | As a collection team member, I want to add collection products so that collection outputs become discoverable.     | Role can create products only within allowed collection ACGs.                       |
+| STORE-004 | Product creator        | As a product creator, I want to tag products with rich metadata so that they are searchable.                       | Required metadata fields must be completed before publication.                      |
+| STORE-005 | Product creator        | As a product creator, I want to attach ACGs so that product access is controlled.                                  | Product cannot be published with zero ACGs.                                         |
+| STORE-006 | Product creator        | As a product creator, I want metadata suggestions so that tagging is faster.                                       | Metadata agent suggests tags but human confirms before save.                        |
+| STORE-007 | User                   | As a user, I want to search permitted products so that I can self-serve knowledge.                                 | User sees only permitted products and safe previews.                                |
+| STORE-008 | User                   | As a user, I want to filter products by type, date, region and tag so that I can find relevant products quickly.   | Search filters work and update result counts after access filtering.                |
+| STORE-009 | Analyst                | As an analyst, I want to link store products to my task so that evidence and context are traceable.                | Analyst can attach permitted products to task notes.                                |
+| STORE-010 | QC Manager             | As a QC manager, I want approved products automatically stored so that finished outputs are reusable.              | QC approval triggers product creation, asset storage, embeddings and indexing.      |
+| STORE-011 | Product owner          | As a product owner, I want to supersede old products so that users find the latest version.                        | Product can link to replacement and search can prioritise latest.                   |
+| STORE-012 | Product owner          | As a product owner, I want to archive products so that outdated products are not offered by default.               | Archived products are hidden from default search but visible to authorised admins.  |
+| STORE-013 | User                   | As a user, I want to preview product metadata before opening an asset so that I can decide whether it is relevant. | Product detail shows summary, tags, time, region, type and access caveats.          |
+| STORE-014 | User                   | As a user, I want to download permitted assets so that I can use the product.                                      | Signed or controlled download succeeds only if access check passes.                 |
+| STORE-015 | Security reviewer      | As a security reviewer, I want asset access checks so that object storage URLs do not bypass RBAC or ACGs.         | Asset download endpoint checks product access before issuing URL or streaming file. |
+| STORE-016 | Data steward           | As a data steward, I want file hashes recorded so that product integrity can be checked.                           | Each asset stores hash, size, MIME type and object key.                             |
+| STORE-017 | Data steward           | As a data steward, I want geospatial metadata stored so that map and location search work.                         | GeoJSON/KML products store bounding box, centroid and geometry when available.      |
+| STORE-018 | Administrator          | As an administrator, I want seed scripts to create mock products so that dev and test environments are useful.     | Seed creates PDF, DOCX, images, GeoJSON, KML, CSV and JSON products with ACGs.      |
 
 ### 12.6 RFA and CM workflow
 
-| ID | Actor | User story | Acceptance criteria |
-|---|---|---|---|
-| ROUTE-001 | Orchestration Agent | As the orchestration agent, I want to request RFA and CM capability checks when search is insufficient. | Both checks run and store structured results. |
-| ROUTE-002 | RFA Capability Agent | As the RFA agent, I want to decide whether assessment can satisfy the request. | Output includes capability, confidence, gaps, work packages and risks. |
-| ROUTE-003 | CM Capability Agent | As the CM agent, I want to decide whether collection can satisfy the request. | Output includes route, collection needs, confidence, gaps and risks. |
-| ROUTE-004 | RFA Manager | As an RFA manager, I want to approve the RFA route so that analysts can be assigned. | Approval transitions ticket to analyst assignment. |
-| ROUTE-005 | RFA Manager | As an RFA manager, I want to reject or request clarification so that poor tasks do not reach analysts. | Rejection or clarification reason is required and audited. |
-| ROUTE-006 | Collection Manager | As a collection manager, I want to approve collection route so that collection work can begin. | Approval transitions ticket to collection-backed assignment. |
-| ROUTE-007 | Collection Manager | As a collection manager, I want fallback from RFA to CM so that unsatisfied RFAs are not dropped. | If RFA cannot satisfy and CM can, ticket routes to CM review. |
-| ROUTE-008 | Manager | As a manager, I want to override agent recommendations so that human judgement remains authoritative. | Override requires reason and creates audit event. |
-| ROUTE-009 | User | As a user, I want clarification requests shown clearly so that I can unblock the task. | User receives focused questions and ticket moves to `INFO_REQUIRED`. |
-| ROUTE-010 | Administrator | As an administrator, I want route statistics so that bottlenecks are visible. | Dashboard shows RFA acceptance, CM fallback and clarification rates. |
+| ID        | Actor                | User story                                                                                              | Acceptance criteria                                                    |
+| --------- | -------------------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| ROUTE-001 | Orchestration Agent  | As the orchestration agent, I want to request RFA and CM capability checks when search is insufficient. | Both checks run and store structured results.                          |
+| ROUTE-002 | RFA Capability Agent | As the RFA agent, I want to decide whether assessment can satisfy the request.                          | Output includes capability, confidence, gaps, work packages and risks. |
+| ROUTE-003 | CM Capability Agent  | As the CM agent, I want to decide whether collection can satisfy the request.                           | Output includes route, collection needs, confidence, gaps and risks.   |
+| ROUTE-004 | RFA Manager          | As an RFA manager, I want to approve the RFA route so that analysts can be assigned.                    | Approval transitions ticket to analyst assignment.                     |
+| ROUTE-005 | RFA Manager          | As an RFA manager, I want to reject or request clarification so that poor tasks do not reach analysts.  | Rejection or clarification reason is required and audited.             |
+| ROUTE-006 | Collection Manager   | As a collection manager, I want to approve collection route so that collection work can begin.          | Approval transitions ticket to collection-backed assignment.           |
+| ROUTE-007 | Collection Manager   | As a collection manager, I want fallback from RFA to CM so that unsatisfied RFAs are not dropped.       | If RFA cannot satisfy and CM can, ticket routes to CM review.          |
+| ROUTE-008 | Manager              | As a manager, I want to override agent recommendations so that human judgement remains authoritative.   | Override requires reason and creates audit event.                      |
+| ROUTE-009 | User                 | As a user, I want clarification requests shown clearly so that I can unblock the task.                  | User receives focused questions and ticket moves to `INFO_REQUIRED`.   |
+| ROUTE-010 | Administrator        | As an administrator, I want route statistics so that bottlenecks are visible.                           | Dashboard shows RFA acceptance, CM fallback and clarification rates.   |
 
 ### 12.7 Analyst, QC and dissemination
 
-| ID | Actor | User story | Acceptance criteria |
-|---|---|---|---|
-| WORK-001 | Manager | As a manager, I want to assign analysts so that approved tasks have owners. | Assignment creates analyst task and audit event. |
-| WORK-002 | Analyst | As an analyst, I want to see assigned tasks so that I know what to work on. | Workbench lists assigned tasks only. |
-| WORK-003 | Analyst | As an analyst, I want full ticket context so that I understand the requirement. | Analyst task view shows intake, chat summary, products and manager notes. |
-| WORK-004 | Analyst | As an analyst, I want to create notes so that my work is traceable. | Notes are timestamped, linked to task and permission checked. |
-| WORK-005 | Analyst | As an analyst, I want to link existing products from the Intelligence Store so that source material is recorded. | Only permitted products can be linked. |
-| WORK-006 | Analyst | As an analyst, I want to draft a product so that it can be reviewed. | Draft stores metadata, content and assets. |
-| WORK-007 | Analyst | As an analyst, I want to submit to QC so that release checks happen. | Submit moves ticket to `QC_REVIEW`. |
-| WORK-008 | QC Manager | As a QC manager, I want a review queue so that I can approve or reject products. | QC queue shows submitted products and required checks. |
-| WORK-009 | QC Manager | As a QC manager, I want a structured checklist so that release decisions are consistent. | Checklist completion required before approval. |
-| WORK-010 | QC Manager | As a QC manager, I want to reject with reasons so that analysts can rework the product. | Rejection creates rework state and analyst notification. |
-| WORK-011 | QC Manager | As a QC manager, I want approved products added to the Intelligence Store so that future RFIs can reuse them. | Approval triggers automatic product ingestion and indexing. |
-| WORK-012 | User | As a user, I want final products disseminated to me through the ticket so that I can retrieve the answer. | Disseminated product appears in ticket if access policy permits. |
-| WORK-013 | Security reviewer | As a security reviewer, I want analysts unable to approve their own work so that separation of duties is enforced. | Permission tests prove analyst role cannot approve or disseminate. |
+| ID       | Actor             | User story                                                                                                         | Acceptance criteria                                                       |
+| -------- | ----------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| WORK-001 | Manager           | As a manager, I want to assign analysts so that approved tasks have owners.                                        | Assignment creates analyst task and audit event.                          |
+| WORK-002 | Analyst           | As an analyst, I want to see assigned tasks so that I know what to work on.                                        | Workbench lists assigned tasks only.                                      |
+| WORK-003 | Analyst           | As an analyst, I want full ticket context so that I understand the requirement.                                    | Analyst task view shows intake, chat summary, products and manager notes. |
+| WORK-004 | Analyst           | As an analyst, I want to create notes so that my work is traceable.                                                | Notes are timestamped, linked to task and permission checked.             |
+| WORK-005 | Analyst           | As an analyst, I want to link existing products from the Intelligence Store so that source material is recorded.   | Only permitted products can be linked.                                    |
+| WORK-006 | Analyst           | As an analyst, I want to draft a product so that it can be reviewed.                                               | Draft stores metadata, content and assets.                                |
+| WORK-007 | Analyst           | As an analyst, I want to submit to QC so that release checks happen.                                               | Submit moves ticket to `QC_REVIEW`.                                       |
+| WORK-008 | QC Manager        | As a QC manager, I want a review queue so that I can approve or reject products.                                   | QC queue shows submitted products and required checks.                    |
+| WORK-009 | QC Manager        | As a QC manager, I want a structured checklist so that release decisions are consistent.                           | Checklist completion required before approval.                            |
+| WORK-010 | QC Manager        | As a QC manager, I want to reject with reasons so that analysts can rework the product.                            | Rejection creates rework state and analyst notification.                  |
+| WORK-011 | QC Manager        | As a QC manager, I want approved products added to the Intelligence Store so that future RFIs can reuse them.      | Approval triggers automatic product ingestion and indexing.               |
+| WORK-012 | User              | As a user, I want final products disseminated to me through the ticket so that I can retrieve the answer.          | Disseminated product appears in ticket if access policy permits.          |
+| WORK-013 | Security reviewer | As a security reviewer, I want analysts unable to approve their own work so that separation of duties is enforced. | Permission tests prove analyst role cannot approve or disseminate.        |
 
 ### 12.8 Feedback, analytics and trends
 
-| ID | Actor | User story | Acceptance criteria |
-|---|---|---|---|
-| FDBK-001 | User | As a user, I want to rate the product so that the team knows whether it met the requirement. | Feedback stores rating, accepted flag, free text and missing items. |
-| FDBK-002 | User | As a user, I want to request rework where allowed so that unmet needs are addressed. | Rework request routes to manager review. |
-| FDBK-003 | Manager | As a manager, I want feedback visible in dashboards so that service quality can improve. | Dashboards show acceptance, usefulness and timeliness. |
-| FDBK-004 | Trends Agent | As the trends agent, I want to detect recurring demand so that teams can plan better. | Agent produces reviewed trend summaries without changing tickets. |
-| FDBK-005 | Administrator | As an administrator, I want global statistics so that system performance is visible. | Admin dashboard shows tickets by state, stage timing and product reuse. |
-| FDBK-006 | RFA Manager | As an RFA manager, I want RFA-specific analytics so that I can manage workload. | RFA dashboard shows queue size, cycle time, analyst load and QC rejects. |
-| FDBK-007 | Collection Manager | As a collection manager, I want CM-specific analytics so that collection bottlenecks are visible. | CM dashboard shows fallback, collection route volume and stage timing. |
-| FDBK-008 | Product owner | As a product owner, I want product reuse analytics so that useful products can be maintained. | Product detail shows search appearances, offers, acceptances and feedback. |
+| ID       | Actor              | User story                                                                                        | Acceptance criteria                                                        |
+| -------- | ------------------ | ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| FDBK-001 | User               | As a user, I want to rate the product so that the team knows whether it met the requirement.      | Feedback stores rating, accepted flag, free text and missing items.        |
+| FDBK-002 | User               | As a user, I want to request rework where allowed so that unmet needs are addressed.              | Rework request routes to manager review.                                   |
+| FDBK-003 | Manager            | As a manager, I want feedback visible in dashboards so that service quality can improve.          | Dashboards show acceptance, usefulness and timeliness.                     |
+| FDBK-004 | Trends Agent       | As the trends agent, I want to detect recurring demand so that teams can plan better.             | Agent produces reviewed trend summaries without changing tickets.          |
+| FDBK-005 | Administrator      | As an administrator, I want global statistics so that system performance is visible.              | Admin dashboard shows tickets by state, stage timing and product reuse.    |
+| FDBK-006 | RFA Manager        | As an RFA manager, I want RFA-specific analytics so that I can manage workload.                   | RFA dashboard shows queue size, cycle time, analyst load and QC rejects.   |
+| FDBK-007 | Collection Manager | As a collection manager, I want CM-specific analytics so that collection bottlenecks are visible. | CM dashboard shows fallback, collection route volume and stage timing.     |
+| FDBK-008 | Product owner      | As a product owner, I want product reuse analytics so that useful products can be maintained.     | Product detail shows search appearances, offers, acceptances and feedback. |
 
 ### 12.9 Administration, audit and platform controls
 
-| ID | Actor | User story | Acceptance criteria |
-|---|---|---|---|
-| ADMIN-001 | Administrator | As an administrator, I want to manage users so that access remains accurate. | Create, edit, disable and role assignment work and are audited. |
-| ADMIN-002 | Administrator | As an administrator, I want to manage teams so that work can be assigned correctly. | Teams have members, managers and default ACGs. |
-| ADMIN-003 | Administrator | As an administrator, I want to manage system settings so that deployment-specific options are configurable. | Settings are validated and audited. |
-| ADMIN-004 | Administrator | As an administrator, I want to inspect agent runs so that agent behaviour is transparent. | Agent run log shows inputs summary, structured output, status and errors. |
-| ADMIN-005 | Administrator | As an administrator, I want to search audit logs so that investigations are possible. | Audit search supports user, action, ticket, product, ACG and date filters. |
-| ADMIN-006 | Security reviewer | As a security reviewer, I want immutable audit records so that user activity cannot be silently changed. | App has no update/delete path for audit events. |
-| ADMIN-007 | Developer | As a developer, I want CI to block weak code so that quality remains high. | Lint, typecheck, tests, coverage and security checks are required. |
-| ADMIN-008 | Developer | As a developer, I want Dependabot and vulnerability review so that dependencies stay current. | Dependency PRs run test and security workflows. |
-| ADMIN-009 | Maintainer | As a maintainer, I want branch protection so that main cannot be changed without review. | PRs, approvals and required checks are enforced. |
-| ADMIN-010 | Security reviewer | As a security reviewer, I want DAST and container scans so that deployable builds are checked. | ZAP baseline and image scans run in CI/CD. |
+| ID        | Actor             | User story                                                                                                  | Acceptance criteria                                                        |
+| --------- | ----------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| ADMIN-001 | Administrator     | As an administrator, I want to manage users so that access remains accurate.                                | Create, edit, disable and role assignment work and are audited.            |
+| ADMIN-002 | Administrator     | As an administrator, I want to manage teams so that work can be assigned correctly.                         | Teams have members, managers and default ACGs.                             |
+| ADMIN-003 | Administrator     | As an administrator, I want to manage system settings so that deployment-specific options are configurable. | Settings are validated and audited.                                        |
+| ADMIN-004 | Administrator     | As an administrator, I want to inspect agent runs so that agent behaviour is transparent.                   | Agent run log shows inputs summary, structured output, status and errors.  |
+| ADMIN-005 | Administrator     | As an administrator, I want to search audit logs so that investigations are possible.                       | Audit search supports user, action, ticket, product, ACG and date filters. |
+| ADMIN-006 | Security reviewer | As a security reviewer, I want immutable audit records so that user activity cannot be silently changed.    | App has no update/delete path for audit events.                            |
+| ADMIN-007 | Developer         | As a developer, I want CI to block weak code so that quality remains high.                                  | Lint, typecheck, tests, coverage and security checks are required.         |
+| ADMIN-008 | Developer         | As a developer, I want Dependabot and vulnerability review so that dependencies stay current.               | Dependency PRs run test and security workflows.                            |
+| ADMIN-009 | Maintainer        | As a maintainer, I want branch protection so that main cannot be changed without review.                    | PRs, approvals and required checks are enforced.                           |
+| ADMIN-010 | Security reviewer | As a security reviewer, I want DAST and container scans so that deployable builds are checked.              | ZAP baseline and image scans run in CI/CD.                                 |
 
 ## 13. Frontend implementation plan
 
@@ -2130,17 +2141,17 @@ feedback_received
 
 Keep cloud dependencies behind interfaces.
 
-| GCP service | Air-gapped replacement |
-|---|---|
-| Cloud Run | Kubernetes, Docker Compose, or private container platform. |
-| Cloud SQL PostgreSQL | Self-hosted PostgreSQL. |
-| Cloud Storage | MinIO or filesystem-backed object store. |
-| Secret Manager | Vault, SOPS, sealed secrets, or local secret manager. |
-| Pub/Sub | NATS, RabbitMQ, Redis streams, or PostgreSQL-backed job queue. |
-| Artifact Registry | Private container registry. |
-| Gemma provider | Local vLLM serving Gemma weights. |
-| Cloud Logging | OpenSearch, Loki or local log pipeline. |
-| Cloud KMS | HSM, Vault transit or local KMS equivalent. |
+| GCP service          | Air-gapped replacement                                         |
+| -------------------- | -------------------------------------------------------------- |
+| Cloud Run            | Kubernetes, Docker Compose, or private container platform.     |
+| Cloud SQL PostgreSQL | Self-hosted PostgreSQL.                                        |
+| Cloud Storage        | MinIO or filesystem-backed object store.                       |
+| Secret Manager       | Vault, SOPS, sealed secrets, or local secret manager.          |
+| Pub/Sub              | NATS, RabbitMQ, Redis streams, or PostgreSQL-backed job queue. |
+| Artifact Registry    | Private container registry.                                    |
+| Gemma provider       | Local vLLM serving Gemma weights.                              |
+| Cloud Logging        | OpenSearch, Loki or local log pipeline.                        |
+| Cloud KMS            | HSM, Vault transit or local KMS equivalent.                    |
 
 Acceptance criteria:
 

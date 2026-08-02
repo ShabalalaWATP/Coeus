@@ -346,3 +346,18 @@ date order. They are historical evidence, not current operating instructions.
 - Added an owner-only, audited reject-all feedback flow with refined search,
   JIOC continuation and explicit successfully fulfilled or unfulfilled closure.
 - JIOC retains sole authority for RFA, CM, clarification and human review.
+
+## 2026-08-02 Documentation and screenshot refresh
+
+- Re-captured every documented workspace from the current local application at
+  the 1440 x 1000 desktop acceptance viewport, added JIOC oversight and Store
+  product-detail coverage, and exposed a current screenshot gallery in the root
+  README.
+- Added a screenshot inventory with route, role and purpose metadata, plus a
+  repeatable safety and visual-review policy for future interface changes.
+- Corrected current guides to the 261-product fresh seed, 58 ACGs, persistent
+  Synthetic exercise indicator, personal Store folders, collapsed product
+  metadata, RFI return links and automatic post-migration index preparation.
+- Exempted Markdown documentation from the 350-line source and configuration
+  limit so reader structure, not an arbitrary code-size gate, determines how
+  documentation is organised.

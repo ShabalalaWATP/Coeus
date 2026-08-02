@@ -2,8 +2,8 @@
 
 This atlas expands the three concise architecture guides into smaller,
 maintainable views for users, product owners, developers, security reviewers and
-operators. It describes the implementation verified on 23 July 2026 against
-`e44b66b6`, except where a node is explicitly marked **OPTIONAL**, **LIMITATION**
+operators. It describes the implementation verified on 2 August 2026 against
+`747f19b4`, except where a node is explicitly marked **OPTIONAL**, **LIMITATION**
 or **FUTURE GATED**.
 
 Start with [Architecture](../ARCHITECTURE.md) for the short overview. Use this
@@ -12,13 +12,13 @@ boundary or operational control in depth.
 
 ## Reading paths
 
-| Audience                      | Recommended path                                                                                                  |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Decision-maker                | [User and workflow](USER_AND_WORKFLOW.md), then [deployment and operations](DEPLOYMENT_AND_OPERATIONS.md)         |
+| Audience                      | Recommended path                                                                                                                                                   |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Decision-maker                | [User and workflow](USER_AND_WORKFLOW.md), then [deployment and operations](DEPLOYMENT_AND_OPERATIONS.md)                                                          |
 | Product or service owner      | [User and workflow](USER_AND_WORKFLOW.md), [JIOC operating model](JIOC_OPERATING_MODEL.md), then the canonical [workflow state model](../ARCHITECTURE_WORKFLOW.md) |
-| Frontend or backend developer | [Application components](APPLICATION_COMPONENTS.md), then [data, search and AI](DATA_SEARCH_AND_AI.md)            |
-| Security reviewer             | [Security and trust](SECURITY_AND_TRUST.md), then [data, search and AI](DATA_SEARCH_AND_AI.md)                    |
-| Operator                      | [Deployment and operations](DEPLOYMENT_AND_OPERATIONS.md), then the linked runbooks                               |
+| Frontend or backend developer | [Application components](APPLICATION_COMPONENTS.md), then [data, search and AI](DATA_SEARCH_AND_AI.md)                                                             |
+| Security reviewer             | [Security and trust](SECURITY_AND_TRUST.md), then [data, search and AI](DATA_SEARCH_AND_AI.md)                                                                     |
+| Operator                      | [Deployment and operations](DEPLOYMENT_AND_OPERATIONS.md), then the linked runbooks                                                                                |
 
 ## View map
 

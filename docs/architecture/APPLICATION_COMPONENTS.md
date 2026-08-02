@@ -1,7 +1,7 @@
 # Application Component Views
 
-Status: **implemented** unless marked otherwise. Verified against `e44b66b6` on
-23 July 2026.
+Status: **implemented** unless marked otherwise. Verified against `747f19b4` on
+2 August 2026.
 
 This page drills from browser and service containers into frontend and backend
 components, then follows one authenticated mutation through the final authority
@@ -59,9 +59,9 @@ flowchart TB
     NAV["route-access.ts<br/>visible navigation"]
 
     subgraph features["Role feature boundaries"]
-        REQ["Requests and intake"]
+        REQ["Requests, intake and<br/>rejected-result follow-up"]
         ACCESS["Access Groups"]
-        STORE["Intelligence Store"]
+        STORE["Intelligence Store<br/>search, detail and personal library"]
         ROUTING["JIOC, RFA and CM queues"]
         ANALYST["Analyst workbench"]
         QC["QC queue"]
@@ -103,8 +103,8 @@ flowchart TB
 
     subgraph services["Business and authority services"]
         IDS["identity and ACG services"]
-        WFS["ticket, routing and outcome services"]
-        PROD["assignment, analyst, QC and Store services"]
+        WFS["ticket, search follow-up,<br/>routing and outcome services"]
+        PROD["assignment, analyst, QC,<br/>Store and personal-library services"]
         SEARCH["browse, grounded search and indexing"]
         OPS["audit, notifications, outbox and analytics"]
     end

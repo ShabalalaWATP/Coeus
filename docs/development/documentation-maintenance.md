@@ -62,6 +62,25 @@ unresolved baseline occurrence or new reportable finding.
   discoverable.
 - Keep local links relative, include heading fragments where they improve
   navigation, and avoid code-formatted paths when a clickable link is possible.
+- Markdown documentation is exempt from the 350-line source and configuration
+  file limit. Organise or split a document only when that improves navigation,
+  ownership or comprehension, never to meet an arbitrary line count.
+
+## Screenshot maintenance
+
+- Capture the shipped local interface, not a mock-up, at the desktop acceptance
+  viewport of 1440 x 1000 unless a screenshot explicitly demonstrates a
+  responsive breakpoint.
+- Use only seeded synthetic accounts and content. Never capture real
+  intelligence, private identifiers, credentials, keys, internal URLs or
+  unredacted operational data.
+- Refresh the affected images whenever navigation, page hierarchy, prominent
+  labels, primary workflows or branding changes materially.
+- Check every replacement visually for a desktop aspect ratio, readable text,
+  complete primary controls, accidental dialogs, stale banners and duplicate or
+  clipped layouts.
+- Update the [screenshot inventory](../images/README.md) with the capture date,
+  route, role and purpose. The inventory and User Guide must agree.
 
 ## Audit checklist
 
@@ -85,6 +104,9 @@ requires Atlas diagrams to use the stable allowlisted types plus `accTitle` and
 versions, so visual review remains part of pull-request review. External links
 still need periodic review because CI deliberately does not make network
 availability a documentation gate.
+
+`line-limit` checks hand-written source and configuration files. It deliberately
+does not check Markdown documentation.
 
 For a deep audit, also compare current guides with route policy, settings,
 migrations, Compose, workflow definitions and the latest immutable verification

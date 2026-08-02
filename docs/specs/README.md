@@ -25,6 +25,7 @@ Current cross-cutting contracts include [documentation accuracy](documentation-a
 - [Customer request archive and closure feedback](customer-request-archive-and-closure-feedback.md)
 - [Customer experience and analyst context](customer-experience-and-analyst-context.md)
 - [Customer search and routing orchestration](customer-search-routing-orchestration.md)
+- [Customer search recovery and outcomes](customer-search-recovery-and-outcomes.md)
 - [Documentation and deployment accuracy](documentation-and-deployment-accuracy.md)
 - [External product ingestion and customer acceptance](external-product-ingestion-and-customer-acceptance.md)
 - [Generic analyst seed personas](generic-analyst-seed-personas.md)
@@ -76,3 +77,4 @@ Current cross-cutting contracts include [documentation accuracy](documentation-a
 - [Themed ACGs, request journey and agentic UX](themed-acgs-journey-agentic-ux.md)
 - [Ticket collaborators](ticket-collaborators.md)
 - [Workflow integrity, area management and JIOC oversight](workflow-integrity-area-oversight-remediation.md)
+- [27 July workflow review remediation](workflow-review-remediation-2026-07-27.md)
