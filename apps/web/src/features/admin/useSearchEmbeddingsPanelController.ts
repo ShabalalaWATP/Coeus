@@ -121,7 +121,7 @@ function configurationKey(provider: string, model: string) {
   return `${provider}:${model}`;
 }
 
-export function searchStatusRefreshInterval(status?: string) {
+function searchStatusRefreshInterval(status?: string) {
   return status === "stale" || status === "indexing" ? 2_000 : false;
 }
 

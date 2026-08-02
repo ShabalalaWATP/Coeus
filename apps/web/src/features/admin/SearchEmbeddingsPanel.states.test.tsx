@@ -5,7 +5,6 @@ import { resetQueryClientForTests } from "../../app/query-client";
 import type { SearchEmbeddingState } from "../../lib/api-client/admin";
 import { renderWithProviders } from "../../test/test-utils";
 import { SearchEmbeddingsPanel } from "./SearchEmbeddingsPanel";
-import { searchStatusRefreshInterval } from "./useSearchEmbeddingsPanelController";
 
 const state: SearchEmbeddingState = {
   provider: "mock",
@@ -57,11 +56,18 @@ test("explains an automatic Gemini update and separates pending quality checks",
   expect(screen.getByText("Last updated").parentElement).not.toHaveTextContent("Never");
 });
 
-test("keeps checking while an automatic update is queued or running", () => {
-  expect(searchStatusRefreshInterval("stale")).toBe(2_000);
-  expect(searchStatusRefreshInterval("indexing")).toBe(2_000);
-  expect(searchStatusRefreshInterval("ready")).toBe(false);
-  expect(searchStatusRefreshInterval("failed")).toBe(false);
+test("keeps checking while an automatic update is queued", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(ok({ ...state, indexStatus: "stale" }))
+    .mockResolvedValue(ok(state));
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<SearchEmbeddingsPanel csrfToken="csrf" />, "/admin/overview");
+
+  expect(await screen.findByText("Preparing local search")).toBeVisible();
+  expect(await screen.findByText("Local search is ready", {}, { timeout: 3_500 })).toBeVisible();
+  expect(fetchMock).toHaveBeenCalledTimes(2);
 });
 
 test("reports transport failure for the selected candidate test", async () => {
