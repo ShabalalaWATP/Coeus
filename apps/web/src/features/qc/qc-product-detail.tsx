@@ -227,6 +227,7 @@ function ProductPreview({ product }: { product: QcProduct }) {
         <>
           <ControlledDocumentViewer
             kind={asset.previewKind}
+            mimeType={asset.mimeType}
             title={`${draft.title} QC preview`}
             url={workflowProductPreviewUrl(product.ticketId, draft.id, asset.id)}
           />

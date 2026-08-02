@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { ProductAssets, ProductDenied, ProductMetadata } from "./ProductDetailSections";
 import { useProductDetailModel } from "./useProductDetailModel";
+import { SaveProductControl } from "./SaveProductControl";
 import { ErrorState, LoadingState } from "../../components/ui/PageState";
 
 export default function ProductDetailPage() {
@@ -38,21 +39,25 @@ export default function ProductDetailPage() {
           <h1 id="product-title">{product.title}</h1>
           <p>{product.summary}</p>
         </div>
-        <Link className="store-action store-action--secondary" to={model.back.path}>
-          <ArrowLeft aria-hidden="true" size={18} />
-          {model.back.label}
-        </Link>
+        <div className="product-hero-actions">
+          <SaveProductControl productId={product.id} />
+          <Link className="store-action store-action--secondary" to={model.back.path}>
+            <ArrowLeft aria-hidden="true" size={18} />
+            {model.back.label}
+          </Link>
+        </div>
       </section>
-      <section className="store-detail-grid">
-        <ProductMetadata product={product} />
+      <section className="store-detail-flow">
         <ProductAssets
           accessGrant={model.access.data}
           accessStatus={model.access.status}
           assetId={model.assetId}
           canRequestAccess={model.canRequestAssetAccess}
           from={model.from}
+          navigation={model.navigation}
           product={product}
         />
+        <ProductMetadata product={product} />
       </section>
     </div>
   );

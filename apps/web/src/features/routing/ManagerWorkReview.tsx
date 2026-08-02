@@ -26,6 +26,7 @@ export function ManagerWorkReview({ task }: ManagerWorkReviewProps) {
           {primaryAsset?.previewAvailable ? (
             <ControlledDocumentViewer
               kind={primaryAsset.previewKind}
+              mimeType={primaryAsset.mimeType}
               title={`${latestDraft.title} manager preview`}
               url={workflowProductPreviewUrl(task.ticketId, latestDraft.id, primaryAsset.id)}
             />

@@ -209,6 +209,10 @@ function OfferCard({
             {offer.offerableToUser ? (
               <Link
                 className="offer-card__title"
+                state={{
+                  from: `/app/requests/${encodeURIComponent(ticket.id)}`,
+                  origin: "rfi",
+                }}
                 to={`/store/products/${encodeURIComponent(offer.productId)}`}
               >
                 {offer.title}

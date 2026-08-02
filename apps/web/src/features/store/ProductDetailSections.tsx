@@ -5,69 +5,83 @@ import { Link } from "react-router-dom";
 import { AssetGrant } from "./AssetGrant";
 import { StoreAssetPreview } from "./StoreAssetPreview";
 import { productTypeLabel, visibleProductTags } from "./store-options";
+import type { StoreNavigationState } from "./store-navigation";
 import type { AssetAccessGrant, StoreProduct } from "../../lib/api-client/store";
 
 export function ProductMetadata({ product }: { product: StoreProduct }) {
   return (
-    <article className="surface product-main" aria-labelledby="product-metadata-title">
-      <h2 id="product-metadata-title">Metadata</h2>
-      <p>{product.description}</p>
-      <dl className="detail-list detail-list--wide">
-        <div>
-          <dt>Type</dt>
-          <dd>{productTypeLabel(product.productType)}</dd>
+    <details className="surface product-metadata-disclosure">
+      <summary>
+        <span>
+          <strong>Metadata and handling</strong>
+          <small>Product details, provenance and semantic labels</small>
+        </span>
+        <small className="product-metadata-disclosure__context">
+          {productTypeLabel(product.productType)} · Class {product.classificationLevel} ·{" "}
+          {product.areaOrRegion}
+        </small>
+      </summary>
+      <div className="product-metadata-disclosure__body">
+        <p>{product.description}</p>
+        <dl className="detail-list detail-list--wide">
+          <div>
+            <dt>Type</dt>
+            <dd>{productTypeLabel(product.productType)}</dd>
+          </div>
+          <div>
+            <dt>Owner</dt>
+            <dd>{product.ownerTeam}</dd>
+          </div>
+          <div>
+            <dt>Region</dt>
+            <dd>{product.areaOrRegion}</dd>
+          </div>
+          <div>
+            <dt>Classification</dt>
+            <dd>{product.classificationLevel}</dd>
+          </div>
+          <div>
+            <dt>Coverage</dt>
+            <dd>
+              {product.timePeriodStart
+                ? `${product.timePeriodStart} to ${product.timePeriodEnd ?? "ongoing"}`
+                : "Not recorded"}
+            </dd>
+          </div>
+          <div>
+            <dt>Source</dt>
+            <dd>{product.sourceType.replaceAll("_", " ")}</dd>
+          </div>
+          <div>
+            <dt>Releasability</dt>
+            <dd>{product.releasability.join(", ") || "Not recorded"}</dd>
+          </div>
+          <div>
+            <dt>Caveats</dt>
+            <dd>{product.handlingCaveats.join(", ") || "None"}</dd>
+          </div>
+          <div>
+            <dt>Status</dt>
+            <dd>{product.status}</dd>
+          </div>
+        </dl>
+        <div className="store-facets">
+          {product.geojsonRef !== null ? (
+            <span className="store-chip">Geospatial layer</span>
+          ) : null}
+          {visibleProductTags(product.tags).map((tag) => (
+            <span className="store-chip" key={tag}>
+              {tag}
+            </span>
+          ))}
+          {product.semanticLabels.map((label) => (
+            <span className="store-chip store-chip--semantic" key={label}>
+              {label}
+            </span>
+          ))}
         </div>
-        <div>
-          <dt>Owner</dt>
-          <dd>{product.ownerTeam}</dd>
-        </div>
-        <div>
-          <dt>Region</dt>
-          <dd>{product.areaOrRegion}</dd>
-        </div>
-        <div>
-          <dt>Classification</dt>
-          <dd>{product.classificationLevel}</dd>
-        </div>
-        <div>
-          <dt>Coverage</dt>
-          <dd>
-            {product.timePeriodStart
-              ? `${product.timePeriodStart} to ${product.timePeriodEnd ?? "ongoing"}`
-              : "Not recorded"}
-          </dd>
-        </div>
-        <div>
-          <dt>Source</dt>
-          <dd>{product.sourceType.replaceAll("_", " ")}</dd>
-        </div>
-        <div>
-          <dt>Releasability</dt>
-          <dd>{product.releasability.join(", ") || "Not recorded"}</dd>
-        </div>
-        <div>
-          <dt>Caveats</dt>
-          <dd>{product.handlingCaveats.join(", ") || "None"}</dd>
-        </div>
-        <div>
-          <dt>Status</dt>
-          <dd>{product.status}</dd>
-        </div>
-      </dl>
-      <div className="store-facets">
-        {product.geojsonRef !== null ? <span className="store-chip">Geospatial layer</span> : null}
-        {visibleProductTags(product.tags).map((tag) => (
-          <span className="store-chip" key={tag}>
-            {tag}
-          </span>
-        ))}
-        {product.semanticLabels.map((label) => (
-          <span className="store-chip store-chip--semantic" key={label}>
-            {label}
-          </span>
-        ))}
       </div>
-    </article>
+    </details>
   );
 }
 
@@ -77,6 +91,7 @@ export function ProductAssets({
   assetId,
   canRequestAccess,
   from,
+  navigation,
   product,
 }: {
   accessGrant?: AssetAccessGrant;
@@ -84,6 +99,7 @@ export function ProductAssets({
   assetId?: string;
   canRequestAccess: boolean;
   from?: string;
+  navigation?: StoreNavigationState;
   product: StoreProduct;
 }) {
   const selectedAsset = product.assets.find((asset) => asset.id === assetId);
@@ -114,7 +130,7 @@ export function ProductAssets({
             <Link
               className="stack-row store-asset-row"
               key={asset.id}
-              state={{ from }}
+              state={navigation ?? { from }}
               to={`/store/products/${encodeURIComponent(product.id)}/assets/${encodeURIComponent(asset.id)}`}
             >
               {row}

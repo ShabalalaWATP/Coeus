@@ -4595,6 +4595,75 @@
         "title": "PasswordChangeRequest",
         "type": "object"
       },
+      "PersonalFolderCreateRequest": {
+        "properties": {
+          "name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "PersonalFolderCreateRequest",
+        "type": "object"
+      },
+      "PersonalFolderResponse": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "createdAt"
+        ],
+        "title": "PersonalFolderResponse",
+        "type": "object"
+      },
+      "PersonalLibraryResponse": {
+        "properties": {
+          "folders": {
+            "items": {
+              "$ref": "#/components/schemas/PersonalFolderResponse"
+            },
+            "title": "Folders",
+            "type": "array"
+          },
+          "savedProducts": {
+            "items": {
+              "$ref": "#/components/schemas/SavedProductResponse"
+            },
+            "title": "Savedproducts",
+            "type": "array"
+          },
+          "unavailableCount": {
+            "title": "Unavailablecount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "folders",
+          "savedProducts",
+          "unavailableCount"
+        ],
+        "title": "PersonalLibraryResponse",
+        "type": "object"
+      },
       "PriorityAssessmentResponse": {
         "properties": {
           "reasons": {
@@ -6706,6 +6775,55 @@
           "reanalysisContext"
         ],
         "title": "RoutingTicketResponse",
+        "type": "object"
+      },
+      "SavedProductRequest": {
+        "properties": {
+          "folderId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Folderid"
+          }
+        },
+        "title": "SavedProductRequest",
+        "type": "object"
+      },
+      "SavedProductResponse": {
+        "properties": {
+          "folderId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Folderid"
+          },
+          "product": {
+            "$ref": "#/components/schemas/StoreProductResponse"
+          },
+          "savedAt": {
+            "format": "date-time",
+            "title": "Savedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "product",
+          "folderId",
+          "savedAt"
+        ],
+        "title": "SavedProductResponse",
         "type": "object"
       },
       "SearchAnalyticsResponse": {
@@ -14392,6 +14510,257 @@
         "summary": "Retry Active Work Search",
         "tags": [
           "similar requests"
+        ]
+      }
+    },
+    "/api/v1/store/library": {
+      "get": {
+        "operationId": "get_personal_library_api_v1_store_library_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalLibraryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Personal Library",
+        "tags": [
+          "store"
+        ]
+      }
+    },
+    "/api/v1/store/library/folders": {
+      "post": {
+        "operationId": "create_personal_folder_api_v1_store_library_folders_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonalFolderCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalFolderResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Personal Folder",
+        "tags": [
+          "store"
+        ]
+      }
+    },
+    "/api/v1/store/library/folders/{folder_id}": {
+      "delete": {
+        "operationId": "delete_personal_folder_api_v1_store_library_folders__folder_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "folder_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Folder Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Personal Folder",
+        "tags": [
+          "store"
+        ]
+      }
+    },
+    "/api/v1/store/library/products/{product_id}": {
+      "delete": {
+        "operationId": "remove_personal_product_api_v1_store_library_products__product_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Personal Product",
+        "tags": [
+          "store"
+        ]
+      },
+      "put": {
+        "operationId": "save_personal_product_api_v1_store_library_products__product_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavedProductRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedProductResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Personal Product",
+        "tags": [
+          "store"
         ]
       }
     },

@@ -6,6 +6,10 @@ import { productFixture as product, stubObjectUrls } from "./store-test-fixtures
 import { resetQueryClientForTests } from "../../app/query-client";
 import { previewSession, renderWithProviders } from "../../test/test-utils";
 
+vi.mock("../../components/product/ControlledPdfViewer", () => ({
+  ControlledPdfViewer: ({ title }: { title: string }) => <div>{title} PDF preview</div>,
+}));
+
 beforeEach(() => {
   resetQueryClientForTests();
 });
