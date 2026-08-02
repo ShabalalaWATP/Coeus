@@ -5133,8 +5133,27 @@ export interface components {
       /** Sizebytes */
       sizeBytes: number;
     };
+    /**
+     * StoreFacetCountsResponse
+     * @description How many visible products carry each facet value, keyed by value.
+     */
+    StoreFacetCountsResponse: {
+      /** Producttypes */
+      productTypes: {
+        [key: string]: number;
+      };
+      /** Regions */
+      regions: {
+        [key: string]: number;
+      };
+      /** Tags */
+      tags: {
+        [key: string]: number;
+      };
+    };
     /** StoreFacetsResponse */
     StoreFacetsResponse: {
+      counts: components["schemas"]["StoreFacetCountsResponse"];
       /** Producttypes */
       productTypes: string[];
       /** Regions */
@@ -5290,11 +5309,25 @@ export interface components {
       pageSize: number;
       /** Products */
       products: components["schemas"]["StoreProductSearchResponse"][];
+      /**
+       * Relaxed
+       * @default false
+       */
+      relaxed: boolean;
       /** Total */
       total: number;
       /** Totalpages */
       totalPages: number;
     };
+    /**
+     * StoreSortOrder
+     * @description Result ordering a requester can ask for.
+     *
+     *     ``RELEVANCE`` only carries meaning when a text query ranked the results;
+     *     catalogue browse falls back to title order so paging stays deterministic.
+     * @enum {string}
+     */
+    StoreSortOrder: "relevance" | "title" | "coverage";
     /** SubmitAcgApplicationRequest */
     SubmitAcgApplicationRequest: {
       /** Justification */
@@ -9321,6 +9354,7 @@ export interface operations {
         ownerTeam?: string | null;
         page?: number;
         pageSize?: number;
+        sort?: components["schemas"]["StoreSortOrder"];
       };
       header?: never;
       path?: never;

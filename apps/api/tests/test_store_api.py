@@ -231,7 +231,9 @@ async def test_store_search_paginates_after_access_and_owner_filters() -> None:
     assert len(second_page.json()["products"]) == 1
     assert first_page.json()["products"][0]["id"] != second_page.json()["products"][0]["id"]
     assert all(product["ownerTeam"] == "RFA" for product in first_page.json()["products"])
-    assert "assessment_report" in first_page.json()["facets"]["productTypes"]
+    facets = first_page.json()["facets"]
+    assert "assessment_report" in facets["productTypes"]
+    assert facets["counts"]["productTypes"]["assessment_report"] >= 1
     assert invalid_page_size.status_code == 422
     assert oversized_query.status_code == 422
 

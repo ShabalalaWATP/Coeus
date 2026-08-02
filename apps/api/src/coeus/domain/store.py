@@ -1,8 +1,22 @@
 from dataclasses import dataclass, field
 from datetime import datetime
+from enum import StrEnum
 from uuid import UUID
 
 from coeus.domain.access import ProductStatus
+
+
+class StoreSortOrder(StrEnum):
+    """Result ordering a requester can ask for.
+
+    ``RELEVANCE`` only carries meaning when a text query ranked the results;
+    catalogue browse falls back to title order so paging stays deterministic.
+    """
+
+    RELEVANCE = "relevance"
+    TITLE = "title"
+    COVERAGE = "coverage"
+
 
 _UNSAFE_OBJECT_KEY_CHARS = frozenset('<>:"/\\|?*')
 _MAX_OBJECT_KEY_SEGMENT_LENGTH = 180
@@ -131,6 +145,7 @@ class StoreSearchFilters:
     owner_team: str | None = None
     page: int = 1
     page_size: int = 12
+    sort: StoreSortOrder = StoreSortOrder.RELEVANCE
 
 
 @dataclass(frozen=True)
@@ -188,10 +203,18 @@ class StoreHybridCandidate:
 
 
 @dataclass(frozen=True)
+class StoreFacetValue:
+    """A refinement option and how many visible products carry it."""
+
+    value: str
+    count: int
+
+
+@dataclass(frozen=True)
 class StoreFacets:
-    product_types: tuple[str, ...]
-    regions: tuple[str, ...]
-    tags: tuple[str, ...]
+    product_types: tuple[StoreFacetValue, ...]
+    regions: tuple[StoreFacetValue, ...]
+    tags: tuple[StoreFacetValue, ...]
 
 
 @dataclass(frozen=True)
@@ -209,6 +232,10 @@ class StoreSearchResult:
     page_size: int
     total_pages: int
     facets: StoreFacets
+    # True when every term together matched nothing and the search was broadened
+    # to products matching some terms, so the UI can say so rather than imply an
+    # exact match.
+    relaxed: bool = False
 
 
 @dataclass(frozen=True)

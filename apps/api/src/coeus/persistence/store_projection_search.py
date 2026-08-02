@@ -8,19 +8,20 @@ from coeus.domain.access import ProductStatus
 from coeus.domain.search_relevance import VECTOR_SIMILARITY_FLOOR
 from coeus.domain.store import (
     StoreFacets,
+    StoreFacetValue,
     StoreHybridCandidate,
     StoreProduct,
     StoreProductSearchPage,
     StoreSearchFilters,
     StoreVisibilityScope,
 )
+from coeus.persistence.store_hybrid_sql import HYBRID_PRODUCTS_SQL
 from coeus.persistence.store_projection_decode import decode_product
 from coeus.persistence.store_projection_search_sql import (
-    HYBRID_PRODUCTS_SQL,
     SEARCH_ACGS_SQL,
     SEARCH_ASSETS_SQL,
     SEARCH_LABELS_SQL,
-    SEARCH_PRODUCTS_SQL,
+    SEARCH_PRODUCTS_SQL_BY_SORT,
     SEARCH_SUMMARY_SQL,
     VISIBLE_PRODUCT_SQL,
     VISIBLE_PRODUCTS_SQL,
@@ -83,7 +84,8 @@ def search_product_page(
     }
     summary_rows = _mapping_rows(connection.execute(text(SEARCH_SUMMARY_SQL), params))
     summary = summary_rows[0] if summary_rows else {}
-    product_rows = _mapping_rows(connection.execute(text(SEARCH_PRODUCTS_SQL), params))
+    page_sql = SEARCH_PRODUCTS_SQL_BY_SORT[filters.sort.value]
+    product_rows = _mapping_rows(connection.execute(text(page_sql), params))
     if not product_rows:
         return StoreProductSearchPage(
             (),
@@ -199,9 +201,19 @@ def _optional_int(value: object) -> int | None:
 
 def _facets_from_summary(summary: dict[str, Any]) -> StoreFacets:
     return StoreFacets(
-        product_types=tuple(str(value) for value in summary.get("product_types") or ()),
-        regions=tuple(str(value) for value in summary.get("regions") or ()),
-        tags=tuple(str(value) for value in summary.get("tags") or ()),
+        product_types=_facet_values(summary.get("product_types")),
+        regions=_facet_values(summary.get("regions")),
+        tags=_facet_values(summary.get("tags")),
+    )
+
+
+def _facet_values(entries: object) -> tuple[StoreFacetValue, ...]:
+    if not isinstance(entries, list):
+        return ()
+    return tuple(
+        StoreFacetValue(value=str(entry["value"]), count=int(entry["count"]))
+        for entry in entries
+        if isinstance(entry, dict) and entry.get("value") is not None
     )
 
 

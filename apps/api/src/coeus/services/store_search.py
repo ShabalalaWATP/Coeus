@@ -7,7 +7,9 @@ from coeus.domain.store import (
     StoreFacets,
     StoreHybridCandidate,
     StoreProduct,
+    StoreProductSearchPage,
     StoreSearchFilters,
+    StoreSearchHit,
     StoreSearchResult,
 )
 from coeus.domain.store_filters import structured_filter_match
@@ -22,7 +24,7 @@ from coeus.services.store_search_results import (
     hybrid_hits,
     paged_result,
     projected_page_result,
-    sort_hits_by_relevance,
+    relaxed_query,
     without_text_query,
 )
 
@@ -60,7 +62,17 @@ class StoreSearchService:
             if projected_page is None
             else ()
         )
-        facets = facets_for(filtered) if projected_page is None else projected_page.facets
+        # Facet values and counts are derived in SQL. If any product the same
+        # projection returned fails the in-process policy recheck, the SQL scope
+        # has drifted from the API rules, so nothing derived from that
+        # projection may be reported on either path.
+        projection_trusted = projected_page is None or self._page_is_authorised(
+            actor, projected_page, structured_filters
+        )
+        if projected_page is None:
+            facets = facets_for(filtered)
+        else:
+            facets = projected_page.facets if projection_trusted else StoreFacets((), (), ())
         if has_text_query(filters):
             query = filters.query.strip() if filters.query else ""
             query_embedding = (
@@ -70,34 +82,62 @@ class StoreSearchService:
                 if self._embeddings is not None
                 else None
             )
-            hits = hybrid_hits(
-                self.hybrid_candidates(
-                    actor,
-                    filters,
-                    query,
-                    query_embedding,
-                    leg_limit=STORE_BROWSE_HYBRID_LEG_LIMIT,
-                ),
-                query,
-            )
-            return paged_result(hits, filters, facets)
+            hits = self._text_hits(actor, filters, query, query, query_embedding)
+            if hits:
+                return paged_result(hits, filters, facets)
+            broadened = relaxed_query(query)
+            if broadened is None:
+                return paged_result((), filters, facets)
+            hits = self._text_hits(actor, filters, broadened, query, query_embedding)
+            return paged_result(hits, filters, facets, relaxed=bool(hits))
         if projected_page is not None:
-            visible_page = tuple(
-                product
-                for product in projected_page.products
-                if self._policy.can_read(actor, product)
-                and structured_filter_match(product, structured_filters)
-            )
-            if len(visible_page) != len(projected_page.products):
+            if not projection_trusted:
                 return projected_page_result((), 0, filters, StoreFacets((), (), ()))
             return projected_page_result(
-                visible_page,
+                projected_page.products,
                 projected_page.total,
                 filters,
-                projected_page.facets,
+                facets,
             )
-        hits = sort_hits_by_relevance(tuple(exact_text_hit(product) for product in filtered))
-        return paged_result(hits, filters, facets)
+        # paged_result orders every hit for the requested sort before paging.
+        return paged_result(tuple(exact_text_hit(product) for product in filtered), filters, facets)
+
+    def _page_is_authorised(
+        self,
+        actor: UserAccount,
+        page: StoreProductSearchPage,
+        structured_filters: StoreSearchFilters,
+    ) -> bool:
+        """Recheck the SQL projection against the API access rules."""
+        return all(
+            self._policy.can_read(actor, product)
+            and structured_filter_match(product, structured_filters)
+            for product in page.products
+        )
+
+    def _text_hits(
+        self,
+        actor: UserAccount,
+        filters: StoreSearchFilters,
+        retrieval_query: str,
+        reason_query: str,
+        query_embedding: tuple[float, ...] | None,
+    ) -> tuple[StoreSearchHit, ...]:
+        """Retrieve with one query form but explain the match with the user's own.
+
+        A broadened retry must not report the OR-joined terms it searched with,
+        so match reasons are always derived from what the operator typed.
+        """
+        return hybrid_hits(
+            self.hybrid_candidates(
+                actor,
+                filters,
+                retrieval_query,
+                query_embedding,
+                leg_limit=STORE_BROWSE_HYBRID_LEG_LIMIT,
+            ),
+            reason_query,
+        )
 
     def _local_filtered_products(
         self,

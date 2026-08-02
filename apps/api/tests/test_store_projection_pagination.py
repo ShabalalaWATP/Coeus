@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy.engine import Engine
 
 from coeus.core.errors import AppError
-from coeus.domain.store import StoreProductSearchPage, StoreSearchFilters
+from coeus.domain.store import StoreFacetValue, StoreProductSearchPage, StoreSearchFilters
 from coeus.persistence.store_projection import PostgresStoreProjection
 from coeus.repositories.store import InMemoryStoreRepository
 from coeus.services.store import StoreSearchService
@@ -66,7 +66,7 @@ def test_postgres_store_projection_pages_before_child_hydration() -> None:
 
     assert page.products == (products[1],)
     assert page.total == 3
-    assert page.facets.product_types == (first.metadata.product_type,)
+    assert page.facets.product_types == (StoreFacetValue(first.metadata.product_type, 3),)
     sql = "\n".join(engine.statements)
     assert "p.classification_level <= :clearance_level" in sql
     assert "product_acg.acg_id = ANY(CAST(:acg_ids AS uuid[]))" in sql

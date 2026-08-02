@@ -19,7 +19,7 @@ from coeus.core.async_work import run_bounded_search
 from coeus.core.errors import AppError
 from coeus.domain.access import ProductStatus
 from coeus.domain.auth import AuthenticatedSession
-from coeus.domain.store import StoreSearchFilters
+from coeus.domain.store import StoreSearchFilters, StoreSortOrder
 from coeus.schemas.store import (
     AssetAccessResponse,
     BreakGlassProductAccessRequest,
@@ -153,6 +153,7 @@ async def search_products(
     owner_team: Annotated[str | None, Query(alias="ownerTeam", min_length=2, max_length=80)] = None,
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(alias="pageSize", ge=1, le=50)] = 12,
+    sort: StoreSortOrder = StoreSortOrder.RELEVANCE,
 ) -> StoreSearchResponse:
     with admission.reserve(authenticated.user.user_id):
         result = await run_bounded_search(
@@ -170,6 +171,7 @@ async def search_products(
                 owner_team=owner_team,
                 page=page,
                 page_size=page_size,
+                sort=sort,
             ),
         )
     return store_search_response(result)

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections import Counter
+from collections.abc import Iterable, Iterator
 from typing import Any, cast
 
 from coeus.core.config import Settings
 from coeus.domain.access import ProductStatus
 from coeus.domain.store import (
-    StoreFacets,
     StoreHybridCandidate,
     StoreProduct,
     StoreProductSearchPage,
@@ -16,6 +16,7 @@ from coeus.domain.store import (
 from coeus.main import create_app
 from coeus.repositories.access import SeedAccessRepository
 from coeus.repositories.store import InMemoryStoreRepository
+from coeus.services.store_search_results import facets_for
 
 
 class RecordingProjection:
@@ -35,17 +36,7 @@ class RecordingProjection:
         return StoreProductSearchPage(
             products=products,
             total=len(self.products),
-            facets=StoreFacets(
-                product_types=tuple(
-                    sorted({product.metadata.product_type for product in self.products})
-                ),
-                regions=tuple(
-                    sorted({product.metadata.area_or_region for product in self.products})
-                ),
-                tags=tuple(
-                    sorted({tag for product in self.products for tag in product.metadata.tags})
-                ),
-            ),
+            facets=facets_for(self.products),
         )
 
     def hybrid_candidates(
@@ -134,22 +125,19 @@ class FakeConnection:
         if sql.startswith("SELECT count(*)"):
             return FakeResult([{"count": len(self._engine.embedding_hashes)}])
         if sql.startswith("WITH filtered_products AS"):
+            products = self._engine.products
             return FakeResult(
                 [
                     {
-                        "total": len(self._engine.products),
-                        "product_types": sorted(
-                            {product.metadata.product_type for product in self._engine.products}
+                        "total": len(products),
+                        "product_types": _counted_entries(
+                            product.metadata.product_type for product in products
                         ),
-                        "regions": sorted(
-                            {product.metadata.area_or_region for product in self._engine.products}
+                        "regions": _counted_entries(
+                            product.metadata.area_or_region for product in products
                         ),
-                        "tags": sorted(
-                            {
-                                tag
-                                for product in self._engine.products
-                                for tag in product.metadata.tags
-                            }
+                        "tags": _counted_entries(
+                            tag for product in products for tag in product.metadata.tags
                         ),
                     }
                 ]
@@ -272,6 +260,12 @@ def visibility_scope(product: StoreProduct) -> StoreVisibilityScope:
 
 def empty_visibility_scope() -> StoreVisibilityScope:
     return StoreVisibilityScope(acg_ids=frozenset(), clearance_level=5, include_drafts=True)
+
+
+def _counted_entries(values: Iterable[str]) -> list[dict[str, Any]]:
+    """Mirror the jsonb value/count facet rows returned by the summary query."""
+    counts = Counter(values)
+    return [{"value": value, "count": counts[value]} for value in sorted(counts)]
 
 
 def _product_row(product: StoreProduct) -> dict[str, Any]:
