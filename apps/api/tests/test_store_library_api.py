@@ -8,8 +8,8 @@ from coeus.core.config import Settings
 from coeus.core.errors import AppError
 from coeus.main import create_app
 from coeus.persistence.state_store import MemoryStateStore
+from coeus.services import store_library as library_module
 from coeus.services.audit import AuditLog
-from coeus.services.store_library import StoreLibraryService
 from store_api_helpers import login
 
 
@@ -149,11 +149,9 @@ async def test_library_omits_products_that_are_no_longer_visible() -> None:
 def test_library_service_enforces_limits_and_missing_records(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import coeus.services.store_library as library_module
-
     monkeypatch.setattr(library_module, "MAX_FOLDERS_PER_USER", 1)
     monkeypatch.setattr(library_module, "MAX_SAVED_PRODUCTS_PER_USER", 1)
-    service = StoreLibraryService(MemoryStateStore(), AuditLog())
+    service = library_module.StoreLibraryService(MemoryStateStore(), AuditLog())
     user_id = uuid4()
     folder = service.create_folder(user_id, "Watchlist")
 
@@ -181,7 +179,7 @@ def test_library_service_rolls_back_when_audit_persistence_fails() -> None:
     state_store = MemoryStateStore()
     audit_log = Mock(spec=AuditLog)
     audit_log.record.side_effect = RuntimeError("audit unavailable")
-    service = StoreLibraryService(state_store, audit_log)
+    service = library_module.StoreLibraryService(state_store, audit_log)
 
     with pytest.raises(RuntimeError, match="audit unavailable"):
         service.create_folder(uuid4(), "Watchlist")

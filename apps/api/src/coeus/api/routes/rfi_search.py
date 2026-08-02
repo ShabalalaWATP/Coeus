@@ -132,7 +132,7 @@ async def refine_rfi_search(
         except Exception as exc:
             logger.warning(
                 "refined_rfi_search_failed",
-                extra={"ticket_id": str(ticket_id), "error": type(exc).__name__},
+                extra={"error": type(exc).__name__},
             )
             reason = exc.code if isinstance(exc, AppError) else "search_failed"
             result = rfi_search.recover_refine(authenticated.user, ticket_id, reason)
