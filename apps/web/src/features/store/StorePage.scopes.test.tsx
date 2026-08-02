@@ -76,23 +76,19 @@ test("keeps counts and pagination consistent when the mine scope filters client-
       permissions: ["product:read", "product:search"],
     },
   };
-  vi.stubGlobal(
-    "fetch",
-    vi.fn().mockResolvedValue({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          products: [visibleProduct, collectionProduct],
-          total: 8,
-          page: 1,
-          pageSize: 6,
-          totalPages: 2,
-          facets: { productTypes: [], regions: [], tags: [] },
-        }),
-    }),
-  );
-
-  const fetchMock = window.fetch as ReturnType<typeof vi.fn>;
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    json: () =>
+      Promise.resolve({
+        products: [visibleProduct, collectionProduct],
+        total: 8,
+        page: 1,
+        pageSize: 6,
+        totalPages: 2,
+        facets: { productTypes: [], regions: [], tags: [] },
+      }),
+  });
+  vi.stubGlobal("fetch", fetchMock);
 
   renderWithProviders(<StorePage scope="mine" />, "/store/my-products", adminSession);
 
