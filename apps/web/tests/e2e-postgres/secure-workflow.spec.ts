@@ -89,12 +89,12 @@ test("denies an unrelated same-ACG user access to a PostgreSQL draft", async ({ 
   await login(page, "colleague@example.test", "My Requests");
   await page.goto("/store");
   await page
-    .getByPlaceholder("Search title, summary, tags")
+    .getByRole("textbox", { name: "Search the Intelligence Store" })
     .fill("PostgreSQL draft isolation proof");
   const searchResponsePromise = page.waitForResponse((response) =>
     response.url().includes("/api/v1/store/products?"),
   );
-  await page.getByRole("button", { name: "Search products" }).click();
+  await page.getByRole("button", { name: "Search", exact: true }).click();
   await searchResponsePromise;
   await expect(page.getByText("PostgreSQL draft isolation proof")).toHaveCount(0);
   const deniedStatuses = await page.evaluate(
@@ -300,8 +300,8 @@ test("releases the product as QC", async ({ page }) => {
 test("downloads the released asset bytes as the customer", async ({ page }) => {
   await login(page, "user@example.test", "My Requests");
   await page.goto("/store");
-  await page.getByPlaceholder("Search title, summary, tags").fill(assessmentTitle);
-  await page.getByRole("button", { name: "Search products" }).click();
+  await page.getByRole("textbox", { name: "Search the Intelligence Store" }).fill(assessmentTitle);
+  await page.getByRole("button", { name: "Search", exact: true }).click();
   await page.getByText(assessmentTitle, { exact: true }).click();
   await page.getByRole("link", { name: /assessment-draft\.pdf/ }).click();
   const downloadPromise = page.waitForEvent("download");
