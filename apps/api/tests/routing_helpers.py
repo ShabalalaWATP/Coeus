@@ -1,7 +1,7 @@
 from dataclasses import replace
 from uuid import UUID
 
-from httpx import ASGITransport, AsyncClient
+from httpx import ASGITransport, AsyncClient, Response
 
 from coeus.domain.enums import TicketState
 from rfi_search_helpers import (
@@ -33,6 +33,7 @@ async def route_assessment_ticket(
         restrictions="Manual JIOC review required for this legacy route-review fixture.",
     )
     response = await client.get(f"/api/v1/rfi-search/{ticket_id}/results")
+    rejected_product_offers = False
     if response.json()["ticketState"] in {"RFI_SEARCHING", "RFI_SEARCH_INCOMPLETE"}:
         response = await client.post(
             f"/api/v1/rfi-search/{ticket_id}/run",
@@ -40,6 +41,7 @@ async def route_assessment_ticket(
         )
         assert response.status_code == 200
     if response.json()["ticketState"] == "RFI_MATCH_OFFERED":
+        rejected_product_offers = True
         mark_search_complete_for_downstream_fixture(transport.app, ticket_id)
         for offer in response.json()["offers"]:
             response = await client.post(
@@ -56,6 +58,8 @@ async def route_assessment_ticket(
         assert response.status_code == 200
     state = response.json().get("ticketState", response.json().get("state"))
     if state in {"RFI_NO_MATCH", "NEW_TASKING_CONSENT"}:
+        if rejected_product_offers:
+            await record_rejection_feedback(client, ticket_id, csrf_token, response)
         response = await client.post(
             f"/api/v1/tickets/{ticket_id}/no-match-consent",
             headers={"X-CSRF-Token": csrf_token},
@@ -71,6 +75,23 @@ async def route_assessment_ticket(
             replace(ticket, state=TicketState.JIOC_REVIEW)
         )
     return ticket_id
+
+
+async def record_rejection_feedback(
+    client: AsyncClient,
+    ticket_id: str,
+    csrf_token: str,
+    search: Response,
+    body: str = "The existing products do not answer this requirement.",
+) -> None:
+    if not search.json().get("offers"):
+        return
+    feedback = await client.post(
+        f"/api/v1/rfi-search/{ticket_id}/feedback",
+        headers={"X-CSRF-Token": csrf_token},
+        json={"feedback": body},
+    )
+    assert feedback.status_code == 200
 
 
 async def analyst_assignment_ticket(

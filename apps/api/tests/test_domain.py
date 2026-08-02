@@ -27,6 +27,7 @@ def test_incomplete_search_cannot_advance_to_routing() -> None:
 
     assert allowed == {
         TicketState.RFI_MATCH_OFFERED,
+        TicketState.RFI_SEARCHING,
         TicketState.NEW_TASKING_CONSENT,
         TicketState.CANCELLED,
     }

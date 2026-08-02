@@ -1238,6 +1238,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/rfi-search/{ticket_id}/feedback": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Record Rfi Rejection Feedback */
+    post: operations["record_rfi_rejection_feedback_api_v1_rfi_search__ticket_id__feedback_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/rfi-search/{ticket_id}/offers/{product_id}/accept": {
     parameters: {
       query?: never;
@@ -1266,6 +1283,23 @@ export interface paths {
     put?: never;
     /** Reject Product Offer */
     post: operations["reject_product_offer_api_v1_rfi_search__ticket_id__offers__product_id__reject_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/rfi-search/{ticket_id}/refine": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Refine Rfi Search */
+    post: operations["refine_rfi_search_api_v1_rfi_search__ticket_id__refine_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -4657,6 +4691,11 @@ export interface components {
       timePeriodStart: string | null;
       /** Title */
       title: string;
+    };
+    /** RfiRejectionFeedbackRequest */
+    RfiRejectionFeedbackRequest: {
+      /** Feedback */
+      feedback: string;
     };
     /** RfiSearchMetricsResponse */
     RfiSearchMetricsResponse: {
@@ -8060,6 +8099,43 @@ export interface operations {
       };
     };
   };
+  record_rfi_rejection_feedback_api_v1_rfi_search__ticket_id__feedback_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path: {
+        ticket_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RfiRejectionFeedbackRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TicketResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   accept_product_offer_api_v1_rfi_search__ticket_id__offers__product_id__accept_post: {
     parameters: {
       query?: never;
@@ -8111,6 +8187,39 @@ export interface operations {
         "application/json": components["schemas"]["RejectProductOfferRequest"];
       };
     };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RfiSearchResultsResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  refine_rfi_search_api_v1_rfi_search__ticket_id__refine_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path: {
+        ticket_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
     responses: {
       /** @description Successful Response */
       200: {

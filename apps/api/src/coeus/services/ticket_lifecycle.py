@@ -7,6 +7,7 @@ from coeus.domain.enums import TicketState
 from coeus.domain.state_machine import can_transition
 from coeus.domain.tickets import TicketRecord
 from coeus.services.audit import AuditLog
+from coeus.services.rfi_follow_up import RfiFollowUpService
 from coeus.services.ticket_records import is_owner, timeline
 from coeus.services.tickets import TicketService
 
@@ -48,6 +49,14 @@ class TicketLifecycleService:
         if ticket.state not in {TicketState.RFI_NO_MATCH, TicketState.NEW_TASKING_CONSENT}:
             raise AppError(
                 409, "invalid_ticket_state", "This request is not awaiting tasking consent."
+            )
+        if ticket.state == TicketState.NEW_TASKING_CONSENT and RfiFollowUpService.feedback_pending(
+            ticket
+        ):
+            raise AppError(
+                409,
+                "rfi_search_feedback_required",
+                "Tell Istari what was missing before deciding what to do next.",
             )
         target_state = (
             TicketState.JIOC_ROUTING_PENDING

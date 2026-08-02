@@ -1,11 +1,21 @@
 from datetime import datetime
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+
+RfiDecisionText = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=3, max_length=1_000),
+]
 
 
 class RejectProductOfferRequest(BaseModel):
-    reason: str = Field(min_length=3, max_length=1_000)
+    reason: RfiDecisionText
+
+
+class RfiRejectionFeedbackRequest(BaseModel):
+    feedback: RfiDecisionText
 
 
 class RfiProductOfferResponse(BaseModel):

@@ -1,4 +1,5 @@
-import type { TicketState } from "../../lib/api-client/tickets";
+import type { RfiProductOffer } from "../../lib/api-client/rfi-search";
+import type { Ticket, TicketState } from "../../lib/api-client/tickets";
 
 export const SIMILAR_NOTICE_STATES = new Set<TicketState>(["ACTIVE_WORK_REVIEW"]);
 
@@ -35,3 +36,26 @@ export const CANCELABLE_STATES = new Set<TicketState>([
   "QC_REVIEW",
   "REWORK_REQUIRED",
 ]);
+
+export function rfiFollowUpState(ticket?: Ticket, offers: RfiProductOffer[] = []) {
+  let requested = -1;
+  let recorded = -1;
+  let refined = -1;
+  ticket?.timeline.forEach((entry, index) => {
+    if (entry.eventType === "rfi_search_feedback_requested") requested = index;
+    if (entry.eventType === "rfi_search_feedback_recorded") recorded = index;
+    if (entry.eventType === "rfi_refined_search_started") refined = index;
+  });
+  const followUpState = ["NEW_TASKING_CONSENT", "RFI_SEARCH_INCOMPLETE"].includes(
+    ticket?.state ?? "",
+  );
+  return {
+    feedbackState: {
+      complete: requested >= 0 && recorded > requested,
+      pending: requested > recorded,
+    },
+    refineAvailable: requested >= 0 && recorded > Math.max(requested, refined),
+    rejectedOfferFollowUp:
+      followUpState && (requested >= 0 || offers.some((offer) => offer.status === "rejected")),
+  };
+}

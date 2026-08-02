@@ -44,14 +44,14 @@ def test_supplemental_results_cannot_displace_or_duplicate_baseline_offers(monke
         GroundedSearchResult((), "hybrid", None, "space-v1", "complete", "corpus-v1"),
     )
 
-    def rank(candidates, _intake):  # type: ignore[no-untyped-def]
+    def rank(candidates, _intake, *, query=None):  # type: ignore[no-untyped-def]
         return baseline if candidates == ("baseline-candidates",) else supplemental
 
     monkeypatch.setattr("coeus.services.rfi_search_retrieval.rank_hybrid_rfi_candidates", rank)
 
     offers = ranked_additive_offers(
         retrieval,
-        SimpleNamespace(intake=SimpleNamespace()),  # type: ignore[arg-type]
+        SimpleNamespace(intake=SimpleNamespace(), timeline=()),  # type: ignore[arg-type]
     )
 
     assert offers == baseline
@@ -77,7 +77,11 @@ def test_baseline_retrieval_runs_before_optional_planner(monkeypatch) -> None:
     requester_id = uuid4()
     retrieval = retrieve_with_additive_advice(
         SimpleNamespace(),  # type: ignore[arg-type]
-        SimpleNamespace(requester_user_id=requester_id, intake=IntakeDetails()),  # type: ignore[arg-type]
+        SimpleNamespace(  # type: ignore[arg-type]
+            requester_user_id=requester_id,
+            intake=IntakeDetails(),
+            timeline=(),
+        ),
         requester_id,
         Planner(),  # type: ignore[arg-type]
         SimpleNamespace(),  # type: ignore[arg-type]
@@ -114,6 +118,7 @@ def test_supplemental_failure_preserves_baseline_and_degrades_assurance(monkeypa
         SimpleNamespace(  # type: ignore[arg-type]
             requester_user_id=requester_id,
             intake=IntakeDetails(description="authorised baseline query"),
+            timeline=(),
         ),
         requester_id,
         Planner(),  # type: ignore[arg-type]

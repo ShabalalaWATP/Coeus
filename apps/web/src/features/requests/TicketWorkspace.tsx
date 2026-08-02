@@ -18,11 +18,13 @@ import { IntakePanel } from "./IntakePanel";
 import { NoMatchConsentPanel } from "./NoMatchConsentPanel";
 import { ProductOffersPanel } from "./ProductOffersPanel";
 import { RequestJourney } from "./RequestJourney";
+import { RfiFollowUpChat } from "./RfiFollowUpChat";
 import { SimilarRequestNoticePanel } from "./SimilarRequestNoticePanel";
 import {
   CANCELABLE_STATES,
   INTAKE_STATES,
   PRODUCT_OFFER_STATES,
+  rfiFollowUpState,
   SIMILAR_NOTICE_STATES,
 } from "./request-state-sets";
 import { TimelinePanel } from "./TimelinePanel";
@@ -45,7 +47,9 @@ export type TicketWorkspaceActions = {
   onCancel: (reason: string, onSuccess?: () => void) => void;
   onCollectChoice: (analysed: boolean) => void;
   onNoMatchConsent: (taskAsNewRequest: boolean) => void;
+  onRefineSearch: () => void;
   onReject: (productId: string, reason: string) => void;
+  onRfiFeedback: (feedback: string, onSuccess?: () => void) => void;
   onRemoveCollaborator: (userId: string) => void;
   onReopenConversation?: () => void;
   onRun: () => void;
@@ -60,9 +64,11 @@ export type TicketWorkspacePending = Record<
   | "cancelling"
   | "choosingCollect"
   | "consenting"
+  | "feedback"
   | "adding"
   | "attaching"
   | "rejecting"
+  | "refining"
   | "running"
   | "saving"
   | "sending"
@@ -134,7 +140,10 @@ export function TicketWorkspace({
     !rfiLoading &&
     !rfiError &&
     (rfiResults?.offers?.length ?? 0) > 0;
-  const chatCollapsed = productsReady && expandedChatTicketId !== ticket.id;
+  const followUp = rfiFollowUpState(ticket, rfiResults?.offers);
+  const retryBlocked = followUp.feedbackState.pending || followUp.refineAvailable;
+  const chatCollapsed =
+    productsReady && !followUp.rejectedOfferFollowUp && expandedChatTicketId !== ticket.id;
 
   return (
     <div className="ticket-workspace">
@@ -206,18 +215,27 @@ export function TicketWorkspace({
                 Minimise conversation
               </button>
             ) : null}
-            <ChatPanel
-              canSubmit={canSubmit}
-              csrfToken={session?.csrfToken ?? ""}
-              isSending={pending.sending}
-              isReopening={pending.reopening ?? false}
-              isSubmitting={pending.submitting}
-              onReopen={actions.onReopenConversation}
-              onSend={actions.onSend}
-              onSubmit={actions.onSubmit}
-              readOnly={!canEdit || (ticket !== undefined && !showIntakeTools)}
-              ticket={ticket}
-            />
+            {ticket && followUp.rejectedOfferFollowUp ? (
+              <RfiFollowUpChat
+                feedbackPending={followUp.feedbackState.pending}
+                isSending={pending.feedback}
+                onSend={actions.onRfiFeedback}
+                ticket={ticket}
+              />
+            ) : (
+              <ChatPanel
+                canSubmit={canSubmit}
+                csrfToken={session?.csrfToken ?? ""}
+                isSending={pending.sending}
+                isReopening={pending.reopening ?? false}
+                isSubmitting={pending.submitting}
+                onReopen={actions.onReopenConversation}
+                onSend={actions.onSend}
+                onSubmit={actions.onSubmit}
+                readOnly={!canEdit || (ticket !== undefined && !showIntakeTools)}
+                ticket={ticket}
+              />
+            )}
           </div>
         )}
         <div className="request-side-panel">
@@ -262,10 +280,17 @@ export function TicketWorkspace({
               onRetry={similarNotice.onRetry}
             />
           ) : null}
-          {ticket && isOwner && ["RFI_NO_MATCH", "NEW_TASKING_CONSENT"].includes(ticket.state) ? (
+          {ticket &&
+          isOwner &&
+          ["RFI_NO_MATCH", "NEW_TASKING_CONSENT", "RFI_SEARCH_INCOMPLETE"].includes(ticket.state) &&
+          (!followUp.rejectedOfferFollowUp || followUp.feedbackState.complete) ? (
             <NoMatchConsentPanel
+              canDecide={ticket.state !== "RFI_SEARCH_INCOMPLETE"}
+              canRefine={followUp.rejectedOfferFollowUp && followUp.refineAvailable}
               isPending={pending.consenting}
+              isRefining={pending.refining}
               onConsent={actions.onNoMatchConsent}
+              onRefine={actions.onRefineSearch}
             />
           ) : null}
           {ticket && isOwner && ticket.state === "COLLECT_CHOICE" ? (
@@ -277,7 +302,7 @@ export function TicketWorkspace({
           {showOffers ? (
             <ProductOffersPanel
               canManageOffers={isOwner}
-              canRunSearch={canRunRfiSearch}
+              canRunSearch={canRunRfiSearch && !retryBlocked}
               isAccepting={pending.accepting}
               isError={rfiError}
               isLoading={rfiLoading}

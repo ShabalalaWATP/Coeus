@@ -2,6 +2,8 @@
 
 from coeus.services.embeddings import EmbeddingService
 from coeus.services.grounded_search import GroundedSearchService
+from coeus.services.rfi_follow_up import RfiFollowUpService
+from coeus.services.rfi_results import RfiResultsService
 from coeus.services.rfi_search import RfiSearchService
 from coeus.services.rfi_search_types import RfiAccess
 from coeus.services.search_planner_agent import SearchPlannerAgent
@@ -26,4 +28,6 @@ def build_rfi_search_service(
         grounded,
         planner,
         ticket_services.mutations,
+        RfiFollowUpService(ticket_services.tickets, ticket_services.mutations),
+        RfiResultsService(ticket_services.tickets, store_services.details),
     )

@@ -56,7 +56,7 @@ test("confirms no-match tasking as a new request from the workspace", async () =
     "journey-step--current",
   );
 
-  await userEvent.click(screen.getByRole("button", { name: "Yes, task as new request" }));
+  await userEvent.click(screen.getByRole("button", { name: "Continue to the JIOC Agent" }));
 
   await waitFor(() =>
     expect(fetchMock).toHaveBeenCalledWith(
@@ -92,7 +92,7 @@ test("declines no-match tasking and closes the request unanswered", async () => 
 
   renderRequests("/app/requests/ticket-1");
 
-  await userEvent.click(await screen.findByRole("button", { name: "No, close unanswered" }));
+  await userEvent.click(await screen.findByRole("button", { name: "Close as unfulfilled" }));
 
   await waitFor(() =>
     expect(fetchMock).toHaveBeenCalledWith(
@@ -103,7 +103,7 @@ test("declines no-match tasking and closes the request unanswered", async () => 
       }),
     ),
   );
-  expect((await screen.findAllByText("Closed unanswered"))[0]).toBeVisible();
+  expect((await screen.findAllByText("Closed unfulfilled"))[0]).toBeVisible();
 });
 
 test("legacy no-match tickets offer consent decisions but never a cancel control", async () => {
@@ -121,7 +121,7 @@ test("legacy no-match tickets offer consent decisions but never a cancel control
 
   renderRequests("/app/requests/ticket-1");
 
-  expect(await screen.findByRole("button", { name: "Yes, task as new request" })).toBeVisible();
+  expect(await screen.findByRole("button", { name: "Continue to the JIOC Agent" })).toBeVisible();
   // The API forbids cancellation from RFI_NO_MATCH, so no control is offered.
   expect(screen.queryByText("Cancel request")).not.toBeInTheDocument();
 });
@@ -142,7 +142,7 @@ test("shows no-match consent failures through the shared action error", async ()
 
   renderRequests("/app/requests/ticket-1");
 
-  await userEvent.click(await screen.findByRole("button", { name: "Yes, task as new request" }));
+  await userEvent.click(await screen.findByRole("button", { name: "Continue to the JIOC Agent" }));
 
   expect(await screen.findByRole("alert")).toHaveTextContent("Decision failed.");
 });

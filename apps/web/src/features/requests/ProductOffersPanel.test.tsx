@@ -116,7 +116,7 @@ test("accepts and rejects RFI product offers", async () => {
   expect(onReject).toHaveBeenCalledWith("product-1", "Too old.");
 });
 
-test("makes degraded retrieval explicit and avoids claiming a definitive no-match", () => {
+test("explains an incomplete search without technical degraded-mode copy", () => {
   renderPanel(
     <ProductOffersPanel
       canManageOffers
@@ -141,11 +141,30 @@ test("makes degraded retrieval explicit and avoids claiming a definitive no-matc
     />,
   );
 
-  expect(screen.getByRole("alert")).toHaveTextContent(
-    "No definitive no-match decision will be made",
-  );
-  expect(screen.getByRole("alert")).toHaveTextContent("lexical only");
+  expect(screen.getByRole("alert")).toHaveTextContent("could not complete every search check");
+  expect(screen.queryByText(/Search is degraded/i)).not.toBeInTheDocument();
   expect(screen.getByRole("heading", { name: "Product search" })).toBeVisible();
+});
+
+test("does not alarm customers when an updating search returned products", () => {
+  renderPanel(
+    <ProductOffersPanel
+      canManageOffers
+      canRunSearch
+      isAccepting={false}
+      isLoading={false}
+      isRejecting={false}
+      isRunning={false}
+      onAccept={vi.fn()}
+      onReject={vi.fn()}
+      onRun={vi.fn()}
+      results={{ ...rfiResults, degradedReason: "corpus_changed", retrievalMode: "hybrid" }}
+      ticket={ticket}
+    />,
+  );
+
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  expect(screen.queryByText(/Search is degraded/i)).not.toBeInTheDocument();
 });
 
 test("does not render RFI metrics when metrics are unavailable", () => {

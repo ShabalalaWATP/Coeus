@@ -327,14 +327,11 @@ Status: complete and verified for the supported local/test boundary.
 
 ## 23 July 2026 Architecture Atlas
 
-- Added 32 implementation-anchored user, workflow, component, data, search, AI,
-  trust, deployment and operations diagrams plus repository-wide Mermaid parsing.
-- Current limitation: local relational QC release commits a notification intent,
-  but local composition does not install the dispatcher, so the intent can remain
-  pending. Hosted composition owns the delivery path.
-- Current recovery limitation: the logical drill reconciles all object keys only
-  against Store asset rows, so retained draft submission bytes block validation.
-  Grounded indexes are excluded and require a verified post-restore rebuild.
+- Added 32 implementation-anchored user, workflow, technical and operational
+  diagrams, with repository-wide Mermaid parsing.
+- Local QC notification intents need the hosted dispatcher. Recovery reconciles
+  Store assets only; retained draft bytes block validation and grounded indexes
+  require a verified post-restore rebuild.
 - Current search-operations limitation: inactive ready generations are retained,
   with no authorised operator rollback, retirement state or cleanup policy.
 - JIOC Team Members and Managers share exception review; Managers own on-loop
@@ -347,3 +344,7 @@ Status: complete and verified for the supported local/test boundary.
 - [x] Automatically rebuild local retrieval and clear all 35 legacy asset warnings.
 - [x] Generate and visually verify eight-page operational exercise reports.
 - [x] Activate the verified Gemini key and simplify automatic-update status for non-technical users.
+
+## 2 August 2026 Customer search recovery and outcomes
+
+- [x] Preserve assurance without stale warnings; require reject-all feedback before refined search, JIOC tasking or outcome closure.

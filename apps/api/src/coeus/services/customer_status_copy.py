@@ -13,13 +13,13 @@ def terminal_copy(ticket: TicketRecord) -> tuple[str, str, str, str, None]:
         ),
         TicketState.CLOSED_EXISTING_PRODUCT_ACCEPTED: (
             "answered_existing",
-            "Answered from existing intelligence",
-            "An existing product was accepted.",
+            "Successfully fulfilled",
+            "An existing intelligence product fulfilled the request.",
         ),
         TicketState.CLOSED_UNANSWERED: (
             "closed_unanswered",
-            "Closed without new tasking",
-            "No answer was accepted and new work was declined.",
+            "Closed unfulfilled",
+            "No answer was accepted and the requester declined new work.",
         ),
         TicketState.CLOSED_JOINED_EXISTING_WORK: (
             "joined_existing",

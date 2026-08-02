@@ -6100,6 +6100,21 @@
         "title": "RfiProductOfferResponse",
         "type": "object"
       },
+      "RfiRejectionFeedbackRequest": {
+        "properties": {
+          "feedback": {
+            "maxLength": 1000,
+            "minLength": 3,
+            "title": "Feedback",
+            "type": "string"
+          }
+        },
+        "required": [
+          "feedback"
+        ],
+        "title": "RfiRejectionFeedbackRequest",
+        "type": "object"
+      },
       "RfiSearchMetricsResponse": {
         "properties": {
           "acceptedProductId": {
@@ -12884,6 +12899,75 @@
         ]
       }
     },
+    "/api/v1/rfi-search/{ticket_id}/feedback": {
+      "post": {
+        "operationId": "record_rfi_rejection_feedback_api_v1_rfi_search__ticket_id__feedback_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RfiRejectionFeedbackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record Rfi Rejection Feedback",
+        "tags": [
+          "rfi-search"
+        ]
+      }
+    },
     "/api/v1/rfi-search/{ticket_id}/offers/{product_id}/accept": {
       "post": {
         "operationId": "accept_product_offer_api_v1_rfi_search__ticket_id__offers__product_id__accept_post",
@@ -13027,6 +13111,65 @@
           }
         },
         "summary": "Reject Product Offer",
+        "tags": [
+          "rfi-search"
+        ]
+      }
+    },
+    "/api/v1/rfi-search/{ticket_id}/refine": {
+      "post": {
+        "operationId": "refine_rfi_search_api_v1_rfi_search__ticket_id__refine_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RfiSearchResultsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Refine Rfi Search",
         "tags": [
           "rfi-search"
         ]

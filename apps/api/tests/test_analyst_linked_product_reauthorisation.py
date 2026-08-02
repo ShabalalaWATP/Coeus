@@ -19,7 +19,7 @@ from rfi_search_helpers import (
     mark_search_complete_for_downstream_fixture,
     submitted_ticket,
 )
-from routing_helpers import assignment_team_id
+from routing_helpers import assignment_team_id, record_rejection_feedback
 from store_api_helpers import product_payload
 from test_analyst_api import _draft_payload
 
@@ -296,6 +296,7 @@ async def _collection_assigned_ticket(client: AsyncClient, app: FastAPI) -> str:
         )
     state = search.json().get("ticketState", search.json().get("state"))
     if state in {"RFI_NO_MATCH", "NEW_TASKING_CONSENT"}:
+        await record_rejection_feedback(client, ticket_id, csrf, search)
         search = await client.post(
             f"/api/v1/tickets/{ticket_id}/no-match-consent",
             headers={"X-CSRF-Token": csrf},

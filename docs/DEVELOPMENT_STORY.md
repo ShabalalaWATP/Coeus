@@ -331,20 +331,18 @@ date order. They are historical evidence, not current operating instructions.
 
 ## 2026-08-02 Automatic retrieval and richer exercise products
 
-- Activated the verified Gemini search credential and promoted generation 8
-  over 269 products and 2,306 passages with no asset failures.
-- Added debounced rebuild scheduling for startup, Store mutations and retrieval
-  changes, plus a plain-language UI that follows queued work automatically and
-  offers manual recovery only after a failure.
-- Repaired 14 missing local exercise objects, added bounded CSV, GeoJSON and
-  verified image extraction, and reduced live asset warnings from 35 to zero.
-  All 273 eligible assets are indexed.
-- Expanded deterministic reports to eight pages with a schematic situation map,
-  imagery review, daily timeline, translated extracts, source matrix,
-  all-source judgement and collection questions. All pages were rendered and
-  visually checked, including a live eight-page Store asset.
-- Added sparse and empty legacy-metadata fallbacks after live seed convergence
-  exposed both shapes, then retained them as regression coverage.
-- Final gates passed: 1,765 backend tests with one intentional skip at 97.88 per
-  cent combined coverage; 118 frontend files at 98.67/95.05 line/branch; build,
-  Ruff, mypy, Bandit, architecture, docs, Mermaid, security and line limits.
+- Activated verified Gemini search generation 8 over 269 products and 2,306
+  passages, with automatic debounced rebuilds and zero asset failures.
+- Repaired 14 objects, added bounded CSV, GeoJSON and image extraction, and
+  expanded deterministic reports to eight visually verified operational pages.
+- Retained sparse legacy-metadata fallbacks as regression coverage. Final gates
+  passed: 1,765 backend tests and 118 frontend files at 97.88 per cent combined
+  backend coverage and 98.67/95.05 frontend line/branch coverage.
+
+## 2026-08-02 Customer search recovery and fulfilment outcomes
+
+- Replaced stale customer-facing hybrid warnings with assurance-aware copy and
+  retained non-definitive handling for partial zero-result searches.
+- Added an owner-only, audited reject-all feedback flow with refined search,
+  JIOC continuation and explicit successfully fulfilled or unfulfilled closure.
+- JIOC retains sole authority for RFA, CM, clarification and human review.
