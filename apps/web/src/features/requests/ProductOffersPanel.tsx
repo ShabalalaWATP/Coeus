@@ -43,6 +43,9 @@ export function ProductOffersPanel({
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const offers = results?.offers ?? [];
   const canRetry = canRunSearch && ticket?.state === "RFI_SEARCH_INCOMPLETE";
+  const routineUpdate = ["corpus_changed", "index_indexing"].includes(
+    results?.degradedReason ?? "",
+  );
   const heading =
     offers.length === 0
       ? "Product search"
@@ -59,18 +62,19 @@ export function ProductOffersPanel({
       {ticket === undefined ? <p>No ticket selected</p> : null}
       {ticket !== undefined ? (
         <>
-          {ticket.state === "RFI_SEARCH_INCOMPLETE" ? (
+          {canRetry ? (
             <div className="offer-toolbar">
-              <button disabled={!canRetry || isRunning} onClick={onRun} type="button">
+              <button disabled={isRunning} onClick={onRun} type="button">
                 <Search aria-hidden="true" size={18} />
                 {isRunning ? "Retrying..." : "Retry search"}
               </button>
             </div>
           ) : null}
-          {results?.degradedReason ? (
+          {results?.degradedReason && offers.length === 0 ? (
             <p className="workspace-alert" role="alert">
-              Search is degraded ({(results.retrievalMode ?? "lexical_only").replaceAll("_", " ")}).
-              No definitive no-match decision will be made until semantic retrieval recovers.
+              {routineUpdate
+                ? "The search library was updating when this search ran. Updates happen automatically; retry shortly to include the latest intelligence."
+                : "Istari could not complete every search check. Retry before deciding that no matching intelligence exists."}
             </p>
           ) : null}
           {ticket.state === "RFI_SEARCHING" ? (
@@ -209,6 +213,10 @@ function OfferCard({
             {offer.offerableToUser ? (
               <Link
                 className="offer-card__title"
+                state={{
+                  from: `/app/requests/${encodeURIComponent(ticket.id)}`,
+                  origin: "rfi",
+                }}
                 to={`/store/products/${encodeURIComponent(offer.productId)}`}
               >
                 {offer.title}

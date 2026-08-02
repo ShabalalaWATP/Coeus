@@ -68,6 +68,15 @@ every proven-safe route.
 16. Defer full model governance, DLP and large-scale evaluation infrastructure
     while the application is synthetic, but make them mandatory gates before real
     or sensitive data and before production model-backed decision support.
+17. Treat corpus-change and index-build flags on a completed search as immutable
+    run provenance, not live customer-facing health. Returned offers remain
+    reviewable because the current catalogue is available through the authorised
+    lexical leg. A zero-result partial run remains incomplete and retryable.
+18. After the final product rejection, require one bounded, requester-only
+    feedback turn before refined search, JIOC tasking consent or unfulfilled
+    closure. Feedback is additive search context and never silently overwrites
+    the confirmed structured requirement. The customer does not choose RFA or
+    CM.
 
 ## Consequences
 

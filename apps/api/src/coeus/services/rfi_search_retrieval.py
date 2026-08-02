@@ -41,7 +41,7 @@ def retrieve_with_additive_advice(
     grounded_search: GroundedSearchService,
 ) -> PlannedRetrieval:
     """Always execute the immutable base query before any optional advice leg."""
-    base_query = query_text(ticket.intake)
+    base_query = _query_text(ticket)
     baseline, base_grounded = _retrieve_leg(
         requester,
         ticket,
@@ -94,8 +94,16 @@ def ranked_additive_offers(
     retrieval: PlannedRetrieval, ticket: TicketRecord
 ) -> tuple[ProductOffer, ...]:
     """Preserve every baseline offer before appending supplemental offers."""
-    baseline = rank_hybrid_rfi_candidates(retrieval.baseline_candidates, ticket.intake)
-    supplemental = rank_hybrid_rfi_candidates(retrieval.supplemental_candidates, ticket.intake)
+    baseline = rank_hybrid_rfi_candidates(
+        retrieval.baseline_candidates,
+        ticket.intake,
+        query=retrieval.base_query,
+    )
+    supplemental = rank_hybrid_rfi_candidates(
+        retrieval.supplemental_candidates,
+        ticket.intake,
+        query=retrieval.effective_query,
+    )
     baseline_ids = {offer.product_id for offer in baseline}
     additions = tuple(offer for offer in supplemental if offer.product_id not in baseline_ids)
     return (*baseline, *additions)[:RFI_MAX_OFFERS]
@@ -171,3 +179,16 @@ def _union_evidence(
     seen = {item.product_id for item in baseline}
     result.extend(item for item in supplemental if item.product_id not in seen)
     return tuple(result)
+
+
+def _query_text(ticket: TicketRecord) -> str:
+    base = query_text(ticket.intake)
+    feedback = next(
+        (
+            entry.body
+            for entry in reversed(ticket.timeline)
+            if entry.event_type == "rfi_search_feedback_recorded"
+        ),
+        None,
+    )
+    return f"{base} | customer refinement: {feedback}" if feedback else base

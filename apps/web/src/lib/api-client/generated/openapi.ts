@@ -1238,6 +1238,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/rfi-search/{ticket_id}/feedback": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Record Rfi Rejection Feedback */
+    post: operations["record_rfi_rejection_feedback_api_v1_rfi_search__ticket_id__feedback_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/rfi-search/{ticket_id}/offers/{product_id}/accept": {
     parameters: {
       query?: never;
@@ -1266,6 +1283,23 @@ export interface paths {
     put?: never;
     /** Reject Product Offer */
     post: operations["reject_product_offer_api_v1_rfi_search__ticket_id__offers__product_id__reject_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/rfi-search/{ticket_id}/refine": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Refine Rfi Search */
+    post: operations["refine_rfi_search_api_v1_rfi_search__ticket_id__refine_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1709,6 +1743,75 @@ export interface paths {
     /** Retry Active Work Search */
     post: operations["retry_active_work_search_api_v1_similar_requests_tickets__ticket_id__retry_post"];
     delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/store/library": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Personal Library */
+    get: operations["get_personal_library_api_v1_store_library_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/store/library/folders": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Create Personal Folder */
+    post: operations["create_personal_folder_api_v1_store_library_folders_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/store/library/folders/{folder_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Delete Personal Folder */
+    delete: operations["delete_personal_folder_api_v1_store_library_folders__folder_id__delete"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/store/library/products/{product_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Save Personal Product */
+    put: operations["save_personal_product_api_v1_store_library_products__product_id__put"];
+    post?: never;
+    /** Remove Personal Product */
+    delete: operations["remove_personal_product_api_v1_store_library_products__product_id__delete"];
     options?: never;
     head?: never;
     patch?: never;
@@ -3981,6 +4084,35 @@ export interface components {
       /** Newpassword */
       newPassword: string;
     };
+    /** PersonalFolderCreateRequest */
+    PersonalFolderCreateRequest: {
+      /** Name */
+      name: string;
+    };
+    /** PersonalFolderResponse */
+    PersonalFolderResponse: {
+      /**
+       * Createdat
+       * Format: date-time
+       */
+      createdAt: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Name */
+      name: string;
+    };
+    /** PersonalLibraryResponse */
+    PersonalLibraryResponse: {
+      /** Folders */
+      folders: components["schemas"]["PersonalFolderResponse"][];
+      /** Savedproducts */
+      savedProducts: components["schemas"]["SavedProductResponse"][];
+      /** Unavailablecount */
+      unavailableCount: number;
+    };
     /** PriorityAssessmentResponse */
     PriorityAssessmentResponse: {
       /** Reasons */
@@ -4560,6 +4692,11 @@ export interface components {
       /** Title */
       title: string;
     };
+    /** RfiRejectionFeedbackRequest */
+    RfiRejectionFeedbackRequest: {
+      /** Feedback */
+      feedback: string;
+    };
     /** RfiSearchMetricsResponse */
     RfiSearchMetricsResponse: {
       /** Acceptedproductid */
@@ -4773,6 +4910,22 @@ export interface components {
       updatedAt: string;
       /** Workflowplanupdates */
       workflowPlanUpdates: components["schemas"]["WorkflowPlanUpdateResponse"][];
+    };
+    /** SavedProductRequest */
+    SavedProductRequest: {
+      /** Folderid */
+      folderId?: string | null;
+    };
+    /** SavedProductResponse */
+    SavedProductResponse: {
+      /** Folderid */
+      folderId: string | null;
+      product: components["schemas"]["StoreProductResponse"];
+      /**
+       * Savedat
+       * Format: date-time
+       */
+      savedAt: string;
     };
     /** SearchAnalyticsResponse */
     SearchAnalyticsResponse: {
@@ -7946,6 +8099,43 @@ export interface operations {
       };
     };
   };
+  record_rfi_rejection_feedback_api_v1_rfi_search__ticket_id__feedback_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path: {
+        ticket_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RfiRejectionFeedbackRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TicketResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   accept_product_offer_api_v1_rfi_search__ticket_id__offers__product_id__accept_post: {
     parameters: {
       query?: never;
@@ -7997,6 +8187,39 @@ export interface operations {
         "application/json": components["schemas"]["RejectProductOfferRequest"];
       };
     };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RfiSearchResultsResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  refine_rfi_search_api_v1_rfi_search__ticket_id__refine_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path: {
+        ticket_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
     responses: {
       /** @description Successful Response */
       200: {
@@ -8883,6 +9106,160 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["TicketResponse"];
         };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_personal_library_api_v1_store_library_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PersonalLibraryResponse"];
+        };
+      };
+    };
+  };
+  create_personal_folder_api_v1_store_library_folders_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PersonalFolderCreateRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PersonalFolderResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  delete_personal_folder_api_v1_store_library_folders__folder_id__delete: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path: {
+        folder_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  save_personal_product_api_v1_store_library_products__product_id__put: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path: {
+        product_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SavedProductRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SavedProductResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  remove_personal_product_api_v1_store_library_products__product_id__delete: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path: {
+        product_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Validation Error */
       422: {

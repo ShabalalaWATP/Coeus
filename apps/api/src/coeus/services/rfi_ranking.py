@@ -41,9 +41,11 @@ _DATE_TITLE_TOKENS = frozenset(
 def rank_hybrid_rfi_candidates(
     candidates: tuple[StoreHybridCandidate, ...],
     intake: IntakeDetails,
+    *,
+    query: str | None = None,
 ) -> tuple[ProductOffer, ...]:
-    query = query_text(intake)
-    query_tokens = _tokens(query)
+    effective_query = query or query_text(intake)
+    query_tokens = _tokens(effective_query)
     if not query_tokens:
         return ()
     scored: list[tuple[StoreHybridCandidate, float, tuple[str, ...]]] = []
@@ -60,7 +62,7 @@ def rank_hybrid_rfi_candidates(
         # deterministic so an old report is never presented as a current hit.
         if "metadata:time-mismatch" in metadata_reasons:
             continue
-        label_score, label_reasons = _semantic_label_score(candidate.product, query)
+        label_score, label_reasons = _semantic_label_score(candidate.product, effective_query)
         title_signal = lexical_score_for_product(candidate.product, intake.title or "")
         lexical_signal = max(text_score, candidate.lexical_score, title_signal)
         vector_signal = max(

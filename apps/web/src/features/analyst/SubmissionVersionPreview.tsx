@@ -30,6 +30,7 @@ export function SubmissionVersionPreview({ task }: { task: AnalystTask }) {
       {asset?.previewAvailable ? (
         <ControlledDocumentViewer
           kind={asset.previewKind}
+          mimeType={asset.mimeType}
           title={`${version.title} preview`}
           url={workflowProductPreviewUrl(task.ticketId, version.id, asset.id)}
         />

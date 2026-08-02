@@ -90,6 +90,9 @@ export function useRequestWorkspaceMutations({
       result.ticketState,
       result.metrics?.acceptedProductId ?? null,
     );
+    if (["NEW_TASKING_CONSENT", "RFI_SEARCH_INCOMPLETE"].includes(result.ticketState)) {
+      void queryClient.invalidateQueries({ queryKey: ["tickets", "detail", result.ticketId] });
+    }
   };
 
   const chatMutation = useMutation({
@@ -185,7 +188,10 @@ export function useRequestWorkspaceMutations({
     onCancel: (reason, onSuccess) => cancelMutation.mutate(reason, { onSuccess }),
     onCollectChoice: (analysed) => decisions.collectChoice.mutate(analysed),
     onNoMatchConsent: (taskAsNewRequest) => decisions.noMatchConsent.mutate(taskAsNewRequest),
+    onRefineSearch: () => decisions.refineSearch.mutate(),
     onReject: (productId, reason) => decisions.rejectOffer.mutate({ productId, reason }),
+    onRfiFeedback: (feedback, onSuccess) =>
+      decisions.rejectionFeedback.mutate(feedback, { onSuccess }),
     onRemoveCollaborator: (userId) => removeCollaboratorMutation.mutate(userId),
     onReopenConversation: () => reopenConversationMutation.mutate(),
     onRun: () => decisions.runRfi.mutate(),
@@ -201,7 +207,9 @@ export function useRequestWorkspaceMutations({
     choosingCollect: decisions.collectChoice.isPending,
     collaborating: addCollaboratorMutation.isPending || removeCollaboratorMutation.isPending,
     consenting: decisions.noMatchConsent.isPending,
+    feedback: decisions.rejectionFeedback.isPending,
     rejecting: decisions.rejectOffer.isPending,
+    refining: decisions.refineSearch.isPending,
     reopening: reopenConversationMutation.isPending,
     running: decisions.runRfi.isPending,
     saving: intakeMutation.isPending,

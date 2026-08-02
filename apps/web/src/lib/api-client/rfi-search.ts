@@ -1,5 +1,5 @@
 import { apiRequestJson, pathSegment } from "./client";
-import type { TicketState } from "./tickets";
+import type { Ticket, TicketState } from "./tickets";
 
 export type RfiProductOffer = {
   productId: string;
@@ -98,4 +98,26 @@ export async function rejectProductOffer(
       method: "POST",
     },
   );
+}
+
+export async function recordRfiRejectionFeedback(
+  ticketId: string,
+  feedback: string,
+  csrfToken: string,
+): Promise<Ticket> {
+  return apiRequestJson<Ticket>(`/api/v1/rfi-search/${pathSegment(ticketId)}/feedback`, {
+    body: JSON.stringify({ feedback }),
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+    method: "POST",
+  });
+}
+
+export async function refineRfiSearch(
+  ticketId: string,
+  csrfToken: string,
+): Promise<RfiSearchResults> {
+  return apiRequestJson<RfiSearchResults>(`/api/v1/rfi-search/${pathSegment(ticketId)}/refine`, {
+    headers: { "X-CSRF-Token": csrfToken },
+    method: "POST",
+  });
 }

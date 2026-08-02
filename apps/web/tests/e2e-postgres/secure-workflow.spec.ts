@@ -187,9 +187,9 @@ test("creates and submits a customer request through PostgreSQL", async ({ page 
   await page.getByRole("button", { name: "Submit", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "Request journey" })).toBeVisible();
   await page.getByLabel("Close journey").click();
-  const taskAsNewRequest = page.getByRole("button", { name: "Yes, task as new request" });
-  await expect(taskAsNewRequest).toBeVisible();
-  await taskAsNewRequest.click();
+  const continueToJioc = page.getByRole("button", { name: "Continue to the JIOC Agent" });
+  await expect(continueToJioc).toBeVisible();
+  await continueToJioc.click();
   await expect(page.getByText("Analyst assignment", { exact: true })).toBeVisible();
 });
 
@@ -277,7 +277,12 @@ test("sends the draft to QC as the responsible manager", async ({ page }) => {
 
 test("releases the product as QC", async ({ page }) => {
   await login(page, "qc.manager@example.test", "QC Queue");
+  const detailResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "GET" && response.url().includes("/api/v1/qc/products/"),
+  );
   await page.getByRole("button", { name: new RegExp(reference) }).click();
+  await detailResponse;
   const checklist = page.getByRole("region", { name: "QC product detail" }).getByRole("checkbox");
   await expect(checklist.first()).toBeVisible();
   for (const checkbox of await checklist.all()) {

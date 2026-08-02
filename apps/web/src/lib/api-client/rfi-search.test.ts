@@ -2,6 +2,8 @@ import { ApiError } from "./client";
 import {
   acceptProductOffer,
   getRfiSearchResults,
+  recordRfiRejectionFeedback,
+  refineRfiSearch,
   rejectProductOffer,
   runRfiSearch,
 } from "./rfi-search";
@@ -25,6 +27,8 @@ test("calls RFI search endpoints with CSRF where needed", async () => {
   await runRfiSearch("ticket-1", "csrf-token");
   await acceptProductOffer("ticket-1", "product-1", "csrf-token");
   await rejectProductOffer("ticket-1", "product-1", "Not current enough.", "csrf-token");
+  await recordRfiRejectionFeedback("ticket-1", "Needs more detail.", "csrf-token");
+  await refineRfiSearch("ticket-1", "csrf-token");
 
   expect(fetchMock).toHaveBeenNthCalledWith(
     1,
@@ -59,6 +63,25 @@ test("calls RFI search endpoints with CSRF where needed", async () => {
       body: JSON.stringify({ reason: "Not current enough." }),
       credentials: "include",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": "csrf-token" },
+      method: "POST",
+    },
+  );
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    5,
+    "http://127.0.0.1:8001/api/v1/rfi-search/ticket-1/feedback",
+    {
+      body: JSON.stringify({ feedback: "Needs more detail." }),
+      credentials: "include",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": "csrf-token" },
+      method: "POST",
+    },
+  );
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    6,
+    "http://127.0.0.1:8001/api/v1/rfi-search/ticket-1/refine",
+    {
+      credentials: "include",
+      headers: { "X-CSRF-Token": "csrf-token" },
       method: "POST",
     },
   );

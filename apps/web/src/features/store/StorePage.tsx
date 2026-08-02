@@ -6,6 +6,7 @@ import { Link, useLocation } from "react-router-dom";
 import { PaginationControls, PaginationSummary } from "./StorePagination";
 import { StoreMatchReasons } from "./StoreMatchReasons";
 import { ProductTypeIcon } from "./ProductTypeIcon";
+import { PersonalLibraryPanel } from "./PersonalLibraryPanel";
 import { StoreSearchFiltersPanel, type StoreFilterDraft } from "./StoreSearchFiltersPanel";
 import { productTypeLabel, visibleProductTags } from "./store-options";
 import { SpotlightCard } from "../../components/effects/SpotlightCard";
@@ -158,6 +159,8 @@ export default function StorePage({
           <Link to="/store">Open the full Intelligence Store</Link>
         </section>
       ) : null}
+
+      {scope === "all" ? <PersonalLibraryPanel /> : null}
 
       <section className="store-layout">
         <StoreSearchFiltersPanel

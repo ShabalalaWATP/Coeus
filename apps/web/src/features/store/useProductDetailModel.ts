@@ -5,7 +5,7 @@ import { useLocation, useParams } from "react-router-dom";
 import { ApiError } from "../../lib/api-client/client";
 import { breakGlassStoreProduct, getStoreProduct } from "../../lib/api-client/store";
 import { useAuth } from "../../lib/auth/auth-context";
-import { backNavigationFor } from "./store-navigation";
+import { backNavigationFor, storeNavigationState } from "./store-navigation";
 import { useEphemeralAssetAccess } from "./useEphemeralAssetAccess";
 
 export function useProductDetailModel() {
@@ -13,7 +13,8 @@ export function useProductDetailModel() {
   const { session } = useAuth();
   const [breakGlassReason, setBreakGlassReason] = useState<string | null>(null);
   const location = useLocation();
-  const from = (location.state as { from?: string } | null)?.from;
+  const navigation = storeNavigationState(location.state);
+  const from = navigation.from;
   const productQuery = useQuery({
     enabled: productId !== undefined,
     queryKey: ["store-product", productId],
@@ -44,9 +45,10 @@ export function useProductDetailModel() {
   return {
     access,
     assetId,
-    back: backNavigationFor(from),
+    back: backNavigationFor(from, navigation.origin),
     canRequestAssetAccess,
     from,
+    navigation,
     product,
     productQuery,
     productNotFound: productQuery.isError && isNotFound(productQuery.error),

@@ -18,6 +18,7 @@ ALLOWED_TRANSITIONS: dict[TicketState, frozenset[TicketState]] = {
     ),
     TicketState.RFI_SEARCH_INCOMPLETE: frozenset(
         {
+            TicketState.RFI_SEARCHING,
             TicketState.RFI_MATCH_OFFERED,
             TicketState.NEW_TASKING_CONSENT,
             TicketState.CANCELLED,
@@ -54,6 +55,7 @@ ALLOWED_TRANSITIONS: dict[TicketState, frozenset[TicketState]] = {
         {
             TicketState.ACTIVE_WORK_REVIEW,
             TicketState.ACTIVE_WORK_SEARCH_INCOMPLETE,
+            TicketState.RFI_SEARCHING,
             TicketState.JIOC_ROUTING_PENDING,
             TicketState.CLOSED_UNANSWERED,
             TicketState.CANCELLED,

@@ -105,12 +105,12 @@ From here a customer can:
 - Edit any detail directly in "Edit details manually".
 - Tag colleagues as editors or viewers.
 - Submit the request, then accept or reject any existing-product offers.
-- Read the authorised product first in an RFI result; provenance, match evidence
-  and search diagnostics remain in collapsed disclosures. Degraded retrieval is
-  labelled rather than presented as an assured no-match.
-- If no existing product matches, choose **Yes, task as new request** to continue
-  into route assessment, or **No, cancel request** to stop the ticket with a
-  recorded reason.
+- Review the authorised product first; provenance and diagnostics remain
+  collapsed. Routine updates do not warn over useful results; partial zero-result searches ask you to retry.
+- Accepting closes as **Successfully fulfilled**. Rejecting all reopens Istari
+  for brief feedback, then offers **Refine and search again**, **Continue to the
+  JIOC Agent**, or **Close as unfulfilled**. An assured no-match offers the latter
+  two choices. JIOC alone decides RFA, collection, clarification or human review.
 - After a newly produced product is released, confirm whether it meets the
   requirement. A **Yes** closes the request. A **No** requires a reason and can
   identify unmet criteria, then asks the responsible RFA or Collection manager

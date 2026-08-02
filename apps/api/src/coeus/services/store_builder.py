@@ -11,6 +11,7 @@ from coeus.services.draft_audience import RoleAwareDraftAudiencePolicy
 from coeus.services.embeddings import EmbeddingService
 from coeus.services.store import StoreIngestionService, StoreSearchService, StoreServices
 from coeus.services.store_access import StoreAssetService, StoreDetailService
+from coeus.services.store_library import StoreLibraryService
 from coeus.services.store_metadata_suggestions import MetadataSuggestionService
 from coeus.services.store_product_policy import StoreProductAccessPolicy
 
@@ -56,4 +57,5 @@ def build_store_services(
         details=details,
         assets=StoreAssetService(details, asset_tokens, audit_log),
         suggestions=MetadataSuggestionService(),
+        library=StoreLibraryService(state_store, audit_log),
     )

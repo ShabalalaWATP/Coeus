@@ -172,10 +172,10 @@ available.
 
 ### Human control
 
-The requester accepts or rejects each offer; acceptance closes the ticket as
-`CLOSED_EXISTING_PRODUCT_ACCEPTED`. After assured no-match or rejection, the
-active-work check may offer authorised in-progress work to join, otherwise the
-requester reaches `NEW_TASKING_CONSENT`. Search cannot consent or route.
+The requester accepts or rejects each offer; acceptance closes successfully
+fulfilled. Rejecting every offer requires brief feedback before refined search,
+JIOC-controlled tasking or unfulfilled closure. After assured no-match, active-work
+discovery may offer authorised work; otherwise consent follows. Search cannot route.
 
 ---
 

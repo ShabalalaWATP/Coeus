@@ -1,6 +1,11 @@
 export type StatusTone = "info" | "success" | "warning" | "critical";
 
 export function formatWorkflowState(state: string) {
+  const outcomeLabels: Record<string, string> = {
+    CLOSED_EXISTING_PRODUCT_ACCEPTED: "Successfully fulfilled",
+    CLOSED_UNANSWERED: "Closed unfulfilled",
+  };
+  if (outcomeLabels[state]) return outcomeLabels[state];
   const acronyms = new Set(["RFI", "JIOC", "QC", "RFA"]);
   return state
     .split("_")

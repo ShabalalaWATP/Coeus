@@ -38,6 +38,36 @@ coverage for `definitive`; move all other zero-result cases to
 production provider activation until the fixed evaluation corpus passes every
 release gate and the deployment is allowlisted.
 
+### Historical retrieval state misrepresented as a live failure
+
+Threat: a recorded partial-search reason from an earlier corpus update is shown
+as a current failure even though authorised lexical results were returned and the
+automatic rebuild is already converging.
+
+Controls: retain mode, coverage and corpus provenance in the result and technical
+details; do not present a live failure alert when access-filtered offers exist;
+keep zero-result partial searches non-definitive and present a bounded retry
+message while automatic indexing completes.
+
+### Rejection feedback replay or authority bypass
+
+Threat: another actor submits feedback, stale feedback from an earlier offer
+round unlocks new tasking, or unbounded text is replayed into retrieval and agent
+context.
+
+Controls: rejection follow-up is owner-only and CSRF protected; feedback is
+length bounded, recorded against the latest feedback request and written with an
+optimistic state check plus audit event. Refined search and new-tasking consent
+require feedback recorded after that latest request. The customer selects only
+refine, continue or close; the deterministic JIOC boundary owns any RFA, CM,
+clarification or human-review route.
+
+Customer projections expose fixed feedback-request, feedback-recorded and
+refined-search markers rather than the raw feedback body. A refinement requires
+feedback newer than both the latest request and latest refined-search start, so
+one response cannot be replayed. Pending feedback survives partial-search retry
+and cleared offers. A failed refined run returns to `RFI_SEARCH_INCOMPLETE`.
+
 ### Prompt injection and untrusted intelligence content
 
 Threat: indexed documents or customer text instruct an agent to ignore policy,

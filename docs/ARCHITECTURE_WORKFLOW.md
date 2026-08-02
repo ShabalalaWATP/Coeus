@@ -51,8 +51,8 @@ stateDiagram-v2
     RFI_SEARCH_INCOMPLETE --> NEW_TASKING_CONSENT: definitive retry finds none
     RFI_MATCH_OFFERED --> CLOSED_EXISTING_PRODUCT_ACCEPTED: requester accepts
     RFI_MATCH_OFFERED --> RFI_SEARCH_INCOMPLETE: rejected final offer had incomplete coverage
-    RFI_MATCH_OFFERED --> ACTIVE_WORK_REVIEW: all products rejected, work found
-    RFI_MATCH_OFFERED --> NEW_TASKING_CONSENT: all products rejected
+    RFI_MATCH_OFFERED --> NEW_TASKING_CONSENT: all products rejected, ask what was missing
+    NEW_TASKING_CONSENT --> RFI_SEARCHING: requester refines and retries
 
     ACTIVE_WORK_REVIEW --> CLOSED_JOINED_EXISTING_WORK: requester joins
     ACTIVE_WORK_REVIEW --> NEW_TASKING_CONSENT: requester continues
@@ -120,14 +120,30 @@ sequenceDiagram
     C->>I: describe need, correct and submit
     I-->>C: safe local question from admitted bounded advice
     S-->>C: access-filtered product offers or assured no-match
-    alt product satisfies the need
-        C->>C: accept and close
-    else no accepted product
+    alt products offered
+        alt customer accepts any product
+            S-->>C: close as successfully fulfilled
+        else customer rejects every product
+            S-->>C: reopen chat and ask what was missing
+            C->>S: short feedback
+            alt refine and search again
+                S->>S: add feedback to bounded query and rerun
+                S-->>C: replacement access-filtered offers
+            else close unfulfilled
+                S-->>C: close without new tasking
+            else continue to new tasking
+                S->>J: requester consent plus search feedback
+            end
+        end
+    else assured no-match
         W-->>C: authorised matching work, if any
         alt join existing work
-            C->>C: join and close duplicate request
+            W-->>C: join and close duplicate request
         else consent to new tasking
             C->>J: consent creates routing-pending ticket
+        end
+    end
+    opt new tasking was requested
             J->>J: evaluate capability, search, capacity and restrictions
             alt sufficient RFA evidence
                 J->>RM: apply RFA route
@@ -189,7 +205,6 @@ sequenceDiagram
                     end
                 end
             end
-        end
     end
 ```
 

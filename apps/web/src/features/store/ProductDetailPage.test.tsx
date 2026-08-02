@@ -2,11 +2,15 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import ProductDetailPage from "./ProductDetailPage";
-import { backNavigationFor } from "./store-navigation";
+import { backNavigationFor, storeNavigationState } from "./store-navigation";
 import { productFixture as product } from "./store-test-fixtures";
 import { resetQueryClientForTests } from "../../app/query-client";
 import type { Permission } from "../../lib/api-client/auth";
 import { previewSession, renderWithProviders } from "../../test/test-utils";
+
+vi.mock("../../components/product/ControlledPdfViewer", () => ({
+  ControlledPdfViewer: ({ title }: { title: string }) => <div>{title} PDF preview</div>,
+}));
 
 beforeEach(() => {
   resetQueryClientForTests();
@@ -25,9 +29,24 @@ test("renders product metadata and asset list", async () => {
   renderWithProviders(<ProductDetailPage />, "/store/products/product-regional");
 
   expect(await screen.findByRole("heading", { name: "Regional Stability Brief" })).toBeVisible();
+  expect(screen.getByText("regional-brief.pdf")).toBeVisible();
+
+  const assets = screen.getByRole("complementary", { name: "Assets" });
+  const metadataSummary = screen.getByText("Metadata and handling");
+  const metadata = metadataSummary.closest("details");
+  expect(metadata).not.toBeNull();
+  expect(metadata).not.toHaveAttribute("open");
+  expect(screen.getByText("Assessment report")).not.toBeVisible();
+  expect(screen.getByText("maritime")).not.toBeVisible();
+  expect(
+    assets.compareDocumentPosition(metadata as Node) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+
+  await userEvent.click(metadataSummary);
+
+  expect(metadata).toHaveAttribute("open");
   expect(screen.getByText("Assessment report")).toBeVisible();
   expect(screen.getByText("maritime")).toBeVisible();
-  expect(screen.getByText("regional-brief.pdf")).toBeVisible();
 });
 
 test("renders controlled asset denial without exposing object storage", async () => {
@@ -65,12 +84,47 @@ test("uses the originating workspace for back navigation", async () => {
   );
 });
 
+test("returns to an RFI request only for validated RFI navigation context", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(product) }),
+  );
+  const requestPath = "/app/requests/11111111-1111-4111-8111-111111111111";
+
+  renderWithProviders(<ProductDetailPage />, "/store/products/product-regional", null, {
+    from: requestPath,
+    origin: "rfi",
+  });
+
+  expect(await screen.findByRole("link", { name: "Back to request" })).toHaveAttribute(
+    "href",
+    requestPath,
+  );
+});
+
 test("maps back navigation targets from the originating workspace", () => {
   expect(backNavigationFor(undefined)).toEqual({ path: "/store", label: "Back to store" });
   expect(backNavigationFor("/store")).toEqual({ path: "/store", label: "Back to store" });
   expect(backNavigationFor("/rfa/products")).toEqual({
     path: "/rfa/products",
     label: "Back to products",
+  });
+  expect(backNavigationFor("/app/requests/11111111-1111-4111-8111-111111111111", "rfi")).toEqual({
+    path: "/app/requests/11111111-1111-4111-8111-111111111111",
+    label: "Back to request",
+  });
+  expect(backNavigationFor("https://example.test", "rfi")).toEqual({
+    path: "/store",
+    label: "Back to store",
+  });
+  expect(storeNavigationState(null)).toEqual({});
+  expect(storeNavigationState({ from: 7, origin: "external" })).toEqual({
+    from: undefined,
+    origin: undefined,
+  });
+  expect(storeNavigationState({ from: "/store", origin: "library" })).toEqual({
+    from: "/store",
+    origin: "library",
   });
 });
 

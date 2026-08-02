@@ -1,0 +1,73 @@
+.request-workspace--results {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.request-workspace--results .request-side-panel {
+  order: 2;
+}
+
+.conversation-summary {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+}
+
+.conversation-summary > div,
+.conversation-summary span,
+.conversation-summary button,
+.conversation-minimise {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+}
+
+.conversation-summary span {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.conversation-summary small {
+  color: var(--muted);
+}
+
+.conversation-summary button,
+.conversation-minimise {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 9px 12px;
+  background: var(--surface-muted);
+  color: var(--text);
+  font-weight: 760;
+}
+
+.conversation-expanded {
+  display: grid;
+  gap: 8px;
+}
+
+.conversation-minimise {
+  justify-self: end;
+}
+
+.request-workspace--results .product-offers-panel {
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+  padding: clamp(18px, 3vw, 28px);
+}
+
+.request-workspace--results .offer-list {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+}
+
+@media (max-width: 620px) {
+  .conversation-summary {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .conversation-summary button {
+    justify-content: center;
+  }
+}

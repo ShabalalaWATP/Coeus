@@ -1,4 +1,13 @@
-import { ArrowLeft, History, Route, SlidersHorizontal } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronDown,
+  ChevronUp,
+  History,
+  MessageSquare,
+  Route,
+  SlidersHorizontal,
+} from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
 import { CancelRequestPanel } from "./CancelRequestPanel";
@@ -9,8 +18,15 @@ import { IntakePanel } from "./IntakePanel";
 import { NoMatchConsentPanel } from "./NoMatchConsentPanel";
 import { ProductOffersPanel } from "./ProductOffersPanel";
 import { RequestJourney } from "./RequestJourney";
+import { RfiFollowUpChat } from "./RfiFollowUpChat";
 import { SimilarRequestNoticePanel } from "./SimilarRequestNoticePanel";
-import { SIMILAR_NOTICE_STATES } from "./request-state-sets";
+import {
+  CANCELABLE_STATES,
+  INTAKE_STATES,
+  PRODUCT_OFFER_STATES,
+  rfiFollowUpState,
+  SIMILAR_NOTICE_STATES,
+} from "./request-state-sets";
 import { TimelinePanel } from "./TimelinePanel";
 import { StatusPill } from "../../components/ui/StatusPill";
 import type { RfiSearchResults } from "../../lib/api-client/rfi-search";
@@ -18,38 +34,6 @@ import type { SimilarRequestNotice } from "../../lib/api-client/similar-requests
 import type { AttachmentMetadataInput, IntakeUpdate, Ticket } from "../../lib/api-client/tickets";
 import { useAuth } from "../../lib/auth/auth-context";
 import { hasPermissions } from "../../lib/permissions/route-access";
-
-const INTAKE_STATES = new Set(["DRAFT_INTAKE", "INFO_REQUIRED"]);
-const PRODUCT_OFFER_STATES = new Set([
-  "RFI_SEARCHING",
-  "RFI_SEARCH_INCOMPLETE",
-  "RFI_MATCH_OFFERED",
-  "ACTIVE_WORK_REVIEW",
-  "ACTIVE_WORK_SEARCH_INCOMPLETE",
-  "RFI_NO_MATCH",
-  "NEW_TASKING_CONSENT",
-]);
-// Legacy RFI_NO_MATCH is deliberately absent: the API only allows consent
-// decisions from that state, so a cancel control would always 409.
-const CANCELABLE_STATES = new Set([
-  "DRAFT_INTAKE",
-  "INFO_REQUIRED",
-  "RFI_SEARCHING",
-  "RFI_SEARCH_INCOMPLETE",
-  "RFI_MATCH_OFFERED",
-  "NEW_TASKING_CONSENT",
-  "JIOC_ROUTING_PENDING",
-  "JIOC_INTERVENTION_HOLD",
-  "ACTIVE_WORK_REVIEW",
-  "ACTIVE_WORK_SEARCH_INCOMPLETE",
-  "JIOC_REVIEW",
-  "COLLECT_CHOICE",
-  "ANALYST_ASSIGNMENT",
-  "ANALYST_IN_PROGRESS",
-  "MANAGER_APPROVAL",
-  "QC_REVIEW",
-  "REWORK_REQUIRED",
-]);
 
 export type TicketWorkspaceActions = {
   onAccept: (productId: string) => void;
@@ -63,7 +47,9 @@ export type TicketWorkspaceActions = {
   onCancel: (reason: string, onSuccess?: () => void) => void;
   onCollectChoice: (analysed: boolean) => void;
   onNoMatchConsent: (taskAsNewRequest: boolean) => void;
+  onRefineSearch: () => void;
   onReject: (productId: string, reason: string) => void;
+  onRfiFeedback: (feedback: string, onSuccess?: () => void) => void;
   onRemoveCollaborator: (userId: string) => void;
   onReopenConversation?: () => void;
   onRun: () => void;
@@ -78,9 +64,11 @@ export type TicketWorkspacePending = Record<
   | "cancelling"
   | "choosingCollect"
   | "consenting"
+  | "feedback"
   | "adding"
   | "attaching"
   | "rejecting"
+  | "refining"
   | "running"
   | "saving"
   | "sending"
@@ -125,6 +113,7 @@ export function TicketWorkspace({
   similarNotice,
   ticket,
 }: TicketWorkspaceProps) {
+  const [expandedChatTicketId, setExpandedChatTicketId] = useState<string | null>(null);
   const { session } = useAuth();
   const isOwner = ticket !== undefined && ticket.requesterUserId === currentUserId;
   const isEditor =
@@ -145,6 +134,16 @@ export function TicketWorkspace({
   const showIntakeTools = ticket === undefined || INTAKE_STATES.has(ticket.state);
   const showOffers = ticket !== undefined && PRODUCT_OFFER_STATES.has(ticket.state);
   const canCancel = ticket !== undefined && isOwner && CANCELABLE_STATES.has(ticket.state);
+  const productsReady =
+    ticket !== undefined &&
+    showOffers &&
+    !rfiLoading &&
+    !rfiError &&
+    (rfiResults?.offers?.length ?? 0) > 0;
+  const followUp = rfiFollowUpState(ticket, rfiResults?.offers);
+  const retryBlocked = followUp.feedbackState.pending || followUp.refineAvailable;
+  const chatCollapsed =
+    productsReady && !followUp.rejectedOfferFollowUp && expandedChatTicketId !== ticket.id;
 
   return (
     <div className="ticket-workspace">
@@ -181,19 +180,64 @@ export function TicketWorkspace({
         </div>
       ) : null}
 
-      <section className="request-workspace" aria-label="Request workspace">
-        <ChatPanel
-          canSubmit={canSubmit}
-          csrfToken={session?.csrfToken ?? ""}
-          isSending={pending.sending}
-          isReopening={pending.reopening ?? false}
-          isSubmitting={pending.submitting}
-          onReopen={actions.onReopenConversation}
-          onSend={actions.onSend}
-          onSubmit={actions.onSubmit}
-          readOnly={!canEdit || (ticket !== undefined && !showIntakeTools)}
-          ticket={ticket}
-        />
+      <section
+        className={`request-workspace${productsReady ? " request-workspace--results" : ""}`}
+        aria-label="Request workspace"
+      >
+        {chatCollapsed && ticket ? (
+          <section className="surface conversation-summary" aria-label="Request conversation">
+            <div>
+              <MessageSquare aria-hidden="true" size={19} />
+              <span>
+                <strong>Conversation complete</strong>
+                <small>{ticket.messages.length} messages kept with this request</small>
+              </span>
+            </div>
+            <button
+              aria-expanded="false"
+              onClick={() => setExpandedChatTicketId(ticket.id)}
+              type="button"
+            >
+              <ChevronDown aria-hidden="true" size={17} />
+              Show conversation
+            </button>
+          </section>
+        ) : (
+          <div className={productsReady ? "conversation-expanded" : undefined}>
+            {productsReady && ticket ? (
+              <button
+                aria-expanded="true"
+                className="conversation-minimise"
+                onClick={() => setExpandedChatTicketId(null)}
+                type="button"
+              >
+                <ChevronUp aria-hidden="true" size={17} />
+                Minimise conversation
+              </button>
+            ) : null}
+            {ticket && followUp.rejectedOfferFollowUp ? (
+              <RfiFollowUpChat
+                feedbackPending={followUp.feedbackState.pending}
+                isSending={pending.feedback}
+                onSend={actions.onRfiFeedback}
+                ticket={ticket}
+              />
+            ) : (
+              <ChatPanel
+                canSubmit={canSubmit}
+                csrfToken={session?.csrfToken ?? ""}
+                isSending={pending.sending}
+                isReopening={pending.reopening ?? false}
+                isSubmitting={pending.submitting}
+                onReopen={actions.onReopenConversation}
+                onSend={actions.onSend}
+                onSubmit={actions.onSubmit}
+                readOnly={!canEdit || (ticket !== undefined && !showIntakeTools)}
+                ticket={ticket}
+              />
+            )}
+          </div>
+        )}
         <div className="request-side-panel">
           {ticket && showIntakeTools && canEdit ? (
             <details className="workspace-details">
@@ -236,10 +280,17 @@ export function TicketWorkspace({
               onRetry={similarNotice.onRetry}
             />
           ) : null}
-          {ticket && isOwner && ["RFI_NO_MATCH", "NEW_TASKING_CONSENT"].includes(ticket.state) ? (
+          {ticket &&
+          isOwner &&
+          ["RFI_NO_MATCH", "NEW_TASKING_CONSENT", "RFI_SEARCH_INCOMPLETE"].includes(ticket.state) &&
+          (!followUp.rejectedOfferFollowUp || followUp.feedbackState.complete) ? (
             <NoMatchConsentPanel
+              canDecide={ticket.state !== "RFI_SEARCH_INCOMPLETE"}
+              canRefine={followUp.rejectedOfferFollowUp && followUp.refineAvailable}
               isPending={pending.consenting}
+              isRefining={pending.refining}
               onConsent={actions.onNoMatchConsent}
+              onRefine={actions.onRefineSearch}
             />
           ) : null}
           {ticket && isOwner && ticket.state === "COLLECT_CHOICE" ? (
@@ -251,7 +302,7 @@ export function TicketWorkspace({
           {showOffers ? (
             <ProductOffersPanel
               canManageOffers={isOwner}
-              canRunSearch={canRunRfiSearch}
+              canRunSearch={canRunRfiSearch && !retryBlocked}
               isAccepting={pending.accepting}
               isError={rfiError}
               isLoading={rfiLoading}

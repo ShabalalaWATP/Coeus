@@ -20,6 +20,7 @@ from coeus.domain.workflow_authority import RfiCommitAuthority, WorkflowCommitAu
 from coeus.services.advisory_records import advisory_agent_run
 from coeus.services.embeddings import EmbeddingService
 from coeus.services.grounded_search import GroundedSearchService
+from coeus.services.rfi_follow_up import RfiFollowUpService
 from coeus.services.rfi_records import (
     accepted_metric,
     active_offer,
@@ -29,7 +30,7 @@ from coeus.services.rfi_records import (
     set_offer_status,
     timeline,
 )
-from coeus.services.rfi_result_projection import project_rfi_result_signal
+from coeus.services.rfi_results import RfiResultsService
 from coeus.services.rfi_search_assurance import (
     RFI_RESULTS_REVIEW_PERMISSIONS,
     RFI_RESULTS_REVIEW_STATES,
@@ -61,6 +62,8 @@ class RfiSearchService:
         grounded: GroundedSearchService,
         planner: SearchPlannerAgent,
         mutations: TicketMutationService,
+        follow_up: RfiFollowUpService,
+        results: RfiResultsService,
     ) -> None:
         self._tickets = tickets
         self._store_search = store_search
@@ -70,6 +73,8 @@ class RfiSearchService:
         self._grounded = grounded
         self._planner = planner
         self._mutations = mutations
+        self._follow_up = follow_up
+        self._results = results
 
     def run(self, authenticated: AuthenticatedSession, ticket_id: UUID) -> RfiSearchResults:
         return self._run(authenticated.user, authenticated.session, ticket_id)
@@ -90,6 +95,8 @@ class RfiSearchService:
             raise AppError(404, "ticket_not_found", "Ticket was not found.")
         if ticket.state not in {TicketState.RFI_SEARCHING, TicketState.RFI_SEARCH_INCOMPLETE}:
             raise AppError(409, "invalid_ticket_state", "Ticket is not awaiting RFI search.")
+        if ticket.state == TicketState.RFI_SEARCH_INCOMPLETE:
+            self._follow_up.require_standard_retry_available(ticket)
         requester = self._requester(ticket)
         requester_acgs = self._access_repository.active_acg_ids_for_user(requester.user_id)
         search = self._store_search.search(
@@ -196,15 +203,20 @@ class RfiSearchService:
         return self._results_for(actor, updated, grounded.evidence)
 
     def results(self, actor: UserAccount, ticket_id: UUID) -> RfiSearchResults:
-        return self._results_for(actor, self._results_ticket(actor, ticket_id))
+        return self._results_for(
+            actor,
+            self._results.ticket(
+                actor,
+                ticket_id,
+                RFI_RESULTS_REVIEW_PERMISSIONS,
+                RFI_RESULTS_REVIEW_STATES,
+            ),
+        )
 
     def visible_offer_product_ids(
         self, actor: UserAccount, tickets: tuple[TicketRecord, ...]
     ) -> frozenset[UUID]:
-        candidate_ids = frozenset(
-            offer.product_id for ticket in tickets for offer in ticket.product_offers
-        )
-        return self._store_details.visible_product_ids(actor, candidate_ids)
+        return self._results.visible_offer_product_ids(actor, tickets)
 
     def accept(self, actor: UserAccount, ticket_id: UUID, product_id: UUID) -> RfiSearchResults:
         self._require(actor, Permission.RFI_ACCEPT_PRODUCT)
@@ -234,7 +246,7 @@ class RfiSearchService:
                         ticket.ticket_id,
                         actor.user_id,
                         "product_offer_accepted",
-                        f"Accepted existing product {offer.title}.",
+                        f"Accepted existing product {offer.title}; request successfully fulfilled.",
                     ),
                 ),
             ),
@@ -263,21 +275,39 @@ class RfiSearchService:
             next_state = state_after_all_offers_rejected(metric)
         updated = self._mutations.save_audited_if_current(
             ticket,
-            replace(
+            self._follow_up.after_rejection(
                 ticket,
-                state=next_state,
-                product_offers=offers,
-                search_metrics=(*ticket.search_metrics[:-1], metric),
-                timeline=(
-                    *ticket.timeline,
-                    timeline(ticket.ticket_id, actor.user_id, "product_offer_rejected", reason),
-                ),
+                actor,
+                offers,
+                metric,
+                next_state,
+                reason,
             ),
             "product_offer_rejected",
             actor,
             {"ticket_id": str(ticket.ticket_id), "product_id": str(product_id)},
         )
         return self._results_for(actor, updated)
+
+    def record_rejection_feedback(
+        self,
+        actor: UserAccount,
+        ticket_id: UUID,
+        feedback: str,
+    ) -> TicketRecord:
+        return self._follow_up.record_feedback(actor, ticket_id, feedback)
+
+    def prepare_refine(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
+        return self._follow_up.prepare_refined_search(actor, ticket_id)
+
+    def run_prepared_refine(
+        self, authenticated: AuthenticatedSession, ticket_id: UUID
+    ) -> RfiSearchResults:
+        return self._run(authenticated.user, authenticated.session, ticket_id)
+
+    def recover_refine(self, actor: UserAccount, ticket_id: UUID, reason: str) -> RfiSearchResults:
+        recovered = self._follow_up.record_refined_search_incomplete(actor, ticket_id, reason)
+        return self._results_for(actor, recovered)
 
     def _offer_ticket(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
         ticket = self._tickets.get_visible_ticket(actor, ticket_id)
@@ -295,46 +325,13 @@ class RfiSearchService:
             or Permission.TICKET_WRITE_ALL in actor.permissions
         )
 
-    def _results_ticket(self, actor: UserAccount, ticket_id: UUID) -> TicketRecord:
-        try:
-            return self._tickets.get_visible_ticket(actor, ticket_id)
-        except AppError:
-            ticket = self._tickets.get_workflow_ticket(
-                actor, ticket_id, RFI_RESULTS_REVIEW_PERMISSIONS
-            )
-            if ticket.state not in RFI_RESULTS_REVIEW_STATES:
-                raise AppError(404, "ticket_not_found", "Ticket was not found.") from None
-            return ticket
-
     def _results_for(
         self,
         actor: UserAccount,
         ticket: TicketRecord,
         evidence: tuple[GroundedProductEvidence, ...] | None = None,
     ) -> RfiSearchResults:
-        visible_ids = self.visible_offer_product_ids(actor, (ticket,))
-        ticket = project_rfi_result_signal(
-            ticket,
-            visible_ids,
-            preserve_full=ticket.requester_user_id == actor.user_id,
-        )
-        visible_offers = ticket.product_offers
-        metric = ticket.search_metrics[-1] if ticket.search_metrics else None
-        if evidence is None:
-            evidence = ticket.search_evidence
-        visible_evidence = tuple(
-            item for item in (evidence or ()) if item.product_id in visible_ids
-        )
-        return RfiSearchResults(
-            ticket=ticket,
-            offers=visible_offers,
-            metrics=metric,
-            evidence=visible_evidence,
-            retrieval_mode=metric.retrieval_mode if metric else "metadata_only",
-            degraded_reason=metric.degraded_reason if metric else None,
-            outcome=metric.outcome if metric else "incomplete",
-            assurance=metric.assurance if metric else "assisted",
-        )
+        return self._results.project(actor, ticket, evidence)
 
     def _requester(self, ticket: TicketRecord) -> UserAccount:
         requester = self._access_repository.get_user(ticket.requester_user_id)

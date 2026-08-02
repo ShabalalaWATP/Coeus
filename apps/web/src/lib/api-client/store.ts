@@ -3,6 +3,9 @@ import type { components } from "./generated/openapi";
 
 export type StoreAsset = components["schemas"]["StoreAssetResponse"];
 export type StoreProduct = components["schemas"]["StoreProductResponse"];
+export type PersonalStoreLibrary = components["schemas"]["PersonalLibraryResponse"];
+export type PersonalStoreFolder = components["schemas"]["PersonalFolderResponse"];
+export type SavedStoreProduct = components["schemas"]["SavedProductResponse"];
 
 export type StoreSearchFilters = {
   query?: string;
@@ -56,6 +59,56 @@ export async function searchStoreProducts(
 export async function getStoreProduct(productId: string): Promise<StoreProduct> {
   return apiRequestJson<StoreProduct>(`/api/v1/store/products/${pathSegment(productId)}`, {
     method: "GET",
+  });
+}
+
+export async function getPersonalStoreLibrary(): Promise<PersonalStoreLibrary> {
+  return apiRequestJson<PersonalStoreLibrary>("/api/v1/store/library", { method: "GET" });
+}
+
+export async function createPersonalStoreFolder(
+  name: string,
+  csrfToken: string,
+): Promise<PersonalStoreFolder> {
+  return apiRequestJson<PersonalStoreFolder>("/api/v1/store/library/folders", {
+    body: JSON.stringify({ name }),
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+    method: "POST",
+  });
+}
+
+export async function deletePersonalStoreFolder(
+  folderId: string,
+  csrfToken: string,
+): Promise<void> {
+  await apiRequest(`/api/v1/store/library/folders/${pathSegment(folderId)}`, {
+    headers: { "X-CSRF-Token": csrfToken },
+    method: "DELETE",
+  });
+}
+
+export async function savePersonalStoreProduct(
+  productId: string,
+  folderId: string | null,
+  csrfToken: string,
+): Promise<SavedStoreProduct> {
+  return apiRequestJson<SavedStoreProduct>(
+    `/api/v1/store/library/products/${pathSegment(productId)}`,
+    {
+      body: JSON.stringify({ folderId }),
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+      method: "PUT",
+    },
+  );
+}
+
+export async function removePersonalStoreProduct(
+  productId: string,
+  csrfToken: string,
+): Promise<void> {
+  await apiRequest(`/api/v1/store/library/products/${pathSegment(productId)}`, {
+    headers: { "X-CSRF-Token": csrfToken },
+    method: "DELETE",
   });
 }
 

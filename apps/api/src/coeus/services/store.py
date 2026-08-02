@@ -26,6 +26,7 @@ from coeus.repositories.store_ids import new_store_product_id
 from coeus.services.audit import AuditLog
 from coeus.services.store_access import StoreAssetService, StoreDetailService
 from coeus.services.store_creation_policy import require_product_creation_status
+from coeus.services.store_library import StoreLibraryService
 from coeus.services.store_metadata_suggestions import MetadataSuggestionService
 from coeus.services.store_owner_policy import normalise_owner_team, require_owner_permission
 from coeus.services.store_search import (
@@ -226,3 +227,4 @@ class StoreServices:
     details: StoreDetailService
     assets: StoreAssetService
     suggestions: MetadataSuggestionService
+    library: StoreLibraryService

@@ -45,6 +45,18 @@ def test_customer_projection_hides_internal_runs_events_and_staff_identity() -> 
         timeline=(
             _event(ticket_id, staff_id, "manager_override", "Sensitive override reason."),
             _event(ticket_id, staff_id, "manager_approved", "Named manager approved."),
+            _event(
+                ticket_id,
+                customer.user_id,
+                "rfi_search_feedback_requested",
+                "Internal feedback prompt.",
+            ),
+            _event(
+                ticket_id,
+                customer.user_id,
+                "rfi_search_feedback_recorded",
+                "Sensitive customer feedback.",
+            ),
         ),
     )
 
@@ -52,9 +64,16 @@ def test_customer_projection_hides_internal_runs_events_and_staff_identity() -> 
     staff_view = to_ticket_response(ticket, staff)
 
     assert customer_view.agent_runs == []
-    assert [item.event_type for item in customer_view.timeline] == ["manager_approved"]
+    assert [item.event_type for item in customer_view.timeline] == [
+        "manager_approved",
+        "rfi_search_feedback_requested",
+        "rfi_search_feedback_recorded",
+    ]
     assert customer_view.timeline[0].body == "Team review completed."
     assert customer_view.timeline[0].actor_user_id == customer.user_id
+    assert customer_view.timeline[1].body.startswith("Istari asked")
+    assert customer_view.timeline[2].body == "Search feedback was recorded."
+    assert "Sensitive customer feedback" not in customer_view.timeline[2].body
     assert staff_view.agent_runs[0].summary.startswith("Internal reasoning")
     assert staff_view.agent_runs[0].execution_kind == "provider_backed"
     assert staff_view.agent_runs[0].provider == "synthetic-provider"

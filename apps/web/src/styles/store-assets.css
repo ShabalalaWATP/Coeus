@@ -35,3 +35,155 @@
 .store-asset-preview small {
   color: var(--muted);
 }
+
+.controlled-pdf-viewer {
+  display: grid;
+  gap: 10px;
+}
+
+.controlled-pdf-viewer__toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+}
+
+.controlled-pdf-viewer__toolbar button {
+  min-height: 34px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 12px;
+  background: var(--surface-muted);
+  color: var(--text);
+  font-weight: 750;
+}
+
+.controlled-pdf-viewer__toolbar button:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.controlled-pdf-viewer__toolbar span {
+  min-width: 92px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.controlled-pdf-viewer__stage {
+  display: grid;
+  min-height: 32rem;
+  place-items: center;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 18px;
+  background: #dfe3e8;
+}
+
+.controlled-pdf-viewer__stage > p {
+  color: #253244;
+}
+
+.controlled-pdf-viewer__canvas {
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  background: #fff;
+  box-shadow: 0 10px 30px rgb(15 23 42 / 18%);
+}
+
+.store-detail-flow {
+  display: grid;
+  gap: 16px;
+}
+
+.product-metadata-disclosure {
+  overflow: hidden;
+  padding: 0;
+}
+
+.product-metadata-disclosure summary {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.product-metadata-disclosure summary::-webkit-details-marker {
+  display: none;
+}
+
+.product-metadata-disclosure summary::after {
+  content: "+";
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 1.3rem;
+  line-height: 1;
+  transition: transform var(--speed-fast) ease;
+}
+
+.product-metadata-disclosure[open] summary::after {
+  transform: rotate(45deg);
+}
+
+.product-metadata-disclosure summary > span {
+  display: grid;
+  gap: 3px;
+}
+
+.product-metadata-disclosure summary small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.product-metadata-disclosure__context {
+  margin-left: auto;
+  text-align: right;
+}
+
+.product-metadata-disclosure__body {
+  display: grid;
+  gap: 14px;
+  border-top: 1px solid var(--border);
+  padding: 16px;
+}
+
+.product-metadata-disclosure__body > p {
+  max-width: 76ch;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+@media (max-width: 720px) {
+  .controlled-pdf-viewer__toolbar {
+    justify-content: space-between;
+  }
+
+  .controlled-pdf-viewer__toolbar button {
+    padding: 0 8px;
+  }
+
+  .controlled-pdf-viewer__stage {
+    min-height: 20rem;
+    padding: 8px;
+  }
+
+  .product-metadata-disclosure summary {
+    align-items: start;
+    gap: 10px;
+  }
+
+  .product-metadata-disclosure__context {
+    display: none;
+  }
+
+  .product-metadata-disclosure__body .detail-list {
+    grid-template-columns: 1fr;
+  }
+}

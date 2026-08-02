@@ -31,7 +31,7 @@ from rfi_search_helpers import (
     mark_search_complete_for_downstream_fixture,
     submitted_ticket,
 )
-from routing_helpers import assignment_team_id
+from routing_helpers import assignment_team_id, record_rejection_feedback
 
 
 @pytest.mark.asyncio
@@ -301,6 +301,7 @@ async def _approved_route_ticket(
         )
     state = search.json().get("ticketState", search.json().get("state"))
     if state in {"RFI_NO_MATCH", "NEW_TASKING_CONSENT"}:
+        await record_rejection_feedback(client, ticket_id, csrf_token, search)
         consent = await client.post(
             f"/api/v1/tickets/{ticket_id}/no-match-consent",
             headers={"X-CSRF-Token": csrf_token},

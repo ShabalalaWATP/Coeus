@@ -10,10 +10,13 @@ from coeus.api.dependencies import (
     get_search_admission,
     get_settings,
 )
+from coeus.api.presenters.tickets import to_ticket_response
 from coeus.api.workflow_dependencies import get_active_work_discovery_service
 from coeus.application.ports.admission import ResourceAdmission
 from coeus.core.async_work import run_bounded_search
 from coeus.core.config import Settings
+from coeus.core.errors import AppError
+from coeus.core.logging import get_logger
 from coeus.domain.auth import AuthenticatedSession
 from coeus.domain.enums import TicketState
 from coeus.domain.search_metrics import RfiSearchMetrics
@@ -22,14 +25,17 @@ from coeus.schemas.rfi_search import (
     RejectProductOfferRequest,
     RfiEvidencePassageResponse,
     RfiProductOfferResponse,
+    RfiRejectionFeedbackRequest,
     RfiSearchMetricsResponse,
     RfiSearchResultsResponse,
 )
+from coeus.schemas.tickets import TicketResponse
 from coeus.services.active_work_discovery import ActiveWorkDiscoveryService
 from coeus.services.rfi_search import RfiSearchService
 from coeus.services.rfi_search_types import RfiSearchResults
 
 router = APIRouter(prefix="/rfi-search", tags=["rfi-search"])
+logger = get_logger(__name__)
 
 
 @router.post("/{ticket_id}/run", response_model=RfiSearchResultsResponse)
@@ -84,10 +90,52 @@ async def reject_product_offer(
     result = rfi_search.reject(authenticated.user, ticket_id, product_id, payload.reason)
     if (
         result.ticket.state == TicketState.NEW_TASKING_CONSENT
+        and result.metrics is not None
+        and not result.metrics.rejected_count
         and settings.active_work_offers_enabled
     ):
         active_work.discover(authenticated, ticket_id)
         result = rfi_search.results(authenticated.user, ticket_id)
+    return _to_response(result)
+
+
+@router.post("/{ticket_id}/feedback", response_model=TicketResponse)
+async def record_rfi_rejection_feedback(
+    ticket_id: UUID,
+    payload: RfiRejectionFeedbackRequest,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    rfi_search: Annotated[RfiSearchService, Depends(get_rfi_search_service)],
+) -> TicketResponse:
+    ticket = rfi_search.record_rejection_feedback(
+        authenticated.user,
+        ticket_id,
+        payload.feedback,
+    )
+    return to_ticket_response(ticket, authenticated.user)
+
+
+@router.post("/{ticket_id}/refine", response_model=RfiSearchResultsResponse)
+async def refine_rfi_search(
+    ticket_id: UUID,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    rfi_search: Annotated[RfiSearchService, Depends(get_rfi_search_service)],
+    admission: Annotated[ResourceAdmission, Depends(get_search_admission)],
+) -> RfiSearchResultsResponse:
+    with admission.reserve(authenticated.user.user_id):
+        prepared = rfi_search.prepare_refine(authenticated.user, ticket_id)
+        try:
+            result = await run_bounded_search(
+                rfi_search.run_prepared_refine,
+                authenticated,
+                prepared.ticket_id,
+            )
+        except Exception as exc:
+            logger.warning(
+                "refined_rfi_search_failed",
+                extra={"error": type(exc).__name__},
+            )
+            reason = exc.code if isinstance(exc, AppError) else "search_failed"
+            result = rfi_search.recover_refine(authenticated.user, ticket_id, reason)
     return _to_response(result)
 
 

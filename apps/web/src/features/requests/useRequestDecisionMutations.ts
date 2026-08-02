@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 
 import {
   acceptProductOffer,
+  recordRfiRejectionFeedback,
+  refineRfiSearch,
   rejectProductOffer,
   runRfiSearch,
   type RfiSearchResults,
@@ -87,6 +89,19 @@ export function useRequestDecisionMutations({
     onMutate: clearActionError,
     onSuccess: onRfiUpdate,
   });
+  const rejectionFeedback = useMutation({
+    mutationFn: (feedback: string) =>
+      recordRfiRejectionFeedback(selectedTicketId, feedback, csrfToken),
+    onError: failAction("The feedback could not be recorded. Try again."),
+    onMutate: clearActionError,
+    onSuccess: onTicketUpdate,
+  });
+  const refineSearch = useMutation({
+    mutationFn: () => refineRfiSearch(selectedTicketId, csrfToken),
+    onError: failAction("The refined search could not be completed. Try again."),
+    onMutate: clearActionError,
+    onSuccess: onRfiUpdate,
+  });
   const noMatchConsent = useMutation({
     mutationFn: (taskAsNewRequest: boolean) =>
       consentNoMatch(selectedTicketId, taskAsNewRequest, csrfToken),
@@ -124,7 +139,9 @@ export function useRequestDecisionMutations({
     joinSimilar,
     noMatchConsent,
     productOutcome,
+    refineSearch,
     rejectOffer,
+    rejectionFeedback,
     retryActiveWork,
     runRfi,
   };

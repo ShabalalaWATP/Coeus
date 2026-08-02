@@ -24,7 +24,12 @@ export function StoreAssetPreview({
   return (
     <section className="store-asset-preview" aria-label={`${asset.name} preview`}>
       <h3>Controlled preview</h3>
-      <ControlledDocumentViewer kind={asset.previewKind} title={asset.name} url={preview.url} />
+      <ControlledDocumentViewer
+        kind={asset.previewKind}
+        mimeType={asset.mimeType}
+        title={asset.name}
+        url={preview.url}
+      />
       <small>Preview content is access controlled and is not cached by Istari.</small>
     </section>
   );

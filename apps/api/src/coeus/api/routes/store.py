@@ -16,6 +16,7 @@ from coeus.api.presenters.store import (
 )
 from coeus.application.ports.admission import ResourceAdmission
 from coeus.core.async_work import run_bounded_search
+from coeus.core.errors import AppError
 from coeus.domain.access import ProductStatus
 from coeus.domain.auth import AuthenticatedSession
 from coeus.domain.store import StoreSearchFilters
@@ -28,12 +29,106 @@ from coeus.schemas.store import (
     StoreProductResponse,
     StoreSearchResponse,
 )
+from coeus.schemas.store_library import (
+    PersonalFolderCreateRequest,
+    PersonalFolderResponse,
+    PersonalLibraryResponse,
+    SavedProductRequest,
+    SavedProductResponse,
+)
 from coeus.services.store import StoreServices
 
 router = APIRouter(prefix="/store", tags=["store"])
 SEARCH_TEXT_MAX_LENGTH = 200
 SEARCH_FIELD_MAX_LENGTH = 80
 SEARCH_REGION_MAX_LENGTH = 180
+
+
+@router.get("/library", response_model=PersonalLibraryResponse)
+async def get_personal_library(
+    authenticated: Annotated[AuthenticatedSession, Depends(get_current_session)],
+    store_services: Annotated[StoreServices, Depends(get_store_services)],
+) -> PersonalLibraryResponse:
+    library = store_services.library.list_for_user(authenticated.user.user_id)
+    visible: list[SavedProductResponse] = []
+    unavailable_count = 0
+    for saved in library.saved_products:
+        try:
+            product = store_services.details.get_visible_product(
+                authenticated.user, saved.product_id
+            )
+        except AppError as exc:
+            if exc.status_code != 404:
+                raise
+            unavailable_count += 1
+            continue
+        visible.append(
+            SavedProductResponse(
+                product=product_response(product),
+                folder_id=saved.folder_id,
+                saved_at=saved.saved_at,
+            )
+        )
+    return PersonalLibraryResponse(
+        folders=[
+            PersonalFolderResponse(
+                folder_id=folder.folder_id,
+                name=folder.name,
+                created_at=folder.created_at,
+            )
+            for folder in library.folders
+        ],
+        saved_products=visible,
+        unavailable_count=unavailable_count,
+    )
+
+
+@router.post("/library/folders", response_model=PersonalFolderResponse, status_code=201)
+async def create_personal_folder(
+    payload: PersonalFolderCreateRequest,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    store_services: Annotated[StoreServices, Depends(get_store_services)],
+) -> PersonalFolderResponse:
+    folder = store_services.library.create_folder(authenticated.user.user_id, payload.name)
+    return PersonalFolderResponse(
+        folder_id=folder.folder_id, name=folder.name, created_at=folder.created_at
+    )
+
+
+@router.delete("/library/folders/{folder_id}", status_code=204)
+async def delete_personal_folder(
+    folder_id: UUID,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    store_services: Annotated[StoreServices, Depends(get_store_services)],
+) -> Response:
+    store_services.library.delete_folder(authenticated.user.user_id, folder_id)
+    return Response(status_code=204)
+
+
+@router.put("/library/products/{product_id}", response_model=SavedProductResponse)
+async def save_personal_product(
+    product_id: UUID,
+    payload: SavedProductRequest,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    store_services: Annotated[StoreServices, Depends(get_store_services)],
+) -> SavedProductResponse:
+    product = store_services.details.get_visible_product(authenticated.user, product_id)
+    saved = store_services.library.save_product(
+        authenticated.user.user_id, product_id, payload.folder_id
+    )
+    return SavedProductResponse(
+        product=product_response(product), folder_id=saved.folder_id, saved_at=saved.saved_at
+    )
+
+
+@router.delete("/library/products/{product_id}", status_code=204)
+async def remove_personal_product(
+    product_id: UUID,
+    authenticated: Annotated[AuthenticatedSession, Depends(get_csrf_validated_session)],
+    store_services: Annotated[StoreServices, Depends(get_store_services)],
+) -> Response:
+    store_services.library.remove_product(authenticated.user.user_id, product_id)
+    return Response(status_code=204)
 
 
 @router.get("/products", response_model=StoreSearchResponse)
