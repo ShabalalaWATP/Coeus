@@ -1,13 +1,25 @@
 import {
-  STORE_PAGE_SIZE,
   activeFilterCount,
-  emptyStoreSearch,
   hasSearchCriteria,
   readStoreSearch,
   toSearchRequest,
   toggleFacet,
   writeStoreSearch,
 } from "./store-search-params";
+import type { StoreSearchState } from "./store-search-params";
+
+const STORE_PAGE_SIZE = 24;
+const emptyStoreSearch: StoreSearchState = {
+  query: "",
+  productType: "",
+  region: "",
+  tag: "",
+  sourceType: "",
+  dateFrom: "",
+  dateTo: "",
+  sort: "relevance",
+  page: 1,
+};
 
 test("reads a full search from the URL", () => {
   const state = readStoreSearch(

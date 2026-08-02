@@ -1,6 +1,6 @@
 import type { StoreSearchFilters } from "../../lib/api-client/store";
 
-export type StoreSort = "relevance" | "title" | "coverage";
+type StoreSort = "relevance" | "title" | "coverage";
 
 export type StoreSearchState = {
   query: string;
@@ -14,7 +14,7 @@ export type StoreSearchState = {
   page: number;
 };
 
-export const STORE_PAGE_SIZE = 24;
+const STORE_PAGE_SIZE = 24;
 
 // Short, readable URL keys: a store search is meant to be pasted into a ticket
 // or a message, so the address bar has to stay legible.
@@ -33,7 +33,7 @@ type TextField = keyof typeof PARAM_KEYS;
 const TEXT_FIELDS = Object.keys(PARAM_KEYS) as TextField[];
 const SORTS: readonly StoreSort[] = ["relevance", "title", "coverage"];
 
-export const emptyStoreSearch: StoreSearchState = {
+const emptyStoreSearch: StoreSearchState = {
   query: "",
   productType: "",
   region: "",

@@ -49,7 +49,7 @@ export function assetSummary(assets: readonly StoreAsset[]): string | null {
   return labels.join(" · ");
 }
 
-export function assetLabel(asset: StoreAsset): string {
+function assetLabel(asset: StoreAsset): string {
   if (asset.mimeType.startsWith("image/")) {
     return "Imagery";
   }

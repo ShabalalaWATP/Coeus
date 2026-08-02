@@ -1,4 +1,4 @@
-import { assetLabel, assetSummary, classificationTone, formatCoverage } from "./store-format";
+import { assetSummary, classificationTone, formatCoverage } from "./store-format";
 import type { StoreAsset } from "../../lib/api-client/store";
 
 function asset(overrides: Partial<StoreAsset>): StoreAsset {
@@ -41,12 +41,12 @@ test("summarises what a product actually contains", () => {
 });
 
 test("labels assets by what they are, falling back to the recorded type", () => {
-  expect(assetLabel(asset({ assetType: "GeoJSON", mimeType: "application/geo+json" }))).toBe(
+  expect(assetSummary([asset({ assetType: "GeoJSON", mimeType: "application/geo+json" })])).toBe(
     "Map layer",
   );
-  expect(assetLabel(asset({ assetType: "dataset", mimeType: "text/csv" }))).toBe("Data");
-  expect(assetLabel(asset({ assetType: "image", mimeType: "image/jpeg" }))).toBe("Imagery");
-  expect(assetLabel(asset({ assetType: "kml", mimeType: "application/vnd.kml" }))).toBe("KML");
+  expect(assetSummary([asset({ assetType: "dataset", mimeType: "text/csv" })])).toBe("Data");
+  expect(assetSummary([asset({ assetType: "image", mimeType: "image/jpeg" })])).toBe("Imagery");
+  expect(assetSummary([asset({ assetType: "kml", mimeType: "application/vnd.kml" })])).toBe("KML");
 });
 
 test("bands classification levels for the marking colour", () => {
