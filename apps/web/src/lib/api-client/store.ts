@@ -19,6 +19,7 @@ export type StoreSearchFilters = {
   ownerTeam?: string;
   page?: number;
   pageSize?: number;
+  sort?: "relevance" | "title" | "coverage";
 };
 
 export type StoreSearchResponse = components["schemas"]["StoreSearchResponse"];

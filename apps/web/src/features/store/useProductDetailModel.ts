@@ -45,7 +45,7 @@ export function useProductDetailModel() {
   return {
     access,
     assetId,
-    back: backNavigationFor(from, navigation.origin),
+    back: backNavigationFor(from, navigation.origin, navigation.search),
     canRequestAssetAccess,
     from,
     navigation,

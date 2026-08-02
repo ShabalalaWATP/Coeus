@@ -1,0 +1,107 @@
+/* A result card: everything needed to judge a product without opening it. */
+
+.store-result__summary {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.store-result__title {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.store-result__title strong {
+  font-size: 1.02rem;
+  letter-spacing: -0.005em;
+}
+
+/* Classification and status read before the title: an operator must never
+   have to hunt for the marking of the thing they are about to open. */
+.store-marking {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 0;
+}
+
+.store-marking__level {
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.store-marking__level--low {
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+  color: var(--success);
+}
+
+.store-marking__level--medium {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+.store-marking__level--high {
+  background: color-mix(in srgb, var(--warning) 18%, transparent);
+  color: var(--warning);
+}
+
+.store-marking__status {
+  border: 1px solid color-mix(in srgb, var(--warning) 45%, var(--border));
+  border-radius: 4px;
+  padding: 1px 7px;
+  color: var(--warning);
+  font-size: 0.68rem;
+  font-weight: 780;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.store-marking .mono-ref {
+  margin-left: auto;
+  font-size: 0.72rem;
+}
+
+.store-result__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 2px 0 0;
+}
+
+.store-result__facts div {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.store-result__facts dt {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 760;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.store-result__facts dd {
+  margin: 0;
+  font-size: 0.84rem;
+  overflow-wrap: anywhere;
+}
+
+.store-result__format {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--accent);
+}

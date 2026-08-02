@@ -5,6 +5,7 @@ from coeus.domain.access import ProductStatus
 from coeus.domain.store import (
     BoundingBox,
     StoreAsset,
+    StoreFacetValue,
     StoreProduct,
     StoreSearchHit,
     StoreSearchResult,
@@ -12,6 +13,7 @@ from coeus.domain.store import (
 from coeus.schemas.store import (
     StoreAssetRequest,
     StoreAssetResponse,
+    StoreFacetCountsResponse,
     StoreFacetsResponse,
     StoreProductCreateRequest,
     StoreProductResponse,
@@ -30,11 +32,25 @@ def store_search_response(result: StoreSearchResult) -> StoreSearchResponse:
         page_size=result.page_size,
         total_pages=result.total_pages,
         facets=StoreFacetsResponse(
-            product_types=list(result.facets.product_types),
-            regions=list(result.facets.regions),
-            tags=list(result.facets.tags),
+            product_types=_facet_values(result.facets.product_types),
+            regions=_facet_values(result.facets.regions),
+            tags=_facet_values(result.facets.tags),
+            counts=StoreFacetCountsResponse(
+                product_types=_facet_counts(result.facets.product_types),
+                regions=_facet_counts(result.facets.regions),
+                tags=_facet_counts(result.facets.tags),
+            ),
         ),
+        relaxed=result.relaxed,
     )
+
+
+def _facet_values(facets: tuple[StoreFacetValue, ...]) -> list[str]:
+    return [facet.value for facet in facets]
+
+
+def _facet_counts(facets: tuple[StoreFacetValue, ...]) -> dict[str, int]:
+    return {facet.value: facet.count for facet in facets}
 
 
 def product_draft_from_request(payload: StoreProductCreateRequest) -> StoreProductDraft:

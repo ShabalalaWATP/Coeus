@@ -118,13 +118,50 @@ test("maps back navigation targets from the originating workspace", () => {
     label: "Back to store",
   });
   expect(storeNavigationState(null)).toEqual({});
-  expect(storeNavigationState({ from: 7, origin: "external" })).toEqual({
+  expect(storeNavigationState({ from: 7, origin: "external", search: 9 })).toEqual({
     from: undefined,
     origin: undefined,
+    search: undefined,
   });
-  expect(storeNavigationState({ from: "/store", origin: "library" })).toEqual({
+  expect(storeNavigationState({ from: "/store", origin: "library", search: "?q=a" })).toEqual({
     from: "/store",
     origin: "library",
+    search: "?q=a",
+  });
+});
+
+test("returns to the search the operator had applied", () => {
+  expect(backNavigationFor("/store", "store", "?q=arctic&region=Arctic+Circle&page=2")).toEqual({
+    path: "/store?q=arctic&region=Arctic+Circle&page=2",
+    label: "Back to store",
+  });
+  expect(backNavigationFor("/rfa/products", "store", "?sort=title")).toEqual({
+    path: "/rfa/products?sort=title",
+    label: "Back to products",
+  });
+  expect(backNavigationFor("/store/my-products", "store", "")).toEqual({
+    path: "/store/my-products",
+    label: "Back to store",
+  });
+});
+
+test("rebuilds the return query from known parameters only", () => {
+  // Navigation state is presentation-only, so anything unrecognised in it is
+  // dropped rather than carried into the return link.
+  expect(
+    backNavigationFor("/store", "store", "?q=arctic&redirect=https://example.test&admin=1"),
+  ).toEqual({
+    path: "/store?q=arctic",
+    label: "Back to store",
+  });
+  expect(backNavigationFor("/store", "store", "?redirect=https://example.test")).toEqual({
+    path: "/store",
+    label: "Back to store",
+  });
+  // A search cannot rescue an unrecognised origin path.
+  expect(backNavigationFor("/evil", "store", "?q=arctic")).toEqual({
+    path: "/store",
+    label: "Back to store",
   });
 });
 

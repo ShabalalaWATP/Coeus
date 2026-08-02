@@ -141,12 +141,23 @@ class StoreProductSearchResponse(StoreProductResponse):
     match_reasons: list[str] = Field(serialization_alias="matchReasons")
 
 
+class StoreFacetCountsResponse(BaseModel):
+    """How many visible products carry each facet value, keyed by value."""
+
+    model_config = ConfigDict(frozen=True)
+
+    product_types: dict[str, int] = Field(serialization_alias="productTypes")
+    regions: dict[str, int]
+    tags: dict[str, int]
+
+
 class StoreFacetsResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     product_types: list[str] = Field(serialization_alias="productTypes")
     regions: list[str]
     tags: list[str]
+    counts: StoreFacetCountsResponse
 
 
 class StoreSearchResponse(BaseModel):
@@ -158,6 +169,7 @@ class StoreSearchResponse(BaseModel):
     page_size: int = Field(serialization_alias="pageSize")
     total_pages: int = Field(serialization_alias="totalPages")
     facets: StoreFacetsResponse
+    relaxed: bool = False
 
 
 class AssetAccessResponse(BaseModel):

@@ -1,47 +1,63 @@
 import { render, screen } from "@testing-library/react";
 
 import { StoreMatchReasons } from "./StoreMatchReasons";
+import { matchSummary } from "./store-match-language";
 
-test("renders compact formatted store match reasons", () => {
+test("leads with what matched and keeps retrieval detail secondary", () => {
   render(
     <StoreMatchReasons
-      reasons={["lexical-rank:2", "vector-similarity:0.81", "semantic-label:maritime"]}
+      reasons={["lexical-rank:2", "vector-similarity:0.81", "full-text:harbour"]}
       show
     />,
   );
 
-  expect(screen.getByRole("list", { name: "Why it matched" })).toBeVisible();
-  expect(screen.getByText("Text rank 2")).toBeVisible();
-  expect(screen.getByText("Semantic 81%")).toBeVisible();
-  expect(screen.getByText("Label maritime")).toBeVisible();
+  expect(screen.getByText("Matched harbour")).toBeVisible();
+  expect(screen.getByText("Text rank 2 · Meaning 81% · Term harbour")).toBeVisible();
 });
 
-test("hides visible-only reasons and formats fallback reasons", () => {
-  const { rerender } = render(<StoreMatchReasons reasons={["visible"]} show />);
+test("describes a semantic-only match in words rather than a score", () => {
+  render(<StoreMatchReasons reasons={["vector-similarity:0.44"]} show />);
 
-  expect(screen.queryByRole("list", { name: "Why it matched" })).not.toBeInTheDocument();
+  expect(screen.getByText("Close match on meaning")).toBeVisible();
+});
 
-  rerender(
+test("summarises matched terms and related labels together", () => {
+  expect(matchSummary(["full-text:arctic", "full-text:ice", "semantic-label:maritime"])).toBe(
+    "Matched arctic and ice, related to maritime",
+  );
+  expect(matchSummary(["semantic-label:maritime"])).toBe("Related to maritime");
+  expect(matchSummary(["full-text:arctic", "semantic-label:arctic"])).toBe("Matched arctic");
+});
+
+test("joins three or more matched terms readably", () => {
+  expect(matchSummary(["full-text:a", "full-text:b", "full-text:c"])).toBe("Matched a, b and c");
+});
+
+test("renders nothing when there is nothing to explain", () => {
+  const { rerender, container } = render(<StoreMatchReasons reasons={["visible"]} show />);
+  expect(container).toBeEmptyDOMElement();
+
+  rerender(<StoreMatchReasons reasons={["full-text:harbour"]} show={false} />);
+  expect(container).toBeEmptyDOMElement();
+
+  expect(matchSummary(["lexical-rank:1"])).toBeNull();
+});
+
+test("formats remaining signal types without inventing wording", () => {
+  render(
     <StoreMatchReasons
-      reasons={["retrieval:lexical-only", "metadata:region", "full-text:harbour", "custom"]}
+      reasons={[
+        "retrieval:lexical-only",
+        "metadata:region",
+        "semantic-label:maritime",
+        "full-text:harbour",
+        "custom",
+      ]}
       show
     />,
   );
 
-  expect(screen.getByText("Lexical fallback")).toBeVisible();
-  expect(screen.getByText("Metadata region")).toBeVisible();
-  expect(screen.getByText("Term harbour")).toBeVisible();
-  expect(screen.queryByText("custom")).not.toBeInTheDocument();
-});
-
-test("renders unknown reasons when inside the visible truncation window", () => {
-  render(<StoreMatchReasons reasons={["custom", "metadata:region", "full-text:harbour"]} show />);
-
-  expect(screen.getByText("custom")).toBeVisible();
-});
-
-test("does not render reasons before a query is submitted", () => {
-  render(<StoreMatchReasons reasons={["lexical-rank:1"]} show={false} />);
-
-  expect(screen.queryByRole("list", { name: "Why it matched" })).not.toBeInTheDocument();
+  expect(
+    screen.getByText("Wording only · Metadata region · Label maritime · Term harbour · custom"),
+  ).toBeVisible();
 });

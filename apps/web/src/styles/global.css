@@ -38,7 +38,8 @@
 @import "./store.css";
 @import "./store-library.css";
 @import "./store-search.css";
-@import "./store-match-reasons.css";
+@import "./store-card.css";
+@import "./store-results.css";
 @import "./store-assets.css";
 @import "./store-break-glass.css";
 @import "./auth.css";

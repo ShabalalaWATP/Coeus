@@ -12,7 +12,7 @@ Store search has two paths:
 
 - **No free-text query:** keep the existing browse path. Products are scoped by
   ACG, clearance, draft visibility and archive state, filtered by structured
-  fields, sorted by title and paginated exactly.
+  fields, ordered by the requested sort and paginated exactly.
 - **Free-text query:** build one query embedding through the configured
   `EmbeddingService`, retrieve hybrid candidates from the existing Store
   projection path, then return the same `StoreSearchResult` shape with ranked
@@ -31,6 +31,53 @@ use a large internal candidate cap for the current local Store size, but the
 cap must not be the public page size and must be documented in code.
 The Store browse path uses a 500-candidate cap per lexical or vector leg. RFI
 search keeps its stricter 50-candidate leg cap.
+
+## Sort Order
+
+Ordering is a server contract, applied to the whole matched set before paging,
+so a sort choice holds across pages. `GET /store/products` accepts
+`sort=relevance|title|coverage`, defaulting to `relevance`; an unrecognised
+value is rejected with `422`.
+
+- `relevance` orders free-text results by `match_score` then title. Catalogue
+  browse has no relevance signal to rank by, so it resolves to title order.
+- `title` orders case-insensitively by title.
+- `coverage` orders by newest `time_period_start` first. Products with no
+  recorded coverage sort last, so an empty window never outranks a dated
+  product.
+
+The browse path selects a static `ORDER BY` fragment by enum; no request text
+reaches the statement.
+
+## Facets
+
+Facets list the product types, regions and tags present in the access-scoped,
+structurally-filtered set. `facets.counts` carries how many visible products
+hold each value, keyed by value, so counts describe every product the requester
+may see for the current search rather than just the returned page. Hidden
+products contribute to neither the lists nor the counts.
+
+Counts were added alongside the existing ordered value lists rather than
+replacing them, keeping the published response shape backward compatible.
+
+Facets remain query-blind by design so refinement options survive a narrow
+query. A consequence is that once a search term is active the counts describe
+the catalogue rather than the results on screen, so the web store shows the
+options without their counts while a term is applied. Presenting both together
+would contradict the result total.
+
+## Broadened Queries
+
+`websearch_to_tsquery` requires every term, so a natural phrase such as
+`arctic shipping routes` retrieves nothing even when strong partial matches are
+held. When a multi-term query yields no hits, the service retries once with the
+terms joined by `OR` and sets `relaxed: true` on the response. Single-term
+queries are never broadened, because broadening would search for the same
+thing.
+
+Match reasons are always derived from the query the operator typed, never from
+the broadened form, and the UI states that the search was broadened so partial
+matches are never presented as exact ones.
 
 ## Relevance And Reasons
 
@@ -71,6 +118,11 @@ search must not fail. It falls back to lexical retrieval and records
   are applied before ranking.
 - The service layer rechecks `can_read` before returning results.
 - Hidden products must not affect ranks, counts, facets or reasons.
+- Facet values and counts are derived in SQL, so they carry the same recheck as
+  products. If any product the projection returned fails the in-process policy
+  check, the SQL scope has drifted from the API rules and nothing derived from
+  that projection is reported: browse returns an empty result, and a text query
+  returns its independently rechecked hits with empty facets.
 - The in-memory fallback must apply the same structured filters as the
   PostgreSQL projection path.
 
@@ -83,8 +135,12 @@ search must not fail. It falls back to lexical retrieval and records
 - A cross-word-boundary substring such as `port engin` does not match only
   because it appears inside `report engine`.
 - Facets remain populated from the structurally-filtered scoped set, not only
-  the text-matched subset.
+  the text-matched subset, and every listed value carries a count.
 - Pagination and totals are exact for the returned query result set.
+- A sort choice holds across pages: paging a title-sorted search never repeats
+  or reorders products.
+- A multi-term phrase that matches no single product returns the closest
+  matches with `relaxed: true` rather than an empty result.
 - Provider-degraded browse search returns lexical results rather than an error.
 - Gibberish queries with no lexical or vector signal return zero hits, even
   when every scoped product has an embedding.
@@ -101,3 +157,15 @@ administer the catalogue. The web store shows a search-first prompt until
 the user submits a search; owner-scoped pages (My Products, RFA and
 Collection product workspaces) carry `ownerTeam` and load as before, and
 RFI search remains the other sanctioned discovery route.
+
+## Web Store Search State
+
+Applied search state lives in the URL (`q`, `type`, `region`, `tag`, `source`,
+`from`, `to`, `sort`, `page`), so a result set can be shared, refreshed,
+bookmarked and returned to with the browser Back button after opening a
+product. The search bar edits a draft that is applied on submit; facet clicks
+and history navigation apply immediately and the draft follows what is applied.
+
+Owner-team scoping is requested from the server rather than filtered from a
+returned page, so totals and pagination always describe the same set the page
+is showing.

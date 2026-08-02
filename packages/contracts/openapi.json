@@ -7418,8 +7418,44 @@
         "title": "StoreAssetResponse",
         "type": "object"
       },
+      "StoreFacetCountsResponse": {
+        "description": "How many visible products carry each facet value, keyed by value.",
+        "properties": {
+          "productTypes": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Producttypes",
+            "type": "object"
+          },
+          "regions": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Regions",
+            "type": "object"
+          },
+          "tags": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Tags",
+            "type": "object"
+          }
+        },
+        "required": [
+          "productTypes",
+          "regions",
+          "tags"
+        ],
+        "title": "StoreFacetCountsResponse",
+        "type": "object"
+      },
       "StoreFacetsResponse": {
         "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/StoreFacetCountsResponse"
+          },
           "productTypes": {
             "items": {
               "type": "string"
@@ -7445,7 +7481,8 @@
         "required": [
           "productTypes",
           "regions",
-          "tags"
+          "tags",
+          "counts"
         ],
         "title": "StoreFacetsResponse",
         "type": "object"
@@ -7953,6 +7990,11 @@
             "title": "Products",
             "type": "array"
           },
+          "relaxed": {
+            "default": false,
+            "title": "Relaxed",
+            "type": "boolean"
+          },
           "total": {
             "title": "Total",
             "type": "integer"
@@ -7972,6 +8014,16 @@
         ],
         "title": "StoreSearchResponse",
         "type": "object"
+      },
+      "StoreSortOrder": {
+        "description": "Result ordering a requester can ask for.\n\n``RELEVANCE`` only carries meaning when a text query ranked the results;\ncatalogue browse falls back to title order so paging stays deterministic.",
+        "enum": [
+          "relevance",
+          "title",
+          "coverage"
+        ],
+        "title": "StoreSortOrder",
+        "type": "string"
       },
       "SubmitAcgApplicationRequest": {
         "properties": {
@@ -15144,6 +15196,15 @@
               "minimum": 1,
               "title": "Pagesize",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/StoreSortOrder",
+              "default": "relevance"
             }
           }
         ],

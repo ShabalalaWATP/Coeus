@@ -30,6 +30,208 @@
   color: color-mix(in srgb, var(--warning) 85%, var(--text));
 }
 
+/* ---- Search bar: the front door, so it gets the width ---- */
+
+.store-searchbar {
+  display: grid;
+  gap: 10px;
+  border: 1px solid color-mix(in srgb, var(--store-gold) 22%, var(--border));
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  background: var(--surface);
+}
+
+.store-searchbar__row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.store-searchbar__field {
+  display: flex;
+  flex: 1;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 0 14px;
+  background: var(--surface-muted);
+  color: var(--store-gold);
+}
+
+.store-searchbar__field:focus-within {
+  border-color: var(--accent);
+}
+
+.store-searchbar__field input {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.store-searchbar__field input:focus {
+  outline: none;
+}
+
+.store-searchbar__advanced summary {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: fit-content;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 740;
+  cursor: pointer;
+}
+
+.store-searchbar__advanced summary::-webkit-details-marker {
+  display: none;
+}
+
+.store-searchbar__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.store-searchbar__grid label {
+  display: grid;
+  gap: 6px;
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 740;
+}
+
+.store-searchbar__grid input,
+.store-searchbar__grid select {
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 10px;
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+.store-searchbar__grid input:focus,
+.store-searchbar__grid select:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.store-searchbar__hint {
+  margin: 0;
+  color: color-mix(in srgb, var(--warning) 85%, var(--text));
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+/* ---- Refine rail: facets are filters, so they behave like controls ---- */
+
+.store-refine {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 15px;
+  background: var(--surface);
+}
+
+.store-refine__head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.store-refine__head h2 {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.store-refine__clear {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 720;
+  cursor: pointer;
+}
+
+.store-refine__group h3 {
+  margin: 0 0 6px;
+  font-size: 0.8rem;
+  font-weight: 760;
+}
+
+.store-refine__group ul {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.store-refine__option {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
+  width: 100%;
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: 5px 7px;
+  background: none;
+  color: var(--muted);
+  font-size: 0.83rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.store-refine__option:hover {
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+.store-refine__option[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  font-weight: 760;
+}
+
+.store-refine__count {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.store-refine__note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
 /* ---- Store identity: the store reads as its own controlled space ---- */
 
 .store-page {
