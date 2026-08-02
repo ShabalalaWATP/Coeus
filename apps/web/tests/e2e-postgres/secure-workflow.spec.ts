@@ -187,9 +187,25 @@ test("creates and submits a customer request through PostgreSQL", async ({ page 
   await page.getByRole("button", { name: "Submit", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "Request journey" })).toBeVisible();
   await page.getByLabel("Close journey").click();
-  const taskAsNewRequest = page.getByRole("button", { name: "Yes, task as new request" });
-  await expect(taskAsNewRequest).toBeVisible();
-  await taskAsNewRequest.click();
+  await expect(page.locator("article.offer-card").first()).toBeVisible();
+  for (let offerIndex = 0; offerIndex < 10; offerIndex += 1) {
+    const enabledReject = page
+      .locator(".offer-card button:enabled")
+      .filter({ hasText: /^Reject$/ })
+      .first();
+    if ((await enabledReject.count()) === 0) break;
+    const offerCard = enabledReject.locator("xpath=ancestor::article[1]");
+    await offerCard.getByLabel("Rejection reason").fill("Not specific enough for this request.");
+    await enabledReject.click();
+    await expect(offerCard.getByRole("button", { name: "Reject", exact: true })).toBeDisabled();
+  }
+  await page
+    .getByLabel("What was missing?")
+    .fill("The offered reports did not answer the operational question closely enough.");
+  await page.getByRole("button", { name: "Send feedback" }).click();
+  const continueToJioc = page.getByRole("button", { name: "Continue to the JIOC Agent" });
+  await expect(continueToJioc).toBeVisible();
+  await continueToJioc.click();
   await expect(page.getByText("Analyst assignment", { exact: true })).toBeVisible();
 });
 
