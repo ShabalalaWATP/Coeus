@@ -39,8 +39,10 @@ assigned; there is no open self-registration, only a request-access flow.
 
 ![Istari sign-in and splash page](images/01-splash-login.png)
 
-Local seed accounts (see the [Setup Guide](SETUP.md#seed-accounts)) all use the
-mock credential `CoeusLocal1!`.
+The Docker Compose seed accounts (see the [Setup Guide](SETUP.md#seed-accounts))
+use usernames `admin1` through `admin16` and the temporary password `admin`.
+Direct host-process development retains the canonical `example.test` usernames
+and mock credential `CoeusLocal1!` unless numbered logins are explicitly enabled.
 
 ## Account, navigation and notifications
 
@@ -79,8 +81,10 @@ outcome decisions. See the [agent authority matrix](AI_AGENTS.md#authority-matri
 
 Customers get two focused screens. The **dashboard** starts with an aligned
 status ledger that emphasises requests needing customer action, then shows a
-request register with state, priority, collaborators and the next available
-action. One primary action opens a new request.
+register of open requests with state, priority, collaborators and the next
+available action. Closed and cancelled requests remain available in a separate
+**Closed requests** section, which is collapsed by default. One primary action
+opens a new request.
 
 ![Customer request dashboard](images/03-customer-dashboard.png)
 
@@ -112,8 +116,10 @@ From here a customer can:
   identify unmet criteria, then asks the responsible RFA or Collection manager
   to decide whether re-analysis is justified. If that manager disagrees, an
   independent JIOC human makes the final re-analysis decision.
-- Submit product feedback from the released request. Customers do not have a
-  separate analytics dashboard.
+- After the request closes, answer one short product-outcome feedback question
+  and optionally explain what was useful or could be improved. Feedback is not
+  offered while outcome or re-analysis work remains open. Customers do not
+  have a separate analytics dashboard.
 
 After submission, Istari also checks open requests for likely overlap. If a
 visible similar request is already in progress, the workspace shows its
@@ -297,13 +303,18 @@ cloud credentials never belong in this workspace.
 
 ### Search embeddings
 
-**Search & embeddings** is independent of text chat. It reports the index,
-corpus and evaluation state, and lets an administrator select offline mock or
-Gemini embeddings. Gemini uses a dedicated encrypted key and requires explicit
-confirmation before synthetic Store text is sent externally. Test a saved
-configuration before rebuilding the index. Until a provider and model pass the
-approved retrieval evaluation, Istari may return candidates for review but will
-not claim a definitive no-match.
+**Search & embeddings** is independent of text chat. Its main status says **Ready**, **Updating automatically** or **Needs attention**. New products,
+changed files and search-service changes queue an automatic Search library
+update. The page follows it without a manual refresh, and you can leave while
+it runs. A retry action appears only if an update fails.
+Open **Change search service** only when switching between Local search and
+Gemini or updating the dedicated encrypted Gemini key. Test the chosen service
+and model before applying it. **Quality checks pending** does not mean search is
+broken: results remain available, but Istari will not claim a definitive
+no-match until the evaluation passes. Counts use plain operational labels;
+provider IDs, model IDs, dimensions and generation data are under **Technical
+details**. The [Search Embeddings Runbook](runbooks/search-embeddings.md)
+explains recovery and security boundaries.
 
 ### Realtime voice
 

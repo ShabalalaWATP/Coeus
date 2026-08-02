@@ -40,7 +40,6 @@ export default function AccessGroupsPage() {
           <h1 id="access-groups-title">Access Groups</h1>
           <p>Find the need-to-know communities that support your work.</p>
         </div>
-        <div className="classification-note">MOCK DATA ONLY</div>
       </section>
       {groupsQuery.isLoading ? <LoadingState label="Loading access groups" /> : null}
       {groupsQuery.isError ? <ErrorState onRetry={() => void groupsQuery.refetch()} /> : null}

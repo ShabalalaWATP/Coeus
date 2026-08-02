@@ -15,6 +15,7 @@ from coeus.domain.access import ProductStatus
 from coeus.domain.search_index import SearchChunk, SearchChunkEmbedding, SearchIndexProfile
 from coeus.domain.store import StoreProduct, StoreVisibilityScope
 from coeus.persistence.search_index_postgres import PostgresSearchIndexRepository
+from coeus.persistence.search_index_validation import embedding_source_hash
 from coeus.persistence.store_projection import PostgresStoreProjection
 from coeus.services.search_configuration import SEARCH_EMBEDDING_DIMENSIONS
 from store_projection_helpers import seed_product
@@ -47,7 +48,11 @@ def test_chunk_search_excludes_unauthorised_acg_and_clearance_in_both_legs(
             replace(profile, status="ready", is_active=True, completed_at=datetime.now(UTC)),
             chunks,
             tuple(
-                SearchChunkEmbedding(chunk.chunk_id, chunk.content_hash, _unit_vector())
+                SearchChunkEmbedding(
+                    chunk.chunk_id,
+                    embedding_source_hash(profile.space_id, chunk.content_hash),
+                    _unit_vector(),
+                )
                 for chunk in chunks
             ),
         )

@@ -1,4 +1,5 @@
 from dataclasses import replace
+from datetime import date
 
 from coeus.domain.tickets import IntakeDetails
 from coeus.services.intake import (
@@ -30,7 +31,7 @@ def test_intake_extraction_handles_natural_demo_phrasing() -> None:
 
 
 def test_intake_extraction_handles_time_windows_and_decision_phrasing() -> None:
-    intake = IntakeExtractionService().extract(
+    intake = IntakeExtractionService(today=date(2026, 8, 1)).extract(
         "Need a map and briefing for Baltic ports next week, high priority, "
         "so that commanders can decide patrol posture."
     )
@@ -38,8 +39,8 @@ def test_intake_extraction_handles_time_windows_and_decision_phrasing() -> None:
     assert intake.area_or_region == "Baltic Ports"
     assert intake.priority == "high"
     assert intake.required_output_format == "Briefing note"
-    assert intake.time_period_start == "next week"
-    assert intake.time_period_end == "next week"
+    assert intake.time_period_start == "2026-08-03"
+    assert intake.time_period_end == "2026-08-09"
     assert intake.customer_success_criteria == "So that commanders can decide patrol posture."
 
 

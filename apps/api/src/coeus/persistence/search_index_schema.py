@@ -29,6 +29,10 @@ def search_index_schema_statements() -> Sequence[str]:
         ON search_index_profiles(is_active) WHERE is_active
         """,
         """
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_search_index_one_building
+        ON search_index_profiles(status) WHERE status = 'indexing'
+        """,
+        """
         CREATE TABLE IF NOT EXISTS intelligence_store_search_chunks (
           chunk_id uuid PRIMARY KEY,
           product_id uuid NOT NULL REFERENCES intelligence_store_products(product_id)
@@ -72,12 +76,15 @@ def search_index_schema_statements() -> Sequence[str]:
         """,
         """
         CREATE TABLE IF NOT EXISTS ticket_search_documents (
-          ticket_id uuid PRIMARY KEY,
+          profile_id uuid NOT NULL REFERENCES search_index_profiles(profile_id)
+            ON DELETE CASCADE,
+          ticket_id uuid NOT NULL,
           state text NOT NULL,
           content text NOT NULL CHECK (char_length(content) BETWEEN 1 AND 32000),
           content_hash char(64) NOT NULL,
           search_document tsvector NOT NULL,
-          updated_at timestamptz NOT NULL DEFAULT now()
+          updated_at timestamptz NOT NULL DEFAULT now(),
+          PRIMARY KEY(profile_id, ticket_id)
         )
         """,
         """
@@ -88,12 +95,13 @@ def search_index_schema_statements() -> Sequence[str]:
         CREATE TABLE IF NOT EXISTS ticket_search_embeddings (
           profile_id uuid NOT NULL REFERENCES search_index_profiles(profile_id)
             ON DELETE CASCADE,
-          ticket_id uuid NOT NULL REFERENCES ticket_search_documents(ticket_id)
-            ON DELETE CASCADE,
+          ticket_id uuid NOT NULL,
           source_hash char(64) NOT NULL,
           embedding vector(1536) NOT NULL,
           indexed_at timestamptz NOT NULL DEFAULT now(),
-          PRIMARY KEY(profile_id, ticket_id)
+          PRIMARY KEY(profile_id, ticket_id),
+          FOREIGN KEY(profile_id, ticket_id)
+            REFERENCES ticket_search_documents(profile_id, ticket_id) ON DELETE CASCADE
         )
         """,
         """

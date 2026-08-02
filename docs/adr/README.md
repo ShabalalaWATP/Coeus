@@ -49,3 +49,6 @@ production-release approval. Read later ADRs for refinements and use the
 - [0041: Deployment-managed LiteLLM proxy](0041-deployment-managed-litellm-proxy.md)
 - [0042: Enforce security policy at final boundaries](0042-enforce-security-policy-at-final-boundaries.md)
 - [0043: Separate shared JIOC review from Manager oversight](0043-jioc-human-review-and-manager-oversight.md)
+- [0044: Closure-gated customer feedback](0044-closure-gated-customer-feedback.md)
+- [0045: Bounded current-answer intake interpretation](0045-bounded-current-answer-intake-interpretation.md)
+- [0046: Automatic local retrieval rebuilds](0046-automatic-local-retrieval-rebuilds.md)

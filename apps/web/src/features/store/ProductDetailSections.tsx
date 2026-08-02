@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 
 import { AssetGrant } from "./AssetGrant";
 import { StoreAssetPreview } from "./StoreAssetPreview";
-import { productTypeLabel } from "./store-options";
+import { productTypeLabel, visibleProductTags } from "./store-options";
 import type { AssetAccessGrant, StoreProduct } from "../../lib/api-client/store";
 
 export function ProductMetadata({ product }: { product: StoreProduct }) {
@@ -56,7 +56,7 @@ export function ProductMetadata({ product }: { product: StoreProduct }) {
       </dl>
       <div className="store-facets">
         {product.geojsonRef !== null ? <span className="store-chip">Geospatial layer</span> : null}
-        {product.tags.map((tag) => (
+        {visibleProductTags(product.tags).map((tag) => (
           <span className="store-chip" key={tag}>
             {tag}
           </span>

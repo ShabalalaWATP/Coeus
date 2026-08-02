@@ -77,7 +77,7 @@ class FeedbackAnalyticsService:
             self._feedback_view(actor, ticket, request)
             for ticket in self._tickets.tickets.list_visible_tickets(actor)
             for request in ticket.feedback_requests
-            if request.requester_user_id == actor.user_id
+            if request.requester_user_id == actor.user_id and _is_closed(ticket)
         ]
         return tuple(sorted(views, key=lambda view: view.request.created_at, reverse=True))
 
@@ -89,11 +89,15 @@ class FeedbackAnalyticsService:
     ) -> FeedbackRequestView:
         self._require(actor, Permission.FEEDBACK_CREATE)
         ticket, request = self._find_request(actor, request_id)
+        if not _is_closed(ticket):
+            raise AppError(
+                409,
+                "feedback_ticket_open",
+                "Feedback is available after the request is closed.",
+            )
         if request.status != FeedbackRequestStatus.REQUESTED:
             raise AppError(409, "feedback_already_submitted", "Feedback is already submitted.")
         comment = payload.comment.strip()
-        if len(comment) < 3:
-            raise AppError(422, "feedback_comment_required", "Feedback comment is required.")
         submission = FeedbackSubmission(
             submission_id=uuid4(),
             request_id=request.request_id,
@@ -115,7 +119,12 @@ class FeedbackAnalyticsService:
             feedback_submissions=(*ticket.feedback_submissions, submission),
             timeline=(
                 *ticket.timeline,
-                timeline(ticket.ticket_id, actor.user_id, "feedback_submitted", comment),
+                timeline(
+                    ticket.ticket_id,
+                    actor.user_id,
+                    "feedback_submitted",
+                    comment or f"Customer rated the completed outcome {payload.rating} out of 5.",
+                ),
             ),
         )
         updated = self._tickets.mutations.save_audited_if_current(
@@ -269,6 +278,11 @@ def build_feedback_analytics_service(
 def _is_active(ticket: TicketRecord) -> bool:
     """Closed and cancelled tickets are not active work in progress."""
     return not ticket.state.name.startswith("CLOSED") and ticket.state != TicketState.CANCELLED
+
+
+def _is_closed(ticket: TicketRecord) -> bool:
+    """Feedback describes completed outcomes, never active or cancelled work."""
+    return ticket.state.name.startswith("CLOSED")
 
 
 def _approved_route(ticket: TicketRecord) -> RoutingRoute | None:

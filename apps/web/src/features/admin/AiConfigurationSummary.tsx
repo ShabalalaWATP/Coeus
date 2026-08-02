@@ -1,6 +1,7 @@
 import { Check } from "lucide-react";
 
 import { providerStatus } from "./ai-model-panel-utils";
+import { modelLabelFor } from "./model-catalogue";
 import type { AiModelState } from "../../lib/api-client/admin";
 
 export function AiConfigurationSummary({ state }: { state: AiModelState }) {
@@ -13,7 +14,7 @@ export function AiConfigurationSummary({ state }: { state: AiModelState }) {
           <span className="ai-live__eyebrow">Live for every user</span>
           <strong>
             {liveProvider?.label ?? state.provider}
-            <span className="ai-live__model"> · {state.activeModel}</span>
+            <span className="ai-live__model"> · {modelLabelFor(state.activeModel)}</span>
           </strong>
         </div>
       </div>

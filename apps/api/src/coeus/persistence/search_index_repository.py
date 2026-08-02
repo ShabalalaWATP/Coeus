@@ -2,12 +2,10 @@
 
 from collections import defaultdict
 from dataclasses import replace
-from math import isfinite
 from typing import Any, Protocol, cast
 from uuid import UUID
 
 from coeus.domain.search_index import (
-    SEARCH_EMBEDDING_DIMENSIONS,
     GroundedProductEvidence,
     SearchAssetIndexState,
     SearchChunk,
@@ -19,6 +17,10 @@ from coeus.domain.search_index import (
     SearchTicketHit,
 )
 from coeus.domain.store import StoreVisibilityScope
+from coeus.persistence.search_index_validation import (
+    validate_generation_inputs,
+    validate_vector,
+)
 
 SEARCH_LEG_LIMIT = 100
 SEARCH_PASSAGE_LIMIT = 3
@@ -43,6 +45,9 @@ class SearchIndexRepository(Protocol):
         pass
 
     def rollback_activation(self, profile_id: UUID, error_code: str) -> None:
+        pass
+
+    def recover_interrupted(self) -> int:
         pass
 
     def counts(self) -> tuple[int, int, int, int, str]:
@@ -72,7 +77,7 @@ class MemorySearchIndexRepository:
         self._profiles: dict[UUID, SearchIndexProfile] = {}
         self._chunks: dict[UUID, SearchChunk] = {}
         self._embeddings: dict[tuple[UUID, UUID], SearchChunkEmbedding] = {}
-        self._ticket_documents: dict[UUID, SearchTicketDocument] = {}
+        self._ticket_documents: dict[tuple[UUID, UUID], SearchTicketDocument] = {}
         self._ticket_embeddings: dict[tuple[UUID, UUID], SearchTicketEmbedding] = {}
         self._asset_states: dict[tuple[UUID, UUID], SearchAssetIndexState] = {}
         self._active_id: UUID | None = None
@@ -92,14 +97,10 @@ class MemorySearchIndexRepository:
         ticket_embeddings: tuple[SearchTicketEmbedding, ...] = (),
         asset_states: tuple[SearchAssetIndexState, ...] = (),
     ) -> None:
-        if len(chunks) != len(embeddings):
-            raise ValueError("Every search chunk must have exactly one embedding.")
-        for chunk_embedding in embeddings:
-            _validate_vector(chunk_embedding.vector)
-        if len(ticket_documents) != len(ticket_embeddings):
-            raise ValueError("Every search ticket must have exactly one embedding.")
-        for ticket_embedding in ticket_embeddings:
-            _validate_vector(ticket_embedding.vector)
+        validate_generation_inputs(profile, chunks, embeddings, ticket_documents, ticket_embeddings)
+        building = self._profiles.get(profile.profile_id)
+        if building is None or building.status != "indexing":
+            raise RuntimeError("search index candidate is not indexing")
         previous = self._active_id
         if previous is not None:
             self._profiles[previous] = replace(self._profiles[previous], is_active=False)
@@ -111,7 +112,7 @@ class MemorySearchIndexRepository:
             }
         )
         self._ticket_documents.update(
-            {document.ticket_id: document for document in ticket_documents}
+            {(profile.profile_id, document.ticket_id): document for document in ticket_documents}
         )
         self._ticket_embeddings.update(
             {
@@ -141,6 +142,16 @@ class MemorySearchIndexRepository:
         self._active_id = previous
         if previous is not None:
             self._profiles[previous] = replace(self._profiles[previous], is_active=True)
+
+    def recover_interrupted(self) -> int:
+        interrupted = tuple(
+            profile_id
+            for profile_id, profile in self._profiles.items()
+            if profile.status == "indexing"
+        )
+        for profile_id in interrupted:
+            self.fail(profile_id, "worker_interrupted")
+        return len(interrupted)
 
     def counts(self) -> tuple[int, int, int, int, str]:
         if self._active_id is None:
@@ -198,7 +209,7 @@ class MemorySearchIndexRepository:
         query_tokens = frozenset(query.casefold().split())
         scored: list[tuple[SearchTicketDocument, float, float]] = []
         for ticket_id in allowed_ticket_ids:
-            document = self._ticket_documents.get(ticket_id)
+            document = self._ticket_documents.get((self._active_id, ticket_id))
             embedding = self._ticket_embeddings.get((self._active_id, ticket_id))
             if document is None or embedding is None or document.state not in states:
                 continue
@@ -262,13 +273,8 @@ def _group_rows(rows: tuple[dict[str, Any], ...]) -> tuple[GroundedProductEviden
 def _vector(value: tuple[float, ...] | None) -> str | None:
     if value is None:
         return None
-    _validate_vector(value)
+    validate_vector(value)
     return "[" + ",".join(f"{item:.8f}" for item in value) + "]"
-
-
-def _validate_vector(value: tuple[float, ...]) -> None:
-    if len(value) != SEARCH_EMBEDDING_DIMENSIONS or any(not isfinite(item) for item in value):
-        raise ValueError("Search vectors must contain 1,536 finite dimensions.")
 
 
 def _optional_int(value: object) -> int | None:

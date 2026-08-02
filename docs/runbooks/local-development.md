@@ -50,6 +50,12 @@ pwsh ./scripts/dev.ps1
 Add `-Detached` to keep the stack running in the background.
 Compose waits for `/api/v1/health/ready` before starting the web service.
 
+The full Docker demonstration permits 500 retained, non-terminal requests per
+profile so repeated synthetic exercises do not exhaust the hosted-oriented
+default of 50. Override `COEUS_TICKET_MAX_RETAINED_PER_PRINCIPAL` when a lower
+local ceiling is useful. Terminal and cancelled requests do not consume this
+capacity, and hosted deployments should retain a deliberately reviewed bound.
+
 ## Health Checks
 
 ```powershell
@@ -66,8 +72,12 @@ Invoke-RestMethod http://127.0.0.1:8001/api/v1/health/ready
 
 ## Seed Users
 
-All seed accounts use mock usernames under `example.test` and the mock local
-credential `CoeusLocal1!`. These accounts are for local development only.
+The Docker Compose stack uses the numbered local usernames `admin1` through
+`admin16`, all with the temporary password `admin`. Direct test and host-process
+setups retain the canonical `example.test` identities unless
+`COEUS_LOCAL_NUMBERED_SEED_USERNAMES=true` is explicitly configured.
+The shared credential is deliberately weak and suitable only for local role
+evaluation. Keep the web and API bound to the development machine.
 
 The current account list is maintained in
 [../SETUP.md#seed-accounts](../SETUP.md#seed-accounts).

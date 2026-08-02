@@ -1,4 +1,5 @@
-from datetime import UTC, datetime
+from dataclasses import replace
+from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from types import SimpleNamespace
 from typing import Any, cast
@@ -15,13 +16,24 @@ from coeus.domain.search_index import (
 from coeus.services import search_indexing
 from coeus.services.document_extraction import DocumentExtractionError
 from coeus.services.search_indexing import SearchIndexingService
+from store_projection_helpers import seed_product
 
 
 class _Configuration:
-    def __init__(self, *, ready_error: bool = False, failed_error: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        ready_error: bool = False,
+        failed_error: bool = False,
+        index_status: str = "ready",
+    ) -> None:
         self.ready_error = ready_error
         self.failed_error = failed_error
+        self.index_status = index_status
         self.failed: list[str] = []
+
+    def state(self) -> SimpleNamespace:
+        return SimpleNamespace(index_status=self.index_status)
 
     def mark_indexing(self, _actor_id: str) -> SimpleNamespace:
         return SimpleNamespace(
@@ -47,6 +59,7 @@ class _Index:
         self.failed: list[tuple[UUID, str]] = []
         self.rolled_back: list[tuple[UUID, str]] = []
         self.activated = False
+        self.recovered = 0
 
     def begin(self, _profile: SearchIndexProfile) -> None:
         if self.begin_error:
@@ -60,6 +73,10 @@ class _Index:
 
     def rollback_activation(self, profile_id: UUID, reason: str) -> None:
         self.rolled_back.append((profile_id, reason))
+
+    def recover_interrupted(self) -> int:
+        self.recovered += 1
+        return 1
 
 
 class _Embeddings:
@@ -146,6 +163,18 @@ def test_start_marks_configuration_failed_when_index_begin_fails() -> None:
     assert configuration.failed == ["index_write_failed"]
 
 
+def test_startup_recovery_always_clears_stranded_repository_jobs() -> None:
+    ready_index = _Index()
+    assert _service(_Configuration(), ready_index).recover_interrupted() is True
+    assert ready_index.recovered == 1
+
+    configuration = _Configuration(index_status="indexing")
+    interrupted_index = _Index()
+    assert _service(configuration, interrupted_index).recover_interrupted() is True
+    assert interrupted_index.recovered == 1
+    assert configuration.failed == ["worker_interrupted"]
+
+
 def test_run_handles_corpus_change_even_when_failure_state_cannot_persist() -> None:
     configuration = _Configuration(failed_error=True)
     index = _Index()
@@ -177,7 +206,7 @@ def test_run_rejects_incomplete_provider_result(monkeypatch: pytest.MonkeyPatch)
     service = _service(configuration, index)
     profile = _profile(service.corpus_version())
     monkeypatch.setattr(service, "_extract_chunks", lambda *_args: ((_chunk(),), ()))
-    monkeypatch.setattr(service, "_embed_chunks", lambda _chunks: ())
+    monkeypatch.setattr(service, "_embed_chunks", lambda _chunks, _space_id: ())
 
     service.run(profile)
 
@@ -190,8 +219,26 @@ def test_embedding_helpers_stop_on_provider_failure() -> None:
     chunk = _chunk()
     document = SearchTicketDocument(uuid4(), "RFI_SEARCHING", "request", "hash")
 
-    assert service._embed_chunks((chunk,)) == ()
-    assert service._embed_tickets((document,)) == ()
+    assert service._embed_chunks((chunk,), "mock:test:1536:g1") == ()
+    assert service._embed_tickets((document,), "mock:test:1536:g1") == ()
+
+
+def test_product_corpus_hash_uses_index_inputs_not_lifecycle_timestamps() -> None:
+    product = seed_product()
+    initial = search_indexing._product_corpus_version((product,))
+    timestamp_only = replace(product, updated_at=product.updated_at + timedelta(days=1))
+    metadata_changed = replace(
+        product,
+        metadata=replace(product.metadata, summary="Changed indexed summary"),
+    )
+    asset_changed = replace(
+        product,
+        assets=(replace(product.assets[0], mime_type="application/x-test"),),
+    )
+
+    assert search_indexing._product_corpus_version((timestamp_only,)) == initial
+    assert search_indexing._product_corpus_version((metadata_changed,)) != initial
+    assert search_indexing._product_corpus_version((asset_changed,)) != initial
 
 
 @pytest.mark.parametrize(

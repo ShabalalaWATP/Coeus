@@ -31,15 +31,15 @@ original `coeus` working name.
 
 New here? Start with the [documentation index](docs/README.md).
 
-| Guide                                                    | Read it for                                                              |
-| -------------------------------------------------------- | ------------------------------------------------------------------------ |
-| [Architecture Atlas](docs/architecture/README.md)         | In-depth user, technical, security, workflow and operations diagrams     |
-| [Setup Guide](docs/SETUP.md)                             | Prerequisites, running locally, seed accounts, checks                    |
-| [Architecture](docs/ARCHITECTURE.md)                     | Concise shipped structure, workflow and deployment overview              |
-| [User Guide](docs/USER_GUIDE.md)                         | Current key-workspace screenshots and role workflows                     |
-| [Roles and User Stories](docs/ROLES_AND_USER_STORIES.md) | Roles, permissions, need-to-know groups, user stories                    |
-| [AI Agents](docs/AI_AGENTS.md)                           | What each agent reads, decides and returns                               |
-| [Runbooks](docs/README.md#runbooks)                      | Local development, CI/CD, branch protection and deployment references    |
+| Guide                                                    | Read it for                                                           |
+| -------------------------------------------------------- | --------------------------------------------------------------------- |
+| [Architecture Atlas](docs/architecture/README.md)        | In-depth user, technical, security, workflow and operations diagrams  |
+| [Setup Guide](docs/SETUP.md)                             | Prerequisites, running locally, seed accounts, checks                 |
+| [Architecture](docs/ARCHITECTURE.md)                     | Concise shipped structure, workflow and deployment overview           |
+| [User Guide](docs/USER_GUIDE.md)                         | Current key-workspace screenshots and role workflows                  |
+| [Roles and User Stories](docs/ROLES_AND_USER_STORIES.md) | Roles, permissions, need-to-know groups, user stories                 |
+| [AI Agents](docs/AI_AGENTS.md)                           | What each agent reads, decides and returns                            |
+| [Runbooks](docs/README.md#runbooks)                      | Local development, CI/CD, branch protection and deployment references |
 
 ## Quick start
 
@@ -97,7 +97,7 @@ scripts/  Local development and seeding helpers
 - All data is synthetic. Do not commit real intelligence products, real
   operational examples, private URLs, credentials, classified strings, internal
   schemas or personal account details. Screenshots in [docs/images](docs/images)
-  are of synthetic, clearly labelled **MOCK DATA ONLY** content; never commit a
+  show the clearly identified synthetic exercise environment; never commit a
   screenshot of real intelligence.
 - Per-feature threat models are listed in the
   [threat-model index](docs/threat-model/README.md).

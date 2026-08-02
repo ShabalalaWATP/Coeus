@@ -28,7 +28,12 @@ def advice_for_reply(reply: AdmittedAssistantReply) -> AgentAdvice | None:
         return None
     provenance = AgentAdviceProvenance(
         provider_attempted=reply.duration_ms is not None,
-        provider_succeeded=reply.outcome == "provider_success",
+        provider_succeeded=reply.outcome
+        in {
+            "provider_success",
+            "provider_interpretation_confirmation_requested",
+            "provider_interpretation_abstained",
+        },
         outcome=reply.outcome,
         provider=reply.provider,
         model=reply.model,

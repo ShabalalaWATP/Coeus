@@ -3189,8 +3189,8 @@
       "FeedbackSubmissionRequest": {
         "properties": {
           "comment": {
+            "default": "",
             "maxLength": 1000,
-            "minLength": 3,
             "title": "Comment",
             "type": "string"
           },
@@ -3207,8 +3207,7 @@
           }
         },
         "required": [
-          "rating",
-          "comment"
+          "rating"
         ],
         "title": "FeedbackSubmissionRequest",
         "type": "object"
@@ -6953,6 +6952,34 @@
         "title": "SearchEmbeddingStateResponse",
         "type": "object"
       },
+      "SearchEmbeddingTestRequest": {
+        "description": "A candidate selection to verify without activating it.",
+        "properties": {
+          "confirmExternalEgress": {
+            "default": false,
+            "title": "Confirmexternalegress",
+            "type": "boolean"
+          },
+          "model": {
+            "maxLength": 128,
+            "minLength": 2,
+            "title": "Model",
+            "type": "string"
+          },
+          "provider": {
+            "maxLength": 32,
+            "minLength": 2,
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "model"
+        ],
+        "title": "SearchEmbeddingTestRequest",
+        "type": "object"
+      },
       "SearchEmbeddingTestResponse": {
         "properties": {
           "message": {
@@ -10437,6 +10464,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/SearchEmbeddingTestRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {

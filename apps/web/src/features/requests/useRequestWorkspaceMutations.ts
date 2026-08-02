@@ -168,6 +168,7 @@ export function useRequestWorkspaceMutations({
       setActionError(null);
       queryClient.setQueryData(["tickets", "detail", ticket.id], ticket);
       updateTicketSummary(queryClient, ticketSummary(ticket));
+      void queryClient.invalidateQueries({ queryKey: ["feedback-requests"] });
     },
     onRfiUpdate: updateRfiCache,
     onTicketUpdate: updateTicketCache,

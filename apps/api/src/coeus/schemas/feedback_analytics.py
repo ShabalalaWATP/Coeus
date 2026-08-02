@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class FeedbackSubmissionRequest(BaseModel):
     rating: int = Field(ge=1, le=5)
-    comment: str = Field(min_length=3, max_length=1_000)
+    comment: str = Field(default="", max_length=1_000)
     follow_up_requested: bool = Field(default=False, validation_alias="followUpRequested")
 
 

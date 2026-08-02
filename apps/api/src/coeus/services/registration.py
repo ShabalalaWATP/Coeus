@@ -53,7 +53,7 @@ class RegistrationService:
             ) from exc
         try:
             password_hash = self._password_hasher.hash(password)
-            if self._users.get_by_username(normalised) is not None:
+            if self._users.username_is_reserved(normalised):
                 if reservation is not None:
                     self._registrations.release_reservation(reservation)
                     reservation = None
@@ -96,7 +96,7 @@ class RegistrationService:
         self._require_reviewer(actor)
         with self._decision_lock:
             registration = self._pending_registration(registration_id)
-            if self._users.get_by_username(registration.username) is not None:
+            if self._users.username_is_reserved(registration.username):
                 decided = self._decide(registration, RegistrationStatus.REJECTED, actor)
                 self._save_decision_and_audit(
                     registration,

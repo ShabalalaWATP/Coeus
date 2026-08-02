@@ -6,10 +6,10 @@ from typing import Literal
 from uuid import UUID
 
 from coeus.application.ports.tickets import TicketRepository
-from coeus.core.errors import AppError
 from coeus.domain.admission import AdmissionMode, admission_denial_scope
 from coeus.domain.ticket_retention import ticket_consumes_capacity
 from coeus.services.admission_metrics import AdmissionMetrics
+from coeus.services.ticket_capacity_errors import ticket_capacity_error
 
 
 class TicketAdmissionController:
@@ -53,11 +53,7 @@ class TicketAdmissionController:
             )
             if denial_scope:
                 self._metrics.record("ticket", f"denied_{denial_scope}")
-                raise AppError(
-                    429,
-                    "ticket_capacity_exhausted",
-                    "Ticket capacity is temporarily unavailable.",
-                )
+                raise ticket_capacity_error(denial_scope)
             self._metrics.record(
                 "ticket",
                 "observed_denial" if deployment_exceeded or principal_exceeded else "admitted",

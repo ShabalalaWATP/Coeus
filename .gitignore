@@ -37,6 +37,7 @@ apps/web/dist/
 apps/web/coverage/
 apps/web/playwright-report/
 apps/web/test-results/
+output/
 
 # Security scan artifacts
 *.sarif

@@ -8,13 +8,17 @@ from threading import RLock
 from typing import Literal
 from uuid import UUID
 
-import httpx
-
 from coeus.application.ports.admission import ProviderAdmission
 from coeus.core.config import Settings
 from coeus.core.logging import get_logger
+from coeus.core.resource_limits import (
+    MAX_SEARCH_EMBEDDING_BATCH_RESPONSE_BYTES,
+    MAX_SEARCH_EMBEDDING_RESPONSE_BYTES,
+)
 from coeus.domain.search_index import SEARCH_EMBEDDING_DIMENSIONS
+from coeus.integrations.provider_http import post_json
 from coeus.services.search_configuration import SearchConfigurationService
+from coeus.services.search_provider_selection import SearchProvider, validate_search_selection
 
 SearchEmbeddingPurpose = Literal["query", "document", "test"]
 SEARCH_EMBEDDING_URL = (
@@ -84,14 +88,54 @@ class SearchEmbeddingService:
         principal_id: UUID | None,
     ) -> tuple[float, ...]:
         state = self._configuration.state()
-        if state.provider == "mock":
+        return self._embed_selected(text, purpose, principal_id, state.provider, state.model)
+
+    def test_candidate(
+        self,
+        provider: str,
+        model: str,
+        *,
+        confirm_external_egress: bool,
+        principal_id: UUID,
+    ) -> tuple[float, ...] | None:
+        """Test a draft provider/model without mutating the active configuration."""
+        selected = validate_search_selection(
+            provider,
+            model,
+            api_key_configured=bool(self._configuration.api_key()),
+            confirm_external_egress=confirm_external_egress,
+        )
+        try:
+            return self._embed_selected(
+                "Synthetic Istari retrieval connection test",
+                "test",
+                principal_id,
+                selected,
+                model,
+            )
+        except SearchEmbeddingUnavailable as exc:
+            logger.warning(
+                "search_embedding_test_unavailable",
+                extra={"provider": selected, "reason": str(exc)},
+            )
+            return None
+
+    def _embed_selected(
+        self,
+        text: str,
+        purpose: SearchEmbeddingPurpose,
+        principal_id: UUID | None,
+        provider: SearchProvider,
+        model: str,
+    ) -> tuple[float, ...]:
+        if provider == "mock":
             return _mock_embedding(text)
         if principal_id is None:
             raise SearchEmbeddingUnavailable("principal_missing")
         if self._admission is None:
-            return self._gemini(text, purpose)
+            return self._gemini(text, purpose, model)
         with self._admission.reserve(principal_id) as reservation:
-            vector = self._gemini(text, purpose)
+            vector = self._gemini(text, purpose, model)
             reservation.commit()
             return vector
 
@@ -110,9 +154,9 @@ class SearchEmbeddingService:
             return tuple(_mock_embedding(text) for text in texts)
         try:
             if self._admission is None:
-                return self._gemini_batch(texts)
+                return self._gemini_batch(texts, state.model)
             with self._admission.reserve(principal_id) as reservation:
-                vectors = self._gemini_batch(texts)
+                vectors = self._gemini_batch(texts, state.model)
                 reservation.commit()
                 return vectors
         except SearchEmbeddingUnavailable as exc:
@@ -122,57 +166,64 @@ class SearchEmbeddingService:
             )
             return None
 
-    def _gemini(self, text: str, purpose: SearchEmbeddingPurpose) -> tuple[float, ...]:
-        state = self._configuration.state()
+    def _gemini(self, text: str, purpose: SearchEmbeddingPurpose, model: str) -> tuple[float, ...]:
         api_key = self._configuration.api_key()
         if not api_key:
             raise SearchEmbeddingUnavailable("key_missing")
         prefixed = f"task: search result | query: {text}" if purpose == "query" else f"text: {text}"
         try:
-            with httpx.Client(timeout=self._settings.gemini_api_timeout_seconds) as client:
-                response = client.post(
-                    SEARCH_EMBEDDING_URL.format(model=state.model),
-                    headers={"x-goog-api-key": api_key},
-                    json={
-                        "content": {"parts": [{"text": prefixed}]},
-                        "outputDimensionality": SEARCH_EMBEDDING_DIMENSIONS,
-                    },
-                )
-                response.raise_for_status()
-                payload = response.json()
+            payload = post_json(
+                SEARCH_EMBEDDING_URL.format(model=model),
+                headers={"x-goog-api-key": api_key},
+                body={
+                    "content": {"parts": [{"text": prefixed}]},
+                    "outputDimensionality": SEARCH_EMBEDDING_DIMENSIONS,
+                },
+                timeout=self._settings.gemini_api_timeout_seconds,
+                max_response_bytes=MAX_SEARCH_EMBEDDING_RESPONSE_BYTES,
+            )
+            values = (
+                payload.get("embedding", {}).get("values")
+                if isinstance(payload, dict) and isinstance(payload.get("embedding"), dict)
+                else None
+            )
+            return _strict_vector(values)
+        except SearchEmbeddingUnavailable:
+            raise
         except Exception as exc:  # pragma: no cover - external boundary
             raise SearchEmbeddingUnavailable("provider_failed") from exc
-        values = payload.get("embedding", {}).get("values")
-        return _strict_vector(values)
 
-    def _gemini_batch(self, texts: tuple[str, ...]) -> tuple[tuple[float, ...], ...]:
-        state = self._configuration.state()
+    def _gemini_batch(self, texts: tuple[str, ...], model: str) -> tuple[tuple[float, ...], ...]:
         api_key = self._configuration.api_key()
         if not api_key:
             raise SearchEmbeddingUnavailable("key_missing")
         requests = [
             {
-                "model": f"models/{state.model}",
+                "model": f"models/{model}",
                 "content": {"parts": [{"text": f"text: {' '.join(text.split())[:32000]}"}]},
                 "outputDimensionality": SEARCH_EMBEDDING_DIMENSIONS,
             }
             for text in texts
         ]
         try:
-            with httpx.Client(timeout=self._settings.gemini_api_timeout_seconds) as client:
-                response = client.post(
-                    SEARCH_BATCH_EMBEDDING_URL.format(model=state.model),
-                    headers={"x-goog-api-key": api_key},
-                    json={"requests": requests},
-                )
-                response.raise_for_status()
-                payload = response.json()
+            payload = post_json(
+                SEARCH_BATCH_EMBEDDING_URL.format(model=model),
+                headers={"x-goog-api-key": api_key},
+                body={"requests": requests},
+                timeout=self._settings.gemini_api_timeout_seconds,
+                max_response_bytes=MAX_SEARCH_EMBEDDING_BATCH_RESPONSE_BYTES,
+            )
+            embeddings = payload.get("embeddings") if isinstance(payload, dict) else None
+            if not isinstance(embeddings, list) or len(embeddings) != len(texts):
+                raise SearchEmbeddingUnavailable("invalid_batch")
+            return tuple(
+                _strict_vector(item.get("values") if isinstance(item, dict) else None)
+                for item in embeddings
+            )
+        except SearchEmbeddingUnavailable:
+            raise
         except Exception as exc:  # pragma: no cover - external boundary
             raise SearchEmbeddingUnavailable("provider_failed") from exc
-        embeddings = payload.get("embeddings")
-        if not isinstance(embeddings, list) or len(embeddings) != len(texts):
-            raise SearchEmbeddingUnavailable("invalid_batch")
-        return tuple(_strict_vector(item.get("values")) for item in embeddings)
 
 
 def _strict_vector(values: object) -> tuple[float, ...]:

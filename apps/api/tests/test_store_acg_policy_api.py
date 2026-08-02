@@ -153,7 +153,7 @@ async def test_unsupported_persisted_release_markers_fail_closed_in_search_and_d
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
         await login(client, "user@example.test")
-        visible = await client.get("/api/v1/store/products", params={"query": "Mock"})
+        visible = await client.get("/api/v1/store/products", params={"query": "Regional Stability"})
         product_id = visible.json()["products"][0]["id"]
         product = app.state.store_services.repository.get_product(UUID(product_id))
         assert product is not None

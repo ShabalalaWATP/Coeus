@@ -7,7 +7,7 @@ WORKDIR /app
 
 RUN pip install --no-cache-dir uv
 
-COPY apps/api/pyproject.toml apps/api/uv.lock apps/api/README.md ./apps/api/
+COPY apps/api/pyproject.toml apps/api/uv.lock apps/api/README.md apps/api/alembic.ini ./apps/api/
 COPY apps/api/src ./apps/api/src
 
 WORKDIR /app/apps/api

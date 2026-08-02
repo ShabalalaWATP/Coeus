@@ -220,14 +220,15 @@ recorded in the assurance result.
 ```mermaid
 stateDiagram-v2
     accTitle: Grounded search index generation lifecycle
-    accDescr: Each attempt creates a new profile that fails terminally or becomes the active ready profile; an activation-operation failure restores the previous profile internally, but no operator rollback or retention path exists.
+    accDescr: Each attempt creates an inactive profile. Atomic promotion replaces the previous ready profile only after all generation-owned content is complete; restart recovery fails abandoned process-local work.
 
     state "Candidate failed;<br/>previous ready profile reactivated" as CompensatedFailure
 
     [*] --> Indexing: create new inactive profile UUID
-    Indexing --> Indexing: batch products and open tickets
+    Indexing --> Indexing: batch products, ticket documents and vectors
     Indexing --> Failed: provider, validation or coverage failure
-    Indexing --> ActiveReady: complete and activate one winner
+    Indexing --> Failed: process restart marks worker_interrupted
+    Indexing --> ActiveReady: atomic complete and activate one winner
     ActiveReady --> CompensatedFailure: post-activation configuration persistence fails
     ActiveReady --> InactiveReady: a later distinct profile activates
     Failed --> [*]: this profile remains failed
@@ -241,6 +242,11 @@ grounded-search assurance. Previous ready generations remain in the database,
 but no operator rollback command, generation retirement state or cleanup policy
 is implemented. `rollback_activation` is narrower: it is internal compensation
 within one failed activation operation and reactivates the previous profile.
+Ticket documents and ticket vectors are both generation-owned, so this internal
+rollback cannot combine an older vector with newer text. Candidate completion,
+winner deactivation and promotion use one PostgreSQL transaction. The corpus
+identity hashes canonical retrieval inputs and versioned extraction behaviour,
+not lifecycle timestamps.
 
 ## 6. Bounded AI authority
 
@@ -268,6 +274,16 @@ flowchart TB
     CTRL --> COMMIT --> AUDIT
 ```
 
+For conversational intake, local extraction always runs first. If the active
+field is still unresolved and an external provider is permitted, the optional
+interpretation prompt contains only the current customer answer, target field
+and current date. This path is limited to priority and dates. The reply must cite
+an exact substring and pass field-specific validation, then the customer must
+confirm application-owned summary copy before the value enters intake. Free text
+stays local. This call replaces remote intake planning for the turn, so one
+message cannot fan out into multiple model calls. Prior chat history, stored
+intake, authorisation state and lifecycle control never cross this boundary.
+
 The Routing Critic runs after a route is committed and is oversight-only.
 Realtime voice is a separate browser-to-provider trust boundary documented in
 [Security and trust](SECURITY_AND_TRUST.md#6-external-provider-and-realtime-boundaries).
@@ -281,5 +297,7 @@ Realtime voice is a separate browser-to-provider trust boundary documented in
 | Object lifecycle        | `product_submissions.py`, `qc_ingestion.py`, `qc_release.py`, `object_storage.py`                                                                    |
 | Retrieval and assurance | `grounded_search.py`, `rfi_search_retrieval.py`, `rfi_search.py`                                                                                     |
 | Index generation        | `search_indexing.py`, `search_index_repository.py`                                                                                                   |
-| Feature contracts       | [Hybrid RFI search](../specs/hybrid-rfi-search.md), [Search retrieval and duplicate assurance](../specs/search-retrieval-and-duplicate-assurance.md) |
+| Feature contracts       | [Conversational intake](../specs/conversational-intake-standard-and-voice.md), [Hybrid RFI search](../specs/hybrid-rfi-search.md), [Search retrieval and duplicate assurance](../specs/search-retrieval-and-duplicate-assurance.md) |
+| AI authority decision   | [Bounded current-answer intake interpretation](../adr/0045-bounded-current-answer-intake-interpretation.md)                                                   |
+| AI threat model         | [Bounded advisory planners](../threat-model/bounded-advisory-planners.md)                                                                                        |
 | Operations              | [Coordinated backup and restore](../runbooks/coordinated-backup-restore.md), including separate key preservation                                     |

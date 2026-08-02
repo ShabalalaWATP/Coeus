@@ -54,7 +54,7 @@ def provider_specs(settings: Settings) -> tuple[ProviderSpec, ...]:
         ),
         ProviderSpec(
             name="mock",
-            label="Mock (offline)",
+            label="Local assistant",
             models=("mock",),
             default_model="mock",
             supports_model_refresh=False,

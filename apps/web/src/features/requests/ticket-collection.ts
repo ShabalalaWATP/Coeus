@@ -1,5 +1,15 @@
 import type { TicketSummary } from "../../lib/api-client/tickets";
 
+const CLOSED_TICKET_STATES = new Set<TicketSummary["state"]>([
+  "CLOSED_DELIVERED",
+  "CLOSED_REQUIREMENT_MET",
+  "CLOSED_REANALYSIS_DECLINED",
+  "CLOSED_EXISTING_PRODUCT_ACCEPTED",
+  "CLOSED_UNANSWERED",
+  "CLOSED_JOINED_EXISTING_WORK",
+  "CANCELLED",
+]);
+
 export function ticketMetrics(
   tickets: Array<Pick<TicketSummary, "state"> & Partial<Pick<TicketSummary, "customerStatus">>>,
 ) {
@@ -13,15 +23,6 @@ export function ticketMetrics(
     "COLLECT_CHOICE",
     "DISSEMINATION_READY",
   ]);
-  const completedStates = new Set([
-    "CLOSED_DELIVERED",
-    "CLOSED_REQUIREMENT_MET",
-    "CLOSED_REANALYSIS_DECLINED",
-    "CLOSED_EXISTING_PRODUCT_ACCEPTED",
-    "CLOSED_UNANSWERED",
-    "CLOSED_JOINED_EXISTING_WORK",
-    "CANCELLED",
-  ]);
   return {
     total: tickets.length,
     draft: tickets.filter((ticket) => draftStates.has(ticket.state)).length,
@@ -32,10 +33,14 @@ export function ticketMetrics(
       (ticket) =>
         !draftStates.has(ticket.state) &&
         !awaitingActionStates.has(ticket.state) &&
-        !completedStates.has(ticket.state),
+        !isClosedTicket(ticket.state),
     ).length,
-    completed: tickets.filter((ticket) => completedStates.has(ticket.state)).length,
+    completed: tickets.filter((ticket) => isClosedTicket(ticket.state)).length,
   };
+}
+
+export function isClosedTicket(state: TicketSummary["state"]) {
+  return CLOSED_TICKET_STATES.has(state);
 }
 
 export function isAwaitingCustomerAction(state: TicketSummary["state"]) {

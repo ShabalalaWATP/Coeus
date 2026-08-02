@@ -265,6 +265,16 @@ Istari's hard enforcement boundary. Text providers selected through environment
 configuration may also be active at startup; the optional administrator test is
 not an activation gate.
 
+Text intake is deterministic first. The ordinary planner receives bounded
+extracted fields. Only when the active field remains unresolved may the local or
+test interpretation path send the active priority or date answer, target field
+and current date to the configured provider. It never sends prior chat history,
+other voice answers or stored intake, and safety-flagged answers stay local.
+Exact-evidence and field-specific checks run before application-owned summary
+copy asks the customer to confirm. Only that confirmation applies the value.
+Hosted Intake Planner egress remains disabled pending an explicit data-class and
+provider release.
+
 ## Sources and companion records
 
 | Concern                       | Authority                                                                                                                                                                                                                                                                                    |
@@ -274,4 +284,4 @@ not an activation gate.
 | Product policy and grants     | [Store access](../../apps/api/src/coeus/services/store_access.py), [asset redemption](../../apps/api/src/coeus/services/store_asset_redemption.py), [file routes](../../apps/api/src/coeus/api/routes/store_files.py)                                                                        |
 | ACG governance                | [Access service](../../apps/api/src/coeus/services/access.py), [ACG applications](../../apps/api/src/coeus/services/acg_applications.py), [ACG catalogue](../../apps/api/src/coeus/services/acg_catalogue.py)                                                                                |
 | External integration controls | [AI models](../../apps/api/src/coeus/services/ai_models.py), [voice models](../../apps/api/src/coeus/services/voice_models.py), [Realtime adapter](../../apps/api/src/coeus/integrations/openai_realtime.py), [browser voice hook](../../apps/web/src/features/requests/useRealtimeVoice.ts) |
-| Threat models                 | [Auth and sessions](../threat-model/auth-rbac-sessions.md), [ACG and product access](../threat-model/acg-product-access.md), [Realtime voice](../threat-model/realtime-voice.md)                                                                                                             |
+| Threat models                 | [Auth and sessions](../threat-model/auth-rbac-sessions.md), [ACG and product access](../threat-model/acg-product-access.md), [Bounded advisory planners](../threat-model/bounded-advisory-planners.md), [Realtime voice](../threat-model/realtime-voice.md)                                      |

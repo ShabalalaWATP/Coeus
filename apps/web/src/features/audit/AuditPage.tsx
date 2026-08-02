@@ -22,7 +22,6 @@ export default function AuditPage() {
           <h1 id="audit-title">Audit</h1>
           <p>Immutable security and workflow events for operational review.</p>
         </div>
-        <div className="classification-note">MOCK DATA ONLY</div>
       </section>
 
       <section className="surface" aria-labelledby="audit-events-title">

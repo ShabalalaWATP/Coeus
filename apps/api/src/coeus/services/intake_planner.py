@@ -154,6 +154,11 @@ def controller_intake_plan(
     }:
         return baseline
     if proposed is not None and proposed.action is baseline.action:
+        if (
+            baseline.action is IntakePlannerAction.ASK_MISSING_FIELD
+            and proposed.suggested_field != baseline.suggested_field
+        ):
+            return baseline
         return proposed
     return baseline
 

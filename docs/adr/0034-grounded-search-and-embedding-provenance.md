@@ -37,6 +37,20 @@ corpus-stale may remain a degraded semantic leg alongside full-corpus lexical
 retrieval, because its vector space is still compatible. It cannot support a
 definitive zero-result decision.
 
+Test the administrator's draft provider and model before activation, rather
+than testing whichever configuration is already active. The fixed connection
+probe carries no corpus content. Its success applies only to that exact draft
+provider and model and is cleared when either selection or its credential
+changes.
+
+Derive the corpus identity from indexed metadata content, asset identity, MIME
+type, byte length, content hash, extractor version and chunker version. Do not
+include lifecycle timestamps. Scope ticket documents as well as ticket vectors
+to a generation. Build a candidate while the previous ready generation remains
+active, then complete and promote the candidate in one database transaction.
+An application restart marks any abandoned in-process candidate failed so a
+new build can start.
+
 Extract bounded PDF and DOCX text locally into page-aware chunks. Store chunk
 lexical documents and vectors in PostgreSQL, joining through the parent product
 for status, clearance and ACG filtering before ranking. Keep product metadata
@@ -70,6 +84,11 @@ hidden tickets and expose richer details only to authorised managers.
 
 - PostgreSQL projections gain product provenance and page-aware chunk tables.
 - Re-indexing becomes an explicit, observable administrative operation.
+- The previous ready generation remains queryable until an atomically completed
+  candidate replaces it. A failed candidate cannot remove that fallback.
+- Ticket text and vectors roll back together because both are generation-owned.
+- A restart can terminate a rebuild, but it cannot leave the system permanently
+  reporting `indexing` or block a later administrator retry.
 - External embedding activation sends authorised synthetic content to the
   configured provider and therefore requires a clear data-boundary warning.
 - Lexical search remains available when embedding or indexing fails, but the UI

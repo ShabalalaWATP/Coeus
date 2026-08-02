@@ -1,5 +1,10 @@
 # Sprint 11 Spec: Feedback And Analytics
 
+> **Current refinement:** customer feedback is now available only after ticket
+> closure and uses the simplified outcome prompt defined in [Customer request
+> archive and closure feedback](customer-request-archive-and-closure-feedback.md).
+> This sprint specification remains the historical analytics contract.
+
 ## Scope
 
 Add requester feedback submission and local-first analytics dashboards over the
@@ -16,7 +21,7 @@ for administrators, RFA managers and collection managers.
 - Collection manager analytics dashboard.
 - Product reuse analytics from disseminations, accepted offers and feedback.
 - Deterministic Trends Analysis Agent insights.
-- Frontend feedback panel on the request workspace.
+- Frontend feedback prompt on the customer request dashboard after closure.
 - Frontend routes `/admin/analytics`, `/rfa/analytics` and
   `/collection/analytics`.
 
@@ -30,7 +35,8 @@ for administrators, RFA managers and collection managers.
 
 ## Acceptance Criteria
 
-- Requesters can list only their own feedback requests.
+- Requesters can list only their own feedback requests for closed tickets.
+- Feedback submission is rejected until the associated ticket is closed.
 - Requesters can submit feedback once for a requested feedback item.
 - Submitted feedback records rating, comment and follow-up preference.
 - Duplicate feedback submission is rejected.

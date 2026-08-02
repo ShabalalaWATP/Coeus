@@ -4,6 +4,10 @@ from typing import Any, ClassVar
 import pytest
 
 from coeus.core.config import Settings
+from coeus.core.resource_limits import (
+    MAX_SEARCH_EMBEDDING_BATCH_RESPONSE_BYTES,
+    MAX_SEARCH_EMBEDDING_RESPONSE_BYTES,
+)
 from coeus.persistence.state_store import MemoryStateStore
 from coeus.services.audit import AuditLog
 from coeus.services.integration_secrets import EncryptedIntegrationSecretStore
@@ -53,24 +57,46 @@ def test_gemini_search_embedding_uses_retrieval_prefix_and_1536_dimensions(
 ) -> None:
     configuration = _configured("gemini_api")
     client = _FakeClient()
-    monkeypatch.setattr("coeus.services.search_embeddings.httpx.Client", lambda **_kwargs: client)
+    monkeypatch.setattr("coeus.services.search_embeddings.post_json", client)
     embeddings = SearchEmbeddingService(Settings(environment="test"), configuration)
 
     vector = embeddings.embed("Donbas movements", purpose="query", principal_id=_uuid())
 
     assert vector is not None and len(vector) == SEARCH_EMBEDDING_DIMENSIONS
     assert "gemini-embedding-2" in str(client.captured["url"])
-    body = client.captured["json"]
+    body = client.captured["body"]
     assert body["outputDimensionality"] == SEARCH_EMBEDDING_DIMENSIONS
     assert body["content"]["parts"][0]["text"].startswith("task: search result | query:")
     assert client.captured["headers"]["x-goog-api-key"] == "search-secret-value"
+    assert client.captured["max_response_bytes"] == MAX_SEARCH_EMBEDDING_RESPONSE_BYTES
+
+
+def test_candidate_connection_uses_draft_without_activating_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    configuration = _configured()
+    configuration.configure_key("1", "admin", "search-secret-value")
+    client = _FakeClient()
+    monkeypatch.setattr("coeus.services.search_embeddings.post_json", client)
+    embeddings = SearchEmbeddingService(Settings(environment="test"), configuration)
+
+    vector = embeddings.test_candidate(
+        "gemini_api",
+        "gemini-embedding-2",
+        confirm_external_egress=True,
+        principal_id=_uuid(),
+    )
+
+    assert vector is not None
+    assert configuration.state().provider == "mock"
+    assert "gemini-embedding-2" in str(client.captured["url"])
 
 
 def test_invalid_provider_vector_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
     configuration = _configured("gemini_api")
     monkeypatch.setattr(
-        "coeus.services.search_embeddings.httpx.Client",
-        lambda **_kwargs: _FakeClient(values=[1.0] * 12),
+        "coeus.services.search_embeddings.post_json",
+        _FakeClient(values=[1.0] * 12),
     )
     embeddings = SearchEmbeddingService(Settings(environment="test"), configuration)
     assert embeddings.embed("query", purpose="query", principal_id=_uuid()) is None
@@ -95,7 +121,7 @@ def test_gemini_batch_embeddings_support_admission_and_fail_closed(
     configuration = _configured("gemini_api")
     admission = _Admission()
     client = _BatchClient(2)
-    monkeypatch.setattr("coeus.services.search_embeddings.httpx.Client", lambda **_kwargs: client)
+    monkeypatch.setattr("coeus.services.search_embeddings.post_json", client)
     plain = SearchEmbeddingService(Settings(environment="test"), configuration)
     assert len(plain.embed_many(("one", "two"), principal_id=_uuid()) or ()) == 2
     embeddings = SearchEmbeddingService(Settings(environment="test"), configuration, admission)
@@ -104,12 +130,13 @@ def test_gemini_batch_embeddings_support_admission_and_fail_closed(
 
     assert vectors is not None and len(vectors) == 2
     assert admission.reservation.committed is True
-    assert client.captured["json"]["requests"][0]["content"]["parts"][0]["text"] == ("text: one")
+    assert client.captured["body"]["requests"][0]["content"]["parts"][0]["text"] == ("text: one")
+    assert client.captured["max_response_bytes"] == MAX_SEARCH_EMBEDDING_BATCH_RESPONSE_BYTES
     assert embeddings.embed_many((), principal_id=_uuid()) == ()
 
     monkeypatch.setattr(
-        "coeus.services.search_embeddings.httpx.Client",
-        lambda **_kwargs: _BatchClient(1),
+        "coeus.services.search_embeddings.post_json",
+        _BatchClient(1),
     )
     assert embeddings.embed_many(("one", "two"), principal_id=_uuid()) is None
 
@@ -126,26 +153,41 @@ def test_gemini_requires_principal_and_key_and_rejects_non_finite_values() -> No
         _strict_vector([float("nan")] * SEARCH_EMBEDDING_DIMENSIONS)
 
 
+def test_malformed_provider_values_are_reduced_without_logging_content(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    configuration = _configured("gemini_api")
+    records: list[tuple[str, dict[str, str]]] = []
+    monkeypatch.setattr(
+        "coeus.services.search_embeddings.post_json",
+        lambda *_args, **_kwargs: {
+            "embedding": {"values": ["UPSTREAM_SENTINEL"] * SEARCH_EMBEDDING_DIMENSIONS}
+        },
+    )
+    monkeypatch.setattr(
+        "coeus.services.search_embeddings.logger.warning",
+        lambda event, *, extra: records.append((event, extra)),
+    )
+    embeddings = SearchEmbeddingService(Settings(environment="test"), configuration)
+
+    assert embeddings.embed("query", purpose="query", principal_id=_uuid()) is None
+    assert records == [
+        (
+            "search_embedding_unavailable",
+            {"provider": "gemini_api", "reason": "provider_failed"},
+        )
+    ]
+    assert "UPSTREAM_SENTINEL" not in repr(records)
+
+
 class _FakeClient:
     captured: ClassVar[dict[str, Any]] = {}
 
     def __init__(self, values: list[float] | None = None) -> None:
         self._values = values or [1.0] * SEARCH_EMBEDDING_DIMENSIONS
 
-    def __enter__(self) -> "_FakeClient":
-        return self
-
-    def __exit__(self, *_args: object) -> None:
-        return None
-
-    def post(self, url: str, **kwargs: Any) -> "_FakeClient":
+    def __call__(self, url: str, **kwargs: Any) -> dict[str, object]:
         self.captured.update(url=url, **kwargs)
-        return self
-
-    def raise_for_status(self) -> None:
-        return None
-
-    def json(self) -> dict[str, object]:
         return {"embedding": {"values": self._values}}
 
 
@@ -154,7 +196,8 @@ class _BatchClient(_FakeClient):
         super().__init__()
         self._count = count
 
-    def json(self) -> dict[str, object]:
+    def __call__(self, url: str, **kwargs: Any) -> dict[str, object]:
+        self.captured.update(url=url, **kwargs)
         return {"embeddings": [{"values": self._values} for _ in range(self._count)]}
 
 

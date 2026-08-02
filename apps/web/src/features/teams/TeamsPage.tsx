@@ -38,7 +38,6 @@ export default function TeamsPage() {
           <h1 id="teams-title">My Team</h1>
           <p>Rosters, member profiles and the availability calendar for your teams.</p>
         </div>
-        <div className="classification-note">MOCK DATA ONLY</div>
       </section>
       {teamsQuery.isLoading ? <LoadingState /> : null}
       {teamsQuery.isError ? <ErrorState onRetry={() => void teamsQuery.refetch()} /> : null}

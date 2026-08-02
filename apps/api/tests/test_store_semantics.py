@@ -81,9 +81,9 @@ def test_product_semantic_hash_uses_only_owned_product_text() -> None:
             metadata.source_type,
             metadata.owner_team,
             metadata.area_or_region,
-            " ".join(metadata.tags),
-            " ".join(effective_semantic_labels(product)),
-            " ".join(asset.asset_type for asset in product.assets),
+            " ".join(sorted(metadata.tags)),
+            " ".join(sorted(effective_semantic_labels(product))),
+            " ".join(sorted(asset.asset_type for asset in product.assets)),
         )
     )
 
@@ -92,6 +92,28 @@ def test_product_semantic_hash_uses_only_owned_product_text() -> None:
         sha256(product_semantic_text(product).encode("utf-8")).hexdigest()
         == sha256(expected.encode("utf-8")).hexdigest()
     )
+
+
+def test_product_semantic_text_canonicalises_unordered_terms_and_assets() -> None:
+    app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    product = app.state.store_services.repository.list_products()[0]
+    product = replace(
+        product,
+        metadata=replace(
+            product.metadata,
+            tags=frozenset({"zeta-tag", "alpha-tag", "omega-tag", "beta-tag"}),
+            semantic_labels=frozenset({"zulu-label", "alpha-label"}),
+        ),
+        assets=(
+            replace(product.assets[0], asset_type="zulu-asset"),
+            replace(product.assets[0], asset_type="alpha-asset"),
+        ),
+    )
+
+    text = product_semantic_text(product)
+
+    assert "alpha-tag beta-tag omega-tag zeta-tag" in text
+    assert "alpha-asset zulu-asset" in text
 
 
 def test_effective_semantic_labels_backfill_old_persisted_products() -> None:

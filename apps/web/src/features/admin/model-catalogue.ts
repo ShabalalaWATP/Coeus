@@ -4,6 +4,10 @@ export type ModelInfo = {
 };
 
 const MODEL_CATALOGUE: Record<string, ModelInfo> = {
+  mock: {
+    tier: "Local",
+    description: "Private deterministic responses for local use without an API key.",
+  },
   "gemini-3.1-pro-preview": {
     tier: "Advanced",
     description: "Google's preview Pro model for complex reasoning and agentic workflows.",
@@ -59,4 +63,8 @@ const FALLBACK_MODEL_INFO: ModelInfo = {
 
 export function modelInfoFor(model: string): ModelInfo {
   return MODEL_CATALOGUE[model] ?? FALLBACK_MODEL_INFO;
+}
+
+export function modelLabelFor(model: string): string {
+  return model === "mock" ? "Local response engine" : model;
 }

@@ -115,7 +115,7 @@ def _build(
 def _intake(spec: DemoTicketSpec) -> IntakeDetails:
     return IntakeDetails(
         title=spec.title,
-        description=f"MOCK DATA ONLY request about {spec.area}.",
+        description=f"Request about {spec.area}.",
         operational_question=f"What should command know about {spec.area}?",
         area_or_region=spec.area,
         time_period_start="2026-06-01",
@@ -232,9 +232,9 @@ def _with_draft(ticket: TicketRecord, analyst: UserAccount) -> TicketRecord:
         ticket.ticket_id,
         1,
         f"{ticket.intake.title} Draft",
-        "MOCK DATA ONLY analyst draft.",
+        "Analyst draft.",
         "finished_output",
-        "MOCK DATA ONLY. Assessment content prepared for review.",
+        "Assessment content prepared for review.",
         (asset,),
         analyst.user_id,
     )
@@ -252,9 +252,14 @@ def _with_delivery(
     qc = _qc_decision(ticket.ticket_id, qc_manager.user_id)
     index_record = indexed_product(ticket.ticket_id, product.product_id)
     disseminated = dissemination(ticket.ticket_id, product.product_id, requester.user_id)
+    feedback_submitted = spec.state.name.startswith("CLOSED")
     request = replace(
         feedback_request(ticket.ticket_id, product.product_id, requester.user_id),
-        status=FeedbackRequestStatus.SUBMITTED,
+        status=(
+            FeedbackRequestStatus.SUBMITTED
+            if feedback_submitted
+            else FeedbackRequestStatus.REQUESTED
+        ),
     )
     submission = FeedbackSubmission(
         submission_id=stable_seed_id(f"{ticket.ticket_id}-feedback"),
@@ -263,7 +268,7 @@ def _with_delivery(
         product_id=product.product_id,
         requester_user_id=requester.user_id,
         rating=5 if spec.state == TicketState.CLOSED_DELIVERED else 4,
-        comment="MOCK DATA ONLY: clear and actionable.",
+        comment="Clear and actionable.",
         follow_up_requested=False,
         created_at=ticket.created_at,
     )
@@ -273,7 +278,7 @@ def _with_delivery(
         product_index_records=(index_record,),
         disseminations=(disseminated,),
         feedback_requests=(request,),
-        feedback_submissions=(submission,),
+        feedback_submissions=(submission,) if feedback_submitted else (),
     )
 
 

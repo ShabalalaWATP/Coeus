@@ -147,6 +147,13 @@ export function TopCommandBar({ onLogout, profile }: TopCommandBarProps) {
         ) : null}
       </div>
       <div className="command-bar__actions" ref={actionsRef}>
+        <span
+          aria-label="Synthetic exercise environment"
+          className="environment-provenance"
+          title="This environment contains synthetic exercise data"
+        >
+          Synthetic exercise
+        </span>
         <IconButton ariaLabel={themeLabel} onClick={toggleTheme}>
           <ThemeIcon aria-hidden="true" size={18} strokeWidth={1.8} />
         </IconButton>

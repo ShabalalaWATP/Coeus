@@ -10,6 +10,7 @@ from coeus.services.intake_planner import (
     IntakePlannerAction,
     IntakePlannerReason,
     IntakePlannerSource,
+    controller_intake_plan,
     deterministic_intake_plan,
     intake_planner_prompt,
     validated_intake_plan,
@@ -142,6 +143,19 @@ def test_valid_provider_advice_is_admitted_without_prose() -> None:
     assert plan is not None
     assert plan.source is IntakePlannerSource.PROVIDER
     assert plan.suggested_field == "operational_question"
+
+
+def test_controller_keeps_the_deterministic_first_missing_field() -> None:
+    missing = ("operational_question", "priority")
+    proposed = validated_intake_plan(
+        _provider_payload(suggested_field="priority"),
+        missing,
+    )
+
+    admitted = controller_intake_plan(IntakeDetails(), missing, proposed)
+
+    assert admitted.source is IntakePlannerSource.DETERMINISTIC
+    assert admitted.suggested_field == "operational_question"
 
 
 def test_provider_suggested_field_must_currently_be_missing() -> None:

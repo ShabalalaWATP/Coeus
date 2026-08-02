@@ -6,11 +6,11 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import create_engine, text
 
-from coeus.core.errors import AppError
 from coeus.domain.admission import AdmissionMode, admission_denial_scope
 from coeus.persistence.database_url import synchronous_database_url
 from coeus.persistence.resource_lease_schema import RESOURCE_LEASE_SCHEMA_SQL
 from coeus.services.admission_metrics import AdmissionMetrics
+from coeus.services.ticket_capacity_errors import ticket_capacity_error
 
 
 class PostgresTicketAdmissionController:
@@ -116,7 +116,7 @@ class PostgresTicketAdmissionController:
                 )
         if denial_scope:
             self._metrics.record("ticket", f"denied_{denial_scope}")
-            raise AppError(429, "ticket_capacity_exhausted", "Ticket capacity is unavailable.")
+            raise ticket_capacity_error(denial_scope)
         self._metrics.record("ticket", "observed_denial" if observed_denial else "admitted")
         return lease_id, reference
 

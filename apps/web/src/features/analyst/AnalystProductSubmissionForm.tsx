@@ -159,9 +159,7 @@ export function AnalystProductSubmissionForm({
           </label>
         ))}
       </fieldset>
-      <small>
-        Release markers are fixed to MOCK and MOCK DATA ONLY in this public-safe environment.
-      </small>
+      <small>Release handling is fixed for this synthetic exercise environment.</small>
       <button disabled={disabled || mutation.isPending || !canUpload} type="submit">
         <FileUp aria-hidden="true" size={18} />
         {mutation.isPending ? "Checking and uploading…" : "Upload product version"}
@@ -179,8 +177,8 @@ function initialForm(task: AnalystTask): FormState {
   const route = task.assignments.at(-1)?.route;
   return {
     title: task.title,
-    summary: "MOCK DATA ONLY. ",
-    description: "MOCK DATA ONLY. ",
+    summary: "",
+    description: "",
     productType: "assessment_report",
     sourceType: "analyst_submission",
     ownerTeam: route === "cm" ? "Collection" : "RFA",

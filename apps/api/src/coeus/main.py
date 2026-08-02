@@ -45,17 +45,21 @@ logger = get_logger(__name__)
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     stop = asyncio.Event()
     dispatcher = getattr(app.state, "outbox_dispatcher", None)
-    task = (
+    dispatcher_task = (
         asyncio.create_task(_dispatch_outbox(app, dispatcher, stop))
         if dispatcher is not None
         else None
     )
+    auto_reindex = getattr(app.state, "search_auto_reindex_service", None)
+    reindex_task = asyncio.create_task(auto_reindex.run(stop)) if auto_reindex is not None else None
     try:
         yield
     finally:
         stop.set()
-        if task is not None:
-            await task
+        if dispatcher_task is not None:
+            await dispatcher_task
+        if reindex_task is not None:
+            await reindex_task
         await dispose_readiness_engines()
 
 

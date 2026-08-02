@@ -1,7 +1,7 @@
 import { Check, Plus, RefreshCw, Save } from "lucide-react";
 import { useState } from "react";
 
-import { modelInfoFor } from "./model-catalogue";
+import { modelInfoFor, modelLabelFor } from "./model-catalogue";
 import type { AiProviderState } from "../../lib/api-client/admin";
 
 type AiModelGridProps = {
@@ -111,7 +111,7 @@ export function AiModelGrid({
                   value={model}
                 />
                 <span className="ai-model-card__header">
-                  <code>{model}</code>
+                  <strong>{modelLabelFor(model)}</strong>
                   <span className={`ai-model-tier ai-model-tier--${info.tier.toLowerCase()}`}>
                     {info.tier}
                   </span>

@@ -61,6 +61,7 @@ class Settings(BaseSettings):
     argon2_parallelism: int = 1
     argon2_max_concurrent: int = Field(default=2, ge=1, le=8)
     local_seed_credential: str = DEFAULT_SEED_CREDENTIAL
+    local_numbered_seed_usernames: bool = False
     allow_dev_seed_users: bool = False
     gcp_project_id: str | None = None
     gcp_region: str = "europe-west2"
@@ -102,6 +103,8 @@ class Settings(BaseSettings):
     shared_resource_admission_mode: AdmissionMode = AdmissionMode.PRINCIPAL
     search_max_concurrent: int = Field(default=2, ge=1, le=32)
     search_max_concurrent_per_principal: int = Field(default=1, ge=1, le=8)
+    search_auto_reindex_enabled: bool = True
+    search_auto_reindex_debounce_seconds: float = Field(default=2.0, ge=0.1, le=30.0)
     ticket_max_retained: int = Field(default=10_000, ge=1)
     ticket_max_retained_per_principal: int = Field(default=50, ge=1)
     ticket_admission_mode: AdmissionMode = AdmissionMode.PRINCIPAL

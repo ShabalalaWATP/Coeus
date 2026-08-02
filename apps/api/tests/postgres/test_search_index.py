@@ -1,7 +1,7 @@
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from alembic import command
@@ -14,6 +14,7 @@ from coeus.domain.search_index import (
     SearchTicketEmbedding,
 )
 from coeus.persistence.search_index_postgres import PostgresSearchIndexRepository
+from coeus.persistence.search_index_validation import embedding_source_hash
 from coeus.services.search_configuration import SEARCH_EMBEDDING_DIMENSIONS
 
 API_ROOT = Path(__file__).resolve().parents[2]
@@ -46,7 +47,11 @@ def test_postgres_ticket_hybrid_search_prefilters_authorised_ids_and_state(
             (),
             documents,
             tuple(
-                SearchTicketEmbedding(item.ticket_id, item.content_hash, _unit_vector())
+                SearchTicketEmbedding(
+                    item.ticket_id,
+                    embedding_source_hash(profile.space_id, item.content_hash),
+                    _unit_vector(),
+                )
                 for item in documents
             ),
         )
@@ -62,6 +67,38 @@ def test_postgres_ticket_hybrid_search_prefilters_authorised_ids_and_state(
         assert hits[0].lexical_rank == 1
         assert hits[0].vector_rank == 1
         assert repository.counts() == (0, 0, 3, 0, "postgres-search-test")
+    finally:
+        engine.dispose()
+
+
+def test_postgres_ticket_documents_remain_generation_scoped_after_rollback(
+    postgres_database_url: str,
+) -> None:
+    config = Config(str(API_ROOT / "alembic.ini"))
+    config.set_main_option("sqlalchemy.url", postgres_database_url)
+    command.upgrade(config, "head")
+    engine = create_engine(postgres_database_url)
+    repository = PostgresSearchIndexRepository(engine)
+    ticket_id = uuid4()
+    first_profile = _profile()
+    first_document = _document("RFI_SEARCHING", "Donbas armour", ticket_id)
+    second_profile = _profile()
+    second_document = _document("RFI_SEARCHING", "Baltic shipping", ticket_id)
+    try:
+        _activate(repository, first_profile, first_document)
+        _activate(repository, second_profile, second_document)
+        assert repository.search_tickets(
+            "Baltic", None, frozenset({ticket_id}), frozenset({"RFI_SEARCHING"})
+        )
+
+        repository.rollback_activation(second_profile.profile_id, "index_write_failed")
+
+        assert not repository.search_tickets(
+            "Baltic", None, frozenset({ticket_id}), frozenset({"RFI_SEARCHING"})
+        )
+        assert repository.search_tickets(
+            "Donbas", None, frozenset({ticket_id}), frozenset({"RFI_SEARCHING"})
+        )
     finally:
         engine.dispose()
 
@@ -86,10 +123,33 @@ def _profile() -> SearchIndexProfile:
     )
 
 
-def _document(state: str, content: str) -> SearchTicketDocument:
+def _document(state: str, content: str, ticket_id: UUID | None = None) -> SearchTicketDocument:
     from hashlib import sha256
 
-    return SearchTicketDocument(uuid4(), state, content, sha256(content.encode()).hexdigest())
+    return SearchTicketDocument(
+        ticket_id or uuid4(), state, content, sha256(content.encode()).hexdigest()
+    )
+
+
+def _activate(
+    repository: PostgresSearchIndexRepository,
+    profile: SearchIndexProfile,
+    document: SearchTicketDocument,
+) -> None:
+    repository.begin(profile)
+    repository.activate(
+        replace(profile, status="ready", is_active=True, completed_at=datetime.now(UTC)),
+        (),
+        (),
+        (document,),
+        (
+            SearchTicketEmbedding(
+                document.ticket_id,
+                embedding_source_hash(profile.space_id, document.content_hash),
+                _unit_vector(),
+            ),
+        ),
+    )
 
 
 def _unit_vector() -> tuple[float, ...]:

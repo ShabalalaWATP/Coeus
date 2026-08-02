@@ -5,6 +5,9 @@ from dataclasses import dataclass, replace
 
 from coeus.domain.auth import RoleName, UserAccount
 
+CANONICAL_SEED_LOGIN_PROFILE = "canonical-v1"
+NUMBERED_SEED_LOGIN_PROFILE = "numbered-shared-v1"
+
 
 @dataclass(frozen=True)
 class SeedUserSpec:
@@ -110,18 +113,65 @@ def seed_user_specs() -> tuple[SeedUserSpec, ...]:
     )
 
 
-def reconcile_seed_user_identities(users: Iterable[UserAccount]) -> tuple[UserAccount, ...]:
+def numbered_seed_username(username: str) -> str:
+    """Map a canonical synthetic username to its short local login name."""
+    key = username.casefold()
+    for index, spec in enumerate(seed_user_specs(), start=1):
+        if spec.username.casefold() == key:
+            return f"admin{index}"
+    return username
+
+
+def canonical_seed_username(username: str) -> str:
+    """Return the canonical synthetic username for a numbered local login."""
+    key = username.casefold()
+    for index, spec in enumerate(seed_user_specs(), start=1):
+        if key == f"admin{index}":
+            return spec.username
+    return username
+
+
+def reconcile_seed_user_identities(
+    users: Iterable[UserAccount],
+    *,
+    numbered_usernames: bool = False,
+    allow_numbered_sources: bool = False,
+) -> tuple[UserAccount, ...]:
     """Rename recognised legacy seed values without changing account authority."""
     reconciled = list(users)
     by_username = {user.username.casefold(): index for index, user in enumerate(reconciled)}
 
     for spec in seed_user_specs():
-        index = by_username.get(spec.username.casefold())
-        if index is None:
-            for legacy_username in spec.legacy_usernames:
-                index = by_username.get(legacy_username.casefold())
-                if index is not None:
-                    break
+        target_username = (
+            numbered_seed_username(spec.username) if numbered_usernames else spec.username
+        )
+        canonical_candidates = (spec.username, *spec.legacy_usernames)
+        if (
+            numbered_usernames
+            and not allow_numbered_sources
+            and target_username.casefold() in by_username
+        ):
+            raise ValueError(
+                f"Conflicting synthetic accounts reserve numbered seed username "
+                f"{target_username!r}; rename the existing target before enabling "
+                "numbered local logins."
+            )
+        candidates = canonical_candidates
+        if numbered_usernames and allow_numbered_sources:
+            candidates = (target_username, *candidates)
+        elif not numbered_usernames and allow_numbered_sources:
+            candidates = (numbered_seed_username(spec.username), *candidates)
+        matching_indices = {
+            by_username[candidate.casefold()]
+            for candidate in candidates
+            if candidate.casefold() in by_username
+        }
+        if len(matching_indices) > 1:
+            raise ValueError(
+                f"Conflicting synthetic accounts exist for {target_username!r}; "
+                "resolve the duplicate identities before startup."
+            )
+        index = next(iter(matching_indices), None)
         if index is None:
             continue
 
@@ -129,7 +179,7 @@ def reconcile_seed_user_identities(users: Iterable[UserAccount]) -> tuple[UserAc
         display_name = current.display_name
         if display_name in spec.legacy_display_names:
             display_name = spec.display_name
-        migrated = replace(current, username=spec.username, display_name=display_name)
+        migrated = replace(current, username=target_username, display_name=display_name)
         if migrated == current:
             continue
         reconciled[index] = migrated

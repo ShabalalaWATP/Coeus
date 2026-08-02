@@ -33,7 +33,6 @@ export default function RoutingQueuePage({ queue: queueKind }: RoutingQueuePageP
           <h1 id="routing-title">{labels.title}</h1>
           <p>{labels.description}</p>
         </div>
-        <div className="classification-note">MOCK DATA ONLY</div>
       </section>
       <section className="routing-grid">
         <aside className="surface routing-list" aria-label={`${labels.shortName} tickets`}>

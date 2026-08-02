@@ -23,11 +23,15 @@ existing seed pattern rather than adding a second source of truth.
 ## What is generated
 
 Gated by `Settings.should_seed_demo()` (auto-on for `environment == "local"`,
-overridable with `COEUS_SEED_DEMO_CONTENT`). Loaded once on a fresh dataset
-(no tickets yet), so it never duplicates or resets user activity on a
-persisted store.
+overridable with `COEUS_SEED_DEMO_CONTENT`). The catalogue upserts on every
+local start, while tickets and calendars load only on a fresh dataset. Stable
+identities prevent duplication and existing user activity is not reset.
 
-- **Store catalogue** (`repositories/demo_catalogue*.py`): ~43 products spread
+- **Store catalogue** (`repositories/demo_catalogue*.py`): 261 products on a
+  fresh local database, comprising 45 base/showcase products and 216 genuine
+  four-page PDFs. The PDF collection includes 72 explicitly synthetic
+  Ukraine-Russia reports covering Kursk, Donbas, Donetsk, Luhansk, Kharkiv,
+  Zaporizhzhia, Kyiv, the Black Sea and Moscow across 2025 and 2026. Products are spread
   across the themed need-to-know ACGs (region x discipline). The base set maps
   each region/discipline to a canonical product type; a showcase set adds every
   other type explicitly, so the catalogue covers all eight canonical product
@@ -37,7 +41,9 @@ persisted store.
   Each product carries type-appropriate assets with the right `preview_kind`
   (PDF, image, GeoJSON, data table; bundles carry several), a geospatial layer
   reference for GeoJSON products, plus classifications, time periods, regions,
-  tags and semantic labels, and their placeholder asset bytes.
+  tags and semantic labels. Seed assets contain deterministic real bytes with
+  matching size and SHA-256 metadata; downloadable reports are clearly marked
+  `MOCK DATA ONLY` on every page.
 - **Need-to-know memberships** (`services/demo_seed.py`): the demo customer,
   colleague, RFA manager/team, analyst and QC manager are granted membership
   in every demo-product ACG so the store, RFI search and analyst linking are
@@ -49,9 +55,10 @@ persisted store.
   queue and panels expect (approved routing decision, analyst assignment,
   complete work packages, draft, QC decision, dissemination and feedback),
   assembled from the same record builders the live services use.
-- **Feedback + analytics**: the delivered and closed tickets carry
-  disseminations and submitted feedback, so the RFA/CM/admin analytics
-  dashboards show real product-reuse and satisfaction figures.
+- **Feedback + analytics**: delivered and closed tickets carry disseminations.
+  The delivered ticket has a pending internal feedback request, while only the
+  closed ticket has submitted feedback, so dashboards show product reuse and
+  satisfaction without modelling feedback before closure.
 - **Team calendars** (`repositories/demo_calendar.py`): availability entries
   spread across each seed team's members and the coming days, so the My Team
   availability tiles and the assignment-panel free-analyst counts are

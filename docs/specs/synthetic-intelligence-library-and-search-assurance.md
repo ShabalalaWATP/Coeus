@@ -7,12 +7,18 @@ a broad, deterministic and public-repository-safe PDF corpus, then prove that
 both Store browse search and the RFI Search Agent retrieve only products the
 requesting user is authorised to see.
 
+The original 144-report library is extended by the
+[Ukraine-Russia report expansion](synthetic-ukraine-russia-report-expansion.md),
+which brings the current deterministic PDF corpus to 216 products.
+
 ## Scope
 
-- Add 144 multi-page PDF products to the local demo catalogue.
+- Add 216 multi-page PDF products to the local demo catalogue.
 - Cover synthetic Russia, Iran and China reporting together with Army, armour,
   tanks, missiles, artillery, drones, electronic warfare, SIGINT and cyber
   themes.
+- Include explicitly synthetic Ukraine-Russia scenarios for Kursk, Donbas,
+  Donetsk, Luhansk, Kharkiv, Zaporizhzhia, Kyiv, the Black Sea and Moscow.
 - Add 15 specialist ACGs for country and capability need-to-know boundaries.
 - Give the synthetic Billy Gilmour customer membership of almost every active
   demo ACG while retaining a small deny-test set.
@@ -24,8 +30,10 @@ requesting user is authorised to see.
 
 ## Public Repository Safety
 
-- Every title, summary, description and PDF page must say `MOCK DATA ONLY` or
-  clearly identify the content as a synthetic exercise product.
+- The authenticated shell persistently identifies the environment as a
+  synthetic exercise. Every product retains the synthetic release metadata and
+  every PDF page clearly identifies the artefact as a synthetic exercise
+  product. Titles and descriptive prose need not repeat the same warning.
 - Products may use real country and generic equipment-category names for search
   realism, but must not assert real intelligence, identify real units, include
   precise operational locations or reproduce real reports.
@@ -37,8 +45,9 @@ requesting user is authorised to see.
 
 ## Demo Corpus
 
-The corpus contains 144 products across 15 synthetic reporting scenarios and
-ten report variants. Each product has:
+The corpus contains 216 products across 27 synthetic reporting scenarios. The
+original scenarios use up to ten variants; the Ukraine-Russia extension adds
+six variants across 2025 and 2026. Each product has:
 
 - a stable product ID, reference and asset ID;
 - one real multi-page PDF asset with a stable hash;
@@ -109,12 +118,12 @@ must render without clipping, overlap, broken tables or unreadable glyphs.
 
 ## Acceptance Criteria
 
-- The live local Store contains at least 144 new PDF products and all generated
+- The live local Store contains at least 216 generated PDF products and all generated
   assets begin with a valid PDF header.
 - Representative PDFs render cleanly to PNG and contain three or more pages.
 - The corpus contains the requested country and military-domain vocabulary in
   both PDF text and indexed metadata.
-- A fresh local demo contains exactly 189 products and 58 ACGs.
+- A fresh local demo contains exactly 261 products and 58 ACGs.
 - All 15 specialist ACGs exist after local demo seeding.
 - Billy Gilmour belongs to 13 of the 15 specialist ACGs and all 43 baseline
   groups, for 56 of 58 active demo ACGs.

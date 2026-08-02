@@ -21,6 +21,15 @@ def test_direct_answer_rejects_non_answer_and_accepts_bounded_open_text() -> Non
     assert operation.supported_operation == "Tasking Lantern"
 
 
+def test_negated_urgency_does_not_become_high_and_preserves_explicit_priority() -> None:
+    for wording in ("not really urgent", "not too urgent", "not that urgent"):
+        assert extractors.extract_priority(wording) is None
+    assert extractors.extract_priority("not urgent, low priority") == "low"
+    assert extractors.extract_priority("not high priority, routine") == "routine"
+    assert extractors.extract_priority("not critical, low priority") == "low"
+    assert extractors.extract_priority("not medium, low priority") == "low"
+
+
 def test_direct_time_answer_accepts_rough_duration_but_preserves_existing_value() -> None:
     rough = apply_direct_answer(IntakeDetails(), "time_period", "three weeks")
     preserved = apply_direct_answer(rough, "time_period", "four weeks")

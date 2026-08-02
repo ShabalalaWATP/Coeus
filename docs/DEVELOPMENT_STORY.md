@@ -11,149 +11,48 @@ Historical development milestones are archived by period:
 - [20 July agent safety and LiteLLM](DEVELOPMENT_STORY_2026-07-20.md)
 - [21 July production-safe Store startup](DEVELOPMENT_STORY_2026-07-21.md)
 - [22 July security boundaries and product-first results](DEVELOPMENT_STORY_2026-07-22.md)
+- [Early July workflow and architecture milestones](DEVELOPMENT_STORY_2026-07-EARLY.md)
 
 The retained entries below are grouped by delivery milestone rather than strict
 date order. They are historical evidence, not current operating instructions.
 
-## 2026-07-27 workflow review remediation
+## 2026-08-01 Retrieval administration and index reliability
 
-- A four-angle workflow review confirmed and fixed eight defect groups
-  (capacity leak, `INFO_REQUIRED` regression, uploaded-rework QC deadlock,
-  deactivated-account strands, untested chunk-index access predicates,
-  requester-lockout error surfacing, unchanged re-analysis re-release, and
-  smaller timezone, slicing, invariant and state-map issues) under the
-  [remediation contract](specs/workflow-review-remediation-2026-07-27.md),
-  with the terminal set now derived from the state machine and migration
-  `20260727_0015` backfilling projected rows. Documented the Realtime Voice
-  Intake channel and the shipped workflow operational guarantees.
+- Reworked Search and embeddings into the same provider, credential, model,
+  test and apply hierarchy as the AI provider panel, while preserving its
+  independent key and external-egress boundary.
+- Made connection testing candidate-scoped so a successful offline mock probe
+  cannot be mistaken for a Gemini test or authorise an untested selection.
+- Replaced timestamp-sensitive corpus identity with a canonical content hash,
+  generated truthful deterministic demo assets and preserved timestamps on
+  unchanged seed upserts.
+- Scoped ticket text and vectors to one generation, made PostgreSQL promotion
+  atomic, preserved the previous winner on failure and recovered interrupted
+  process-local builds at startup.
+- Added API, UI, repository, migration and real PostgreSQL regression coverage
+  for the new lifecycle. Live demo cleanup and final quality-gate evidence are
+  recorded when the remediation is completed.
 
-## 2026-07-23 JIOC operating model and Manager journey
-- Fixed Agent clarification hand-offs and tested distinct Team Member and Manager authority.
-- Added Agent evidence, attention-first oversight, deep links and six JIOC diagrams.
-- Reconciled guides, specifications and threat models with shared human review plus Manager-only oversight and intervention.
+## 2026-08-01 Confirmed conversational interpretation and retry hardening
 
-## 2026-07-11 cross-role usability and documentation accuracy
-
-- Completed the desktop cross-role audit across customer, JIOC, team manager,
-  analyst, QC, Store, team and administrator workspaces.
-- Added manager work review, deliberate QC controls, safer record switching,
-  structured multi-analyst assignment, clearer task context, profiles, calendar
-  corrections, readable workflow language and accessible command navigation.
-- Fixed JIOC similar-request access by aligning its workflow permission boundary
-  with the routing queue and updated the real end-to-end workflow fixture.
-- Added Gemini, OpenAI, Vertex AI and Bedrock runtime provider administration with
-  connection tests and explicitly warned app-wide activation.
-- Re-audited active documentation and screenshots. Kept local development as the
-  supported runtime, documented local multi-user evaluation, and made GCP and
-  Kubernetes explicit migration targets with readiness gates rather than active
-  deployment claims.
-- PRs #98 to #100 passed backend, frontend, CodeQL, DAST, container, Semgrep,
-  Checkov, Gitleaks, SBOM and Terraform checks before merge.
-
-## 2026-07-11 JIOC workflow restructure, QC release, teams and calendars
-
-- Renamed the workflow roles to plain names (Customer, RFA/CM Manager and Team
-  Member, Analyst) and added the JIOC Team Member role; legacy persisted role
-  strings decode through `RoleName._missing_` aliases.
-- Replaced the manager route-review stage with a single JIOC queue: capability
-  agents advise, a JIOC member decides collection (CM) or assessment (RFA),
-  with recorded override reasons. Retired `ROUTE_ASSESSMENT` and the manager
-  review states via `TicketState` aliases.
-- Added the customer collect choice: a CM-routed ticket pauses in
-  `COLLECT_CHOICE` until the requester picks raw collect only or collect plus
-  RFA analysis (owner-only, CSRF-validated, audited).
-- Added the manager approval chain (`MANAGER_APPROVAL`) with separation of
-  duties and multi-analyst assignment (one to five analysts; reassignment
-  deactivates prior assignments instead of overwriting them), splitting out
-  `services/analyst_assignment_service.py` and `services/manager_approval.py`.
-- Moved the final release from managers to Quality Control: QC approval now
-  publishes, disseminates, raises the feedback request and notifies the
-  requester in one compensated step (`services/qc_release.py`); an analysed
-  collect is instead forwarded to RFA assignment with the collect linked and
-  still DRAFT. Retired `MANAGER_RELEASE` (aliases to `QC_REVIEW`), the release
-  endpoints and the ReleaseQueuePanel; the release hardening tests moved to
-  `test_qc_release_api.py`.
-- Fixed a live-only privilege bug found in the walk-through: restored user
-  records kept the permission snapshot from seed time, so revoked release
-  permissions survived upgrades. `SeedUserRepository` now re-derives
-  permissions from persisted roles on startup, with regression coverage.
-- Added organisational teams, member profiles and team calendars with a
-  deterministic availability service (calendar plus live assignments), the
-  My Team page and availability counts in the assignment panel.
-- Docs: ADR 0022, specs and threat models for the JIOC restructure and for
-  teams/profiles/calendars; superseded the manager-final-release documents;
-  refreshed the workflow architecture, roles, user guide and setup docs.
-- Both suites green at the 95% gates; every phase also verified live in the
-  browser, including the CM-to-RFA analysed-collect journey.
-
-## 2026-07-09 Access-control audit rollback
-
-- Made audited ACG administration, ticket collaboration, related-request links
-  and requester lifecycle actions failure-atomic, preventing access or state
-  changes from surviving a failed audit write.
-- Extended rollback coverage across RFA/CM routing, RFI decisions, analyst work,
-  QC decisions and release, including suppression or removal of downstream Store,
-  asset and notification side effects.
-- Made notification and email persistence, administrator AI-model changes and
-  authentication session lifecycle operations restore their exact prior state
-  when persistence or audit recording fails.
-- Hardened Store ingestion so failed storage or audit work cannot leave orphaned
-  bytes, metadata or a false product-created event. Regression tests and relevant
-  threat models cover the failure boundaries.
-- Removed retired workspace sanitisation so old Project permissions and records
-  fail closed instead of being accepted by the runtime persistence codec.
-
-## 2026-07-08 No-match consent
-
-- Added Part C no-match consent. Zero-offer RFI searches now enter
-  `RFI_NO_MATCH` and record `rfi_no_match` on the ticket timeline instead of
-  tasking new work automatically.
-- Added an owner-only, CSRF-protected consent endpoint and customer workspace
-  prompt. Yes moves the ticket to `ROUTE_ASSESSMENT`; No moves it to
-  `CANCELLED` with the fixed reason `customer declined tasking after no-match`.
-- Updated journey mapping, dashboard search metrics, similar-request state scope,
-  audit coverage and documentation for the new state.
-
-## 2026-07-08 Similar request detection
-
-- Added Part B similar-request detection for open tickets from `RFI_SEARCHING`
-  through `MANAGER_RELEASE`, using deterministic lexical and embedding signals
-  with RRF scoring and region/output-format boosts.
-- Added customer-facing similar-request notices that reuse existing ticket
-  visibility before showing references or titles. Hidden matches produce only a
-  neutral assessing-team notice. Customers can join visible matches as viewers
-  or continue their own request.
-- Added manager routing-queue panels that show similar open requests before route
-  decisions. Managers can link tickets as related, with reciprocal ticket IDs,
-  timeline entries on both tickets and `tickets_linked` audit events.
-- Added backend API/scoring tests and frontend Vitest coverage for customer and
-  manager panels, including failed join/link actions.
-
-## 2026-07-08 Architecture documentation
-
-- Added the initial grounded architecture guide split by responsibility across
-  three cross-linked documents with system, workflow and deployment diagrams:
-  `docs/ARCHITECTURE.md` (system context, layered application, data and
-  persistence, security and need-to-know), `docs/ARCHITECTURE_WORKFLOW.md` (the
-  request journey state machine, the end-to-end sequence, the AI agents and
-  hybrid RFI search internals) and `docs/ARCHITECTURE_DEPLOYMENT.md` (local
-  runtime topology, the future Google Cloud Platform reference design, the
-  local-vs-GCP provider matrix and scaling notes).
-- Linked the guides from the root README and the documentation index, and
-  documented the embedding provider settings, the optional `embeddings` extra
-  and the backfill command in `docs/SETUP.md`.
-
-## 2026-07-09 Legacy workspace removal
-
-- Removed the legacy workspace feature from backend routes, services, seed
-  data, frontend navigation, admin shortcuts, client methods and Store
-  workspace metadata/filtering.
-- Removed the remaining ticket-level suggested workspace field and renamed
-  routing plan records to workflow plan updates.
-- Removed active runtime shims for retired workspace state. The persistence
-  decoder rejects older retired workspace payloads during local startup.
-- Added ADR 0018 and refreshed the ACG/product access threat model and Sprint 3
-  spec to record the retirement decision.
+- Extended deterministic intake parsing for named, whole-year and relative date
+  windows, then added transcript-derived guidance so unresolved answers do not
+  trigger an identical question loop.
+- Added an admitted model fallback for unresolved priority and date wording.
+  It receives only the active current answer, target and current date, is capped
+  at 4 KiB, and never receives prior history, other voice answers or stored
+  intake.
+- Kept model output non-authoritative. Exact-key, exact-evidence and closed-value
+  validation produces application-owned confirmation copy; only the customer's
+  later yes applies the suggestion. Free text, completeness, lifecycle,
+  authorisation and submission remain deterministic.
+- Hardened voice grouping, end-intent handling, stale confirmations, priority
+  negation, provider admission fallback, valid abstention, circuit behaviour and
+  provenance token bounds through independent security and code-quality review.
+- Verification completed with 1,646 backend tests passing and 81 PostgreSQL-only
+  tests skipped in the local non-PostgreSQL run. The 129-test focused boundary
+  suite passed at 98.52 per cent combined line and branch coverage; Ruff, mypy,
+  documentation links, diff checks and the 350-line source limit also passed.
 
 ## 2026-07-10 Local-first security and quality remediation
 
@@ -313,3 +212,139 @@ date order. They are historical evidence, not current operating instructions.
 - Corrected the browser-to-API, workflow, dual-index, GCP KMS, local
   notification and recovery boundaries against implementation.
 - Added repository-wide Mermaid parsing to local checks and Backend CI.
+
+## 2026-08-01 Numbered local evaluation logins
+
+- Added a Compose-only login profile that maps the 16 synthetic seed identities
+  to `admin1` through `admin16` with the deliberately weak local password
+  `admin`; runtime validation rejects the profile outside `environment=local`.
+- Made the persisted migration one-time and collision-safe. It preserves user
+  IDs and authority, advances credential versions, invalidates old sessions and
+  never exposes canonical seed names as alternate authentication identities.
+- Preserved canonical seed references behind an internal-only resolver and
+  reserved canonical, numbered and legacy names from registration.
+- Repaired the persisted JIOC seed persona to the current Manager role through
+  the audited admin API. Live checks proved all 15 active accounts, the disabled
+  account block, canonical-name rejection, API readiness and an empty session
+  store.
+- The database-enabled backend gate passed 1,644 tests with one intentional
+  compatibility skip and 97.79 percent total coverage. Ruff, mypy, line-limit
+  and Docker image build checks also passed.
+- Corrected the login form's obsolete email-only validation and made Compose
+  derive the API hostname from the browser entry hostname. A live in-app
+  browser pass proved `admin2` reaches the customer workspace from
+  `127.0.0.1` with its session retained.
+- The complete frontend gate passed 546 tests at 98.65 percent line and 95.08
+  percent branch coverage; formatting, ESLint and TypeScript also passed.
+
+## 2026-08-01 Customer request history and closure feedback
+
+- Separated active work from collapsed closed history and replaced permanent
+  multi-form feedback with a sequential, closed-ticket product prompt.
+- Enforced `CLOSED_*` eligibility in the feedback service for both listing and
+  submission. Active and cancelled requests are not feedback-eligible.
+- Updated demo feedback timing while preserving immutable analytics and raised
+  only the full Docker demonstration's retained-ticket ceiling to 500.
+- Kept default and hosted limits unchanged and made principal denials describe
+  the required close-or-cancel action accurately.
+
+## 2026-08-01 Intake date clarification recovery
+
+- Fixed a deterministic intake loop that ignored named and whole-year date
+  ranges, retained `last year` as ambiguous prose, then refused a later valid
+  correction because the time-period field was already populated.
+- Added bounded local normalisation for numeric, named, whole-year and relative
+  calendar windows. Concrete corrections now replace only unresolved date
+  values, preserving an already valid range.
+- Added regression coverage for the reported conversation and invalid or
+  reversed ranges. The full backend run passed 1,579 tests with 81
+  environment-gated skips; changed intake modules remain at 99 to 100 percent
+  combined coverage.
+
+## 2026-08-01 Retrieval administration and index integrity
+
+- Reworked retrieval administration into a provider, model, test, apply and
+  rebuild sequence. Connection evidence is now tied to the exact draft choice,
+  and Gemini remains gated by its dedicated key and explicit egress consent.
+- Made demo asset metadata truthful and seed upserts idempotent. Corpus hashing
+  now uses canonical retrieval inputs and sorts unordered semantic terms, so an
+  unchanged corpus remains current across Python process restarts.
+- Scoped request documents to their index generation, made generation promotion
+  atomic and added interrupted-worker recovery. The API container now packages
+  its Alembic configuration, and Compose gates API startup on a successful
+  one-shot migration.
+- Hardened promotion against duplicate, mismatched and stale source identities.
+  Bounded provider transport now prevents oversized or malformed Gemini
+  responses from leaking upstream values through logs or exceptions.
+- Backed up the local database, then removed only the two verified synthetic
+  2,000-asset stress products. The mock index warning count fell from 4,057 to
+  35 honest extraction warnings: 14 missing objects and 21 unsupported types.
+- Rebuilt generation 3 over 197 products, 861 passages and 21 indexed request
+  vectors. It remained ready after an API restart with corpus version
+  `ebf931b0e1470d4b8a616052`.
+- The PostgreSQL backend gate passed 1,746 tests with one compatibility skip at
+  98.33 percent line and 95.55 percent branch coverage. The frontend gate
+  passed 550 tests at 98.67 percent line and 95.08 percent branch coverage.
+
+## 2026-08-02 Synthetic Ukraine-Russia report expansion
+
+- Audited the live Store before expansion: it held 217 products and 193 PDF
+  assets. All 144 original deterministic corpus PDFs had valid integrity
+  metadata, object bytes and an indexed asset state, but the 45 Russia reports
+  used generic exercise areas and did not cover Ukraine-war search scenarios.
+- Added 72 deterministic four-page PDFs across 12 clearly synthetic scenarios:
+  Kursk, northern Donbas, Donetsk, Luhansk, Kharkiv, Zaporizhzhia, Kyiv missile
+  and drone activity, Black Sea activity, Moscow drone and air-defence activity,
+  and Donbas electronic warfare. Coverage periods span 2025 and 2026.
+- Improved generated narratives and long-region wrapping. Visual checks of all
+  four report pages and representative covers found no clipping, overlap or
+  unreadable text after two repair passes.
+- Seeded the existing database idempotently. The live Store now holds 289
+  products, including 72 new reports, without removing 28 existing non-seed
+  records. Generation 4 is ready over 269 eligible products, 1,221 passages and
+  21 request vectors; all 72 expansion assets contributed 288 indexed pages.
+- Exercised an authenticated download grant and confirmed HTTP 200,
+  `application/pdf`, attachment and `no-store` headers, a valid PDF signature,
+  four pages, a matching SHA-256 hash and visible mock banners.
+- Live Store queries returned expansion products first for every requested
+  location and capability. The complete PostgreSQL backend gate passed 1,747
+  tests with one compatibility skip at 98.34 percent line and 95.56 percent
+  branch coverage. Ruff, mypy, Bandit, architecture, documentation, Mermaid and
+  file-size checks also passed.
+
+## 2026-08-02 Synthetic provenance and local provider presentation
+
+- Replaced repeated page-level `MOCK DATA ONLY` warnings with one persistent,
+  accessible `Synthetic exercise` indicator in the authenticated command bar.
+- Renamed the user-facing offline text and retrieval implementations to Local
+  assistant and Local search while preserving their stable internal identifiers.
+- Moved raw retrieval provider, model, corpus and release identifiers into a
+  collapsed technical disclosure and kept external activation explicit.
+- Removed warning prefixes from seeded titles and descriptive prose. Product
+  handling metadata remains fixed and each generated PDF page retains one clear
+  synthetic marker.
+- Added startup convergence for the original baseline Store records, translated
+  the legacy signals product type and suppressed internal provenance tags from
+  prominent Store chips while retaining them for retrieval compatibility.
+- The complete gates passed: 551 frontend tests at 98.67/95.11 line/branch and
+  1,748 PostgreSQL backend tests with one intentional skip at 98.34/95.56.
+
+## 2026-08-02 Automatic retrieval and richer exercise products
+
+- Activated the verified Gemini search credential and promoted generation 8
+  over 269 products and 2,306 passages with no asset failures.
+- Added debounced rebuild scheduling for startup, Store mutations and retrieval
+  changes, plus a plain-language UI that follows queued work automatically and
+  offers manual recovery only after a failure.
+- Repaired 14 missing local exercise objects, added bounded CSV, GeoJSON and
+  verified image extraction, and reduced live asset warnings from 35 to zero.
+  All 273 eligible assets are indexed.
+- Expanded deterministic reports to eight pages with a schematic situation map,
+  imagery review, daily timeline, translated extracts, source matrix,
+  all-source judgement and collection questions. All pages were rendered and
+  visually checked, including a live eight-page Store asset.
+- Added sparse and empty legacy-metadata fallbacks after live seed convergence
+  exposed both shapes, then retained them as regression coverage.
+- Final gates passed: 1,765 backend tests with one intentional skip at 97.88 per
+  cent combined coverage; 118 frontend files at 98.67/95.05 line/branch; build,
+  Ruff, mypy, Bandit, architecture, docs, Mermaid, security and line limits.

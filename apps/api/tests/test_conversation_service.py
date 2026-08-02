@@ -6,7 +6,11 @@ import pytest
 from coeus.core.config import Settings
 from coeus.core.errors import AppError
 from coeus.domain.enums import TicketState
-from coeus.domain.tickets import AgentExecutionKind, IntakeDetails, TicketRecord
+from coeus.domain.tickets import (
+    AgentExecutionKind,
+    IntakeDetails,
+    TicketRecord,
+)
 from coeus.integrations.llm_gateway import LlmCall
 from coeus.repositories.auth import SeedUserRepository
 from coeus.services.ai_models import AiModelService

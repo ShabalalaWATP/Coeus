@@ -199,11 +199,10 @@ def _seed(
         reference=f"PROD-{reference}",
         title=title,
         summary=(
-            f"MOCK DATA ONLY synthetic exercise {variant.casefold()} covering {focus}. "
-            "It supports retrieval and access-control demonstrations only."
+            f"{variant} covering {focus}. Prepared for retrieval and access-control exercises."
         ),
         description=(
-            f"MOCK DATA ONLY. Fictional analysis for {scenario.region}. Searchable themes: "
+            f"Fictional analysis for {scenario.region}. Searchable themes: "
             f"{terms}. No real units, locations, sources or operational claims are represented."
         ),
         product_type="assessment_report" if variant_index % 3 else "intelligence_summary",

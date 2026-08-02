@@ -49,7 +49,6 @@ export default function ChangePasswordPage() {
           <h1 id="change-password-title">Change Password</h1>
           <p>Set a new password for your Istari account.</p>
         </div>
-        <div className="classification-note">MOCK DATA ONLY</div>
       </section>
       <section className="surface" aria-label="Change password form">
         {resetRequired ? (

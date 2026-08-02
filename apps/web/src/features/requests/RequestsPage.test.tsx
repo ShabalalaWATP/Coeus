@@ -222,7 +222,7 @@ test("edits intake manually and submits once complete", async () => {
   expect(await screen.findByText("You are here")).toBeVisible();
 });
 
-test("hides the mock-data badge from users who can create requests", async () => {
+test("does not repeat the environment provenance inside the request page", async () => {
   vi.stubGlobal(
     "fetch",
     fetchByUrl([
@@ -235,6 +235,7 @@ test("hides the mock-data badge from users who can create requests", async () =>
 
   expect(await screen.findByRole("heading", { name: "Request" })).toBeVisible();
   expect(screen.queryByText("MOCK DATA ONLY")).not.toBeInTheDocument();
+  expect(screen.queryByText("Synthetic exercise")).not.toBeInTheDocument();
 });
 
 test("hides the new request action without a session", async () => {
@@ -250,5 +251,5 @@ test("hides the new request action without a session", async () => {
 
   expect(await screen.findByRole("heading", { name: "My Requests" })).toBeVisible();
   expect(screen.queryByRole("button", { name: "Open new request" })).not.toBeInTheDocument();
-  expect(screen.getByText("MOCK DATA ONLY")).toBeVisible();
+  expect(screen.queryByText("MOCK DATA ONLY")).not.toBeInTheDocument();
 });

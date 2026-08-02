@@ -5,6 +5,7 @@ import { AdminDisclosureSummary } from "./AdminDisclosureSummary";
 import { AiModelGrid } from "./AiModelGrid";
 import { AiConfigurationSummary, AiProviderSelector } from "./AiConfigurationSummary";
 import { AiProviderActivationWarning } from "./AiProviderActivationWarning";
+import { modelLabelFor } from "./model-catalogue";
 import { useAiModelPanelController } from "./useAiModelPanelController";
 import { ErrorState, LoadingState } from "../../components/ui/PageState";
 
@@ -81,7 +82,7 @@ export function AiModelPanel({ csrfToken, initiallyOpen = true }: AiModelPanelPr
                 : "attention",
           },
           state
-            ? { label: liveProvider?.activeModel ?? state.activeModel }
+            ? { label: modelLabelFor(liveProvider?.activeModel ?? state.activeModel) }
             : { label: "Loading model" },
           ...(liveConfigurationTested
             ? [
@@ -116,8 +117,7 @@ export function AiModelPanel({ csrfToken, initiallyOpen = true }: AiModelPanelPr
             <div className="ai-provider-detail">
               {isMock ? (
                 <p className="ai-hint">
-                  The mock provider answers locally with deterministic replies and needs no key. Use
-                  it for offline demos and tests.
+                  Local assistant keeps deterministic responses on this device and needs no key.
                 </p>
               ) : (
                 <>

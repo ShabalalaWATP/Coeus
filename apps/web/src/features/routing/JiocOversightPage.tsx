@@ -43,7 +43,6 @@ export default function JiocOversightPage() {
           <h1 id="oversight-title">JIOC Oversight</h1>
           <p>Monitor agent routing, team capacity and workload, and intervene when required.</p>
         </div>
-        <div className="classification-note">MOCK DATA ONLY</div>
       </section>
       {oversightQuery.isLoading ? <LoadingState label="Loading JIOC oversight" /> : null}
       {oversightQuery.isError ? <ErrorState onRetry={() => void oversightQuery.refetch()} /> : null}

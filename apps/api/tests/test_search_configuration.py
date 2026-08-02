@@ -76,6 +76,9 @@ def test_external_provider_requires_key_and_explicit_egress_confirmation() -> No
     assert state.evaluation_status == "required"
     assert state.definitive_no_match_enabled is False
 
+    stable_text_model = service.configure("1", "admin", "gemini_api", "gemini-embedding-001", True)
+    assert stable_text_model.model == "gemini-embedding-001"
+
 
 def test_deployment_can_allowlist_an_evaluated_gemini_search_release() -> None:
     store = MemoryStateStore()
@@ -188,6 +191,17 @@ def test_ready_state_becomes_stale_when_the_corpus_changes() -> None:
     stale = service.state()
     assert stale.index_status == "stale"
     assert stale.degraded_reason == "corpus_changed"
+
+
+def test_ready_state_reports_failure_when_active_generation_is_missing() -> None:
+    service, _ = _service()
+    service.mark_indexing("1")
+    service.mark_ready("1")
+
+    missing = service.state()
+
+    assert missing.index_status == "failed"
+    assert missing.degraded_reason == "index_write_failed"
 
 
 def test_failure_reason_is_allowlisted_and_previous_key_is_restored(

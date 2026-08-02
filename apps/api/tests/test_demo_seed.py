@@ -15,11 +15,12 @@ from httpx import ASGITransport, AsyncClient
 from pypdf import PdfReader
 
 from coeus.core.config import Settings
+from coeus.domain.auth import RoleName
 from coeus.domain.store import StoreSearchFilters
 from coeus.main import create_app
 from coeus.repositories.demo_catalogue import build_demo_catalogue
 from coeus.services.demo_seed import _grant_visibility
-from rfi_search_helpers import login
+from rfi_search_helpers import login, submitted_ticket
 
 
 def _app(tmp_path: Path) -> FastAPI:
@@ -176,6 +177,10 @@ async def test_demo_seed_is_idempotent(tmp_path: Path) -> None:
     store = app.state.store_services
     tickets = app.state.ticket_services
     before_products = len(store.repository.list_products())
+    before_timestamps = {
+        product.product_id: (product.created_at, product.updated_at)
+        for product in store.repository.list_products()
+    }
     before_tickets = len(tickets.tickets.assignment_snapshot())
     generated = next(
         product
@@ -198,6 +203,10 @@ async def test_demo_seed_is_idempotent(tmp_path: Path) -> None:
     assert len(store.repository.list_products()) == before_products
     assert len(tickets.tickets.assignment_snapshot()) == before_tickets
     assert app.state.object_storage.read_bytes(asset.object_key) == expected_content
+    assert {
+        product.product_id: (product.created_at, product.updated_at)
+        for product in store.repository.list_products()
+    } == before_timestamps
 
 
 def test_catalogue_and_visibility_skip_unknown_codes() -> None:
@@ -207,6 +216,9 @@ def test_catalogue_and_visibility_skip_unknown_codes() -> None:
         def get_user_by_username(self, username: str):
             return _Admin() if username == "admin@example.test" else None
 
+        def list_users(self):
+            return (_Admin(),)
+
         def list_acgs(self):
             return ()
 
@@ -215,11 +227,12 @@ def test_catalogue_and_visibility_skip_unknown_codes() -> None:
 
     class _Admin:
         user_id = __import__("uuid").UUID(int=1)
+        username = "admin@example.test"
+        roles = frozenset({RoleName.ADMINISTRATOR})
 
     catalogue = build_demo_catalogue(_EmptyAccess())
     assert catalogue.products == ()
     assert catalogue.acg_codes == frozenset()
-    # No ACGs means no memberships are granted and missing users are skipped.
     _grant_visibility(_EmptyAccess(), frozenset({"ACG-EU-CYBER"}))
 
 
@@ -230,9 +243,9 @@ def test_pdf_corpus_and_billy_acg_matrix_are_exact(tmp_path: Path) -> None:
     corpus = tuple(product for product in products if product.reference.startswith("PROD-3"))
     billy = access.get_user_by_username("colleague@example.test")
 
-    assert len(products) == 189
+    assert len(products) == 261
     assert len(access.list_acgs()) == 58
-    assert len(corpus) == 144
+    assert len(corpus) == 216
     assert billy is not None
     billy_acgs = access.acg_ids_for_user(billy.user_id)
     missing_codes = {acg.code for acg in access.list_acgs() if acg.acg_id not in billy_acgs}
@@ -251,6 +264,30 @@ def test_pdf_corpus_and_billy_acg_matrix_are_exact(tmp_path: Path) -> None:
     assert any("Russia electronic warfare" in hit.product.metadata.title for hit in visible_ew.hits)
     assert all(not (hit.product.metadata.acg_ids & denied_ids) for hit in denied_sigint.hits)
 
+    expansion = tuple(
+        product
+        for product in corpus
+        if 3201 <= int(product.reference.removeprefix("PROD-")) <= 3272
+    )
+    assert len(expansion) == 72
+    assert all(product.metadata.title.startswith("Ukraine-Russia") for product in expansion)
+    searchable = " ".join(
+        f"{product.metadata.title} {product.metadata.description} {' '.join(product.metadata.tags)}"
+        for product in expansion
+    ).casefold()
+    assert {
+        "kursk",
+        "donbas",
+        "donetsk",
+        "luhansk",
+        "kharkiv",
+        "zaporizhzhia",
+        "kyiv",
+        "black-sea",
+        "moscow",
+    } <= set(searchable.split())
+    assert {product.metadata.time_period_start[:4] for product in expansion} == {"2025", "2026"}
+
     for product in corpus:
         assert len(product.metadata.acg_ids) == 1
         assert len(product.assets) == 1
@@ -259,4 +296,55 @@ def test_pdf_corpus_and_billy_acg_matrix_are_exact(tmp_path: Path) -> None:
         assert asset.mime_type == "application/pdf"
         assert asset.size_bytes == len(content)
         assert asset.sha256 == sha256(content).hexdigest()
-        assert len(PdfReader(BytesIO(content)).pages) == 4
+        assert len(PdfReader(BytesIO(content)).pages) == 8
+
+    kursk = next(product for product in expansion if "Kursk" in product.metadata.title)
+    text = " ".join(
+        page.extract_text() or ""
+        for page in PdfReader(
+            BytesIO(app.state.object_storage.read_bytes(kursk.assets[0].object_key))
+        ).pages
+    )
+    assert "SYNTHETIC EXERCISE PRODUCT" in text
+    assert "Kursk" in text
+    assert "Situation map and imagery review" in text
+    assert "Seven-day activity timeline" in text
+    assert "Translated reporting extracts" in text
+    assert "Multi-source assessment" in text
+
+
+@pytest.mark.asyncio
+async def test_demo_rfi_search_offers_ukraine_russia_report(tmp_path: Path) -> None:
+    app = _app(tmp_path)
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        user = await login(client, "user@example.test")
+        ticket_id = await submitted_ticket(
+            client,
+            str(user["csrfToken"]),
+            title="Kursk border activity and armour warning",
+            area_or_region="Kursk border exercise area",
+        )
+        response = await client.get(f"/api/v1/rfi-search/{ticket_id}/results")
+
+    assert response.status_code == 200
+    assert any("Kursk" in offer["title"] for offer in response.json()["offers"])
+
+
+def test_base_demo_assets_match_their_integrity_metadata(tmp_path: Path) -> None:
+    app = _app(tmp_path)
+    products = tuple(
+        product
+        for product in app.state.store_services.repository.list_products()
+        if product.reference.startswith("PROD-2")
+    )
+
+    assert products
+    for product in products:
+        for asset in product.assets:
+            content = app.state.object_storage.read_bytes(asset.object_key)
+            assert asset.size_bytes == len(content)
+            assert asset.sha256 == sha256(content).hexdigest()
+            if asset.mime_type == "application/pdf":
+                assert len(PdfReader(BytesIO(content)).pages) == 8

@@ -70,8 +70,32 @@ OpenAI Realtime speech-to-speech session when an administrator enables it.
   populate intake fields or control the conversation lifecycle. `Istari:` turns
   are treated as untrusted routing context, never as customer answers.
 - Direct text answers are interpreted against the one intake detail Istari just
-  asked for. Valid UK numeric date ranges such as `01/07/25 to 1/07/26` are
-  normalised to ISO dates.
+  asked for. Valid UK numeric date ranges such as `01/07/25 to 1/07/26`, named
+  dates such as `1st Jan 2025 to 30th Dec 2026`, whole-year ranges such as
+  `all of 2025-2026`, and calendar-relative windows such as `last year` are
+  normalised to concrete ISO start and end dates. A valid concrete date answer
+  replaces an earlier unresolved window so clarification cannot become stuck on
+  stale wording.
+- Deterministic extraction runs before any model call. When the current answer
+  still cannot satisfy the one field being asked for and an external text model
+  is active, Istari may send only that bounded current answer and the target
+  field to the admitted Intake Planner. It never sends prior chat history for
+  interpretation. Answers above 4 KiB remain local.
+- Model interpretation is non-authoritative and limited to unresolved priority
+  or time-period wording. The response must use an exact JSON contract and
+  identify evidence copied verbatim from the current answer. A valid proposal
+  is shown back in application-owned copy and is not persisted until the
+  customer explicitly confirms it. Free-text intake stays deterministic and
+  local. Invalid or ungrounded output is discarded; valid abstention uses the
+  deterministic fallback without opening the provider circuit.
+- An interpretation call replaces the ordinary remote planning call for that
+  turn, keeping external work to at most one admitted call. Provider failure,
+  invalid output or unavailable capacity cannot weaken deterministic intake or
+  submission policy.
+- The controller derives retry state from the persisted transcript. The first
+  unresolved retry gives a field-specific example without repeating the same
+  question; later retries direct the customer to Edit details and do not keep
+  asking an identical question.
 
 ## Non-goals
 
@@ -79,7 +103,10 @@ OpenAI Realtime speech-to-speech session when an administrator enables it.
 - An offline speech-to-speech implementation. Browser dictation remains the
   local fallback.
 - Changing the set of required fields or the submit gate.
-- LLM-driven slot filling; extraction stays deterministic and local.
+- Unvalidated or model-only slot filling. Deterministic extraction always runs
+  first, and optional interpretation is evidence-grounded and admitted by
+  deterministic field validation.
+- Model-authored free text. Free-text intake remains deterministic and local.
 - Importing raw typed-chat history or stored field values into a newly started
   voice session. Realtime receives only derived field-presence, missing-field
   and next-action context, and the reviewed transcript enters the normal chat
@@ -139,5 +166,17 @@ OpenAI Realtime speech-to-speech session when an administrator enables it.
   to the next missing detail instead of asking the same question again.
 - UK day/month date ranges are validated, rejected when impossible or reversed,
   and stored in ISO form when valid.
+- Named-date, whole-year and relative calendar windows are stored as bounded ISO
+  ranges. Supplying a valid correction after vague wording advances the intake
+  instead of repeating the date question.
+- With a configured external text provider, unresolved priority or date wording
+  can produce a confirmation only when the model returns the current target
+  field, exact evidence from that answer and a valid bounded value. Intake
+  advances only after the customer confirms that application-owned summary.
+- Prompt injection, extra fields, invented evidence, malformed JSON, invalid
+  dates and unsupported enum values are rejected without mutating intake.
+- Once a field has already been asked, an unresolved answer receives explanatory
+  guidance rather than the identical question. Further failures direct the
+  customer to Edit details without another repeated question.
 - Older OpenAI text models are absent from the curated text catalogue, which
   contains `gpt-5.6-sol`, `gpt-5.6-terra`, and `gpt-5.6-luna`.

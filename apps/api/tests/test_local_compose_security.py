@@ -1,6 +1,8 @@
 import tomllib
 from pathlib import Path
 
+import yaml
+
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 
 
@@ -30,6 +32,32 @@ def test_api_container_prepares_non_root_local_data_directory() -> None:
 
     assert "install -d -o coeus -g coeus /var/lib/coeus" in build_steps
     assert "chown -R coeus:coeus /app" not in build_steps
+
+
+def test_api_container_contains_its_migration_configuration() -> None:
+    dockerfile = (REPOSITORY_ROOT / "infra/docker/api.Dockerfile").read_text(encoding="utf-8")
+
+    assert "apps/api/alembic.ini" in dockerfile
+    assert "COPY apps/api/src ./apps/api/src" in dockerfile
+
+
+def test_compose_runs_database_migrations_before_api_start() -> None:
+    compose = yaml.safe_load((REPOSITORY_ROOT / "docker-compose.yml").read_text(encoding="utf-8"))
+    services = compose["services"]
+    migration = services["migrate"]
+
+    assert migration["image"] == services["api"]["image"]
+    assert migration["build"]["dockerfile"] == "infra/docker/api.Dockerfile"
+    assert "build" not in services["api"]
+    assert migration["command"] == [
+        "/app/apps/api/.venv/bin/alembic",
+        "upgrade",
+        "head",
+    ]
+    assert migration["depends_on"]["postgres"]["condition"] == "service_healthy"
+    assert services["api"]["depends_on"]["migrate"]["condition"] == (
+        "service_completed_successfully"
+    )
 
 
 def test_runtime_pdf_dependency_is_available_in_production_image() -> None:

@@ -15,7 +15,7 @@ test("calls the independent search administration endpoints", async () => {
   await getSearchEmbeddingState();
   await configureSearchEmbeddingKey("search-key", "csrf");
   await configureSearchEmbeddings("gemini_api", "gemini-embedding-2", true, "csrf");
-  await testSearchEmbeddings("csrf");
+  await testSearchEmbeddings("gemini_api", "gemini-embedding-2", true, "csrf");
   await reindexSearchEmbeddings("csrf");
 
   expect(fetchMock).toHaveBeenNthCalledWith(
@@ -46,7 +46,15 @@ test("calls the independent search administration endpoints", async () => {
   expect(fetchMock).toHaveBeenNthCalledWith(
     4,
     "http://127.0.0.1:8001/api/v1/admin/search-embeddings/test",
-    expect.objectContaining({ method: "POST" }),
+    expect.objectContaining({
+      body: JSON.stringify({
+        provider: "gemini_api",
+        model: "gemini-embedding-2",
+        confirmExternalEgress: true,
+      }),
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": "csrf" },
+      method: "POST",
+    }),
   );
   expect(fetchMock).toHaveBeenNthCalledWith(
     5,

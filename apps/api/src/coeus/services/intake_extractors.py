@@ -9,6 +9,8 @@ general message can never silently satisfy them; the assistant should ask.
 import re
 from datetime import date
 
+from coeus.services import intake_dates
+
 REQUIREMENT_CUES = frozenset(
     {
         "need",
@@ -41,6 +43,17 @@ PRIORITY_ALIASES = (
     ("medium", ("medium", "moderate")),
     ("routine", ("routine", "normal", "standard")),
     ("low", ("low", "low priority")),
+)
+_PRIORITY_TERMS = sorted(
+    {term for _priority, terms in PRIORITY_ALIASES for term in terms},
+    key=len,
+    reverse=True,
+)
+NEGATED_PRIORITY = re.compile(
+    r"\b(?:not|isn't|isnt|is\s+not)\s+"
+    r"(?:(?:especially|particularly|very|really|too|that)\s+)?"
+    rf"(?:{'|'.join(re.escape(term) for term in _PRIORITY_TERMS)})\b",
+    re.IGNORECASE,
 )
 
 DISCIPLINE_CUES = (
@@ -76,18 +89,6 @@ ON_BEHALF_PATTERN = re.compile(
 
 URGENCY_CUES = ("in support of", "due to", "ahead of", "time critical", "time-critical")
 
-_RANGE_JOINER = r"(?:to|through|until|\u2013|\u2014)"
-_ISO_RANGE_PATTERN = re.compile(
-    rf"\b(?:from\s+)?(?P<start>\d{{4}}-\d{{2}}-\d{{2}})\s+{_RANGE_JOINER}\s+"
-    rf"(?P<end>\d{{4}}-\d{{2}}-\d{{2}})\b",
-    re.IGNORECASE,
-)
-_UK_RANGE_PATTERN = re.compile(
-    rf"\b(?:from\s+)?(?P<start>\d{{1,2}}/\d{{1,2}}/\d{{2,4}})\s+{_RANGE_JOINER}\s+"
-    rf"(?P<end>\d{{1,2}}/\d{{1,2}}/\d{{2,4}})\b",
-    re.IGNORECASE,
-)
-
 
 def extract_title(text: str) -> str | None:
     lowered = text.casefold()
@@ -122,8 +123,9 @@ def extract_region(text: str) -> str | None:
 
 
 def extract_priority(lowered: str) -> str | None:
+    searchable = NEGATED_PRIORITY.sub(" ", lowered)
     for priority, terms in PRIORITY_ALIASES:
-        if any(re.search(rf"\b{re.escape(term)}\b", lowered) for term in terms):
+        if any(re.search(rf"\b{re.escape(term)}\b", searchable) for term in terms):
             return priority
     return None
 
@@ -156,40 +158,16 @@ def extract_deadline(text: str) -> str | None:
     return _trim_clause(match.group("deadline"))
 
 
-def extract_time_window(text: str) -> tuple[str | None, str | None]:
-    for pattern, parser in (
-        (_ISO_RANGE_PATTERN, date.fromisoformat),
-        (_UK_RANGE_PATTERN, _parse_uk_date),
-    ):
-        date_range = pattern.search(text)
-        if date_range:
-            try:
-                start = parser(date_range.group("start"))
-                end = parser(date_range.group("end"))
-            except ValueError:
-                return None, None
-            if start > end:
-                return None, None
-            return start.isoformat(), end.isoformat()
-    lowered = text.casefold()
-    for phrase in ("next week", "this week", "next month", "this month", "last month"):
-        if phrase in lowered:
-            return phrase, phrase
-    month_window = re.search(
-        r"\b(?:the\s+)?(?:entirety|whole|all)\s+of\s+"
-        r"(?:january|february|march|april|may|june|july|august|september|october|"
-        r"november|december)\b",
-        text,
-        re.IGNORECASE,
-    )
-    if month_window:
-        value = normalise_spaces(month_window.group(0)).strip()
-        return value, value
-    return None, None
+def extract_time_window(text: str, *, today: date | None = None) -> tuple[str | None, str | None]:
+    return intake_dates.extract_time_window(text, today=today)
 
 
 def contains_explicit_date_range(text: str) -> bool:
-    return _ISO_RANGE_PATTERN.search(text) is not None or _UK_RANGE_PATTERN.search(text) is not None
+    return intake_dates.contains_explicit_date_range(text)
+
+
+def is_resolved_time_window(start: str | None, end: str | None) -> bool:
+    return intake_dates.is_resolved_time_window(start, end)
 
 
 def extract_success_criteria(text: str) -> str | None:
@@ -282,10 +260,3 @@ def _trim_clause(value: str) -> str:
         if index != -1:
             cleaned = cleaned[:index]
     return cleaned.strip(" .,")
-
-
-def _parse_uk_date(value: str) -> date:
-    day, month, year = (int(part) for part in value.split("/"))
-    if year < 100:
-        year += 2000
-    return date(year, month, day)

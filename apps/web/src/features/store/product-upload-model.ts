@@ -3,7 +3,7 @@ import type { MetadataSuggestionInput, StoreProductCreateInput } from "../../lib
 
 export const initialProductUploadForm = {
   title: "Mock Harbour Activity Brief",
-  summary: "MOCK DATA ONLY assessment of harbour activity.",
+  summary: "Assessment of harbour activity.",
   description: "Synthetic product metadata for controlled store upload.",
   productType: "assessment_report",
   sourceType: "finished_assessment",

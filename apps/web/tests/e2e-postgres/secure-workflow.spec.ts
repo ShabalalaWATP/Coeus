@@ -201,7 +201,7 @@ test("recovers from a retained-ticket 429 without losing the message", async ({ 
   await page.getByLabel("Message").fill(message);
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByRole("alert")).toContainText(
-    "Ticket capacity is temporarily unavailable.",
+    "You have reached the active request limit. Close or cancel an existing request before opening another.",
   );
   await expect(page.getByLabel("Message")).toHaveValue(message);
 });

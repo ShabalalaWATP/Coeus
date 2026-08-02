@@ -3,6 +3,8 @@
 import re
 from dataclasses import dataclass
 
+from coeus.services import conversation_lifecycle as lifecycle
+
 VOICE_TRANSCRIPT_HEADER = "Voice drafting transcript:"
 
 
@@ -96,10 +98,13 @@ def voice_answers(turns: tuple[VoiceTurn, ...]) -> tuple[VoiceAnswer, ...]:
     current: int | None = None
     for turn in turns:
         if turn.speaker == "assistant":
+            current = None
             field = _classify_question(turn.text)
             if field is not None:
                 groups.append((field, []))
                 current = len(groups) - 1
+            continue
+        if lifecycle.wants_to_end(turn.text):
             continue
         if current is None:
             groups.append((None, [turn.text]))

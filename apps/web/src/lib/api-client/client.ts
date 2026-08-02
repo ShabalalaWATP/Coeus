@@ -36,6 +36,10 @@ export async function apiRequestNoContent(
 
 export function resolveApiBaseUrl(): string {
   const configuredUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
+  const browserHost = configuredUrl?.match(/^browser-host:(\d{1,5})$/);
+  if (browserHost) {
+    return `${window.location.protocol}//${window.location.hostname}:${browserHost[1]}`;
+  }
   return configuredUrl ?? "http://127.0.0.1:8001";
 }
 

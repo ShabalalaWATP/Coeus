@@ -27,29 +27,21 @@ class DemoAcgSpec:
 
 
 SPECIALIST_ACG_SPECS = (
-    DemoAcgSpec("ACG-RU-LAND", "Russia Land Systems", "MOCK DATA ONLY local demo land reporting."),
-    DemoAcgSpec(
-        "ACG-RU-EW", "Russia Electronic Warfare", "MOCK DATA ONLY local demo EW reporting."
-    ),
-    DemoAcgSpec("ACG-RU-SIGINT", "Russia SIGINT", "MOCK DATA ONLY local demo SIGINT reporting."),
-    DemoAcgSpec(
-        "ACG-RU-MISSILE", "Russia Missile Systems", "MOCK DATA ONLY local demo missile reporting."
-    ),
-    DemoAcgSpec(
-        "ACG-RU-UAS", "Russia Uncrewed Systems", "MOCK DATA ONLY local demo UAS reporting."
-    ),
-    DemoAcgSpec("ACG-IR-LAND", "Iran Land Systems", "MOCK DATA ONLY local demo land reporting."),
-    DemoAcgSpec("ACG-IR-EW", "Iran Electronic Warfare", "MOCK DATA ONLY local demo EW reporting."),
-    DemoAcgSpec("ACG-IR-SIGINT", "Iran SIGINT", "MOCK DATA ONLY local demo SIGINT reporting."),
-    DemoAcgSpec(
-        "ACG-IR-MISSILE", "Iran Missile Systems", "MOCK DATA ONLY local demo missile reporting."
-    ),
-    DemoAcgSpec("ACG-IR-CYBER", "Iran Cyber", "MOCK DATA ONLY local demo cyber reporting."),
-    DemoAcgSpec("ACG-CN-LAND", "China Land Systems", "MOCK DATA ONLY local demo land reporting."),
-    DemoAcgSpec("ACG-CN-EW", "China Electronic Warfare", "MOCK DATA ONLY local demo EW reporting."),
-    DemoAcgSpec("ACG-CN-SIGINT", "China SIGINT", "MOCK DATA ONLY local demo SIGINT reporting."),
-    DemoAcgSpec("ACG-CN-UAS", "China Uncrewed Systems", "MOCK DATA ONLY local demo UAS reporting."),
-    DemoAcgSpec("ACG-CN-CYBER", "China Cyber", "MOCK DATA ONLY local demo cyber reporting."),
+    DemoAcgSpec("ACG-RU-LAND", "Russia Land Systems", "Land systems reporting."),
+    DemoAcgSpec("ACG-RU-EW", "Russia Electronic Warfare", "Electronic warfare reporting."),
+    DemoAcgSpec("ACG-RU-SIGINT", "Russia SIGINT", "Signals intelligence reporting."),
+    DemoAcgSpec("ACG-RU-MISSILE", "Russia Missile Systems", "Missile systems reporting."),
+    DemoAcgSpec("ACG-RU-UAS", "Russia Uncrewed Systems", "Uncrewed systems reporting."),
+    DemoAcgSpec("ACG-IR-LAND", "Iran Land Systems", "Land systems reporting."),
+    DemoAcgSpec("ACG-IR-EW", "Iran Electronic Warfare", "Electronic warfare reporting."),
+    DemoAcgSpec("ACG-IR-SIGINT", "Iran SIGINT", "Signals intelligence reporting."),
+    DemoAcgSpec("ACG-IR-MISSILE", "Iran Missile Systems", "Missile systems reporting."),
+    DemoAcgSpec("ACG-IR-CYBER", "Iran Cyber", "Cyber reporting."),
+    DemoAcgSpec("ACG-CN-LAND", "China Land Systems", "Land systems reporting."),
+    DemoAcgSpec("ACG-CN-EW", "China Electronic Warfare", "Electronic warfare reporting."),
+    DemoAcgSpec("ACG-CN-SIGINT", "China SIGINT", "Signals intelligence reporting."),
+    DemoAcgSpec("ACG-CN-UAS", "China Uncrewed Systems", "Uncrewed systems reporting."),
+    DemoAcgSpec("ACG-CN-CYBER", "China Cyber", "Cyber reporting."),
 )
 
 BILLY_DENIED_ACG_CODES = frozenset({"ACG-RU-SIGINT", "ACG-CN-CYBER"})

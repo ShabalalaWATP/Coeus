@@ -35,6 +35,8 @@ def runtime_security_errors(settings: Settings) -> tuple[str, ...]:
 def _seed_user_errors(settings: Settings) -> tuple[str, ...]:
     dev_seed_users_allowed = settings.environment == "dev" and settings.allow_dev_seed_users
     errors: list[str] = []
+    if settings.local_numbered_seed_usernames and settings.environment != "local":
+        errors.append("COEUS_LOCAL_NUMBERED_SEED_USERNAMES is local-only.")
     if settings.environment not in SEED_USER_ENVIRONMENTS and not dev_seed_users_allowed:
         errors.append(
             "Seed users are local/test only. Configure persistent user storage "

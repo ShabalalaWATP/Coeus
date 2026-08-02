@@ -63,8 +63,8 @@ class LlmGeneration(str):
         output_tokens: int | None = None,
     ) -> "LlmGeneration":
         instance = super().__new__(cls, value)
-        instance.input_tokens = input_tokens
-        instance.output_tokens = output_tokens
+        instance.input_tokens = _bounded_token_count(input_tokens)
+        instance.output_tokens = _bounded_token_count(output_tokens)
         return instance
 
 
@@ -234,7 +234,10 @@ def _usage_values(usage: object, input_key: str, output_key: str) -> tuple[int |
         return None, None
     input_tokens = usage.get(input_key)
     output_tokens = usage.get(output_key)
-    return (
-        input_tokens if isinstance(input_tokens, int) and input_tokens >= 0 else None,
-        output_tokens if isinstance(output_tokens, int) and output_tokens >= 0 else None,
-    )
+    return _bounded_token_count(input_tokens), _bounded_token_count(output_tokens)
+
+
+def _bounded_token_count(value: object) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    return value if 0 <= value <= 2_147_483_647 else None

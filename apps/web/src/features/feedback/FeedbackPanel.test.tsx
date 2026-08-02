@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { FeedbackPanel } from "./FeedbackPanel";
@@ -34,7 +34,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-test("submits customer feedback for a pending request", async () => {
+test("submits simple outcome feedback for a closed request", async () => {
   const fetchMock = vi.fn(fetchByUrl());
   vi.stubGlobal("fetch", fetchMock);
 
@@ -45,19 +45,18 @@ test("submits customer feedback for a pending request", async () => {
   );
 
   expect(await screen.findByText("Arctic feedback product")).toBeVisible();
-  await userEvent.selectOptions(screen.getByLabelText("Rating"), "4");
-  await userEvent.type(screen.getByLabelText("Comment"), "Clear and useful mock output.");
-  await userEvent.click(screen.getByLabelText("Request follow-up"));
-  await userEvent.click(screen.getByRole("button", { name: /Submit feedback/ }));
+  await userEvent.click(screen.getByRole("radio", { name: /Partly/ }));
+  await userEvent.type(screen.getByLabelText(/Add context/), "Clear and useful mock output.");
+  await userEvent.click(screen.getByRole("button", { name: "Send feedback" }));
 
   await waitFor(() =>
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8001/api/v1/feedback/requests/feedback-1/submit",
       {
         body: JSON.stringify({
-          rating: 4,
+          rating: 3,
           comment: "Clear and useful mock output.",
-          followUpRequested: true,
+          followUpRequested: false,
         }),
         credentials: "include",
         headers: { "Content-Type": "application/json", "X-CSRF-Token": "test-csrf-token" },
@@ -65,10 +64,11 @@ test("submits customer feedback for a pending request", async () => {
       },
     ),
   );
-  expect(await screen.findByText("submitted")).toBeVisible();
+  expect(await screen.findByText("Feedback sent for Arctic feedback product.")).toBeVisible();
+  expect(screen.queryByLabelText("Request follow-up")).not.toBeInTheDocument();
 });
 
-test("keeps feedback drafts and submission targets isolated by request", async () => {
+test("presents pending feedback one closed request at a time", async () => {
   const secondRequest = {
     ...request,
     id: "feedback-2",
@@ -82,7 +82,7 @@ test("keeps feedback drafts and submission targets isolated by request", async (
     if (url.endsWith("/api/v1/feedback/requests")) {
       return Promise.resolve(jsonResponse({ requests: [request, secondRequest] }));
     }
-    return Promise.resolve(jsonResponse({ ...secondRequest, status: "submitted" }));
+    return Promise.resolve(jsonResponse({ ...request, status: "submitted" }));
   });
   vi.stubGlobal("fetch", fetchMock);
 
@@ -92,28 +92,25 @@ test("keeps feedback drafts and submission targets isolated by request", async (
     feedbackSession,
   );
 
-  const firstForm = await screen.findByRole("form", {
-    name: "Feedback for Arctic feedback product",
-  });
-  const secondForm = screen.getByRole("form", { name: "Feedback for Maritime pattern report" });
-  await userEvent.type(within(firstForm).getByLabelText("Comment"), "First draft stays here.");
-  await userEvent.selectOptions(within(secondForm).getByLabelText("Rating"), "3");
-  await userEvent.type(within(secondForm).getByLabelText("Comment"), "Second request response.");
-  await userEvent.click(within(secondForm).getByRole("button", { name: /Submit feedback/ }));
+  expect(await screen.findByText("Arctic feedback product")).toBeVisible();
+  expect(screen.queryByText("Maritime pattern report")).not.toBeInTheDocument();
+  expect(screen.getByText("2 completed requests awaiting feedback")).toBeVisible();
+  await userEvent.click(screen.getByRole("radio", { name: /Yes, fully/ }));
+  await userEvent.click(screen.getByRole("button", { name: "Send feedback" }));
 
   await waitFor(() =>
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8001/api/v1/feedback/requests/feedback-2/submit",
+      "http://127.0.0.1:8001/api/v1/feedback/requests/feedback-1/submit",
       expect.objectContaining({
         body: JSON.stringify({
-          rating: 3,
-          comment: "Second request response.",
+          rating: 5,
+          comment: "",
           followUpRequested: false,
         }),
       }),
     ),
   );
-  expect(within(firstForm).getByLabelText("Comment")).toHaveValue("First draft stays here.");
+  expect(await screen.findByText("Maritime pattern report")).toBeVisible();
 });
 
 test("shows an inline error when feedback submission fails", async () => {
@@ -138,8 +135,8 @@ test("shows an inline error when feedback submission fails", async () => {
   );
 
   await screen.findByText("Arctic feedback product");
-  await userEvent.type(screen.getByLabelText("Comment"), "Clear and useful mock output.");
-  await userEvent.click(screen.getByRole("button", { name: /Submit feedback/ }));
+  await userEvent.click(screen.getByRole("radio", { name: /^No/ }));
+  await userEvent.click(screen.getByRole("button", { name: "Send feedback" }));
 
   expect(await screen.findByRole("alert")).toHaveTextContent("Already submitted.");
 });
@@ -154,8 +151,9 @@ test("does not render feedback controls without feedback permission", () => {
   expect(fetchMock).not.toHaveBeenCalled();
 });
 
-test("renders empty feedback state for permitted users", async () => {
-  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ requests: [] })));
+test("does not add a permanent panel when no closed request needs feedback", async () => {
+  const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ requests: [] }));
+  vi.stubGlobal("fetch", fetchMock);
 
   renderWithProviders(
     <FeedbackPanel csrfToken="test-csrf-token" />,
@@ -163,8 +161,10 @@ test("renders empty feedback state for permitted users", async () => {
     feedbackSession,
   );
 
-  expect(await screen.findByText("No feedback requests yet.")).toBeVisible();
-  expect(screen.queryByRole("button", { name: /Submit feedback/ })).not.toBeInTheDocument();
+  await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+  expect(
+    screen.queryByRole("heading", { name: "Feedback on a closed request" }),
+  ).not.toBeInTheDocument();
 });
 
 test("shows a retryable error when feedback requests cannot load", async () => {
@@ -192,11 +192,11 @@ test("shows a retryable error when feedback requests cannot load", async () => {
   expect(await screen.findByText("Arctic feedback product")).toBeVisible();
 });
 
-test("renders submitted feedback without the submission form", async () => {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn().mockResolvedValue(jsonResponse({ requests: [{ ...request, status: "submitted" }] })),
-  );
+test("does not repeat previously submitted feedback", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValue(jsonResponse({ requests: [{ ...request, status: "submitted" }] }));
+  vi.stubGlobal("fetch", fetchMock);
 
   renderWithProviders(
     <FeedbackPanel csrfToken="test-csrf-token" />,
@@ -204,8 +204,8 @@ test("renders submitted feedback without the submission form", async () => {
     feedbackSession,
   );
 
-  expect(await screen.findByText("submitted")).toBeVisible();
-  expect(screen.queryByRole("button", { name: /Submit feedback/ })).not.toBeInTheDocument();
+  await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+  expect(screen.queryByText("Arctic feedback product")).not.toBeInTheDocument();
 });
 
 function fetchByUrl() {
@@ -221,9 +221,9 @@ function fetchByUrl() {
         submission: {
           id: "submission-1",
           requestId: "feedback-1",
-          rating: 4,
+          rating: 3,
           comment: "Clear and useful mock output.",
-          followUpRequested: true,
+          followUpRequested: false,
           createdAt: "2026-07-05T00:01:00Z",
         },
       }),

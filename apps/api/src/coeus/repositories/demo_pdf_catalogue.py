@@ -11,6 +11,7 @@ from coeus.domain.store import StoreAsset, StoreProduct, StoreProductMetadata
 from coeus.repositories.access import stable_seed_id
 from coeus.repositories.demo_pdf import build_demo_pdf_bytes
 from coeus.repositories.demo_pdf_specs import DemoPdfSeed, demo_pdf_seeds
+from coeus.repositories.demo_ukraine_pdf_specs import demo_ukraine_pdf_seeds
 
 _CREATED_AT = datetime(2026, 7, 1, tzinfo=UTC)
 
@@ -29,7 +30,7 @@ def _build_pdf_corpus_cached(
     products: list[StoreProduct] = []
     objects: list[tuple[str, bytes]] = []
     used_codes: set[str] = set()
-    for seed in demo_pdf_seeds():
+    for seed in (*demo_pdf_seeds(), *demo_ukraine_pdf_seeds()):
         acg_id = acg_ids.get(seed.acg_code)
         if acg_id is None:
             continue

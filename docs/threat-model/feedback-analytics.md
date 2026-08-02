@@ -20,6 +20,7 @@ Analysis Agent insights.
 | Threat | Control In Sprint 11 |
 | --- | --- |
 | User submits feedback for another requester. | Feedback lookup requires `feedback:create` and matches the request requester ID to the actor. |
+| User submits retrospective feedback while the outcome is still active. | Listing filters out non-closed tickets and submission independently requires a `CLOSED_*` state. Cancelled tickets are not feedback-eligible. |
 | User submits duplicate feedback. | Feedback requests move to `submitted`; repeat submissions return `feedback_already_submitted`. |
 | Customer accesses admin or team analytics. | Analytics endpoints require explicit `analytics:view_global` or `analytics:view_team` permissions. |
 | RFA manager reads collection-only analytics. | Team dashboards require both `analytics:view_team` and the matching route review permission. |
@@ -35,6 +36,8 @@ Analysis Agent insights.
 
 - Feedback moderation, rate limiting and abuse detection are not implemented in
   the local-first sprint.
+- The optional comment still permits sensitive content. Deployment policy,
+  retention and moderation must match the operating environment.
 - Analytics are computed in process from in-memory records. Production needs
   database-backed scoping, retention policy and query performance review.
 - Provider token, cost, latency and embedding-call analytics are not yet

@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
-from typing import Literal, cast
+from typing import cast
 
 from coeus.core.config import Settings
 from coeus.core.errors import AppError
@@ -13,15 +13,17 @@ from coeus.persistence.state_store import StateStore
 from coeus.services import search_configuration_codec as codec
 from coeus.services.audit import AuditLog
 from coeus.services.integration_secrets import EncryptedIntegrationSecretStore
+from coeus.services.search_provider_selection import (
+    PROVIDER_MODELS,
+    SearchProvider,
+    validate_search_selection,
+)
 
 SEARCH_CONFIGURATION_NAMESPACE = "search_configuration"
 SEARCH_GEMINI_CREDENTIAL_NAME = "search_embedding:gemini_api"
-SearchProvider = Literal["mock", "gemini_api"]
-PROVIDER_MODELS: dict[SearchProvider, tuple[str, ...]] = {
-    "mock": ("token-hash-v2",),
-    "gemini_api": ("gemini-embedding-2",),
-}
-_SAFE_FAILURE_REASONS = frozenset({"corpus_changed", "provider_unavailable", "index_write_failed"})
+_SAFE_FAILURE_REASONS = frozenset(
+    {"corpus_changed", "provider_unavailable", "index_write_failed", "worker_interrupted"}
+)
 logger = get_logger(__name__)
 
 
@@ -105,17 +107,17 @@ class SearchConfigurationService:
             "unindexed",
         )
         self._current_corpus_version: Callable[[], str] = lambda: "unindexed"
+        self._reindex_listener: Callable[[], None] = lambda: None
         self._restore_or_persist()
 
     def state(self) -> SearchConfigurationState:
         products, chunks, tickets, failed_assets, corpus_version = self._index_counts()
         index_status = self._state.index_status
         degraded_reason = self._state.degraded_reason
-        if (
-            index_status == "ready"
-            and corpus_version != "unindexed"
-            and self._current_corpus_version() != corpus_version
-        ):
+        if index_status == "ready" and corpus_version == "unindexed":
+            index_status = "failed"
+            degraded_reason = "index_write_failed"
+        elif index_status == "ready" and self._current_corpus_version() != corpus_version:
             index_status = "stale"
             degraded_reason = "corpus_changed"
         release_id = f"{self._state.provider}:{self._state.model}:{self._state.dimensions}"
@@ -145,6 +147,9 @@ class SearchConfigurationService:
 
     def set_current_corpus_version_provider(self, provider: Callable[[], str]) -> None:
         self._current_corpus_version = provider
+
+    def set_reindex_listener(self, listener: Callable[[], None]) -> None:
+        self._reindex_listener = listener
 
     def configure_key(self, actor_id: str, actor_username: str, api_key: str) -> None:
         if self._environment_key:
@@ -191,20 +196,12 @@ class SearchConfigurationService:
                 "search_reindex_active",
                 "Search configuration cannot change during a re-index.",
             )
-        if provider not in PROVIDER_MODELS:
-            raise AppError(422, "provider_not_available", "Search provider is not available.")
-        typed_provider: SearchProvider = provider
-        if model not in PROVIDER_MODELS[typed_provider]:
-            raise AppError(422, "model_not_available", "Search model is not available.")
-        if typed_provider == "gemini_api":
-            if not self.api_key():
-                raise AppError(422, "provider_not_configured", "Save a search API key first.")
-            if not confirm_external_egress:
-                raise AppError(
-                    422,
-                    "external_egress_not_confirmed",
-                    "Confirm that synthetic search text may be sent to Gemini.",
-                )
+        typed_provider = validate_search_selection(
+            provider,
+            model,
+            api_key_configured=bool(self.api_key()),
+            confirm_external_egress=confirm_external_egress,
+        )
         if typed_provider == self._state.provider and model == self._state.model:
             return self.state()
         next_state = replace(
@@ -228,6 +225,7 @@ class SearchConfigurationService:
                 "generation": str(next_state.index_generation),
             },
         )
+        self._reindex_listener()
         return self.state()
 
     def mark_indexing(self, actor_id: str) -> SearchConfigurationState:

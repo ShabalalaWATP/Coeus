@@ -96,6 +96,8 @@ test("resolves configured and fallback API base URLs", () => {
   expect(resolveApiBaseUrl()).toBe("http://127.0.0.1:8001");
   vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
   expect(resolveApiBaseUrl()).toBe("https://api.example.test");
+  vi.stubEnv("VITE_API_BASE_URL", "browser-host:8000");
+  expect(resolveApiBaseUrl()).toBe("http://localhost:8000");
 });
 
 test("encodes reserved characters in path segments", () => {
