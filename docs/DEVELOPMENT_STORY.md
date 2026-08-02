@@ -447,3 +447,30 @@ date order. They are historical evidence, not current operating instructions.
   ESLint, Prettier, TypeScript, architecture-boundary, file-length and
   OpenAPI contract checks. Confirmed end to end against the local
   279-product Docker catalogue.
+
+## 2 August 2026 Intelligence Store projects and subscriptions
+
+- Reframed the Store as four clear workspaces: catalogue discovery, a private
+  Library, collaborative projects, and private search subscriptions. This keeps
+  personal organisation separate from shared research and avoids turning the
+  Store into another dense dashboard.
+- Added scoped projects with a written purpose, optional geographic and date
+  bounds, owner-managed membership, authorised product collections, working
+  notes, intelligence questions, archive/restore and an attributable activity
+  record. Product visibility and product-identifying activity are recalculated
+  for every viewer, so project membership never grants product access.
+- Added private reusable search subscriptions rather than alerts. A user can
+  carry a Discover query into a named manual, daily or weekly review, open its
+  current results, pause it or delete it. No email, push delivery or cached
+  result set was introduced.
+- Added direct My Library, Projects and Subscriptions routes, a safe return from
+  product detail to the originating project, and a product-detail action for
+  adding a visible product to an active project.
+- Recorded the product contract, ADR 0048 and the extended Store threat model.
+  Scheduled execution, generated briefings, mapping and workflow tasking stay
+  explicit future work.
+- Verified 1,814 backend tests with one intentional compatibility skip against
+  real PostgreSQL at 98.36 per cent line and 95.44 per cent branch coverage.
+  All 628 frontend tests passed at 98.73 per cent line and 95.03 per cent branch
+  coverage, alongside the static, contract, documentation and production-build
+  gates.

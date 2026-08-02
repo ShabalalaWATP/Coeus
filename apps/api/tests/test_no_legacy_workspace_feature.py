@@ -14,11 +14,7 @@ ACTIVE_SOURCE_ROOTS = (
     ROOT / "apps" / "web" / "src",
 )
 RETIRED_CONTRACT_TOKENS = (
-    "/projects",
-    "ProjectsPage",
-    "projectId",
-    "project_id",
-    "project:",
+    "/api/v1/projects",
     "suggestedProjectName",
 )
 TEST_FILE_MARKERS = (".test.ts", ".test.tsx", ".spec.ts", ".spec.tsx")

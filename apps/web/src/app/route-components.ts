@@ -21,4 +21,9 @@ export const JiocOversightPage = lazy(() => import("../features/routing/JiocOver
 export const ProductDetailPage = lazy(() => import("../features/store/ProductDetailPage"));
 export const ProductUploadPage = lazy(() => import("../features/store/ProductUploadPage"));
 export const StorePage = lazy(() => import("../features/store/StorePage"));
+export const StoreLibraryPage = lazy(() => import("../features/store/StoreLibraryPage"));
+export const StoreProjectsPage = lazy(() => import("../features/store/StoreProjectsPage"));
+export const StoreSubscriptionsPage = lazy(
+  () => import("../features/store/StoreSubscriptionsPage"),
+);
 export const TeamsPage = lazy(() => import("../features/teams/TeamsPage"));

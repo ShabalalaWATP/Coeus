@@ -31,6 +31,9 @@ complete role-by-role walkthrough and key-workspace screenshot set.
 
 - **Search before you task.** An RFI agent offers existing products before any
   new work is raised.
+- **Organise continuing research.** Keep private saved-product folders, work
+  with authorised colleagues in scoped projects, and subscribe to searches you
+  need to revisit as the Store grows.
 - **Conversational intake.** An assistant captures a complete requirement from a
   chat, not a long form.
 - **Managed end to end.** Requests route through assessment or collection review,

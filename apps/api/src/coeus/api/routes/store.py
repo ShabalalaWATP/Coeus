@@ -14,6 +14,7 @@ from coeus.api.presenters.store import (
     product_response,
     store_search_response,
 )
+from coeus.api.routes.store_organisation import router as organisation_router
 from coeus.application.ports.admission import ResourceAdmission
 from coeus.core.async_work import run_bounded_search
 from coeus.core.errors import AppError
@@ -39,6 +40,7 @@ from coeus.schemas.store_library import (
 from coeus.services.store import StoreServices
 
 router = APIRouter(prefix="/store", tags=["store"])
+router.include_router(organisation_router)
 SEARCH_TEXT_MAX_LENGTH = 200
 SEARCH_FIELD_MAX_LENGTH = 80
 SEARCH_REGION_MAX_LENGTH = 180

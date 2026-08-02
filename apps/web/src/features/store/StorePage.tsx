@@ -1,12 +1,12 @@
-import { SearchCheck, Upload } from "lucide-react";
+import { Rss, SearchCheck, Upload } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { PaginationControls, PaginationSummary } from "./StorePagination";
-import { PersonalLibraryPanel } from "./PersonalLibraryPanel";
+import { StoreWorkspaceNav } from "./StoreWorkspaceNav";
 import { StoreFacetRail } from "./StoreFacetRail";
 import { StoreResultCard } from "./StoreResultCard";
 import { StoreSearchBar } from "./StoreSearchBar";
-import { activeFilterCount, toggleFacet } from "./store-search-params";
+import { activeFilterCount, toggleFacet, writeStoreSearch } from "./store-search-params";
 import { useStoreSearch } from "./useStoreSearch";
 import { AdminReturnLink } from "../../components/ui/AdminReturnLink";
 import { EmptyState, ErrorState } from "../../components/ui/PageState";
@@ -82,6 +82,8 @@ export default function StorePage({
         ) : null}
       </section>
 
+      {scope === "all" ? <StoreWorkspaceNav /> : null}
+
       {!hasOwnedProductScope ? (
         <section className="workspace-alert" role="status">
           <span>
@@ -93,16 +95,25 @@ export default function StorePage({
       ) : null}
 
       {hasOwnedProductScope ? (
-        <StoreSearchBar
-          draft={search.draft}
-          hint={search.hint}
-          onChange={search.setDraft}
-          onSubmit={() => search.apply({ ...search.draft, page: 1 })}
-          refinedCount={activeFilterCount(search.draft)}
-        />
+        <>
+          <StoreSearchBar
+            draft={search.draft}
+            hint={search.hint}
+            onChange={search.setDraft}
+            onSubmit={() => search.apply({ ...search.draft, page: 1 })}
+            refinedCount={activeFilterCount(search.draft)}
+          />
+          {scope === "all" && search.enabled ? (
+            <div className="store-subscribe-search">
+              <span>Want to review this search again as the Store changes?</span>
+              <Link to={`/store/subscriptions?${writeStoreSearch(applied).toString()}`}>
+                <Rss aria-hidden="true" size={16} />
+                Create subscription
+              </Link>
+            </div>
+          ) : null}
+        </>
       ) : null}
-
-      {scope === "all" ? <PersonalLibraryPanel /> : null}
 
       {!hasOwnedProductScope ? null : !search.enabled ? (
         <section className="surface store-results store-search-first" aria-live="polite">

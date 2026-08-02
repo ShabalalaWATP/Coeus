@@ -29,10 +29,12 @@ from coeus.services.store_creation_policy import require_product_creation_status
 from coeus.services.store_library import StoreLibraryService
 from coeus.services.store_metadata_suggestions import MetadataSuggestionService
 from coeus.services.store_owner_policy import normalise_owner_team, require_owner_permission
+from coeus.services.store_projects import StoreProjectService
 from coeus.services.store_search import (
     StoreSearchService as StoreSearchService,
 )
 from coeus.services.store_semantics import derive_semantic_labels
+from coeus.services.store_subscriptions import StoreSubscriptionService
 
 HASH_PATTERN = r"[a-fA-F0-9]{64}"
 
@@ -228,3 +230,5 @@ class StoreServices:
     assets: StoreAssetService
     suggestions: MetadataSuggestionService
     library: StoreLibraryService
+    projects: StoreProjectService
+    subscriptions: StoreSubscriptionService

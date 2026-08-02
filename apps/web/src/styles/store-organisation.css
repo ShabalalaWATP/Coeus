@@ -1,0 +1,288 @@
+.store-workspace-nav {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+}
+
+.store-workspace-nav__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 2px solid transparent;
+  padding: 10px 14px 12px;
+  color: var(--muted);
+  font-weight: 750;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.store-workspace-nav__link[aria-current="page"] {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.store-projects-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.52fr) minmax(0, 1.48fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.store-project-list,
+.store-project-empty,
+.store-project-detail,
+.store-project-products,
+.store-project-members,
+.store-project-notes,
+.store-project-activity,
+.store-subscription-create,
+.store-subscription-list {
+  display: grid;
+  gap: 16px;
+}
+
+.store-project-list,
+.store-project-empty,
+.store-project-detail__header,
+.store-project-products,
+.store-project-members,
+.store-project-notes,
+.store-project-activity,
+.store-project-create,
+.store-subscription-create,
+.store-subscription-list {
+  padding: 18px;
+}
+
+.store-section-heading,
+.store-project-detail__header,
+.store-subscription,
+.store-project-members li {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.store-section-heading h2,
+.store-section-heading h3,
+.store-project-detail__header h2,
+.store-project-empty h2,
+.store-project-create h2,
+.store-subscription-create h2 {
+  margin: 3px 0 0;
+}
+
+.store-project-list__item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  padding: 11px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.store-project-list__item:hover,
+.store-project-list__item:focus-visible,
+.store-project-list__item[aria-current="page"] {
+  border-color: var(--border);
+  background: var(--surface-muted);
+}
+
+.store-project-list__item span,
+.store-project-members li > span,
+.store-subscription > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.store-project-list__item small,
+.store-project-members small,
+.store-project-detail__header small,
+.store-project-entry-list small,
+.store-project-activity small,
+.store-subscription small {
+  color: var(--muted);
+}
+
+.store-project-empty {
+  place-items: center;
+  min-height: 300px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.store-project-empty h2 {
+  color: var(--text);
+}
+
+.store-project-detail {
+  min-width: 0;
+}
+
+.store-project-detail__header p,
+.store-project-empty p,
+.store-subscription p,
+.store-subscription-create p {
+  margin: 5px 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.store-project-detail__grid,
+.store-subscriptions-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(230px, 0.6fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.store-project-product {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.store-project-product a {
+  display: grid;
+  gap: 4px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.store-project-product small {
+  color: var(--muted);
+}
+
+.store-project-product button,
+.store-project-members button,
+.store-subscription__actions button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 36px;
+  min-height: 36px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+}
+
+.store-project-members ul,
+.store-project-activity ol {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.store-project-members li {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.store-project-create,
+.store-project-members form,
+.store-project-notes form,
+.store-subscription-create {
+  display: grid;
+  gap: 12px;
+}
+
+.store-project-create {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: end;
+}
+
+.store-project-create > div,
+.store-project-create .auth-error {
+  grid-column: 1 / -1;
+}
+
+.store-project-create label:nth-of-type(2) {
+  grid-column: span 2;
+}
+
+.store-project-create label,
+.store-project-members label,
+.store-project-notes label,
+.store-subscription-create label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 750;
+}
+
+.store-project-create input,
+.store-project-create textarea,
+.store-project-members input,
+.store-project-notes select,
+.store-project-notes textarea,
+.store-subscription-create input,
+.store-subscription-create select,
+.project-product-control select {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+.store-project-members form button,
+.store-project-notes form button,
+.project-product-control button {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 0 12px;
+  background: var(--accent-strong);
+  color: white;
+  font-weight: 750;
+}
+
+.store-project-entry-list {
+  display: grid;
+  gap: 10px;
+}
+
+.store-project-entry-list article {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.store-project-entry-list p {
+  white-space: pre-wrap;
+}
+
+.store-project-activity summary {
+  cursor: pointer;
+  font-weight: 750;
+}
+
+.store-project-activity ol {
+  margin-top: 14px;
+}
+
+.store-project-activity li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 3px 6px;
+}
+
+.store-project-activity small {
+  grid-column: 1 / -1;
+}

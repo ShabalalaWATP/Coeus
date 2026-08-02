@@ -2,7 +2,7 @@ import { readStoreSearch, writeStoreSearch } from "./store-search-params";
 
 export type StoreNavigationState = {
   from?: string;
-  origin?: "rfi" | "store" | "library";
+  origin?: "rfi" | "store" | "library" | "project";
   search?: string;
 };
 
@@ -15,7 +15,10 @@ export function storeNavigationState(value: unknown): StoreNavigationState {
   return {
     from: typeof candidate.from === "string" ? candidate.from : undefined,
     origin:
-      candidate.origin === "rfi" || candidate.origin === "store" || candidate.origin === "library"
+      candidate.origin === "rfi" ||
+      candidate.origin === "store" ||
+      candidate.origin === "library" ||
+      candidate.origin === "project"
         ? candidate.origin
         : undefined,
     search: typeof candidate.search === "string" ? candidate.search : undefined,
@@ -29,6 +32,9 @@ export function backNavigationFor(
 ) {
   if (origin === "rfi" && from !== undefined && isRequestPath(from)) {
     return { path: from, label: "Back to request" };
+  }
+  if (origin === "project" && from !== undefined && isProjectPath(from)) {
+    return { path: from, label: "Back to project" };
   }
   if (from !== undefined && TEAM_PRODUCT_PATHS.includes(from)) {
     return { path: `${from}${safeSearch(search)}`, label: "Back to products" };
@@ -54,4 +60,8 @@ function safeSearch(search: string | undefined): string {
 
 function isRequestPath(path: string) {
   return /^\/app\/requests\/[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(path);
+}
+
+function isProjectPath(path: string) {
+  return /^\/store\/projects\/[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(path);
 }
