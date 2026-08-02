@@ -27,7 +27,13 @@ const EMPTY_SEARCH: StoreSearchResponse = {
   page: 1,
   pageSize: 0,
   totalPages: 0,
-  facets: { productTypes: [], regions: [], tags: [] },
+  facets: {
+    productTypes: [],
+    regions: [],
+    tags: [],
+    counts: { productTypes: {}, regions: {}, tags: {} },
+  },
+  relaxed: false,
 };
 
 const EMPTY_DRAFT: AnalystDraftState = {

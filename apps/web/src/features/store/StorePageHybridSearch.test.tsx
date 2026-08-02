@@ -37,31 +37,30 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-test("renders word-order hybrid browse results with match reasons", async () => {
+async function search(term: string) {
+  renderWithProviders(<StorePage />, "/store");
+  await screen.findByRole("heading", { name: "Intelligence Store" });
+  await userEvent.type(screen.getByLabelText("Search the Intelligence Store"), term);
+  await userEvent.click(screen.getByRole("button", { name: "Search" }));
+}
+
+test("explains a word-order hybrid match in the operator's own terms", async () => {
   vi.stubGlobal("fetch", searchResponses(["lexical-rank:1", "full-text:vessel"]));
 
-  renderWithProviders(<StorePage />, "/store");
-  await screen.findByRole("heading", { name: "Intelligence Store" });
-  await userEvent.type(screen.getByLabelText("Full text"), "vessel port");
-  await userEvent.click(screen.getByRole("button", { name: "Search products" }));
+  await search("vessel port");
 
   expect(await screen.findByText("Gulf Vessel Movement Assessment")).toBeVisible();
-  expect(screen.getByRole("list", { name: "Why it matched" })).toBeVisible();
-  expect(screen.getByText("Text rank 1")).toBeVisible();
-  expect(screen.getByText("Term vessel")).toBeVisible();
+  expect(screen.getByText("Matched vessel")).toBeVisible();
+  expect(screen.getByText("Text rank 1 · Term vessel")).toBeVisible();
 });
 
-test("renders stem-folded hybrid browse results with match reasons", async () => {
+test("explains a stem-folded hybrid match", async () => {
   vi.stubGlobal("fetch", searchResponses(["lexical-rank:1", "full-text:vessels"]));
 
-  renderWithProviders(<StorePage />, "/store");
-  await screen.findByRole("heading", { name: "Intelligence Store" });
-  await userEvent.type(screen.getByLabelText("Full text"), "vessels");
-  await userEvent.click(screen.getByRole("button", { name: "Search products" }));
+  await search("vessels");
 
   expect(await screen.findByText("Gulf Vessel Movement Assessment")).toBeVisible();
-  expect(screen.getByRole("list", { name: "Why it matched" })).toBeVisible();
-  expect(screen.getByText("Term vessels")).toBeVisible();
+  expect(screen.getByText("Matched vessels")).toBeVisible();
 });
 
 function searchResponses(matchReasons: string[]) {
@@ -73,7 +72,13 @@ function searchResponses(matchReasons: string[]) {
       Promise.resolve({
         products: [{ ...baseProduct, matchReasons }],
         total: 1,
-        facets: { productTypes: [], regions: [], tags: [] },
+        facets: {
+          productTypes: [],
+          regions: [],
+          tags: [],
+          counts: { productTypes: {}, regions: {}, tags: {} },
+        },
+        relaxed: false,
       }),
   });
 }

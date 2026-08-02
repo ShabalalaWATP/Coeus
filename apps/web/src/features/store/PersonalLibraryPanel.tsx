@@ -44,29 +44,29 @@ export function PersonalLibraryPanel() {
     return products.filter((item) => item.folderId === selected);
   }, [library.data?.savedProducts, selected]);
   const folders = library.data?.folders ?? [];
+  const savedCount = library.data?.savedProducts?.length ?? null;
 
   return (
     <section className="surface personal-library" aria-labelledby="personal-library-title">
-      <div className="personal-library__heading">
-        <div>
-          <span className="eyebrow">Your profile</span>
-          <h2 id="personal-library-title">Saved intelligence</h2>
-          <p>Keep useful reports here and organise them into folders only you can see.</p>
-        </div>
-        <span className="personal-library__count">
-          <BookmarkCheck aria-hidden="true" size={18} />
-          {open ? `${library.data?.savedProducts?.length ?? 0} saved` : "Personal library"}
-        </span>
+      {/* Collapsed by default and only one line tall: the library is a place to
+          return to, not the thing a search-first workspace should open with. */}
+      <div className="personal-library__bar">
+        <h2 id="personal-library-title">
+          <BookmarkCheck aria-hidden="true" size={17} />
+          Saved intelligence
+        </h2>
+        <p>Reports you have kept, in folders only you can see.</p>
+        <button
+          aria-expanded={open}
+          className="personal-library__toggle"
+          onClick={() => setOpen((current) => !current)}
+          type="button"
+        >
+          {open
+            ? "Close my library"
+            : `Open my library${savedCount === null ? "" : ` (${savedCount})`}`}
+        </button>
       </div>
-
-      <button
-        aria-expanded={open}
-        className="personal-library__toggle"
-        onClick={() => setOpen((current) => !current)}
-        type="button"
-      >
-        {open ? "Close my library" : "Open my library"}
-      </button>
 
       {open ? (
         <>

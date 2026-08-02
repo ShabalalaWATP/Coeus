@@ -58,7 +58,6 @@
   .access-grid,
   .store-layout,
   .store-detail-grid,
-  .store-filter-grid,
   .upload-grid,
   .create-grid {
     grid-template-columns: 1fr;
@@ -72,10 +71,6 @@
 
   .workspace-summary {
     flex-direction: column;
-  }
-
-  .store-result {
-    grid-template-columns: 1fr;
   }
 
   .command-search kbd {
