@@ -56,10 +56,11 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         yield
     finally:
         stop.set()
-        if dispatcher_task is not None:
-            await dispatcher_task
-        if reindex_task is not None:
-            await reindex_task
+        background_tasks = tuple(
+            task for task in (dispatcher_task, reindex_task) if task is not None
+        )
+        if background_tasks:
+            await asyncio.gather(*background_tasks)
         await dispose_readiness_engines()
 
 

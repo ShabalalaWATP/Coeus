@@ -62,7 +62,8 @@ class StoreRepository(Protocol):
 
     def accept_committed(self, product: StoreProduct) -> None: ...
 
-    def set_change_listener(self, listener: Callable[[], None]) -> None: ...
+    def set_change_listener(self, listener: Callable[[], None]) -> None:
+        raise NotImplementedError
 
 
 class InMemoryStoreRepository:
