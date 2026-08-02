@@ -135,11 +135,28 @@ team will check for overlapping work.
 
 ## Intelligence Store
 
-The Intelligence Store is a controlled search service. The collapsible
-**Search and filters** panel supports full text, product type, region, tag,
-source type and coverage dates; results can be sorted by relevance, title or
-newest coverage. Filters run **after** access control and classification checks,
-so a customer only ever sees products they are entitled to.
+The Intelligence Store is a controlled search service. Search runs across
+titles, summaries, tags and semantic labels; **Advanced filters** adds product
+type, region, tag, source type and coverage dates. All of it runs **after**
+access control and classification checks, so a customer only ever sees products
+they are entitled to.
+
+Results can be sorted by relevance, title or newest coverage. Sorting and
+paging are applied by the server across the whole matched set, so a sort choice
+holds as you page through. The **Refine** rail beside the results lists the
+product types, regions and tags you can narrow to; selecting one applies it as a
+filter and selecting it again removes it. When you are filtering rather than
+searching, each option carries a count of the products you are cleared to see.
+Refinement options deliberately ignore the search term so a narrow search still
+leaves somewhere to go, so once a term is active the counts are hidden rather
+than shown against a different set of results.
+
+The search you have applied is held in the address bar, so a result set can be
+shared with a colleague, refreshed, bookmarked, and returned to with the browser
+Back button after opening a product.
+
+If a phrase matches no single product, the store broadens the search to the
+closest matches and says so, rather than reporting nothing found.
 
 ![Intelligence Store search and results](images/06-intelligence-store.png)
 
@@ -158,8 +175,14 @@ request; ordinary Store browsing does not create one.
 
 ![Intelligence product assets with collapsed metadata](images/15-product-detail.png)
 
-Each result carries rich metadata: reference, owning team, region,
-classification, coverage window, tags and format. RFA and Collection managers
+Each result card leads with its classification marking and reference, then the
+title, a summary and the facts needed to judge it without opening it: type,
+region, owning team, coverage window in plain dates, and what the product
+actually contains. Products that are not yet published are badged as such. When
+a search term is active, each card states what matched in plain words, with the
+underlying retrieval signals shown beneath for anyone diagnosing relevance.
+
+RFA and Collection managers
 can register existing products for their own area. Intelligence Store Managers
 can register draft or published products for either area, choose their product
 ACGs and browse the catalogue without first entering search criteria. These

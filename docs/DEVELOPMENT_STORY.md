@@ -361,3 +361,89 @@ date order. They are historical evidence, not current operating instructions.
 - Exempted Markdown documentation from the 350-line source and configuration
   limit so reader structure, not an arbitrary code-size gate, determines how
   documentation is organised.
+
+## 2026-08-02 Istari Intelligence Store browse experience
+
+- Added a `sort` query parameter (`relevance|title|coverage`) to
+  `GET /api/v1/store/products`, threaded through `StoreSearchFilters` into
+  both the SQL browse path (static `ORDER BY` fragments selected by enum,
+  never interpolated request text) and the Python hybrid path. Ordering is
+  applied to the whole matched set before paging, so a sort choice now
+  holds across pages; previously there was no sort parameter and the web
+  UI reordered only the current page.
+- Added `facets.counts`, giving the number of visible products behind each
+  product type, region and tag, counted over the access-scoped,
+  structurally-filtered set via `jsonb_agg` in `SEARCH_SUMMARY_SQL`. Hidden
+  products contribute to neither the lists nor the counts. Counts were added
+  alongside the existing ordered value lists rather than replacing them: the
+  first attempt returned `{value, count}` pairs in place of the string lists,
+  which the OpenAPI compatibility gate correctly rejected as a breaking
+  response change.
+- Extended the projection recheck to cover facets. A security review of this
+  change found that the free-text search path returned SQL-derived facet
+  values and counts without the `can_read` recheck the structured browse path
+  already applied, so a divergence between the SQL scope predicate and the
+  service policy could disclose a region, type or tag belonging to a product
+  the requester cannot read, and now its count as well. Both paths now share
+  one recheck and fail closed on drift; a regression test asserts a hidden
+  product contributes to neither facet lists nor counts on either path.
+- Added one-shot query relaxation: when a multi-term text query returns
+  nothing, the service retries with the terms joined by `OR` and sets
+  `relaxed: true` on the response. Match reasons are always derived from
+  the query the operator typed, never the broadened form, and single-term
+  queries are never broadened. Cause: `websearch_to_tsquery` requires every
+  term, so natural phrases such as `arctic shipping routes` dead-ended
+  despite strong partial matches.
+- Moved applied Store search state into the URL (`q`, `type`, `region`,
+  `tag`, `source`, `from`, `to`, `sort`, `page`) via a new `useStoreSearch`
+  hook, so a search now survives navigation, refresh, bookmarking and the
+  browser Back button; it was previously component state, lost whenever a
+  product was opened.
+- Raised page size from 6 to 24 with numbered pagination (first, last and
+  a window around the current page), and added a `StoreFacetRail` that
+  turns facets into clickable filters with counts; region and tag facets
+  were previously fetched and discarded, and product-type facets were
+  inert chips.
+- Added a `StoreResultCard` that leads with classification marking and
+  status badge, renders coverage windows as plain dates and shows the
+  product's asset make-up, with draft products badged. Match explanations
+  were rewritten into plain language (for example `Matched arctic`), with
+  the raw retrieval signals kept as secondary detail.
+- Requested owner-team scoping (`My Products`, RFA/Collection product
+  workspaces) from the server instead of filtering a returned page
+  client-side, removing the totals/pagination inconsistency the old
+  client-side filter required workarounds for. Collapsed the personal
+  library panel to a single compact bar instead of it occupying the top of
+  the workspace.
+- Fixed an out-of-range page (for example a bookmarked `page=3` on a
+  result set that had shrunk), which previously rendered
+  `Showing 49-17 of 17`; it now explains the page is past the end and
+  offers a return to the first page. Made `Back to store` return to the
+  operator's applied search, rebuilt from known store parameters only so
+  navigation state stays presentation-only and cannot carry arbitrary
+  content into the link.
+- Hid facet counts while a search term is applied. Refinement options are
+  computed without the term so a narrow search still leaves somewhere to go,
+  which means their counts describe the catalogue, not the results on screen.
+  Refreshing the documentation screenshot exposed the consequence: the rail
+  read `Assessment report 136` beside `12 products`. The options stay, so the
+  ADR 0017 behaviour is unchanged, but the contradictory number does not.
+- Added real-PostgreSQL coverage for the new SQL. The default suite runs the
+  memory persistence provider, so the Python ranking path answers every browse
+  query and the new `ORDER BY` variants and `jsonb_agg` facet aggregation were
+  never executed by a test. `tests/postgres/test_store_sort_and_facets_sql.py`
+  now seeds products against a real database and asserts newest-coverage-first
+  ordering with undated products last, title ordering, an executable statement
+  for every `StoreSortOrder` member, and facet counts covering the whole
+  filtered set rather than the returned page.
+- Deleted the superseded `StoreSearchFiltersPanel.tsx` and
+  `store-match-reasons.css`. Updated
+  `docs/specs/store-hybrid-browse-search.md` (sort order, facet counts,
+  broadened queries and web search state) and the Intelligence Store
+  section of `docs/USER_GUIDE.md`.
+- Verified with the combined backend suite of 1,714 unit tests and 82
+  PostgreSQL tests passing at 98.32/95.41 line/branch coverage, 608
+  frontend tests passing at 98.71/95.27, and clean Ruff, mypy, Bandit,
+  ESLint, Prettier, TypeScript, architecture-boundary, file-length and
+  OpenAPI contract checks. Confirmed end to end against the local
+  279-product Docker catalogue.

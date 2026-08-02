@@ -357,3 +357,26 @@ Status: complete and verified for the supported local/test boundary.
 ## 2 August 2026 Customer search recovery and outcomes
 
 - [x] Preserve assurance without stale warnings; require reject-all feedback before refined search, JIOC tasking or outcome closure.
+
+## 2 August 2026 Intelligence Store browse and search improvements
+
+Status: implemented and verified on `main`; changes are uncommitted in the working tree.
+
+- [x] Add server-side `sort` (`relevance|title|coverage`) on `GET /api/v1/store/products`, applied to the whole matched set before paging so a sort choice holds across pages; previously no sort parameter existed and the web UI reordered only the current page.
+- [x] Add `facets.counts` to the store search response, counting visible products behind each product type, region and tag over the access-scoped, structurally-filtered set, alongside the existing ordered value lists, keeping the response backward compatible.
+- [x] Add one-shot query relaxation: a multi-term text query that returns nothing is retried with its terms joined by `OR`, with the response carrying `relaxed: true` while match reasons stay derived from the query the operator typed.
+- [x] Move web store search state into the URL so a search survives navigation, refresh, bookmarking and browser Back.
+- [x] Raise page size from 6 to 24 with numbered pagination, add a clickable counted facet rail, and lead result cards with classification marking and status badge, plain-date coverage, asset make-up and plain-language match explanations.
+- [x] Request owner-team scoping from the server rather than filtering client-side.
+- [x] Fix an out-of-range page rendering a backwards range ("Showing 49-17 of 17"), and fix "Back to store" losing the applied search.
+
+### Deferred Scope
+
+Identified during this work but not implemented:
+
+- Related products / more-like-this: product embeddings and an HNSW index already exist, but no endpoint exposes them.
+- Store-facing page-cited passage excerpts: the chunk index provides these to RFI search only.
+- Product edit, archive and asset-management endpoints: `product:update_metadata`, `product:manage_assets` and `product:archive` are granted to roles but no endpoint enforces them.
+- `createdAt`, `updatedAt`, `createdBy` and `boundingBox` are stored but stripped by the response presenter.
+- Reuse signals per product exist in the RFA and Collection analytics endpoints but are not surfaced in the store.
+- No audit event on normal product view, preview or download; only break-glass is audited, and no watermarking exists.
