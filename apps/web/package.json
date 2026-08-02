@@ -23,7 +23,7 @@
     "pdfjs-dist": "6.1.200",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "react-hook-form": "^7.82.0",
+    "react-hook-form": "^7.83.0",
     "react-router-dom": "^7.6.3",
     "zod": "^4.0.5"
   },
