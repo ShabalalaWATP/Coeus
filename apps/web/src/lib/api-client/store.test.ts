@@ -1,5 +1,5 @@
 import { ApiError } from "./client";
-import { downloadAssetBlob } from "./store";
+import { downloadAssetBlob, searchStoreProducts } from "./store";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -38,5 +38,17 @@ test("throws a typed error when the asset download is rejected", async () => {
 
   await expect(downloadAssetBlob("product-1", "asset-1", "expired")).rejects.toEqual(
     new ApiError(403, "request_failed", "API request failed with status 403"),
+  );
+});
+
+test("serialises repeated ACG search scopes without widening them", async () => {
+  const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
+  vi.stubGlobal("fetch", fetchMock);
+
+  await searchStoreProducts({ acgIds: ["acg-one", "acg-two"], query: "missile activity" });
+
+  expect(fetchMock).toHaveBeenCalledWith(
+    "http://127.0.0.1:8001/api/v1/store/products?acgIds=acg-one&acgIds=acg-two&query=missile+activity",
+    expect.objectContaining({ method: "GET" }),
   );
 });

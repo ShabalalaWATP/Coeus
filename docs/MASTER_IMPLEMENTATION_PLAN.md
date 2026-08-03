@@ -33,7 +33,10 @@ asset-first Store detail view, user-owned saved-product folders, and explicit
 customer recovery after rejecting all search results. See the
 [recovery contract](specs/customer-search-recovery-and-outcomes.md),
 [ADR 0046](adr/0046-automatic-local-retrieval-rebuilds.md) and
-[ADR 0047](adr/0047-user-owned-intelligence-store-library.md).
+[ADR 0047](adr/0047-user-owned-intelligence-store-library.md). The Store also
+has access-rechecked collaborative projects and private reusable search
+subscriptions under the [feature contract](specs/intelligence-store-projects-and-subscriptions.md)
+and [ADR 0048](adr/0048-intelligence-store-projects-and-subscriptions.md).
 
 The customer-search and autonomous-routing orchestration is implemented under
 its [contract](specs/customer-search-routing-orchestration.md) and
@@ -380,3 +383,49 @@ Identified during this work but not implemented:
 - `createdAt`, `updatedAt`, `createdBy` and `boundingBox` are stored but stripped by the response presenter.
 - Reuse signals per product exist in the RFA and Collection analytics endpoints but are not surfaced in the store.
 - No audit event on normal product view, preview or download; only break-glass is audited, and no watermarking exists.
+
+## 2 August 2026 Intelligence Store projects and subscriptions
+
+Status: implementation and local quality-gate verification complete.
+
+- [x] Separate Store navigation into Discover, My Library, Projects and Subscriptions.
+- [x] Add private Library folders as a dedicated workspace while preserving the
+      existing per-user save and organise model.
+- [x] Add purpose-bound projects with owner-controlled membership, authorised
+      products, notes, intelligence questions, archive/restore and activity.
+- [x] Recheck current product policy whenever project evidence is returned and
+      remove product-identifying activity when that product is not visible.
+- [x] Add private reusable search subscriptions with manual, daily or weekly
+      review cadence, pause/resume, current-result opening and no external alerts.
+- [x] Add access-controlled ACG subscription scopes and optional keyword,
+      region, product-type, tag, source-type and date refinements. Revalidate
+      active ACG membership on save and search, including after access changes.
+- [x] Add a project return path and product-to-project control to product detail.
+- [ ] External delivery, scheduled execution, generated briefing documents,
+      map workspaces, comparison tools and workflow tasking remain deferred.
+
+Verification: 1,814 backend tests passed with one intentional compatibility
+skip at 98.36 per cent line and 95.44 per cent branch coverage against real
+PostgreSQL. All 628 frontend tests passed at 98.73 per cent line and 95.03 per
+cent branch coverage. Ruff, mypy, ESLint, Prettier, TypeScript, production
+build, architecture, file-length, documentation, Mermaid and OpenAPI contract
+checks passed.
+
+## 3 August 2026 access-controlled ACG subscriptions
+
+Status: implementation and quality-gate verification complete.
+
+- [x] Offer only active ACG memberships in the subscription interface.
+- [x] Allow a subscription to follow up to 12 selected ACGs and refine the
+      results with keywords or phrases and the existing Store filters.
+- [x] Treat an ACG selection only as a restrictive search scope, never as an
+      authority grant. Reject unknown, inactive and ungranted identifiers.
+- [x] Recheck current membership when opening results and visibly flag a saved
+      subscription whose selected ACG access has changed.
+- [x] Update the feature specification, ADR, threat model, API contract and
+      user guide.
+
+Verification: 1,816 backend tests passed with one intentional compatibility
+skip at 98.37 per cent line and 95.47 per cent branch coverage, including the
+real PostgreSQL transaction suite. The full frontend suite passed at 98.73 per
+cent line and 95.07 per cent branch coverage.

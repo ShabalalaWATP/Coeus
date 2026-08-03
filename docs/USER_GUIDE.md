@@ -166,12 +166,47 @@ folder at a time, and later move or remove it. Folder names and saved-product
 membership are visible only to that user. Saving a product does not copy it or preserve
 access if the underlying ACG, clearance or product-status policy later changes.
 
+The Store navigation separates four different jobs:
+
+- **Discover** searches the authorised catalogue.
+- **My Library** contains private saved products and personal folders. Open a
+  product and use **Save or organise** to add or move it.
+- **Projects** are shared working spaces for a continuing subject, operation or
+  intelligence question. A project owner defines its purpose, optional region
+  and coverage window, then can add members by username. Any member can add
+  authorised products, notes and intelligence questions. Only the owner can
+  change membership or archive and restore the project.
+- **Subscriptions** are private reusable searches. Apply terms and filters in
+  Discover, choose **Create subscription from this search**, name it, and set a
+  review cadence. On the subscription form, select one or more access control
+  groups (ACGs) to follow, or leave them unselected to use all ACGs you can
+  currently access. Only ACGs in your active memberships are offered. Narrow
+  the subscription further with keywords or phrases, region, product type,
+  tag, source type and coverage dates. Keywords match product titles,
+  summaries, descriptions and indexed terms. Opening a subscription runs the
+  current search against the current catalogue and current access permissions.
+  If access to a selected ACG is removed, Istari marks the subscription as
+  having changed access and does not open its results. A subscription can be
+  paused, resumed or deleted. It does not send an email or expose its criteria
+  to other users.
+
+These areas deliberately have different sharing rules. Personal folders and
+subscriptions are private. Projects are visible only to their owner and listed
+members. Neither saving nor adding a product creates a second copy or freezes
+access. If a user's product access changes, that product disappears from every
+Library and project view they can no longer authorise. Project activity also
+omits a product-specific event if the viewing member cannot see that product.
+
 Opening a result puts assets and the controlled preview first. **Metadata and
 handling** is collapsed by default and contains provenance, semantic labels and
 technical handling detail. PDF previews are served through Istari's
 authenticated, tokenised preview path rather than a direct object URL. If a
 product was opened from an RFI result, a safe return link leads back to that
 request; ordinary Store browsing does not create one.
+
+When a product is opened from a project, **Back to project** returns to the
+originating workspace. The product page also offers **Add to project** for each
+active project the signed-in user belongs to.
 
 ![Intelligence product assets with collapsed metadata](images/15-product-detail.png)
 

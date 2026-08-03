@@ -14,6 +14,7 @@ from coeus.api.presenters.store import (
     product_response,
     store_search_response,
 )
+from coeus.api.routes.store_organisation import router as organisation_router
 from coeus.application.ports.admission import ResourceAdmission
 from coeus.core.async_work import run_bounded_search
 from coeus.core.errors import AppError
@@ -39,6 +40,7 @@ from coeus.schemas.store_library import (
 from coeus.services.store import StoreServices
 
 router = APIRouter(prefix="/store", tags=["store"])
+router.include_router(organisation_router)
 SEARCH_TEXT_MAX_LENGTH = 200
 SEARCH_FIELD_MAX_LENGTH = 80
 SEARCH_REGION_MAX_LENGTH = 180
@@ -137,6 +139,7 @@ async def search_products(
     store_services: Annotated[StoreServices, Depends(get_store_services)],
     admission: Annotated[ResourceAdmission, Depends(get_search_admission)],
     query: Annotated[str | None, Query(max_length=SEARCH_TEXT_MAX_LENGTH)] = None,
+    acg_ids: Annotated[list[UUID] | None, Query(alias="acgIds", max_length=12)] = None,
     product_type: Annotated[
         str | None, Query(alias="productType", max_length=SEARCH_FIELD_MAX_LENGTH)
     ] = None,
@@ -161,6 +164,7 @@ async def search_products(
             authenticated.user,
             StoreSearchFilters(
                 query=query,
+                acg_ids=frozenset(acg_ids or ()),
                 product_type=product_type,
                 region=region,
                 tag=tag,

@@ -1988,6 +1988,180 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/store/projects": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Projects */
+    get: operations["list_projects_api_v1_store_projects_get"];
+    put?: never;
+    /** Create Project */
+    post: operations["create_project_api_v1_store_projects_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/store/projects/{project_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Project */
+    get: operations["get_project_api_v1_store_projects__project_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/store/projects/{project_id}/entries": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Add Project Entry */
+    post: operations["add_project_entry_api_v1_store_projects__project_id__entries_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/store/projects/{project_id}/members": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Add Project Member */
+    post: operations["add_project_member_api_v1_store_projects__project_id__members_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/store/projects/{project_id}/members/{member_user_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Remove Project Member */
+    delete: operations["remove_project_member_api_v1_store_projects__project_id__members__member_user_id__delete"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/store/projects/{project_id}/products/{product_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Add Project Product */
+    put: operations["add_project_product_api_v1_store_projects__project_id__products__product_id__put"];
+    post?: never;
+    /** Remove Project Product */
+    delete: operations["remove_project_product_api_v1_store_projects__project_id__products__product_id__delete"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/store/projects/{project_id}/status": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Update Project Status */
+    put: operations["update_project_status_api_v1_store_projects__project_id__status_put"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/store/subscription-scopes": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Subscription Scopes */
+    get: operations["list_subscription_scopes_api_v1_store_subscription_scopes_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/store/subscriptions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Subscriptions */
+    get: operations["list_subscriptions_api_v1_store_subscriptions_get"];
+    put?: never;
+    /** Create Subscription */
+    post: operations["create_subscription_api_v1_store_subscriptions_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/store/subscriptions/{subscription_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Update Subscription */
+    put: operations["update_subscription_api_v1_store_subscriptions__subscription_id__put"];
+    post?: never;
+    /** Delete Subscription */
+    delete: operations["delete_subscription_api_v1_store_subscriptions__subscription_id__delete"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/teams": {
     parameters: {
       query?: never;
@@ -4190,6 +4364,161 @@ export interface components {
        */
       title: string;
     };
+    /** ProjectActivityResponse */
+    ProjectActivityResponse: {
+      /** Action */
+      action: string;
+      /** Actordisplayname */
+      actorDisplayName: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Occurredat
+       * Format: date-time
+       */
+      occurredAt: string;
+    };
+    /** ProjectCreateRequest */
+    ProjectCreateRequest: {
+      /** Datefrom */
+      dateFrom?: string | null;
+      /** Dateto */
+      dateTo?: string | null;
+      /** Name */
+      name: string;
+      /** Purpose */
+      purpose: string;
+      /** Region */
+      region?: string | null;
+    };
+    /** ProjectDetailResponse */
+    ProjectDetailResponse: {
+      /** Activity */
+      activity: components["schemas"]["ProjectActivityResponse"][];
+      /** Archived */
+      archived: boolean;
+      /** Datefrom */
+      dateFrom: string | null;
+      /** Dateto */
+      dateTo: string | null;
+      /** Entries */
+      entries: components["schemas"]["ProjectEntryResponse"][];
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Membercount */
+      memberCount: number;
+      /** Members */
+      members: components["schemas"]["ProjectMemberResponse"][];
+      /** Name */
+      name: string;
+      /** Owner */
+      owner: boolean;
+      /** Products */
+      products: components["schemas"]["StoreProductResponse"][];
+      /** Purpose */
+      purpose: string;
+      /** Region */
+      region: string | null;
+      /**
+       * Updatedat
+       * Format: date-time
+       */
+      updatedAt: string;
+      /** Visibleproductcount */
+      visibleProductCount: number;
+    };
+    /** ProjectEntryCreateRequest */
+    ProjectEntryCreateRequest: {
+      /** Body */
+      body: string;
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "note" | "question";
+    };
+    /** ProjectEntryResponse */
+    ProjectEntryResponse: {
+      author: components["schemas"]["ProjectMemberResponse"];
+      /** Body */
+      body: string;
+      /**
+       * Createdat
+       * Format: date-time
+       */
+      createdAt: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "note" | "question";
+    };
+    /** ProjectMemberAddRequest */
+    ProjectMemberAddRequest: {
+      /** Username */
+      username: string;
+    };
+    /** ProjectMemberResponse */
+    ProjectMemberResponse: {
+      /** Displayname */
+      displayName: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Owner */
+      owner: boolean;
+      /** Username */
+      username: string;
+    };
+    /** ProjectStatusRequest */
+    ProjectStatusRequest: {
+      /** Archived */
+      archived: boolean;
+    };
+    /** ProjectSummaryResponse */
+    ProjectSummaryResponse: {
+      /** Archived */
+      archived: boolean;
+      /** Datefrom */
+      dateFrom: string | null;
+      /** Dateto */
+      dateTo: string | null;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Membercount */
+      memberCount: number;
+      /** Name */
+      name: string;
+      /** Owner */
+      owner: boolean;
+      /** Purpose */
+      purpose: string;
+      /** Region */
+      region: string | null;
+      /**
+       * Updatedat
+       * Format: date-time
+       */
+      updatedAt: string;
+      /** Visibleproductcount */
+      visibleProductCount: number;
+    };
     /** QcAgentCheckResponse */
     QcAgentCheckResponse: {
       /** Detail */
@@ -5332,6 +5661,100 @@ export interface components {
     SubmitAcgApplicationRequest: {
       /** Justification */
       justification: string;
+    };
+    /** SubscriptionCriteriaRequest */
+    SubscriptionCriteriaRequest: {
+      /** Acgids */
+      acgIds?: string[];
+      /** Datefrom */
+      dateFrom?: string | null;
+      /** Dateto */
+      dateTo?: string | null;
+      /** Producttype */
+      productType?: string | null;
+      /** Query */
+      query?: string | null;
+      /** Region */
+      region?: string | null;
+      /** Sourcetype */
+      sourceType?: string | null;
+      /** Tag */
+      tag?: string | null;
+    };
+    /** SubscriptionCriteriaResponse */
+    SubscriptionCriteriaResponse: {
+      /** Acgids */
+      acgIds: string[];
+      /** Datefrom */
+      dateFrom: string | null;
+      /** Dateto */
+      dateTo: string | null;
+      /** Producttype */
+      productType: string | null;
+      /** Query */
+      query: string | null;
+      /** Region */
+      region: string | null;
+      /** Sourcetype */
+      sourceType: string | null;
+      /** Tag */
+      tag: string | null;
+    };
+    /** SubscriptionResponse */
+    SubscriptionResponse: {
+      /**
+       * Cadence
+       * @enum {string}
+       */
+      cadence: "manual" | "daily" | "weekly";
+      /**
+       * Createdat
+       * Format: date-time
+       */
+      createdAt: string;
+      criteria: components["schemas"]["SubscriptionCriteriaResponse"];
+      /** Enabled */
+      enabled: boolean;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Name */
+      name: string;
+      /**
+       * Updatedat
+       * Format: date-time
+       */
+      updatedAt: string;
+    };
+    /** SubscriptionScopeResponse */
+    SubscriptionScopeResponse: {
+      /** Code */
+      code: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Name */
+      name: string;
+    };
+    /** SubscriptionUpsertRequest */
+    SubscriptionUpsertRequest: {
+      /**
+       * Cadence
+       * @enum {string}
+       */
+      cadence: "manual" | "daily" | "weekly";
+      criteria: components["schemas"]["SubscriptionCriteriaRequest"];
+      /**
+       * Enabled
+       * @default true
+       */
+      enabled: boolean;
+      /** Name */
+      name: string;
     };
     /** TeamListResponse */
     TeamListResponse: {
@@ -9344,6 +9767,7 @@ export interface operations {
     parameters: {
       query?: {
         query?: string | null;
+        acgIds?: string[] | null;
         productType?: string | null;
         region?: string | null;
         tag?: string | null;
@@ -9688,6 +10112,448 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["StoreProductResponse"];
         };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_projects_api_v1_store_projects_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProjectSummaryResponse"][];
+        };
+      };
+    };
+  };
+  create_project_api_v1_store_projects_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ProjectCreateRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProjectDetailResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_project_api_v1_store_projects__project_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        project_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProjectDetailResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  add_project_entry_api_v1_store_projects__project_id__entries_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path: {
+        project_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ProjectEntryCreateRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProjectDetailResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  add_project_member_api_v1_store_projects__project_id__members_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path: {
+        project_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ProjectMemberAddRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProjectDetailResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  remove_project_member_api_v1_store_projects__project_id__members__member_user_id__delete: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path: {
+        project_id: string;
+        member_user_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProjectDetailResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  add_project_product_api_v1_store_projects__project_id__products__product_id__put: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path: {
+        project_id: string;
+        product_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProjectDetailResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  remove_project_product_api_v1_store_projects__project_id__products__product_id__delete: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path: {
+        project_id: string;
+        product_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProjectDetailResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  update_project_status_api_v1_store_projects__project_id__status_put: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path: {
+        project_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ProjectStatusRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProjectDetailResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_subscription_scopes_api_v1_store_subscription_scopes_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SubscriptionScopeResponse"][];
+        };
+      };
+    };
+  };
+  list_subscriptions_api_v1_store_subscriptions_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SubscriptionResponse"][];
+        };
+      };
+    };
+  };
+  create_subscription_api_v1_store_subscriptions_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SubscriptionUpsertRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SubscriptionResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  update_subscription_api_v1_store_subscriptions__subscription_id__put: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path: {
+        subscription_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SubscriptionUpsertRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SubscriptionResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  delete_subscription_api_v1_store_subscriptions__subscription_id__delete: {
+    parameters: {
+      query?: never;
+      header?: {
+        "X-CSRF-Token"?: string | null;
+      };
+      path: {
+        subscription_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Validation Error */
       422: {

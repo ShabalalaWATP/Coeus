@@ -128,6 +128,15 @@ test("maps back navigation targets from the originating workspace", () => {
     origin: "library",
     search: "?q=a",
   });
+  const projectPath = "/store/projects/11111111-1111-4111-8111-111111111111";
+  expect(backNavigationFor(projectPath, "project")).toEqual({
+    path: projectPath,
+    label: "Back to project",
+  });
+  expect(backNavigationFor("/store/projects/not-an-id", "project")).toEqual({
+    path: "/store",
+    label: "Back to store",
+  });
 });
 
 test("returns to the search the operator had applied", () => {

@@ -10,12 +10,12 @@ import {
 } from "../../lib/api-client/store";
 import { useAuth } from "../../lib/auth/auth-context";
 
-export function PersonalLibraryPanel() {
+export function PersonalLibraryPanel({ defaultOpen = false }: { defaultOpen?: boolean }) {
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const [folderName, setFolderName] = useState("");
   const [selected, setSelected] = useState("all");
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const library = useQuery({
     enabled: open,
     queryKey: ["store-library"],

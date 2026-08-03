@@ -3,6 +3,7 @@ import type { StoreSearchFilters } from "../../lib/api-client/store";
 type StoreSort = "relevance" | "title" | "coverage";
 
 export type StoreSearchState = {
+  acgIds: string[];
   query: string;
   productType: string;
   region: string;
@@ -34,6 +35,7 @@ const TEXT_FIELDS = Object.keys(PARAM_KEYS) as TextField[];
 const SORTS: readonly StoreSort[] = ["relevance", "title", "coverage"];
 
 const emptyStoreSearch: StoreSearchState = {
+  acgIds: [],
   query: "",
   productType: "",
   region: "",
@@ -47,6 +49,7 @@ const emptyStoreSearch: StoreSearchState = {
 
 export function readStoreSearch(params: URLSearchParams): StoreSearchState {
   const state = { ...emptyStoreSearch };
+  state.acgIds = [...new Set(params.getAll("acg").filter(Boolean))].slice(0, 12);
   for (const field of TEXT_FIELDS) {
     state[field] = (params.get(PARAM_KEYS[field]) ?? "").trim();
   }
@@ -60,6 +63,7 @@ export function readStoreSearch(params: URLSearchParams): StoreSearchState {
 
 export function writeStoreSearch(state: StoreSearchState): URLSearchParams {
   const params = new URLSearchParams();
+  state.acgIds.slice(0, 12).forEach((acgId) => params.append("acg", acgId));
   for (const field of TEXT_FIELDS) {
     const value = state[field].trim();
     if (value !== "") {
@@ -76,11 +80,12 @@ export function writeStoreSearch(state: StoreSearchState): URLSearchParams {
 }
 
 export function hasSearchCriteria(state: StoreSearchState): boolean {
-  return TEXT_FIELDS.some((field) => state[field].trim() !== "");
+  return state.acgIds.length > 0 || TEXT_FIELDS.some((field) => state[field].trim() !== "");
 }
 
 export function toSearchRequest(state: StoreSearchState, ownerTeam?: string): StoreSearchFilters {
   return {
+    ...(state.acgIds.length ? { acgIds: state.acgIds } : {}),
     ...(state.query ? { query: state.query } : {}),
     ...(state.productType ? { productType: state.productType } : {}),
     ...(state.region ? { region: state.region } : {}),
@@ -109,7 +114,10 @@ export function toggleFacet(
 }
 
 export function activeFilterCount(state: StoreSearchState): number {
-  return TEXT_FIELDS.filter((field) => field !== "query" && state[field].trim() !== "").length;
+  return (
+    (state.acgIds.length > 0 ? 1 : 0) +
+    TEXT_FIELDS.filter((field) => field !== "query" && state[field].trim() !== "").length
+  );
 }
 
 function isSort(value: string | null): value is StoreSort {

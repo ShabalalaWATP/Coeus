@@ -135,6 +135,7 @@ class StoreProduct:
 @dataclass(frozen=True)
 class StoreSearchFilters:
     query: str | None = None
+    acg_ids: frozenset[UUID] = field(default_factory=frozenset)
     product_type: str | None = None
     region: str | None = None
     tag: str | None = None

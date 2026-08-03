@@ -1,5 +1,7 @@
 """Authorised, bounded Intelligence Store search orchestration."""
 
+from dataclasses import replace
+
 from coeus.core.errors import AppError
 from coeus.core.permissions import Permission
 from coeus.domain.auth import UserAccount
@@ -11,6 +13,7 @@ from coeus.domain.store import (
     StoreSearchFilters,
     StoreSearchHit,
     StoreSearchResult,
+    StoreVisibilityScope,
 )
 from coeus.domain.store_filters import structured_filter_match
 from coeus.repositories.store import StoreRepository
@@ -54,7 +57,7 @@ class StoreSearchService:
                 "Enter a search term or filter to view store products.",
             )
         require_bounded_result_window(filters)
-        scope = self._policy.visibility_scope(actor)
+        scope = self._visibility_scope(actor, filters)
         structured_filters = without_text_query(filters)
         projected_page = self._repository.search_product_page(structured_filters, scope)
         filtered = (
@@ -162,7 +165,7 @@ class StoreSearchService:
             raise AppError(403, "forbidden", "Permission denied.")
         candidates = self._repository.hybrid_candidates(
             filters,
-            self._policy.visibility_scope(actor),
+            self._visibility_scope(actor, filters),
             query,
             query_embedding,
             leg_limit,
@@ -170,6 +173,16 @@ class StoreSearchService:
         return tuple(
             candidate for candidate in candidates if self._policy.can_read(actor, candidate.product)
         )
+
+    def _visibility_scope(
+        self, actor: UserAccount, filters: StoreSearchFilters
+    ) -> StoreVisibilityScope:
+        scope = self._policy.visibility_scope(actor)
+        if filters.acg_ids:
+            if not filters.acg_ids.issubset(scope.acg_ids):
+                raise AppError(404, "acg_not_found", "Access control group was not found.")
+            return replace(scope, acg_ids=filters.acg_ids)
+        return scope
 
 
 def _has_search_criteria(filters: StoreSearchFilters) -> bool:
@@ -185,4 +198,4 @@ def _has_search_criteria(filters: StoreSearchFilters) -> bool:
         filters.date_to,
         filters.owner_team,
     )
-    return any(value not in (None, "") for value in criteria)
+    return bool(filters.acg_ids) or any(value not in (None, "") for value in criteria)

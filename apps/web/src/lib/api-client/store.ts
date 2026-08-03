@@ -8,6 +8,7 @@ export type PersonalStoreFolder = components["schemas"]["PersonalFolderResponse"
 export type SavedStoreProduct = components["schemas"]["SavedProductResponse"];
 
 export type StoreSearchFilters = {
+  acgIds?: string[];
   query?: string;
   productType?: string;
   region?: string;
@@ -46,6 +47,10 @@ export async function searchStoreProducts(
 ): Promise<StoreSearchResponse> {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(filters)) {
+    if (Array.isArray(value)) {
+      value.forEach((item) => params.append(key, item));
+      continue;
+    }
     const normalised = value === undefined ? "" : String(value).trim();
     if (normalised !== "") {
       params.set(key, normalised);

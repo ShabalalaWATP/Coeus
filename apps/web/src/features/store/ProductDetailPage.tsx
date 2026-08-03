@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { ProductAssets, ProductDenied, ProductMetadata } from "./ProductDetailSections";
 import { useProductDetailModel } from "./useProductDetailModel";
 import { SaveProductControl } from "./SaveProductControl";
+import { ProjectProductControl } from "./ProjectProductControl";
 import { ErrorState, LoadingState } from "../../components/ui/PageState";
 
 export default function ProductDetailPage() {
@@ -41,6 +42,7 @@ export default function ProductDetailPage() {
         </div>
         <div className="product-hero-actions">
           <SaveProductControl productId={product.id} />
+          <ProjectProductControl productId={product.id} />
           <Link className="store-action store-action--secondary" to={model.back.path}>
             <ArrowLeft aria-hidden="true" size={18} />
             {model.back.label}

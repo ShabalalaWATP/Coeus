@@ -16,6 +16,16 @@ export const routePolicy = {
   requestDetail: { path: "app/requests/:ticketId", permissions: [] },
   accessGroups: { path: "access-groups", permissions: ["user:read_self"] },
   store: { path: "store", permissions: ["product:read", "product:search"] },
+  storeLibrary: { path: "store/library", permissions: ["product:read", "product:search"] },
+  storeProjects: { path: "store/projects", permissions: ["product:read", "product:search"] },
+  storeProject: {
+    path: "store/projects/:projectId",
+    permissions: ["product:read", "product:search"],
+  },
+  storeSubscriptions: {
+    path: "store/subscriptions",
+    permissions: ["product:read", "product:search"],
+  },
   myProducts: {
     path: "store/my-products",
     permissions: ["product:read", "product:search"],

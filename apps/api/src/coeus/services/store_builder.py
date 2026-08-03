@@ -14,6 +14,8 @@ from coeus.services.store_access import StoreAssetService, StoreDetailService
 from coeus.services.store_library import StoreLibraryService
 from coeus.services.store_metadata_suggestions import MetadataSuggestionService
 from coeus.services.store_product_policy import StoreProductAccessPolicy
+from coeus.services.store_projects import StoreProjectService
+from coeus.services.store_subscriptions import StoreSubscriptionService
 
 
 def build_store_services(
@@ -58,4 +60,6 @@ def build_store_services(
         assets=StoreAssetService(details, asset_tokens, audit_log),
         suggestions=MetadataSuggestionService(),
         library=StoreLibraryService(state_store, audit_log),
+        projects=StoreProjectService(state_store, audit_log, access_repository),
+        subscriptions=StoreSubscriptionService(state_store, audit_log, access_repository),
     )

@@ -28,6 +28,9 @@ import {
   RoutingQueuePage,
   SessionExpiredPage,
   StorePage,
+  StoreLibraryPage,
+  StoreProjectsPage,
+  StoreSubscriptionsPage,
   TeamsPage,
   UserManagementPage,
 } from "./route-components";
@@ -94,6 +97,25 @@ export function createAppRouter() {
         {
           path: routePolicy.store.path,
           element: protectedPage(<StorePage />, routePolicy.store.permissions),
+        },
+        {
+          path: routePolicy.storeLibrary.path,
+          element: protectedPage(<StoreLibraryPage />, routePolicy.storeLibrary.permissions),
+        },
+        {
+          path: routePolicy.storeProjects.path,
+          element: protectedPage(<StoreProjectsPage />, routePolicy.storeProjects.permissions),
+        },
+        {
+          path: routePolicy.storeProject.path,
+          element: protectedPage(<StoreProjectsPage />, routePolicy.storeProject.permissions),
+        },
+        {
+          path: routePolicy.storeSubscriptions.path,
+          element: protectedPage(
+            <StoreSubscriptionsPage />,
+            routePolicy.storeSubscriptions.permissions,
+          ),
         },
         {
           path: routePolicy.myProducts.path,

@@ -447,3 +447,51 @@ date order. They are historical evidence, not current operating instructions.
   ESLint, Prettier, TypeScript, architecture-boundary, file-length and
   OpenAPI contract checks. Confirmed end to end against the local
   279-product Docker catalogue.
+
+## 2 August 2026 Intelligence Store projects and subscriptions
+
+- Reframed the Store as four clear workspaces: catalogue discovery, a private
+  Library, collaborative projects, and private search subscriptions. This keeps
+  personal organisation separate from shared research and avoids turning the
+  Store into another dense dashboard.
+- Added scoped projects with a written purpose, optional geographic and date
+  bounds, owner-managed membership, authorised product collections, working
+  notes, intelligence questions, archive/restore and an attributable activity
+  record. Product visibility and product-identifying activity are recalculated
+  for every viewer, so project membership never grants product access.
+- Added private reusable search subscriptions rather than alerts. A user can
+  carry a Discover query into a named manual, daily or weekly review, open its
+  current results, pause it or delete it. No email, push delivery or cached
+  result set was introduced.
+- Added direct My Library, Projects and Subscriptions routes, a safe return from
+  product detail to the originating project, and a product-detail action for
+  adding a visible product to an active project.
+- Recorded the product contract, ADR 0048 and the extended Store threat model.
+  Scheduled execution, generated briefings, mapping and workflow tasking stay
+  explicit future work.
+- Verified 1,814 backend tests with one intentional compatibility skip against
+  real PostgreSQL at 98.36 per cent line and 95.44 per cent branch coverage.
+  All 628 frontend tests passed at 98.73 per cent line and 95.03 per cent branch
+  coverage, alongside the static, contract, documentation and production-build
+  gates.
+
+## 3 August 2026 access-controlled ACG subscriptions
+
+- Extended subscriptions from catalogue-wide saved searches to optional,
+  explicit ACG scopes. The selector contains only the user's active ACG
+  memberships and supports up to 12 groups per subscription.
+- Kept ACG selection restrictive rather than authoritative. The API validates
+  membership when criteria are created or changed, and Store search intersects
+  the saved selection with the user's current visibility scope. Tampered,
+  inactive and revoked ACG identifiers fail closed.
+- Made subject tracking clearer for non-technical users with a dedicated ACG
+  selector and plain-language keyword guidance. Keywords and phrases can be
+  combined with region, product type, tag, source type and coverage dates.
+- Added an access-changed state so a subscription does not offer stale results
+  after one of its selected ACG memberships is removed.
+- Updated the feature contract, ADR 0048, Store threat model, OpenAPI contract
+  and user guide, with backend and frontend access-regression coverage.
+- Verified 1,816 backend tests with one intentional compatibility skip at
+  98.37 per cent line and 95.47 per cent branch coverage, including disposable
+  PostgreSQL database tests. The full frontend suite passed at 98.73 per cent
+  line and 95.07 per cent branch coverage.
