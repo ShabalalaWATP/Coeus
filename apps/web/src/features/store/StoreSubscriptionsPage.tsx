@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { SubscriptionCriteriaFields } from "./SubscriptionCriteriaFields";
-import { StoreWorkspaceNav } from "./StoreWorkspaceNav";
+import { StoreSectionHeading } from "./StoreSectionHeading";
+import { StoreWorkspaceHeader } from "./StoreWorkspaceHeader";
 import {
   criteriaFromParams,
   criteriaSummary,
@@ -71,14 +72,11 @@ export default function StoreSubscriptionsPage() {
 
   return (
     <div className="store-page">
-      <section className="overview-hero" aria-labelledby="subscriptions-title">
-        <div>
-          <span className="eyebrow">Intelligence Store</span>
-          <h1 id="subscriptions-title">Subscriptions</h1>
-          <p>Save searches you want to review repeatedly as new intelligence is added.</p>
-        </div>
-      </section>
-      <StoreWorkspaceNav />
+      <StoreWorkspaceHeader
+        description="Save searches you want to review repeatedly as new intelligence is added."
+        title="Subscriptions"
+        titleId="subscriptions-title"
+      />
 
       <section className="store-subscriptions-layout">
         <form
@@ -88,9 +86,8 @@ export default function StoreSubscriptionsPage() {
             if (draft.name.trim() && hasSubscriptionCriteria(draft.criteria)) create.mutate();
           }}
         >
-          <div>
-            <span className="eyebrow">New subscription</span>
-            <h2>Save a search</h2>
+          <div className="store-subscription-create__intro">
+            <StoreSectionHeading title="Save a search" />
             <p>Subscriptions always run with your current access.</p>
           </div>
           <label>
@@ -144,13 +141,11 @@ export default function StoreSubscriptionsPage() {
           className="surface store-subscription-list"
           aria-labelledby="saved-subscriptions-title"
         >
-          <div className="store-section-heading">
-            <div>
-              <span className="eyebrow">Saved searches</span>
-              <h2 id="saved-subscriptions-title">Your subscriptions</h2>
-            </div>
-            <span className="store-chip">{subscriptions.data?.length ?? 0}</span>
-          </div>
+          <StoreSectionHeading
+            count={subscriptions.data?.length ?? 0}
+            id="saved-subscriptions-title"
+            title="Your subscriptions"
+          />
           {subscriptions.isLoading ? <p>Loading subscriptions…</p> : null}
           {subscriptions.isError ? (
             <p className="auth-error">Subscriptions are unavailable.</p>

@@ -4,7 +4,8 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { ProjectDetailPanel } from "./ProjectDetailPanel";
-import { StoreWorkspaceNav } from "./StoreWorkspaceNav";
+import { StoreSectionHeading } from "./StoreSectionHeading";
+import { StoreWorkspaceHeader } from "./StoreWorkspaceHeader";
 import {
   createStoreProject,
   getStoreProject,
@@ -47,22 +48,21 @@ export default function StoreProjectsPage() {
 
   return (
     <div className="store-page">
-      <section className="overview-hero" aria-labelledby="projects-title">
-        <div>
-          <span className="eyebrow">Intelligence Store</span>
-          <h1 id="projects-title">Projects</h1>
-          <p>Organise authorised reporting, research notes and questions with your team.</p>
-        </div>
-        <button
-          className="store-action"
-          onClick={() => setCreating((value) => !value)}
-          type="button"
-        >
-          <Plus aria-hidden="true" size={18} />
-          New project
-        </button>
-      </section>
-      <StoreWorkspaceNav />
+      <StoreWorkspaceHeader
+        action={
+          <button
+            className="store-action"
+            onClick={() => setCreating((value) => !value)}
+            type="button"
+          >
+            <Plus aria-hidden="true" size={17} />
+            New project
+          </button>
+        }
+        description="Organise authorised reporting, research notes and questions with your team."
+        title="Projects"
+        titleId="projects-title"
+      />
 
       {creating ? (
         <ProjectCreateForm
@@ -76,13 +76,7 @@ export default function StoreProjectsPage() {
 
       <section className="store-projects-layout">
         <aside className="surface store-project-list" aria-label="Your projects">
-          <div className="store-section-heading">
-            <div>
-              <span className="eyebrow">Workspace</span>
-              <h2>Your projects</h2>
-            </div>
-            <span className="store-chip">{projects.data?.length ?? 0}</span>
-          </div>
+          <StoreSectionHeading count={projects.data?.length ?? 0} title="Your projects" />
           {projects.isLoading ? <p>Loading projects…</p> : null}
           {projects.isError ? <p className="auth-error">Projects are unavailable.</p> : null}
           {(projects.data ?? []).map((item) => (
@@ -108,8 +102,8 @@ export default function StoreProjectsPage() {
         </aside>
 
         {projectId === undefined ? (
-          <section className="surface store-project-empty">
-            <FolderKanban aria-hidden="true" size={32} />
+          <section className="surface store-workspace-empty">
+            <FolderKanban aria-hidden="true" size={26} />
             <h2>Select or create a project</h2>
             <p>Projects keep collaborative context separate from your private Library folders.</p>
           </section>
@@ -152,10 +146,7 @@ function ProjectCreateForm({
         if (draft.name.trim() && draft.purpose.trim()) onSubmit();
       }}
     >
-      <div>
-        <span className="eyebrow">New workspace</span>
-        <h2>Create project</h2>
-      </div>
+      <StoreSectionHeading title="Create project" />
       <label>
         Project name
         <input

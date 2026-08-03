@@ -3,6 +3,7 @@ import { Archive, MessageSquareText, RotateCcw, Trash2, UserPlus } from "lucide-
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
+import { StoreSectionHeading } from "./StoreSectionHeading";
 import {
   addStoreProjectEntry,
   addStoreProjectMember,
@@ -73,10 +74,11 @@ export function ProjectDetailPanel({ project }: { project: StoreProject }) {
     <section className="store-project-detail" aria-labelledby="project-detail-title">
       <header className="surface store-project-detail__header">
         <div>
-          <span className="eyebrow">
-            {project.archived ? "Archived project" : "Active project"}
-          </span>
-          <h2 id="project-detail-title">{project.name}</h2>
+          {/* Active is the unremarkable default, so only archived is marked. */}
+          <div className="store-project-detail__title">
+            <h2 id="project-detail-title">{project.name}</h2>
+            {project.archived ? <span className="store-status-badge">Archived</span> : null}
+          </div>
           <p>{project.purpose}</p>
           <small>
             {[project.region, coverage(project.dateFrom, project.dateTo)]
@@ -112,13 +114,12 @@ export function ProjectDetailPanel({ project }: { project: StoreProject }) {
           className="surface store-project-products"
           aria-labelledby="project-products-title"
         >
-          <div className="store-section-heading">
-            <div>
-              <span className="eyebrow">Evidence</span>
-              <h3 id="project-products-title">Intelligence products</h3>
-            </div>
-            <span className="store-chip">{project.products.length}</span>
-          </div>
+          <StoreSectionHeading
+            count={project.products.length}
+            id="project-products-title"
+            level={3}
+            title="Intelligence products"
+          />
           {project.products.map((product) => (
             <div className="store-project-product" key={product.id}>
               <Link
@@ -152,13 +153,12 @@ export function ProjectDetailPanel({ project }: { project: StoreProject }) {
         </section>
 
         <section className="surface store-project-members" aria-labelledby="project-members-title">
-          <div className="store-section-heading">
-            <div>
-              <span className="eyebrow">Collaboration</span>
-              <h3 id="project-members-title">Members</h3>
-            </div>
-            <span className="store-chip">{project.members.length}</span>
-          </div>
+          <StoreSectionHeading
+            count={project.members.length}
+            id="project-members-title"
+            level={3}
+            title="Members"
+          />
           <ul>
             {project.members.map((member) => (
               <li key={member.id}>
@@ -207,13 +207,12 @@ export function ProjectDetailPanel({ project }: { project: StoreProject }) {
       </div>
 
       <section className="surface store-project-notes" aria-labelledby="project-notes-title">
-        <div className="store-section-heading">
-          <div>
-            <span className="eyebrow">Working record</span>
-            <h3 id="project-notes-title">Notes and questions</h3>
-          </div>
-          <span className="store-chip">{project.entries.length}</span>
-        </div>
+        <StoreSectionHeading
+          count={project.entries.length}
+          id="project-notes-title"
+          level={3}
+          title="Notes and questions"
+        />
         {!project.archived ? (
           <form
             onSubmit={(event) => {

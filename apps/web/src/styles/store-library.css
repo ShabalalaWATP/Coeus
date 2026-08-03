@@ -136,20 +136,38 @@
 .personal-library__reports {
   display: grid;
   gap: 8px;
+  align-content: start;
   flex: 1;
   min-width: 0;
 }
 
 .personal-library__report {
   display: grid;
-  grid-template-columns: 9rem minmax(0, 1fr) auto;
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 16px;
   align-items: center;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 11px 13px;
+  padding: 10px 13px;
   color: var(--text);
   text-decoration: none;
+}
+
+/* Reference above title, so the title starts at the left edge instead of
+   floating in the middle of a wide row. */
+.personal-library__report > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.personal-library__report .mono-ref {
+  font-size: 0.7rem;
+}
+
+.personal-library__report strong {
+  font-size: 0.94rem;
+  overflow-wrap: anywhere;
 }
 
 .personal-library__report:hover,

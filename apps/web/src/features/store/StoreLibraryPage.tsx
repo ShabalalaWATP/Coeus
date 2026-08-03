@@ -1,18 +1,16 @@
-import { StoreWorkspaceNav } from "./StoreWorkspaceNav";
 import { PersonalLibraryPanel } from "./PersonalLibraryPanel";
+import { StoreWorkspaceHeader } from "./StoreWorkspaceHeader";
 
 export default function StoreLibraryPage() {
   return (
     <div className="store-page">
-      <section className="overview-hero" aria-labelledby="store-library-title">
-        <div>
-          <span className="eyebrow">Intelligence Store</span>
-          <h1 id="store-library-title">My Library</h1>
-          <p>Your private saved intelligence and personal folders.</p>
-        </div>
-      </section>
-      <StoreWorkspaceNav />
-      <PersonalLibraryPanel defaultOpen />
+      <StoreWorkspaceHeader
+        description="Your private saved intelligence and personal folders."
+        title="My Library"
+        titleId="store-library-title"
+      />
+      {/* The library is the page here, so it needs no open or close control. */}
+      <PersonalLibraryPanel alwaysOpen />
     </div>
   );
 }

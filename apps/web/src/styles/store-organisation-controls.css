@@ -113,6 +113,14 @@
   border-top: 1px solid var(--border);
   padding-top: 12px;
   color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.store-subscribe-search a {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  font-weight: 700;
 }
 
 .project-product-control {
