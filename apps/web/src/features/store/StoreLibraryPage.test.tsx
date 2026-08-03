@@ -18,5 +18,7 @@ test("opens the private library workspace by default", async () => {
 
   expect(screen.getByRole("heading", { name: "My Library" })).toBeVisible();
   expect(await screen.findByText(/No reports in this folder yet/)).toBeVisible();
-  expect(screen.getByRole("button", { name: "Close my library" })).toBeVisible();
+  // The library is the page here, so it carries no open or close control.
+  expect(screen.queryByRole("button", { name: /my library/i })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "All saved" })).toBeVisible();
 });

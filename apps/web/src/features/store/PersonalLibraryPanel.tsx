@@ -10,12 +10,20 @@ import {
 } from "../../lib/api-client/store";
 import { useAuth } from "../../lib/auth/auth-context";
 
-export function PersonalLibraryPanel({ defaultOpen = false }: { defaultOpen?: boolean }) {
+export function PersonalLibraryPanel({
+  alwaysOpen = false,
+  defaultOpen = false,
+}: {
+  /** True when the library is the whole page, so it needs no toggle. */
+  alwaysOpen?: boolean;
+  defaultOpen?: boolean;
+}) {
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const [folderName, setFolderName] = useState("");
   const [selected, setSelected] = useState("all");
-  const [open, setOpen] = useState(defaultOpen);
+  const [toggledOpen, setToggledOpen] = useState(defaultOpen);
+  const open = alwaysOpen || toggledOpen;
   const library = useQuery({
     enabled: open,
     queryKey: ["store-library"],
@@ -48,25 +56,32 @@ export function PersonalLibraryPanel({ defaultOpen = false }: { defaultOpen?: bo
 
   return (
     <section className="surface personal-library" aria-labelledby="personal-library-title">
-      {/* Collapsed by default and only one line tall: the library is a place to
-          return to, not the thing a search-first workspace should open with. */}
-      <div className="personal-library__bar">
-        <h2 id="personal-library-title">
-          <BookmarkCheck aria-hidden="true" size={17} />
+      {/* Embedded in Discover the library is a one-line strip to return to, not
+          the thing a search-first workspace should open with. On its own page it
+          is the content, so the strip and its toggle are dropped entirely. */}
+      {alwaysOpen ? (
+        <h2 className="sr-only" id="personal-library-title">
           Saved intelligence
         </h2>
-        <p>Reports you have kept, in folders only you can see.</p>
-        <button
-          aria-expanded={open}
-          className="personal-library__toggle"
-          onClick={() => setOpen((current) => !current)}
-          type="button"
-        >
-          {open
-            ? "Close my library"
-            : `Open my library${savedCount === null ? "" : ` (${savedCount})`}`}
-        </button>
-      </div>
+      ) : (
+        <div className="personal-library__bar">
+          <h2 id="personal-library-title">
+            <BookmarkCheck aria-hidden="true" size={17} />
+            Saved intelligence
+          </h2>
+          <p>Reports you have kept, in folders only you can see.</p>
+          <button
+            aria-expanded={open}
+            className="personal-library__toggle"
+            onClick={() => setToggledOpen((current) => !current)}
+            type="button"
+          >
+            {open
+              ? "Close my library"
+              : `Open my library${savedCount === null ? "" : ` (${savedCount})`}`}
+          </button>
+        </div>
+      )}
 
       {open ? (
         <>
@@ -138,8 +153,10 @@ export function PersonalLibraryPanel({ defaultOpen = false }: { defaultOpen?: bo
                   state={{ from: "/store", origin: "library" }}
                   to={`/store/products/${encodeURIComponent(item.product.id)}`}
                 >
-                  <span className="mono-ref">{item.product.reference}</span>
-                  <strong>{item.product.title}</strong>
+                  <span>
+                    <span className="mono-ref">{item.product.reference}</span>
+                    <strong>{item.product.title}</strong>
+                  </span>
                   <small>{item.product.areaOrRegion}</small>
                 </Link>
               ))}

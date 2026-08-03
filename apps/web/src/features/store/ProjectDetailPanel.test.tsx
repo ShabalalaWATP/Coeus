@@ -82,7 +82,7 @@ test("renders an archived member view without owner controls", () => {
     />,
   );
 
-  expect(screen.getByText("Archived project")).toBeVisible();
+  expect(screen.getByText("Archived")).toBeVisible();
   expect(screen.getByText("Date not recorded")).toBeVisible();
   expect(screen.getByText("Retained research note")).toBeVisible();
   expect(screen.getByText(/updated the project/)).toBeInTheDocument();

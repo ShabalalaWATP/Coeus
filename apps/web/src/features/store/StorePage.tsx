@@ -2,7 +2,7 @@ import { Rss, SearchCheck, Upload } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { PaginationControls, PaginationSummary } from "./StorePagination";
-import { StoreWorkspaceNav } from "./StoreWorkspaceNav";
+import { StoreWorkspaceHeader } from "./StoreWorkspaceHeader";
 import { StoreFacetRail } from "./StoreFacetRail";
 import { StoreResultCard } from "./StoreResultCard";
 import { StoreSearchBar } from "./StoreSearchBar";
@@ -66,23 +66,21 @@ export default function StorePage({
 
   return (
     <div className="store-page">
-      <section className="overview-hero store-hero" aria-labelledby="store-title">
-        <div>
-          <AdminReturnLink />
-          <h1 id="store-title">
-            {title ?? (scope === "mine" ? "My Products" : "Intelligence Store")}
-          </h1>
-          <p>{description}</p>
-        </div>
-        {canUpload ? (
-          <Link className="store-action" to="/store/upload">
-            <Upload aria-hidden="true" size={18} />
-            Upload product
-          </Link>
-        ) : null}
-      </section>
-
-      {scope === "all" ? <StoreWorkspaceNav /> : null}
+      <StoreWorkspaceHeader
+        action={
+          canUpload ? (
+            <Link className="store-action" to="/store/upload">
+              <Upload aria-hidden="true" size={17} />
+              Upload product
+            </Link>
+          ) : null
+        }
+        before={<AdminReturnLink />}
+        description={description}
+        showNav={scope === "all"}
+        title={title ?? (scope === "mine" ? "My Products" : "Intelligence Store")}
+        titleId="store-title"
+      />
 
       {!hasOwnedProductScope ? (
         <section className="workspace-alert" role="status">

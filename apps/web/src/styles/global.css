@@ -36,6 +36,7 @@
 @import "./access-groups.css";
 @import "./workspace.css";
 @import "./store.css";
+@import "./store-workspace.css";
 @import "./store-library.css";
 @import "./store-organisation.css";
 @import "./store-organisation-controls.css";
