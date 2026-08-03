@@ -180,10 +180,21 @@ async def test_subscription_lifecycle_is_private_and_stores_criteria_only() -> N
         other_session = await login(other, "admin@example.test")
         owner_headers = {"X-CSRF-Token": str(owner_session["csrfToken"])}
         other_headers = {"X-CSRF-Token": str(other_session["csrfToken"])}
+        visible = await owner.get(
+            "/api/v1/store/products", params={"productType": "assessment_report"}
+        )
+        selected_acg_id = visible.json()["products"][0]["acgIds"][0]
+        scopes = await owner.get("/api/v1/store/subscription-scopes")
+        assert scopes.status_code == 200
+        assert selected_acg_id in {scope["id"] for scope in scopes.json()}
         payload = {
             "name": "Eastern Europe weekly",
             "cadence": "weekly",
-            "criteria": {"query": "regional stability", "region": "Eastern Europe"},
+            "criteria": {
+                "acgIds": [selected_acg_id],
+                "query": "regional stability",
+                "region": "Eastern Europe",
+            },
         }
         created = await owner.post(
             "/api/v1/store/subscriptions", headers=owner_headers, json=payload
@@ -192,6 +203,29 @@ async def test_subscription_lifecycle_is_private_and_stores_criteria_only() -> N
         subscription_id = created.json()["id"]
         assert "products" not in created.json()
         assert created.json()["criteria"]["query"] == "regional stability"
+        assert created.json()["criteria"]["acgIds"] == [selected_acg_id]
+
+        scoped_search = await owner.get(
+            "/api/v1/store/products", params={"acgIds": selected_acg_id}
+        )
+        assert scoped_search.status_code == 200
+        assert scoped_search.json()["products"]
+        assert all(
+            selected_acg_id in product["acgIds"] for product in scoped_search.json()["products"]
+        )
+        tampered_search = await owner.get("/api/v1/store/products", params={"acgIds": str(uuid4())})
+        assert tampered_search.status_code == 404
+
+        tampered = await owner.post(
+            "/api/v1/store/subscriptions",
+            headers=owner_headers,
+            json={
+                "name": "Hidden ACG",
+                "cadence": "daily",
+                "criteria": {"acgIds": [str(uuid4())]},
+            },
+        )
+        assert tampered.status_code == 404
 
         duplicate = await owner.post(
             "/api/v1/store/subscriptions", headers=owner_headers, json=payload
@@ -256,7 +290,10 @@ def test_project_and_subscription_services_enforce_limits_and_audit_rollback(
     assert project_state.load(store_projects.PROJECT_NAMESPACE) == {"projects": []}
 
     monkeypatch.setattr(store_subscriptions, "MAX_SUBSCRIPTIONS_PER_USER", 1)
-    subscriptions = store_subscriptions.StoreSubscriptionService(MemoryStateStore(), AuditLog())
+    access.active_acg_ids_for_user.return_value = frozenset()
+    subscriptions = store_subscriptions.StoreSubscriptionService(
+        MemoryStateStore(), AuditLog(), access
+    )
     criteria = store_subscriptions.SubscriptionCriteria(query="regional")
     subscriptions.create(actor.user_id, name="First", cadence="daily", criteria=criteria)
     with pytest.raises(AppError) as limit_error:

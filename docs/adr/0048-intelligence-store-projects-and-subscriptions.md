@@ -17,6 +17,10 @@ and lifecycle rules.
 - Model Projects as collaborative, membership-scoped research spaces.
 - Model Subscriptions as private saved search criteria, not alerts and not stored
   result sets.
+- Treat selected ACGs as a restrictive search scope, never as authority. The
+  selection endpoint returns only the user's active memberships, subscription
+  writes validate membership again, and Store search intersects the selection
+  with current visibility before retrieval.
 - Store only product identifiers in personal libraries and projects. Resolve
   products through the Store detail policy at every response boundary.
 - Persist project and subscription aggregates through the existing `StateStore`
@@ -36,6 +40,8 @@ existing Store access policy, and does not restore the retired workspace.
 
 - Product access revocation takes effect immediately in Projects and
   Subscriptions.
+- ACG administrators cannot subscribe to a group solely because they can
+  administer its metadata; they need an active membership grant.
 - The first release does not require a scheduler or notification provider.
 - Aggregate limits are required because guarded JSONB state is deliberately
   bounded.

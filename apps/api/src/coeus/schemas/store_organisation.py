@@ -96,6 +96,7 @@ class ProjectDetailResponse(ProjectSummaryResponse):
 
 
 class SubscriptionCriteriaRequest(BaseModel):
+    acg_ids: list[UUID] = Field(default_factory=list, validation_alias="acgIds", max_length=12)
     query: str | None = Field(default=None, max_length=200)
     product_type: str | None = Field(default=None, validation_alias="productType", max_length=80)
     region: str | None = Field(default=None, max_length=180)
@@ -125,6 +126,7 @@ class SubscriptionUpsertRequest(BaseModel):
 class SubscriptionCriteriaResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
+    acg_ids: list[UUID] = Field(serialization_alias="acgIds")
     query: str | None
     product_type: str | None = Field(serialization_alias="productType")
     region: str | None
@@ -144,3 +146,11 @@ class SubscriptionResponse(BaseModel):
     criteria: SubscriptionCriteriaResponse
     created_at: datetime = Field(serialization_alias="createdAt")
     updated_at: datetime = Field(serialization_alias="updatedAt")
+
+
+class SubscriptionScopeResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    acg_id: UUID = Field(serialization_alias="id")
+    code: str
+    name: str

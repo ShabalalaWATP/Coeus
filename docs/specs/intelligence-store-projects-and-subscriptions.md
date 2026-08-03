@@ -42,13 +42,23 @@ folder and never grants access to a product.
 ## Subscriptions
 
 - A subscription is owned by one user and cannot be shared.
-- It has a name, cadence and the same bounded criteria as Store search: query,
-  product type, region, tag, source type and coverage dates.
+- It has a name, cadence and the same bounded criteria as Store search: one or
+  more authorised ACGs, keywords or phrases, product type, region, tag, source
+  type and coverage dates.
+- ACG selection lists only active groups currently granted to the user. General
+  ACG administration visibility does not make a group selectable.
+- Selected ACGs are validated again when a subscription is created or updated.
+  Unknown, inactive and ungranted groups fail closed without confirming which
+  condition applied.
 - At least one search criterion is required.
 - A user can enable, pause, update and delete a subscription.
 - Opening a subscription navigates to Discover and runs the criteria against
   current products and permissions. Stored results or product counts are not
   exposed.
+- Keyword matching uses the Store's existing bounded lexical and semantic
+  retrieval over product titles, summaries, descriptions and indexed metadata.
+- If ACG access is later removed, the subscription cannot be used to recover
+  results from that group. Store search rechecks current ACG membership.
 - No email, push or background delivery is introduced in this release.
 - Subscription mutations are CSRF protected, bounded and audited.
 
@@ -59,6 +69,7 @@ folder and never grants access to a product.
 - 500 product references per project.
 - 200 notes or questions per project.
 - 50 subscriptions per user.
+- 12 ACGs per subscription.
 - Project names, subscription names and regions are at most 80 characters.
 - Purpose and note bodies are at most 2,000 characters; questions are at most
   500 characters.
@@ -72,6 +83,8 @@ folder and never grants access to a product.
 - Project membership never grants product access.
 - A member who loses product authority no longer sees that product in a project.
 - Cross-user subscription identifiers return `404`.
+- A user cannot create, update or run a subscription for an ACG they have not
+  been granted.
 - Mutation failures do not persist unaudited state.
 - Backend and frontend line and branch coverage remain at least 95 per cent.
 

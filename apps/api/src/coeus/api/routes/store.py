@@ -139,6 +139,7 @@ async def search_products(
     store_services: Annotated[StoreServices, Depends(get_store_services)],
     admission: Annotated[ResourceAdmission, Depends(get_search_admission)],
     query: Annotated[str | None, Query(max_length=SEARCH_TEXT_MAX_LENGTH)] = None,
+    acg_ids: Annotated[list[UUID] | None, Query(alias="acgIds", max_length=12)] = None,
     product_type: Annotated[
         str | None, Query(alias="productType", max_length=SEARCH_FIELD_MAX_LENGTH)
     ] = None,
@@ -163,6 +164,7 @@ async def search_products(
             authenticated.user,
             StoreSearchFilters(
                 query=query,
+                acg_ids=frozenset(acg_ids or ()),
                 product_type=product_type,
                 region=region,
                 tag=tag,

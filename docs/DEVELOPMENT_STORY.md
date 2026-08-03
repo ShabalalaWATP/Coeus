@@ -474,3 +474,24 @@ date order. They are historical evidence, not current operating instructions.
   All 628 frontend tests passed at 98.73 per cent line and 95.03 per cent branch
   coverage, alongside the static, contract, documentation and production-build
   gates.
+
+## 3 August 2026 access-controlled ACG subscriptions
+
+- Extended subscriptions from catalogue-wide saved searches to optional,
+  explicit ACG scopes. The selector contains only the user's active ACG
+  memberships and supports up to 12 groups per subscription.
+- Kept ACG selection restrictive rather than authoritative. The API validates
+  membership when criteria are created or changed, and Store search intersects
+  the saved selection with the user's current visibility scope. Tampered,
+  inactive and revoked ACG identifiers fail closed.
+- Made subject tracking clearer for non-technical users with a dedicated ACG
+  selector and plain-language keyword guidance. Keywords and phrases can be
+  combined with region, product type, tag, source type and coverage dates.
+- Added an access-changed state so a subscription does not offer stale results
+  after one of its selected ACG memberships is removed.
+- Updated the feature contract, ADR 0048, Store threat model, OpenAPI contract
+  and user guide, with backend and frontend access-regression coverage.
+- Verified 1,816 backend tests with one intentional compatibility skip at
+  98.37 per cent line and 95.47 per cent branch coverage, including disposable
+  PostgreSQL database tests. The full frontend suite passed at 98.73 per cent
+  line and 95.07 per cent branch coverage.

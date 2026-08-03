@@ -3,10 +3,19 @@ import { Pause, Play, Plus, Rss, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
+import { SubscriptionCriteriaFields } from "./SubscriptionCriteriaFields";
 import { StoreWorkspaceNav } from "./StoreWorkspaceNav";
+import {
+  criteriaFromParams,
+  criteriaSummary,
+  hasCurrentAcgAccess,
+  hasSubscriptionCriteria,
+  subscriptionSearchPath,
+} from "./subscription-search";
 import {
   createStoreSubscription,
   deleteStoreSubscription,
+  getStoreSubscriptionScopes,
   getStoreSubscriptions,
   updateStoreSubscription,
   type StoreSubscription,
@@ -29,11 +38,15 @@ export default function StoreSubscriptionsPage() {
     queryKey: ["store-subscriptions"],
     queryFn: getStoreSubscriptions,
   });
+  const scopes = useQuery({
+    queryKey: ["store-subscription-scopes"],
+    queryFn: getStoreSubscriptionScopes,
+  });
   const refresh = () => void queryClient.invalidateQueries({ queryKey: ["store-subscriptions"] });
   const create = useMutation({
     mutationFn: () => createStoreSubscription(draft, session?.csrfToken ?? ""),
     onSuccess: () => {
-      setDraft({ name: "", cadence: "weekly", enabled: true, criteria: {} });
+      setDraft({ name: "", cadence: "weekly", enabled: true, criteria: { acgIds: [] } });
       refresh();
     },
   });
@@ -72,7 +85,7 @@ export default function StoreSubscriptionsPage() {
           className="surface store-subscription-create"
           onSubmit={(event) => {
             event.preventDefault();
-            if (draft.name.trim() && hasCriteria(draft)) create.mutate();
+            if (draft.name.trim() && hasSubscriptionCriteria(draft.criteria)) create.mutate();
           }}
         >
           <div>
@@ -104,10 +117,18 @@ export default function StoreSubscriptionsPage() {
               <option value="weekly">Weekly review</option>
             </select>
           </label>
-          <CriteriaFields draft={draft} onChange={setDraft} />
+          <SubscriptionCriteriaFields
+            draft={draft}
+            onChange={setDraft}
+            scopes={scopes.data ?? []}
+            scopesError={scopes.isError}
+            scopesLoading={scopes.isLoading}
+          />
           <button
             className="store-action"
-            disabled={!draft.name.trim() || !hasCriteria(draft) || create.isPending}
+            disabled={
+              !draft.name.trim() || !hasSubscriptionCriteria(draft.criteria) || create.isPending
+            }
             type="submit"
           >
             <Plus aria-hidden="true" size={17} /> Create subscription
@@ -134,49 +155,64 @@ export default function StoreSubscriptionsPage() {
           {subscriptions.isError ? (
             <p className="auth-error">Subscriptions are unavailable.</p>
           ) : null}
-          {(subscriptions.data ?? []).map((subscription) => (
-            <article
-              className={
-                subscription.enabled ? "store-subscription" : "store-subscription is-paused"
-              }
-              key={subscription.id}
-            >
-              <Rss aria-hidden="true" size={20} />
-              <div>
-                <strong>{subscription.name}</strong>
-                <p>{criteriaSummary(subscription)}</p>
-                <small>
-                  {cadenceLabel(subscription.cadence)} ·{" "}
-                  {subscription.enabled ? "Active" : "Paused"}
-                </small>
-              </div>
-              <div className="store-subscription__actions">
-                <Link className="store-action" to={subscriptionSearchPath(subscription)}>
-                  Open results
-                </Link>
-                <button
-                  aria-label={`${subscription.enabled ? "Pause" : "Resume"} ${subscription.name}`}
-                  disabled={update.isPending}
-                  onClick={() => update.mutate(subscription)}
-                  type="button"
-                >
-                  {subscription.enabled ? (
-                    <Pause aria-hidden="true" size={16} />
+          {(subscriptions.data ?? []).map((subscription) => {
+            const hasSelectedAcgs = subscription.criteria.acgIds.length > 0;
+            const currentAccess =
+              !hasSelectedAcgs ||
+              (scopes.isSuccess && hasCurrentAcgAccess(subscription, scopes.data));
+            const accessLabel = scopes.isLoading
+              ? "Checking ACG access"
+              : scopes.isError
+                ? "ACG access unavailable"
+                : "ACG access changed";
+            return (
+              <article
+                className={
+                  subscription.enabled ? "store-subscription" : "store-subscription is-paused"
+                }
+                key={subscription.id}
+              >
+                <Rss aria-hidden="true" size={20} />
+                <div>
+                  <strong>{subscription.name}</strong>
+                  <p>{criteriaSummary(subscription, scopes.data ?? [], accessLabel)}</p>
+                  <small>
+                    {cadenceLabel(subscription.cadence)} ·{" "}
+                    {subscription.enabled ? "Active" : "Paused"}
+                  </small>
+                </div>
+                <div className="store-subscription__actions">
+                  {currentAccess ? (
+                    <Link className="store-action" to={subscriptionSearchPath(subscription)}>
+                      Open results
+                    </Link>
                   ) : (
-                    <Play aria-hidden="true" size={16} />
+                    <span className="store-subscription__access-changed">{accessLabel}</span>
                   )}
-                </button>
-                <button
-                  aria-label={`Delete ${subscription.name}`}
-                  disabled={remove.isPending}
-                  onClick={() => remove.mutate(subscription.id)}
-                  type="button"
-                >
-                  <Trash2 aria-hidden="true" size={16} />
-                </button>
-              </div>
-            </article>
-          ))}
+                  <button
+                    aria-label={`${subscription.enabled ? "Pause" : "Resume"} ${subscription.name}`}
+                    disabled={update.isPending || !currentAccess}
+                    onClick={() => update.mutate(subscription)}
+                    type="button"
+                  >
+                    {subscription.enabled ? (
+                      <Pause aria-hidden="true" size={16} />
+                    ) : (
+                      <Play aria-hidden="true" size={16} />
+                    )}
+                  </button>
+                  <button
+                    aria-label={`Delete ${subscription.name}`}
+                    disabled={remove.isPending}
+                    onClick={() => remove.mutate(subscription.id)}
+                    type="button"
+                  >
+                    <Trash2 aria-hidden="true" size={16} />
+                  </button>
+                </div>
+              </article>
+            );
+          })}
           {!subscriptions.isLoading &&
           !subscriptions.isError &&
           subscriptions.data?.length === 0 ? (
@@ -191,106 +227,6 @@ export default function StoreSubscriptionsPage() {
       </section>
     </div>
   );
-}
-
-function CriteriaFields({
-  draft,
-  onChange,
-}: {
-  draft: StoreSubscriptionInput;
-  onChange: (value: StoreSubscriptionInput) => void;
-}) {
-  const update = (field: keyof StoreSubscriptionInput["criteria"], value: string) =>
-    onChange({ ...draft, criteria: { ...draft.criteria, [field]: value || null } });
-  return (
-    <div className="store-subscription-criteria">
-      <label>
-        Search terms
-        <input
-          maxLength={200}
-          onChange={(event) => update("query", event.target.value)}
-          value={draft.criteria.query ?? ""}
-        />
-      </label>
-      <label>
-        Region
-        <input
-          maxLength={180}
-          onChange={(event) => update("region", event.target.value)}
-          value={draft.criteria.region ?? ""}
-        />
-      </label>
-      <label>
-        Product type
-        <input
-          maxLength={80}
-          onChange={(event) => update("productType", event.target.value)}
-          value={draft.criteria.productType ?? ""}
-        />
-      </label>
-      <label>
-        Tag
-        <input
-          maxLength={80}
-          onChange={(event) => update("tag", event.target.value)}
-          value={draft.criteria.tag ?? ""}
-        />
-      </label>
-      <label>
-        Source type
-        <input
-          maxLength={80}
-          onChange={(event) => update("sourceType", event.target.value)}
-          value={draft.criteria.sourceType ?? ""}
-        />
-      </label>
-      <label>
-        Coverage from
-        <input
-          onChange={(event) => update("dateFrom", event.target.value)}
-          type="date"
-          value={draft.criteria.dateFrom ?? ""}
-        />
-      </label>
-      <label>
-        Coverage to
-        <input
-          onChange={(event) => update("dateTo", event.target.value)}
-          type="date"
-          value={draft.criteria.dateTo ?? ""}
-        />
-      </label>
-    </div>
-  );
-}
-
-function criteriaFromParams(params: URLSearchParams): StoreSubscriptionInput["criteria"] {
-  const value = (key: string) => params.get(key) || null;
-  return {
-    query: value("query"),
-    productType: value("productType"),
-    region: value("region"),
-    tag: value("tag"),
-    sourceType: value("sourceType"),
-    dateFrom: value("dateFrom"),
-    dateTo: value("dateTo"),
-  };
-}
-
-function hasCriteria(draft: StoreSubscriptionInput) {
-  return Object.values(draft.criteria).some((value) => typeof value === "string" && value.trim());
-}
-
-function subscriptionSearchPath(subscription: StoreSubscription) {
-  const params = new URLSearchParams();
-  Object.entries(subscription.criteria).forEach(([key, value]) => {
-    if (value) params.set(key, value);
-  });
-  return `/store?${params.toString()}`;
-}
-
-function criteriaSummary(subscription: StoreSubscription) {
-  return Object.values(subscription.criteria).filter(Boolean).join(" · ");
 }
 
 function cadenceLabel(cadence: StoreSubscription["cadence"]) {

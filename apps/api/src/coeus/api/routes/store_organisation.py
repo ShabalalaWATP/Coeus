@@ -12,6 +12,7 @@ from coeus.api.presenters.store_organisation import (
     project_detail,
     project_summary,
     subscription_response,
+    subscription_scope,
 )
 from coeus.domain.auth import AuthenticatedSession
 from coeus.schemas.store_organisation import (
@@ -22,6 +23,7 @@ from coeus.schemas.store_organisation import (
     ProjectStatusRequest,
     ProjectSummaryResponse,
     SubscriptionResponse,
+    SubscriptionScopeResponse,
     SubscriptionUpsertRequest,
 )
 from coeus.services.store import StoreServices
@@ -149,6 +151,16 @@ async def list_subscriptions(
     ]
 
 
+@router.get("/subscription-scopes", response_model=list[SubscriptionScopeResponse])
+async def list_subscription_scopes(
+    authenticated: CurrentSession, store: StoreDep
+) -> list[SubscriptionScopeResponse]:
+    return [
+        subscription_scope(acg.acg_id, acg.code, acg.name)
+        for acg in store.subscriptions.available_acgs(authenticated.user.user_id)
+    ]
+
+
 @router.post("/subscriptions", response_model=SubscriptionResponse, status_code=201)
 async def create_subscription(
     payload: SubscriptionUpsertRequest,
@@ -195,6 +207,7 @@ async def delete_subscription(
 def _criteria(payload: SubscriptionUpsertRequest) -> SubscriptionCriteria:
     criteria = payload.criteria
     return SubscriptionCriteria(
+        acg_ids=tuple(criteria.acg_ids),
         query=criteria.query,
         product_type=criteria.product_type,
         region=criteria.region,

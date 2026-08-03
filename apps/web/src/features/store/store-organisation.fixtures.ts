@@ -45,6 +45,7 @@ export const subscriptionFixture: StoreSubscription = {
   cadence: "weekly",
   createdAt: "2026-08-02T09:00:00Z",
   criteria: {
+    acgIds: ["acg-eastern"],
     dateFrom: null,
     dateTo: null,
     productType: null,
@@ -57,4 +58,10 @@ export const subscriptionFixture: StoreSubscription = {
   id: "subscription-1",
   name: "Regional drone reporting",
   updatedAt: "2026-08-02T09:00:00Z",
+};
+
+export const subscriptionScopeFixture = {
+  code: "ACG-EAST",
+  id: "acg-eastern",
+  name: "Eastern Europe reporting",
 };

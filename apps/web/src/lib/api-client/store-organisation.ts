@@ -6,6 +6,7 @@ export type StoreProjectSummary = components["schemas"]["ProjectSummaryResponse"
 export type StoreProjectCreateInput = components["schemas"]["ProjectCreateRequest"];
 export type StoreSubscription = components["schemas"]["SubscriptionResponse"];
 export type StoreSubscriptionInput = components["schemas"]["SubscriptionUpsertRequest"];
+export type StoreSubscriptionScope = components["schemas"]["SubscriptionScopeResponse"];
 
 export function getStoreProjects(): Promise<StoreProjectSummary[]> {
   return apiRequestJson<StoreProjectSummary[]>("/api/v1/store/projects", { method: "GET" });
@@ -102,6 +103,12 @@ export function addStoreProjectEntry(
 
 export function getStoreSubscriptions(): Promise<StoreSubscription[]> {
   return apiRequestJson<StoreSubscription[]>("/api/v1/store/subscriptions", { method: "GET" });
+}
+
+export function getStoreSubscriptionScopes(): Promise<StoreSubscriptionScope[]> {
+  return apiRequestJson<StoreSubscriptionScope[]>("/api/v1/store/subscription-scopes", {
+    method: "GET",
+  });
 }
 
 export function createStoreSubscription(

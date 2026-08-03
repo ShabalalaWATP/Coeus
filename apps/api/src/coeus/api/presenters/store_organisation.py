@@ -13,6 +13,7 @@ from coeus.schemas.store_organisation import (
     ProjectSummaryResponse,
     SubscriptionCriteriaResponse,
     SubscriptionResponse,
+    SubscriptionScopeResponse,
 )
 from coeus.services.store import StoreServices
 from coeus.services.store_subscriptions import StoreSubscription
@@ -83,6 +84,7 @@ def subscription_response(subscription: StoreSubscription) -> SubscriptionRespon
         cadence=subscription.cadence,
         enabled=subscription.enabled,
         criteria=SubscriptionCriteriaResponse(
+            acg_ids=list(criteria.acg_ids),
             query=criteria.query,
             product_type=criteria.product_type,
             region=criteria.region,
@@ -94,6 +96,10 @@ def subscription_response(subscription: StoreSubscription) -> SubscriptionRespon
         created_at=subscription.created_at,
         updated_at=subscription.updated_at,
     )
+
+
+def subscription_scope(acg_id: UUID, code: str, name: str) -> SubscriptionScopeResponse:
+    return SubscriptionScopeResponse(acg_id=acg_id, code=code, name=name)
 
 
 def _visible_products(

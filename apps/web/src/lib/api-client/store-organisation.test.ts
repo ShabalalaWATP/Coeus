@@ -7,6 +7,7 @@ import {
   deleteStoreSubscription,
   getStoreProject,
   getStoreProjects,
+  getStoreSubscriptionScopes,
   getStoreSubscriptions,
   removeStoreProjectMember,
   removeStoreProjectProduct,
@@ -57,6 +58,7 @@ test("creates, updates, lists and deletes private subscriptions", async () => {
   };
 
   await getStoreSubscriptions();
+  await getStoreSubscriptionScopes();
   await createStoreSubscription(payload, "csrf");
   await updateStoreSubscription("subscription/one", { ...payload, enabled: false }, "csrf");
   await deleteStoreSubscription("subscription/one", "csrf");
@@ -64,5 +66,9 @@ test("creates, updates, lists and deletes private subscriptions", async () => {
   expect(fetchMock).toHaveBeenCalledWith(
     "http://127.0.0.1:8001/api/v1/store/subscriptions/subscription%2Fone",
     expect.objectContaining({ headers: { "X-CSRF-Token": "csrf" }, method: "DELETE" }),
+  );
+  expect(fetchMock).toHaveBeenCalledWith(
+    "http://127.0.0.1:8001/api/v1/store/subscription-scopes",
+    expect.objectContaining({ method: "GET" }),
   );
 });

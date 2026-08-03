@@ -61,5 +61,5 @@ def build_store_services(
         suggestions=MetadataSuggestionService(),
         library=StoreLibraryService(state_store, audit_log),
         projects=StoreProjectService(state_store, audit_log, access_repository),
-        subscriptions=StoreSubscriptionService(state_store, audit_log),
+        subscriptions=StoreSubscriptionService(state_store, audit_log, access_repository),
     )

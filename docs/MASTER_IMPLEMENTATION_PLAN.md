@@ -397,6 +397,9 @@ Status: implementation and local quality-gate verification complete.
       remove product-identifying activity when that product is not visible.
 - [x] Add private reusable search subscriptions with manual, daily or weekly
       review cadence, pause/resume, current-result opening and no external alerts.
+- [x] Add access-controlled ACG subscription scopes and optional keyword,
+      region, product-type, tag, source-type and date refinements. Revalidate
+      active ACG membership on save and search, including after access changes.
 - [x] Add a project return path and product-to-project control to product detail.
 - [ ] External delivery, scheduled execution, generated briefing documents,
       map workspaces, comparison tools and workflow tasking remain deferred.
@@ -407,3 +410,22 @@ PostgreSQL. All 628 frontend tests passed at 98.73 per cent line and 95.03 per
 cent branch coverage. Ruff, mypy, ESLint, Prettier, TypeScript, production
 build, architecture, file-length, documentation, Mermaid and OpenAPI contract
 checks passed.
+
+## 3 August 2026 access-controlled ACG subscriptions
+
+Status: implementation and quality-gate verification complete.
+
+- [x] Offer only active ACG memberships in the subscription interface.
+- [x] Allow a subscription to follow up to 12 selected ACGs and refine the
+      results with keywords or phrases and the existing Store filters.
+- [x] Treat an ACG selection only as a restrictive search scope, never as an
+      authority grant. Reject unknown, inactive and ungranted identifiers.
+- [x] Recheck current membership when opening results and visibly flag a saved
+      subscription whose selected ACG access has changed.
+- [x] Update the feature specification, ADR, threat model, API contract and
+      user guide.
+
+Verification: 1,816 backend tests passed with one intentional compatibility
+skip at 98.37 per cent line and 95.47 per cent branch coverage, including the
+real PostgreSQL transaction suite. The full frontend suite passed at 98.73 per
+cent line and 95.07 per cent branch coverage.

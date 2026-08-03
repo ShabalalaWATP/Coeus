@@ -27,6 +27,13 @@ def _project_service(access: Mock | None = None) -> store_projects.StoreProjectS
     return store_projects.StoreProjectService(MemoryStateStore(), AuditLog(), access or Mock())
 
 
+def _subscription_access(active_ids: frozenset | None = None) -> Mock:
+    access = Mock()
+    access.active_acg_ids_for_user.return_value = active_ids or frozenset()
+    access.list_acgs.return_value = ()
+    return access
+
+
 def _create(service: store_projects.StoreProjectService, actor: Mock):
     return service.create(
         actor,
@@ -111,7 +118,8 @@ def test_project_service_enforces_owner_member_and_project_limits(
 def test_subscription_validation_conflicts_and_audit_rollback() -> None:
     user_id = uuid4()
     criteria = store_subscriptions.SubscriptionCriteria(query=" regional ")
-    service = store_subscriptions.StoreSubscriptionService(MemoryStateStore(), AuditLog())
+    access = _subscription_access()
+    service = store_subscriptions.StoreSubscriptionService(MemoryStateStore(), AuditLog(), access)
     first = service.create(user_id, name=" First ", cadence="daily", criteria=criteria)
     second = service.create(
         user_id,
@@ -134,10 +142,66 @@ def test_subscription_validation_conflicts_and_audit_rollback() -> None:
     state = MemoryStateStore()
     audit = Mock(spec=AuditLog)
     audit.record.side_effect = RuntimeError("audit unavailable")
-    rollback = store_subscriptions.StoreSubscriptionService(state, audit)
+    rollback = store_subscriptions.StoreSubscriptionService(state, audit, access)
     with pytest.raises(RuntimeError, match="audit unavailable"):
         rollback.create(user_id, name="Rollback", cadence="daily", criteria=criteria)
     assert state.load(store_subscriptions.SUBSCRIPTION_NAMESPACE) == {"subscriptions": []}
+
+
+def test_subscription_acg_scope_is_deduplicated_and_requires_active_membership() -> None:
+    user_id = uuid4()
+    acg_id = uuid4()
+    acg = Mock(acg_id=acg_id, code="ACG-EAST", name="Eastern reporting", is_active=True)
+    inactive = Mock(acg_id=uuid4(), code="ACG-OLD", name="Old", is_active=False)
+    access = _subscription_access(frozenset({acg_id, inactive.acg_id}))
+    access.list_acgs.return_value = (inactive, acg)
+    service = store_subscriptions.StoreSubscriptionService(MemoryStateStore(), AuditLog(), access)
+
+    assert service.available_acgs(user_id) == (acg,)
+    saved = service.create(
+        user_id,
+        name="Eastern watch",
+        cadence="daily",
+        criteria=store_subscriptions.SubscriptionCriteria(acg_ids=(acg_id, acg_id)),
+    )
+    assert saved.criteria.acg_ids == (acg_id,)
+
+    access.active_acg_ids_for_user.return_value = frozenset()
+    with pytest.raises(AppError) as revoked:
+        service.update(
+            user_id,
+            saved.subscription_id,
+            name=saved.name,
+            cadence=saved.cadence,
+            enabled=False,
+            criteria=saved.criteria,
+        )
+    assert revoked.value.code == "acg_not_found"
+
+    with pytest.raises(AppError) as hidden:
+        service.create(
+            user_id,
+            name="Tampered",
+            cadence="manual",
+            criteria=store_subscriptions.SubscriptionCriteria(acg_ids=(uuid4(),)),
+        )
+    assert hidden.value.code == "acg_not_found"
+
+
+def test_subscription_rejects_more_than_twelve_acgs() -> None:
+    user_id = uuid4()
+    acg_ids = tuple(uuid4() for _ in range(13))
+    access = _subscription_access(frozenset(acg_ids))
+    service = store_subscriptions.StoreSubscriptionService(MemoryStateStore(), AuditLog(), access)
+
+    with pytest.raises(AppError) as limit:
+        service.create(
+            user_id,
+            name="Too broad",
+            cadence="weekly",
+            criteria=store_subscriptions.SubscriptionCriteria(acg_ids=acg_ids),
+        )
+    assert limit.value.code == "subscription_acg_limit"
 
 
 def test_store_organisation_schemas_reject_invalid_ranges() -> None:

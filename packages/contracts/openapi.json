@@ -8453,6 +8453,15 @@
       },
       "SubscriptionCriteriaRequest": {
         "properties": {
+          "acgIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 12,
+            "title": "Acgids",
+            "type": "array"
+          },
           "dateFrom": {
             "anyOf": [
               {
@@ -8543,6 +8552,14 @@
       },
       "SubscriptionCriteriaResponse": {
         "properties": {
+          "acgIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Acgids",
+            "type": "array"
+          },
           "dateFrom": {
             "anyOf": [
               {
@@ -8622,6 +8639,7 @@
           }
         },
         "required": [
+          "acgIds",
           "query",
           "productType",
           "region",
@@ -8681,6 +8699,30 @@
           "updatedAt"
         ],
         "title": "SubscriptionResponse",
+        "type": "object"
+      },
+      "SubscriptionScopeResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name"
+        ],
+        "title": "SubscriptionScopeResponse",
         "type": "object"
       },
       "SubscriptionUpsertRequest": {
@@ -15718,6 +15760,27 @@
           },
           {
             "in": "query",
+            "name": "acgIds",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  "maxItems": 12,
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Acgids"
+            }
+          },
+          {
+            "in": "query",
             "name": "productType",
             "required": false,
             "schema": {
@@ -17011,6 +17074,31 @@
           }
         },
         "summary": "Update Project Status",
+        "tags": [
+          "store"
+        ]
+      }
+    },
+    "/api/v1/store/subscription-scopes": {
+      "get": {
+        "operationId": "list_subscription_scopes_api_v1_store_subscription_scopes_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SubscriptionScopeResponse"
+                  },
+                  "title": "Response List Subscription Scopes Api V1 Store Subscription Scopes Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Subscription Scopes",
         "tags": [
           "store"
         ]

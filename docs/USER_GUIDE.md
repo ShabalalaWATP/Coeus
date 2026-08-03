@@ -178,8 +178,15 @@ The Store navigation separates four different jobs:
   change membership or archive and restore the project.
 - **Subscriptions** are private reusable searches. Apply terms and filters in
   Discover, choose **Create subscription from this search**, name it, and set a
-  review cadence. Opening a subscription runs the current search against the
-  current catalogue and current access permissions. A subscription can be
+  review cadence. On the subscription form, select one or more access control
+  groups (ACGs) to follow, or leave them unselected to use all ACGs you can
+  currently access. Only ACGs in your active memberships are offered. Narrow
+  the subscription further with keywords or phrases, region, product type,
+  tag, source type and coverage dates. Keywords match product titles,
+  summaries, descriptions and indexed terms. Opening a subscription runs the
+  current search against the current catalogue and current access permissions.
+  If access to a selected ACG is removed, Istari marks the subscription as
+  having changed access and does not open its results. A subscription can be
   paused, resumed or deleted. It does not send an email or expose its criteria
   to other users.
 

@@ -6,6 +6,7 @@ def structured_filter_match(product: StoreProduct, filters: StoreSearchFilters) 
     metadata = product.metadata
     return all(
         (
+            not filters.acg_ids or bool(metadata.acg_ids & filters.acg_ids),
             filters.product_type is None or metadata.product_type == filters.product_type,
             _contains(metadata.area_or_region, filters.region),
             filters.tag is None
