@@ -1,17 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Pencil, ShieldCheck, X } from "lucide-react";
+import { Check, Pencil, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import type { AuthUser } from "../../lib/api-client/auth";
 import { getMyProfile, updateMyProfile } from "../../lib/api-client/teams";
 import { useActionError } from "../../lib/mutations/action-error";
 
-type MyProfilePanelProps = {
-  csrfToken: string;
-  identity: AuthUser;
-};
+const MAX_BIO = 1000;
 
-export function MyProfilePanel({ csrfToken, identity }: MyProfilePanelProps) {
+export function ProfessionalProfileCard({ csrfToken }: { csrfToken: string }) {
   const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
   const [specialisms, setSpecialisms] = useState("");
@@ -67,82 +63,63 @@ export function MyProfilePanel({ csrfToken, identity }: MyProfilePanelProps) {
   }
 
   return (
-    <section className="profile-card" aria-label="My profile">
-      <header className="profile-identity">
-        <span className="profile-avatar" aria-hidden="true">
-          {initials(identity.displayName)}
-        </span>
-        <div>
-          <span className="profile-eyebrow">Your Coeus identity</span>
-          <h2>{identity.displayName}</h2>
-          <p>{identity.username}</p>
-        </div>
-        <span className="profile-verified">
-          <ShieldCheck aria-hidden="true" size={16} />
-          Authenticated
-        </span>
-      </header>
-      <div className="profile-roles" aria-label="Assigned roles">
-        {identity.roles.map((role) => (
-          <span key={role}>{role}</span>
-        ))}
+    <section className="profile-panel" aria-labelledby="professional-profile-title">
+      <div className="profile-panel__heading">
+        <h3 id="professional-profile-title">Professional profile</h3>
+        {profile && !isEditing ? (
+          <button
+            className="profile-panel__link"
+            onClick={() => {
+              setSaved(false);
+              setIsEditing(true);
+            }}
+            type="button"
+          >
+            <Pencil aria-hidden="true" size={15} />
+            Edit profile
+          </button>
+        ) : null}
       </div>
 
-      {profileQuery.isLoading ? <p role="status">Loading your profile…</p> : null}
+      {profileQuery.isLoading ? (
+        <p className="profile-muted" role="status">
+          Loading your profile…
+        </p>
+      ) : null}
       {profileQuery.isError ? (
-        <p role="alert">Your profile could not be loaded. Refresh and try again.</p>
+        <p className="profile-muted" role="alert">
+          Your profile could not be loaded. Refresh and try again.
+        </p>
       ) : null}
 
       {profile && !isEditing ? (
         <div className="profile-read-view">
-          <div className="profile-read-view__heading">
-            <div>
-              <span>Professional profile</span>
-              <h3>{profile.title || "No title added"}</h3>
-            </div>
-            <button
-              className="secondary-action"
-              onClick={() => {
-                setSaved(false);
-                setIsEditing(true);
-              }}
-              type="button"
-            >
-              <Pencil aria-hidden="true" size={16} />
-              Edit profile
-            </button>
-          </div>
-          <div className="profile-specialisms">
+          <p className="profile-read-view__title">{profile.title || "No title added"}</p>
+          <ul className="profile-chips" aria-label="Specialisms">
             {profile.specialisms.length ? (
-              profile.specialisms.map((specialism) => <span key={specialism}>{specialism}</span>)
+              profile.specialisms.map((specialism) => <li key={specialism}>{specialism}</li>)
             ) : (
-              <span>No specialisms added</span>
+              <li className="profile-chips__empty">No specialisms added</li>
             )}
-          </div>
+          </ul>
           <p className="profile-bio">
             {profile.bio || "Add a short biography for your teammates."}
           </p>
-          <small>Visible to teammates and authorised administrators.</small>
+          <small className="profile-muted">
+            Visible to teammates and authorised administrators
+            {profile.updatedAt ? ` · Updated ${formatUpdated(profile.updatedAt)}` : ""}
+          </small>
         </div>
       ) : null}
 
       {profile && isEditing ? (
         <form
-          className="profile-edit-form border-glow"
+          className="profile-edit-form"
           onSubmit={(event) => {
             event.preventDefault();
             saveMutation.mutate();
           }}
         >
-          <div className="profile-edit-form__heading">
-            <div>
-              <span>Edit mode</span>
-              <h3>Update your professional profile</h3>
-            </div>
-            <button aria-label="Cancel profile editing" onClick={cancelEditing} type="button">
-              <X aria-hidden="true" size={18} />
-            </button>
-          </div>
           <label>
             Title
             <input
@@ -167,27 +144,34 @@ export function MyProfilePanel({ csrfToken, identity }: MyProfilePanelProps) {
             Biography
             <textarea
               disabled={saveMutation.isPending}
-              maxLength={1000}
+              maxLength={MAX_BIO}
               onChange={(event) => setBio(event.target.value)}
               placeholder="Describe the experience and perspective you bring to the team."
-              rows={7}
+              rows={6}
               value={bio}
             />
-            <small>{bio.length}/1000 characters</small>
+            <small>
+              {bio.length}/{MAX_BIO} characters
+            </small>
           </label>
           <div className="profile-edit-form__actions">
-            <button className="secondary-action" onClick={cancelEditing} type="button">
+            <button className="profile-panel__link" onClick={cancelEditing} type="button">
+              <X aria-hidden="true" size={15} />
               Cancel
             </button>
             <button disabled={saveMutation.isPending} type="submit">
-              <Check aria-hidden="true" size={17} />
+              <Check aria-hidden="true" size={16} />
               {saveMutation.isPending ? "Saving…" : "Save changes"}
             </button>
           </div>
         </form>
       ) : null}
 
-      {saved ? <p role="status">Profile saved.</p> : null}
+      {saved ? (
+        <p className="profile-saved" role="status">
+          Profile saved.
+        </p>
+      ) : null}
       {actionError ? (
         <p className="auth-error" role="alert">
           {actionError}
@@ -197,11 +181,9 @@ export function MyProfilePanel({ csrfToken, identity }: MyProfilePanelProps) {
   );
 }
 
-function initials(displayName: string) {
-  return displayName
-    .split(" ")
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase();
+function formatUpdated(iso: string) {
+  const parsed = new Date(iso);
+  return Number.isNaN(parsed.getTime())
+    ? iso
+    : new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(parsed);
 }

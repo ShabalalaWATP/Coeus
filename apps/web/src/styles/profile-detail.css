@@ -1,0 +1,177 @@
+/* Editing and reading the professional profile, plus the access and
+ capability panels that sit beside it. */
+
+/* ---- Professional profile ---- */
+
+.profile-read-view {
+  display: grid;
+  gap: 12px;
+}
+
+.profile-read-view__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.008em;
+}
+
+.profile-bio {
+  max-width: 74ch;
+  margin: 0;
+  color: var(--text);
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
+.profile-edit-form {
+  display: grid;
+  gap: 14px;
+}
+
+.profile-edit-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.profile-edit-form input,
+.profile-edit-form textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  background: var(--surface-muted);
+  color: var(--text);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  resize: vertical;
+  transition: border-color var(--speed-fast) ease;
+}
+
+.profile-edit-form input:focus,
+.profile-edit-form textarea:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.profile-edit-form label small {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.profile-edit-form__actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.profile-edit-form__actions button[type="submit"] {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 40px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  padding: 0 16px;
+  background: var(--accent-strong);
+  color: white;
+  font-weight: 750;
+}
+
+.profile-saved {
+  margin: 0;
+  color: var(--success);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+/* ---- Access ---- */
+
+/* Held groups run into the dozens, so they are a dense grid of compact
+   entries rather than a stack of full-width rows. */
+.profile-access-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.profile-access-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 8px 11px;
+  background: var(--surface-muted);
+  color: var(--success);
+}
+
+.profile-access-list span {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.profile-access-list strong {
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.profile-access-list small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+/* ---- Capabilities ---- */
+
+.profile-capability-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.profile-capability h4 {
+  margin: 0 0 7px;
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 760;
+}
+
+.profile-capability ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.profile-capability li {
+  color: var(--muted);
+  font-size: 0.83rem;
+  line-height: 1.45;
+}
+
+.profile-capability li::before {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 60%, transparent);
+  vertical-align: middle;
+}
+
+@media (max-width: 900px) {
+  .profile-layout {
+    grid-template-columns: 1fr;
+  }
+}
