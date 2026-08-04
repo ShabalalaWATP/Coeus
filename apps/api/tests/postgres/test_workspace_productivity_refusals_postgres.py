@@ -216,8 +216,21 @@ def test_store_links_require_current_authority_and_exact_versions(
             _command(actor, "delete_store_link", {"link_id": uuid4(), "expected_version": 0})
         )
 
+    updated = store.save_store_link(
+        _command(actor, "save_store_link", payload(expected_version=1, label="Renamed report"))
+    )
+    assert updated.version == 2 and updated.label == "Renamed report"
+    with pytest.raises(WorkspaceRecordConflict, match="Store link version changed"):
+        store.save_store_link(_command(actor, "save_store_link", payload(expected_version=1)))
+    with pytest.raises(WorkspaceRecordDenied):
+        store.save_store_link(_command(other, "save_store_link", payload(expected_version=2)))
+    with pytest.raises(WorkspaceRecordConflict, match="Store link version changed"):
+        store.delete_store_link(
+            _command(actor, "delete_store_link", {"link_id": link_id, "expected_version": 9})
+        )
+
     assert store.delete_store_link(
-        _command(actor, "delete_store_link", {"link_id": link_id, "expected_version": 1})
+        _command(actor, "delete_store_link", {"link_id": link_id, "expected_version": 2})
     )
     engine.dispose()
 

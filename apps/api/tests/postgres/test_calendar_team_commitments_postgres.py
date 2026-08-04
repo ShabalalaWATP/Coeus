@@ -254,7 +254,9 @@ def test_team_crud_successor_response_races_and_notifications(
         ),
         "create-team-event",
     )
-    occurrence_key = (now + timedelta(days=2)).date().isoformat()
+    # Occurrences are keyed by their local start date, which is not the UTC date
+    # of the same instant late in the evening.
+    occurrence_key = team_event.timing.start_date.isoformat()
     occurrence_change = CalendarMutationRequest(
         CalendarMutationOperation.UPDATE_OCCURRENCE,
         replace(team_event, note="One changed synthetic occurrence.", version=1),
