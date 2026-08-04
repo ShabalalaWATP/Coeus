@@ -1,5 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import { Activity, BarChart3, ClipboardList, Database, ShieldCheck, UserCog } from "lucide-react";
+import {
+  Activity,
+  BarChart3,
+  ClipboardList,
+  Database,
+  Network,
+  ShieldCheck,
+  UserCog,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { AiModelPanel } from "./AiModelPanel";
@@ -11,6 +19,12 @@ import { getAdminOverview } from "../../lib/api-client/admin";
 import { useAuth } from "../../lib/auth/auth-context";
 
 const adminActions = [
+  {
+    description: "Manage reporting lines, units and delegated authority.",
+    icon: Network,
+    label: "Organisation",
+    to: "/admin/organisation",
+  },
   {
     description: "Review access groups and membership controls.",
     icon: ShieldCheck,

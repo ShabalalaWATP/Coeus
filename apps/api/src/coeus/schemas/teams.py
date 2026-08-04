@@ -92,6 +92,8 @@ class AvailabilityResponse(BaseModel):
     team_id: UUID = Field(serialization_alias="teamId")
     entry_date: str = Field(serialization_alias="date")
     members: int
+    active_people: int = Field(serialization_alias="activePeople")
+    assignable: int
     on_leave: int = Field(serialization_alias="onLeave")
     on_task_calendar: int = Field(serialization_alias="onTaskCalendar")
     other_commitments: int = Field(serialization_alias="otherCommitments")

@@ -3,7 +3,7 @@ import { previewProfile } from "../../test/test-utils";
 
 test("preview profile can see every sprint shell route", () => {
   expect(visibleNavigationItems(previewProfile).map((item) => item.label)).toEqual(
-    expect.arrayContaining(["Requests", "Intelligence Store", "Admin", "Audit"]),
+    expect.arrayContaining(["Requests", "Intelligence Store", "Admin", "Organisation", "Audit"]),
   );
 });
 
@@ -81,7 +81,13 @@ test("route metadata includes active navigation paths", () => {
   const routes = visibleNavigationItems(previewProfile);
 
   expect(routes.map((item) => item.path)).toEqual(
-    expect.arrayContaining(["/admin/overview", "/admin/acgs", "/rfa/queue", "/analyst/workbench"]),
+    expect.arrayContaining([
+      "/admin/overview",
+      "/admin/organisation",
+      "/admin/acgs",
+      "/rfa/queue",
+      "/analyst/my-work",
+    ]),
   );
   expect(routes.find((item) => item.path === "/admin/overview")?.label).toBe("Admin");
   expect(routes.find((item) => item.path === "/admin/acgs")?.requiredPermissions).toEqual([

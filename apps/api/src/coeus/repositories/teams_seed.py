@@ -1,11 +1,12 @@
 """Seed the organisational teams and member profiles from the seed users."""
 
 from dataclasses import replace
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from coeus.domain.teams import OrgTeam, TeamKind, UserProfile
 from coeus.repositories.auth import SeedUserRepository
 from coeus.repositories.auth_seed import canonical_seed_username
+from coeus.repositories.synthetic_workforce import synthetic_team_id
 from coeus.repositories.teams import TeamRepository
 from coeus.repositories.teams_seed_profiles import LEGACY_PROFILE_SPECS, PROFILE_SPECS
 
@@ -20,7 +21,6 @@ _TEAM_SPECS: tuple[tuple[str, TeamKind, str | None, tuple[str, ...], tuple[str, 
             "rfa.team@example.test",
             "analyst@example.test",
             "analyst.2@example.test",
-            "analyst.3@example.test",
             "analyst.4@example.test",
         ),
     ),
@@ -31,8 +31,67 @@ _TEAM_SPECS: tuple[tuple[str, TeamKind, str | None, tuple[str, ...], tuple[str, 
         ("collection.manager@example.test",),
         (
             "collection.team@example.test",
-            "analyst@example.test",
             "analyst.3@example.test",
+            "analyst.16@example.test",
+            "analyst.17@example.test",
+        ),
+    ),
+    (
+        "All-source and Land Assessment",
+        TeamKind.RFA,
+        "RFA-ALL-SOURCE-LAND",
+        ("rfa.lead.2@example.test",),
+        (
+            "analyst.5@example.test",
+            "analyst.6@example.test",
+            "analyst.7@example.test",
+            "analyst.15@example.test",
+        ),
+    ),
+    (
+        "Cyber and Technical Assessment",
+        TeamKind.RFA,
+        "RFA-CYBER-TECHNICAL",
+        ("rfa.lead.3@example.test",),
+        (
+            "analyst.8@example.test",
+            "analyst.9@example.test",
+            "analyst.10@example.test",
+            "analyst.14@example.test",
+        ),
+    ),
+    (
+        "Regional and Open-source Assessment",
+        TeamKind.RFA,
+        "RFA-REGIONAL-OSINT",
+        ("rfa.lead.4@example.test",),
+        (
+            "analyst.11@example.test",
+            "analyst.12@example.test",
+            "analyst.13@example.test",
+        ),
+    ),
+    (
+        "Geospatial Collection",
+        TeamKind.CM,
+        "CM-GEOSPATIAL",
+        ("cm.lead.2@example.test",),
+        (
+            "analyst.18@example.test",
+            "analyst.19@example.test",
+            "analyst.20@example.test",
+            "analyst.24@example.test",
+        ),
+    ),
+    (
+        "Collection Requirements and Coordination",
+        TeamKind.CM,
+        "CM-REQUIREMENTS",
+        ("cm.lead.3@example.test",),
+        (
+            "analyst.21@example.test",
+            "analyst.22@example.test",
+            "analyst.23@example.test",
         ),
     ),
     (
@@ -51,10 +110,52 @@ _TEAM_SPECS: tuple[tuple[str, TeamKind, str | None, tuple[str, ...], tuple[str, 
     ),
 )
 
+# Exact pre-single-home signatures. Only these untouched records are
+# reconciled; any manager, member, capability, state or name edit is retained.
+_LEGACY_ROUTE_TEAM_SPECS = (
+    (
+        "RFA Assessment Team",
+        TeamKind.RFA,
+        "RFA-MARITIME",
+        ("rfa.manager@example.test",),
+        (
+            "rfa.team@example.test",
+            "analyst@example.test",
+            "analyst.2@example.test",
+            "analyst.3@example.test",
+            "analyst.4@example.test",
+        ),
+        (
+            "rfa.team@example.test",
+            "analyst@example.test",
+            "analyst.2@example.test",
+            "analyst.4@example.test",
+        ),
+    ),
+    (
+        "Collection Management Team",
+        TeamKind.CM,
+        "CM-CYBER-SENSOR",
+        ("collection.manager@example.test",),
+        (
+            "collection.team@example.test",
+            "analyst@example.test",
+            "analyst.3@example.test",
+        ),
+        (
+            "collection.team@example.test",
+            "analyst.3@example.test",
+            "analyst.16@example.test",
+            "analyst.17@example.test",
+        ),
+    ),
+)
+
 
 def seed_teams(teams: TeamRepository, users: SeedUserRepository) -> None:
     """Create seed teams and reconcile untouched synthetic profiles."""
     if teams.list_teams():
+        _reconcile_untouched_route_teams(teams, users)
         _ensure_jioc_seed_member(teams, users)
         _ensure_profiles(teams, users)
         return
@@ -63,7 +164,7 @@ def seed_teams(teams: TeamRepository, users: SeedUserRepository) -> None:
         members = _user_ids(users, member_names)
         teams.save_team(
             OrgTeam(
-                team_id=uuid4(),
+                team_id=synthetic_team_id(name),
                 name=name,
                 kind=kind,
                 manager_user_ids=managers,
@@ -72,6 +173,31 @@ def seed_teams(teams: TeamRepository, users: SeedUserRepository) -> None:
             )
         )
     _ensure_profiles(teams, users)
+
+
+def _reconcile_untouched_route_teams(teams: TeamRepository, users: SeedUserRepository) -> None:
+    for (
+        name,
+        kind,
+        capability_team_id,
+        manager_names,
+        legacy_member_names,
+        current_member_names,
+    ) in _LEGACY_ROUTE_TEAM_SPECS:
+        managers = _user_ids(users, manager_names)
+        legacy_members = _user_ids(users, legacy_member_names)
+        current_members = _user_ids(users, current_member_names)
+        for team in teams.list_teams():
+            if (
+                team.name == name
+                and team.kind is kind
+                and team.capability_team_id == capability_team_id
+                and team.manager_user_ids == managers
+                and team.member_user_ids == legacy_members
+                and team.is_active
+            ):
+                teams.save_team(replace(team, member_user_ids=current_members))
+                break
 
 
 def _ensure_jioc_seed_member(teams: TeamRepository, users: SeedUserRepository) -> None:
@@ -131,9 +257,11 @@ def _matches_profile(profile: UserProfile, spec: tuple[str, tuple[str, ...], str
 
 
 def _user_ids(users: SeedUserRepository, usernames: tuple[str, ...]) -> tuple[UUID, ...]:
+    resolver = getattr(users, "get_seed_by_canonical_username", None)
+    by_canonical = {canonical_seed_username(user.username): user for user in users.list_users()}
     ids: list[UUID] = []
     for username in usernames:
-        user = users.get_seed_by_canonical_username(username)
+        user = resolver(username) if callable(resolver) else by_canonical.get(username)
         if user is not None:
             ids.append(user.user_id)
     return tuple(ids)

@@ -240,4 +240,5 @@ complete recovery of retained `workflow/submissions/...` bytes.
 | Signals and outbox        | `core/logging.py`, `api/routes/health.py`, `services/outbox_dispatcher.py`         |
 | CI and security workflows | `.github/workflows`                                                                |
 | Recovery                  | [Coordinated backup and restore](../runbooks/coordinated-backup-restore.md)        |
+| Organisation operations   | [Administration guide](../runbooks/organisation-administration.md), [projection and capacity repair](../runbooks/organisation-projection-and-capacity-repair.md) |
 | Deployment guide          | [Concise deployment architecture](../ARCHITECTURE_DEPLOYMENT.md)                   |

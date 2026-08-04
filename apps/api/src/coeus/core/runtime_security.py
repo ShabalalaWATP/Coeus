@@ -7,7 +7,12 @@ from coeus.core.advisory_egress import advisory_egress_errors
 from coeus.core.config import DEFAULT_ASSET_TOKEN_SECRET, DEFAULT_SEED_CREDENTIAL, Settings
 from coeus.core.deployment import HOSTED_ENVIRONMENTS
 from coeus.core.litellm_endpoint import litellm_base_url_errors
-from coeus.domain.jioc_routing import ROUTING_RELEASE, JiocRoutingMode, normalise_routing_mode
+from coeus.domain.jioc_routing import (
+    ROUTING_RELATIONAL_CAPACITY_RELEASE,
+    ROUTING_RELEASE,
+    JiocRoutingMode,
+    normalise_routing_mode,
+)
 
 SEED_USER_ENVIRONMENTS = frozenset({"local", "test"})
 SECURE_COOKIE_ENVIRONMENTS = frozenset({"staging", "prod"})
@@ -25,6 +30,7 @@ def runtime_security_errors(settings: Settings) -> tuple[str, ...]:
         *_seed_user_errors(settings),
         *_secret_errors(settings),
         *_integration_errors(settings),
+        *_organisation_errors(settings),
         *advisory_egress_errors(settings),
         *_transport_errors(settings),
         *_identity_errors(settings),
@@ -120,6 +126,40 @@ def _integration_errors(settings: Settings) -> tuple[str, ...]:
             "COEUS_JIOC_ROUTING_APPROVED_RELEASES must contain the current evaluated "
             f"routing release ({ROUTING_RELEASE}) before active routing is enabled."
         )
+    return tuple(errors)
+
+
+def _organisation_errors(settings: Settings) -> tuple[str, ...]:
+    errors: list[str] = []
+    if settings.organisation_demo_seed_enabled and settings.environment not in {"local", "test"}:
+        errors.append("COEUS_ORGANISATION_DEMO_SEED_ENABLED is local/test only.")
+    if settings.organisation_mode == "disabled":
+        return tuple(errors)
+    if settings.persistence_provider != "postgres":
+        errors.append(
+            "COEUS_ORGANISATION_MODE shadow, management and active require PostgreSQL persistence."
+        )
+    if settings.organisation_mode in {"management", "active"} and (
+        settings.ticket_persistence_mode != "relational"
+    ):
+        errors.append(
+            "COEUS_ORGANISATION_MODE=management or active requires relational ticket persistence."
+        )
+    if (
+        settings.environment in HOSTED_ENVIRONMENTS
+        and "organisation_mode" not in settings.model_fields_set
+    ):
+        errors.append("COEUS_ORGANISATION_MODE must be explicit when hosted.")
+    if settings.organisation_mode == "active":
+        if not settings.organisation_active_candidate_hash:
+            errors.append("COEUS_ORGANISATION_ACTIVE_CANDIDATE_HASH is required in active mode.")
+        if not settings.organisation_cutover_source_revision:
+            errors.append("COEUS_ORGANISATION_CUTOVER_SOURCE_REVISION is required in active mode.")
+        if ROUTING_RELATIONAL_CAPACITY_RELEASE not in settings.jioc_routing_approved_releases:
+            errors.append(
+                "COEUS_JIOC_ROUTING_APPROVED_RELEASES must contain the current relational "
+                "capacity release before active organisation mode is enabled."
+            )
     return tuple(errors)
 
 

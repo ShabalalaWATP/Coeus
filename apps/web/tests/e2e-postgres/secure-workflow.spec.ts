@@ -228,7 +228,14 @@ test("assigns the request as the RFA manager", async ({ page }) => {
   await login(page, "rfa.manager@example.test", "RFA Queue");
   await page.getByRole("button", { name: new RegExp(reference) }).click();
   await page.getByRole("checkbox", { name: "Lewis Ferguson", exact: true }).check();
+  const assignmentResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      /\/api\/v1\/analyst\/tasks\/[^/]+\/assign$/.test(response.url()),
+  );
   await page.getByRole("button", { name: "Assign analysts" }).click();
+  const assigned = await assignmentResponse;
+  expect(assigned.status(), await assigned.text()).toBe(200);
   await expect(page.getByText("No tickets in this queue.")).toBeVisible();
 });
 

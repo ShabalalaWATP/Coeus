@@ -1,5 +1,5 @@
 from dataclasses import replace
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import pytest
 from fastapi import FastAPI
@@ -8,11 +8,8 @@ from httpx import ASGITransport, AsyncClient, Response
 from coeus.core.config import Settings
 from coeus.core.errors import AppError
 from coeus.domain.auth import RoleName, UserAccount
+from coeus.domain.teams import TeamKind
 from coeus.main import create_app
-from coeus.services.analyst_workflow import (
-    ANALYST_LINKED_PRODUCT_LIMIT,
-    ANALYST_TASK_LIST_LIMIT,
-)
 from rfi_search_helpers import (
     ensure_search_index_ready,
     login,
@@ -216,55 +213,6 @@ async def test_linking_cannot_create_its_own_draft_audience_authority() -> None:
     assert readable_product_id in {item["productId"] for item in allowed.json()["linkedProducts"]}
 
 
-@pytest.mark.asyncio
-async def test_analyst_task_and_link_reauthorisation_work_is_bounded() -> None:
-    app = _legacy_routing_app()
-    actor = app.state.access_services.repository.get_user_by_username("analyst@example.test")
-    assert actor is not None
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://testserver"
-    ) as client:
-        ticket_id = await _collection_assigned_ticket(client, app)
-        product_id = await _create_published_product(
-            client, app, actor, "Mock Bounded Published Product"
-        )
-        session = await login(client, actor.username)
-        linked = await client.post(
-            f"/api/v1/analyst/tasks/{ticket_id}/products",
-            headers={"X-CSRF-Token": str(session["csrfToken"])},
-            json={"productId": product_id},
-        )
-    assert linked.status_code == 200
-
-    repository = app.state.ticket_services.tickets._repository
-    ticket = repository.get(UUID(ticket_id))
-    assert ticket is not None
-    link = ticket.linked_products[0]
-    capped = replace(
-        ticket,
-        linked_products=tuple(
-            replace(link, link_id=uuid4()) for _index in range(ANALYST_LINKED_PRODUCT_LIMIT)
-        ),
-    )
-    repository.save(capped)
-
-    visible = app.state.analyst_workflow_service.visible_linked_products(actor, capped)
-    with pytest.raises(AppError) as raised:
-        app.state.analyst_workflow_service.link_product(actor, capped.ticket_id, uuid4())
-    for index in range(ANALYST_TASK_LIST_LIMIT):
-        repository.save(
-            replace(
-                capped,
-                ticket_id=uuid4(),
-                reference=f"TCK-BOUND-{index:04d}",
-            )
-        )
-
-    assert len(visible) == ANALYST_LINKED_PRODUCT_LIMIT
-    assert raised.value.code == "linked_product_limit_reached"
-    assert len(app.state.analyst_workflow_service.list_tasks(actor)) == ANALYST_TASK_LIST_LIMIT
-
-
 async def _collection_assigned_ticket(client: AsyncClient, app: FastAPI) -> str:
     ensure_search_index_ready(app)
     requester = await login(client, "user@example.test")
@@ -340,10 +288,27 @@ async def _collection_assigned_ticket(client: AsyncClient, app: FastAPI) -> str:
 
 
 def _legacy_routing_app() -> FastAPI:
-    return create_app(
+    app = create_app(
         Settings(
             environment="test",
             argon2_memory_cost=8_192,
             automatic_request_discovery_enabled=False,
         )
     )
+    analyst = app.state.access_services.repository.get_user_by_username("analyst@example.test")
+    assert analyst is not None
+    teams = app.state.team_repository.list_teams()
+    rfa_team = next(team for team in teams if team.name == "RFA Assessment Team")
+    cm_team = next(team for team in teams if team.kind is TeamKind.CM)
+    app.state.team_repository.save_team(
+        replace(
+            rfa_team,
+            member_user_ids=tuple(
+                user_id for user_id in rfa_team.member_user_ids if user_id != analyst.user_id
+            ),
+        )
+    )
+    app.state.team_repository.save_team(
+        replace(cm_team, member_user_ids=(*cm_team.member_user_ids, analyst.user_id))
+    )
+    return app

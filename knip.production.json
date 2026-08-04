@@ -2,6 +2,7 @@
   "ignore": [
     "apps/web/src/lib/api-client/generated/**",
     "apps/web/playwright.config.ts",
+    "apps/web/playwright.sprint24-postgres.config.ts",
     "apps/web/src/**/*.fixtures.ts",
     "apps/web/src/**/*.fixtures.tsx",
     "apps/web/src/**/*-test-fixtures.ts",

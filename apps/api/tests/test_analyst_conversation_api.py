@@ -24,7 +24,7 @@ async def test_assigned_analyst_reads_the_complete_ordered_conversation_only() -
         team_id = next(
             team.team_id
             for team in app.state.team_repository.list_teams()
-            if team.kind.value == "rfa"
+            if team.name == "RFA Assessment Team"
         )
         assigned = await client.post(
             f"/api/v1/analyst/tasks/{ticket_id}/assign",

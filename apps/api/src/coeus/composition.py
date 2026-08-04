@@ -3,17 +3,23 @@ from fastapi import FastAPI
 from coeus.api.identity_composition import IdentityComponents, configure_identity
 from coeus.api.product_workflow_composition import configure_product_workflow
 from coeus.api.search_composition import configure_search_services
-from coeus.api.ticket_discovery_composition import build_ticket_discovery_handler
 from coeus.application.ports.admission import ResourceAdmission
+from coeus.assignment_recommendation_composition import configure_assignment_recommendations
 from coeus.core.config import Settings
 from coeus.core.deployment import HOSTED_ENVIRONMENTS
 from coeus.domain.jioc_routing import JiocRoutingMode, normalise_routing_mode
+from coeus.jioc_routing_composition import routing_operational_context
+from coeus.organisation_composition import (
+    configure_organisation_shadow,
+    reconcile_historical_task_ownership,
+)
 from coeus.persistence.factory import build_state_store
 from coeus.persistence.outbox import PostgresOutboxStore
 from coeus.persistence.state_store import PostgresStateStore
 from coeus.persistence.workflow_transaction import PostgresWorkflowTransaction
 from coeus.repositories.teams import TeamRepository
 from coeus.repositories.teams_seed import seed_teams
+from coeus.runtime_outbox_composition import build_runtime_outbox_handlers
 from coeus.services.admin_analytics import AdminAnalyticsService
 from coeus.services.admission_metrics import AdmissionMetrics
 from coeus.services.ai_models import AiModelService
@@ -28,7 +34,6 @@ from coeus.services.embeddings import build_embedding_service
 from coeus.services.feedback_analytics import build_feedback_analytics_service
 from coeus.services.integration_secrets import EncryptedIntegrationSecretStore
 from coeus.services.jioc_routing_agent import JiocRoutingAgentService
-from coeus.services.jioc_routing_context import LiveRoutingOperationalContext
 from coeus.services.manager_approval import ManagerApprovalService
 from coeus.services.manager_queue import ManagerQueueService
 from coeus.services.notifications import NotificationService
@@ -36,13 +41,10 @@ from coeus.services.object_storage import build_object_storage
 from coeus.services.outbox_dispatcher import OutboxDispatcher
 from coeus.services.postgres_resource_admission import PostgresResourceAdmissionController
 from coeus.services.quality_control import build_quality_control_service
-from coeus.services.release_notification_handler import ProductReleaseNotificationHandler
 from coeus.services.resource_admission import LocalResourceAdmissionController
 from coeus.services.rfi_search_builder import build_rfi_search_service
 from coeus.services.routing import build_routing_service
 from coeus.services.routing_critic_agent import RoutingCriticAgent
-from coeus.services.routing_critic_intent import ROUTING_CRITIQUE_REQUESTED
-from coeus.services.routing_critic_outbox_handler import RoutingCriticOutboxHandler
 from coeus.services.search_planner_agent import SearchPlannerAgent
 from coeus.services.similar_requests import SimilarRequestService
 from coeus.services.store_builder import build_store_services
@@ -83,6 +85,7 @@ def configure_application_state(app: FastAPI, settings: Settings) -> None:
             app.state.ticket_services,
             app.state.team_repository,
         )
+    reconcile_historical_task_ownership(app, settings)
 
 
 def _upload_admission(settings: Settings, metrics: AdmissionMetrics) -> ResourceAdmission:
@@ -207,9 +210,11 @@ def _configure_workflow_services(
     audit_log = identity.audit_log
     app.state.team_repository = TeamRepository(app.state.state_store)
     seed_teams(app.state.team_repository, identity.users)
+    configure_organisation_shadow(app, settings, identity, app.state.team_repository)
     app.state.team_availability_service = TeamAvailabilityService(
         app.state.team_repository,
         tickets,
+        identity.access,
     )
     app.state.ticket_collaborator_service = TicketCollaboratorService(
         users=identity.users,
@@ -237,12 +242,10 @@ def _configure_workflow_services(
         app.state.search_planner_agent,
     )
     app.state.routing_service = build_routing_service(tickets, audit_log)
+    operational_context = routing_operational_context(app, settings)
     deterministic_router = JiocRoutingAgentService(
         tickets,
-        operational_context=LiveRoutingOperationalContext(
-            app.state.team_repository,
-            app.state.team_availability_service,
-        ),
+        operational_context=operational_context,
     )
     app.state.jioc_deterministic_routing_service = deterministic_router
     critic = RoutingCriticAgent(app.state.bounded_advisory_service)
@@ -258,7 +261,9 @@ def _configure_workflow_services(
         identity.access,
         app.state.team_repository,
         audit_log,
+        app.state.team_availability_service,
     )
+    configure_assignment_recommendations(app)
     app.state.analyst_workflow_service = AnalystWorkflowService(
         tickets,
         store,
@@ -289,13 +294,7 @@ def _configure_workflow_services(
     if settings.environment in HOSTED_ENVIRONMENTS:
         app.state.outbox_dispatcher = OutboxDispatcher(
             PostgresOutboxStore(settings.database_url),
-            {
-                "ticket_shadow_changed": build_ticket_discovery_handler(app, identity.access),
-                "product_release_notification": ProductReleaseNotificationHandler(
-                    identity.users, app.state.notification_service
-                ),
-                ROUTING_CRITIQUE_REQUESTED: RoutingCriticOutboxHandler(tickets, critic),
-            },
+            build_runtime_outbox_handlers(app, identity, tickets, critic),
             lease_seconds=settings.outbox_lease_seconds,
             retry_seconds=settings.outbox_retry_seconds,
             max_attempts=settings.outbox_max_attempts,
@@ -309,6 +308,7 @@ def _configure_workflow_services(
         app.state.team_repository,
         identity.users,
         audit_log,
+        app.state.team_availability_service,
     )
     app.state.team_calendar_service = TeamCalendarService(
         app.state.team_repository,
@@ -319,7 +319,10 @@ def _configure_workflow_services(
 def _workflow_transaction(app: FastAPI, settings: Settings) -> PostgresWorkflowTransaction | None:
     state_store = app.state.state_store
     if isinstance(state_store, PostgresStateStore) and state_store.ticket_mode == "relational":
-        return PostgresWorkflowTransaction(settings.database_url)
+        return PostgresWorkflowTransaction(
+            settings.database_url,
+            canonical_assignment_projection_enabled=settings.organisation_mode != "disabled",
+        )
     return None
 
 

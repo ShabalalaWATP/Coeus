@@ -21,10 +21,10 @@ from coeus.repositories.demo_access_specs import (
     merge_demo_access,
     specialist_acgs,
 )
+from coeus.repositories.synthetic_access_manifest import merge_synthetic_analyst_access
 
 SEED_NAMESPACE = UUID("f71d6c95-85da-4f8b-8d55-e547c227c3a4")
-
-DEMO_ACCESS_SEED_VERSION = 2
+DEMO_ACCESS_SEED_VERSION = 3
 
 
 def stable_seed_id(name: str) -> UUID:
@@ -194,10 +194,13 @@ class SeedAccessRepository:
         if int(marker.get("version", 0)) < DEMO_ACCESS_SEED_VERSION:
             admin = self._user("admin@example.test")
             billy = self._user("colleague@example.test")
-            if merge_demo_access(
+            merge_demo_access(
                 self._acgs, self._memberships, admin.user_id, billy.user_id, stable_seed_id
-            ):
-                self._persist()
+            )
+            merge_synthetic_analyst_access(
+                self._acgs, self._memberships, self._users.get_seed_by_canonical_username
+            )
+            self._persist()
             self._state_store.save("demo_access_seed", {"version": DEMO_ACCESS_SEED_VERSION})
 
     def _persist(self) -> None:
@@ -268,6 +271,9 @@ class SeedAccessRepository:
         for acg in self._acgs.values():
             if acg.code not in BILLY_DENIED_ACG_CODES:
                 self.add_membership(acg.acg_id, colleague.user_id)
+        merge_synthetic_analyst_access(
+            self._acgs, self._memberships, self._users.get_seed_by_canonical_username
+        )
 
         regional_product = build_seed_product(
             stable_seed_id("product-regional-stability-brief"),

@@ -59,6 +59,12 @@ def _terminate_process_tree(process: subprocess.Popen[bytes]) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--database-url", default=os.getenv("COEUS_TEST_DATABASE_URL"))
+    parser.add_argument(
+        "--suite",
+        choices=("all", "secure", "sprint24"),
+        default="all",
+        help="Run both browser suites or one isolated evidence suite.",
+    )
     args = parser.parse_args(argv)
     if not args.database_url:
         parser.error("--database-url or COEUS_TEST_DATABASE_URL is required")
@@ -67,14 +73,20 @@ def main(argv: list[str] | None = None) -> int:
     database_name = f"coeus_playwright_{uuid4().hex}"
     admin_url = base_url.set(drivername="postgresql", database="postgres")
     admin_dsn = admin_url.render_as_string(hide_password=False)
-    test_url = base_url.set(database=database_name).render_as_string(hide_password=False)
+    test_url = base_url.set(database=database_name).render_as_string(
+        hide_password=False
+    )
     with psycopg.connect(admin_dsn, autocommit=True) as connection:
-        connection.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(database_name)))
+        connection.execute(
+            sql.SQL("CREATE DATABASE {}").format(sql.Identifier(database_name))
+        )
     env = os.environ.copy()
     env["COEUS_DATABASE_URL"] = test_url
     env["COEUS_PLAYWRIGHT_DATABASE_URL"] = test_url
     try:
-        with tempfile.TemporaryDirectory(prefix="coeus-playwright-objects-") as object_root:
+        with tempfile.TemporaryDirectory(
+            prefix="coeus-playwright-objects-"
+        ) as object_root:
             env["COEUS_PLAYWRIGHT_OBJECT_STORAGE_PATH"] = object_root
             _run(
                 [
@@ -88,18 +100,27 @@ def main(argv: list[str] | None = None) -> int:
                 ],
                 env,
             )
-            _run(
-                [
-                    "pnpm.cmd" if os.name == "nt" else "pnpm",
-                    "--filter",
-                    "@coeus/web",
-                    "exec",
-                    "playwright",
-                    "test",
-                    "--config=playwright.postgres.config.ts",
-                ],
-                env,
-            )
+            configs = {
+                "all": (
+                    "playwright.postgres.config.ts",
+                    "playwright.sprint24-postgres.config.ts",
+                ),
+                "secure": ("playwright.postgres.config.ts",),
+                "sprint24": ("playwright.sprint24-postgres.config.ts",),
+            }
+            for config in configs[args.suite]:
+                _run(
+                    [
+                        "pnpm.cmd" if os.name == "nt" else "pnpm",
+                        "--filter",
+                        "@coeus/web",
+                        "exec",
+                        "playwright",
+                        "test",
+                        f"--config={config}",
+                    ],
+                    env,
+                )
     finally:
         with psycopg.connect(admin_dsn, autocommit=True) as connection:
             connection.execute(
@@ -107,7 +128,9 @@ def main(argv: list[str] | None = None) -> int:
                 "WHERE datname = %s AND pid <> pg_backend_pid()",
                 (database_name,),
             )
-            connection.execute(sql.SQL("DROP DATABASE {}").format(sql.Identifier(database_name)))
+            connection.execute(
+                sql.SQL("DROP DATABASE {}").format(sql.Identifier(database_name))
+            )
     return 0
 
 

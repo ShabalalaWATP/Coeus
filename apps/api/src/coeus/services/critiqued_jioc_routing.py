@@ -7,9 +7,9 @@ from coeus.application.ports.jioc_routing import JiocRoutingService
 from coeus.core.logging import get_logger
 from coeus.domain.advisory_agents import AdvisoryAgentKind
 from coeus.domain.agent_names import JIOC_ROUTING_CRITIC_AGENT
+from coeus.domain.jioc_principals import JIOC_AGENT_PRINCIPAL
 from coeus.domain.tickets import TicketRecord
 from coeus.services.advisory_records import advisory_agent_run
-from coeus.services.jioc_routing_agent import JIOC_AGENT_PRINCIPAL
 from coeus.services.routing_critic_agent import RoutingCriticAgent
 from coeus.services.ticket_mutations import TicketMutationService
 

@@ -21,6 +21,7 @@ from coeus.repositories.teams_seed import seed_teams
 from coeus.services.capability_catalogue import CapabilityCatalogue, _regions, _tags
 from coeus.services.team_availability import (
     TeamAvailabilityService,
+    UserReader,
     can_write_entry,
     parse_iso_date,
 )
@@ -40,7 +41,11 @@ def _user(app: FastAPI, username: str) -> UserAccount:
 def _rfa_team(app: FastAPI) -> OrgTeam:
     return cast(
         OrgTeam,
-        next(team for team in app.state.team_repository.list_teams() if team.kind == TeamKind.RFA),
+        next(
+            team
+            for team in app.state.team_repository.list_teams()
+            if team.name == "RFA Assessment Team"
+        ),
     )
 
 
@@ -256,7 +261,11 @@ def test_team_availability_ignores_assignments_outside_the_team() -> None:
     )
 
     assert (
-        TeamAvailabilityService(TeamRepository(), tickets)._assigned_members(frozenset({member}))
+        TeamAvailabilityService(
+            TeamRepository(),
+            tickets,
+            cast(UserReader, SimpleNamespace(list_users=lambda: ())),
+        )._assigned_members(frozenset({member}))
         == set()
     )
 

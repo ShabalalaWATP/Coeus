@@ -3,8 +3,10 @@
 from typing import Protocol
 from uuid import UUID
 
+from coeus.domain.assignment_recommendations import AssignmentRecommendationAcceptance
 from coeus.domain.store import StoreProduct
 from coeus.domain.submission_authority import SubmissionCommitResult
+from coeus.domain.team_task_ownership import AssignmentOwnershipIntent
 from coeus.domain.tickets import TicketRecord
 from coeus.domain.workflow_authority import WorkflowCommitAuthority, WorkflowCommitResult
 from coeus.domain.workflow_transaction import (
@@ -34,6 +36,15 @@ class WorkflowTransactionPort(Protocol):
         updated: TicketRecord,
         audits: tuple[WorkflowAuditIntent, ...],
         outbox: tuple[WorkflowOutboxIntent, ...] = (),
+    ) -> bool: ...
+
+    def commit_ticket_assignment(
+        self,
+        expected: TicketRecord,
+        updated: TicketRecord,
+        audits: tuple[WorkflowAuditIntent, ...],
+        ownership: AssignmentOwnershipIntent,
+        recommendation: AssignmentRecommendationAcceptance | None = None,
     ) -> bool: ...
 
     def commit_authorised_ticket_update(

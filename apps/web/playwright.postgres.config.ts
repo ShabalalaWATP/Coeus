@@ -11,6 +11,7 @@ if (!objectStoragePath) {
 
 export default defineConfig({
   testDir: "./tests/e2e-postgres",
+  testIgnore: "**/zz-sprint24-*.spec.ts",
   timeout: 300_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,

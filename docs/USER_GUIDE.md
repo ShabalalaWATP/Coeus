@@ -28,6 +28,7 @@ inventory](images/README.md).
 - [JIOC routing and oversight](#jioc-routing-and-oversight)
 - [RFA and Collection managers](#rfa-and-collection-managers)
 - [Intelligence analyst](#intelligence-analyst)
+- [My Work and management boards](#my-work-and-management-boards)
 - [Quality control](#quality-control)
 - [My Team](#my-team)
 - [My profile](#my-profile)
@@ -355,6 +356,17 @@ log according to the administrator's permissions.
 
 ![Administrator overview](images/10-admin-overview.png)
 
+### Organisation and workforce administration
+
+When organisation management mode is enabled, authorised administrators can
+open the organisation tree to manage units, scoped grants, single-home
+personnel postings, calendars and the synthetic exercise fixture. Structural
+and workforce changes use preview and reviewed confirmation. The cutover panel
+is read-only and cannot activate operational authority. Follow the
+[Organisation Administration Guide](runbooks/organisation-administration.md)
+for command safety, grant semantics, personnel transfers, readiness and
+recovery.
+
 ### Choosing the AI model
 
 The **AI provider and model** panel groups models by provider. Gemini, OpenAI,
@@ -430,3 +442,73 @@ membership are separate controls and should all follow least privilege.
 For the full local onboarding and offboarding sequence, including its
 single-writer and non-production boundaries, see [Local Multi-User
 Operations](runbooks/local-multi-user-operations.md).
+
+## Personal recurring activity
+
+Open **My calendar** from your profile to add an all-day activity. An activity
+may repeat daily or on selected weekdays, at an interval from one to 52, for no
+more than 366 days from its first occurrence. Team views continue to apply the
+chosen privacy level to every occurrence. Use **Month**, **Week** or **Agenda**
+to change the presentation. The left and right arrow keys move between these
+view tabs.
+
+**Edit series** and **Cancel series** affect every occurrence. The confirmation
+states this scope before the change is sent. You can also edit or cancel one
+occurrence, or split the series at the selected occurrence and change that date
+and every date after it. Refresh after a version conflict and review the current
+series before trying again.
+
+A manager-created commitment shows **Response needed**. Select **Acknowledge**
+when the commitment is understood. Select **Dispute**, enter the short reason
+that the commitment needs changing, and submit it when dates or details are not
+workable. A manager change returns the commitment to pending so that you review
+the revised version.
+
+Managers with explicit calendar-management authority open **My Team**, select
+the applicable organisation workspace and open **Team calendar**. The **Add
+team event** form creates one shared record for that team. It does not copy the
+event into every member profile. Managers cannot create or move the event into
+an unrelated team, and an authorised successor can maintain it if the original
+creator later leaves the role.
+
+## My Work and management boards
+
+Analysts can select **View all my work** from their profile. The full page is
+the canonical list of packages in which they are currently an accountable owner
+or contributor. Filter by status, optionally include work completed during the
+last 30 days, and switch between cards and the accessible table. **Previous
+page** and **Next page** use stable paging rather than loading an unbounded
+queue. After a page change, keyboard focus returns to the page heading so the
+new results are announced predictably. Opening a row still passes through the
+normal authorised analyst-task route.
+
+Managers open **My Team**, choose an explicitly managed workspace and select
+**Task board**. A managed scope marked **Includes child teams** uses the
+Management task board. Filters cover status, authorised child team, priority
+and due-date range; completed work is collapsed by default and limited to the
+recent window. The Board and Table controls present the same server-authorised
+query. A manager may see full cards only for teams covered by their current
+task-view authority. If they have aggregate-only authority for another child,
+the page shows a **Restricted child-team work** count by status, never a ticket
+reference, title, package or other hidden detail. Counts below five display as
+**Fewer than 5** rather than revealing an individual. Team hierarchy never grants
+ticket or Intelligence Store access by itself.
+
+Open **Saved board views** to keep the current status, team, priority and date
+filters under a private name. Applying a saved view reruns the normal board
+query, so it never preserves access to a team or task that you can no longer
+see. Open **Package templates** to reuse a short package structure for the
+selected team. Only a current authorised manager can create or change a team
+template, and using one does not bypass the normal reviewed planning command.
+
+The profile workspace includes a collapsed **Work updates** section. It lists
+only current work you can still open, supports acknowledgement, and lets you
+choose immediate or digest delivery plus due reminders. An update disappears
+if the related team or object is no longer in your authorised scope.
+
+Authorised tasks and work packages can link to Intelligence Store products or
+projects. A link is a shortcut, not a permission. Coeus checks the task and
+Store access when the link is made and each time it is shown. If project
+membership, clearance or product access is removed, the shortcut is hidden and
+opening the Store URL returns the same generic not-found response as any other
+unauthorised request.

@@ -154,12 +154,29 @@ def test_credential_reset_restores_attempt_state_when_change_fails(
 @pytest.mark.asyncio
 async def test_area_manager_selects_an_authoritative_same_kind_team() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    manager_user = app.state.access_services.repository.get_user_by_username(
+        "rfa.manager@example.test"
+    )
     analyst = app.state.access_services.repository.get_user_by_username("analyst.4@example.test")
-    assert analyst is not None
+    assert analyst is not None and manager_user is not None
+    original_team = next(
+        team
+        for team in app.state.team_repository.list_teams()
+        if analyst.user_id in team.member_user_ids
+    )
+    app.state.team_repository.save_team(
+        replace(
+            original_team,
+            member_user_ids=tuple(
+                user_id for user_id in original_team.member_user_ids if user_id != analyst.user_id
+            ),
+        )
+    )
     team = OrgTeam(
         team_id=uuid4(),
         name="RFA Geospatial Team",
         kind=TeamKind.RFA,
+        manager_user_ids=(manager_user.user_id,),
         member_user_ids=(analyst.user_id,),
     )
     app.state.team_repository.save_team(team)
@@ -196,17 +213,36 @@ async def test_candidate_api_requires_an_exact_team_id() -> None:
 @pytest.mark.asyncio
 async def test_cm_manager_selects_only_a_cm_assignment_team() -> None:
     app = create_app(Settings(environment="test", argon2_memory_cost=8_192))
+    manager_user = app.state.access_services.repository.get_user_by_username(
+        "collection.manager@example.test"
+    )
     analyst = app.state.access_services.repository.get_user_by_username("analyst.4@example.test")
-    assert analyst is not None
+    assert analyst is not None and manager_user is not None
+    original_team = next(
+        team
+        for team in app.state.team_repository.list_teams()
+        if analyst.user_id in team.member_user_ids
+    )
+    app.state.team_repository.save_team(
+        replace(
+            original_team,
+            member_user_ids=tuple(
+                user_id for user_id in original_team.member_user_ids if user_id != analyst.user_id
+            ),
+        )
+    )
     cm_team = OrgTeam(
         team_id=uuid4(),
         name="CM Geospatial Collection Team",
         kind=TeamKind.CM,
+        manager_user_ids=(manager_user.user_id,),
         member_user_ids=(analyst.user_id,),
     )
     app.state.team_repository.save_team(cm_team)
     rfa_team = next(
-        team for team in app.state.team_repository.list_teams() if team.kind == TeamKind.RFA
+        team
+        for team in app.state.team_repository.list_teams()
+        if team.name == "RFA Assessment Team"
     )
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"

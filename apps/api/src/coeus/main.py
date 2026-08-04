@@ -11,12 +11,33 @@ from coeus.api.routes.admin import router as admin_router
 from coeus.api.routes.analyst import router as analyst_router
 from coeus.api.routes.analyst_files import router as analyst_files_router
 from coeus.api.routes.analytics import router as analytics_router
+from coeus.api.routes.assignment_recommendations import (
+    router as assignment_recommendations_router,
+)
 from coeus.api.routes.audit import router as audit_router
 from coeus.api.routes.auth import router as auth_router
+from coeus.api.routes.calendar_import_admin import router as calendar_import_admin_router
 from coeus.api.routes.customer_outcomes import router as customer_outcomes_router
+from coeus.api.routes.cutover_activation import router as cutover_activation_router
+from coeus.api.routes.cutover_readiness import router as cutover_readiness_router
 from coeus.api.routes.feedback import router as feedback_router
 from coeus.api.routes.health import router as health_router
+from coeus.api.routes.my_work import router as my_work_router
 from coeus.api.routes.notifications import router as notifications_router
+from coeus.api.routes.organisation_admin import router as organisation_admin_router
+from coeus.api.routes.organisation_grant_admin import router as organisation_grant_admin_router
+from coeus.api.routes.organisation_merge_admin import router as organisation_merge_admin_router
+from coeus.api.routes.organisation_split_admin import router as organisation_split_admin_router
+from coeus.api.routes.organisation_structure_admin import (
+    router as organisation_structure_admin_router,
+)
+from coeus.api.routes.organisation_workforce_admin import (
+    router as organisation_workforce_admin_router,
+)
+from coeus.api.routes.organisation_workspace import router as organisation_workspace_router
+from coeus.api.routes.package_predecessor_cancellation import (
+    router as package_predecessor_cancellation_router,
+)
 from coeus.api.routes.qc import router as qc_router
 from coeus.api.routes.rfi_search import router as rfi_search_router
 from coeus.api.routes.routing import router as routing_router
@@ -25,11 +46,24 @@ from coeus.api.routes.similar_requests import router as similar_requests_router
 from coeus.api.routes.store import router as store_router
 from coeus.api.routes.store_files import router as store_files_router
 from coeus.api.routes.store_previews import router as store_previews_router
+from coeus.api.routes.team_capacity_forecast import router as team_capacity_forecast_router
 from coeus.api.routes.teams import profile_router as profiles_router
 from coeus.api.routes.teams import router as teams_router
 from coeus.api.routes.tickets import router as tickets_router
 from coeus.api.routes.users_admin import router as users_admin_router
 from coeus.api.routes.voice import router as voice_router
+from coeus.api.routes.work_package_contributors import (
+    router as work_package_contributors_router,
+)
+from coeus.api.routes.work_package_dependencies import (
+    router as work_package_dependencies_router,
+)
+from coeus.api.routes.work_package_handovers import router as work_package_handovers_router
+from coeus.api.routes.work_package_planning import router as work_package_planning_router
+from coeus.api.routes.workflow_leg_transfers import router as workflow_leg_transfers_router
+from coeus.api.routes.workforce_calendar import router as workforce_calendar_router
+from coeus.api.routes.workspace_operations import router as workspace_operations_router
+from coeus.api.routes.workspace_productivity import router as workspace_productivity_router
 from coeus.application.ports.outbox import OutboxDispatchPort
 from coeus.composition import configure_application_state
 from coeus.core.config import Settings
@@ -61,6 +95,9 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         )
         if background_tasks:
             await asyncio.gather(*background_tasks)
+        organisation_engine = getattr(app.state, "organisation_engine", None)
+        if organisation_engine is not None:
+            await asyncio.to_thread(organisation_engine.dispose)
         await dispose_readiness_engines()
 
 
@@ -144,15 +181,37 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(store_previews_router, prefix="/api/v1")
     app.include_router(tickets_router, prefix="/api/v1")
     app.include_router(customer_outcomes_router, prefix="/api/v1")
+    app.include_router(cutover_readiness_router, prefix="/api/v1")
+    app.include_router(cutover_activation_router, prefix="/api/v1")
+    app.include_router(calendar_import_admin_router, prefix="/api/v1")
     app.include_router(rfi_search_router, prefix="/api/v1")
     app.include_router(similar_requests_router, prefix="/api/v1")
     app.include_router(routing_router, prefix="/api/v1")
     app.include_router(analyst_router, prefix="/api/v1")
+    app.include_router(assignment_recommendations_router, prefix="/api/v1")
     app.include_router(analyst_files_router, prefix="/api/v1")
     app.include_router(qc_router, prefix="/api/v1")
     app.include_router(feedback_router, prefix="/api/v1")
     app.include_router(analytics_router, prefix="/api/v1")
     app.include_router(notifications_router, prefix="/api/v1")
+    app.include_router(organisation_admin_router, prefix="/api/v1")
+    app.include_router(organisation_workspace_router, prefix="/api/v1")
+    app.include_router(my_work_router, prefix="/api/v1")
+    app.include_router(organisation_grant_admin_router, prefix="/api/v1")
+    app.include_router(organisation_merge_admin_router, prefix="/api/v1")
+    app.include_router(organisation_structure_admin_router, prefix="/api/v1")
+    app.include_router(organisation_split_admin_router, prefix="/api/v1")
+    app.include_router(organisation_workforce_admin_router, prefix="/api/v1")
+    app.include_router(workforce_calendar_router, prefix="/api/v1")
+    app.include_router(workspace_productivity_router, prefix="/api/v1")
+    app.include_router(workspace_operations_router, prefix="/api/v1")
+    app.include_router(work_package_planning_router, prefix="/api/v1")
+    app.include_router(work_package_contributors_router, prefix="/api/v1")
+    app.include_router(work_package_dependencies_router, prefix="/api/v1")
+    app.include_router(package_predecessor_cancellation_router, prefix="/api/v1")
+    app.include_router(work_package_handovers_router, prefix="/api/v1")
+    app.include_router(workflow_leg_transfers_router, prefix="/api/v1")
+    app.include_router(team_capacity_forecast_router, prefix="/api/v1")
     app.include_router(teams_router, prefix="/api/v1")
     app.include_router(profiles_router, prefix="/api/v1")
     app.include_router(voice_router, prefix="/api/v1")

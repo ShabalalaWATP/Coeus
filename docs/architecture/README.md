@@ -50,6 +50,8 @@ flowchart TB
 | [Exhaustive workflow states](WORKFLOW_STATE_REFERENCE.md) | Which state movements are permitted, including cancellation, intervention, retry, compatibility and outcome paths?        |
 | [Application components](APPLICATION_COMPONENTS.md)       | Which runtime component receives a request, where do rules live, and how are synchronous and background effects composed? |
 | [Data, search and AI](DATA_SEARCH_AND_AI.md)              | Which store is authoritative, how are bytes protected, how do the two indexes work, and where may models advise?          |
+| [Organisation and workforce data dictionary](ORGANISATION_AND_WORKFORCE_DATA_DICTIONARY.md) | Which hierarchy, grant, calendar, package and capacity records are authoritative, and what are their invariants? |
+| [Organisation, workforce and capacity views](ORGANISATION_WORKFORCE_AND_CAPACITY.md) | How do users, canonical calendars, team work, assignment decisions and cutover states connect? |
 | [Security and trust](SECURITY_AND_TRUST.md)               | Where are the trust boundaries, how are sessions and object policy enforced, and what leaves the machine?                 |
 | [Deployment and operations](DEPLOYMENT_AND_OPERATIONS.md) | How does local runtime work, what is future-only, which checks protect release, and what can be recovered?                |
 | [Glossary](GLOSSARY.md)                                   | What do the product, workflow and architecture terms mean?                                                                |

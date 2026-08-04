@@ -5,6 +5,7 @@
     "apps/web": {
       "entry": [
         "playwright.config.ts",
+        "playwright.sprint24-postgres.config.ts",
         "tests/e2e/**/*.spec.ts",
         "tests/e2e-postgres/**/*.spec.ts"
       ],

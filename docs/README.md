@@ -91,6 +91,8 @@ supersession:
 | [Draft Audience Reconciliation](runbooks/draft-audience-reconciliation.md) | Backfill, zero-drift checks and cutover evidence                            |
 | [Ticket Code Rollback](runbooks/ticket-code-rollback-reconciliation.md)    | Quiesced N-1 reverse projection and forward reconciliation                  |
 | [Coordinated Backup and Restore](runbooks/coordinated-backup-restore.md)   | PostgreSQL and local-object recovery drill                                  |
+| [Sprint 24 Relational Authority Cutover](runbooks/sprint24-relational-authority-cutover.md) | Exact-candidate approval, sliced cutover, resume and forward recovery |
+| [Sprint 24 Performance Gate](runbooks/sprint24-performance-gate.md) | Versioned scale fixture, strict p95 budgets and machine-readable evidence |
 
 ## Security operations
 

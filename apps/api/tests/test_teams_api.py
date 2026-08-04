@@ -55,11 +55,11 @@ async def test_teams_are_visible_only_to_their_own_people() -> None:
         assert manager_row["isManager"] is True
         assert any(m["username"] == "analyst@example.test" for m in roster)
 
-        # The shared analyst sits on both the RFA and CM teams.
+        # Analysts have one home team only.
         await login(client, "analyst@example.test")
         analyst_view = await client.get("/api/v1/teams")
         analyst_names = {team["name"] for team in analyst_view.json()["teams"]}
-        assert analyst_names == {"RFA Assessment Team", "Collection Management Team"}
+        assert analyst_names == {"RFA Assessment Team"}
 
         # Customers are on no team and see nothing.
         await login(client, "user@example.test")
@@ -242,11 +242,42 @@ async def test_availability_combines_calendar_and_live_assignments() -> None:
 
     assert availability.status_code == 200
     body = availability.json()
-    # Manager + rfa.team + four analysts are on the seed team.
-    assert body["members"] == 6
+    # The roster is reported separately from its three assignable analysts.
+    assert body["members"] == 5
+    assert body["assignable"] == 3
     assert body["onLeave"] == 1
     assert body["assignedLive"] == 1
-    assert body["free"] == 4
+    assert body["free"] == 1
+
+
+@pytest.mark.asyncio
+async def test_assignment_commit_rejects_a_calendar_busy_analyst() -> None:
+    app = _app()
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        ticket_id = await analyst_assignment_ticket(client)
+        manager = await login(client, "rfa.manager@example.test")
+        team_id = await _team_id(client, "RFA Assessment Team")
+        analyst_id = _user_id(app, "analyst.2@example.test")
+        leave = await client.post(
+            f"/api/v1/teams/{team_id}/calendar",
+            headers={"X-CSRF-Token": str(manager["csrfToken"])},
+            json={
+                "userId": analyst_id,
+                "date": _future_date(0),
+                "status": "leave",
+            },
+        )
+        assigned = await client.post(
+            f"/api/v1/analyst/tasks/{ticket_id}/assign",
+            headers={"X-CSRF-Token": str(manager["csrfToken"])},
+            json={"analystUserIds": [analyst_id], "teamId": team_id},
+        )
+
+    assert leave.status_code == 200
+    assert assigned.status_code == 409
+    assert assigned.json()["error"]["code"] == "analyst_unavailable"
 
 
 @pytest.mark.asyncio

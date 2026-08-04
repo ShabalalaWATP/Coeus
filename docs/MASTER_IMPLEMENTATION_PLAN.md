@@ -5,7 +5,7 @@ original target state. This file is the current delivery, risk and release track
 
 ## Current Stage
 
-As of 2 August 2026, Sprints 1 to 23 are implemented for the supported synthetic
+As of 3 August 2026, Sprints 1 to 23 are implemented for the supported synthetic
 local/test boundary. The 22 July security remediation passed 1,606 backend
 tests (one intentional skip) at 98.23/95.33 line/branch and 537 frontend tests
 at 98.63/95.03, integrated at `0cde7010` with all protected and post-merge
@@ -38,6 +38,55 @@ has access-rechecked collaborative projects and private reusable search
 subscriptions under the [feature contract](specs/intelligence-store-projects-and-subscriptions.md)
 and [ADR 0048](adr/0048-intelligence-store-projects-and-subscriptions.md).
 
+Sprint 24 is approved for phased implementation. Phases 1 to 9 and the local
+Phase 11 implementation are now present through Alembic revision
+`20260804_0045`. This includes the administrator command surface, canonical
+workforce calendars, package planning and handover, conserved capacity,
+integrated team workspaces, the 53-person synthetic cohort, the unapproved
+relational routing evaluation, exact-candidate cutover records and recovery
+evidence. Operational authority cutover is not approved and the default mode
+remains non-active. The delivered baseline corrects flat
+team capacity and assignment authority, and an explicit PostgreSQL `shadow`
+mode now maintains a checkpointed relational organisation projection without
+using it for access, routing or workflow decisions. It
+will replace flat organisational teams and inaccurate headcount-based
+availability with explicit hierarchical organisation units, action-specific
+descendant management, canonical personal and team calendars, workflow-derived
+team Kanban boards, transactional capacity reservations and a realistic
+53-person synthetic workforce. The audited feature contract records the
+current limitations, full phased plan and acceptance matrix. See the
+[Sprint 24 contract](specs/hierarchical-teams-workforce-calendars-and-task-boards.md),
+[ADR 0049](adr/0049-hierarchical-organisations-and-canonical-workforce-capacity.md)
+and [threat model](threat-model/hierarchical-teams-workforce-calendars-and-task-boards.md).
+
+Phase 8 now includes a transactionally maintained, password-free
+relational account projection. Team-capacity reads use that projection for
+active Analyst eligibility inside the same repeatable-read snapshot as
+memberships, calendars and reservations. All 40 stable catalogue team IDs now
+map explicitly to the synthetic delivery leaves, and the internal JIOC
+principal has a revocable `recommendation:view` grant only. The relational
+forecast adapter can be composed only for `management` plus routing `shadow`
+mode and fails closed on missing authority or evidence. The 48-case routing
+gate, including paired deterministic replay, passes. Independent approval and
+the remaining cutover evidence are still required, so active mode remains on
+the established evaluated context.
+
+The last recorded whole-suite bounded baseline, before revisions 0037 to 0045,
+passed 2,410 backend tests with one intentional compatibility skip at 98.16 per
+cent line and 95.04 per cent branch coverage. Focused fail-closed suites cover
+organisation lifecycle and
+restructure persistence, projection drift, workforce calendars, work-package
+planning, capacity forecasts, personal-work accountability, contributor
+lifecycle, account-aware grant lineage, suspended-account exclusion, package
+handover, cutover readiness and team-board row integrity. That baseline's full
+frontend suite passed at 98.77 per cent line and 95.04 per cent branch
+coverage. Ten established secure-workflow and eight Sprint 24 real-PostgreSQL
+browser journeys also passed. Revisions 0037 to 0045 add focused unit,
+PostgreSQL, browser, backup and migration evidence, but a fresh whole-suite
+protected run of the exact release candidate is still required. Independent
+routing approval, independent security review, protected CI and the deployment
+cutover decision keep active routing on the established evaluated context.
+
 The customer-search and autonomous-routing orchestration is implemented under
 its [contract](specs/customer-search-routing-orchestration.md) and
 [ADR 0036](adr/0036-customer-search-assurance-and-agent-routing.md). Submission
@@ -56,32 +105,360 @@ The 21 July 2026 repair aligns Store metadata and object seeding for non-demo an
 
 ## Delivery Ledger
 
-| Sprint | Scope                                                                                                                                                                                                                                                                                                     | Status                                      | Verification                                                                                                                                                                                                                          |
-| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1      | Skeleton, monorepo, API/web shells, Compose and quality gates.                                                                                                                                                                                                                                            | Complete                                    | Local backend/frontend/security gates passed on 2026-07-04.                                                                                                                                                                           |
-| 2      | Auth, sessions, RBAC, role navigation, seed users and branch protection docs.                                                                                                                                                                                                                             | Complete                                    | Local auth, CI and browser gates passed on 2026-07-04.                                                                                                                                                                                |
-| 3      | ACGs, product access diagnostics and product access policy.                                                                                                                                                                                                                                               | Complete                                    | Local access-control gates passed on 2026-07-04; legacy workspace surface retired by ADR 0018.                                                                                                                                        |
-| 4      | Ticket intake, mock chatbot, editable intake, attachments, timeline and customer dashboard.                                                                                                                                                                                                               | Complete                                    | Local ticket-intake gates passed on 2026-07-05.                                                                                                                                                                                       |
-| 5      | Intelligence Store metadata, search, detail, upload and controlled asset access.                                                                                                                                                                                                                          | Complete                                    | Local store and access-regression gates passed on 2026-07-05.                                                                                                                                                                         |
-| 6      | Deterministic synthetic product generation and seed manifests.                                                                                                                                                                                                                                            | Complete                                    | Local generator, security and file-line gates passed on 2026-07-05.                                                                                                                                                                   |
-| 7      | RFI Search Agent, hybrid ranking, product offers and search metrics.                                                                                                                                                                                                                                      | Complete                                    | Local RFI search, Semgrep and UI gates passed on 2026-07-05.                                                                                                                                                                          |
-| 8      | RFA/CM routing agents, manager queues, approvals, clarifications and overrides.                                                                                                                                                                                                                           | Complete                                    | Local routing, Semgrep and UI gates passed on 2026-07-05.                                                                                                                                                                             |
-| 9      | Analyst workbench, assignment, work packages, notes, linked products, drafts and QC submission.                                                                                                                                                                                                           | Complete                                    | Local analyst, Semgrep and UI gates passed on 2026-07-05.                                                                                                                                                                             |
-| 10     | QC queue, checklist, rejection, auto-ingestion, indexing, dissemination and feedback requests.                                                                                                                                                                                                            | Complete                                    | Local and GitHub backend, frontend, Semgrep and CodeQL gates passed on 2026-07-05.                                                                                                                                                    |
-| 11     | Feedback submission, admin/RFA/CM dashboards, product reuse analytics and Trends Analysis Agent.                                                                                                                                                                                                          | Complete                                    | Local backend, frontend, Semgrep and security gates passed on 2026-07-05.                                                                                                                                                             |
-| 12     | Inactive future GCP migration reference: Terraform, Cloud Run, Cloud SQL, Cloud Storage, Secret Manager, Pub/Sub, Artifact Registry and AI provider configuration.                                                                                                                                        | Reference complete, inactive                | Reference validation passed on 2026-07-05; no live GCP runtime is supported or required.                                                                                                                                              |
-| 13     | Security hardening, container scans, SBOM, DAST, Terraform scanning, prompt-injection suite and air-gapped notes.                                                                                                                                                                                         | Complete                                    | Local backend, frontend, Semgrep, Checkov and Gitleaks gates passed on 2026-07-05; Docker-backed checks run in GitHub Actions.                                                                                                        |
-| 14     | Close the original 2026-07-10 security findings and improve SOLID boundaries, maintainability, independent coverage gates and real integration testing.                                                                                                                                                   | Historical, superseded                      | Its later release obligation moved through Sprint 14B and is now owned only by Sprint 17.                                                                                                                                             |
-| 14B    | Remediate the sealed 16-finding baseline and its verification findings.                                                                                                                                                                                                                                   | Superseded by Sprint 17                     | The original baseline was closed, but deep scan `abf0e143` of later revision `3e27c82` established the then-current 12-finding baseline.                                                                                              |
-| 15     | JIOC workflow restructure: role renames plus JIOC Team Member, JIOC routing queue, customer collect choice, manager approval chain, QC-owned release with the CM-to-RFA analysed-collect leg, multi-analyst assignment, teams/profiles/availability calendars, and the permission-refresh-on-restore fix. | Implementation delivered                    | Backend and web suites passed; the complete eight-role real-browser acceptance evidence is carried into Sprint 17. See ADR 0022 and the workflow specifications.                                                                      |
-| 16     | Cross-role desktop usability, multi-provider AI administration and documentation/deployment accuracy.                                                                                                                                                                                                     | Complete                                    | PRs #98-#100 passed protected GitHub checks; coverage remained above 95%; current guides distinguish the supported local runtime from GCP/Kubernetes migration targets.                                                               |
-| 17     | Close the current security baseline, introduce secure control ownership, improve SOLID boundaries and reconcile all active documentation without breaking intended behaviour.                                                                                                                             | Implementation complete; release gates open | Local controls, logical restore, N-1 reconciliation, PostgreSQL browser evidence and protected GitHub gates pass. Authorised external staging and a fresh sealed deep scan remain open, so production release closure is not claimed. |
-| 18     | Customer request, conversational intake, searchable ACG, read-first profile and assigned-analyst conversation-context redesign.                                                                                                                                                                           | Implementation complete                     | 447 frontend, 922 non-PostgreSQL and 68 PostgreSQL tests pass above the separate 95 percent line and branch gates; browser acceptance is recorded in the delivery handoff.                                                            |
-| 19     | Deterministic live-demo PDF corpus, specialist ACG matrix and Store/RFI search assurance.                                                                                                                                                                                                                 | Implementation complete                     | 993 backend tests pass with PostgreSQL at 97.62 percent combined coverage; frontend passes at 98.54 percent line and 95.09 percent branch coverage, with a successful production build and visual PDF inspection.                     |
-| 20     | Grounded generation-aware Intelligence Store retrieval, independent search embedding administration and full-corpus RFI/RFA duplicate assurance.                                                                                                                                                          | Implementation complete                     | 1,129 backend tests pass with real PostgreSQL and pgvector at 98.16 percent line and 95.12 percent branch coverage. Live browser checks prove hybrid cited offers, visible-customer duplicate joining and manager RFA discovery.      |
-| 21     | Compact admin command centre, explicit provider/key state, Realtime connection assurance, return navigation and separate aggregate-only admin analytics.                                                                                                                                                  | Implementation complete                     | 507 frontend, 1,072 non-PostgreSQL and 70 real-PostgreSQL tests pass above the separate 95 per cent line and branch gates; static, contract and live browser acceptance checks pass.                                                  |
-| 22     | Customer-controlled product resolution, assured no-match, active-work joining, autonomous policy-constrained JIOC routing, manager intervention, safe tracking and deterministic QC preflight.                                                                                                            | Implementation complete                     | 1,176 backend tests and one intentional skip pass at 98.09 per cent line and 95.12 per cent branch coverage; 518 frontend tests pass at 98.85 per cent line and 95.05 per cent branch coverage.                                       |
-| 23     | Agent-safety hardening for JIOC rollout, routing evidence, bounded LLM output, safe run provenance, outbox replay and authority boundaries.                                                                                                                                                               | Implementation complete                     | Evaluated v2 routing is active for supported local/test use; hosted activation remains explicitly gated.                                                                                                                              |
+| Sprint | Scope                                                                                                                                                                                                                                                                                                     | Status                                      | Verification                                                                                                                                                                                                                                                                                             |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1      | Skeleton, monorepo, API/web shells, Compose and quality gates.                                                                                                                                                                                                                                            | Complete                                    | Local backend/frontend/security gates passed on 2026-07-04.                                                                                                                                                                                                                                              |
+| 2      | Auth, sessions, RBAC, role navigation, seed users and branch protection docs.                                                                                                                                                                                                                             | Complete                                    | Local auth, CI and browser gates passed on 2026-07-04.                                                                                                                                                                                                                                                   |
+| 3      | ACGs, product access diagnostics and product access policy.                                                                                                                                                                                                                                               | Complete                                    | Local access-control gates passed on 2026-07-04; legacy workspace surface retired by ADR 0018.                                                                                                                                                                                                           |
+| 4      | Ticket intake, mock chatbot, editable intake, attachments, timeline and customer dashboard.                                                                                                                                                                                                               | Complete                                    | Local ticket-intake gates passed on 2026-07-05.                                                                                                                                                                                                                                                          |
+| 5      | Intelligence Store metadata, search, detail, upload and controlled asset access.                                                                                                                                                                                                                          | Complete                                    | Local store and access-regression gates passed on 2026-07-05.                                                                                                                                                                                                                                            |
+| 6      | Deterministic synthetic product generation and seed manifests.                                                                                                                                                                                                                                            | Complete                                    | Local generator, security and file-line gates passed on 2026-07-05.                                                                                                                                                                                                                                      |
+| 7      | RFI Search Agent, hybrid ranking, product offers and search metrics.                                                                                                                                                                                                                                      | Complete                                    | Local RFI search, Semgrep and UI gates passed on 2026-07-05.                                                                                                                                                                                                                                             |
+| 8      | RFA/CM routing agents, manager queues, approvals, clarifications and overrides.                                                                                                                                                                                                                           | Complete                                    | Local routing, Semgrep and UI gates passed on 2026-07-05.                                                                                                                                                                                                                                                |
+| 9      | Analyst workbench, assignment, work packages, notes, linked products, drafts and QC submission.                                                                                                                                                                                                           | Complete                                    | Local analyst, Semgrep and UI gates passed on 2026-07-05.                                                                                                                                                                                                                                                |
+| 10     | QC queue, checklist, rejection, auto-ingestion, indexing, dissemination and feedback requests.                                                                                                                                                                                                            | Complete                                    | Local and GitHub backend, frontend, Semgrep and CodeQL gates passed on 2026-07-05.                                                                                                                                                                                                                       |
+| 11     | Feedback submission, admin/RFA/CM dashboards, product reuse analytics and Trends Analysis Agent.                                                                                                                                                                                                          | Complete                                    | Local backend, frontend, Semgrep and security gates passed on 2026-07-05.                                                                                                                                                                                                                                |
+| 12     | Inactive future GCP migration reference: Terraform, Cloud Run, Cloud SQL, Cloud Storage, Secret Manager, Pub/Sub, Artifact Registry and AI provider configuration.                                                                                                                                        | Reference complete, inactive                | Reference validation passed on 2026-07-05; no live GCP runtime is supported or required.                                                                                                                                                                                                                 |
+| 13     | Security hardening, container scans, SBOM, DAST, Terraform scanning, prompt-injection suite and air-gapped notes.                                                                                                                                                                                         | Complete                                    | Local backend, frontend, Semgrep, Checkov and Gitleaks gates passed on 2026-07-05; Docker-backed checks run in GitHub Actions.                                                                                                                                                                           |
+| 14     | Close the original 2026-07-10 security findings and improve SOLID boundaries, maintainability, independent coverage gates and real integration testing.                                                                                                                                                   | Historical, superseded                      | Its later release obligation moved through Sprint 14B and is now owned only by Sprint 17.                                                                                                                                                                                                                |
+| 14B    | Remediate the sealed 16-finding baseline and its verification findings.                                                                                                                                                                                                                                   | Superseded by Sprint 17                     | The original baseline was closed, but deep scan `abf0e143` of later revision `3e27c82` established the then-current 12-finding baseline.                                                                                                                                                                 |
+| 15     | JIOC workflow restructure: role renames plus JIOC Team Member, JIOC routing queue, customer collect choice, manager approval chain, QC-owned release with the CM-to-RFA analysed-collect leg, multi-analyst assignment, teams/profiles/availability calendars, and the permission-refresh-on-restore fix. | Implementation delivered                    | Backend and web suites passed; the complete eight-role real-browser acceptance evidence is carried into Sprint 17. See ADR 0022 and the workflow specifications.                                                                                                                                         |
+| 16     | Cross-role desktop usability, multi-provider AI administration and documentation/deployment accuracy.                                                                                                                                                                                                     | Complete                                    | PRs #98-#100 passed protected GitHub checks; coverage remained above 95%; current guides distinguish the supported local runtime from GCP/Kubernetes migration targets.                                                                                                                                  |
+| 17     | Close the current security baseline, introduce secure control ownership, improve SOLID boundaries and reconcile all active documentation without breaking intended behaviour.                                                                                                                             | Implementation complete; release gates open | Local controls, logical restore, N-1 reconciliation, PostgreSQL browser evidence and protected GitHub gates pass. Authorised external staging and a fresh sealed deep scan remain open, so production release closure is not claimed.                                                                    |
+| 18     | Customer request, conversational intake, searchable ACG, read-first profile and assigned-analyst conversation-context redesign.                                                                                                                                                                           | Implementation complete                     | 447 frontend, 922 non-PostgreSQL and 68 PostgreSQL tests pass above the separate 95 percent line and branch gates; browser acceptance is recorded in the delivery handoff.                                                                                                                               |
+| 19     | Deterministic live-demo PDF corpus, specialist ACG matrix and Store/RFI search assurance.                                                                                                                                                                                                                 | Implementation complete                     | 993 backend tests pass with PostgreSQL at 97.62 percent combined coverage; frontend passes at 98.54 percent line and 95.09 percent branch coverage, with a successful production build and visual PDF inspection.                                                                                        |
+| 20     | Grounded generation-aware Intelligence Store retrieval, independent search embedding administration and full-corpus RFI/RFA duplicate assurance.                                                                                                                                                          | Implementation complete                     | 1,129 backend tests pass with real PostgreSQL and pgvector at 98.16 percent line and 95.12 percent branch coverage. Live browser checks prove hybrid cited offers, visible-customer duplicate joining and manager RFA discovery.                                                                         |
+| 21     | Compact admin command centre, explicit provider/key state, Realtime connection assurance, return navigation and separate aggregate-only admin analytics.                                                                                                                                                  | Implementation complete                     | 507 frontend, 1,072 non-PostgreSQL and 70 real-PostgreSQL tests pass above the separate 95 per cent line and branch gates; static, contract and live browser acceptance checks pass.                                                                                                                     |
+| 22     | Customer-controlled product resolution, assured no-match, active-work joining, autonomous policy-constrained JIOC routing, manager intervention, safe tracking and deterministic QC preflight.                                                                                                            | Implementation complete                     | 1,176 backend tests and one intentional skip pass at 98.09 per cent line and 95.12 per cent branch coverage; 518 frontend tests pass at 98.85 per cent line and 95.05 per cent branch coverage.                                                                                                          |
+| 23     | Agent-safety hardening for JIOC rollout, routing evidence, bounded LLM output, safe run provenance, outbox replay and authority boundaries.                                                                                                                                                               | Implementation complete                     | Evaluated v2 routing is active for supported local/test use; hosted activation remains explicitly gated.                                                                                                                                                                                                 |
+| 24     | Hierarchical organisation units, single-home personnel postings, explicit descendant management, canonical workforce calendars, workflow-derived team Kanban, enhanced work packages, capacity reservations and a balanced 53-person synthetic workforce.                                                 | Implementation complete; activation gated | Migrations 0017 to 0045 provide hierarchy, calendars, workspace operations, assignment and package lifecycle, fixture, backup/recovery and exact-candidate cutover controls. Phase 10 is omitted from the first release. Active authority and routing remain gated on external evidence and an explicit deployment decision. |
+
+## Sprint 24 Hierarchical Workforce Programme
+
+Current phases: **Phases 1 to 9 and the Phase 11 local implementation are
+complete, with activation deliberately gated**. Phase 10 is explicitly omitted
+from the first release and is non-blocking. The
+current-state audit and decision pack are accepted. Phase 1 corrected the
+legacy flat-team boundary. Phase 2 added a relational PostgreSQL shadow that
+does not influence live access or workflow. Active hierarchy authority remains
+blocked until the explicit cutover decision, independent routing approval and
+protected release evidence pass.
+
+### Delivery checklist
+
+- [x] Audit flat teams, calendars, route queues, work packages, assignment,
+      JIOC capacity use, canonical seed and running local drift.
+- [x] Draft the full feature contract, ADR 0049, threat model, migration
+      dispositions, user journeys and acceptance matrix.
+- [x] Approve the organisation/delivery distinction, exhaustive management
+      actions, single-home transfer policy, decision-authority table, privacy
+      thresholds, capacity arithmetic, numeric budgets and exercise hierarchy.
+- [x] Phase 1: correct current flat-team availability, candidate bounds and
+      central authority policy without adding hierarchy.
+- [x] Phase 2: add read-only relational hierarchy, one-effective-membership
+      constraints, topology history, drift tooling and shadow reconciliation.
+- [x] Phase 3: add explicit grants, lifecycle commands, triage/team ownership
+      and security-safe authority cutover.
+      Grant create/revoke authority and the minimal versioned
+      `team_task_ownership` boundary are implemented. Tree lifecycle commands,
+      bootstrap, previewed create/edit and safe subtree reparent commands are
+      implemented. Single-home membership lifecycle and scheduled exact-boundary
+      personnel transfer commands and fail-closed deactivation are implemented.
+      The merge command now supports serialisable, explicit-disposition merges
+      into an existing successor, including nested child-subtree movement,
+      membership replacement, grant revocation, profile/capability movement,
+      task movement or cancellation, pending-transfer cancellation and immutable
+      topology/ownership/profile history. The split command now creates two or
+      more successor units and resolves every named child, membership, grant,
+      delivery policy, task and pending transfer in one serialisable operation.
+      It preserves fixed-term posting bounds, cancels not-yet-effective postings
+      when ended, records immutable histories and rejects stale inventories.
+      All command boundaries are exposed through administrator-only,
+      CSRF-protected APIs in a distinct non-operational `management` mode. The
+      administration UI now provides a navigable hierarchy, selected-unit and
+      grant inspection, password-and-nonce bootstrap, delegated authority
+      create/revoke, previewed create/edit/reparent/deactivate, current roster
+      and membership lifecycle controls, exact-boundary personnel transfer and
+      explicit-disposition merge/split workflows. Each destructive workflow
+      executes the exact assessed and reviewed payload. Scoped manager views
+      and live workflow cutover remain.
+- [x] Phase 4: deliver canonical personal/team calendars and profile snapshot.
+      Revision `20260803_0028` now provides canonical events, scopes,
+      recurrence exceptions, immutable version history and actor-bound command
+      evidence. Personal and manager-owned mutations use exact preview hashes,
+      serialisable PostgreSQL writes, current account checks and, for manager
+      events, fresh home-membership plus exact `calendar:manage` lineage
+      validation. Audit/outbox evidence omits note text. The personal seven-day
+      profile snapshot and full 90-day agenda can create and cancel
+      owner-managed all-day events through the canonical API. Local Compose
+      enables the non-operational `management` mode so these features can be
+      exercised without switching routing, access or workflow authority.
+      Privacy-safe direct-team rows and root-level descendant daily aggregates
+      are now available from the unit inspector. They use explicit aggregate
+      versus detail actions, 92/31-day windows, 100-row bounds, a stable
+      15-minute snapshot and small/incomplete-count suppression. Working
+      patterns and a previewed legacy import are now implemented. Migration
+      0035 preserves creator and note provenance with stable identities,
+      reports invalid/orphaned/colliding rows as blockers and never overwrites,
+      dual-writes or activates cutover. Bounded daily and weekly recurrence is
+      now expanded consistently in the personal agenda, direct-team rows,
+      descendant aggregates, forecasts and reservations. Owners can create,
+      edit and cancel a whole series with expected-version and idempotency
+      protection. Occurrence exceptions, edit-this, edit-future and timed
+      partial-day personal activity are now implemented through migration
+      0038. Occurrence keys, replacement content and future-series identities
+      are preview-bound and revalidated in the serialisable write; the shared
+      reader applies them to calendar and capacity projections.
+      Complementary-suppressed child drill-down, cross-source deduplication,
+      team commitments, acknowledgement, dispute and notifications are
+      implemented through revision 0041.
+      The ordinary team page now adds a canonical home/managed workspace
+      selector. Home comes only from the one current posting; managed roots
+      require independent `organisation:view` and `workspace:view` grants, and
+      calendar actions remain separately authorised. Legacy roster/calendar
+      content is not treated as canonical managed-team content.
+- [x] Phase 5: deliver workflow-leg ownership and enhanced work packages.
+      New analyst assignment now commits canonical active team ownership,
+      topology/profile snapshots, audit and outbox atomically with the ticket.
+      Projection is explicitly enabled only in organisation management or
+      active mode, and the synthetic compatibility teams share canonical unit
+      IDs, preserving the established workflow when organisation mode is
+      disabled.
+      Historical active assignments are now reconciled automatically and
+      idempotently when management mode starts. Only one-team-per-route records
+      with current delivery authority are backfilled; ambiguous, conflicting or
+      malformed cases become blocking findings. Reconciliation also creates
+      missing historical work packages without replacing existing package or
+      participant decisions. Migration 0029 now adds the
+      canonical enhanced package, participant, dependency, immutable history,
+      command, working-pattern, capacity-exception and reservation ledgers.
+      Relational assignment projects every package in the same transaction,
+      assigns one accountable analyst deterministically from the explicit
+      assignment, and rechecks their sole eligible home posting in the owning
+      leaf team. Ticket package completion advances canonical history and
+      releases active reservations atomically. Managers with exact current
+      `task:assign` lineage can now preview and execute one atomic package plan
+      plus personal capacity reservation from the canonical team board. The
+      command refines effort, due date and priority, advances package history,
+      and writes command, audit and outbox evidence in the same serialisable
+      transaction. Reviewed contributor add/end now binds current account,
+      single-home posting, package, ownership and exact grant evidence, writes
+      immutable command/audit/outbox history and updates My Work immediately.
+      Contributor addition may reserve that person's capacity in the same
+      transaction; contributor removal releases their live package reservations.
+      Reviewed dependency add/remove commands now bind the complete bounded
+      graph, exact versions and `task:assign` lineage, reject cross-leg links
+      and cycles, and commit immutable evidence atomically. Same-leaf package
+      handover now binds authoritative current ticket assignment, exact package,
+      participant, reservation and grant versions. It atomically replaces the
+      accountable participant, safely disposes of the source reservation and
+      records actor-scoped command, audit and outbox evidence. Cross-team
+      workflow-leg transfer is a two-manager, work-only proposal and acceptance
+      operation in revision 0039. It never moves or cross-posts personnel.
+      Cancelling a
+      predecessor with live dependants now requires a complete, version-bound
+      cancel, unlink or replace disposition for every direct dependant. The
+      command locks the bounded graph and records immutable command, history,
+      audit and outbox evidence.
+- [x] Phase 6: deliver My Work, team/management boards and integrated workspace
+      views. A read-only direct-team board is now present in the ordinary
+      workspace behind exact `task:view` authority, bounded to 100 allowlisted
+      cards with completed work hidden by default. Cards now include bounded
+      canonical package summaries. An independently authorised `task:assign`
+      grant enables the reviewed plan-and-reserve command without turning the
+      board into a second workflow state machine. My Work is now an actor-only,
+      keyset-paged package projection with recent completion opt-in. The full
+      My Work page now adds status filtering, previous/next paging, card/table
+      alternatives and focus restoration. Direct and descendant boards now
+      provide keyset paging, team/status/priority/due filters, a table view and
+      a 30-day default completion bound (at most 90 days through the API).
+      Descendant detail requires a valid `task:view` lineage for each team;
+      aggregate-only child authority returns team/status counts without ticket
+      identifiers, references, titles, package data or hidden facets; counts
+      below five are suppressed. Existing QC/JIOC queues remain authoritative
+      rather than being replaced by a second board state machine. Managed
+      workspaces expose six authority-dependent tabs: Overview, Board,
+      Calendar, People, Capabilities and Settings. Bounded cross-surface
+      search, privacy-safe analytics and expiring audited CSV exports are
+      implemented through revision 0044.
+      Actor-owned saved views, authorised team package templates, opaque
+      access-rechecked Store links and the idempotent work-update inbox with
+      acknowledgement and personal delivery preferences are implemented. The
+      runtime projection handler exists, but automatic lifecycle producers are
+      not yet claimed as complete; users must not be promised an update for
+      every lifecycle event until those producers have end-to-end evidence.
+- [x] Phase 7: deliver conserved capacity, idempotent reservations and
+      deterministic recommendations. The first internal reservation store now
+      serialises per user, locks package and posting evidence, requires a single
+      covering working pattern, unions overlapping unavailable calendar time,
+      accounts for current reservations and capacity exceptions, checks the
+      package remaining estimate, and supports request-hash idempotent replay.
+      Its 15-minute arithmetic is covered independently. Timed events and
+      timezone-aware all-day leave now reduce the same physical interval.
+      Bounded daily and weekly recurrence preserves local wall time across DST;
+      malformed rules, unsupported exception overrides and more than 500
+      candidate rows fail closed. Reservation and idempotent replay now
+      revalidate exact current `task:assign` lineage in the same transaction,
+      and the request hash includes the actor. The management-mode HTTP boundary
+      now exposes only their combined previewed operation. Reservation identity
+      checks both command key and reservation ID, and package update,
+      reservation, history, audit and outbox commit atomically. Migration 0042
+      reconciles reservations and participants on package/ticket termination,
+      hold, rework, reassignment, account or membership ineligibility and team
+      deactivation. Calendar, estimate, deadline, competency and capability
+      changes create explicit reforecast or review conflicts instead of silently
+      resizing capacity. A startup scan handles time-driven expiry that occurred
+      while the service was stopped. Recommendation acceptance now atomically
+      updates the ticket, workflow owner, packages, decision/hold state and
+      personal reservation. A
+      bounded direct-team forecast is available behind exact `task:assign`
+      authority and reports only aggregate ready/partial/unknown evidence.
+- [x] Phase 8: run the new JIOC capacity context in shadow.
+      The relational context is composed only for management plus shadow mode,
+      all 40 catalogue teams map to seven delivery leaves, and missing evidence
+      fails closed. Its expanded 48-case suite now has a distinct release ID
+      which is not approved by default. The suite covers all seven leaves and
+      compares conserved minutes with bounded, versioned demand ranges,
+      allowing feasibility only when the approved upper bound fits. Independent
+      approval remains.
+- [x] Phase 9: complete the 53-person cohort, scenario fixtures and local
+      48-case activation evaluation. The identity catalogue now contains
+      exactly 53 unique fictional personas and preserves the original 16
+      numbered-login positions. It includes exactly 24 analysts, distributed
+      once each across seven flat compatibility delivery teams as 14 RFA-only
+      and ten CM-only analysts. Fresh seed identities and teams use stable
+      namespace IDs, and a machine-readable integrity report fails on count,
+      duplicate, cross-post or active-leaf shortfall drift. The relational
+      exercise manifest now explicitly defines the requested labels, parentage,
+      four RFA and three CM leaves, one effective home per persona, exactly 12 active
+      eligible RFA and nine active eligible CM analysts, one future RFA joiner,
+      one ended RFA analyst, one inactive and membership-suspended CM analyst,
+      a non-overlapping historical transfer and 24 working patterns.
+      It makes no claim about a real command structure. A local/test-only
+      administrator action now previews the entire relational manifest, blocks
+      on a foreign root, changed stable row or overlapping local
+      posting/pattern, requires fresh password authentication and applies every
+      missing row atomically with an idempotent command plus audit/outbox
+      evidence. Its separately reauthenticated reconcile command restores only
+      reviewed mutable rows addressed by exact fixture identifiers. It neither
+      deletes nor modifies local additions, and refuses authority, task or
+      immutable-evidence drift. The manifest now
+      also supplies three controlled capabilities per delivery leaf, two
+      verified competencies per analyst and eight bounded leave, training,
+      duty, meeting and private-appointment calendar scenarios. It also grants
+      82 stable least-privilege management actions to area managers, leaf leads
+      and bounded governance roles. Twenty-four operational tasks now cover all
+      seven delivery leaves, 21 active board states and three recent closed
+      examples. Their 24 canonical ownership rows and 48 dependent work
+      packages include urgent, blocked, review, rework, hold and analysed-CM
+      handover cases. PostgreSQL apply/replay, cross-administrator settled
+      preview and rollback-on-conflict evidence pass. The task manifest now
+      allocates marked work deterministically from active, effective,
+      assignment-eligible home postings using working-pattern capacity rather
+      than analyst names. Twenty-four differentiated fictional analyst
+      profiles, two clearance levels, at least seven ACG combinations and
+      explicit idle, loaded, overloaded and unavailable scenarios are present.
+      Two bounded reservations and the non-overlapping transfer are persisted.
+      A live machine-readable report covers duplicate units, membership
+      overlap, ownership, workload concentration, reservations, ACG access,
+      clearance, transfer evidence and the inactive account. Independent
+      activation approval remains. The 48-case deterministic safety
+      and replay metrics pass under their distinct unapproved release ID.
+- [x] Phase 10 decision: omit the external calendar connector from the first
+      release. The canonical internal calendar is complete without it. A future
+      connector remains optional and requires its own credential, consent,
+      egress, replay and deletion evidence. This omission does not block the
+      core release.
+- [ ] Phase 11: complete bounded-context cutovers, runbooks, browser journeys,
+      protected CI and the release security gate.
+      An admin-only read-only report now checks bounded database evidence and
+      always keeps routing approval, browser, protected-CI and security evidence
+      blocking until separately recorded. Its plain-language panel has no
+      activation or approval controls.
+      Eight dedicated real-PostgreSQL browser journeys now prove the readiness
+      panel, recurring-calendar lifecycle and privacy, My Work,
+      direct-manager planning, ancestor
+      suppression/detail denial, JIOC no-assignment authority and QC queue
+      continuity. Ten established secure-workflow journeys also pass from
+      request creation and assignment through approval, QC release and
+      controlled download. Protected CI, independent approval and the explicit
+      active-authority cutover decision remain release gates.
+      The release-gated cutover vertical now records an immutable exact
+      candidate, distinct reauthenticated approvals and three ordered
+      writer-fenced slice checkpoints. Active composition fails closed unless
+      current schema, parity, routing, protected-check and security evidence
+      match the fully approved manifest. This implementation does not create
+      external approvals or activate authority by default. Phase 11 remains
+      open until real protected-CI, independent security and deployment
+      approvals are recorded for a scheduled release.
+      Coordinated logical backup and restore includes the Sprint 24 tables
+      through revision 0045, exact row-count and COPY digests, a source writer
+      fence held through promotion, authority replay checks, session
+      invalidation and failed-target quarantine. The scheduled representative
+      PostgreSQL performance gate creates 1,000 units, 10,000 memberships,
+      50,000 calendar events and 10,000 cards, records 20 warm samples per
+      query and emits a versioned JSON report against fixed p95 budgets. It is
+      scheduled/manual evidence, not a PR-blocking production endpoint SLO or
+      an externally approved release result.
+
+### Dependencies and decision blockers
+
+- Preserve the current ticket state machine, manager approval, QC authority,
+  ACG/clearance policy, session revocation, audit/outbox and Store object-access
+  boundaries.
+- PostgreSQL must be the transactional authority for hierarchy, grants,
+  canonical events, task ownership and reservations; JSON compatibility is a
+  read-only projection during migration, not a second writer.
+- Approve the exercise-only parentage for Defence Intelligence, DI Joint User,
+  DI NCGIA, MIS, UKSF, SAS, SBS, SRR, 18SR, 14SR, PAGC and 4 RANGERS. Code must
+  not assert a real command structure.
+- Approve the explicit direct/descendant action matrix and who may accept a
+  receiving team. Parentage alone grants nothing.
+- Approve WIP limits, demand-estimate ownership, single-home personnel transfer
+  policy, service levels, small-cohort suppression and privacy categories.
+- Phase 10 is omitted from the first release. Internal calendar completeness
+  does not depend on an external provider, so this is not a release blocker.
+
+### Principal risks and mitigations
+
+| Risk                                                           | Mitigation and release evidence                                                                                         |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Parent hierarchy broadens intelligence access                  | Separate persisted management grants from ACG, clearance and ticket policy; descendant IDOR suite                       |
+| Legacy rollback restores route-wide manager authority          | One relational authority per slice; after policy cutover retain new policy, freeze incompatible writes and roll forward |
+| Legacy or concurrent overlapping postings manufacture capacity | PostgreSQL non-overlap constraint, single-home migration disposition, exact-boundary transfers and property tests       |
+| Personnel or work transfer leaves source authority behind      | Atomic named-work disposition, participant revocation, reservation replacement and blocked incomplete transfers         |
+| Concurrent managers double-book an analyst                     | Serialisable transaction, canonical locks, unique idempotency key and PostgreSQL race tests                             |
+| Calendar exposes absence details                               | Coarse teammate projection, explicit detail grant, `<5` aggregate suppression and privacy browser journeys              |
+| Board becomes a second state machine                           | Deterministic state/card oracle and existing command endpoints only                                                     |
+| Synthetic expansion preserves corrupt local drift              | Stable fixture manifest, preview-only reconciliation, quarantine and non-destructive local additions                    |
+| Agent overreaches into team/person assignment                  | Route-only automation, advisory deterministic team ranking, human team acceptance and human named assignment            |
+
+### Evidence map and next action
+
+- Feature and implementation contract:
+  [hierarchical teams, workforce calendars and task boards](specs/hierarchical-teams-workforce-calendars-and-task-boards.md).
+- Accepted architecture decision:
+  [ADR 0049](adr/0049-hierarchical-organisations-and-canonical-workforce-capacity.md).
+- Planned security controls:
+  [hierarchical workforce threat model](threat-model/hierarchical-teams-workforce-calendars-and-task-boards.md).
+- Current implemented baseline:
+  [teams, profiles and calendars](specs/teams-profiles-calendars.md).
+
+Canonical My Work and the direct-team manager capacity forecast are now
+implemented. Forecasts are aggregate, advisory, exact-`task:assign` authorised
+and fail to partial or unknown when identity, posting or capacity evidence is
+incomplete. Next action: replace legacy JIOC headcount with the versioned
+shadow-only forecast context, then complete the relational people projection
+and assignment eligibility model before any active cutover.
+Child-level complementary suppression and the scoped relational people
+projection remain prerequisites
+for descendant drill-down and full legacy workspace removal.
+Restructure dependency inventories must be extended when calendar, reservation
+and saved-view tables arrive in their own phases.
+Do not switch queue mutations, calendars or the ticket workflow to hierarchy
+authority until the remaining ownership, package, capacity and cutover gates
+exist. The current assignment integration records canonical ownership but
+continues to use the established assignment authorisation policy.
 
 ## Sprint 12 Future Reference Scope
 

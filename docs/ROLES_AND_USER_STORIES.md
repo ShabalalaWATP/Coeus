@@ -52,7 +52,10 @@ products the user is entitled to see through their access control groups.
 Holds every permission. In practice the admin governs rather than operates:
 approves or rejects access requests, manages users, roles, clearance and account
 status, configures text-chat AI, search embeddings and Realtime voice, manages
-ACGs, and reads the audit log and global analytics.
+ACGs, and reads the audit log and global analytics. In organisation management
+mode the administrator also uses previewed commands for hierarchy, scoped
+grants and single-home workforce lifecycle. The readiness view is read-only and
+does not let an administrator bypass release approval or activate a cutover.
 
 ### Customer
 
@@ -100,15 +103,26 @@ ACGs, and reads the audit log and global analytics.
 
 ### RFA Manager / CM Manager
 
-- Lead their area: select any active team in RFA or CM respectively, then assign
-  one to five active analysts from that selected team and define work packages.
+- Lead only the delivery units covered by current action-specific grants. A
+  direct manager can act on their leaf; an ancestor manager can switch among
+  explicitly granted descendants without receiving sibling or product access.
+- Review deterministic team and Analyst recommendations using verified
+  capability, competency, workload, deadline and conserved capacity evidence.
+  Named assignment remains a manager decision and hard-policy failures cannot
+  be overridden.
+- Assign eligible analysts, define work packages, manage contributors and
+  dependencies, and transfer work through reviewed commands. Every Analyst has
+  one effective home team; moving work does not cross-post a person.
 - Approve or return analyst work before it reaches Quality Control.
 - Review a customer's post-release re-analysis request: agree and start a new
   analysis cycle, or refer a disagreement to an independent JIOC human.
-- Manage the team roster and calendar, and view team analytics.
+- Manage the authorised roster and manager-owned calendar commitments. Personal
+  calendar notes remain private and ancestor views are suppressed aggregates.
+- Use the workflow-derived team board, capacity forecast and My Work snapshots;
+  the board cannot bypass the ticket workflow.
 - Do not release products: Quality Control performs the final release.
-- A manager sees and acts across their route area; the selected team remains the
-  authoritative owner for candidate membership and availability.
+- Route labels alone grant no authority. The canonical workflow leg records the
+  owning leaf and current grants determine which manager may act.
 
 ### RFA / CM Team Member
 
@@ -120,7 +134,12 @@ ACGs, and reads the audit log and global analytics.
 
 ### Analyst
 
-- See only tasks assigned to them; a task may be shared by up to five analysts.
+- Use **My Work** to see only canonical packages where they are the accountable
+  owner or an active contributor. A task may still be shared by several
+  authorised analysts.
+- Maintain a personal canonical calendar. One edit changes their profile,
+  current home-team availability, authorised ancestor aggregates and capacity
+  without copying the event.
 - Complete work packages, keep working notes, link supporting products and draft
   the product.
 - Submit the draft to the team manager for approval (QC-requested rework goes
@@ -239,6 +258,14 @@ ACGs, and reads the audit log and global analytics.
   visibility reflects how teams are actually organised.
 - As an administrator, I want to delegate each ACG to up to eight active users
   from any role so access decisions sit with appropriate subject experts.
+- As an administrator, I want to preview and review every hierarchy, grant,
+  membership, transfer, merge, split or deactivation change so stale or
+  incomplete dispositions cannot partially mutate the organisation.
+- As an administrator, I want every person to have one effective home unit so
+  capacity, authority and team-calendar projections cannot double count them.
+- As an administrator, I want a mutation-free readiness report, coordinated
+  backup and bounded repair tools so cutover evidence can be reviewed without a
+  hidden activation path.
 
 ### Delegated ACG administrator
 

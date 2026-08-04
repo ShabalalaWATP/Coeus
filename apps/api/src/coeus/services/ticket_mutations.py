@@ -8,7 +8,13 @@ from uuid import UUID
 from coeus.application.ports.tickets import TicketRepository
 from coeus.application.ports.workflow_transaction import WorkflowTransactionPort
 from coeus.core.errors import AppError
+from coeus.domain.assignment_recommendations import (
+    AssignmentRecommendationAcceptance,
+    AssignmentRecommendationConflict,
+    AssignmentRecommendationDenied,
+)
 from coeus.domain.auth import UserAccount
+from coeus.domain.team_task_ownership import AssignmentOwnershipIntent
 from coeus.domain.tickets import TicketRecord
 from coeus.domain.workflow_transaction import WorkflowAuditIntent, WorkflowOutboxIntent
 from coeus.persistence.state_store import StateStore
@@ -78,6 +84,59 @@ class TicketMutationService(AuthorisedTicketMutations):
             actor,
             ((event_type, metadata),),
         )
+
+    def save_assignment_if_current(
+        self,
+        expected: TicketRecord,
+        proposed: TicketRecord,
+        actor: UserAccount,
+        event_type: str,
+        metadata: dict[str, str],
+        ownership: AssignmentOwnershipIntent,
+        recommendation: AssignmentRecommendationAcceptance | None = None,
+    ) -> TicketRecord:
+        """Commit the ticket and canonical receiving-team owner together when available."""
+        if self._transaction is None:
+            if recommendation is not None:
+                raise AppError(
+                    503,
+                    "assignment_recommendation_unavailable",
+                    "Recommendation acceptance requires the relational transaction service.",
+                )
+            return self.save_audited_if_current(expected, proposed, event_type, actor, metadata)
+        committed = replace(proposed, updated_at=datetime.now(UTC))
+        audit = WorkflowAuditIntent(event_type, actor.user_id, metadata)
+        try:
+            if recommendation is None:
+                saved = self._transaction.commit_ticket_assignment(
+                    expected, committed, (audit,), ownership
+                )
+            else:
+                saved = self._transaction.commit_ticket_assignment(
+                    expected, committed, (audit,), ownership, recommendation
+                )
+        except AssignmentRecommendationConflict as error:
+            raise AppError(
+                409,
+                "assignment_recommendation_changed",
+                "The recommendation changed or expired. Preview it again.",
+            ) from error
+        except AssignmentRecommendationDenied as error:
+            raise AppError(
+                409,
+                "assignment_candidate_ineligible",
+                "The selected candidate is no longer eligible. Preview again.",
+            ) from error
+        except ValueError as error:
+            raise AppError(
+                409,
+                "assignment_team_authority_changed",
+                "The assignment team changed while the operation was running. Retry the operation.",
+            ) from error
+        if not saved:
+            raise _ticket_changed()
+        self._accept_many((committed,))
+        return committed
 
     def save_submission_if_authorised(
         self,

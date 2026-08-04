@@ -36,7 +36,11 @@ def _user(app: FastAPI, username: str) -> UserAccount:
 def _rfa_team(app: FastAPI) -> OrgTeam:
     return cast(
         OrgTeam,
-        next(team for team in app.state.team_repository.list_teams() if team.kind == TeamKind.RFA),
+        next(
+            team
+            for team in app.state.team_repository.list_teams()
+            if team.name == "RFA Assessment Team"
+        ),
     )
 
 
@@ -80,10 +84,45 @@ def test_assignment_candidates_and_state_boundaries(monkeypatch: pytest.MonkeyPa
     with pytest.raises(AppError, match="Permission denied"):
         service.analyst_candidates(customer, RoutingRoute.RFA)
     assert service.analyst_candidates(manager, RoutingRoute.RFA)
-    assert service.analyst_candidates(admin, RoutingRoute.RFA)
-    assert service.analyst_candidates(admin, RoutingRoute.CM)
+    assert service.analyst_candidates(admin, RoutingRoute.RFA, _rfa_team(app).team_id)
+    cm_team = next(
+        team
+        for team in app.state.team_repository.list_teams()
+        if team.name == "Collection Management Team"
+    )
+    assert service.analyst_candidates(admin, RoutingRoute.CM, cm_team.team_id)
     with pytest.raises(AppError, match="Permission denied"):
         service.analyst_candidates(manager, RoutingRoute.CM)
+
+    unmanaged = OrgTeam(
+        team_id=uuid4(),
+        name="Unmanaged RFA Team",
+        kind=TeamKind.RFA,
+    )
+    app.state.team_repository.save_team(unmanaged)
+    assert unmanaged not in service.assignment_teams(manager, RoutingRoute.RFA)
+    assert unmanaged in service.assignment_teams(admin, RoutingRoute.RFA)
+    with pytest.raises(AppError, match="Assignment team was not found"):
+        service.assignment_team(manager, RoutingRoute.RFA, unmanaged.team_id)
+
+    # Legacy overlapping membership fails closed rather than inflating either team.
+    teams = app.state.team_repository.list_teams()
+    rfa_team = next(team for team in teams if team.name == "RFA Assessment Team")
+    cm_team = next(team for team in teams if team.name == "Collection Management Team")
+    overlapping = _user(app, "analyst.2@example.test")
+    app.state.team_repository.save_team(
+        replace(cm_team, member_user_ids=(*cm_team.member_user_ids, overlapping.user_id))
+    )
+    assert overlapping.user_id not in {
+        candidate.user_id
+        for candidate in service.analyst_candidates(admin, RoutingRoute.RFA, rfa_team.team_id)
+    }
+    assert overlapping.user_id not in {
+        candidate.user_id
+        for candidate in service.analyst_candidates(admin, RoutingRoute.CM, cm_team.team_id)
+    }
+    today = datetime.now(UTC).date().isoformat()
+    assert app.state.team_availability_service.availability(rfa_team, today).assignable == 2
     with pytest.raises(AppError, match="one and five"):
         service._resolve_analysts(())
     with pytest.raises(AppError, match="active analyst"):

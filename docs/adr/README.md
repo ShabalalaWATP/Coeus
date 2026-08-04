@@ -53,3 +53,6 @@ production-release approval. Read later ADRs for refinements and use the
 - [0045: Bounded current-answer intake interpretation](0045-bounded-current-answer-intake-interpretation.md)
 - [0046: Automatic local retrieval rebuilds](0046-automatic-local-retrieval-rebuilds.md)
 - [0047: User-owned Intelligence Store library](0047-user-owned-intelligence-store-library.md)
+- [0048: Separate projects and subscriptions from personal folders](0048-intelligence-store-projects-and-subscriptions.md)
+- [0049: Hierarchical organisations and canonical workforce capacity](0049-hierarchical-organisations-and-canonical-workforce-capacity.md) (Accepted)
+- [0050: Release-gated relational authority cutover](0050-release-gated-relational-authority-cutover.md) (Accepted)

@@ -54,6 +54,7 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 markers = [
   "postgres: requires an isolated real PostgreSQL service",
+  "performance: explicit large-fixture PostgreSQL performance gate",
 ]
 
 [tool.coverage.run]

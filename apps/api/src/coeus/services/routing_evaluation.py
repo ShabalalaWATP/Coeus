@@ -1,33 +1,19 @@
 """Versioned synthetic activation suite for deterministic JIOC routing."""
 
-from collections.abc import Callable
-from dataclasses import dataclass
+from collections.abc import Callable, Collection
+from dataclasses import dataclass, replace
 
-from coeus.domain.jioc_routing import ROUTING_EVALUATION_VERSION, ROUTING_RELEASE
+from coeus.domain.jioc_routing import (
+    ROUTING_RELATIONAL_CAPACITY_EVALUATION_VERSION,
+    ROUTING_RELATIONAL_CAPACITY_RELEASE,
+)
+from coeus.services.routing_demand_range import RELATIONAL_DELIVERY_LEAVES
+from coeus.services.routing_evaluation_case import RoutingEvaluationCase
+from coeus.services.routing_evaluation_counts import route_counts
 
-MIN_EVALUATION_CASES = 16
+MIN_EVALUATION_CASES = 48
 MIN_CASE_ACCURACY = 1.0
 MIN_CONFLICT_ACCURACY = 1.0
-
-
-@dataclass(frozen=True)
-class RoutingEvaluationCase:
-    case_id: str
-    description: str
-    output_format: str
-    expected_class: str
-    expected_disposition: str
-    expected_rationale: str
-    search_ready: bool = True
-    capacity: str = "available"
-    snapshot_age_seconds: int = 0
-    snapshot_present: bool = True
-    priority: str = "routine"
-    deadline: str | None = "2026-07-21"
-    restrictions: str | None = None
-    product_offer_unresolved: bool = False
-    active_work_completed: bool = True
-    active_work_offer_unresolved: bool = False
 
 
 @dataclass(frozen=True)
@@ -56,8 +42,11 @@ class RoutingEvaluationReport:
     cm_false_negatives: int
     conflict_total: int
     conflict_correct: int
+    replay_mismatches: int
     expected_abstentions: int
     actual_abstentions: int
+    delivery_leaves_covered: frozenset[str]
+    release_approved: bool
 
     @property
     def case_accuracy(self) -> float:
@@ -74,7 +63,8 @@ class RoutingEvaluationReport:
     @property
     def active_ready(self) -> bool:
         return (
-            self.total >= MIN_EVALUATION_CASES
+            self.release_approved
+            and self.total >= MIN_EVALUATION_CASES
             and self.case_accuracy >= MIN_CASE_ACCURACY
             and self.unsafe_automatic_routes == 0
             and self.rfa_false_positives == 0
@@ -82,7 +72,9 @@ class RoutingEvaluationReport:
             and self.cm_false_positives == 0
             and self.cm_false_negatives == 0
             and self.conflict_accuracy >= MIN_CONFLICT_ACCURACY
+            and self.replay_mismatches == 0
             and self.actual_abstentions == self.expected_abstentions
+            and self.delivery_leaves_covered == RELATIONAL_DELIVERY_LEAVES
         )
 
 
@@ -107,13 +99,14 @@ def _case(
     return RoutingEvaluationCase(**values)  # type: ignore[arg-type]
 
 
-LABELLED_ROUTING_CASES = (
+BASE_ROUTING_CASES = (
     _case(
         "rfa-assess",
         "Assess the available reporting.",
         "assessment report",
         "rfa",
         "existing_information_assessment",
+        delivery_leaf="rfa_maritime",
     ),
     _case(
         "rfa-analysis",
@@ -121,6 +114,8 @@ LABELLED_ROUTING_CASES = (
         "analysis",
         "rfa",
         "existing_information_assessment",
+        delivery_leaf="rfa_land",
+        capacity_minutes=600,
     ),
     _case(
         "rfa-brief",
@@ -128,6 +123,7 @@ LABELLED_ROUTING_CASES = (
         "briefing",
         "rfa",
         "existing_information_assessment",
+        delivery_leaf="rfa_cyber",
     ),
     _case(
         "rfa-estimate",
@@ -135,6 +131,7 @@ LABELLED_ROUTING_CASES = (
         "estimate",
         "rfa",
         "existing_information_assessment",
+        delivery_leaf="rfa_regional",
     ),
     _case(
         "cm-monitor",
@@ -142,6 +139,7 @@ LABELLED_ROUTING_CASES = (
         "collection plan",
         "cm",
         "new_collection_required",
+        delivery_leaf="cm_open",
     ),
     _case(
         "cm-surveillance",
@@ -149,6 +147,7 @@ LABELLED_ROUTING_CASES = (
         "collection plan",
         "cm",
         "new_collection_required",
+        delivery_leaf="cm_geo",
     ),
     _case(
         "cm-imagery",
@@ -156,13 +155,16 @@ LABELLED_ROUTING_CASES = (
         "imagery collection",
         "cm",
         "new_collection_required",
+        delivery_leaf="cm_requirements",
     ),
     _case(
         "cm-source",
         "Task a source to monitor the mock exercise.",
         "collection plan",
-        "cm",
-        "new_collection_required",
+        "abstain",
+        "team_capacity_missing",
+        demand_lower_minutes=None,
+        demand_upper_minutes=None,
     ),
     _case(
         "mixed-assess-collect",
@@ -186,11 +188,12 @@ LABELLED_ROUTING_CASES = (
         "risk_review_required",
     ),
     _case(
-        "negated-assessment",
-        "Monitor the area, do not produce an assessment.",
-        "collection plan",
+        "capacity-inside-demand-range",
+        "Assess the available reporting.",
+        "assessment report",
         "abstain",
-        "risk_review_required",
+        "team_capacity_unavailable",
+        capacity_minutes=360,
     ),
     _case(
         "missing-search",
@@ -222,15 +225,15 @@ LABELLED_ROUTING_CASES = (
         "assessment report",
         "abstain",
         "team_capacity_missing",
-        capacity="unknown",
+        capacity_minutes=None,
     ),
     _case(
-        "unavailable-capacity",
+        "capacity-below-demand-range",
         "Monitor the area with sensors.",
         "collection plan",
         "abstain",
         "team_capacity_unavailable",
-        capacity="unavailable",
+        capacity_minutes=225,
     ),
     _case(
         "critical-missing-deadline",
@@ -291,9 +294,17 @@ LABELLED_ROUTING_CASES = (
     ),
 )
 
+REPLAY_ROUTING_CASES = tuple(
+    replace(case, case_id=f"{case.case_id}-replay") for case in BASE_ROUTING_CASES
+)
+
+LABELLED_ROUTING_CASES = (*BASE_ROUTING_CASES, *REPLAY_ROUTING_CASES)
+
 
 def evaluate_routing_release(
     classify: Callable[[RoutingEvaluationCase], RoutingEvaluationResult],
+    *,
+    approved_releases: Collection[str] = (),
 ) -> RoutingEvaluationReport:
     results = tuple((case, classify(case)) for case in LABELLED_ROUTING_CASES)
     correct = sum(
@@ -313,32 +324,26 @@ def evaluate_routing_release(
     )
     expected_abstentions = sum(case.expected_class == "abstain" for case, _ in results)
     actual_abstentions = sum(result.routed_class == "abstain" for _, result in results)
+    by_id = {case.case_id: result for case, result in results}
+    replay_mismatches = sum(
+        result != by_id[case.case_id.removesuffix("-replay")]
+        for case, result in results
+        if case.case_id.endswith("-replay")
+    )
+    outcomes = tuple((case.expected_class, result.routed_class) for case, result in results)
     return RoutingEvaluationReport(
-        ROUTING_EVALUATION_VERSION,
-        ROUTING_RELEASE,
+        ROUTING_RELATIONAL_CAPACITY_EVALUATION_VERSION,
+        ROUTING_RELATIONAL_CAPACITY_RELEASE,
         len(results),
         correct,
         unsafe,
-        *(_route_counts("rfa", results)),
-        *(_route_counts("cm", results)),
+        *(route_counts("rfa", outcomes)),
+        *(route_counts("cm", outcomes)),
         len(conflict),
         sum("conflicting_route_signals" in result.rationale_codes for _, result in conflict),
+        replay_mismatches,
         expected_abstentions,
         actual_abstentions,
+        frozenset(case.delivery_leaf for case, _ in results),
+        ROUTING_RELATIONAL_CAPACITY_RELEASE in approved_releases,
     )
-
-
-def _route_counts(
-    route: str,
-    results: tuple[tuple[RoutingEvaluationCase, RoutingEvaluationResult], ...],
-) -> tuple[int, int, int]:
-    true_positive = sum(
-        case.expected_class == route and result.routed_class == route for case, result in results
-    )
-    false_positive = sum(
-        case.expected_class != route and result.routed_class == route for case, result in results
-    )
-    false_negative = sum(
-        case.expected_class == route and result.routed_class != route for case, result in results
-    )
-    return true_positive, false_positive, false_negative

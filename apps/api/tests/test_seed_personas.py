@@ -35,13 +35,12 @@ def test_seed_personas_are_unique_and_analysts_share_one_generic_role() -> None:
     accounts = users.list_users()
     analysts = [user for user in accounts if user.roles == {RoleName.INTELLIGENCE_ANALYST}]
 
-    assert len(accounts) == 16
-    assert len({user.display_name for user in accounts}) == 16
+    assert len(accounts) == 53
+    assert len({user.display_name for user in accounts}) == 53
+    assert len(analysts) == 24
     assert {user.username for user in analysts} == {
         "analyst@example.test",
-        "analyst.2@example.test",
-        "analyst.3@example.test",
-        "analyst.4@example.test",
+        *(f"analyst.{index}@example.test" for index in range(2, 25)),
     }
     assert all(
         PROFILE_SPECS[user.username][0] == "Military Intelligence Analyst" for user in analysts
@@ -74,7 +73,7 @@ def test_legacy_seed_identity_reconciliation_preserves_account_authority() -> No
     state_store.save("users", {"users": stored})
     restored = _users(state_store)
 
-    assert len(restored.list_users()) == 16
+    assert len(restored.list_users()) == 53
     for spec in seed_user_specs():
         user = restored.get_by_username(spec.username)
         assert user is not None
@@ -103,7 +102,7 @@ def test_numbered_local_seed_identities_migrate_credentials_without_login_aliase
     numbered = SeedUserRepository(settings, StaticPasswordHasher(), state_store)
     accounts = sorted(numbered.list_users(), key=lambda user: int(user.username[5:]))
 
-    assert [user.username for user in accounts] == [f"admin{index}" for index in range(1, 17)]
+    assert [user.username for user in accounts] == [f"admin{index}" for index in range(1, 54)]
     for index, spec in enumerate(seed_user_specs(), start=1):
         canonical = baseline.get_by_username(spec.username)
         renamed = numbered.get_by_username(f"admin{index}")
@@ -178,7 +177,7 @@ def test_disabling_numbered_profile_restores_canonical_names_without_duplicates(
     assert restored.user_id == admin.user_id
     assert restored.password_hash == admin.password_hash
     assert canonical.get_by_username("admin1") is None
-    assert len(canonical.list_users()) == 16
+    assert len(canonical.list_users()) == 53
 
 
 def test_numbered_local_seed_identity_conflicts_fail_closed() -> None:
@@ -248,6 +247,70 @@ def test_every_generic_analyst_is_seeded_into_an_operational_team() -> None:
 
     analysts = [user for user in users.list_users() if RoleName.INTELLIGENCE_ANALYST in user.roles]
     assert all(analyst.user_id in member_ids for analyst in analysts)
+    memberships = {
+        analyst.username: [
+            team.kind for team in operational_teams if analyst.user_id in team_member_ids(team)
+        ]
+        for analyst in analysts
+    }
+    assert all(len(kinds) == 1 for kinds in memberships.values())
+    assert sum(kinds == [TeamKind.RFA] for kinds in memberships.values()) == 14
+    assert sum(kinds == [TeamKind.CM] for kinds in memberships.values()) == 10
+
+
+def test_exact_legacy_route_seed_is_upgraded_but_edited_team_is_preserved() -> None:
+    users = _users()
+    teams = TeamRepository()
+
+    def ids(*usernames: str):
+        return tuple(
+            user.user_id
+            for username in usernames
+            if (user := users.get_by_username(username)) is not None
+        )
+
+    legacy_rfa = OrgTeam(
+        team_id=uuid4(),
+        name="RFA Assessment Team",
+        kind=TeamKind.RFA,
+        capability_team_id="RFA-MARITIME",
+        manager_user_ids=ids("rfa.manager@example.test"),
+        member_user_ids=ids(
+            "rfa.team@example.test",
+            "analyst@example.test",
+            "analyst.2@example.test",
+            "analyst.3@example.test",
+            "analyst.4@example.test",
+        ),
+    )
+    edited_cm = OrgTeam(
+        team_id=uuid4(),
+        name="Collection Management Team",
+        kind=TeamKind.CM,
+        capability_team_id="CM-CYBER-SENSOR",
+        manager_user_ids=ids("collection.manager@example.test"),
+        member_user_ids=ids(
+            "collection.team@example.test",
+            "analyst@example.test",
+            "analyst.3@example.test",
+            "colleague@example.test",
+        ),
+    )
+    teams.save_team(legacy_rfa)
+    teams.save_team(edited_cm)
+
+    seed_teams(teams, users)
+
+    assert teams.get_team(legacy_rfa.team_id) == replace(
+        legacy_rfa,
+        member_user_ids=ids(
+            "rfa.team@example.test",
+            "analyst@example.test",
+            "analyst.2@example.test",
+            "analyst.4@example.test",
+        ),
+    )
+    assert teams.get_team(edited_cm.team_id) == edited_cm
 
 
 def test_existing_untouched_jioc_cell_adds_new_member_without_overwriting_edits() -> None:

@@ -1,3 +1,4 @@
+from contextlib import nullcontext
 from hashlib import sha256
 from pathlib import Path
 from types import SimpleNamespace
@@ -124,6 +125,7 @@ def test_restore_rejects_unsafe_targets_and_revision_mismatch(
 
     monkeypatch.setattr(restore, "_upgrade_database", lambda _url: None)
     monkeypatch.setattr(restore, "_revision", lambda _url: "different-revision")
+    monkeypatch.setattr(restore, "security_authority_fence", lambda *_args: nullcontext())
     with pytest.raises(RuntimeError, match="incompatible"):
         restore.restore_backup_bundle(
             SOURCE_URL,
@@ -143,6 +145,8 @@ def test_restore_cleans_object_staging_after_failure(
     target = tmp_path / "target"
     monkeypatch.setattr(restore, "_upgrade_database", lambda _url: None)
     monkeypatch.setattr(restore, "_revision", lambda _url: "revision-1")
+    monkeypatch.setattr(restore, "security_authority_fence", lambda *_args: nullcontext())
+    monkeypatch.setattr(restore, "clear_restored_tables", lambda *_args: None)
 
     def fail_restore(_bundle: Path, staging: Path, _objects: object) -> None:
         staging.mkdir()
@@ -167,6 +171,7 @@ def test_restore_replaces_an_existing_empty_object_root(
     target.mkdir()
     monkeypatch.setattr(restore, "_upgrade_database", lambda _url: None)
     monkeypatch.setattr(restore, "_revision", lambda _url: "revision-1")
+    monkeypatch.setattr(restore, "security_authority_fence", lambda *_args: nullcontext())
     monkeypatch.setattr(restore, "import_tables", lambda *_args: None)
     monkeypatch.setattr(restore, "_validate_restored_database", lambda *_args: None)
 

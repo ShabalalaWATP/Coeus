@@ -1,10 +1,10 @@
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from coeus.domain.admission import AdmissionMode
-from coeus.domain.jioc_routing import JiocRoutingMode
+from coeus.domain.jioc_routing import ROUTING_RELEASE, JiocRoutingMode
 
 EnvironmentName = Literal["local", "dev", "staging", "prod", "test"]
 EmailProviderName = Literal["outbox", "smtp"]
@@ -15,8 +15,11 @@ LlmProviderName = Literal[
 ObjectStorageProviderName = Literal["local", "gcs"]
 PersistenceProviderName = Literal["memory", "file", "postgres"]
 TicketPersistenceMode = Literal["legacy", "shadow_validate", "relational"]
+OrganisationMode = Literal["disabled", "shadow", "management", "active"]
 DEFAULT_SEED_CREDENTIAL = "CoeusLocal1!"
-APPROVED_JIOC_ROUTING_RELEASE = "jioc-routing-policy-v2:jioc-routing-eval-v2"
+# The existing active release remains the only local default. New evaluation
+# releases require a separate, explicit approval after their own evidence review.
+APPROVED_JIOC_ROUTING_RELEASE = ROUTING_RELEASE
 DEFAULT_ASSET_TOKEN_SECRET = "local-only-asset-token-secret-not-for-deploy"  # noqa: S105  # nosec B105
 
 
@@ -156,6 +159,13 @@ class Settings(BaseSettings):
     asset_token_secret: str = DEFAULT_ASSET_TOKEN_SECRET
     persistence_provider: PersistenceProviderName = "postgres"
     ticket_persistence_mode: TicketPersistenceMode = "relational"
+    organisation_mode: OrganisationMode = "disabled"
+    organisation_active_candidate_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    organisation_cutover_source_revision: str | None = Field(
+        default=None, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,127}$"
+    )
+    organisation_setup_nonce: str | None = None
+    organisation_demo_seed_enabled: bool = False
     persistence_path: str = ".local-data/state/coeus-state.json"
     seed_demo_content: bool | None = None
     email_provider: EmailProviderName = "outbox"
@@ -170,6 +180,22 @@ class Settings(BaseSettings):
     gcs_generated_previews_bucket: str | None = None
     pubsub_enabled: bool = False
     pubsub_topic_prefix: str = "coeus-dev"
+
+    @field_validator(
+        "organisation_active_candidate_hash",
+        "organisation_cutover_source_revision",
+        "organisation_setup_nonce",
+        mode="before",
+    )
+    @classmethod
+    def _blank_is_unset(cls, value: object) -> object:
+        """An env file spells "not set" as an empty value, not a missing key.
+
+        These are only supplied for an active cutover, so every other mode
+        leaves them blank in `.env`. Treating blank as unset keeps that file
+        loadable instead of failing the pattern check.
+        """
+        return None if isinstance(value, str) and value.strip() == "" else value
 
     def should_seed_demo(self) -> bool:
         if self.seed_demo_content is not None:

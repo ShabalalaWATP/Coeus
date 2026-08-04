@@ -1,0 +1,302 @@
+.organisation-roster-panel,
+.organisation-membership-form {
+  display: grid;
+  gap: 22px;
+}
+
+.organisation-roster-panel > header,
+.organisation-membership-form > header,
+.organisation-roster-panel__toolbar {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.organisation-roster-panel h2,
+.organisation-roster-panel h3,
+.organisation-roster-panel p,
+.organisation-membership-form h3,
+.organisation-membership-form p {
+  margin: 0;
+}
+
+.organisation-roster-panel h2,
+.organisation-membership-form h3 {
+  margin-top: 5px;
+}
+
+.organisation-roster-panel > header p {
+  margin-top: 7px;
+  color: var(--muted);
+}
+
+.organisation-roster-panel button,
+.organisation-membership-form button {
+  min-height: 38px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 0 14px;
+  background: var(--surface-strong);
+  color: var(--text);
+  font-weight: 720;
+  cursor: pointer;
+}
+
+.organisation-roster-panel button:disabled,
+.organisation-membership-form button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.organisation-roster-panel__toolbar {
+  align-items: center;
+  padding-block: 15px;
+  border-block: 1px solid var(--border);
+}
+
+.organisation-roster-panel__toolbar > div,
+.organisation-roster-panel__toolbar > button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.organisation-roster-panel__toolbar > button {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background: var(--accent-strong);
+  color: white;
+}
+
+.organisation-roster-panel__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.organisation-roster-panel__list li {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.organisation-roster-panel__list span {
+  display: grid;
+  gap: 2px;
+  text-transform: capitalize;
+}
+
+.organisation-roster-panel__list small {
+  color: var(--muted);
+}
+
+.organisation-roster-panel__list .organisation-roster-panel__remove {
+  color: var(--critical);
+}
+
+.organisation-membership-form {
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.organisation-membership-form form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.organisation-membership-form label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.organisation-membership-form select,
+.organisation-membership-form textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 11px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.organisation-membership-form__check {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  align-self: end;
+  min-height: 42px;
+}
+
+.organisation-membership-form__wide,
+.organisation-membership-form form > button {
+  grid-column: 1 / -1;
+}
+
+.organisation-membership-form form > button,
+.organisation-membership-form__review > button {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background: var(--accent-strong);
+  color: white;
+}
+
+.organisation-membership-form__review {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.organisation-membership-form__review p {
+  margin-top: 3px;
+  color: var(--muted);
+}
+
+@media (max-width: 620px) {
+  .organisation-membership-form form,
+  .organisation-roster-panel__list li {
+    grid-template-columns: 1fr;
+  }
+
+  .organisation-membership-form__review {
+    grid-template-columns: auto 1fr;
+  }
+
+  .organisation-membership-form__review > button {
+    grid-column: 1 / -1;
+  }
+}
+
+.organisation-transfer-form {
+  display: grid;
+  gap: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.organisation-transfer-form > header,
+.organisation-transfer-form__route,
+.organisation-transfer-form__review {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.organisation-transfer-form h3,
+.organisation-transfer-form p {
+  margin: 0;
+}
+
+.organisation-transfer-form h3 {
+  margin-top: 5px;
+}
+
+.organisation-transfer-form button {
+  min-height: 38px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 0 14px;
+  background: var(--surface-strong);
+  color: var(--text);
+  font-weight: 720;
+  cursor: pointer;
+}
+
+.organisation-transfer-form button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.organisation-transfer-form form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.organisation-transfer-form label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.organisation-transfer-form input,
+.organisation-transfer-form select,
+.organisation-transfer-form textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 11px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.organisation-transfer-form__wide,
+.organisation-transfer-form form > p,
+.organisation-transfer-form form > button,
+.organisation-transfer-form__route {
+  grid-column: 1 / -1;
+}
+
+.organisation-transfer-form__check {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  align-self: end;
+  min-height: 42px;
+}
+
+.organisation-transfer-form__check input {
+  width: auto;
+}
+
+.organisation-transfer-form__route {
+  justify-content: center;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.organisation-transfer-form form > button,
+.organisation-transfer-form__review > button {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background: var(--accent-strong);
+  color: white;
+}
+
+.organisation-transfer-form__review {
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.organisation-transfer-form__review > div {
+  flex: 1;
+}
+
+.organisation-transfer-form__review p {
+  margin-top: 3px;
+  color: var(--muted);
+}
+
+@media (max-width: 620px) {
+  .organisation-transfer-form form {
+    grid-template-columns: 1fr;
+  }
+
+  .organisation-transfer-form__review {
+    align-items: start;
+    flex-wrap: wrap;
+    justify-content: start;
+  }
+}

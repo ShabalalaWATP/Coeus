@@ -79,6 +79,83 @@ def test_hosted_advisory_egress_requires_provider_and_data_release() -> None:
     assert "ADVISORY_APPROVED_DATA_CLASSIFICATIONS" in str(error.value)
 
 
+@pytest.mark.parametrize("mode", ("shadow", "management", "active"))
+def test_organisation_modes_require_postgres(mode: str) -> None:
+    settings = Settings(
+        environment="local",
+        organisation_mode=mode,
+        persistence_provider="memory",
+    )
+
+    with pytest.raises(ValueError, match="require PostgreSQL persistence"):
+        settings.require_runtime_security()
+
+
+def test_disabled_organisation_mode_remains_local_first() -> None:
+    Settings(
+        environment="local",
+        organisation_mode="disabled",
+        persistence_provider="memory",
+    ).require_runtime_security()
+
+
+def test_shadow_organisation_mode_is_allowed_with_postgres() -> None:
+    Settings(
+        environment="local",
+        organisation_mode="shadow",
+        persistence_provider="postgres",
+    ).require_runtime_security()
+
+
+def test_management_organisation_mode_is_allowed_with_postgres() -> None:
+    Settings(
+        environment="local",
+        organisation_mode="management",
+        persistence_provider="postgres",
+    ).require_runtime_security()
+
+
+def test_management_organisation_mode_requires_relational_tickets() -> None:
+    settings = Settings(
+        environment="local",
+        organisation_mode="management",
+        persistence_provider="postgres",
+        ticket_persistence_mode="shadow_validate",
+    )
+
+    with pytest.raises(ValueError, match="requires relational ticket persistence"):
+        settings.require_runtime_security()
+
+
+def test_active_organisation_mode_fails_closed_with_postgres() -> None:
+    """Active authority needs the approved cutover evidence, not just the mode.
+
+    Naming the mode is never sufficient: the immutable candidate digest, its
+    source revision and the approved relational capacity release must all be
+    present, so an operator cannot switch authority on by configuration alone.
+    """
+    settings = Settings(
+        environment="local",
+        organisation_mode="active",
+        persistence_provider="postgres",
+    )
+
+    with pytest.raises(ValueError) as refused:
+        settings.require_runtime_security()
+
+    message = str(refused.value)
+    assert "COEUS_ORGANISATION_ACTIVE_CANDIDATE_HASH is required in active mode." in message
+    assert "COEUS_ORGANISATION_CUTOVER_SOURCE_REVISION is required in active mode." in message
+    assert "relational capacity release before active organisation mode is enabled" in message
+
+
+def test_organisation_demo_seed_is_local_test_only() -> None:
+    settings = valid_dev_settings(organisation_demo_seed_enabled=True)
+
+    with pytest.raises(ValueError, match="ORGANISATION_DEMO_SEED_ENABLED is local/test only"):
+        settings.require_runtime_security()
+
+
 def test_hosted_litellm_requires_an_environment_key_and_https() -> None:
     with pytest.raises(ValueError) as missing:
         valid_dev_settings(llm_provider="litellm_proxy").require_runtime_security()

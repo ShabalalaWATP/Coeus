@@ -65,7 +65,12 @@ async def _work_leg(
     draft_title: str,
 ) -> None:
     """Assign, draft, complete and manager-approve one leg of the ticket."""
-    analyst_user = app.state.access_services.repository.get_user_by_username("analyst@example.test")
+    analyst_username = (
+        "analyst.3@example.test"
+        if manager_username == "collection.manager@example.test"
+        else "analyst@example.test"
+    )
+    analyst_user = app.state.access_services.repository.get_user_by_username(analyst_username)
     assert analyst_user is not None
     manager = await login(client, manager_username)
     route = "cm" if manager_username == "collection.manager@example.test" else "rfa"
@@ -76,7 +81,7 @@ async def _work_leg(
         json={"analystUserIds": [str(analyst_user.user_id)], "teamId": team_id},
     )
     assert assigned.status_code == 200
-    analyst = await login(client, "analyst@example.test")
+    analyst = await login(client, analyst_username)
     draft = await client.post(
         f"/api/v1/analyst/tasks/{ticket_id}/drafts",
         headers={"X-CSRF-Token": str(analyst["csrfToken"])},

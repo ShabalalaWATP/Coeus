@@ -16,6 +16,7 @@ from coeus.persistence.draft_audience_projection import (
     PostgresDraftAudienceProjection,
     sync_ticket_draft_audiences,
 )
+from coeus.persistence.identity_account_projection import sync_identity_account_projection
 from coeus.persistence.local_state_store import (
     FileStateStore as FileStateStore,
 )
@@ -145,6 +146,8 @@ class PostgresStateStore:
                     ),
                     {"namespace": namespace, "payload": json.dumps(payload)},
                 )
+                if namespace == "users":
+                    sync_identity_account_projection(connection, payload)
                 if namespace == "tickets":
                     _shadow_ticket_payload(connection, payload)
 

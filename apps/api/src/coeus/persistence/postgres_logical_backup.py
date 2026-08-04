@@ -1,7 +1,9 @@
 """Allow-listed PostgreSQL binary COPY export and import."""
 
-from dataclasses import dataclass
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any
 
 import psycopg
@@ -9,133 +11,53 @@ from psycopg import sql
 from sqlalchemy.engine import make_url
 
 from coeus.persistence.backup_manifest import TableBackup, file_sha256, safe_relative_path
+from coeus.persistence.postgres_backup_table_spec import TableSpec
+from coeus.persistence.postgres_backup_tables import TABLES
 
-
-@dataclass(frozen=True)
-class TableSpec:
-    name: str
-    columns: tuple[str, ...]
-    order_by: tuple[str, ...]
-
-
-TABLES = (
-    TableSpec("coeus_state", ("namespace", "payload", "updated_at"), ("namespace",)),
-    TableSpec(
-        "coeus_audit_events",
-        ("event_id", "event_type", "occurred_at", "actor_user_id", "metadata"),
-        ("occurred_at", "event_id"),
-    ),
-    TableSpec(
-        "coeus_ticket_aggregates",
-        (
-            "ticket_id",
-            "requester_user_id",
-            "state",
-            "consumes_capacity",
-            "version",
-            "payload",
-            "canonical_hash",
-            "updated_at",
-        ),
-        ("ticket_id",),
-    ),
-    TableSpec(
-        "coeus_outbox",
-        (
-            "event_id",
-            "aggregate_id",
-            "aggregate_version",
-            "event_type",
-            "payload",
-            "created_at",
-            "available_at",
-            "attempt_count",
-            "claimed_by",
-            "claim_expires_at",
-            "last_error",
-            "delivered_at",
-            "dead_lettered_at",
-        ),
-        ("event_id",),
-    ),
-    TableSpec(
+_SECURITY_AUTHORITY_TABLES = frozenset(
+    {
+        "calendar_event_scopes",
+        "calendar_events",
+        "calendar_commitment_notifications",
+        "calendar_commitment_responses",
+        "canonical_work_packages",
         "coeus_draft_audiences",
-        ("product_id", "principal_id", "reason", "ticket_id", "updated_at"),
-        ("product_id", "principal_id", "reason", "ticket_id"),
-    ),
-    TableSpec(
-        "intelligence_store_products",
-        (
-            "product_id",
-            "reference",
-            "title",
-            "summary",
-            "description",
-            "product_type",
-            "source_type",
-            "owner_team",
-            "area_or_region",
-            "classification_level",
-            "releasability",
-            "handling_caveats",
-            "tags",
-            "semantic_labels",
-            "acg_ids",
-            "status",
-            "time_period_start",
-            "time_period_end",
-            "geojson_ref",
-            "bounding_box",
-            "created_by_user_id",
-            "created_at",
-            "updated_at",
-            "search_document",
-            "embedding",
-            "embedding_source_hash",
-        ),
-        ("product_id",),
-    ),
-    TableSpec(
-        "intelligence_store_assets",
-        (
-            "asset_id",
-            "product_id",
-            "name",
-            "asset_type",
-            "mime_type",
-            "size_bytes",
-            "sha256",
-            "object_key",
-            "preview_kind",
-            "created_at",
-        ),
-        ("asset_id",),
-    ),
-    TableSpec(
+        "coeus_state",
+        "coeus_ticket_aggregates",
+        "effective_authority_epochs",
+        "identity_account_projection",
         "intelligence_store_product_acgs",
-        ("product_id", "acg_id"),
-        ("product_id", "acg_id"),
-    ),
-    TableSpec(
-        "intelligence_store_semantic_labels",
-        ("product_id", "label"),
-        ("product_id", "label"),
-    ),
+        "intelligence_store_products",
+        "organisation_topology_revisions",
+        "organisation_cutover_approvals",
+        "organisation_cutover_checkpoint_events",
+        "organisation_cutover_checkpoints",
+        "organisation_cutover_evidence",
+        "organisation_cutover_manifests",
+        "organisation_cutover_recovery_events",
+        "organisation_cutover_release",
+        "organisation_cutover_slice_state",
+        "organisation_cutover_writer_fences",
+        "organisation_unit_closure",
+        "organisation_units",
+        "team_management_grants",
+        "team_memberships",
+        "team_task_ownership",
+        "team_workspace_policies",
+        "work_package_participants",
+        "workflow_leg_transfer_commands",
+        "workflow_leg_transfer_packages",
+        "workflow_leg_transfer_team_holds",
+        "workflow_leg_transfers",
+        "workspace_delivery_preferences",
+        "workspace_export_jobs",
+        "workspace_productivity_commands",
+        "workspace_saved_views",
+        "workspace_store_links",
+        "workspace_work_updates",
+        "team_work_templates",
+    }
 )
-
-_COUNT_QUERIES = {
-    "coeus_state": "SELECT count(*) FROM coeus_state",
-    "coeus_audit_events": "SELECT count(*) FROM coeus_audit_events",
-    "coeus_ticket_aggregates": "SELECT count(*) FROM coeus_ticket_aggregates",
-    "coeus_outbox": "SELECT count(*) FROM coeus_outbox",
-    "coeus_draft_audiences": "SELECT count(*) FROM coeus_draft_audiences",
-    "intelligence_store_products": "SELECT count(*) FROM intelligence_store_products",
-    "intelligence_store_assets": "SELECT count(*) FROM intelligence_store_assets",
-    "intelligence_store_product_acgs": "SELECT count(*) FROM intelligence_store_product_acgs",
-    "intelligence_store_semantic_labels": (
-        "SELECT count(*) FROM intelligence_store_semantic_labels"
-    ),
-}
 
 
 def export_tables(database_url: str, root: Path) -> tuple[str, tuple[TableBackup, ...]]:
@@ -164,6 +86,7 @@ def export_tables(database_url: str, root: Path) -> tuple[str, tuple[TableBackup
 def import_tables(database_url: str, bundle: Path, backups: tuple[TableBackup, ...]) -> None:
     _validate_specs(backups)
     with psycopg.connect(_dsn(database_url)) as connection, connection.transaction():
+        connection.execute("SET CONSTRAINTS ALL DEFERRED")
         for spec, backup in zip(TABLES, backups, strict=True):
             _require_table(connection, spec.name)
             count = _table_count(connection, spec.name, operation="restore preflight")
@@ -173,12 +96,52 @@ def import_tables(database_url: str, bundle: Path, backups: tuple[TableBackup, .
             restored = _table_count(connection, spec.name, operation="restore verification")
             if restored != backup.row_count:
                 raise RuntimeError(f"Restore row count differs for {spec.name}.")
+        _verify_restored_hashes(connection, bundle, backups)
         connection.execute("DELETE FROM coeus_resource_leases")
+        connection.execute(
+            "UPDATE coeus_state SET payload='{\"sessions\":[]}'::jsonb,updated_at=now() "
+            "WHERE namespace='sessions' AND payload<>'{\"sessions\":[]}'::jsonb"
+        )
         connection.execute(
             "UPDATE coeus_outbox SET claimed_by=NULL, claim_expires_at=NULL, "
             "available_at=LEAST(available_at, now()) "
             "WHERE delivered_at IS NULL AND dead_lettered_at IS NULL"
         )
+
+
+@contextmanager
+def security_authority_fence(database_url: str, backups: tuple[TableBackup, ...]) -> Iterator[None]:
+    """Hold source authority tables against writes through restore promotion."""
+    _validate_specs(backups)
+    by_name = {backup.name: backup for backup in backups}
+    specs = tuple(spec for spec in TABLES if spec.name in _SECURITY_AUTHORITY_TABLES)
+    with TemporaryDirectory(prefix="coeus-authority-fence-") as temporary:
+        root = Path(temporary)
+        with psycopg.connect(_dsn(database_url)) as connection, connection.transaction():
+            connection.execute("SET LOCAL lock_timeout = '5s'")
+            identifiers = sql.SQL(",").join(sql.Identifier(spec.name) for spec in specs)
+            connection.execute(sql.SQL("LOCK TABLE {} IN SHARE MODE").format(identifiers))
+            for spec in specs:
+                path = root / f"{spec.name}.copy"
+                _copy_out(connection, spec, path)
+                if file_sha256(path) != by_name[spec.name].sha256:
+                    raise RuntimeError(
+                        "Security authority changed after backup; restore requires an "
+                        "approved revocation replay checkpoint."
+                    )
+            yield
+
+
+def clear_restored_tables(database_url: str) -> None:
+    """Remove imported authority when a disposable restore target fails."""
+    with psycopg.connect(_dsn(database_url)) as connection, connection.transaction():
+        identifiers = sql.SQL(",").join(
+            [
+                *(sql.Identifier(spec.name) for spec in TABLES),
+                sql.Identifier("coeus_resource_leases"),
+            ]
+        )
+        connection.execute(sql.SQL("TRUNCATE TABLE {} CASCADE").format(identifiers))
 
 
 def _copy_out(connection: psycopg.Connection[Any], spec: TableSpec, path: Path) -> None:
@@ -202,6 +165,21 @@ def _copy_in(connection: psycopg.Connection[Any], spec: TableSpec, path: Path) -
             copy.write(chunk)
 
 
+def _verify_restored_hashes(
+    connection: psycopg.Connection[Any],
+    bundle: Path,
+    backups: tuple[TableBackup, ...],
+) -> None:
+    with TemporaryDirectory(prefix="coeus-restore-check-") as temporary:
+        root = Path(temporary)
+        for spec, backup in zip(TABLES, backups, strict=True):
+            restored = root / f"{spec.name}.copy"
+            _copy_out(connection, spec, restored)
+            source = bundle / safe_relative_path(backup.file)
+            if file_sha256(restored) != backup.sha256 or file_sha256(source) != backup.sha256:
+                raise RuntimeError(f"Restore content hash differs for {spec.name}.")
+
+
 def _validate_specs(backups: tuple[TableBackup, ...]) -> None:
     if len(backups) != len(TABLES):
         raise ValueError("Backup manifest table allow-list differs from this release.")
@@ -217,11 +195,11 @@ def _require_table(connection: psycopg.Connection[Any], table: str) -> None:
 
 
 def _table_count(connection: psycopg.Connection[Any], table: str, *, operation: str) -> int:
-    try:
-        query = _COUNT_QUERIES[table]
-    except KeyError as exc:
-        raise ValueError(f"Table {table} is not in the recovery allow-list.") from exc
-    row = connection.execute(query).fetchone()
+    if table not in {spec.name for spec in TABLES}:
+        raise ValueError(f"Table {table} is not in the recovery allow-list.")
+    row = connection.execute(
+        sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(table))
+    ).fetchone()
     if row is None:
         raise RuntimeError(f"Could not count {operation} table {table}.")
     return int(row[0])
