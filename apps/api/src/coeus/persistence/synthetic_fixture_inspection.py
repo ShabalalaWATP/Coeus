@@ -1,12 +1,13 @@
 """Conflict-first inspection for the synthetic organisation fixture."""
 
 from decimal import Decimal
+from typing import cast
 from uuid import UUID
 
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
-from coeus.domain.organisation import ManagementAction
+from coeus.domain.organisation import DeliveryRoute, ManagementAction
 from coeus.domain.synthetic_organisation_fixture import (
     SyntheticFixtureCounts,
     SyntheticFixtureFinding,
@@ -247,7 +248,6 @@ def _inspect_profiles(
 ) -> list[SyntheticUnitSpec]:
     missing: list[SyntheticUnitSpec] = []
     for spec in (item for item in specs if item.route is not None):
-        assert spec.route is not None
         existing = row(
             connection,
             "team_delivery_profiles",
@@ -268,7 +268,8 @@ def _inspect_profiles(
             continue
         expected = {
             "unit_id": spec.unit_id,
-            "route": spec.route.value,
+            # The loop only yields specs that carry a route.
+            "route": cast(DeliveryRoute, spec.route).value,
             "wip_limit": spec.wip_limit,
             "weekly_hours": Decimal("40.00"),
             "policy_version": 1,

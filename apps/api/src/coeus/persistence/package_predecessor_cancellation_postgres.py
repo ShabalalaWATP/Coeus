@@ -40,6 +40,7 @@ from coeus.persistence.package_predecessor_cancellation_sql import (
     GRAPH,
     INSERT_EDGE,
     PACKAGE,
+    PACKAGE_LOCKED,
 )
 from coeus.persistence.serializable_retry import retry_serializable_once
 
@@ -90,7 +91,7 @@ def _load_and_validate(
 ) -> RowMapping:
     package = (
         connection.execute(
-            text(PACKAGE + (" FOR UPDATE OF package,ownership" if lock else "")),
+            text(PACKAGE_LOCKED if lock else PACKAGE),
             {"package_id": request.package_id},
         )
         .mappings()

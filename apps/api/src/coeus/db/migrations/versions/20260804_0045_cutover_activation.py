@@ -37,18 +37,18 @@ def downgrade() -> None:
     op.execute("DROP TRIGGER trg_coeus_state_cutover_writer_fence ON coeus_state")
     op.execute("DROP TRIGGER trg_ticket_task_capacity_writer_fence ON coeus_ticket_aggregates")
     op.execute("DROP TRIGGER trg_ticket_active_task_capacity_projection ON coeus_ticket_aggregates")
-    for table in (
-        "organisation_cutover_recovery_events",
-        "organisation_cutover_writer_fences",
-        "organisation_cutover_checkpoint_events",
-        "organisation_cutover_checkpoints",
-        "organisation_cutover_evidence",
-        "organisation_cutover_slice_state",
-        "organisation_cutover_approvals",
-        "organisation_cutover_release",
-        "organisation_cutover_manifests",
+    for statement in (
+        "DROP TABLE organisation_cutover_recovery_events",
+        "DROP TABLE organisation_cutover_writer_fences",
+        "DROP TABLE organisation_cutover_checkpoint_events",
+        "DROP TABLE organisation_cutover_checkpoints",
+        "DROP TABLE organisation_cutover_evidence",
+        "DROP TABLE organisation_cutover_slice_state",
+        "DROP TABLE organisation_cutover_approvals",
+        "DROP TABLE organisation_cutover_release",
+        "DROP TABLE organisation_cutover_manifests",
     ):
-        op.execute(f"DROP TABLE {table}")
+        op.execute(statement)
     op.execute("DROP FUNCTION reject_fenced_cutover_source_write()")
     op.execute("DROP FUNCTION reject_fenced_task_capacity_write()")
     op.execute("DROP FUNCTION require_active_task_capacity_projection()")

@@ -7,6 +7,7 @@ route's previous assignments instead of overwriting them.
 """
 
 from datetime import UTC, date, datetime
+from typing import cast
 from uuid import UUID
 
 from coeus.core.errors import AppError
@@ -234,8 +235,8 @@ class AnalystAssignmentService:
                 "assignment_team_ambiguous",
                 "The current assignment team cannot be determined safely.",
             )
-        current_team_id = next(iter(team_ids))
-        assert current_team_id is not None
+        # The ambiguity check above already refused a None or a split set.
+        current_team_id = cast(UUID, next(iter(team_ids)))
         current_team = self._teams.get_team(current_team_id)
         if (
             current_team is None

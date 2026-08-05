@@ -17,7 +17,7 @@ DIGEST = "b" * 64
 def _command(**overrides: object) -> SyntheticFixtureCommand:
     values: dict[str, object] = {
         "command_id": uuid4(),
-        "idempotency_key": "synthetic-fixture-1",
+        "idempotency_key": "synthetic-fixture-1",  # gitleaks:allow - replay key, not a credential
         "actor_user_id": uuid4(),
         "preview_hash": DIGEST,
     }

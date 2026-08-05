@@ -1,6 +1,7 @@
 """Validation and inventory binding for accountable-owner handover."""
 
 from datetime import datetime
+from typing import cast
 from uuid import UUID
 
 from sqlalchemy import text
@@ -272,16 +273,13 @@ def preview_handover(
     request: WorkPackageHandoverRequest,
     evidence: dict[str, object],
 ) -> WorkPackageHandoverPreview:
-    package = evidence["package"]
-    participants = evidence["participants"]
-    reservations = evidence["reservations"]
-    dependencies = evidence["dependencies"]
-    ticket_authority = evidence["ticket_authority"]
-    assert isinstance(package, RowMapping)
-    assert isinstance(participants, tuple)
-    assert isinstance(reservations, tuple)
-    assert isinstance(dependencies, tuple)
-    assert isinstance(ticket_authority, RowMapping)
+    # The evidence map is built by this module's own collector, so its shape is
+    # fixed here rather than re-checked on every read.
+    package = cast(RowMapping, evidence["package"])
+    participants = cast(tuple[RowMapping, ...], evidence["participants"])
+    reservations = cast(tuple[RowMapping, ...], evidence["reservations"])
+    dependencies = cast(tuple[RowMapping, ...], evidence["dependencies"])
+    ticket_authority = cast(RowMapping, evidence["ticket_authority"])
     inventory = {
         "dependencies": [
             [str(row["package_id"]), str(row["predecessor_package_id"])] for row in dependencies

@@ -26,14 +26,14 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.execute("DROP TRIGGER IF EXISTS trg_work_package_history_immutable ON work_package_history")
     op.execute("DROP FUNCTION IF EXISTS reject_work_package_history_mutation()")
-    for table_name in (
-        "work_package_commands",
-        "work_package_history",
-        "capacity_reservations",
-        "work_package_dependencies",
-        "work_package_participants",
-        "canonical_work_packages",
-        "capacity_exceptions",
-        "working_patterns",
+    for statement in (
+        "DROP TABLE IF EXISTS work_package_commands",
+        "DROP TABLE IF EXISTS work_package_history",
+        "DROP TABLE IF EXISTS capacity_reservations",
+        "DROP TABLE IF EXISTS work_package_dependencies",
+        "DROP TABLE IF EXISTS work_package_participants",
+        "DROP TABLE IF EXISTS canonical_work_packages",
+        "DROP TABLE IF EXISTS capacity_exceptions",
+        "DROP TABLE IF EXISTS working_patterns",
     ):
-        op.execute(f"DROP TABLE IF EXISTS {table_name}")
+        op.execute(statement)

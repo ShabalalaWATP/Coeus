@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 from hashlib import sha256
+from typing import cast
 from uuid import UUID
 
 from coeus.domain.organisation_validation import aware, optional_text, text_value
@@ -63,16 +64,13 @@ class PackageTransferPlan:
         aware(self.starts_at, "starts_at")
         aware(self.ends_at, "ends_at")
         if required:
-            assert self.starts_at is not None and self.ends_at is not None
-            assert self.reserved_minutes is not None
-            assert self.reservation_idempotency_key is not None
-            if (
-                self.starts_at >= self.ends_at
-                or self.reserved_minutes < 15
-                or self.reserved_minutes % 15
-            ):
+            # The completeness check above already refused any missing value.
+            starts_at, ends_at = cast(datetime, self.starts_at), cast(datetime, self.ends_at)
+            minutes = cast(int, self.reserved_minutes)
+            key = cast(str, self.reservation_idempotency_key)
+            if starts_at >= ends_at or minutes < 15 or minutes % 15:
                 raise ValueError("reservation plan is invalid")
-            text_value(self.reservation_idempotency_key, "reservation_idempotency_key", 128)
+            text_value(key, "reservation_idempotency_key", 128)
 
 
 @dataclass(frozen=True)

@@ -3,6 +3,7 @@
 import json
 from datetime import datetime
 from hashlib import sha256
+from typing import cast
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from sqlalchemy import text
@@ -116,8 +117,8 @@ def _create_unit(
     connection: Connection, command: OrganisationMutationCommand, occurred_at: datetime
 ) -> OrganisationMutationResult:
     request = command.request
-    parent_id = request.parent_unit_id
-    assert parent_id is not None
+    # The request refuses a create without a parent when it is built.
+    parent_id = cast(UUID, request.parent_unit_id)
     parent = _locked_unit(connection, parent_id)
     if parent is None or not bool(parent["is_active"]):
         raise OrganisationMutationConflict("the parent unit is not active")

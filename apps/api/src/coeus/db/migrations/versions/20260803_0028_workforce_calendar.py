@@ -28,11 +28,11 @@ def downgrade() -> None:
     op.execute("DROP FUNCTION IF EXISTS reject_calendar_history_mutation()")
     op.execute("DROP TRIGGER IF EXISTS trg_calendar_event_no_delete ON calendar_events")
     op.execute("DROP FUNCTION IF EXISTS reject_calendar_event_delete()")
-    for table_name in (
-        "calendar_event_commands",
-        "calendar_event_versions",
-        "calendar_event_exceptions",
-        "calendar_event_scopes",
-        "calendar_events",
+    for statement in (
+        "DROP TABLE IF EXISTS calendar_event_commands",
+        "DROP TABLE IF EXISTS calendar_event_versions",
+        "DROP TABLE IF EXISTS calendar_event_exceptions",
+        "DROP TABLE IF EXISTS calendar_event_scopes",
+        "DROP TABLE IF EXISTS calendar_events",
     ):
-        op.execute(f"DROP TABLE IF EXISTS {table_name}")
+        op.execute(statement)

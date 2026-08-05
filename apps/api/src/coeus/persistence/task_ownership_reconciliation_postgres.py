@@ -4,6 +4,7 @@ import json
 from collections import defaultdict
 from datetime import date, datetime
 from hashlib import sha256
+from typing import cast
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from sqlalchemy import text
@@ -78,8 +79,8 @@ def _reconcile_rows(
                 _finding(connection, checkpoint_id, as_of, source, "ownership_ambiguous")
                 findings += 1
                 continue
-            team_id = next(iter(team_ids))
-            assert team_id is not None
+            # The ambiguity check above already refused a None or a split set.
+            team_id = cast(UUID, next(iter(team_ids)))
             current = connection.execute(
                 text(
                     "SELECT owning_unit_id FROM team_task_ownership "

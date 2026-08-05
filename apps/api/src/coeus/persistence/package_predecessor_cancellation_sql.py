@@ -7,6 +7,9 @@ JOIN team_task_ownership ownership ON ownership.ticket_id=package.ticket_id
  AND ownership.workflow_leg=package.workflow_leg
 WHERE package.package_id=:package_id
 """
+# The locked variant is a whole statement rather than a suffix appended at the
+# call site, so every statement the caller runs is a fixed string.
+PACKAGE_LOCKED = PACKAGE + " FOR UPDATE OF package,ownership"
 GRANT = """
 SELECT grant_id,version FROM team_management_grants
 WHERE grant_id=:grant_id AND manager_user_id=:actor_id AND action='task:assign'

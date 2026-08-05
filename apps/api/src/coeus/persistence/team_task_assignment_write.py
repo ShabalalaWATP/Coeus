@@ -1,6 +1,5 @@
 """Atomic canonical ownership projection for analyst assignment commits."""
 
-from datetime import datetime
 from uuid import NAMESPACE_URL, uuid5
 
 from sqlalchemy import text
@@ -10,6 +9,7 @@ from coeus.domain.team_task_ownership import (
     AssignmentOwnershipIntent,
     delivery_route_for_leg,
 )
+from coeus.persistence.organisation_authority_validation import transaction_time
 
 
 def write_assignment_ownership(
@@ -18,8 +18,7 @@ def write_assignment_ownership(
     ownership: AssignmentOwnershipIntent,
 ) -> int:
     """Validate the current delivery authority and upsert one active leg owner."""
-    now = connection.execute(text("SELECT transaction_timestamp()")).scalar_one()
-    assert isinstance(now, datetime)
+    now = transaction_time(connection)
     authority = (
         connection.execute(
             text(_AUTHORITY),

@@ -15,12 +15,12 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 __all__ = ("branch_labels", "depends_on", "down_revision", "downgrade", "revision", "upgrade")
 
-_CHECK = "calendar_event_commands_command_type_check"
-_TYPES = "'create','update','cancel','update_occurrence','cancel_occurrence','update_future'"
-
 
 def upgrade() -> None:
-    op.execute(f"ALTER TABLE calendar_event_commands DROP CONSTRAINT IF EXISTS {_CHECK}")
+    op.execute(
+        "ALTER TABLE calendar_event_commands DROP CONSTRAINT IF EXISTS "
+        "calendar_event_commands_command_type_check"
+    )
     op.execute("ALTER TABLE calendar_event_commands ALTER COLUMN command_type TYPE varchar(24)")
     op.execute(
         "ALTER TABLE calendar_event_commands ADD COLUMN IF NOT EXISTS future_event_id uuid NULL"
@@ -33,8 +33,9 @@ def upgrade() -> None:
         "REFERENCES calendar_events(event_id); END IF; END $$"
     )
     op.execute(
-        f"ALTER TABLE calendar_event_commands ADD CONSTRAINT {_CHECK} "
-        f"CHECK(command_type IN ({_TYPES}))"
+        "ALTER TABLE calendar_event_commands ADD CONSTRAINT "
+        "calendar_event_commands_command_type_check CHECK(command_type IN "
+        "('create','update','cancel','update_occurrence','cancel_occurrence','update_future'))"
     )
 
 
@@ -53,9 +54,13 @@ def downgrade() -> None:
         END $$
         """
     )
-    op.execute(f"ALTER TABLE calendar_event_commands DROP CONSTRAINT IF EXISTS {_CHECK}")
     op.execute(
-        f"ALTER TABLE calendar_event_commands ADD CONSTRAINT {_CHECK} "
+        "ALTER TABLE calendar_event_commands DROP CONSTRAINT IF EXISTS "
+        "calendar_event_commands_command_type_check"
+    )
+    op.execute(
+        "ALTER TABLE calendar_event_commands ADD CONSTRAINT "
+        "calendar_event_commands_command_type_check "
         "CHECK(command_type IN ('create','update','cancel'))"
     )
     op.execute(

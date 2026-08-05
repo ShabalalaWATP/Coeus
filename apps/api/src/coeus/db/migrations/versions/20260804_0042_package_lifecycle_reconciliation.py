@@ -27,40 +27,35 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    for table, trigger in (
-        (
-            "predecessor_cancellation_commands",
-            "trg_predecessor_cancellation_commands_immutable",
-        ),
-        ("calendar_event_exceptions", "trg_calendar_exception_package_reconciliation"),
-        ("calendar_events", "trg_calendar_package_reconciliation"),
-        ("team_capability_coverage", "trg_capability_package_reconciliation"),
-        ("assignment_competencies", "trg_competency_package_reconciliation"),
-        ("organisation_units", "trg_team_package_reconciliation"),
-        ("coeus_ticket_aggregates", "trg_ticket_package_reconciliation"),
-        ("team_memberships", "trg_membership_package_reconciliation"),
-        ("identity_account_projection", "trg_account_package_reconciliation"),
-        ("canonical_work_packages", "trg_package_plan_input_changed"),
-        ("canonical_work_packages", "trg_package_terminal_reconciliation"),
-        ("canonical_work_packages", "trg_package_predecessor_cancellation"),
+    for statement in (
+        "DROP TRIGGER IF EXISTS trg_predecessor_cancellation_commands_immutable "
+        "ON predecessor_cancellation_commands",
+        "DROP TRIGGER IF EXISTS trg_calendar_exception_package_reconciliation "
+        "ON calendar_event_exceptions",
+        "DROP TRIGGER IF EXISTS trg_calendar_package_reconciliation ON calendar_events",
+        "DROP TRIGGER IF EXISTS trg_capability_package_reconciliation ON team_capability_coverage",
+        "DROP TRIGGER IF EXISTS trg_competency_package_reconciliation ON assignment_competencies",
+        "DROP TRIGGER IF EXISTS trg_team_package_reconciliation ON organisation_units",
+        "DROP TRIGGER IF EXISTS trg_ticket_package_reconciliation ON coeus_ticket_aggregates",
+        "DROP TRIGGER IF EXISTS trg_membership_package_reconciliation ON team_memberships",
+        "DROP TRIGGER IF EXISTS trg_account_package_reconciliation ON identity_account_projection",
+        "DROP TRIGGER IF EXISTS trg_package_plan_input_changed ON canonical_work_packages",
+        "DROP TRIGGER IF EXISTS trg_package_terminal_reconciliation ON canonical_work_packages",
+        "DROP TRIGGER IF EXISTS trg_package_predecessor_cancellation ON canonical_work_packages",
+        "DROP FUNCTION IF EXISTS calendar_package_reconciliation()",
+        "DROP FUNCTION IF EXISTS capability_package_reconciliation()",
+        "DROP FUNCTION IF EXISTS competency_package_reconciliation()",
+        "DROP FUNCTION IF EXISTS team_package_reconciliation()",
+        "DROP FUNCTION IF EXISTS package_plan_input_changed()",
+        "DROP FUNCTION IF EXISTS ticket_package_reconciliation()",
+        "DROP FUNCTION IF EXISTS membership_package_reconciliation()",
+        "DROP FUNCTION IF EXISTS account_package_reconciliation()",
+        "DROP FUNCTION IF EXISTS reconcile_ineligible_participant(uuid,text,text)",
+        "DROP FUNCTION IF EXISTS reconcile_terminal_package()",
+        "DROP FUNCTION IF EXISTS guard_predecessor_cancellation()",
+        "DROP FUNCTION IF EXISTS reject_package_lifecycle_evidence_mutation()",
     ):
-        op.execute(f"DROP TRIGGER IF EXISTS {trigger} ON {table}")
-    for function in (
-        "calendar_package_reconciliation",
-        "capability_package_reconciliation",
-        "competency_package_reconciliation",
-        "team_package_reconciliation",
-        "package_plan_input_changed",
-        "ticket_package_reconciliation",
-        "membership_package_reconciliation",
-        "account_package_reconciliation",
-        "reconcile_ineligible_participant",
-        "reconcile_terminal_package",
-        "guard_predecessor_cancellation",
-        "reject_package_lifecycle_evidence_mutation",
-    ):
-        suffix = "(uuid,text,text)" if function == "reconcile_ineligible_participant" else "()"
-        op.execute(f"DROP FUNCTION IF EXISTS {function}{suffix}")
+        op.execute(statement)
     op.execute("DROP TABLE predecessor_cancellation_commands")
     op.execute("DROP TABLE package_lifecycle_conflicts")
     op.execute("ALTER TABLE capacity_reservations DROP COLUMN participant_role")

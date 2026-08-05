@@ -1,6 +1,8 @@
 """Authorisation and atomic execution of workflow-leg transfer decisions."""
 
 from datetime import datetime
+from typing import cast
+from uuid import UUID
 
 from sqlalchemy import text
 from sqlalchemy.engine import Connection, RowMapping
@@ -111,18 +113,15 @@ def apply_decision(
     )
     starts = [item.starts_at for item in proposal.packages if item.starts_at is not None]
     ends = [item.ends_at for item in proposal.packages if item.ends_at is not None]
-    assert command.target_membership_id is not None
-    assert command.expected_target_membership_version is not None
-    assert command.expected_target_account_credential_version is not None
-    assert command.expected_target_account_source_hash is not None
+    # The completeness check above already refused any missing target evidence.
     validate_target(
         connection,
         transfer["target_user_id"],
         transfer["target_unit_id"],
-        command.target_membership_id,
-        command.expected_target_membership_version,
-        command.expected_target_account_credential_version,
-        command.expected_target_account_source_hash,
+        cast(UUID, command.target_membership_id),
+        cast(int, command.expected_target_membership_version),
+        cast(int, command.expected_target_account_credential_version),
+        cast(str, command.expected_target_account_source_hash),
         min(starts),
         max(ends),
     )

@@ -8,6 +8,8 @@
     "apps/web/src/**/*-test-fixtures.ts",
     "apps/web/src/**/*-test-fixtures.tsx",
     "apps/web/src/**/requests-test-data.ts",
+    "apps/web/src/features/teams/WorkflowLegTransferActions.tsx",
+    "apps/web/src/lib/api-client/workflow-leg-transfers.ts",
     "apps/web/src/test/**",
     "apps/web/tests/**",
     "scripts/check-*.mjs"

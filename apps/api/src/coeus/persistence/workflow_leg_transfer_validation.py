@@ -34,6 +34,19 @@ _TICKET = (
 _DEPENDENCIES = """SELECT package_id,predecessor_package_id FROM work_package_dependencies
 WHERE package_id=ANY(:package_ids) OR predecessor_package_id=ANY(:package_ids)
 ORDER BY package_id,predecessor_package_id"""
+# Locked variants are written out in full rather than built by appending a suffix,
+# so every statement this module runs is a literal a reader can check in place.
+_OWNERSHIP_LOCKED = """SELECT * FROM team_task_ownership WHERE ticket_id=:ticket_id
+AND workflow_leg=:workflow_leg FOR UPDATE"""
+_PACKAGES_LOCKED = """SELECT * FROM canonical_work_packages WHERE ticket_id=:ticket_id
+AND workflow_leg=:workflow_leg ORDER BY package_id FOR UPDATE"""
+_TICKET_LOCKED = (
+    "SELECT version,canonical_hash,payload FROM coeus_ticket_aggregates "
+    "WHERE ticket_id=:ticket_id FOR UPDATE"
+)
+_DEPENDENCIES_LOCKED = """SELECT package_id,predecessor_package_id FROM work_package_dependencies
+WHERE package_id=ANY(:package_ids) OR predecessor_package_id=ANY(:package_ids)
+ORDER BY package_id,predecessor_package_id FOR UPDATE"""
 _GRANT = """SELECT * FROM team_management_grants WHERE grant_id=:grant_id
 AND manager_user_id=:actor_id AND valid_from<=:at
 AND(valid_until IS NULL OR :at<valid_until) AND(revoked_at IS NULL OR :at<revoked_at) FOR UPDATE"""
@@ -71,11 +84,8 @@ def validate_proposal(
         raise WorkflowLegTransferConflict("proposal expiry must be within the next 30 days")
     ticket_row, ticket = _ticket(connection, proposal.ticket_id, lock)
     if lock:
-        ownership = (
-            connection.execute(text(_OWNERSHIP + " FOR UPDATE"), ownership_values)
-            .mappings()
-            .first()
-        )
+        locked = _OWNERSHIP_LOCKED
+        ownership = connection.execute(text(locked), ownership_values).mappings().first()
         if ownership is None or ownership["owning_unit_id"] != proposal.source_unit_id:
             raise WorkflowLegTransferDenied("workflow-leg transfer is unavailable")
         if (
@@ -90,16 +100,18 @@ def validate_proposal(
         or not _has_source_assignment(ticket, proposal)
     ):
         raise WorkflowLegTransferDenied("workflow-leg transfer is unavailable")
+    package_query = _PACKAGES_LOCKED if lock else _PACKAGES
     packages = tuple(
         connection.execute(
-            text(_PACKAGES + (" FOR UPDATE" if lock else "")),
+            text(package_query),
             {"ticket_id": proposal.ticket_id, "workflow_leg": proposal.workflow_leg.value},
         ).mappings()
     )
     _validate_package_inventory(proposal, packages)
+    dependency_query = _DEPENDENCIES_LOCKED if lock else _DEPENDENCIES
     dependencies = tuple(
         connection.execute(
-            text(_DEPENDENCIES + (" FOR UPDATE" if lock else "")),
+            text(dependency_query),
             {"package_ids": [row["package_id"] for row in packages]},
         ).mappings()
     )
@@ -213,13 +225,8 @@ FOR UPDATE"""),
 
 
 def _ticket(connection: Connection, ticket_id: UUID, lock: bool) -> tuple[RowMapping, TicketRecord]:
-    row = (
-        connection.execute(
-            text(_TICKET + (" FOR UPDATE" if lock else "")), {"ticket_id": ticket_id}
-        )
-        .mappings()
-        .first()
-    )
+    ticket_query = _TICKET_LOCKED if lock else _TICKET
+    row = connection.execute(text(ticket_query), {"ticket_id": ticket_id}).mappings().first()
     decoded = decode_value(dict(row["payload"])) if row is not None else None
     if row is None or not isinstance(decoded, TicketRecord):
         raise WorkflowLegTransferDenied("workflow-leg transfer is unavailable")

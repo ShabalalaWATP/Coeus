@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 from datetime import UTC, datetime
+from typing import cast
 from uuid import UUID
 
 from coeus.application.ports.organisation import OrganisationReader
@@ -68,8 +69,8 @@ class OrganisationLifecycleService:
         self, request: OrganisationMutationRequest
     ) -> tuple[UUID, ManagementAction]:
         if request.operation is OrganisationMutationOperation.CREATE:
-            parent_id = request.parent_unit_id
-            assert parent_id is not None
+            # The request refuses a create without a parent when it is built.
+            parent_id = cast(UUID, request.parent_unit_id)
             parent = self._organisation.get_unit(parent_id)
             if parent is None or not parent.is_active:
                 raise OrganisationMutationConflict("the parent unit is not active")

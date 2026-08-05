@@ -9,6 +9,7 @@ from sqlalchemy.engine import Connection
 
 from coeus.domain.team_task_ownership import AssignmentOwnershipIntent, delivery_route_for_leg
 from coeus.domain.tickets import AnalystAssignment, AnalystWorkPackage, TicketRecord
+from coeus.persistence.organisation_authority_validation import transaction_time
 
 _PROVENANCE = "ticket-assignment-work-package-v1"
 
@@ -23,8 +24,7 @@ def write_assignment_work_packages(
     """Project packages with one accountable current member of the owning leaf team."""
     if not ticket.work_packages:
         return ()
-    now = connection.execute(text("SELECT transaction_timestamp()")).scalar_one()
-    assert isinstance(now, datetime)
+    now = transaction_time(connection)
     assignments = _active_assignments(ticket, ownership)
     _lock_and_validate_memberships(connection, assignments, ownership.owning_unit_id, now)
     written: list[UUID] = []

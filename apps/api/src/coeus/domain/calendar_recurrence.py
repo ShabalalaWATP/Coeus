@@ -52,22 +52,17 @@ def _apply_exception(
         return replace(event, timing=occurrence.timing)
     if exception.cancelled or exception.timing is None:
         raise ValueError("cancelled calendar occurrence cannot be materialised")
-    if any(
-        value is None
-        for value in (exception.activity, exception.availability, exception.privacy, exception.note)
-    ):
+    activity, availability = exception.activity, exception.availability
+    privacy, note = exception.privacy, exception.note
+    if activity is None or availability is None or privacy is None or note is None:
         raise ValueError("changed calendar occurrence is incomplete")
-    assert exception.activity is not None
-    assert exception.availability is not None
-    assert exception.privacy is not None
-    assert exception.note is not None
     return replace(
         event,
         timing=exception.timing,
-        activity=exception.activity,
-        availability=exception.availability,
-        privacy=exception.privacy,
-        note=exception.note,
+        activity=activity,
+        availability=availability,
+        privacy=privacy,
+        note=note,
     )
 
 

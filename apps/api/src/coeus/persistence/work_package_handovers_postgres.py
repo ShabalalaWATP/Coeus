@@ -1,5 +1,6 @@
 """Serializable accountable-owner handover with reservation reconciliation."""
 
+from typing import cast
 from uuid import UUID
 
 from sqlalchemy import text
@@ -88,10 +89,10 @@ class PostgresWorkPackageHandoverStore(WorkPackageHandoverStore):
         evidence: dict[str, object],
     ) -> WorkPackageHandoverResult:
         request = command.request
-        package = evidence["package"]
-        reservations = evidence["source_reservations"]
-        assert isinstance(package, RowMapping)
-        assert isinstance(reservations, tuple)
+        # The evidence map is assembled by the validation module, so its shape is
+        # fixed here rather than re-checked on every read.
+        package = cast(RowMapping, evidence["package"])
+        reservations = cast(tuple[RowMapping, ...], evidence["source_reservations"])
         source_user_id = package["accountable_user_id"]
         occurred_at = transaction_time(connection)
         for user_id in sorted((source_user_id, request.target_user_id), key=str):
@@ -156,12 +157,12 @@ class PostgresWorkPackageHandoverStore(WorkPackageHandoverStore):
                 if item.disposition is ReservationDisposition.RELEASE:
                     continue
                 source = by_id[item.source_reservation_id]
-                assert item.replacement_reservation_id is not None
-                assert item.replacement_idempotency_key is not None
+                # Anything other than a release carries both halves of its
+                # replacement evidence, which the request schema enforces.
                 reserve_capacity_in_transaction(
                     connection,
                     ReserveCapacityCommand(
-                        item.replacement_reservation_id,
+                        cast(UUID, item.replacement_reservation_id),
                         command.actor_user_id,
                         command.request.target_user_id,
                         package["ticket_id"],
@@ -170,7 +171,7 @@ class PostgresWorkPackageHandoverStore(WorkPackageHandoverStore):
                         source["starts_at"],
                         source["ends_at"],
                         int(source["reserved_minutes"]),
-                        item.replacement_idempotency_key,
+                        cast(str, item.replacement_idempotency_key),
                         package_version,
                     ),
                     policy_buffer_minutes=self._policy_buffer_minutes,

@@ -83,19 +83,28 @@ def active_analyst_role() -> str:
     return RoleName.INTELLIGENCE_ANALYST.value
 
 
+# Both variants are written out in full rather than built by appending a suffix,
+# so every statement this module runs is a literal a reader can check in place.
+_ACCOUNT = (
+    "SELECT user_id,is_active,roles,credential_version,source_hash "
+    "FROM identity_account_projection WHERE user_id=:user_id"
+)
+_ACCOUNT_LOCKED = (
+    "SELECT user_id,is_active,roles,credential_version,source_hash "
+    "FROM identity_account_projection WHERE user_id=:user_id FOR UPDATE"
+)
+
+
 def active_human_analyst_account(
     connection: Connection, user_id: UUID, *, lock: bool
 ) -> RowMapping | None:
     """Return locked canonical evidence only for an active human Analyst account."""
     if principal_kind(user_id) is not PrincipalKind.HUMAN:
         return None
-    suffix = " FOR UPDATE" if lock else ""
+    query = _ACCOUNT_LOCKED if lock else _ACCOUNT
     account = (
         connection.execute(
-            text(
-                "SELECT user_id,is_active,roles,credential_version,source_hash "
-                "FROM identity_account_projection WHERE user_id=:user_id" + suffix
-            ),
+            text(query),
             {"user_id": user_id},
         )
         .mappings()

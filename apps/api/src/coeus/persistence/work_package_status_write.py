@@ -8,6 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
 from coeus.domain.tickets import TicketRecord
+from coeus.persistence.organisation_authority_validation import transaction_time
 
 
 def sync_work_package_statuses(
@@ -18,8 +19,7 @@ def sync_work_package_statuses(
     """Update only changed packages and release reservations on terminal states."""
     if not ticket.work_packages:
         return ()
-    now = connection.execute(text("SELECT transaction_timestamp()")).scalar_one()
-    assert isinstance(now, datetime)
+    now = transaction_time(connection)
     changed: list[UUID] = []
     for package in ticket.work_packages:
         target_state = "complete" if package.status.value == "complete" else "pending"

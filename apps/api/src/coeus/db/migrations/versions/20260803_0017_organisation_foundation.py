@@ -24,23 +24,20 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    for table_name in (
-        "organisation_reconciliation_findings",
-        "organisation_reconciliation_checkpoints",
-        "effective_authority_epochs",
-        "team_management_grants",
-        "team_memberships",
-        "team_capability_coverage",
-        "team_delivery_profiles",
-        "organisation_topology_revisions",
-        "organisation_unit_closure",
-        "organisation_units",
+    for statement in (
+        "DROP TABLE IF EXISTS organisation_reconciliation_findings",
+        "DROP TABLE IF EXISTS organisation_reconciliation_checkpoints",
+        "DROP TABLE IF EXISTS effective_authority_epochs",
+        "DROP TABLE IF EXISTS team_management_grants",
+        "DROP TABLE IF EXISTS team_memberships",
+        "DROP TABLE IF EXISTS team_capability_coverage",
+        "DROP TABLE IF EXISTS team_delivery_profiles",
+        "DROP TABLE IF EXISTS organisation_topology_revisions",
+        "DROP TABLE IF EXISTS organisation_unit_closure",
+        "DROP TABLE IF EXISTS organisation_units",
+        "DROP FUNCTION IF EXISTS validate_organisation_topology_revision_insert()",
+        "DROP FUNCTION IF EXISTS validate_organisation_closure_write()",
+        "DROP FUNCTION IF EXISTS validate_organisation_unit_tree_integrity()",
+        "DROP FUNCTION IF EXISTS reject_organisation_topology_revision_mutation()",
     ):
-        op.execute(f"DROP TABLE IF EXISTS {table_name}")
-    for function_name in (
-        "validate_organisation_topology_revision_insert",
-        "validate_organisation_closure_write",
-        "validate_organisation_unit_tree_integrity",
-        "reject_organisation_topology_revision_mutation",
-    ):
-        op.execute(f"DROP FUNCTION IF EXISTS {function_name}()")
+        op.execute(statement)

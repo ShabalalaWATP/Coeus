@@ -120,7 +120,10 @@ def security_authority_fence(database_url: str, backups: tuple[TableBackup, ...]
         with psycopg.connect(_dsn(database_url)) as connection, connection.transaction():
             connection.execute("SET LOCAL lock_timeout = '5s'")
             identifiers = sql.SQL(",").join(sql.Identifier(spec.name) for spec in specs)
-            connection.execute(sql.SQL("LOCK TABLE {} IN SHARE MODE").format(identifiers))
+            # psycopg composition: the names come from the TABLES constant and are
+            # quoted by sql.Identifier, so no value reaches the statement text.
+            statement = sql.SQL("LOCK TABLE {} IN SHARE MODE").format(identifiers)
+            connection.execute(statement)  # nosemgrep
             for spec in specs:
                 path = root / f"{spec.name}.copy"
                 _copy_out(connection, spec, path)
@@ -141,7 +144,10 @@ def clear_restored_tables(database_url: str) -> None:
                 sql.Identifier("coeus_resource_leases"),
             ]
         )
-        connection.execute(sql.SQL("TRUNCATE TABLE {} CASCADE").format(identifiers))
+        # psycopg composition: the names come from the TABLES constant and are
+        # quoted by sql.Identifier, so no value reaches the statement text.
+        statement = sql.SQL("TRUNCATE TABLE {} CASCADE").format(identifiers)
+        connection.execute(statement)  # nosemgrep
 
 
 def _copy_out(connection: psycopg.Connection[Any], spec: TableSpec, path: Path) -> None:
@@ -197,9 +203,10 @@ def _require_table(connection: psycopg.Connection[Any], table: str) -> None:
 def _table_count(connection: psycopg.Connection[Any], table: str, *, operation: str) -> int:
     if table not in {spec.name for spec in TABLES}:
         raise ValueError(f"Table {table} is not in the recovery allow-list.")
-    row = connection.execute(
-        sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(table))
-    ).fetchone()
+    # psycopg composition: the table name is checked against the allow-list above
+    # and quoted by sql.Identifier, so no value reaches the statement text.
+    statement = sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(table))
+    row = connection.execute(statement).fetchone()  # nosemgrep
     if row is None:
         raise RuntimeError(f"Could not count {operation} table {table}.")
     return int(row[0])

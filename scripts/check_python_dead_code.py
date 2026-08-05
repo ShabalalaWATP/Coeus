@@ -23,6 +23,7 @@ INTENTIONAL_TEST_HARNESS = {
     ("domain/work_packages.py", "validate_dependency_graph"),
     ("persistence/capacity_reservations_postgres.py", "PostgresCapacityReservationStore"),
     ("persistence/organisation_schema.py", "ensure_organisation_schema"),
+    ("persistence/synthetic_fixture_live_integrity.py", "inspect_live_synthetic_fixture"),
     (
         "repositories/synthetic_organisation_integrity.py",
         "inspect_synthetic_organisation_manifest",
