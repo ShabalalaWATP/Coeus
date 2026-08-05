@@ -62,7 +62,7 @@ test("gives the direct delivery manager board, forecast and planning access", as
   await page.goto("/teams");
   const workspace = page.getByLabel("Organisation workspace", { exact: true });
   await expect(workspace.getByRole("heading", { name: "RFA Assessment Team" })).toBeVisible();
-  await page.getByRole("tab", { name: "Task board" }).click();
+  await page.getByRole("tab", { name: "Board" }).click();
   await expect(page.getByRole("heading", { name: "Team task board" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Next 7 days" })).toBeVisible();
   const taskCard = page.getByRole("listitem").filter({ hasText: /\bEXR-2002\b/ });
@@ -86,6 +86,9 @@ test("suppresses small ancestor counts and denies named calendar detail", async 
   const rfa = workspaces.workspaces.find((item) => item.unit.shortName === "RFA");
   expect(rfa).toBeDefined();
   expect(rfa?.canViewDetail).toBe(false);
+  await page.getByRole("tab", { name: "Calendar" }).click();
+  // The calendar is collapsed until asked for, so its controls only exist once
+  // the panel has been opened.
   await page.getByRole("button", { name: "Open team calendar" }).click();
   await page.getByLabel("Include child units").check();
   await expect(

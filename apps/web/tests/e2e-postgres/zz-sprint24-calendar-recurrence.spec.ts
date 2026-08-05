@@ -19,6 +19,7 @@ type CalendarEvent = {
   ownerUserId: string;
   privacy: string;
   recurrence: { frequency: string; interval: number; until: string; weekdays: number[] } | null;
+  duplicateSources?: string[];
   seriesEventId?: string;
   seriesTiming?: CalendarEvent["timing"];
   source: string;
@@ -92,7 +93,9 @@ test("protects and updates a private weekly personal series end to end", async (
     false,
   );
   const denied = await deniedMutation(page, series);
-  expect(denied).toMatchObject({ status: 403, code: "calendar_change_denied" });
+  // The body is the failure message: a refusal that turns into a schema error
+  // should say which field broke rather than only that the status differed.
+  expect(denied, denied.body).toMatchObject({ status: 403, code: "calendar_change_denied" });
   await logout(page);
 
   await login(page, "rfa.team@example.test", "RFA Products");
@@ -203,11 +206,16 @@ test("calendar modes remain keyboard-operable at a narrow mobile viewport", asyn
   await expect(agenda).toHaveAttribute("aria-selected", "true");
   await agenda.focus();
   await agenda.press("ArrowRight");
+  // Assert the selected mode rather than the panel being visible: the panel is
+  // the activity list itself, so it collapses to nothing whenever the chosen
+  // window holds no events, which has nothing to do with keyboard operability.
   await expect(page.getByRole("tab", { name: "Month" })).toBeFocused();
-  await expect(page.getByRole("tabpanel", { name: "month calendar activity" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Month" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tabpanel", { name: "month calendar activity" })).toHaveCount(1);
   await page.getByRole("tab", { name: "Month" }).press("ArrowRight");
   await expect(page.getByRole("tab", { name: "Week" })).toBeFocused();
-  await expect(page.getByRole("tabpanel", { name: "week calendar activity" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Week" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tabpanel", { name: "week calendar activity" })).toHaveCount(1);
 });
 
 async function apiGet<T>(page: Page, path: string): Promise<T> {
@@ -222,10 +230,9 @@ async function apiGet<T>(page: Page, path: string): Promise<T> {
 }
 
 function agendaNote(page: Page, note: string) {
-  return page
-    .getByRole("heading", { name: "Your activity" })
-    .locator("../..")
-    .getByText(new RegExp(note));
+  // Scope by the agenda region's accessible name. Walking up from the heading
+  // breaks whenever the heading gains a wrapper, which is what happened here.
+  return page.getByRole("region", { name: "Your activity" }).getByText(new RegExp(note));
 }
 
 async function calendar(page: Page, dates: ReturnType<typeof weeklyDates>) {
@@ -244,10 +251,14 @@ async function deniedMutation(page: Page, occurrence: CalendarEvent) {
       ).json()) as {
         csrfToken: string;
       };
+      // The occurrence response carries fields the mutation schema forbids, so
+      // every one of them has to go or the request fails validation before the
+      // authority check this test exists to prove.
       const event = { ...item, timing: item.seriesTiming ?? item.timing };
       delete event.occurrenceKey;
       delete event.seriesEventId;
       delete event.seriesTiming;
+      delete event.duplicateSources;
       const response = await fetch(`${base}/api/v1/calendar/previews`, {
         body: JSON.stringify({
           operation: "update",
@@ -261,7 +272,11 @@ async function deniedMutation(page: Page, occurrence: CalendarEvent) {
         method: "POST",
       });
       const body = (await response.json()) as { error?: { code?: string } };
-      return { code: body.error?.code, status: response.status };
+      return {
+        body: JSON.stringify(body).slice(0, 900),
+        code: body.error?.code,
+        status: response.status,
+      };
     },
     { base: API_BASE_URL, item: occurrence },
   );
