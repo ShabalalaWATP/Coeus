@@ -68,8 +68,10 @@
 .splash-intro__logo-frame {
   position: relative;
   z-index: 1;
-  width: clamp(220px, 21vw, 300px);
-  height: clamp(220px, 21vw, 300px);
+  /* The emblem is a 256px raster, so it is never drawn larger than its source:
+     upscaling a logo softens exactly the edges the frame removal exposes. */
+  width: clamp(176px, 21vw, 256px);
+  height: clamp(176px, 21vw, 256px);
   filter: drop-shadow(0 0 18px rgb(56 189 248 / 32%)) drop-shadow(0 0 44px rgb(45 212 191 / 14%));
   animation: logo-float 6s ease-in-out infinite;
 }
