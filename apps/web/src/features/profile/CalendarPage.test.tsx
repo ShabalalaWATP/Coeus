@@ -45,8 +45,18 @@ const event = {
   cancelledAt: null,
 };
 
-beforeEach(() => resetQueryClientForTests());
-afterEach(() => vi.restoreAllMocks());
+// The form seeds its weekday selection and date bounds from today, so these
+// tests only hold on a fixed day. Only Date is faked: user-event drives its own
+// timers and would stall against a fully faked clock.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-08-04T09:00:00Z"));
+  resetQueryClientForTests();
+});
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+});
 
 function requestBody(init?: RequestInit) {
   const body = typeof init?.body === "string" ? init.body : "{}";
