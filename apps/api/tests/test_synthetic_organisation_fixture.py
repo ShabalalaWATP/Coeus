@@ -215,8 +215,7 @@ async def test_fixture_api_requires_csrf_and_password_and_never_accepts_actor_id
         assert preview.json()["creates"]["total"] == 389
         payload = {
             "commandId": str(uuid4()),
-            # gitleaks:allow - replay key, not a credential
-            "idempotencyKey": "synthetic-fixture-api-1",
+            "idempotencyKey": "synthetic-fixture-api-1",  # gitleaks:allow - replay key
             "previewHash": "b" * 64,
             "currentPassword": "wrong-password",
             "actorUserId": str(uuid4()),
@@ -247,8 +246,7 @@ async def test_fixture_api_requires_csrf_and_password_and_never_accepts_actor_id
             headers={"X-CSRF-Token": session["csrfToken"]},
             json={
                 "commandId": str(uuid4()),
-                # gitleaks:allow - replay key, not a credential
-                "idempotencyKey": "synthetic-fixture-api-reconcile-1",
+                "idempotencyKey": "synthetic-fixture-reconcile-1",  # gitleaks:allow - replay key
                 "previewHash": "b" * 64,
                 "currentPassword": "CoeusLocal1!",
             },

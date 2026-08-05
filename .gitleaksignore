@@ -5,8 +5,10 @@
 
 # Synthetic-fixture idempotency keys in tests. These are replay keys, not
 # credentials, and the rule matches them only because the identifier ends in
-# "key". The current lines carry inline annotations, so future commits are
-# stable; these fingerprints cover the commits made before that.
-94f12d9b5f70ae51390e918fa7cd2457fe97a974:apps/api/tests/test_synthetic_fixture_command_guards.py:generic-api-key:20
-07baa7ca5e38d74189e87ba7c74dc1eae9397c2d:apps/api/tests/test_synthetic_organisation_fixture.py:generic-api-key:218
-07baa7ca5e38d74189e87ba7c74dc1eae9397c2d:apps/api/tests/test_synthetic_organisation_fixture.py:generic-api-key:249
+# "key". The current lines carry same-line annotations, so future commits are
+# stable; these fingerprints cover the PR 158 squash commit that predates them.
+# A fingerprint names the commit that introduced the line, so squashing a branch
+# re-fingerprints every finding on it: entries for the pre-squash branch commits
+# would never match main and are not kept.
+ff0a0ebe46a92deb7977124874dc2ef71c333f5e:apps/api/tests/test_synthetic_organisation_fixture.py:generic-api-key:219
+ff0a0ebe46a92deb7977124874dc2ef71c333f5e:apps/api/tests/test_synthetic_organisation_fixture.py:generic-api-key:251
