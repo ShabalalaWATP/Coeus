@@ -1,6 +1,6 @@
 """Analyst and team resolution rules behind an assignment."""
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from types import SimpleNamespace
 from uuid import UUID, uuid4
 
@@ -14,6 +14,7 @@ from coeus.domain.tickets import AnalystAssignment, IntakeDetails, RoutingRoute,
 from coeus.services.analyst_assignment_service import (
     MAX_ANALYSTS_PER_ASSIGNMENT,
     AnalystAssignmentService,
+    _target_date,
 )
 
 TEAM_ID, OTHER_TEAM = uuid4(), uuid4()
@@ -173,6 +174,45 @@ def test_reassignment_refuses_a_missing_closed_or_mismatched_team(
         service._reassignment_team_id(_actor(), _ticket(_assignment(TEAM_ID)), RoutingRoute.RFA)
 
     assert error.value.code == "assignment_team_unavailable"
+
+
+def test_an_unscoped_assignment_needs_exactly_one_managed_team() -> None:
+    second = _team(OTHER_TEAM, name="Second RFA Team")
+    ambiguous = _service(teams={TEAM_ID: _team(), OTHER_TEAM: second})
+
+    with pytest.raises(AppError) as error:
+        ambiguous._resolve_assignment_team(_actor(Permission.RFA_ASSIGN), RoutingRoute.RFA, None)
+    assert error.value.code == "assignment_team_required"
+
+    single = _service()
+    assert (
+        single._resolve_assignment_team(
+            _actor(Permission.RFA_ASSIGN), RoutingRoute.RFA, None
+        ).team_id
+        == TEAM_ID
+    )
+
+
+@pytest.mark.parametrize("deadline", [None, "", "Friday", "not-a-date"])
+def test_a_target_date_is_only_read_from_a_machine_readable_deadline(
+    deadline: str | None,
+) -> None:
+    intake = None if deadline is None else IntakeDetails(title="Synthetic", deadline=deadline)
+    ticket = TicketRecord(uuid4(), "TCK-0001", uuid4(), TicketState.ANALYST_ASSIGNMENT, intake)
+
+    assert _target_date(ticket) is None
+
+
+def test_an_iso_deadline_becomes_the_assignment_target_date() -> None:
+    ticket = TicketRecord(
+        uuid4(),
+        "TCK-0001",
+        uuid4(),
+        TicketState.ANALYST_ASSIGNMENT,
+        IntakeDetails(title="Synthetic", deadline="2026-08-21T09:00:00+00:00"),
+    )
+
+    assert _target_date(ticket) == date(2026, 8, 21)
 
 
 def test_only_a_manager_of_the_current_team_or_a_role_administrator_may_reassign() -> None:
