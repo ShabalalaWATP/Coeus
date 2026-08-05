@@ -6,15 +6,9 @@ from enum import StrEnum
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from coeus.domain.calendar_commitments import (
-    CalendarCommitment as CalendarCommitment,
-)
-from coeus.domain.calendar_commitments import (
-    CalendarCommitmentResponse as CalendarCommitmentResponse,
-)
-from coeus.domain.calendar_commitments import (
-    CommitmentResponseState as CommitmentResponseState,
-)
+# The commitment records are not re-exported here. They depend on CalendarEvent,
+# so importing them back would make the two modules mutually dependent and leave
+# their definition order significant. Import them from calendar_commitments.
 from coeus.domain.calendar_enums import (
     AvailabilityEffect as AvailabilityEffect,
 )

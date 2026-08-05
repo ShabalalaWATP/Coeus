@@ -17,8 +17,8 @@ from coeus.api.workforce_calendar_contracts import (
     projection_response,
 )
 from coeus.domain.auth import AuthenticatedSession
+from coeus.domain.calendar_commitments import CalendarCommitmentResponse
 from coeus.domain.workforce_calendar import (
-    CalendarCommitmentResponse,
     CalendarMutationCommand,
 )
 from coeus.schemas.workforce_calendar import (

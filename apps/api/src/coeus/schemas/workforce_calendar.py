@@ -5,6 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from coeus.domain.calendar_commitments import CommitmentResponseState
 from coeus.domain.workforce_calendar import (
     AvailabilityEffect,
     CalendarActivity,
@@ -15,7 +16,6 @@ from coeus.domain.workforce_calendar import (
     CalendarPrivacy,
     CalendarProjectionDetail,
     CalendarProjectionScope,
-    CommitmentResponseState,
 )
 
 

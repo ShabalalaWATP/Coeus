@@ -7,16 +7,18 @@ from uuid import UUID, uuid4
 from sqlalchemy import text
 from sqlalchemy.engine import Connection, Engine
 
-from coeus.domain.workforce_calendar import (
+from coeus.domain.calendar_commitments import (
     CalendarCommitment,
     CalendarCommitmentResponse,
+    CommitmentResponseState,
+)
+from coeus.domain.workforce_calendar import (
     CalendarEvent,
     CalendarEventSource,
     CalendarEventStatus,
     CalendarMutationCommand,
     CalendarMutationConflict,
     CalendarMutationOperation,
-    CommitmentResponseState,
 )
 from coeus.persistence.organisation_authority_validation import transaction_time
 from coeus.persistence.serializable_retry import retry_serializable_once

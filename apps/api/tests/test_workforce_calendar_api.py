@@ -8,11 +8,11 @@ from httpx import ASGITransport, AsyncClient
 
 from coeus.api.organisation_dependencies import get_workforce_calendar
 from coeus.core.config import Settings
+from coeus.domain.calendar_commitments import CalendarCommitment, CommitmentResponseState
 from coeus.domain.workforce_calendar import (
     AvailabilityEffect,
     CalendarActivity,
     CalendarAggregateCell,
-    CalendarCommitment,
     CalendarEvent,
     CalendarEventSource,
     CalendarMutationDenied,
@@ -26,7 +26,6 @@ from coeus.domain.workforce_calendar import (
     CalendarProjectionEntry,
     CalendarProjectionScope,
     CalendarTiming,
-    CommitmentResponseState,
 )
 from coeus.main import create_app
 from rfi_search_helpers import login

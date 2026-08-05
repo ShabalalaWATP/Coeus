@@ -7,6 +7,7 @@ from uuid import UUID
 from coeus.application.ports.access import UserLookup
 from coeus.application.ports.organisation import OrganisationReader
 from coeus.application.ports.workforce_calendar import WorkforceCalendarStore
+from coeus.domain.calendar_commitments import CalendarCommitment, CalendarCommitmentResponse
 from coeus.domain.calendar_deduplication import deduplicate_occurrences
 from coeus.domain.calendar_mutation_hash import calendar_preview_hash
 from coeus.domain.calendar_occurrence_policy import (
@@ -16,8 +17,6 @@ from coeus.domain.calendar_occurrence_policy import (
 from coeus.domain.calendar_recurrence import expand_event
 from coeus.domain.organisation import ManagementAction
 from coeus.domain.workforce_calendar import (
-    CalendarCommitment,
-    CalendarCommitmentResponse,
     CalendarEvent,
     CalendarEventSource,
     CalendarEventStatus,

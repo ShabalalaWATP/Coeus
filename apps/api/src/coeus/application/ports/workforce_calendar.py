@@ -4,10 +4,9 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
+from coeus.domain.calendar_commitments import CalendarCommitment, CalendarCommitmentResponse
 from coeus.domain.organisation import ManagementAction
 from coeus.domain.workforce_calendar import (
-    CalendarCommitment,
-    CalendarCommitmentResponse,
     CalendarEvent,
     CalendarMutationCommand,
     CalendarMutationRequest,
