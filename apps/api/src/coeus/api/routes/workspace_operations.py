@@ -169,8 +169,11 @@ async def get_analytics(
 ) -> AnalyticsResponse:
     try:
         item = service.analytics(authenticated.user.user_id, unit_id, scope)
+        # vars(item) already carries the domain metrics, so they are replaced
+        # rather than passed a second time.
+        fields = {key: value for key, value in vars(item).items() if key != "metrics"}
         return AnalyticsResponse(
-            **vars(item), metrics=[MetricResponse(**vars(metric)) for metric in item.metrics]
+            **fields, metrics=[MetricResponse(**vars(metric)) for metric in item.metrics]
         )
     except WorkspaceOperationsDenied as error:
         raise _not_found() from error

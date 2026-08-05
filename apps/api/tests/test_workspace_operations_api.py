@@ -121,6 +121,11 @@ async def test_workspace_operations_require_auth_csrf_and_protect_denials() -> N
         search = await client.get(root + "/search?query=Project&store_only=true")
         assert search.status_code == 200
         assert service.search_store_only is True
+        # The domain result already carries its metrics, so the response must
+        # replace them rather than pass them a second time.
+        analytics = await client.get(root + "/analytics")
+        assert analytics.status_code == 200
+        assert analytics.json()["metrics"][0]["display"] == "7"
         policy_payload = {
             "commandId": str(uuid4()),
             "idempotencyKey": "policy-1",
