@@ -8,6 +8,7 @@ type RoutePolicy = {
 export const routePolicy = {
   accountPassword: { path: "account/password", permissions: [] },
   accountProfile: { path: "account/profile", permissions: ["user:read_self"] },
+  accountCalendar: { path: "account/calendar", permissions: ["user:read_self"] },
   requests: { path: "app/requests", permissions: ["ticket:read_own"] },
   requestNew: {
     path: "app/requests/new",
@@ -58,10 +59,12 @@ export const routePolicy = {
   },
   teams: { path: "teams", permissions: ["user:read_self"] },
   analystWorkbench: { path: "analyst/workbench", permissions: ["analyst:work"] },
+  myWork: { path: "analyst/my-work", permissions: ["analyst:work"] },
   analystTask: { path: "analyst/tasks/:taskId", permissions: ["analyst:work"] },
   qcQueue: { path: "qc/queue", permissions: ["qc:review"] },
   qcProduct: { path: "qc/products/:productId", permissions: ["qc:review"] },
   adminOverview: { path: "admin/overview", permissions: ["system:configure"] },
+  adminOrganisation: { path: "admin/organisation", permissions: ["system:configure"] },
   adminUsers: { path: "admin/users", permissions: ["user:assign_role"] },
   adminAcgs: { path: "admin/acgs", permissions: ["acg:view"] },
   adminAnalytics: { path: "admin/analytics", permissions: ["analytics:view_global"] },

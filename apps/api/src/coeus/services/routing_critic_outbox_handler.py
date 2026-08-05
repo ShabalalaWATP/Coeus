@@ -6,10 +6,10 @@ from uuid import UUID
 
 from coeus.domain.advisory_agents import AdvisoryAgentKind
 from coeus.domain.enums import TicketState
+from coeus.domain.jioc_principals import JIOC_AGENT_PRINCIPAL
 from coeus.domain.outbox import OutboxMessage
 from coeus.domain.tickets import TicketRecord
 from coeus.services.advisory_records import advisory_agent_run
-from coeus.services.jioc_routing_agent import JIOC_AGENT_PRINCIPAL
 from coeus.services.routing_critic_agent import RoutingCriticAgent
 from coeus.services.routing_critic_intent import ROUTING_CRITIQUE_REQUESTED
 from coeus.services.tickets import TicketServices

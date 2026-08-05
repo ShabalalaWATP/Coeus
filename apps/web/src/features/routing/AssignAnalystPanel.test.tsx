@@ -2,6 +2,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { AssignAnalystPanel } from "./AssignAnalystPanel";
+import { utcAssignmentDate } from "./assignment-date";
 import { resetQueryClientForTests } from "../../app/query-client";
 import { renderWithProviders } from "../../test/test-utils";
 
@@ -25,6 +26,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -38,6 +40,8 @@ test("assigns multiple analysts with custom work packages", async () => {
     teamId: "team-1",
     date: "2026-07-10",
     members: 6,
+    activePeople: 6,
+    assignable: 4,
     onLeave: 1,
     onTaskCalendar: 0,
     assignedLive: 2,
@@ -73,7 +77,12 @@ test("assigns multiple analysts with custom work packages", async () => {
 
   // Live availability guides the manager before they pick analysts.
   expect(
-    await screen.findByText("3 of 6 team members are free today (2 on live tasks, 1 on leave)."),
+    await screen.findByText(
+      "3 of 4 assignable analysts are free today. Total roster: 6 (2 on live tasks, 1 on leave).",
+    ),
+  ).toBeVisible();
+  expect(
+    screen.getByText(/Select one of the teams you directly manage to own this task/),
   ).toBeVisible();
 
   await userEvent.click(await screen.findByRole("checkbox", { name: "Intelligence Analyst" }));
@@ -115,6 +124,8 @@ test("keeps the assign action disabled until an analyst is selected", async () =
                     teamId: "team-1",
                     date: "2026-07-10",
                     members: 2,
+                    activePeople: 2,
+                    assignable: 2,
                     onLeave: 0,
                     onTaskCalendar: 0,
                     assignedLive: 0,
@@ -160,6 +171,8 @@ test("shows a candidates error without leaking details", async () => {
                   Promise.resolve({
                     teamId: "team-1",
                     members: 1,
+                    activePeople: 1,
+                    assignable: 1,
                     free: 1,
                     assignedLive: 0,
                     onLeave: 0,
@@ -204,7 +217,15 @@ test("shows an assignment failure message", async () => {
                   ? candidates
                   : url.includes("/assignment-teams?")
                     ? { teams: [{ teamId: "team-1", name: "RFA Team", kind: "rfa" }] }
-                    : { teamId: "team-1", members: 1, free: 1, assignedLive: 0, onLeave: 0 },
+                    : {
+                        teamId: "team-1",
+                        members: 1,
+                        activePeople: 1,
+                        assignable: 1,
+                        free: 1,
+                        assignedLive: 0,
+                        onLeave: 0,
+                      },
               ),
           }
         : {
@@ -228,4 +249,67 @@ test("shows an assignment failure message", async () => {
   expect(
     await screen.findByText("Assignment failed. Confirm the ticket is still awaiting assignment."),
   ).toBeVisible();
+});
+
+test("refreshes availability when a selected analyst becomes unavailable", async () => {
+  let assignmentAttempted = false;
+  const fetchMock = vi.fn((url: string) => {
+    if (url.endsWith("/assign")) {
+      assignmentAttempted = true;
+      return Promise.resolve({
+        ok: false,
+        status: 409,
+        json: () => Promise.resolve({ error: { code: "analyst_unavailable", message: "Busy." } }),
+      });
+    }
+    return Promise.resolve({
+      ok: true,
+      json: () =>
+        Promise.resolve(
+          url.includes("/candidates")
+            ? candidates
+            : url.includes("/assignment-teams?")
+              ? { teams: [{ teamId: "team-1", name: "RFA Team", kind: "rfa" }] }
+              : {
+                  teamId: "team-1",
+                  date: "2026-07-10",
+                  members: 2,
+                  activePeople: 2,
+                  assignable: 2,
+                  onLeave: 0,
+                  onTaskCalendar: 0,
+                  assignedLive: 0,
+                  onTask: 0,
+                  free: assignmentAttempted ? 1 : 2,
+                },
+        ),
+    });
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(
+    <AssignAnalystPanel csrfToken="test-csrf-token" onAssigned={vi.fn()} ticketId="ticket-1" />,
+    "/rfa/queue",
+  );
+
+  await userEvent.click(await screen.findByRole("checkbox", { name: "Intelligence Analyst" }));
+  await userEvent.click(screen.getByRole("button", { name: "Assign analysts" }));
+
+  expect(
+    await screen.findByText(
+      "The selected analyst is no longer available. Choose another analyst and try again.",
+    ),
+  ).toBeVisible();
+  await waitFor(() =>
+    expect(screen.getByRole("button", { name: "Assign analysts" })).toBeDisabled(),
+  );
+  await waitFor(() =>
+    expect(
+      fetchMock.mock.calls.filter(([url]) => String(url).includes("/availability")),
+    ).toHaveLength(2),
+  );
+});
+
+test("uses the UTC date enforced by assignment checks", () => {
+  expect(utcAssignmentDate(new Date("2026-07-11T00:30:00+01:00"))).toBe("2026-07-10");
 });

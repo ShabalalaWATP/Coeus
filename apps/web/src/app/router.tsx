@@ -13,12 +13,15 @@ import {
   AcgAdminPage,
   AccessGroupsPage,
   AdminOverviewPage,
+  OrganisationAdminPage,
   AnalystWorkbenchPage,
   AnalyticsDashboardPage,
   AuditPage,
   ChangePasswordPage,
+  CalendarPage,
   ForbiddenPage,
   LoginPage,
+  MyWorkPage,
   JiocOversightPage,
   ProductDetailPage,
   ProductUploadPage,
@@ -76,6 +79,10 @@ export function createAppRouter() {
         {
           path: routePolicy.accountProfile.path,
           element: protectedPage(<ProfilePage />, routePolicy.accountProfile.permissions),
+        },
+        {
+          path: routePolicy.accountCalendar.path,
+          element: protectedPage(<CalendarPage />, routePolicy.accountCalendar.permissions),
         },
         {
           path: routePolicy.requests.path,
@@ -207,6 +214,10 @@ export function createAppRouter() {
           ),
         },
         {
+          path: routePolicy.myWork.path,
+          element: protectedPage(<MyWorkPage />, routePolicy.myWork.permissions),
+        },
+        {
           path: routePolicy.analystTask.path,
           element: protectedPage(<AnalystWorkbenchPage />, routePolicy.analystTask.permissions),
         },
@@ -221,6 +232,13 @@ export function createAppRouter() {
         {
           path: routePolicy.adminOverview.path,
           element: protectedPage(<AdminOverviewPage />, routePolicy.adminOverview.permissions),
+        },
+        {
+          path: routePolicy.adminOrganisation.path,
+          element: protectedPage(
+            <OrganisationAdminPage />,
+            routePolicy.adminOrganisation.permissions,
+          ),
         },
         {
           path: routePolicy.adminUsers.path,

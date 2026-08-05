@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import TeamsPage from "./TeamsPage";
@@ -28,9 +28,86 @@ test("shows the roster, availability and calendar for the manager", async () => 
   expect(screen.getByText("Senior Imagery Analyst")).toBeVisible();
   expect(screen.getByText("IMINT, Maritime")).toBeVisible();
   expect(await screen.findByText("Availability today")).toBeVisible();
-  expect(screen.getByText("Free").nextElementSibling).toHaveTextContent("0");
+  expect(screen.getByText("Total roster").nextElementSibling).toHaveTextContent("2");
+  expect(screen.getByText("Active people").nextElementSibling).toHaveTextContent("2");
+  expect(screen.getByText("Assignable analysts").nextElementSibling).toHaveTextContent("1");
+  expect(screen.getByText("Free analysts").nextElementSibling).toHaveTextContent("0");
   expect(screen.getByText("Other duties").nextElementSibling).toHaveTextContent("1");
   expect(await screen.findByTitle("Intelligence Analyst: On leave · Annual leave.")).toBeVisible();
+});
+
+test("a failed team list is reported and nothing else is rendered", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() =>
+      Promise.resolve({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({ error: { code: "server_error", message: "Failed." } }),
+      }),
+    ),
+  );
+
+  renderWithProviders(<TeamsPage />, "/teams");
+
+  expect(await screen.findByRole("button", { name: "Retry" }, { timeout: 5_000 })).toBeVisible();
+  expect(screen.queryByText("Availability today")).not.toBeInTheDocument();
+  expect(screen.queryByRole("navigation", { name: "Your teams" })).not.toBeInTheDocument();
+});
+
+test("an unauthenticated render still explains that no team is assigned", async () => {
+  vi.stubGlobal("fetch", teamsFetch({ teams: { teams: [] } }));
+
+  renderWithProviders(<TeamsPage />, "/teams", null);
+
+  expect(await screen.findByText("You are not assigned to a team")).toBeVisible();
+});
+
+test("a second team is offered as a switcher and selecting it changes the roster", async () => {
+  const first = {
+    id: "team-1",
+    name: "RFA Assessment Team",
+    kind: "rfa",
+    capabilityTeamId: null,
+    members: [],
+  };
+  const second = { ...first, id: "team-2", name: "Collection Management Team", kind: "cm" };
+  vi.stubGlobal("fetch", teamsFetch({ teams: { teams: [first, second] } }));
+
+  renderWithProviders(<TeamsPage />, "/teams");
+
+  const switcher = await screen.findByRole("navigation", { name: "Your teams" });
+  expect(await screen.findByRole("heading", { name: "RFA Assessment Team" })).toBeVisible();
+
+  await userEvent.click(
+    within(switcher).getByRole("button", { name: "Collection Management Team" }),
+  );
+
+  expect(await screen.findByRole("heading", { name: "Collection Management Team" })).toBeVisible();
+  expect(
+    within(switcher).getByRole("button", { name: "Collection Management Team" }),
+  ).toHaveAttribute("aria-pressed", "true");
+});
+
+test("an availability failure is reported without hiding the roster", async () => {
+  const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+    if (url.includes("/availability")) {
+      return Promise.resolve({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({ error: { code: "server_error", message: "Failed." } }),
+      });
+    }
+    return teamsFetch()(url, init);
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<TeamsPage />, "/teams");
+
+  expect(await screen.findByRole("heading", { name: "RFA Assessment Team" })).toBeVisible();
+  // The shared client retries once before reporting, so allow for that delay.
+  expect(await screen.findByRole("button", { name: "Retry" }, { timeout: 5_000 })).toBeVisible();
+  expect(screen.queryByText("Availability today")).not.toBeInTheDocument();
 });
 
 test("manager adds a member from directory suggestions and removes members", async () => {

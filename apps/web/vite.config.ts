@@ -22,6 +22,9 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
+    // Calendar mutations read the browser's resolved time zone, so the suite
+    // pins one. Without it these tests pass in the UK and fail on a UTC runner.
+    env: { TZ: "Europe/London" },
     exclude: ["node_modules/**", "dist/**", "tests/e2e/**", "tests/e2e-postgres/**"],
     setupFiles: ["./src/test/setup.ts"],
     coverage: {

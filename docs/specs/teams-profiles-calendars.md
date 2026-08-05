@@ -3,7 +3,10 @@
 ## Status
 
 Implemented (2026-07-11), with the generic analyst seed refresh completed on
-2026-07-14. See ADR 0022 and ADR 0029.
+2026-07-14. See ADR 0022 and ADR 0029. The current flat-team contract remains
+authoritative; its planned successor is the
+[hierarchical teams, workforce calendars and task boards feature contract](hierarchical-teams-workforce-calendars-and-task-boards.md)
+under [accepted ADR 0049](../adr/0049-hierarchical-organisations-and-canonical-workforce-capacity.md).
 
 ## Problem
 

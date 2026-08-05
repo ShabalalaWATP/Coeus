@@ -88,6 +88,10 @@ test("renders admin action links, approvals and AI model controls", async () => 
     "/admin/acgs",
   );
   expect(screen.getByRole("link", { name: /Users/ })).toHaveAttribute("href", "/admin/users");
+  expect(screen.getByRole("link", { name: /Organisation/ })).toHaveAttribute(
+    "href",
+    "/admin/organisation",
+  );
   expect(screen.getByRole("link", { name: /Audit log/ })).toHaveAttribute("href", "/audit");
 });
 

@@ -1,0 +1,54 @@
+name: Sprint 24 performance gate
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  sprint24-performance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      COEUS_PERFORMANCE_DATABASE_URL: postgresql+psycopg://coeus:coeus-performance-only@127.0.0.1:5432/coeus_performance
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16@sha256:0a07c4114ba6d1d04effcce3385e9f5ce305eb02e56a3d35948a415a52f193ec
+        env:
+          POSTGRES_DB: coeus_performance
+          POSTGRES_USER: coeus
+          POSTGRES_PASSWORD: coeus-performance-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U coeus -d coeus_performance"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - run: uv sync --frozen --all-groups
+      - name: Validate evidence contract
+        run: uv run pytest tests/performance/test_performance_contract.py --no-cov
+      - name: Run large-fixture gate
+        run: >-
+          uv run python -m tests.performance.run_performance_gate
+          --output ../../output/performance/sprint24-performance.json
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sprint24-performance-${{ github.run_id }}
+          path: output/performance/sprint24-performance.json
+          if-no-files-found: error
+          retention-days: 30

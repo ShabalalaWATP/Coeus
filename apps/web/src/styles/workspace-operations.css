@@ -1,0 +1,217 @@
+.workspace-panel-heading,
+.workspace-panel-actions,
+.workspace-search form,
+.workspace-search li,
+.workspace-people__list li,
+.workspace-store-links > header,
+.workspace-store-links > header > div,
+.workspace-store-links li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+}
+
+.workspace-panel-heading h4,
+.workspace-panel-heading p,
+.workspace-search h4,
+.workspace-search ul,
+.workspace-people__list,
+.workspace-store-links h5,
+.workspace-store-links p,
+.workspace-store-links ul {
+  margin: 0;
+}
+
+.workspace-panel-heading p,
+.workspace-freshness,
+.workspace-assurance p,
+.workspace-search small,
+.workspace-people__list small,
+.workspace-store-links p {
+  color: var(--text-muted);
+}
+
+.workspace-panel-actions {
+  flex-wrap: wrap;
+}
+
+.workspace-panel-actions button,
+.workspace-search button,
+.workspace-store-links button,
+.workspace-settings button {
+  min-height: 2.3rem;
+  padding: 0.45rem 0.65rem;
+}
+
+.workspace-freshness {
+  margin-block: 0.85rem;
+  border-left: 2px solid var(--accent);
+  padding-left: 0.75rem;
+  font-size: 0.84rem;
+}
+
+.workspace-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.65rem;
+}
+
+.workspace-metrics > div,
+.workspace-assurance,
+.workspace-search,
+.workspace-people,
+.workspace-capabilities,
+.workspace-settings,
+.workspace-store-links {
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  background: var(--surface-raised);
+  padding: 0.8rem;
+}
+
+.workspace-metrics dt,
+.workspace-metrics small {
+  color: var(--text-muted);
+}
+
+.workspace-metrics dd {
+  margin: 0.2rem 0;
+}
+
+.workspace-metrics dd strong {
+  display: block;
+  font-size: 1.55rem;
+  font-weight: 700;
+}
+
+.workspace-assurance {
+  margin-top: 0.8rem;
+}
+
+.workspace-assurance ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.workspace-assurance li,
+.workspace-assurance li span,
+.workspace-assurance li small {
+  display: block;
+}
+
+.workspace-search {
+  margin-block: 0.8rem;
+}
+
+.workspace-search form,
+.workspace-people form {
+  margin-top: 0.65rem;
+}
+
+.workspace-search label,
+.workspace-people form label {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.workspace-search input,
+.workspace-people form input {
+  width: 100%;
+}
+
+.workspace-search ul,
+.workspace-people__list,
+.workspace-store-links ul {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.65rem;
+  padding: 0;
+  list-style: none;
+}
+
+.workspace-search li,
+.workspace-people__list li,
+.workspace-store-links li {
+  border-top: 1px solid var(--border);
+  padding-top: 0.45rem;
+}
+
+.workspace-search li span,
+.workspace-search li small,
+.workspace-people__list li > span,
+.workspace-people__list small {
+  display: block;
+}
+
+.workspace-capabilities table {
+  width: 100%;
+  margin-top: 0.75rem;
+  border-collapse: collapse;
+}
+
+.workspace-capabilities th,
+.workspace-capabilities td {
+  border-bottom: 1px solid var(--border);
+  padding: 0.55rem;
+  text-align: left;
+}
+
+.workspace-settings form {
+  margin-top: 0.75rem;
+}
+
+.workspace-settings__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.8rem;
+}
+
+.workspace-settings__grid label,
+.workspace-settings__grid small {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.workspace-settings__grid small {
+  color: var(--text-muted);
+}
+
+.input-with-suffix {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.workspace-store-links {
+  margin-top: 0.75rem;
+}
+
+.workspace-store-links > header > div {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.workspace-store-links .workspace-search {
+  margin-bottom: 0;
+  background: var(--surface);
+}
+
+@media (max-width: 760px) {
+  .workspace-panel-heading,
+  .workspace-search form,
+  .workspace-people form {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .workspace-settings__grid {
+    grid-template-columns: 1fr;
+  }
+}

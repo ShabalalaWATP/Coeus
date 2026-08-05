@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from dataclasses import replace
 from threading import RLock
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from coeus.application.ports.passwords import PasswordHashPort
 from coeus.core.config import Settings
@@ -30,6 +30,7 @@ from coeus.repositories.sessions import (
 from coeus.repositories.sessions import (
     SessionStoreFull as SessionStoreFull,
 )
+from coeus.repositories.synthetic_workforce import synthetic_clearance_level, synthetic_user_id
 
 Confirmation = Callable[[], object]
 
@@ -63,11 +64,22 @@ class SeedUserRepository:
         )
         self._users_by_username: dict[str, UserAccount] = {}
         self._users_by_id: dict[UUID, UserAccount] = {}
-        self._seed_users(settings.local_seed_credential, password_hasher)
+        self._seed_users(
+            settings.local_seed_credential,
+            password_hasher,
+            reuse_password_hash=settings.environment == "test",
+        )
         self._initialising = False
         self._restore_or_persist(settings.local_seed_credential, password_hasher)
 
-    def _seed_users(self, seed_credential: str, password_hasher: PasswordHashPort) -> None:
+    def _seed_users(
+        self,
+        seed_credential: str,
+        password_hasher: PasswordHashPort,
+        *,
+        reuse_password_hash: bool,
+    ) -> None:
+        shared_test_hash = password_hasher.hash(seed_credential) if reuse_password_hash else None
         for spec in seed_user_specs():
             username = (
                 numbered_seed_username(spec.username)
@@ -75,14 +87,14 @@ class SeedUserRepository:
                 else spec.username
             )
             account = UserAccount(
-                user_id=uuid4(),
+                user_id=synthetic_user_id(spec.username),
                 username=username,
                 display_name=spec.display_name,
                 roles=spec.roles,
                 permissions=permissions_for_roles(spec.roles),
-                password_hash=password_hasher.hash(seed_credential),
+                password_hash=shared_test_hash or password_hasher.hash(seed_credential),
                 is_active=spec.is_active,
-                clearance_level=3,
+                clearance_level=synthetic_clearance_level(spec.username),
             )
             self.save(account)
 

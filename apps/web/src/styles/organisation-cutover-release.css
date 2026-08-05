@@ -1,0 +1,234 @@
+.cutover-release {
+  display: grid;
+  gap: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  background: var(--surface);
+}
+
+.cutover-release[aria-busy="true"] {
+  color: var(--muted);
+}
+
+.cutover-release > header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 13px;
+  align-items: start;
+}
+
+.cutover-release > header svg {
+  margin-top: 4px;
+  color: var(--accent);
+}
+
+.cutover-release h2,
+.cutover-release h3,
+.cutover-release p {
+  margin: 0;
+}
+
+.cutover-release h2 {
+  margin-top: 4px;
+  font-size: 1.2rem;
+}
+
+.cutover-release > header p,
+.cutover-release__manifest > p,
+.cutover-release__guardrail p,
+.cutover-release__approvals p {
+  margin-top: 5px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.cutover-release__state {
+  border: 1px solid color-mix(in srgb, var(--warning) 38%, var(--border));
+  border-radius: 999px;
+  padding: 6px 10px;
+  color: var(--warning);
+  font-size: 0.75rem;
+  font-weight: 780;
+}
+
+.cutover-release__state.is-active {
+  border-color: color-mix(in srgb, var(--success) 38%, var(--border));
+  color: var(--success);
+}
+
+.cutover-release__guardrail {
+  display: flex;
+  gap: 11px;
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--border));
+  border-radius: var(--radius-md);
+  padding: 12px;
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+.cutover-release__guardrail svg {
+  flex: 0 0 auto;
+  margin-top: 3px;
+  color: var(--accent);
+}
+
+.cutover-release__candidate {
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.cutover-release__candidate code {
+  margin-left: 5px;
+  color: var(--text);
+}
+
+.cutover-release__manifest {
+  border-top: 1px solid var(--border);
+  padding-top: 13px;
+}
+
+.cutover-release__manifest summary {
+  width: max-content;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 720;
+  cursor: pointer;
+}
+
+.cutover-release__manifest-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 13px;
+}
+
+.cutover-release label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.cutover-release input {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  background: var(--surface-muted);
+  color: var(--text);
+  font-family: var(--font-mono);
+}
+
+.cutover-release input:disabled {
+  opacity: 0.7;
+}
+
+.cutover-release__slices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 11px;
+}
+
+.cutover-release__slice {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  background: var(--surface-muted);
+}
+
+.cutover-release__slice > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cutover-release__slice > header span {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.cutover-release__slice h3 {
+  margin-top: 4px;
+  font-size: 0.94rem;
+}
+
+.cutover-release__slice ol {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding-left: 22px;
+  color: var(--muted);
+  font-size: 0.79rem;
+}
+
+.cutover-release__slice li.is-complete {
+  color: var(--success);
+}
+
+.cutover-release button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 7px 11px;
+  background: var(--surface-strong);
+  color: var(--text);
+  font-weight: 720;
+  cursor: pointer;
+}
+
+.cutover-release button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.cutover-release__approvals {
+  display: grid;
+  gap: 7px;
+}
+
+.cutover-release__reauth {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.cutover-release__reauth > div {
+  display: flex;
+  gap: 7px;
+}
+
+.cutover-release [role="alert"] {
+  color: var(--danger);
+  font-size: 0.8rem;
+}
+
+.cutover-release--blocked > header svg {
+  color: var(--warning);
+}
+
+@media (max-width: 1050px) {
+  .cutover-release__slices {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .cutover-release > header,
+  .cutover-release__manifest-fields {
+    grid-template-columns: 1fr;
+  }
+}

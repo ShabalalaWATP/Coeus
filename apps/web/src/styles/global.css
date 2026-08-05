@@ -22,6 +22,7 @@
 @import "./teams.css";
 @import "./profile.css";
 @import "./profile-detail.css";
+@import "./workforce-calendar.css";
 @import "./team-calendar.css";
 @import "./qc.css";
 @import "./feedback.css";
@@ -33,6 +34,19 @@
 @import "./search-admin.css";
 @import "./voice.css";
 @import "./admin-command-centre.css";
+@import "./organisation-admin.css";
+@import "./organisation-cutover-readiness.css";
+@import "./organisation-cutover-release.css";
+@import "./organisation-calendar.css";
+@import "./organisation-workspaces.css";
+@import "./management-board.css";
+@import "./my-work-page.css";
+@import "./workspace-productivity.css";
+@import "./workspace-operations.css";
+@import "./organisation-admin-mutations.css";
+@import "./organisation-admin-roster.css";
+@import "./organisation-admin-restructure.css";
+@import "./organisation-admin-fixture.css";
 @import "./access.css";
 @import "./access-groups.css";
 @import "./workspace.css";

@@ -2,11 +2,14 @@
   "ignore": [
     "apps/web/src/lib/api-client/generated/**",
     "apps/web/playwright.config.ts",
+    "apps/web/playwright.sprint24-postgres.config.ts",
     "apps/web/src/**/*.fixtures.ts",
     "apps/web/src/**/*.fixtures.tsx",
     "apps/web/src/**/*-test-fixtures.ts",
     "apps/web/src/**/*-test-fixtures.tsx",
     "apps/web/src/**/requests-test-data.ts",
+    "apps/web/src/features/teams/WorkflowLegTransferActions.tsx",
+    "apps/web/src/lib/api-client/workflow-leg-transfers.ts",
     "apps/web/src/test/**",
     "apps/web/tests/**",
     "scripts/check-*.mjs"

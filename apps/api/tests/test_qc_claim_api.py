@@ -250,11 +250,22 @@ async def test_qc_claim_enforces_author_and_active_analyst_separation_of_duties(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
         authored_id = await _submitted_qc_ticket(client, app, "Self-authored QC product")
+        repository = app.state.ticket_services.tickets._repository
+        authored_before_second = repository.get(UUID(authored_id))
+        assert authored_before_second is not None
+        repository.save(
+            replace(
+                authored_before_second,
+                analyst_assignments=tuple(
+                    replace(assignment, active=False)
+                    for assignment in authored_before_second.analyst_assignments
+                ),
+            )
+        )
         assigned_id = await _submitted_qc_ticket(client, app, "Self-assigned QC product")
         session = await login(client, "qc.manager@example.test")
         actor = app.state.access_services.repository.get_user_by_username("qc.manager@example.test")
         assert actor is not None
-        repository = app.state.ticket_services.tickets._repository
         authored = repository.get(UUID(authored_id))
         assigned = repository.get(UUID(assigned_id))
         assert authored is not None and assigned is not None

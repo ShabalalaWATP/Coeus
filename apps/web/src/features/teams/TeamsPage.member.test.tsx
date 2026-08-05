@@ -33,13 +33,6 @@ const rfaTeam: OrgTeam = {
   ],
 };
 
-const cmTeam: OrgTeam = {
-  ...rfaTeam,
-  id: "team-2",
-  name: "Collection Management Team",
-  kind: "cm",
-};
-
 const now = new Date();
 const todayIso = [now.getFullYear(), now.getMonth() + 1, now.getDate()]
   .map((part, index) => String(part).padStart(index === 0 ? 4 : 2, "0"))
@@ -61,13 +54,15 @@ function memberFetch({ calendarFails = false } = {}) {
     const respond = (payload: unknown, status = 200) =>
       Promise.resolve({ ok: status < 400, status, json: () => Promise.resolve(payload) });
     if (url.endsWith("/api/v1/teams")) {
-      return respond({ teams: [rfaTeam, cmTeam] });
+      return respond({ teams: [rfaTeam] });
     }
     if (url.includes("/availability")) {
       return respond({
         teamId: "team-1",
         date: "2026-07-10",
         members: 2,
+        activePeople: 2,
+        assignable: 1,
         onLeave: 0,
         onTaskCalendar: 1,
         otherCommitments: 0,
@@ -108,7 +103,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-test("members see the roster read-only, switch teams and log their own time", async () => {
+test("members see their home-team roster read-only and log their own time", async () => {
   const fetchMock = memberFetch();
   vi.stubGlobal("fetch", fetchMock);
 
@@ -141,9 +136,7 @@ test("members see the roster read-only, switch teams and log their own time", as
   const entryBody: unknown = JSON.parse(rawBody as string);
   expect(entryBody).toMatchObject({ userId: "preview-user", status: "available" });
 
-  // Being on two teams shows the switcher.
-  await userEvent.click(screen.getByRole("button", { name: "Collection Management Team" }));
-  expect(await screen.findByRole("heading", { name: "Collection Management Team" })).toBeVisible();
+  expect(screen.queryByRole("navigation", { name: "Your teams" })).not.toBeInTheDocument();
 });
 
 test("surfaces calendar load failures", async () => {

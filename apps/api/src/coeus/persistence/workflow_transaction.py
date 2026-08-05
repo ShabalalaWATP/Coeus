@@ -5,14 +5,19 @@ from uuid import UUID
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Connection
 
+from coeus.domain.assignment_recommendations import AssignmentRecommendationAcceptance
 from coeus.domain.store import StoreProduct
 from coeus.domain.submission_authority import SubmissionCommitResult
+from coeus.domain.team_task_ownership import AssignmentOwnershipIntent
 from coeus.domain.tickets import TicketRecord
 from coeus.domain.workflow_authority import WorkflowCommitAuthority, WorkflowCommitResult
 from coeus.domain.workflow_transaction import (
     ReleaseNotificationIntent,
     WorkflowAuditIntent,
     WorkflowOutboxIntent,
+)
+from coeus.persistence.assignment_recommendation_acceptance import (
+    accept_recommendation_in_transaction,
 )
 from coeus.persistence.audit_store import AUDIT_TABLE_SQL
 from coeus.persistence.codec import encode_value
@@ -25,14 +30,23 @@ from coeus.persistence.state_store import (
 )
 from coeus.persistence.store_projection_write import existing_embedding_hashes, save_product
 from coeus.persistence.submission_authority import lock_submission_authority
+from coeus.persistence.team_task_assignment_write import write_assignment_ownership
 from coeus.persistence.ticket_shadow_schema import ensure_ticket_shadow_schema
+from coeus.persistence.work_package_projection_write import write_assignment_work_packages
+from coeus.persistence.work_package_status_write import sync_work_package_statuses
 from coeus.persistence.workflow_authority import lock_workflow_authority
 from coeus.persistence.workflow_transaction_writes import WorkflowTransactionWrites
 
 
 class PostgresWorkflowTransaction(WorkflowTransactionWrites):
-    def __init__(self, database_url: str) -> None:
+    def __init__(
+        self,
+        database_url: str,
+        *,
+        canonical_assignment_projection_enabled: bool = True,
+    ) -> None:
         self._engine = create_engine(synchronous_database_url(database_url), pool_pre_ping=True)
+        self._canonical_assignment_projection_enabled = canonical_assignment_projection_enabled
 
     def commit_ticket_create(
         self,
@@ -102,6 +116,77 @@ class PostgresWorkflowTransaction(WorkflowTransactionWrites):
     ) -> WorkflowCommitResult:
         return self._commit_ticket_update(expected, updated, audits, outbox, authority)
 
+    def commit_ticket_assignment(
+        self,
+        expected: TicketRecord,
+        updated: TicketRecord,
+        audits: tuple[WorkflowAuditIntent, ...],
+        ownership: AssignmentOwnershipIntent,
+        recommendation: AssignmentRecommendationAcceptance | None = None,
+    ) -> bool:
+        expected_payload = encode_value(expected)
+        updated_payload = encode_value(updated)
+        with self._engine.begin() as connection:
+            self._prepare(connection)
+            ticket_id = self._lock_current(connection, expected_payload)
+            if ticket_id is None:
+                return False
+            expected_version = int(
+                connection.execute(
+                    text("SELECT version FROM coeus_ticket_aggregates WHERE ticket_id=:ticket_id"),
+                    {"ticket_id": ticket_id},
+                ).scalar_one()
+            )
+            version = self._write_ticket(connection, updated_payload, ticket_id)
+            if not self._canonical_assignment_projection_enabled:
+                self._append_audits(connection, audits)
+                return True
+            ownership_version = write_assignment_ownership(connection, ticket_id, ownership)
+            package_ids = write_assignment_work_packages(connection, updated, ownership)
+            accepted = None
+            recommendation_id = None
+            if recommendation is not None:
+                recommendation_id = recommendation.recommendation_id
+                accepted = accept_recommendation_in_transaction(
+                    connection,
+                    recommendation,
+                    updated.ticket_id,
+                    ownership.workflow_leg,
+                    package_ids,
+                    expected_version,
+                )
+            self._append_audits(connection, audits)
+            self._append_outbox(
+                connection,
+                updated.ticket_id,
+                version,
+                WorkflowOutboxIntent(
+                    "team_task_ownership_changed",
+                    {
+                        "ticket_id": str(updated.ticket_id),
+                        "workflow_leg": ownership.workflow_leg.value,
+                        "owning_unit_id": str(ownership.owning_unit_id),
+                        "ownership_version": str(ownership_version),
+                        "work_package_count": str(len(package_ids)),
+                    },
+                ),
+            )
+            if accepted is not None and recommendation_id is not None:
+                self._append_outbox(
+                    connection,
+                    updated.ticket_id,
+                    version,
+                    WorkflowOutboxIntent(
+                        "assignment_recommendation_accepted",
+                        {
+                            "recommendation_id": str(recommendation_id),
+                            "reservation_id": str(accepted.reservation.reservation_id),
+                            "decision_type": accepted.decision_type,
+                        },
+                    ),
+                )
+        return True
+
     def _commit_ticket_update(
         self,
         expected: TicketRecord,
@@ -122,6 +207,8 @@ class PostgresWorkflowTransaction(WorkflowTransactionWrites):
             if ticket_id is None:
                 return WorkflowCommitResult.TICKET_CHANGED
             version = self._write_ticket(connection, updated_payload, ticket_id)
+            if audits:
+                sync_work_package_statuses(connection, updated, audits[0].actor_user_id)
             self._append_audits(connection, audits)
             self._append_outbox_intents(connection, updated.ticket_id, version, outbox)
         return WorkflowCommitResult.COMMITTED

@@ -20,7 +20,7 @@ from coeus.persistence.ticket_shadow_schema import ensure_ticket_shadow_schema
 from coeus.repositories.tickets import InMemoryTicketRepository
 
 API_ROOT = Path(__file__).resolve().parents[2]
-HEAD_REVISION = "20260801_0016"
+HEAD_REVISION = "20260804_0045"
 
 pytestmark = pytest.mark.postgres
 
@@ -84,6 +84,22 @@ def test_empty_database_upgrades_to_head(postgres_database_url: str) -> None:
         "intelligence_store_asset_index_state",
         "ticket_search_documents",
         "ticket_search_embeddings",
+        "canonical_work_packages",
+        "work_package_participants",
+        "work_package_dependencies",
+        "capacity_reservations",
+        "work_package_history",
+        "work_package_commands",
+        "work_package_contributor_commands",
+        "work_package_dependency_commands",
+        "work_package_handover_commands",
+        "calendar_import_commands",
+        "calendar_legacy_import_records",
+        "working_patterns",
+        "synthetic_organisation_fixture_commands",
+        "assignment_competencies",
+        "identity_account_projection",
+        "capacity_exceptions",
     } <= tables
     assert "vector" in extensions
     assert "idx_coeus_outbox_dead_letters" in indexes

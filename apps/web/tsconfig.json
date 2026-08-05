@@ -24,6 +24,7 @@
     "tests",
     "vite.config.ts",
     "playwright.config.ts",
-    "playwright.postgres.config.ts"
+    "playwright.postgres.config.ts",
+    "playwright.sprint24-postgres.config.ts"
   ]
 }

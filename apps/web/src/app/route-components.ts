@@ -5,14 +5,17 @@ export const ForbiddenPage = lazy(() => import("../features/auth/ForbiddenPage")
 export const SessionExpiredPage = lazy(() => import("../features/auth/SessionExpiredPage"));
 export const ChangePasswordPage = lazy(() => import("../features/auth/ChangePasswordPage"));
 export const ProfilePage = lazy(() => import("../features/profile/ProfilePage"));
+export const CalendarPage = lazy(() => import("../features/profile/CalendarPage"));
 export const AcgAdminPage = lazy(() => import("../features/access/AcgAdminPage"));
 export const AccessGroupsPage = lazy(() => import("../features/access/AccessGroupsPage"));
 export const AdminOverviewPage = lazy(() => import("../features/admin/AdminOverviewPage"));
+export const OrganisationAdminPage = lazy(() => import("../features/admin/OrganisationAdminPage"));
 export const UserManagementPage = lazy(() => import("../features/admin/UserManagementPage"));
 export const AnalyticsDashboardPage = lazy(
   () => import("../features/analytics/AnalyticsDashboardPage"),
 );
 export const AnalystWorkbenchPage = lazy(() => import("../features/analyst/AnalystWorkbenchPage"));
+export const MyWorkPage = lazy(() => import("../features/analyst/MyWorkPage"));
 export const AuditPage = lazy(() => import("../features/audit/AuditPage"));
 export const QcQueuePage = lazy(() => import("../features/qc/QcQueuePage"));
 export const RequestsPage = lazy(() => import("../features/requests/RequestsPage"));

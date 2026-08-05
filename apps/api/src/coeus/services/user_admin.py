@@ -9,6 +9,10 @@ from coeus.domain.rbac import permissions_for_roles
 from coeus.repositories.auth import LoginAttemptRepository, SeedUserRepository, SessionRepository
 from coeus.services.audit import AuditLog
 from coeus.services.passwords import PasswordHasher
+from coeus.services.workforce_authority import (
+    PROCESS_WORKFORCE_AUTHORITY,
+    WorkforceAuthority,
+)
 
 MIN_CLEARANCE = 1
 MAX_CLEARANCE = 5
@@ -29,18 +33,32 @@ class UserAdminService:
         login_attempts: LoginAttemptRepository,
         password_hasher: PasswordHasher,
         audit_log: AuditLog,
+        workforce_authority: WorkforceAuthority = PROCESS_WORKFORCE_AUTHORITY,
     ) -> None:
         self._users = users
         self._sessions = sessions
         self._login_attempts = login_attempts
         self._password_hasher = password_hasher
         self._audit_log = audit_log
+        self._workforce_authority = workforce_authority
 
     def list_users(self, actor: UserAccount) -> tuple[UserAccount, ...]:
         self._require(actor, Permission.USER_ASSIGN_ROLE)
         return tuple(sorted(self._users.list_users(), key=lambda user: user.username))
 
     def set_roles(
+        self, actor: UserAccount, user_id: UUID, roles: frozenset[RoleName]
+    ) -> UserAccount:
+        current = self._users.get_by_id(user_id)
+        affects_assignment = RoleName.INTELLIGENCE_ANALYST in roles or (
+            current is not None and RoleName.INTELLIGENCE_ANALYST in current.roles
+        )
+        if affects_assignment:
+            with self._workforce_authority.locked():
+                return self._set_roles_locked(actor, user_id, roles)
+        return self._set_roles_locked(actor, user_id, roles)
+
+    def _set_roles_locked(
         self, actor: UserAccount, user_id: UUID, roles: frozenset[RoleName]
     ) -> UserAccount:
         self._require(actor, Permission.USER_ASSIGN_ROLE)
@@ -77,6 +95,13 @@ class UserAdminService:
         return updated
 
     def set_active(self, actor: UserAccount, user_id: UUID, is_active: bool) -> UserAccount:
+        current = self._users.get_by_id(user_id)
+        if current is not None and RoleName.INTELLIGENCE_ANALYST in current.roles:
+            with self._workforce_authority.locked():
+                return self._set_active_locked(actor, user_id, is_active)
+        return self._set_active_locked(actor, user_id, is_active)
+
+    def _set_active_locked(self, actor: UserAccount, user_id: UUID, is_active: bool) -> UserAccount:
         self._require(actor, Permission.USER_DISABLE)
         user = self._target(actor, user_id)
         updated = replace(user, is_active=is_active)

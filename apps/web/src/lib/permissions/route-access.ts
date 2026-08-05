@@ -124,11 +124,11 @@ const navigationItems: readonly NavigationItem[] = [
     requiredPermissions: routePolicy.collectionAnalytics.permissions,
   },
   {
-    label: "Analyst",
-    path: navigationPath(routePolicy.analystWorkbench),
+    label: "My Work",
+    path: navigationPath(routePolicy.myWork),
     group: "teams",
     icon: "analyst",
-    requiredPermissions: routePolicy.analystWorkbench.permissions,
+    requiredPermissions: routePolicy.myWork.permissions,
   },
   {
     label: "QC",
@@ -143,6 +143,13 @@ const navigationItems: readonly NavigationItem[] = [
     group: "governance",
     icon: "admin",
     requiredPermissions: routePolicy.adminOverview.permissions,
+  },
+  {
+    label: "Organisation",
+    path: navigationPath(routePolicy.adminOrganisation),
+    group: "governance",
+    icon: "admin",
+    requiredPermissions: routePolicy.adminOrganisation.permissions,
   },
   {
     label: "Users",

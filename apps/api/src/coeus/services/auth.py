@@ -156,6 +156,48 @@ class AuthService:
         if permission not in authenticated.user.permissions:
             raise AppError(403, "forbidden", "Permission denied.")
 
+    def reauthenticate(
+        self,
+        authenticated: AuthenticatedSession,
+        credential: str,
+        *,
+        client_ip: str | None = None,
+    ) -> None:
+        """Verify the current principal again before a high-impact operation."""
+        self.throttle_source(client_ip)
+        username = authenticated.user.username
+        self._reject_if_locked(username)
+        user = self._users.get_by_id(authenticated.user.user_id)
+        password_hash = (
+            user.password_hash
+            if user is not None and user.username == username
+            else self._unknown_user_password_hash
+        )
+        password_valid = self._password_hasher.verify(password_hash, credential)
+        if (
+            user is None
+            or not password_valid
+            or not user.is_active
+            or user.username != username
+            or user.credential_version != authenticated.session.credential_version
+        ):
+            self._record_login_failure(username, user, event_type="reauthentication_failure")
+        current = self._users.get_by_id(user.user_id)
+        if (
+            current is None
+            or not current.is_active
+            or current.password_hash != user.password_hash
+            or current.credential_version != user.credential_version
+        ):
+            self._audit_log.record(
+                "reauthentication_failure",
+                str(user.user_id),
+                {"reason": "credential_changed"},
+            )
+            raise self._auth_failed()
+        self._login_attempts.reset(username)
+        self._audit_log.record("reauthentication_success", str(user.user_id))
+
     def rotate_session(self, session_id: str) -> tuple[str, SessionRecord]:
         authenticated = self.require_session(session_id)
         session_token, replacement = self._prepare_session(authenticated.user)
@@ -271,7 +313,13 @@ class AuthService:
             self._audit_log.record("login_failure", None, {"reason": "account_locked"})
             raise AppError(423, "account_locked", "Authentication temporarily locked.")
 
-    def _record_login_failure(self, username: str, user: UserAccount | None) -> NoReturn:
+    def _record_login_failure(
+        self,
+        username: str,
+        user: UserAccount | None,
+        *,
+        event_type: str = "login_failure",
+    ) -> NoReturn:
         try:
             locked_until = self._login_attempts.record_failure(
                 username,
@@ -285,7 +333,7 @@ class AuthService:
         if locked_until is not None:
             metadata["locked_until"] = locked_until.isoformat()
         self._audit_log.record(
-            "login_failure",
+            event_type,
             str(user.user_id) if user is not None else None,
             metadata,
         )

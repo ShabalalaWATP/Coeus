@@ -7,6 +7,7 @@ and current guides first when behaviour has changed. A superseded specification
 must retain its history and link to its successor.
 
 Current cross-cutting contracts include [documentation accuracy](documentation-and-deployment-accuracy.md),
+[canonical team calendars and commitments](canonical-team-calendars-and-commitments.md),
 [customer search and routing](customer-search-routing-orchestration.md),
 [JIOC operating model](jioc-operating-model-and-manager-journey.md),
 [bounded advisory planners](bounded-advisory-planners.md),
@@ -26,9 +27,11 @@ Current cross-cutting contracts include [documentation accuracy](documentation-a
 - [Customer experience and analyst context](customer-experience-and-analyst-context.md)
 - [Customer search and routing orchestration](customer-search-routing-orchestration.md)
 - [Customer search recovery and outcomes](customer-search-recovery-and-outcomes.md)
+- [Deterministic assignment recommendations](deterministic-assignment-recommendations.md)
 - [Documentation and deployment accuracy](documentation-and-deployment-accuracy.md)
 - [External product ingestion and customer acceptance](external-product-ingestion-and-customer-acceptance.md)
 - [Generic analyst seed personas](generic-analyst-seed-personas.md)
+- [Hierarchical teams, workforce calendars and task boards](hierarchical-teams-workforce-calendars-and-task-boards.md) (planned)
 - [Hybrid RFI search](hybrid-rfi-search.md)
 - [Intelligence intake and prioritisation](intelligence-intake-and-prioritisation.md)
 - [JIOC workflow restructure](jioc-workflow-restructure.md)
@@ -77,4 +80,5 @@ Current cross-cutting contracts include [documentation accuracy](documentation-a
 - [Themed ACGs, request journey and agentic UX](themed-acgs-journey-agentic-ux.md)
 - [Ticket collaborators](ticket-collaborators.md)
 - [Workflow integrity, area management and JIOC oversight](workflow-integrity-area-oversight-remediation.md)
+- [Workspace productivity](workspace-productivity.md)
 - [27 July workflow review remediation](workflow-review-remediation-2026-07-27.md)

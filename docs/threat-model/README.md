@@ -9,6 +9,7 @@ principal controls and links back to their applicable models.
 
 ## Complete catalogue
 
+- [Canonical team calendars and commitments](canonical-team-calendars-and-commitments.md)
 - [Initial threat model](initial-threat-model.md)
 - [ACG and product access](acg-product-access.md)
 - [Agent orchestration and capability catalogue](agent-orchestration-capability-catalogue.md)
@@ -17,10 +18,12 @@ principal controls and links back to their applicable models.
 - [Auth, RBAC and sessions](auth-rbac-sessions.md)
 - [Bounded advisory planners](bounded-advisory-planners.md)
 - [Customer search and agent routing](customer-search-and-agent-routing.md)
+- [Deterministic assignment recommendations](deterministic-assignment-recommendations.md)
 - [Dependency advisory applicability](dependency-advisory-applicability.md)
 - [External product ingestion](external-product-ingestion.md)
 - [Feedback and analytics](feedback-analytics.md)
 - [GCP deployment](gcp-deployment.md)
+- [Hierarchical teams, workforce calendars and task boards](hierarchical-teams-workforce-calendars-and-task-boards.md) (planned controls)
 - [Hybrid search and duplicate detection](hybrid-search-and-duplicate-detection.md)
 - [Intelligence intake and prioritisation](intelligence-intake-and-prioritisation.md)
 - [Intelligence Store](intelligence-store.md)
@@ -42,3 +45,4 @@ principal controls and links back to their applicable models.
 - [Teams, profiles and calendars](teams-profiles-calendars.md)
 - [Ticket and chatbot intake](ticket-chatbot-intake.md)
 - [Ticket collaborators](ticket-collaborators.md)
+- [Workspace productivity](workspace-productivity.md)

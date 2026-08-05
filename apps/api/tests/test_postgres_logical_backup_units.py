@@ -27,7 +27,10 @@ class Connection:
     def transaction(self) -> "Connection":
         return self
 
-    def execute(self, *_args: object, **_kwargs: object) -> Result:
+    def execute(self, statement: object = None, *_args: object, **_kwargs: object) -> Result:
+        # Session settings return no rows, so they must not consume a queued result.
+        if isinstance(statement, str) and statement.startswith("SET "):
+            return Result(None)
         return Result(next(self._rows, (0,)))
 
 
@@ -59,7 +62,6 @@ def test_import_rejects_nonempty_or_mismatched_targets(
     table = TableBackup("example", ("id",), 1, "tables/example.copy", "a" * 64)
     connection = Connection([(before,), (after,)])
     monkeypatch.setattr(backup, "TABLES", (spec,))
-    monkeypatch.setattr(backup, "_COUNT_QUERIES", {"example": "SELECT count(*) FROM example"})
     monkeypatch.setattr(backup.psycopg, "connect", lambda *_args, **_kwargs: connection)
     monkeypatch.setattr(backup, "_require_table", lambda *_args: None)
     monkeypatch.setattr(backup, "_copy_in", lambda *_args: None)

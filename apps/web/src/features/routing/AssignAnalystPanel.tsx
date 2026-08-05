@@ -9,8 +9,11 @@ import {
   listAssignmentTeams,
   type AnalystTask,
 } from "../../lib/api-client/analyst";
+import { ApiError } from "../../lib/api-client/client";
 import type { RoutingRoute } from "../../lib/api-client/routing";
 import { queryKeys } from "../../lib/query-keys";
+import { utcAssignmentDate } from "./assignment-date";
+import { AssignmentRecommendationPanel } from "./AssignmentRecommendationPanel";
 
 const MAX_ANALYSTS = 5;
 
@@ -39,7 +42,7 @@ export function AssignAnalystPanel({
   });
   const availableTeams = useMemo(() => teamsQuery.data ?? [], [teamsQuery.data]);
   const selectedTeam = availableTeams.find((team) => team.teamId === teamId);
-  const today = localToday();
+  const today = utcAssignmentDate();
   useEffect(() => {
     if (teamId || availableTeams.length === 0) return;
     const suggested = availableTeams.find((team) => team.name === suggestedTeamName);
@@ -63,6 +66,13 @@ export function AssignAnalystPanel({
     mutationFn: () =>
       assignAnalystTask(ticketId, analystUserIds, teamId, packageTitles(workPackages), csrfToken),
     onSuccess: (task) => onAssigned(task),
+    onError: (error) => {
+      if (error instanceof ApiError && error.code === "analyst_unavailable") {
+        setAnalystUserIds([]);
+        void candidatesQuery.refetch();
+        void availabilityQuery.refetch();
+      }
+    },
   });
   const candidates = candidatesQuery.data?.analysts ?? [];
   const toggleAnalyst = (userId: string, checked: boolean) => {
@@ -75,9 +85,9 @@ export function AssignAnalystPanel({
     <section className="routing-assign" aria-label="Assign analysts">
       <h3>Assign analysts</h3>
       <p>
-        You manage every active team in this area. Select the team that owns this task, then choose
-        up to {MAX_ANALYSTS} of its analysts. Work packages default to the approved route plan when
-        left blank.
+        Select one of the teams you directly manage to own this task, then choose up to{" "}
+        {MAX_ANALYSTS}
+        of its analysts. Work packages default to the approved route plan when left blank.
       </p>
       {teamsQuery.isLoading ? <p role="status">Loading area teams…</p> : null}
       {teamsQuery.isError ? (
@@ -85,9 +95,10 @@ export function AssignAnalystPanel({
       ) : null}
       {availabilityQuery.data ? (
         <p className="routing-assign__availability">
-          {availabilityQuery.data.free} of {availabilityQuery.data.members} team members are free
-          today ({availabilityQuery.data.assignedLive} on live tasks,{" "}
-          {availabilityQuery.data.onLeave} on leave).
+          {availabilityQuery.data.free} of {availabilityQuery.data.assignable} assignable analysts
+          are free today. Total roster: {availabilityQuery.data.members} (
+          {availabilityQuery.data.assignedLive} on live tasks, {availabilityQuery.data.onLeave} on
+          leave).
         </p>
       ) : null}
       {teamId && candidatesQuery.isLoading ? <p role="status">Loading team analysts…</p> : null}
@@ -97,6 +108,12 @@ export function AssignAnalystPanel({
       {availabilityQuery.isError ? (
         <p role="alert">Team availability could not be loaded. Refresh to try again.</p>
       ) : null}
+      <AssignmentRecommendationPanel
+        csrfToken={csrfToken}
+        onAssigned={onAssigned}
+        teamId={teamId}
+        ticketId={ticketId}
+      />
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -158,17 +175,20 @@ export function AssignAnalystPanel({
         </button>
       </form>
       {assignMutation.isError ? (
-        <p role="alert">Assignment failed. Confirm the ticket is still awaiting assignment.</p>
+        <p role="alert">{assignmentErrorMessage(assignMutation.error)}</p>
       ) : null}
     </section>
   );
 }
 
-function localToday() {
-  const today = new Date();
-  return [today.getFullYear(), today.getMonth() + 1, today.getDate()]
-    .map((part, index) => String(part).padStart(index === 0 ? 4 : 2, "0"))
-    .join("-");
+function assignmentErrorMessage(error: Error | null) {
+  if (error instanceof ApiError && error.code === "analyst_unavailable") {
+    return "The selected analyst is no longer available. Choose another analyst and try again.";
+  }
+  if (error instanceof ApiError && error.code === "assignment_team_not_found") {
+    return "You no longer manage the selected team. Refresh the queue to continue.";
+  }
+  return "Assignment failed. Confirm the ticket is still awaiting assignment.";
 }
 
 function packageTitles(raw: string) {

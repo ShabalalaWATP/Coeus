@@ -1,7 +1,9 @@
 import { ProfessionalProfileCard } from "./ProfessionalProfileCard";
 import { ProfileAccessCard } from "./ProfileAccessCard";
 import { ProfileCapabilitiesCard } from "./ProfileCapabilitiesCard";
+import { ProfileCalendarSnapshot } from "./ProfileCalendarSnapshot";
 import { ProfileIdentityCard } from "./ProfileIdentityCard";
+import { MyWorkSnapshot } from "./MyWorkSnapshot";
 import { useAuth } from "../../lib/auth/auth-context";
 
 export default function ProfilePage() {
@@ -20,6 +22,8 @@ export default function ProfilePage() {
         <ProfileIdentityCard identity={identity} />
         <div className="profile-main">
           <ProfessionalProfileCard csrfToken={session.csrfToken} />
+          {identity.permissions.includes("analyst:work") ? <MyWorkSnapshot /> : null}
+          <ProfileCalendarSnapshot />
           <ProfileAccessCard canViewAcgs={identity.permissions.includes("acg:view")} />
           <ProfileCapabilitiesCard permissions={identity.permissions} />
         </div>

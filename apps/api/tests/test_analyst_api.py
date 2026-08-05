@@ -14,7 +14,9 @@ from store_api_helpers import product_payload
 
 def _rfa_team(app: FastAPI):
     return next(
-        team.team_id for team in app.state.team_repository.list_teams() if team.kind.value == "rfa"
+        team.team_id
+        for team in app.state.team_repository.list_teams()
+        if team.name == "RFA Assessment Team"
     )
 
 
@@ -51,7 +53,7 @@ async def test_manager_assigns_analyst_and_workbench_lists_assigned_tasks_only()
         team_id = next(
             team.team_id
             for team in app.state.team_repository.list_teams()
-            if team.kind.value == "rfa"
+            if team.name == "RFA Assessment Team"
         )
         candidates = await client.get(f"/api/v1/analyst/candidates?route=rfa&teamId={team_id}")
         assigned = await client.post(
@@ -69,7 +71,8 @@ async def test_manager_assigns_analyst_and_workbench_lists_assigned_tasks_only()
     assert candidates.status_code == 200
     assert candidates.json()["analysts"][0]["username"] == "analyst@example.test"
     candidate_names = {candidate["displayName"] for candidate in candidates.json()["analysts"]}
-    assert {"Nathan Patterson", "Ben Doak", "Che Adams"}.issubset(candidate_names)
+    assert {"Lewis Ferguson", "Nathan Patterson", "Che Adams"} == candidate_names
+    assert "Ben Doak" not in candidate_names
     assert assigned.status_code == 200
     assert assigned.json()["state"] == "ANALYST_IN_PROGRESS"
     assert assigned.json()["assignments"][0]["analystUserId"] == str(analyst_user.user_id)
@@ -229,7 +232,7 @@ async def test_analyst_workflow_rejects_invalid_inputs_and_duplicate_actions() -
         team_id = next(
             team.team_id
             for team in app.state.team_repository.list_teams()
-            if team.kind.value == "rfa"
+            if team.name == "RFA Assessment Team"
         )
         candidates = await client.get(f"/api/v1/analyst/candidates?route=rfa&teamId={team_id}")
         linked = await client.post(

@@ -31,6 +31,8 @@ const availability = {
   teamId: "team-1",
   date: "2026-07-10",
   members: 2,
+  activePeople: 2,
+  assignable: 1,
   onLeave: 1,
   onTaskCalendar: 0,
   otherCommitments: 1,

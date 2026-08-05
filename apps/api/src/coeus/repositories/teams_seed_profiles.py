@@ -1,8 +1,12 @@
 """Synthetic personal profiles for the local demonstration workforce.
 
-Display names are borrowed from Scottish footballers, but every role and
-biography below is fictional and makes no claim about the real person.
+Legacy display names are retained for compatibility. All roles and biographies
+are fictional and make no claim about any real person.
 """
+
+from coeus.domain.auth import RoleName
+from coeus.repositories.synthetic_analyst_personas import ANALYST_PERSONAS
+from coeus.repositories.synthetic_workforce import EXPANDED_SEED_USER_ROWS
 
 ProfileSpec = tuple[str, tuple[str, ...], str]
 
@@ -124,6 +128,47 @@ PROFILE_SPECS: dict[str, ProfileSpec] = {
 }
 
 
+def _expanded_profile(role: RoleName, display_name: str, username: str) -> ProfileSpec:
+    title_by_role = {
+        RoleName.ADMINISTRATOR: "Platform Security Administrator",
+        RoleName.USER: "Intelligence Requirements Officer",
+        RoleName.JIOC_TEAM_MEMBER: "JIOC Review Officer",
+        RoleName.RFA_MANAGER: "RFA Team Lead",
+        RoleName.RFA_TEAM_MEMBER: "RFA Desk Coordinator",
+        RoleName.COLLECTION_MANAGER: "Collection Team Lead",
+        RoleName.COLLECTION_TEAM_MEMBER: "Collection Desk Coordinator",
+        RoleName.INTELLIGENCE_STORE_MANAGER: "Intelligence Store Curator",
+        RoleName.QUALITY_CONTROL_MANAGER: "Quality Control Reviewer",
+        RoleName.INTELLIGENCE_ANALYST: "Military Intelligence Analyst",
+    }
+    title = title_by_role[role]
+    if role is RoleName.INTELLIGENCE_ANALYST:
+        analyst_usernames = [
+            item[0] for item in EXPANDED_SEED_USER_ROWS if item[2] is RoleName.INTELLIGENCE_ANALYST
+        ]
+        specialisms, subject = ANALYST_PERSONAS[analyst_usernames.index(username)]
+        bio = (
+            f"Synthetic exercise persona {display_name} assesses {subject}. "
+            "Records sources, assumptions, confidence and information gaps "
+            "for auditable team review."
+        )
+        return title, specialisms, bio
+    specialisms = ("Exercise operations", "Controlled collaboration")
+    bio = (
+        f"Synthetic exercise persona {display_name} supports the {title.lower()} "
+        "journey using fictional data, bounded authority and auditable workflow actions."
+    )
+    return title, specialisms, bio
+
+
+PROFILE_SPECS.update(
+    {
+        username: _expanded_profile(role, display_name, username)
+        for username, display_name, role, _is_active in EXPANDED_SEED_USER_ROWS
+    }
+)
+
+
 # Exact previous seed values permit a one-time, non-destructive upgrade while
 # preserving any profile that a local user has edited.
 LEGACY_PROFILE_SPECS: dict[str, ProfileSpec] = {
@@ -193,7 +238,7 @@ LEGACY_PROFILE_SPECS: dict[str, ProfileSpec] = {
     "analyst@example.test": (
         "All-Source Intelligence Analyst",
         ("All-source fusion", "Threat assessment", "Report writing"),
-        "General duties analyst working across the RFA and collection teams. "
+        "General duties analyst working within an assigned assessment team. "
         "Comfortable fusing imagery, signals and open-source reporting into a single "
         "balanced assessment under deadline.",
     ),
@@ -231,3 +276,17 @@ LEGACY_PROFILE_SPECS: dict[str, ProfileSpec] = {
         "Account retained for audit history only.",
     ),
 }
+
+LEGACY_PROFILE_SPECS.update(
+    {
+        username: (
+            "Military Intelligence Analyst",
+            ("Analytic delivery", "Structured assessment", "Evidence handling"),
+            f"Synthetic exercise persona {display_name} supports the military intelligence "
+            "analyst journey using fictional data, bounded authority and "
+            "auditable workflow actions.",
+        )
+        for username, display_name, role, _active in EXPANDED_SEED_USER_ROWS
+        if role is RoleName.INTELLIGENCE_ANALYST
+    }
+)

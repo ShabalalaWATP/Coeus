@@ -79,6 +79,13 @@ def test_hosted_advisory_egress_requires_provider_and_data_release() -> None:
     assert "ADVISORY_APPROVED_DATA_CLASSIFICATIONS" in str(error.value)
 
 
+def test_organisation_demo_seed_is_local_test_only() -> None:
+    settings = valid_dev_settings(organisation_demo_seed_enabled=True)
+
+    with pytest.raises(ValueError, match="ORGANISATION_DEMO_SEED_ENABLED is local/test only"):
+        settings.require_runtime_security()
+
+
 def test_hosted_litellm_requires_an_environment_key_and_https() -> None:
     with pytest.raises(ValueError) as missing:
         valid_dev_settings(llm_provider="litellm_proxy").require_runtime_security()

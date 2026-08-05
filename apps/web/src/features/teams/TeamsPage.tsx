@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { TeamCalendarPanel } from "./TeamCalendarPanel";
 import { TeamRosterPanel } from "./TeamRosterPanel";
+import { OrganisationWorkspacePanel } from "./OrganisationWorkspacePanel";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/PageState";
 import { listTeams, teamAvailability } from "../../lib/api-client/teams";
 import { useAuth } from "../../lib/auth/auth-context";
@@ -39,6 +40,7 @@ export default function TeamsPage() {
           <p>Rosters, member profiles and the availability calendar for your teams.</p>
         </div>
       </section>
+      <OrganisationWorkspacePanel />
       {teamsQuery.isLoading ? <LoadingState /> : null}
       {teamsQuery.isError ? <ErrorState onRetry={() => void teamsQuery.refetch()} /> : null}
       {teamsQuery.isSuccess && teams.length === 0 ? (
@@ -69,15 +71,23 @@ export default function TeamsPage() {
               <h2>Availability today</h2>
               <dl>
                 <div>
-                  <dt>Members</dt>
+                  <dt>Total roster</dt>
                   <dd>{availabilityQuery.data.members}</dd>
                 </div>
                 <div>
-                  <dt>On task</dt>
+                  <dt>Active people</dt>
+                  <dd>{availabilityQuery.data.activePeople}</dd>
+                </div>
+                <div>
+                  <dt>Assignable analysts</dt>
+                  <dd>{availabilityQuery.data.assignable}</dd>
+                </div>
+                <div>
+                  <dt>Analysts on task</dt>
                   <dd>{availabilityQuery.data.onTask}</dd>
                 </div>
                 <div>
-                  <dt>On leave</dt>
+                  <dt>Analysts on leave</dt>
                   <dd>{availabilityQuery.data.onLeave}</dd>
                 </div>
                 <div>
@@ -85,7 +95,7 @@ export default function TeamsPage() {
                   <dd>{availabilityQuery.data.otherCommitments}</dd>
                 </div>
                 <div>
-                  <dt>Free</dt>
+                  <dt>Free analysts</dt>
                   <dd>{availabilityQuery.data.free}</dd>
                 </div>
               </dl>

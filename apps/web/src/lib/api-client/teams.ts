@@ -44,7 +44,12 @@ export type CalendarEntry = {
 export type TeamAvailability = {
   teamId: string;
   date: string;
+  /** Everyone on the team roster, including managers and non-analyst roles. */
   members: number;
+  /** Active accounts on the roster, regardless of delivery role. */
+  activePeople: number;
+  /** Active analysts whose sole home team is this team. */
+  assignable: number;
   onLeave: number;
   onTaskCalendar: number;
   otherCommitments: number;

@@ -1,0 +1,333 @@
+.team-workspaces {
+  margin-block: 1.25rem;
+  border-block: 1px solid var(--border);
+  padding-block: 1.25rem;
+}
+
+.team-workspaces__heading > div,
+.team-workspaces__switcher p,
+.team-workspaces__badges {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.team-workspaces__heading h2,
+.team-workspaces__content h3 {
+  margin: 0;
+}
+
+.team-workspaces__heading > p,
+.team-workspaces__content header > p,
+.team-workspaces__switcher p,
+.team-workspaces__limited,
+.team-workspaces__notice {
+  color: var(--text-muted);
+}
+
+.team-workspaces__tabs {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.team-workspaces__tabs button {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  padding: 0.55rem 0.75rem;
+  color: var(--text-muted);
+}
+
+.team-workspaces__tabs button[aria-selected="true"] {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+}
+
+.team-task-board > header,
+.team-task-board > header > div,
+.team-task-board__column > header,
+.team-task-board__column dl > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+}
+
+.team-task-board h4,
+.team-task-board h5,
+.team-task-board ol,
+.team-task-board dl,
+.team-task-board dd {
+  margin: 0;
+}
+
+.team-task-board__columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.team-task-board__column {
+  border: 1px solid var(--border);
+  border-radius: 0.55rem;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  padding: 0.7rem;
+}
+
+.team-task-board__column > header span {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.team-task-board__column ol {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.65rem;
+  padding: 0;
+  list-style: none;
+}
+
+.team-task-board__column li {
+  border-left: 2px solid var(--accent);
+  background: var(--surface-raised);
+  padding: 0.65rem;
+}
+
+.team-task-board__column li > small,
+.team-task-board__column li > strong {
+  display: block;
+}
+
+.team-task-board__column li > small,
+.team-task-board__column dt,
+.team-task-board__empty {
+  color: var(--text-muted);
+}
+
+.team-task-board__column dl {
+  margin-top: 0.6rem;
+  font-size: 0.75rem;
+}
+
+.team-task-board__packages {
+  margin-top: 0.75rem !important;
+  border-top: 1px solid var(--border);
+  padding-top: 0.55rem !important;
+}
+
+.team-task-board__packages > li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.team-task-board__packages span,
+.team-task-board__packages small {
+  display: block;
+}
+
+.team-task-board__packages small {
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+
+.team-task-board__packages button,
+.work-package-plan button {
+  min-height: 2rem;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.78rem;
+}
+
+.work-package-plan {
+  margin-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+}
+
+.work-package-plan > header,
+.work-package-plan__review {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.work-package-plan h6,
+.work-package-plan p {
+  margin: 0;
+}
+
+.work-package-plan__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin-block: 0.75rem;
+}
+
+.work-package-plan label {
+  display: grid;
+  gap: 0.2rem;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.work-package-plan input,
+.work-package-plan select {
+  width: 100%;
+  min-width: 0;
+}
+
+.work-package-plan [role="alert"] {
+  margin-bottom: 0.65rem;
+  color: var(--danger);
+}
+
+.work-package-plan__review {
+  align-items: flex-start;
+  border-radius: 0.4rem;
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  padding: 0.65rem;
+}
+
+.team-workspaces__heading > p {
+  margin: 0.35rem 0 0;
+}
+
+.team-workspaces__layout {
+  display: grid;
+  grid-template-columns: minmax(12rem, 15rem) minmax(0, 1fr);
+  gap: 1.5rem;
+  margin-top: 1.25rem;
+}
+
+.team-workspaces__switcher p {
+  margin: 0 0 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.team-workspaces__switcher > div + div {
+  margin-top: 1rem;
+}
+
+.team-workspaces__switcher button {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  padding: 0.55rem 0.75rem;
+  color: var(--text-muted);
+  text-align: left;
+}
+
+.team-workspaces__switcher button[aria-pressed="true"] {
+  border-left-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--text);
+}
+
+.team-workspaces__switcher button span,
+.team-workspaces__switcher button small {
+  display: block;
+}
+
+.team-workspaces__switcher button small {
+  margin-top: 0.15rem;
+  opacity: 0.75;
+}
+
+.team-workspaces__content > header {
+  padding-bottom: 1rem;
+}
+
+.team-workspaces__content header > p {
+  margin: 0 0 0.25rem;
+  font-size: 0.82rem;
+}
+
+.team-workspaces__badges {
+  flex-wrap: wrap;
+  margin-top: 0.65rem;
+}
+
+.team-workspaces__badges span {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.team-workspaces__notice {
+  margin: 1rem 0 0;
+  font-size: 0.82rem;
+}
+
+@media (max-width: 760px) {
+  .team-workspaces__layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.team-capacity {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.9rem;
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface-muted));
+}
+
+.team-capacity > header {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+}
+
+.team-capacity h5,
+.team-capacity p,
+.team-capacity dl {
+  margin: 0;
+}
+
+.team-capacity header p,
+.team-capacity__message,
+.team-capacity__notice {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.team-capacity dl {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.team-capacity dt {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.team-capacity dd {
+  margin: 0.2rem 0 0;
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .team-capacity dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

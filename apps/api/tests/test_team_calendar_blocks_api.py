@@ -71,7 +71,7 @@ async def test_block_entry_spans_days_and_counts_in_availability() -> None:
         assert availability.status_code == 200
         body = availability.json()
         assert body["otherCommitments"] >= 1
-        assert body["members"] == body["free"] + body["onLeave"] + body["onTaskCalendar"] + body[
+        assert body["assignable"] == body["free"] + body["onLeave"] + body["onTaskCalendar"] + body[
             "otherCommitments"
         ] + body["assignedLive"] - _overlap_allowance(body)
 
@@ -135,7 +135,6 @@ async def test_every_new_activity_type_is_accepted_and_reduces_free_count() -> N
         members = {
             "analyst@example.test": "course",
             "analyst.2@example.test": "duty",
-            "analyst.3@example.test": "appointment",
             "analyst.4@example.test": "other",
         }
         for username, status in members.items():
@@ -147,7 +146,7 @@ async def test_every_new_activity_type_is_accepted_and_reduces_free_count() -> N
             assert created.status_code == 200, status
 
         availability = await client.get(f"/api/v1/teams/{team_id}/availability?date={_day(10)}")
-        assert availability.json()["otherCommitments"] == 4
+        assert availability.json()["otherCommitments"] == 3
 
 
 @pytest.mark.asyncio

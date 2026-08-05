@@ -1,0 +1,78 @@
+.team-task-board__filters,
+.team-task-board__filters > label,
+.team-task-board__filters [role="group"],
+.team-task-board__paging {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.team-task-board__filters {
+  flex-wrap: wrap;
+  margin-block: 0.8rem;
+  border-block: 1px solid var(--border);
+  padding-block: 0.75rem;
+}
+
+.team-task-board__filters > label {
+  align-items: flex-start;
+  flex-direction: column;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.team-task-board__filters [role="group"] {
+  margin-left: auto;
+}
+.team-task-board__filters button[aria-pressed="true"] {
+  border-color: var(--accent);
+}
+
+.team-task-board__table {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.team-task-board__table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.team-task-board__table caption {
+  padding: 0.7rem;
+  text-align: left;
+  font-weight: 700;
+}
+.team-task-board__table th,
+.team-task-board__table td {
+  border-top: 1px solid var(--border);
+  padding: 0.65rem;
+  text-align: left;
+}
+
+.team-task-board__aggregates {
+  margin-top: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.8rem;
+}
+
+.team-task-board__aggregates p {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+.team-task-board__aggregates ul {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0;
+  list-style: none;
+}
+.team-task-board__aggregates li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.team-task-board__paging {
+  justify-content: center;
+  margin-top: 0.8rem;
+}

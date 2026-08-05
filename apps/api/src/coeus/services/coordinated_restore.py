@@ -21,7 +21,12 @@ from coeus.persistence.backup_manifest import (
 )
 from coeus.persistence.database_url import synchronous_database_url
 from coeus.persistence.draft_audience_reconciliation import reconcile_draft_audiences
-from coeus.persistence.postgres_logical_backup import export_tables, import_tables
+from coeus.persistence.postgres_logical_backup import (
+    clear_restored_tables,
+    export_tables,
+    import_tables,
+    security_authority_fence,
+)
 from coeus.persistence.ticket_shadow_schema import validate_relational_ticket_rows
 
 
@@ -82,23 +87,37 @@ def restore_backup_bundle(
         raise ValueError("Source and restore target databases must be different.")
     if target_object_root.exists() and any(target_object_root.iterdir()):
         raise ValueError("Restore target object directory must be empty.")
-    manifest = read_manifest(bundle / "manifest.json")
+    manifest = read_manifest(_bundle_member(bundle, "manifest.json"))
     _verify_bundle(bundle, manifest)
-    _upgrade_database(target_database_url)
-    if _revision(target_database_url) != manifest.alembic_revision:
-        raise RuntimeError("Restore target migration revision is incompatible with the bundle.")
     object_staging = target_object_root.with_name(
         f".{target_object_root.name}.{manifest.recovery_id}.tmp"
     )
+    target_may_be_dirty = False
     try:
-        _restore_objects(bundle, object_staging, manifest.objects)
-        import_tables(target_database_url, bundle, manifest.tables)
-        _validate_restored_database(target_database_url, manifest.objects)
-        if target_object_root.exists():
-            target_object_root.rmdir()
-        object_staging.replace(target_object_root)
+        with security_authority_fence(source_database_url, manifest.tables):
+            _upgrade_database(target_database_url)
+            if _revision(target_database_url) != manifest.alembic_revision:
+                raise RuntimeError(
+                    "Restore target migration revision is incompatible with the bundle."
+                )
+            _restore_objects(bundle, object_staging, manifest.objects)
+            target_may_be_dirty = True
+            import_tables(target_database_url, bundle, manifest.tables)
+            _validate_restored_database(target_database_url, manifest.objects)
+            if target_object_root.exists():
+                target_object_root.rmdir()
+            object_staging.replace(target_object_root)
     except Exception:
-        shutil.rmtree(object_staging, ignore_errors=True)
+        try:
+            _quarantine_failed_restore(
+                target_database_url,
+                (object_staging, target_object_root),
+                target_may_be_dirty=target_may_be_dirty,
+            )
+        except Exception as quarantine_error:
+            raise RuntimeError(
+                "Restore failed and target quarantine could not be verified; destroy target."
+            ) from quarantine_error
         raise
     return RestoreDrillReport(
         manifest.recovery_id,
@@ -125,7 +144,7 @@ def _inventory(root: Path) -> tuple[ObjectBackup, ...]:
         return ()
     objects: list[ObjectBackup] = []
     for path in sorted(root.rglob("*")):
-        if path.is_symlink():
+        if _is_link(path):
             raise ValueError("Object storage contains a symbolic link.")
         if not path.is_file():
             continue
@@ -139,16 +158,12 @@ def _inventory(root: Path) -> tuple[ObjectBackup, ...]:
 
 def _verify_bundle(bundle: Path, manifest: BackupManifest) -> None:
     for table in manifest.tables:
-        path = bundle / safe_relative_path(table.file)
-        if not path.is_file() or file_sha256(path) != table.sha256:
+        path = _bundle_member(bundle, table.file)
+        if file_sha256(path) != table.sha256:
             raise ValueError(f"Backup table file failed verification: {table.name}.")
     for item in manifest.objects:
-        path = bundle / "objects" / safe_relative_path(item.key)
-        if (
-            not path.is_file()
-            or path.stat().st_size != item.size_bytes
-            or file_sha256(path) != item.sha256
-        ):
+        path = _bundle_member(bundle, f"objects/{item.key}")
+        if path.stat().st_size != item.size_bytes or file_sha256(path) != item.sha256:
             raise ValueError(f"Backup object failed verification: {item.key}.")
 
 
@@ -157,13 +172,58 @@ def _restore_objects(bundle: Path, staging: Path, objects: tuple[ObjectBackup, .
         raise ValueError("Restore object staging path already exists.")
     staging.mkdir(parents=True)
     for item in objects:
-        source = bundle / "objects" / safe_relative_path(item.key)
+        source = _bundle_member(bundle, f"objects/{item.key}")
         destination = staging / safe_relative_path(item.key)
         destination.parent.mkdir(parents=True, exist_ok=True)
         with source.open("rb") as reader, destination.open("xb") as writer:
             shutil.copyfileobj(reader, writer, length=1024 * 1024)
     if _inventory(staging) != objects:
         raise RuntimeError("Restored object inventory did not reconcile.")
+
+
+def _bundle_member(bundle: Path, relative: str) -> Path:
+    root = bundle.absolute()
+    path = root / safe_relative_path(relative)
+    if _is_link(root):
+        raise ValueError("Backup bundle must not be a symbolic link or junction.")
+    current = path
+    while current != root:
+        if _is_link(current):
+            raise ValueError("Backup bundle contains a symbolic link or junction.")
+        current = current.parent
+    if not path.is_file():
+        raise ValueError(f"Backup bundle member is missing: {relative}.")
+    return path
+
+
+def _is_link(path: Path) -> bool:
+    return path.is_symlink() or path.is_junction()
+
+
+def _quarantine_failed_restore(
+    database_url: str,
+    object_paths: tuple[Path, ...],
+    *,
+    target_may_be_dirty: bool,
+) -> None:
+    retained = [path for path in object_paths if not _remove_restore_path(path)]
+    if target_may_be_dirty:
+        clear_restored_tables(database_url)
+    if retained:
+        raise RuntimeError("Restore quarantine retained object data.")
+
+
+def _remove_restore_path(path: Path) -> bool:
+    if not path.exists() and not _is_link(path):
+        return True
+    try:
+        if _is_link(path):
+            path.unlink()
+        else:
+            shutil.rmtree(path)
+    except OSError:
+        return False
+    return not path.exists() and not _is_link(path)
 
 
 def _validate_restored_database(database_url: str, objects: tuple[ObjectBackup, ...]) -> None:

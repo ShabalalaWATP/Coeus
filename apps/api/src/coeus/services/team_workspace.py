@@ -17,6 +17,14 @@ from coeus.domain.teams import OrgTeam, UserProfile, team_member_ids
 from coeus.repositories.auth import SeedUserRepository
 from coeus.repositories.teams import TeamRepository
 from coeus.services.audit import AuditLog
+from coeus.services.team_availability import (
+    TeamAvailabilityService,
+    active_team_ids_for_user,
+)
+from coeus.services.workforce_authority import (
+    PROCESS_WORKFORCE_AUTHORITY,
+    WorkforceAuthority,
+)
 
 MAX_TEAM_MEMBERS = 50
 
@@ -27,10 +35,14 @@ class TeamWorkspaceService:
         teams: TeamRepository,
         users: SeedUserRepository,
         audit_log: AuditLog,
+        availability: TeamAvailabilityService | None = None,
+        workforce_authority: WorkforceAuthority = PROCESS_WORKFORCE_AUTHORITY,
     ) -> None:
         self._teams = teams
         self._users = users
         self._audit_log = audit_log
+        self._availability = availability
+        self._workforce_authority = workforce_authority
 
     def list_teams(self, actor: UserAccount) -> tuple[OrgTeam, ...]:
         return tuple(team for team in self._teams.list_teams() if self._can_view(actor, team))
@@ -60,16 +72,29 @@ class TeamWorkspaceService:
             for user in self._users.list_users()
             if user.is_active
             and user.user_id not in member_ids
+            and not active_team_ids_for_user(self._teams, user.user_id)
             and needle in f"{user.display_name} {user.username}".casefold()
-        )[:20]
+        )[:10]
 
     def add_member(self, actor: UserAccount, team_id: UUID, user_id: UUID) -> OrgTeam:
+        # Serialise the single-home check and save within this local runtime.
+        # The relational organisation phase will enforce this across workers.
+        with self._workforce_authority.locked():
+            return self._add_member_locked(actor, team_id, user_id)
+
+    def _add_member_locked(self, actor: UserAccount, team_id: UUID, user_id: UUID) -> OrgTeam:
         team = self._managed_team(actor, team_id)
         user = self._users.get_by_id(user_id)
         if user is None or not user.is_active:
             raise AppError(422, "invalid_member", "Team members must be active accounts.")
         if user_id in team_member_ids(team):
             raise AppError(409, "already_member", "The user is already on the team.")
+        if active_team_ids_for_user(self._teams, user_id):
+            raise AppError(
+                409,
+                "active_team_membership_exists",
+                "The user already belongs to another active team.",
+            )
         if len(team_member_ids(team)) >= MAX_TEAM_MEMBERS:
             raise AppError(409, "team_full", "The team has reached its member limit.")
         updated = replace(team, member_user_ids=(*team.member_user_ids, user_id))
@@ -79,9 +104,19 @@ class TeamWorkspaceService:
         return updated
 
     def remove_member(self, actor: UserAccount, team_id: UUID, user_id: UUID) -> OrgTeam:
+        with self._workforce_authority.locked():
+            return self._remove_member_locked(actor, team_id, user_id)
+
+    def _remove_member_locked(self, actor: UserAccount, team_id: UUID, user_id: UUID) -> OrgTeam:
         team = self._managed_team(actor, team_id)
         if user_id not in team.member_user_ids:
             raise AppError(404, "member_not_found", "The user is not a member of the team.")
+        if self._availability is not None and self._availability.has_live_assignment(user_id):
+            raise AppError(
+                409,
+                "team_member_assigned",
+                "Reassign the user's live work before removing them from the team.",
+            )
         updated = replace(
             team,
             member_user_ids=tuple(member for member in team.member_user_ids if member != user_id),

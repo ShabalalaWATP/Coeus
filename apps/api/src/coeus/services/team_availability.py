@@ -7,6 +7,7 @@ before assigning new work. No model involvement: pure counting.
 
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
+from typing import Protocol
 from uuid import UUID, uuid4
 
 from coeus.core.errors import AppError
@@ -27,6 +28,10 @@ from coeus.repositories.teams import TeamRepository
 from coeus.services.analyst_records import active_assignments
 from coeus.services.audit import AuditLog
 from coeus.services.tickets import TicketServices
+from coeus.services.workforce_authority import (
+    PROCESS_WORKFORCE_AUTHORITY,
+    WorkforceAuthority,
+)
 
 # States where an active assignment still occupies the analysts.
 IN_FLIGHT_STATES = frozenset(
@@ -49,12 +54,18 @@ class TeamAvailability:
     team_id: UUID
     entry_date: str
     members: int
+    active_people: int
+    assignable: int
     on_leave: int
     on_task_calendar: int
     other_commitments: int
     assigned_live: int
     on_task: int
     free: int
+
+
+class UserReader(Protocol):
+    def list_users(self) -> tuple[UserAccount, ...]: ...
 
 
 def parse_iso_date(value: str) -> date:
@@ -65,9 +76,15 @@ def parse_iso_date(value: str) -> date:
 
 
 class TeamAvailabilityService:
-    def __init__(self, teams: TeamRepository, tickets: TicketServices) -> None:
+    def __init__(
+        self,
+        teams: TeamRepository,
+        tickets: TicketServices,
+        users: UserReader,
+    ) -> None:
         self._teams = teams
         self._tickets = tickets
+        self._users = users
 
     def calendar(
         self, team: OrgTeam, date_from: str, date_to: str
@@ -86,22 +103,69 @@ class TeamAvailabilityService:
     def availability(self, team: OrgTeam, entry_date: str) -> TeamAvailability:
         parse_iso_date(entry_date)
         members = team_member_ids(team)
-        statuses = self._calendar_statuses(team, entry_date, members)
+        users = {user.user_id: user for user in self._users.list_users()}
+        active_people = sum(
+            1 for user_id in members if (user := users.get(user_id)) is not None and user.is_active
+        )
+        assignable = self.assignable_member_ids(team)
+        statuses = self._calendar_statuses(team, entry_date, assignable)
         on_leave = {user for user, status in statuses.items() if status == CalendarStatus.LEAVE}
         on_task = {user for user, status in statuses.items() if status == CalendarStatus.ON_TASK}
         other = {user for user, status in statuses.items() if status in OTHER_COMMITMENT_STATUSES}
-        assigned = self._assigned_members(members)
+        assigned = self._assigned_members(assignable)
         busy = on_leave | on_task | other | assigned
         return TeamAvailability(
             team_id=team.team_id,
             entry_date=entry_date,
             members=len(members),
+            active_people=active_people,
+            assignable=len(assignable),
             on_leave=len(on_leave),
             on_task_calendar=len(on_task),
             other_commitments=len(other),
             assigned_live=len(assigned),
             on_task=len((on_task | assigned) - on_leave),
-            free=len(members - busy),
+            free=len(assignable - busy),
+        )
+
+    def assignable_member_ids(self, team: OrgTeam) -> frozenset[UUID]:
+        """Return active analysts whose only active team is this team.
+
+        Legacy overlapping memberships fail closed. Managers, coordinators and
+        inactive accounts remain visible on the roster but never add capacity.
+        """
+        if not team.is_active:
+            return frozenset()
+        users = self._users.list_users()
+        return frozenset(
+            user.user_id
+            for user in users
+            if user.is_active
+            and RoleName.INTELLIGENCE_ANALYST in user.roles
+            and user.user_id in team.member_user_ids
+            and user.user_id not in team.manager_user_ids
+            and active_team_ids_for_user(self._teams, user.user_id) == (team.team_id,)
+        )
+
+    def available_member_ids(
+        self,
+        team: OrgTeam,
+        entry_date: str,
+        exclude_ticket_id: UUID | None = None,
+    ) -> frozenset[UUID]:
+        """Return assignable analysts who have no calendar or live-work conflict."""
+        parse_iso_date(entry_date)
+        assignable = self.assignable_member_ids(team)
+        statuses = self._calendar_statuses(team, entry_date, assignable)
+        calendar_busy = {
+            user_id
+            for user_id, status in statuses.items()
+            if status is not CalendarStatus.AVAILABLE
+        }
+        return (
+            assignable
+            - calendar_busy
+            - self._assigned_members(assignable, exclude_ticket_id=exclude_ticket_id)
         )
 
     def _calendar_statuses(
@@ -119,15 +183,31 @@ class TeamAvailabilityService:
             statuses[entry.user_id] = entry.status
         return statuses
 
-    def _assigned_members(self, members: frozenset[UUID]) -> set[UUID]:
+    def _assigned_members(
+        self, members: frozenset[UUID], exclude_ticket_id: UUID | None = None
+    ) -> set[UUID]:
         assigned: set[UUID] = set()
         for ticket in self._tickets.tickets.assignment_snapshot():
+            if exclude_ticket_id is not None and ticket.ticket_id == exclude_ticket_id:
+                continue
             if ticket.state not in IN_FLIGHT_STATES:
                 continue
             for assignment in active_assignments(ticket):
                 if assignment.analyst_user_id in members:
                     assigned.add(assignment.analyst_user_id)
         return assigned
+
+    def has_live_assignment(self, user_id: UUID) -> bool:
+        return bool(self._assigned_members(frozenset({user_id})))
+
+
+def active_team_ids_for_user(teams: TeamRepository, user_id: UUID) -> tuple[UUID, ...]:
+    """Return the active teams containing a user in any roster capacity."""
+    return tuple(
+        team.team_id
+        for team in teams.list_teams()
+        if team.is_active and user_id in team_member_ids(team)
+    )
 
 
 def can_write_entry(actor: UserAccount, team: OrgTeam, target_user_id: UUID) -> bool:
@@ -143,9 +223,15 @@ def can_write_entry(actor: UserAccount, team: OrgTeam, target_user_id: UUID) -> 
 
 
 class TeamCalendarService:
-    def __init__(self, teams: TeamRepository, audit_log: AuditLog) -> None:
+    def __init__(
+        self,
+        teams: TeamRepository,
+        audit_log: AuditLog,
+        workforce_authority: WorkforceAuthority = PROCESS_WORKFORCE_AUTHORITY,
+    ) -> None:
         self._teams = teams
         self._audit_log = audit_log
+        self._workforce_authority = workforce_authority
 
     def add_entry(
         self,
@@ -157,6 +243,25 @@ class TeamCalendarService:
         note: str,
         end_date: str = "",
     ) -> TeamCalendarEntry:
+        with self._workforce_authority.locked():
+            return self._add_entry_locked(
+                actor, team, target_user_id, entry_date, status, note, end_date
+            )
+
+    def _add_entry_locked(
+        self,
+        actor: UserAccount,
+        team: OrgTeam,
+        target_user_id: UUID,
+        entry_date: str,
+        status: CalendarStatus,
+        note: str,
+        end_date: str,
+    ) -> TeamCalendarEntry:
+        current_team = self._teams.get_team(team.team_id)
+        if current_team is None or not current_team.is_active:
+            raise AppError(404, "team_not_found", "Team was not found.")
+        team = current_team
         parsed_date = parse_iso_date(entry_date)
         parsed_end = parse_iso_date(end_date) if end_date else parsed_date
         today = datetime.now(UTC).date()
@@ -201,6 +306,14 @@ class TeamCalendarService:
         return entry
 
     def remove_entry(self, actor: UserAccount, team: OrgTeam, entry_id: UUID) -> None:
+        with self._workforce_authority.locked():
+            self._remove_entry_locked(actor, team, entry_id)
+
+    def _remove_entry_locked(self, actor: UserAccount, team: OrgTeam, entry_id: UUID) -> None:
+        current_team = self._teams.get_team(team.team_id)
+        if current_team is None or not current_team.is_active:
+            raise AppError(404, "team_not_found", "Team was not found.")
+        team = current_team
         entry = self._teams.get_entry(entry_id)
         if entry is None or entry.team_id != team.team_id:
             raise AppError(404, "entry_not_found", "Calendar entry was not found.")

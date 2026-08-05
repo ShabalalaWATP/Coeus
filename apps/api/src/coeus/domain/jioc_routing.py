@@ -8,6 +8,10 @@ from uuid import UUID
 ROUTING_POLICY_VERSION = "jioc-routing-policy-v2"
 ROUTING_EVALUATION_VERSION = "jioc-routing-eval-v2"
 ROUTING_RELEASE = f"{ROUTING_POLICY_VERSION}:{ROUTING_EVALUATION_VERSION}"
+ROUTING_RELATIONAL_CAPACITY_EVALUATION_VERSION = "jioc-routing-relational-capacity-replay-eval-v1"
+ROUTING_RELATIONAL_CAPACITY_RELEASE = (
+    f"{ROUTING_POLICY_VERSION}:{ROUTING_RELATIONAL_CAPACITY_EVALUATION_VERSION}"
+)
 
 
 class JiocRoutingMode(StrEnum):
@@ -32,7 +36,8 @@ class RoutingOperationalSnapshot:
 
     capability_catalogue_version: str
     captured_at: datetime | None
-    # Entries are ``<capability-team-id>:available|unavailable|unknown:<free>``.
+    # Entries are ``<capability-team-id>:available|unavailable|unknown:<capacity>``.
+    # The version identifies whether capacity is legacy headcount or forecast minutes.
     candidate_capacity: tuple[str, ...]
 
 

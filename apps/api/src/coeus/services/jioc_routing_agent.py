@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from coeus.domain.enums import TicketState
+from coeus.domain.jioc_principals import JIOC_AGENT_PRINCIPAL
 from coeus.domain.jioc_routing import (
     ROUTING_POLICY_VERSION,
     JiocRoutingDecision,
@@ -58,8 +59,6 @@ from coeus.services.routing_records import (
 )
 from coeus.services.routing_review_updates import build_routing_review_update
 from coeus.services.tickets import TicketServices
-
-JIOC_AGENT_PRINCIPAL = UUID("00000000-0000-0000-0000-000000000002")
 
 
 class JiocRoutingAgentService:

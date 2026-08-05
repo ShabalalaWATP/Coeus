@@ -1,0 +1,267 @@
+.organisation-mutation {
+  display: grid;
+  gap: 22px;
+}
+
+.organisation-mutation > header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.organisation-mutation h2 {
+  margin: 5px 0 0;
+}
+
+.organisation-mutation button {
+  min-height: 38px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 0 14px;
+  background: var(--surface-strong);
+  color: var(--text);
+  font-weight: 720;
+  cursor: pointer;
+}
+
+.organisation-mutation > header > button {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  padding: 0;
+}
+
+.organisation-mutation form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 15px;
+}
+
+.organisation-mutation label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.organisation-mutation input,
+.organisation-mutation select,
+.organisation-mutation textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 11px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.organisation-mutation textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.organisation-mutation__wide,
+.organisation-mutation form > button,
+.organisation-mutation form > p {
+  grid-column: 1 / -1;
+}
+
+.organisation-mutation__warning,
+.organisation-mutation__preview > div,
+.organisation-bootstrap__notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.organisation-bootstrap__notice {
+  align-items: start;
+  gap: 10px;
+  margin: 0;
+  padding: 13px 0;
+  border-block: 1px solid var(--border);
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.organisation-mutation__warning {
+  color: var(--warning);
+}
+
+.organisation-mutation__preview {
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.organisation-mutation__preview p {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.organisation-mutation form > button,
+.organisation-mutation__preview > button {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background: var(--accent-strong);
+  color: white;
+}
+
+.organisation-mutation button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 620px) {
+  .organisation-mutation form {
+    grid-template-columns: 1fr;
+  }
+}
+
+.organisation-authority-panel {
+  display: grid;
+  gap: 24px;
+}
+
+.organisation-authority-panel > header,
+.organisation-authority-panel__heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.organisation-authority-panel h2,
+.organisation-authority-panel h3,
+.organisation-authority-panel p {
+  margin: 0;
+}
+
+.organisation-authority-panel h2 {
+  margin-top: 5px;
+}
+
+.organisation-authority-panel > header p {
+  margin-top: 7px;
+  color: var(--muted);
+}
+
+.organisation-authority-panel button {
+  min-height: 38px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 0 14px;
+  background: var(--surface-strong);
+  color: var(--text);
+  font-weight: 720;
+  cursor: pointer;
+}
+
+.organisation-authority-panel form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding-block: 20px;
+  border-block: 1px solid var(--border);
+}
+
+.organisation-authority-panel label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.organisation-authority-panel input,
+.organisation-authority-panel select,
+.organisation-authority-panel textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 11px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.organisation-authority-panel form > label:nth-last-of-type(1),
+.organisation-authority-panel form > button,
+.organisation-authority-panel__warning {
+  grid-column: 1 / -1;
+}
+
+.organisation-authority-panel form > button {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background: var(--accent-strong);
+  color: white;
+}
+
+.organisation-authority-panel button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.organisation-authority-panel__check {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  align-self: end;
+  min-height: 42px;
+}
+
+.organisation-authority-panel__check input {
+  width: auto;
+}
+
+.organisation-authority-panel__warning {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  color: var(--warning);
+}
+
+.organisation-authority-panel__heading {
+  align-items: center;
+  justify-content: start;
+}
+
+.organisation-authority-panel ul {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.organisation-authority-panel li {
+  display: grid;
+  grid-template-columns: minmax(170px, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.organisation-authority-panel li span {
+  display: grid;
+  gap: 2px;
+  text-transform: capitalize;
+}
+
+.organisation-authority-panel li small {
+  color: var(--muted);
+}
+
+@media (max-width: 620px) {
+  .organisation-authority-panel form {
+    grid-template-columns: 1fr;
+  }
+
+  .organisation-authority-panel li {
+    grid-template-columns: 1fr auto;
+  }
+
+  .organisation-authority-panel li small {
+    grid-column: 1;
+  }
+}

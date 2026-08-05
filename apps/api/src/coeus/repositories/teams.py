@@ -47,6 +47,11 @@ class TeamRepository:
             entries = (entry for entry in self._entries.values() if entry.team_id == team_id)
             return tuple(sorted(entries, key=lambda entry: (entry.entry_date, entry.created_at)))
 
+    def list_all_entries(self) -> tuple[TeamCalendarEntry, ...]:
+        """Return a stable complete snapshot for explicit migration tooling."""
+        with self._lock:
+            return tuple(sorted(self._entries.values(), key=lambda entry: str(entry.entry_id)))
+
     def save_entry(self, entry: TeamCalendarEntry) -> None:
         with self._lock:
             previous = dict(self._entries)

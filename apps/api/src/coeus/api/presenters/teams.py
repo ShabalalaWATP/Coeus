@@ -55,6 +55,8 @@ def availability_response(availability: TeamAvailability) -> AvailabilityRespons
         team_id=availability.team_id,
         entry_date=availability.entry_date,
         members=availability.members,
+        active_people=availability.active_people,
+        assignable=availability.assignable,
         on_leave=availability.on_leave,
         on_task_calendar=availability.on_task_calendar,
         other_commitments=availability.other_commitments,

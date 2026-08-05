@@ -4,6 +4,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass, replace
 
 from coeus.domain.auth import RoleName, UserAccount
+from coeus.repositories.synthetic_workforce import EXPANDED_SEED_USER_ROWS
 
 CANONICAL_SEED_LOGIN_PROFILE = "canonical-v1"
 NUMBERED_SEED_LOGIN_PROFILE = "numbered-shared-v1"
@@ -21,7 +22,7 @@ class SeedUserSpec:
 
 def seed_user_specs() -> tuple[SeedUserSpec, ...]:
     """Return public-repository-safe fictional workforce identities."""
-    return (
+    baseline = (
         _spec("admin@example.test", "Andy Robertson", RoleName.ADMINISTRATOR, "Admin Operator"),
         _spec("user@example.test", "John McGinn", RoleName.USER, "Customer User"),
         _spec("colleague@example.test", "Billy Gilmour", RoleName.USER, "Customer Colleague"),
@@ -111,6 +112,11 @@ def seed_user_specs() -> tuple[SeedUserSpec, ...]:
             is_active=False,
         ),
     )
+    expanded = tuple(
+        _spec(username, display_name, role, display_name, is_active=is_active)
+        for username, display_name, role, is_active in EXPANDED_SEED_USER_ROWS
+    )
+    return (*baseline, *expanded)
 
 
 def numbered_seed_username(username: str) -> str:
