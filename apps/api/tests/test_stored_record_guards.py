@@ -21,6 +21,10 @@ from coeus.domain.workflow_leg_transfers import WorkflowLegTransferDenied
 from coeus.domain.workforce_calendar import CalendarTiming
 from coeus.persistence.work_package_handover_validation import _validate_target
 from coeus.persistence.workflow_leg_transfer_validation import validate_target
+from coeus.persistence.workforce_calendar_rows import (
+    decode_exceptions,
+    decode_recurrence,
+)
 
 ZONE = ZoneInfo("Europe/London")
 DIGEST = "a" * 64
@@ -84,6 +88,31 @@ def test_a_handover_target_must_be_a_human_analyst() -> None:
             datetime.now(UTC),
             datetime.now(UTC) + timedelta(hours=1),
         )
+
+
+def test_a_stored_recurrence_rule_must_be_an_object() -> None:
+    assert decode_recurrence(None) is None
+    with pytest.raises(ValueError, match="stored recurrence rule is invalid"):
+        decode_recurrence("[]")
+
+
+@pytest.mark.parametrize("value", ["{}", [{}] * 501])
+def test_stored_exceptions_must_be_a_bounded_list(value: object) -> None:
+    assert decode_exceptions(None) == ()
+    with pytest.raises(ValueError, match="stored calendar exceptions are invalid"):
+        decode_exceptions(value)
+
+
+def test_a_stored_exception_entry_must_be_an_object() -> None:
+    with pytest.raises(ValueError, match="stored calendar exception is invalid"):
+        decode_exceptions(["cancel"])
+
+
+def test_a_stored_change_exception_needs_its_replacement_timing() -> None:
+    entry = {"occurrence_key": "2026-08-06", "action": "change", "replacement": {"timing": None}}
+
+    with pytest.raises(ValueError, match="stored calendar exception timing is invalid"):
+        decode_exceptions([entry])
 
 
 def test_a_transfer_target_must_be_a_human_analyst() -> None:

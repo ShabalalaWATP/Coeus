@@ -8,6 +8,8 @@ import pytest
 
 from coeus.core.errors import AppError
 from coeus.domain.assignment_recommendations import (
+    AcceptRecommendationRequest,
+    AssignmentDemand,
     AssignmentRecommendationDenied,
     AssignmentRecommendationPreview,
     ExclusionCode,
@@ -98,3 +100,56 @@ def test_a_preview_reports_its_top_candidate_and_refuses_an_empty_one() -> None:
     empty = SimpleNamespace(candidates=())
     with pytest.raises(AssignmentRecommendationDenied, match="no eligible assignment candidate"):
         AssignmentRecommendationPreview.recommended.fget(empty)  # type: ignore[attr-defined]
+
+
+def _demand(**overrides: object) -> AssignmentDemand:
+    values: dict[str, object] = {
+        "ticket_id": uuid4(),
+        "workflow_leg": WorkflowLeg.RFA,
+        "effort_min_minutes": 60,
+        "effort_max_minutes": 120,
+        "window_start": REQUESTED,
+        "deadline": datetime(2026, 9, 8, 12, tzinfo=UTC),
+        "capability_ids": ("maritime-analysis",),
+    }
+    values.update(overrides)
+    return AssignmentDemand(**values)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"window_start": datetime(2026, 9, 1, 12)},
+        {"deadline": datetime(2026, 9, 8, 12)},
+    ],
+)
+def test_assignment_demand_bounds_must_carry_a_time_zone(overrides: dict[str, object]) -> None:
+    with pytest.raises(ValueError, match="must be timezone-aware"):
+        _demand(**overrides)
+
+
+def test_an_assignment_demand_deadline_must_follow_its_start() -> None:
+    with pytest.raises(ValueError, match="deadline must follow its start"):
+        _demand(deadline=REQUESTED)
+
+
+@pytest.mark.parametrize(
+    "capability_ids",
+    [(), tuple(f"capability-{index}" for index in range(13))],
+)
+def test_an_assignment_demand_needs_one_to_twelve_capabilities(
+    capability_ids: tuple[str, ...],
+) -> None:
+    with pytest.raises(ValueError, match="one to twelve capabilities"):
+        _demand(capability_ids=capability_ids)
+
+
+@pytest.mark.parametrize("capability", ["   ", "c" * 121])
+def test_a_blank_or_oversized_capability_identity_is_refused(capability: str) -> None:
+    with pytest.raises(ValueError, match="capability identity is invalid"):
+        _demand(capability_ids=(capability,))
+
+
+def test_an_acceptance_needs_a_full_length_preview_hash() -> None:
+    with pytest.raises(ValueError, match="recommendation hash is invalid"):
+        AcceptRecommendationRequest(uuid4(), "a" * 63, uuid4(), uuid4())

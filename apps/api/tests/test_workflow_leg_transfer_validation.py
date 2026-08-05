@@ -1,6 +1,8 @@
 """Disposition matrix for cross-team workflow-leg transfer proposals."""
 
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 from uuid import UUID, uuid4
 
 import pytest
@@ -11,8 +13,11 @@ from coeus.domain.workflow_leg_transfers import (
     PackageTransferPlan,
     ProposeWorkflowLegTransfer,
     WorkflowLegTransferConflict,
+    WorkflowLegTransferDenied,
 )
 from coeus.persistence.workflow_leg_transfer_validation import (
+    _has_source_assignment,
+    _ticket,
     _validate_dependency_dispositions,
     _validate_package_inventory,
 )
@@ -199,3 +204,30 @@ def test_dependencies_outside_the_proposal_are_ignored() -> None:
         proposal,
         ({"package_id": planned, "predecessor_package_id": uuid4()},),  # type: ignore[arg-type]
     )
+
+
+class _MissingTicket:
+    """A connection whose ticket lookup finds nothing."""
+
+    def execute(self, *_args: object, **_kwargs: object) -> "_MissingTicket":
+        return self
+
+    def mappings(self) -> "_MissingTicket":
+        return self
+
+    def first(self) -> None:
+        return None
+
+
+def test_an_absent_ticket_makes_the_transfer_unavailable() -> None:
+    with pytest.raises(WorkflowLegTransferDenied, match="transfer is unavailable"):
+        _ticket(_MissingTicket(), uuid4(), False)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("reviewer", [None, uuid4()])
+def test_a_qc_transfer_reads_its_source_from_the_reviewer(reviewer: UUID | None) -> None:
+    proposal = _proposal(_plan(uuid4(), PackageTransferDisposition.TRANSFER))
+    qc = replace(proposal, workflow_leg=WorkflowLeg.QC)
+    ticket = SimpleNamespace(qc_reviewer_user_id=reviewer)
+
+    assert _has_source_assignment(ticket, qc) is (reviewer is not None)  # type: ignore[arg-type]
