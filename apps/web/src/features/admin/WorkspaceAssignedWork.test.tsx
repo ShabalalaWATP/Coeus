@@ -45,8 +45,7 @@ function stubFetch(handler: (url: string) => unknown) {
         return Promise.resolve({
           ok: false,
           status: 403,
-          json: () =>
-            Promise.resolve({ error: { code: "forbidden", message: "Not permitted." } }),
+          json: () => Promise.resolve({ error: { code: "forbidden", message: "Not permitted." } }),
         });
       }
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
