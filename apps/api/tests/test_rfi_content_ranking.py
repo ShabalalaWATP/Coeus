@@ -75,7 +75,7 @@ def test_the_report_whose_text_answers_the_question_is_offered_first() -> None:
         (_candidate(off_topic), _candidate(on_topic)), INTAKE, passages=passages
     )
 
-    assert [offer.title for offer in offers][0] == "Baltic Maritime Report"
+    assert offers[0].title == "Baltic Maritime Report"
     assert offers[0].match_score > offers[1].match_score
 
 
