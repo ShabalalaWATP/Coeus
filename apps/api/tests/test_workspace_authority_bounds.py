@@ -13,7 +13,11 @@ import pytest
 from coeus.domain.organisation import ManagementAction
 from coeus.domain.workspace_operations import WorkspaceOperationsDenied, WorkspaceScope
 from coeus.domain.workspace_productivity import WorkspaceRecordDenied
-from coeus.persistence.workspace_operations_authority import resolve_workspace_authority
+from coeus.persistence.workspace_operations_authority import (
+    has_effective_membership,
+    resolve_workspace_authority,
+)
+from coeus.persistence.workspace_operations_queries import _roster_units
 from coeus.persistence.workspace_productivity_authority import require_action
 
 NOW = datetime(2026, 8, 5, 12, tzinfo=UTC)
@@ -122,6 +126,37 @@ def _unit_ids(scope: WorkspaceScope, closure: tuple[object, ...]) -> tuple[UUID,
     from coeus.persistence.workspace_operations_authority import _unit_ids as resolve
 
     return resolve(_Connection(closure), UNIT, scope)  # type: ignore[arg-type]
+
+
+def _no_grants() -> tuple[tuple[object, ...], ...]:
+    """Both grant lookups behind the roster read come back empty."""
+    return (_active(), (), _active(), ())
+
+
+def test_a_posting_lets_a_member_read_their_own_team_roster() -> None:
+    connection = _Connection(*_no_grants(), _active(), ({"?column?": 1},))
+
+    assert _roster_units(connection, ACTOR, UNIT, WorkspaceScope.DIRECT, NOW) == (UNIT,)  # type: ignore[arg-type]
+
+
+def test_a_posting_never_reaches_child_teams() -> None:
+    connection = _Connection(*_no_grants())
+
+    with pytest.raises(WorkspaceOperationsDenied):
+        _roster_units(connection, ACTOR, UNIT, WorkspaceScope.DESCENDANTS, NOW)  # type: ignore[arg-type]
+
+
+def test_a_roster_read_without_a_grant_or_a_posting_is_refused() -> None:
+    connection = _Connection(*_no_grants(), _active(), ())
+
+    with pytest.raises(WorkspaceOperationsDenied):
+        _roster_units(connection, ACTOR, UNIT, WorkspaceScope.DIRECT, NOW)  # type: ignore[arg-type]
+
+
+def test_an_inactive_account_holds_no_membership() -> None:
+    connection = _Connection(({"is_active": False},))
+
+    assert has_effective_membership(connection, ACTOR, UNIT, NOW) is False  # type: ignore[arg-type]
 
 
 def test_a_closed_unit_cannot_answer_a_direct_scope() -> None:

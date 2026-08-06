@@ -1,6 +1,6 @@
 """Bounded SQL projections for integrated workspace operations."""
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import text
@@ -19,7 +19,10 @@ from coeus.domain.workspace_operations import (
     WorkspaceSearchResult,
 )
 from coeus.persistence.organisation_authority_validation import transaction_time
-from coeus.persistence.workspace_operations_authority import resolve_workspace_authority
+from coeus.persistence.workspace_operations_authority import (
+    has_effective_membership,
+    resolve_workspace_authority,
+)
 from coeus.persistence.workspace_operations_metrics import (
     analytics_metrics as _analytics_metrics,
 )
@@ -56,17 +59,8 @@ def people(
     connection: Connection, actor: UUID, unit_id: UUID, scope: WorkspaceScope
 ) -> tuple[WorkspacePerson, ...]:
     at = transaction_time(connection)
-    try:
-        authority = resolve_workspace_authority(
-            connection, actor, unit_id, ManagementAction.ROSTER_VIEW, scope, at
-        )
-    except WorkspaceOperationsDenied:
-        authority = resolve_workspace_authority(
-            connection, actor, unit_id, ManagementAction.CAPABILITY_MANAGE, scope, at
-        )
-    rows = connection.execute(
-        text(_PEOPLE), {"units": list(authority.unit_ids), "at": at}
-    ).mappings()
+    units = _roster_units(connection, actor, unit_id, scope, at)
+    rows = connection.execute(text(_PEOPLE), {"units": list(units), "at": at}).mappings()
     return tuple(
         WorkspacePerson(
             UUID(str(row["user_id"])),
@@ -77,6 +71,24 @@ def people(
         )
         for row in rows
     )
+
+
+def _roster_units(
+    connection: Connection, actor: UUID, unit_id: UUID, scope: WorkspaceScope, at: datetime
+) -> tuple[UUID, ...]:
+    for action in (ManagementAction.ROSTER_VIEW, ManagementAction.CAPABILITY_MANAGE):
+        try:
+            return resolve_workspace_authority(
+                connection, actor, unit_id, action, scope, at
+            ).unit_ids
+        except WorkspaceOperationsDenied:
+            continue
+    # Being posted to a team is enough to see who else is in it. That is not
+    # management authority, so it stops at the actor's own unit and never
+    # reaches child teams, which stay grant-only.
+    if scope is WorkspaceScope.DIRECT and has_effective_membership(connection, actor, unit_id, at):
+        return (unit_id,)
+    raise WorkspaceOperationsDenied
 
 
 def capabilities(
