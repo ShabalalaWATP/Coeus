@@ -7,7 +7,7 @@ function row(overrides: Partial<Row> & Pick<Row, "reference">): Row {
     state: "ANALYST_IN_PROGRESS",
     updatedAt: "2026-08-01T00:00:00Z",
     ...overrides,
-  } as Row;
+  };
 }
 
 test("anything waiting on the requester is grouped first", () => {
