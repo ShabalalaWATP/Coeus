@@ -94,15 +94,20 @@ def ranked_additive_offers(
     retrieval: PlannedRetrieval, ticket: TicketRecord
 ) -> tuple[ProductOffer, ...]:
     """Preserve every baseline offer before appending supplemental offers."""
+    # Both legs read the same retrieved passages, so a product is ranked on the
+    # same evidence whichever leg surfaced it.
+    passages = {evidence.product_id: evidence.passages for evidence in retrieval.grounded.evidence}
     baseline = rank_hybrid_rfi_candidates(
         retrieval.baseline_candidates,
         ticket.intake,
         query=retrieval.base_query,
+        passages=passages,
     )
     supplemental = rank_hybrid_rfi_candidates(
         retrieval.supplemental_candidates,
         ticket.intake,
         query=retrieval.effective_query,
+        passages=passages,
     )
     baseline_ids = {offer.product_id for offer in baseline}
     additions = tuple(offer for offer in supplemental if offer.product_id not in baseline_ids)

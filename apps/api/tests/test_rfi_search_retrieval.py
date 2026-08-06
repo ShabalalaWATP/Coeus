@@ -44,7 +44,7 @@ def test_supplemental_results_cannot_displace_or_duplicate_baseline_offers(monke
         GroundedSearchResult((), "hybrid", None, "space-v1", "complete", "corpus-v1"),
     )
 
-    def rank(candidates, _intake, *, query=None):  # type: ignore[no-untyped-def]
+    def rank(candidates, _intake, *, query=None, passages=None):  # type: ignore[no-untyped-def]
         return baseline if candidates == ("baseline-candidates",) else supplemental
 
     monkeypatch.setattr("coeus.services.rfi_search_retrieval.rank_hybrid_rfi_candidates", rank)

@@ -10,6 +10,14 @@ function renderPanel(panel: ReactNode) {
   return render(panel, { wrapper: MemoryRouter });
 }
 
+// Accepting asks for confirmation because it closes the request, so tests that
+// exercise acceptance state which answer they are giving.
+function confirmWith(answer: boolean) {
+  return vi.spyOn(window, "confirm").mockReturnValue(answer);
+}
+
+afterEach(() => vi.restoreAllMocks());
+
 test("only offers a retry after automatic RFI search is incomplete", async () => {
   const onRun = vi.fn();
   renderPanel(
@@ -94,7 +102,8 @@ test("accepts and rejects RFI product offers", async () => {
   expect(screen.getByText("Grounded evidence (1)")).not.toBeVisible();
   expect(screen.getByLabelText("RFI search metrics")).not.toBeVisible();
 
-  await userEvent.click(screen.getByRole("button", { name: "Accept" }));
+  confirmWith(true);
+  await userEvent.click(screen.getByRole("button", { name: "Accept and close request" }));
   await userEvent.type(screen.getByLabelText("Rejection reason"), "Too old.");
   await userEvent.click(screen.getByRole("button", { name: "Reject" }));
   await userEvent.click(screen.getByText("Product details"));
@@ -232,14 +241,87 @@ test("keeps RFI actions read-only for viewers", async () => {
   );
 
   expect(screen.queryByRole("button", { name: "Retry search" })).not.toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Accept" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Accept and close request" })).toBeDisabled();
   expect(screen.getByLabelText("Rejection reason")).toBeDisabled();
   expect(screen.getByRole("button", { name: "Reject" })).toBeDisabled();
-  await userEvent.click(screen.getByRole("button", { name: "Accept" }));
+  await userEvent.click(screen.getByRole("button", { name: "Accept and close request" }));
 
   expect(onRun).not.toHaveBeenCalled();
   expect(onAccept).not.toHaveBeenCalled();
   expect(onReject).not.toHaveBeenCalled();
+});
+
+test("says acceptance closes the request and confirms before doing it", async () => {
+  const onAccept = vi.fn();
+  const confirm = confirmWith(true);
+  renderPanel(
+    <ProductOffersPanel
+      canManageOffers
+      canRunSearch
+      isAccepting={false}
+      isLoading={false}
+      isRejecting={false}
+      isRunning={false}
+      onAccept={onAccept}
+      onReject={vi.fn()}
+      onRun={vi.fn()}
+      results={rfiResults}
+      ticket={{ ...ticket, state: "RFI_MATCH_OFFERED" }}
+    />,
+  );
+
+  expect(screen.getByText(/Accepting a product answers this request/)).toBeVisible();
+  await userEvent.click(screen.getByRole("button", { name: "Accept and close request" }));
+
+  expect(confirm).toHaveBeenCalledWith(expect.stringContaining("closes the request as fulfilled"));
+  expect(onAccept).toHaveBeenCalledWith("product-1");
+});
+
+test("declining the confirmation leaves the request open", async () => {
+  const onAccept = vi.fn();
+  confirmWith(false);
+  renderPanel(
+    <ProductOffersPanel
+      canManageOffers
+      canRunSearch
+      isAccepting={false}
+      isLoading={false}
+      isRejecting={false}
+      isRunning={false}
+      onAccept={onAccept}
+      onReject={vi.fn()}
+      onRun={vi.fn()}
+      results={rfiResults}
+      ticket={{ ...ticket, state: "RFI_MATCH_OFFERED" }}
+    />,
+  );
+
+  await userEvent.click(screen.getByRole("button", { name: "Accept and close request" }));
+
+  expect(onAccept).not.toHaveBeenCalled();
+});
+
+test("states the request is closed once existing intelligence was accepted", () => {
+  renderPanel(
+    <ProductOffersPanel
+      canManageOffers
+      canRunSearch
+      isAccepting={false}
+      isLoading={false}
+      isRejecting={false}
+      isRunning={false}
+      onAccept={vi.fn()}
+      onReject={vi.fn()}
+      onRun={vi.fn()}
+      results={rfiResults}
+      ticket={{ ...ticket, state: "CLOSED_EXISTING_PRODUCT_ACCEPTED" }}
+    />,
+  );
+
+  // The outcome sits with the offers rather than inside the collapsed search
+  // details, so a closed request reads as closed without opening anything.
+  expect(screen.getByText(/This request is closed/)).toBeVisible();
+  expect(screen.queryByText(/Accepting a product answers this request/)).not.toBeInTheDocument();
 });
 
 test("shows an empty selection state when no request is selected", () => {

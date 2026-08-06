@@ -80,6 +80,18 @@ export function ProductOffersPanel({
           {ticket.state === "RFI_SEARCHING" ? (
             <p role="status">Searching the Intelligence Store automatically...</p>
           ) : null}
+          {ticket.state === "CLOSED_EXISTING_PRODUCT_ACCEPTED" ? (
+            <p className="offer-outcome" role="status">
+              <CheckCircle2 aria-hidden="true" size={18} />
+              This request is closed. Existing intelligence was accepted, so no new work was tasked.
+            </p>
+          ) : null}
+          {canManageOffers && ticket.state === "RFI_MATCH_OFFERED" && offers.length ? (
+            <p className="offer-consequence">
+              Accepting a product answers this request with intelligence that already exists and
+              closes it. No analyst will be tasked. Reject every offer to have new work raised.
+            </p>
+          ) : null}
           {isLoading ? <p>Loading product offers</p> : null}
           {isError ? (
             <p className="auth-error" role="alert">
@@ -232,11 +244,20 @@ function OfferCard({
       <div className="offer-actions">
         <button
           disabled={!canAct || isAccepting}
-          onClick={() => onAccept(offer.productId)}
+          onClick={() => {
+            // Acceptance closes the request outright, so the consequence is
+            // confirmed against the specific product rather than assumed.
+            const confirmed = window.confirm(
+              `Accept "${offer.title}" as the answer to this request?\n\n` +
+                "This closes the request as fulfilled by existing intelligence. " +
+                "No analyst will be tasked and the decision cannot be undone here.",
+            );
+            if (confirmed) onAccept(offer.productId);
+          }}
           type="button"
         >
           <CheckCircle2 aria-hidden="true" size={18} />
-          Accept
+          Accept and close request
         </button>
         <label htmlFor={rejectId}>
           Rejection reason
