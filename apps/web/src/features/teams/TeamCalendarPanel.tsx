@@ -2,16 +2,18 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarPlus, ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import { TeamCalendarGrid } from "./TeamCalendarGrid";
+import { assignmentsByDay, selectedRange } from "./team-calendar-assignments";
 import {
   ACTIVITY_LABELS,
   entriesByDay,
   gridRange,
-  inMonth,
   isBlock,
   monthGrid,
   monthTitle,
   todayIso,
 } from "./team-calendar-model";
+import { getTeamTaskBoard } from "../../lib/api-client/team-task-board";
 import {
   addCalendarEntry,
   listTeamCalendar,
@@ -51,6 +53,15 @@ export function TeamCalendarPanel({ csrfToken, currentUserId, team }: TeamCalend
     () => entriesByDay(calendarQuery.data?.entries ?? []),
     [calendarQuery.data?.entries],
   );
+  // Assigned work is read-only context here, so a failure to load it must not
+  // stop anyone blocking out dates.
+  const boardQuery = useQuery({
+    queryKey: ["team-calendar-board", team.id],
+    queryFn: () => getTeamTaskBoard(team.id, { includeCompleted: false }),
+    retry: false,
+  });
+  const assignments = useMemo(() => assignmentsByDay(boardQuery.data), [boardQuery.data]);
+  const [anchor, setAnchor] = useState<string | null>(null);
   const isManager = team.members.some(
     (member) => member.userId === currentUserId && member.isManager,
   );
@@ -92,8 +103,11 @@ export function TeamCalendarPanel({ csrfToken, currentUserId, team }: TeamCalend
     onMutate: clearActionError,
     onSuccess: refresh,
   });
-  const memberName = (userId: string) =>
-    team.members.find((member) => member.userId === userId)?.displayName ?? "Former member";
+  // Assigned work can name nobody, so this also answers for an absent owner.
+  const memberName = (userId: string | null) =>
+    userId === null
+      ? "Unassigned"
+      : (team.members.find((member) => member.userId === userId)?.displayName ?? "Former member");
   const canRemove = (entry: CalendarEntry) => isManager || entry.userId === currentUserId;
   const moveMonth = (delta: number) => {
     setCursor(({ year, month }) => {
@@ -101,9 +115,19 @@ export function TeamCalendarPanel({ csrfToken, currentUserId, team }: TeamCalend
       return { year: next.getFullYear(), month: next.getMonth() };
     });
   };
+  // First click starts a range, second click closes it. Picking either way
+  // round works, so a range can be dragged out backwards from its end date.
   const pickDay = (day: string) => {
-    setFromDate(day);
-    setToDate(day);
+    if (anchor === null) {
+      setAnchor(day);
+      setFromDate(day);
+      setToDate(day);
+      return;
+    }
+    const range = selectedRange(anchor, day);
+    setFromDate(range.from);
+    setToDate(range.to);
+    setAnchor(null);
   };
   const removeEntry = (entry: CalendarEntry) => {
     const span = isBlock(entry) ? `${entry.date} to ${entry.endDate}` : entry.date;
@@ -136,56 +160,20 @@ export function TeamCalendarPanel({ csrfToken, currentUserId, team }: TeamCalend
       ) : calendarQuery.isError ? (
         <p role="alert">The calendar could not be loaded.</p>
       ) : (
-        <div aria-label="Month calendar" className="cal-grid">
-          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((weekday) => (
-            <span className="cal-grid__weekday" key={weekday}>
-              {weekday}
-            </span>
-          ))}
-          {grid.flat().map((day) => {
-            const entries = byDay.get(day) ?? [];
-            const outside = !inMonth(day, cursor.year, cursor.month);
-            const shown = entries.slice(0, 3);
-            return (
-              <div
-                className={`cal-day${outside ? " cal-day--outside" : ""}${
-                  day === today ? " cal-day--today" : ""
-                }`}
-                key={day}
-              >
-                <button
-                  aria-label={`Plan ${day}`}
-                  className="cal-day__number"
-                  onClick={() => pickDay(day)}
-                  type="button"
-                >
-                  {Number(day.slice(8, 10))}
-                </button>
-                <div className="cal-day__entries">
-                  {shown.map((entry) => (
-                    <button
-                      aria-label={`Remove entry for ${memberName(entry.userId)} on ${day}`}
-                      className={`cal-chip cal-chip--${entry.status}`}
-                      disabled={!canRemove(entry) || removeMutation.isPending}
-                      key={`${entry.id}-${day}`}
-                      onClick={() => removeEntry(entry)}
-                      title={`${memberName(entry.userId)}: ${ACTIVITY_LABELS[entry.status]}${
-                        entry.note ? ` · ${entry.note}` : ""
-                      }`}
-                      type="button"
-                    >
-                      <span className="cal-chip__dot" aria-hidden="true" />
-                      {memberName(entry.userId).split(" ")[0]}
-                    </button>
-                  ))}
-                  {entries.length > shown.length ? (
-                    <span className="cal-day__more">+{entries.length - shown.length}</span>
-                  ) : null}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <TeamCalendarGrid
+          assignments={assignments}
+          canRemove={canRemove}
+          cursor={cursor}
+          entries={byDay}
+          from={fromDate}
+          grid={grid}
+          memberName={memberName}
+          onPickDay={pickDay}
+          onRemoveEntry={removeEntry}
+          removing={removeMutation.isPending}
+          to={toDate}
+          today={today}
+        />
       )}
       <form
         className="team-calendar__add"
@@ -194,7 +182,17 @@ export function TeamCalendarPanel({ csrfToken, currentUserId, team }: TeamCalend
           addMutation.mutate();
         }}
       >
-        <span className="team-calendar__add-title">Block out dates</span>
+        <div className="team-calendar__add-intro">
+          <span className="team-calendar__add-title">Block out dates</span>
+          <p>
+            {anchor
+              ? "Pick the last day to finish the range, or set the dates below."
+              : "Click a day to start a range, or set the dates below."}
+          </p>
+        </div>
+        <p aria-live="polite" className="team-calendar__range">
+          {rangeSummary(fromDate, toDate)}
+        </p>
         {isManager ? (
           <label>
             Member
@@ -220,20 +218,26 @@ export function TeamCalendarPanel({ csrfToken, currentUserId, team }: TeamCalend
             ))}
           </select>
         </label>
-        <label>
+        <label className="team-calendar__date">
           From
           <input
             min={today}
-            onChange={(event) => setFromDate(event.target.value)}
+            onChange={(event) => {
+              setAnchor(null);
+              setFromDate(event.target.value);
+            }}
             type="date"
             value={fromDate}
           />
         </label>
-        <label>
+        <label className="team-calendar__date">
           To
           <input
             min={fromDate}
-            onChange={(event) => setToDate(event.target.value)}
+            onChange={(event) => {
+              setAnchor(null);
+              setToDate(event.target.value);
+            }}
             type="date"
             value={toDate}
           />
@@ -254,4 +258,19 @@ export function TeamCalendarPanel({ csrfToken, currentUserId, team }: TeamCalend
       ) : null}
     </section>
   );
+}
+
+function rangeSummary(from: string, to: string) {
+  const format = (value: string) =>
+    new Intl.DateTimeFormat("en-GB", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+    }).format(new Date(`${value}T00:00:00`));
+  if (from === to) return `Selected ${format(from)}`;
+  const days = Math.round(
+    (new Date(`${to}T00:00:00`).getTime() - new Date(`${from}T00:00:00`).getTime()) / 86_400_000 +
+      1,
+  );
+  return `Selected ${format(from)} to ${format(to)} · ${days} days`;
 }
