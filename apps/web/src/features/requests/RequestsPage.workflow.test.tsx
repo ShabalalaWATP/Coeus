@@ -189,7 +189,9 @@ test("loads automatic RFI search results and accepts an offered product", async 
 
   expect(await screen.findByText("Existing Baltic Port Assessment")).toBeVisible();
 
-  await userEvent.click(screen.getByRole("button", { name: "Accept" }));
+  // Acceptance closes the request, so the panel confirms before sending it.
+  vi.spyOn(window, "confirm").mockReturnValue(true);
+  await userEvent.click(screen.getByRole("button", { name: "Accept and close request" }));
   await waitFor(() =>
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8001/api/v1/rfi-search/ticket-1/offers/product-1/accept",

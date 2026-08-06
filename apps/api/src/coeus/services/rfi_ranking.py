@@ -1,6 +1,8 @@
 from datetime import date
 from math import sqrt
+from uuid import UUID
 
+from coeus.domain.search_index import SearchPassage
 from coeus.domain.search_relevance import (
     LEXICAL_SCORE_FLOOR,
     VECTOR_SIMILARITY_FLOOR,
@@ -15,6 +17,7 @@ from coeus.domain.store_ranking import (
     tokenize,
 )
 from coeus.domain.tickets import IntakeDetails, ProductOffer, ProductOfferStatus
+from coeus.services.rfi_content_relevance import content_relevance
 from coeus.services.store_semantics import product_semantic_text, semantic_label_reasons
 
 RFI_OFFER_THRESHOLD = 0.20
@@ -43,11 +46,14 @@ def rank_hybrid_rfi_candidates(
     intake: IntakeDetails,
     *,
     query: str | None = None,
+    passages: dict[UUID, tuple[SearchPassage, ...]] | None = None,
 ) -> tuple[ProductOffer, ...]:
     effective_query = query or query_text(intake)
     query_tokens = _tokens(effective_query)
     if not query_tokens:
         return ()
+    passages_by_product = passages or {}
+    question_tokens = _tokens(intake.operational_question or intake.title or "")
     scored: list[tuple[StoreHybridCandidate, float, tuple[str, ...]]] = []
     bounded_candidates = candidates[:RFI_RANKING_WORK_LIMIT]
     available_legs = _available_legs(bounded_candidates)
@@ -69,16 +75,32 @@ def rank_hybrid_rfi_candidates(
             0.0,
             (candidate.vector_score - VECTOR_SIMILARITY_FLOOR) / (1.0 - VECTOR_SIMILARITY_FLOOR),
         )
+        content_score, content_reasons = content_relevance(
+            passages_by_product.get(candidate.product.product_id, ()),
+            query_tokens,
+            question_tokens,
+        )
         # Rank fusion is only a small ordering signal. Absolute lexical and
         # vector evidence determine whether an offer is relevant enough.
-        score = min(
-            1.0,
-            (0.50 * lexical_signal)
-            + (0.35 * vector_signal)
-            + (0.05 * _rrf_score(candidate, available_legs))
-            + metadata_score
-            + label_score,
-        )
+        #
+        # When the report's own passages were retrieved they carry most of the
+        # ordering: they say whether the content answers the request rather than
+        # whether the cover page happens to share its words. Without passages the
+        # original weights stand, so metadata-only retrieval is unchanged.
+        if content_reasons:
+            base = (
+                (0.34 * lexical_signal)
+                + (0.24 * vector_signal)
+                + (0.32 * content_score)
+                + (0.05 * _rrf_score(candidate, available_legs))
+            )
+        else:
+            base = (
+                (0.50 * lexical_signal)
+                + (0.35 * vector_signal)
+                + (0.05 * _rrf_score(candidate, available_legs))
+            )
+        score = min(1.0, base + metadata_score + label_score)
         reasons = _reasons(
             candidate,
             label_reasons,
@@ -87,6 +109,7 @@ def rank_hybrid_rfi_candidates(
             metadata_reasons,
             text_score,
             token_score,
+            content_reasons,
         )
         if score >= RFI_OFFER_THRESHOLD:
             scored.append((candidate, round(score, 4), tuple(dict.fromkeys(reasons))))
@@ -276,6 +299,7 @@ def _reasons(
     metadata_reasons: tuple[str, ...],
     text_score: float,
     token_score: float,
+    content_reasons: tuple[str, ...] = (),
 ) -> tuple[str, ...]:
     rank_reasons = []
     if candidate.lexical_rank is not None and candidate.lexical_score >= LEXICAL_SCORE_FLOOR:
@@ -290,6 +314,8 @@ def _reasons(
     if token_score > 0:
         score_reasons.extend(token_reasons[:2])
     return (
+        # Content evidence leads: it is the reason a reader should trust the offer.
+        *content_reasons,
         *rank_reasons,
         *label_reasons,
         *score_reasons,

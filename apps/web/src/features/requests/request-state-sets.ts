@@ -13,6 +13,10 @@ export const PRODUCT_OFFER_STATES = new Set<TicketState>([
   "ACTIVE_WORK_SEARCH_INCOMPLETE",
   "RFI_NO_MATCH",
   "NEW_TASKING_CONSENT",
+  // Accepting an offer closes the request. The panel stays so the requester can
+  // still see which product answered it and that nothing was tasked; every
+  // control inside it is already gated on the open states.
+  "CLOSED_EXISTING_PRODUCT_ACCEPTED",
 ]);
 
 // Legacy RFI_NO_MATCH is deliberately absent: the API only allows consent
