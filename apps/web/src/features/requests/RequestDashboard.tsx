@@ -1,10 +1,20 @@
 import { Archive, ArrowUpRight, ChevronDown, PackageOpen, UsersRound } from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
 import { EmptyState } from "../../components/ui/PageState";
 import { StatusPill } from "../../components/ui/StatusPill";
 import type { Ticket, TicketSummary } from "../../lib/api-client/tickets";
-import { isAwaitingCustomerAction, isClosedTicket, ticketMetrics } from "./ticket-collection";
+import { RequestListControls, type RequestFilter } from "./RequestListControls";
+import {
+  groupOpenRequests,
+  isAwaitingCustomerAction,
+  isClosedTicket,
+  requestGroupKey,
+  sortRequests,
+  ticketMetrics,
+  type RequestSort,
+} from "./ticket-collection";
 import { ProductOutcomeDecisionPanel } from "./ProductOutcomeDecisionPanel";
 
 type RequestDashboardProps = {
@@ -29,9 +39,32 @@ export function RequestDashboard({
   onOpen,
   tickets,
 }: RequestDashboardProps) {
+  const [filter, setFilter] = useState<RequestFilter>("all");
+  const [sort, setSort] = useState<RequestSort>("recent");
   const metrics = ticketMetrics(tickets);
   const openTickets = tickets.filter((ticket) => !isClosedTicket(ticket.state));
   const closedTickets = tickets.filter((ticket) => isClosedTicket(ticket.state));
+  const groups = groupOpenRequests(openTickets, sort);
+  const filterOptions = [
+    { value: "all" as const, label: "All open", count: openTickets.length },
+    ...groups.map((group) => ({
+      value: group.key,
+      label: group.title,
+      count: group.tickets.length,
+    })),
+    { value: "closed" as const, label: "Closed", count: closedTickets.length },
+  ];
+  // A chosen category reads as one flat list; "all open" keeps the headings so
+  // the shape of the workload is visible without picking anything.
+  const selected =
+    filter === "closed"
+      ? sortRequests(closedTickets, sort)
+      : filter === "all"
+        ? []
+        : sortRequests(
+            openTickets.filter((ticket) => requestGroupKey(ticket) === filter),
+            sort,
+          );
 
   return (
     <>
@@ -65,10 +98,19 @@ export function RequestDashboard({
         <div className="request-list__heading">
           <div>
             <span>Request register</span>
-            <h2 id="request-list-title">Open requests</h2>
+            <h2 id="request-list-title">Your requests</h2>
           </div>
-          <p>Continue current work or review a request that needs your action.</p>
+          <p>Grouped by what each one needs, with anything waiting on you first.</p>
         </div>
+        {tickets.length > 0 ? (
+          <RequestListControls
+            filter={filter}
+            onFilterChange={setFilter}
+            onSortChange={setSort}
+            options={filterOptions}
+            sort={sort}
+          />
+        ) : null}
         {openTickets.length === 0 ? (
           <EmptyState
             hint={
@@ -81,16 +123,41 @@ export function RequestDashboard({
             title={tickets.length > 0 ? "No open requests" : "No requests yet"}
           />
         ) : null}
-        <RequestRegister
-          currentUserId={currentUserId}
-          isDecidingOutcome={isDecidingOutcome}
-          onOpen={onOpen}
-          onProductDecision={onProductDecision}
-          tickets={openTickets}
-        />
+        {filter === "all" ? (
+          groups.map((group) => (
+            <section
+              aria-labelledby={`request-group-${group.key}`}
+              className="request-group"
+              key={group.key}
+            >
+              <div className="request-group__heading">
+                <h3 id={`request-group-${group.key}`}>
+                  {group.title}
+                  <span className="request-group__count">{group.tickets.length}</span>
+                </h3>
+                <p>{group.hint}</p>
+              </div>
+              <RequestRegister
+                currentUserId={currentUserId}
+                isDecidingOutcome={isDecidingOutcome}
+                onOpen={onOpen}
+                onProductDecision={onProductDecision}
+                tickets={group.tickets}
+              />
+            </section>
+          ))
+        ) : (
+          <RequestRegister
+            currentUserId={currentUserId}
+            isDecidingOutcome={isDecidingOutcome}
+            onOpen={onOpen}
+            onProductDecision={onProductDecision}
+            tickets={selected}
+          />
+        )}
       </section>
 
-      {closedTickets.length > 0 ? (
+      {filter === "all" && closedTickets.length > 0 ? (
         <details className="surface request-archive">
           <summary>
             <Archive aria-hidden="true" size={19} />
@@ -106,7 +173,7 @@ export function RequestDashboard({
             isDecidingOutcome={isDecidingOutcome}
             onOpen={onOpen}
             onProductDecision={onProductDecision}
-            tickets={closedTickets}
+            tickets={sortRequests(closedTickets, sort)}
           />
         </details>
       ) : null}

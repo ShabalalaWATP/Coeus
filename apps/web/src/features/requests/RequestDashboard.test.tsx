@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 
@@ -184,13 +184,82 @@ test("keeps closed requests in a disclosure that is collapsed by default", async
     </MemoryRouter>,
   );
 
-  expect(screen.getByRole("heading", { name: "Open requests" })).toBeVisible();
+  expect(screen.getByRole("heading", { name: "Your requests" })).toBeVisible();
   expect(screen.getByRole("button", { name: /TCK-0001/ })).toBeVisible();
   expect(screen.getByRole("button", { name: /TCK-0099/ })).not.toBeVisible();
 
   await userEvent.click(screen.getByText("Closed requests"));
 
   expect(screen.getByRole("button", { name: /TCK-0099/ })).toBeVisible();
+});
+
+function grouped() {
+  return render(
+    <MemoryRouter>
+      <RequestDashboard
+        {...dashboardDefaults}
+        onOpen={vi.fn()}
+        tickets={[
+          { ...ticket, id: "draft", reference: "TCK-0001", state: "DRAFT_INTAKE" },
+          {
+            ...ticket,
+            id: "acting",
+            reference: "TCK-0002",
+            state: "RFI_MATCH_OFFERED",
+            updatedAt: "2026-07-01T00:00:00Z",
+          },
+          {
+            ...ticket,
+            id: "working",
+            reference: "TCK-0003",
+            state: "ANALYST_IN_PROGRESS",
+            updatedAt: "2026-07-09T00:00:00Z",
+          },
+          { ...ticket, id: "done", reference: "TCK-0099", state: "CLOSED_DELIVERED" },
+        ]}
+      />
+    </MemoryRouter>,
+  );
+}
+
+test("groups open requests with anything needing the requester first", () => {
+  grouped();
+
+  const headings = screen.getAllByRole("heading", { level: 3 }).map((item) => item.textContent);
+  expect(headings).toEqual(["Needs your action1", "Drafts1", "With Istari1"]);
+});
+
+test("choosing a category shows it as one flat list without the archive", async () => {
+  grouped();
+
+  await userEvent.click(screen.getByRole("button", { name: /Needs your action/ }));
+
+  expect(screen.queryByRole("heading", { level: 3 })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /TCK-0002/ })).toBeVisible();
+  expect(screen.queryByRole("button", { name: /TCK-0001/ })).not.toBeInTheDocument();
+  expect(screen.queryByText("Closed requests")).not.toBeInTheDocument();
+});
+
+test("the closed filter lists closed requests directly", async () => {
+  grouped();
+
+  await userEvent.click(screen.getByRole("button", { name: /^Closed/ }));
+
+  expect(screen.getByRole("button", { name: /TCK-0099/ })).toBeVisible();
+  expect(screen.queryByRole("button", { name: /TCK-0003/ })).not.toBeInTheDocument();
+});
+
+test("the chosen sort reorders the requests on show", async () => {
+  grouped();
+
+  await userEvent.click(screen.getByRole("button", { name: /All open/ }));
+  await userEvent.selectOptions(screen.getByLabelText("Sort by"), "reference");
+
+  // Scope to the open register: the collapsed archive is still in the document.
+  const references = within(screen.getByRole("region", { name: "Your requests" }))
+    .getAllByRole("button", { name: /TCK-/ })
+    .map((item) => item.textContent?.slice(0, 8));
+  expect(references).toEqual(["TCK-0002", "TCK-0001", "TCK-0003"]);
 });
 
 test("renders fallback titles and an empty dashboard state", () => {

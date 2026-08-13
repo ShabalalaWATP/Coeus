@@ -79,3 +79,104 @@
     display: none;
   }
 }
+
+/* Grouped register: category headings plus the filter and sort controls. */
+.request-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px 0;
+}
+
+.request-controls__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+  color: var(--muted);
+}
+
+.request-controls__filter {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 11px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.request-controls__filter:hover:enabled,
+.request-controls__filter:focus-visible {
+  border-color: var(--accent);
+  color: var(--text);
+  outline: none;
+}
+
+.request-controls__filter[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--text);
+}
+
+.request-controls__filter:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.request-controls__count {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.request-controls__sort {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.request-controls__sort select {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 9px;
+  background: var(--surface-muted);
+  color: var(--text);
+  font: inherit;
+}
+
+.request-group__heading {
+  padding: 18px 24px 0;
+}
+
+.request-group__heading h3 {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  margin: 0;
+  font-size: 0.98rem;
+}
+
+.request-group__count {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 9px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.request-group__heading p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
