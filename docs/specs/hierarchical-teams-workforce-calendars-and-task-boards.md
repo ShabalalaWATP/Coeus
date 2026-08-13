@@ -710,8 +710,8 @@ cancelled to history.
 A transfer-pending card stays on the source board with a transfer badge. The
 target sees a separately authorised incoming-transfer projection, not duplicate
 ownership. Acceptance atomically changes team ownership, topology snapshot and
-  team-demand holds. It ends every active source-team named assignment, updates
-  the authoritative ticket audience in the same transaction, releases future source-person
+team-demand holds. It ends every active source-team named assignment, updates
+the authoritative ticket audience in the same transaction, releases future source-person
 reservations and applies an explicit disposition to every incomplete package:
 target-team owner/contributors with new reservations, target-team unassigned
 with a demand hold, or cancellation. Completed package history retains its
@@ -1726,7 +1726,9 @@ allowed to have no person owner but never ambiguous team scope.
   shows the first five active packages with links to a full paged My Work page.
   That page provides active/completed and status filters, card and accessible
   table views, stable previous/next navigation and focus restoration after a
-  page change. The Team Board now uses the same workflow-derived oracle for
+  page change. The filters are collapsed by default to keep the initial view
+  focused on assigned work, while the card/table switch remains immediately
+  available. The Team Board now uses the same workflow-derived oracle for
   ready, blocked and active package states. A descendant Management Board is
   implemented: exact current `task:view` lineages expose allowlisted cards for
   covered teams, while separately covered `organisation:view_aggregate`

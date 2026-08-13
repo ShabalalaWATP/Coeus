@@ -475,12 +475,13 @@ creator later leaves the role.
 
 Analysts can select **View all my work** from their profile. The full page is
 the canonical list of packages in which they are currently an accountable owner
-or contributor. Filter by status, optionally include work completed during the
-last 30 days, and switch between cards and the accessible table. **Previous
-page** and **Next page** use stable paging rather than loading an unbounded
-queue. After a page change, keyboard focus returns to the page heading so the
-new results are announced predictably. Opening a row still passes through the
-normal authorised analyst-task route.
+or contributor. The **Filters** section starts collapsed; open it to filter by
+status or include work completed during the last 30 days. The cards and
+accessible-table switch remains available while filters are collapsed.
+**Previous page** and **Next page** use stable paging rather than loading an
+unbounded queue. After a page change, keyboard focus returns to the page heading
+so the new results are announced predictably. Opening a row still passes through
+the normal authorised analyst-task route.
 
 Managers open **My Team**, choose an explicitly managed workspace and select
 **Task board**. A managed scope marked **Includes child teams** uses the

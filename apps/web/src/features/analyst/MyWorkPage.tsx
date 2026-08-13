@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { BriefcaseBusiness, LayoutGrid, List } from "lucide-react";
+import { BriefcaseBusiness, ChevronDown, LayoutGrid, List, SlidersHorizontal } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -51,36 +51,45 @@ export default function MyWorkPage() {
         </div>
       </header>
       <section className="surface my-work-page__controls" aria-label="Work filters and view">
-        <label>
-          Status
-          <select
-            value={column}
-            onChange={(event) => {
-              const next = event.target.value as MyWorkColumn | "";
-              resetFilters(next, next === "completed" || includeCompleted);
-            }}
-          >
-            <option value="">All active statuses</option>
-            {Object.entries(labels).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="my-work-page__check">
-          <input
-            checked={includeCompleted}
-            onChange={(event) =>
-              resetFilters(
-                !event.target.checked && column === "completed" ? "" : column,
-                event.target.checked,
-              )
-            }
-            type="checkbox"
-          />
-          Include work completed in the last 30 days
-        </label>
+        <details className="my-work-page__filters">
+          <summary>
+            <SlidersHorizontal aria-hidden="true" size={16} />
+            Filters
+            <ChevronDown aria-hidden="true" className="my-work-page__filter-chevron" size={16} />
+          </summary>
+          <div className="my-work-page__filter-fields">
+            <label>
+              Status
+              <select
+                value={column}
+                onChange={(event) => {
+                  const next = event.target.value as MyWorkColumn | "";
+                  resetFilters(next, next === "completed" || includeCompleted);
+                }}
+              >
+                <option value="">All active statuses</option>
+                {Object.entries(labels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="my-work-page__check">
+              <input
+                checked={includeCompleted}
+                onChange={(event) =>
+                  resetFilters(
+                    !event.target.checked && column === "completed" ? "" : column,
+                    event.target.checked,
+                  )
+                }
+                type="checkbox"
+              />
+              Include work completed in the last 30 days
+            </label>
+          </div>
+        </details>
         <div aria-label="Result view" className="my-work-page__view" role="group">
           <button aria-pressed={view === "cards"} onClick={() => setView("cards")} type="button">
             <LayoutGrid aria-hidden="true" size={16} /> Cards
