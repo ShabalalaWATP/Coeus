@@ -194,7 +194,11 @@ def _workspace(
         connection, grants[ManagementAction.WORKSPACE_CONFIGURE], unit.unit_id
     )
     export = _covering_grant(connection, grants[ManagementAction.WORKSPACE_EXPORT], unit.unit_id)
-    can_view_people = _covers_any(connection, grants[ManagementAction.ROSTER_VIEW], unit.unit_id)
+    roster_grant = _covers_any(connection, grants[ManagementAction.ROSTER_VIEW], unit.unit_id)
+    # A member sees their own team's roster without a grant, because the home
+    # workspace is built from an effective posting. Capability coverage stays
+    # grant-only: it is management information, not "who am I working with".
+    can_view_people = roster_grant or relationship is WorkspaceRelationship.HOME
     return OrganisationWorkspace(
         unit,
         relationship,
@@ -208,7 +212,7 @@ def _workspace(
         configuration[1] if configuration else None,
         _covering_grant_id(connection, grants[ManagementAction.CALENDAR_MANAGE], unit.unit_id),
         can_view_people,
-        can_view_people
+        roster_grant
         or _covers_any(connection, grants[ManagementAction.CAPABILITY_MANAGE], unit.unit_id),
         configuration is not None,
         export[0] if export else None,

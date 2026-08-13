@@ -63,6 +63,60 @@ test("an unauthenticated render still explains that no team is assigned", async 
   expect(await screen.findByText("You are not assigned to a team")).toBeVisible();
 });
 
+test("a posted member is never told they have no team", async () => {
+  const fetchMock = teamsFetch({ teams: { teams: [] } });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) =>
+      url.includes("/organisation/workspaces")
+        ? Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () =>
+              Promise.resolve({
+                truncated: false,
+                workspaces: [
+                  {
+                    unit: {
+                      id: "3c27baa4-c889-53e4-98f0-4fda7d6cc9e5",
+                      name: "DI NCGIA",
+                      shortName: "NCGIA",
+                      category: "delivery_team",
+                      parentId: null,
+                      timeZone: "Europe/London",
+                      description: null,
+                      isActive: true,
+                      version: 1,
+                      validFrom: "2026-08-01T00:00:00Z",
+                      validUntil: null,
+                    },
+                    relationship: "home",
+                    managed: false,
+                    includeDescendants: false,
+                    canViewAvailability: false,
+                    canViewDetail: false,
+                    canViewTasks: false,
+                    canViewPeople: true,
+                    canViewCapabilities: false,
+                    canConfigure: false,
+                    planningGrantId: null,
+                  },
+                ],
+              }),
+          })
+        : fetchMock(url, init),
+    ),
+  );
+
+  renderWithProviders(<TeamsPage />, "/teams");
+
+  expect(await screen.findByRole("heading", { name: "DI NCGIA" })).toBeVisible();
+  expect(screen.queryByText("You are not assigned to a team")).not.toBeInTheDocument();
+  expect(
+    screen.queryByText("Workspace views are not included in your authority for this team."),
+  ).not.toBeInTheDocument();
+});
+
 test("a second team is offered as a switcher and selecting it changes the roster", async () => {
   const first = {
     id: "team-1",

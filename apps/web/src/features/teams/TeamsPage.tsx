@@ -6,6 +6,7 @@ import { TeamCalendarPanel } from "./TeamCalendarPanel";
 import { TeamRosterPanel } from "./TeamRosterPanel";
 import { OrganisationWorkspacePanel } from "./OrganisationWorkspacePanel";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/PageState";
+import { listOrganisationWorkspaces } from "../../lib/api-client/organisation-workspaces";
 import { listTeams, teamAvailability } from "../../lib/api-client/teams";
 import { useAuth } from "../../lib/auth/auth-context";
 import { queryKeys } from "../../lib/query-keys";
@@ -24,6 +25,14 @@ export default function TeamsPage() {
   const [selectedTeamId, setSelectedTeamId] = useState<string>();
   const teamsQuery = useQuery({ queryKey: ["teams"], queryFn: listTeams });
   const teams = teamsQuery.data?.teams ?? [];
+  // Shares the workspace panel's cache entry. Without it the page claimed the
+  // user had no team directly under a panel naming their home team.
+  const workspacesQuery = useQuery({
+    queryKey: ["organisation-workspaces"],
+    queryFn: listOrganisationWorkspaces,
+    retry: false,
+  });
+  const posted = (workspacesQuery.data?.workspaces ?? []).length > 0;
   const team = teams.find((item) => item.id === selectedTeamId) ?? teams[0];
   const today = isoToday();
   const availabilityQuery = useQuery({
@@ -43,7 +52,7 @@ export default function TeamsPage() {
       <OrganisationWorkspacePanel />
       {teamsQuery.isLoading ? <LoadingState /> : null}
       {teamsQuery.isError ? <ErrorState onRetry={() => void teamsQuery.refetch()} /> : null}
-      {teamsQuery.isSuccess && teams.length === 0 ? (
+      {teamsQuery.isSuccess && teams.length === 0 && workspacesQuery.isFetched && !posted ? (
         <EmptyState
           hint="Team managers add members from their team workspace."
           title="You are not assigned to a team"

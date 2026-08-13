@@ -60,6 +60,23 @@ def resolve_workspace_authority(
     raise WorkspaceOperationsDenied
 
 
+def has_effective_membership(
+    connection: Connection, actor: UUID, unit_id: UUID, at: datetime
+) -> bool:
+    """Whether the actor is currently posted to exactly this unit.
+
+    A posting is not management authority and must never be treated as one. It
+    is the basis for the single read a member is entitled to without a grant:
+    the roster of their own team, at direct scope only.
+    """
+    try:
+        require_active_actor(connection, actor)
+    except WorkspaceRecordDenied:
+        return False
+    row = connection.execute(text(_MEMBERSHIP), {"actor": actor, "unit": unit_id, "at": at}).first()
+    return row is not None
+
+
 def _unit_ids(
     connection: Connection, root_unit_id: UUID, scope: WorkspaceScope
 ) -> tuple[UUID, ...]:
@@ -94,3 +111,12 @@ AND valid_from<=:at AND (valid_until IS NULL OR :at<valid_until)
 AND (revoked_at IS NULL OR :at<revoked_at) ORDER BY grant_id LIMIT 201
 """
 _GRANTS_LOCKED = _GRANTS + " FOR UPDATE"
+
+_MEMBERSHIP = """
+SELECT 1 FROM team_memberships m
+JOIN organisation_units u ON u.unit_id = m.unit_id
+WHERE m.user_id=:actor AND m.unit_id=:unit AND m.state='active'
+AND m.valid_from<=:at AND (m.valid_until IS NULL OR :at<m.valid_until)
+AND u.is_active AND u.valid_from<=:at AND (u.valid_until IS NULL OR :at<u.valid_until)
+LIMIT 1
+"""

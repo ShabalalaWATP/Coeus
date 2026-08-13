@@ -66,6 +66,32 @@ test("pages canonical work and moves focus to the refreshed result heading", asy
   expect(await axe(view.container)).toHaveNoViolations();
 });
 
+test("keeps filters collapsed by default while leaving the result view available", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          cards: [card("003")],
+          asOf: "2026-08-03T12:00:00Z",
+          nextCursor: null,
+        }),
+    }),
+  );
+  renderWithProviders(<MyWorkPage />, "/analyst/my-work");
+  await screen.findByText("Assess reporting 003");
+
+  const filters = screen.getByText("Filters").closest("details");
+  expect(filters).not.toHaveAttribute("open");
+  expect(screen.getByLabelText("Status")).not.toBeVisible();
+  expect(screen.getByRole("group", { name: "Result view" })).toBeVisible();
+
+  await userEvent.click(screen.getByText("Filters"));
+  expect(filters).toHaveAttribute("open");
+  expect(screen.getByLabelText("Status")).toBeVisible();
+});
+
 test("filters completed work and provides an accessible table alternative", async () => {
   vi.stubGlobal(
     "fetch",
@@ -81,6 +107,7 @@ test("filters completed work and provides an accessible table alternative", asyn
   );
   renderWithProviders(<MyWorkPage />, "/analyst/my-work");
   await screen.findByText("Assess reporting 003");
+  await userEvent.click(screen.getByText("Filters"));
   await userEvent.selectOptions(screen.getByLabelText("Status"), "completed");
   expect(screen.getByRole("checkbox", { name: /Include work completed/ })).toBeChecked();
   await userEvent.click(screen.getByRole("button", { name: "Table" }));
@@ -107,6 +134,7 @@ test("dropping completed work clears a completed-only status and explains an emp
   renderWithProviders(<MyWorkPage />, "/analyst/my-work");
 
   expect(await screen.findByText("No work matches these filters.")).toBeVisible();
+  await userEvent.click(screen.getByText("Filters"));
   await userEvent.selectOptions(screen.getByLabelText("Status"), "completed");
   const includeCompleted = screen.getByRole("checkbox", { name: /Include work completed/ });
   expect(includeCompleted).toBeChecked();
