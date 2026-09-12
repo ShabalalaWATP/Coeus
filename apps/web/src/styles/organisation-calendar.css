@@ -85,3 +85,58 @@
 .organisation-calendar__aggregate > p:first-child {
   margin-bottom: 8px;
 }
+
+/* Assigned work sits beside the availability it competes with. */
+.workspace-assigned {
+  margin-top: 14px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.workspace-assigned h4 {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+}
+
+.workspace-assigned > ul {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.workspace-assigned > ul > li > time {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.workspace-assigned ul ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.workspace-assigned ul ul li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 9px;
+  align-items: baseline;
+  border-left: 3px solid color-mix(in srgb, var(--accent) 55%, var(--border));
+  border-radius: var(--radius-sm, 8px);
+  padding: 6px 10px;
+  background: var(--surface-muted);
+  font-size: 0.84rem;
+}
+
+.workspace-assigned ul ul small {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
