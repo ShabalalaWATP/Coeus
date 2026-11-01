@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, Eye, EyeOff } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { WorkspaceAssignedWork } from "./WorkspaceAssignedWork";
 import { ErrorState, LoadingState } from "../../components/ui/PageState";
 import {
   executeCalendarMutation,
@@ -154,6 +155,9 @@ export function OrganisationCalendarPanel({
         />
       ) : null}
       {open && projection.data ? <ProjectionBody projection={projection.data} /> : null}
+      {open ? (
+        <WorkspaceAssignedWork includeDescendants={includeDescendants} unitId={unit.id} />
+      ) : null}
       {open && managementGrantId && csrfToken && currentUserId ? (
         <form
           className="organisation-calendar__create"

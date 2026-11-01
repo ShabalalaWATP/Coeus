@@ -86,11 +86,24 @@ test("suppresses small ancestor counts and denies named calendar detail", async 
   const rfa = workspaces.workspaces.find((item) => item.unit.shortName === "RFA");
   expect(rfa).toBeDefined();
   expect(rfa?.canViewDetail).toBe(false);
+  const workspaceSwitcher = page.getByRole("navigation", { name: "Organisation workspaces" });
+  await workspaceSwitcher
+    .getByRole("button")
+    .filter({ hasText: /\bRFA\b/ })
+    .click();
   await page.getByRole("tab", { name: "Calendar" }).click();
   // The calendar is collapsed until asked for, so its controls only exist once
   // the panel has been opened.
   await page.getByRole("button", { name: "Open team calendar" }).click();
+  const descendantCalendar = page.waitForResponse((item) => {
+    const url = new URL(item.url());
+    return (
+      url.pathname === `/api/v1/calendar/units/${rfa!.unit.id}` &&
+      url.searchParams.get("includeDescendants") === "true"
+    );
+  });
   await page.getByLabel("Include child units").check();
+  expect((await descendantCalendar).status()).toBe(200);
   await expect(
     page.getByText("Small totals are hidden to protect individual availability."),
   ).toBeVisible();
